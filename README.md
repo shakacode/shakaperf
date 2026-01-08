@@ -27,6 +27,22 @@ yarn install
 yarn build
 ```
 
+## Publishing a New Version
+
+Each package is published independently using git tags. To publish a new version:
+
+1. Update the version in the package's `package.json`
+2. Commit the change
+3. Create and push a git tag with the format `package-name@version`
+
+```bash
+# Example: publishing shaka-bundle-size version 1.2.0
+git tag shaka-bundle-size@1.2.0
+git push origin shaka-bundle-size@1.2.0
+```
+
+The GitHub Action will automatically build and publish the package to npm.
+
 ## License
 
 MIT

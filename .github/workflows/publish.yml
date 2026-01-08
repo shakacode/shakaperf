@@ -1,8 +1,9 @@
-name: Publish to npm
+name: Publish Package
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - '*@*' # Matches: package-name@version
 
 jobs:
   publish:
@@ -17,13 +18,23 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Extract package info from tag
+        id: package
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          PACKAGE_NAME=${TAG%@*}
+          VERSION=${TAG#*@}
+          echo "name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing $PACKAGE_NAME version $VERSION"
+
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build all packages
-        run: yarn build
+      - name: Build package
+        run: yarn workspace ${{ steps.package.outputs.name }} run build
 
-      - name: Publish all packages
-        run: yarn workspaces foreach -A npm publish --access public
+      - name: Publish package
+        run: yarn workspace ${{ steps.package.outputs.name }} npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
