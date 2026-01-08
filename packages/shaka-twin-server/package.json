@@ -1,0 +1,31 @@
+{
+  "name": "shaka-twin-server",
+  "version": "0.0.1",
+  "description": "Twin server for performance testing React and React on Rails apps",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "twin-server",
+    "performance",
+    "react",
+    "testing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shakacode/shaka-perf.git",
+    "directory": "packages/shaka-twin-server"
+  },
+  "homepage": "https://github.com/shakacode/shaka-perf#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "shaka-visreg",
+  "version": "0.0.1",
+  "description": "Visual regression testing tools for React and React on Rails apps",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "visual-regression",
+    "testing",
+    "react",
+    "screenshot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shakacode/shaka-perf.git",
+    "directory": "packages/shaka-visreg"
+  },
+  "homepage": "https://github.com/shakacode/shaka-perf#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}
