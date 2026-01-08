@@ -38,6 +38,5 @@ jobs:
         run: yarn workspace ${{ steps.package.outputs.name }} run build
 
       - name: Publish package
-        run: yarn workspace ${{ steps.package.outputs.name }} npm publish --access public
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.YARN_NPM_AUTH_TOKEN }}
+        working-directory: packages/${{ steps.package.outputs.name }}
+        run: npm publish --access public
