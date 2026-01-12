@@ -6,6 +6,11 @@
   "browserslist": [
     "defaults"
   ],
+  "scripts": {
+    "build": "bin/shakapacker",
+    "build:analyze": "ANALYZE=true bin/shakapacker",
+    "test:bundle-size": "shaka-bundle-size"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -48,6 +53,10 @@
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "react-refresh": "0.18.0",
+    "shaka-bench": "workspace:*",
+    "shaka-bundle-size": "workspace:*",
+    "shaka-twin-server": "workspace:*",
+    "shaka-visreg": "workspace:*",
     "tailwindcss": "^3.4",
     "typescript": "^5.9.3",
     "webpack-dev-server": "^5.2.2"

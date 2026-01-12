@@ -2510,6 +2510,10 @@ __metadata:
     react-refresh: "npm:0.18.0"
     react-router-dom: "npm:^7.12.0"
     sass-loader: "npm:^16.0.6"
+    shaka-bench: "workspace:*"
+    shaka-bundle-size: "workspace:*"
+    shaka-twin-server: "workspace:*"
+    shaka-visreg: "workspace:*"
     shakapacker: "npm:9.5.0"
     style-loader: "npm:4.0.0"
     swc-loader: "npm:^0.2.6"
@@ -5350,13 +5354,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shaka-bench@workspace:packages/shaka-bench":
+"shaka-bench@workspace:*, shaka-bench@workspace:packages/shaka-bench":
   version: 0.0.0-use.local
   resolution: "shaka-bench@workspace:packages/shaka-bench"
   languageName: unknown
   linkType: soft
 
-"shaka-bundle-size@workspace:packages/shaka-bundle-size":
+"shaka-bundle-size@workspace:*, shaka-bundle-size@workspace:packages/shaka-bundle-size":
   version: 0.0.0-use.local
   resolution: "shaka-bundle-size@workspace:packages/shaka-bundle-size"
   languageName: unknown
@@ -5370,13 +5374,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-twin-server@workspace:packages/shaka-twin-server":
+"shaka-twin-server@workspace:*, shaka-twin-server@workspace:packages/shaka-twin-server":
   version: 0.0.0-use.local
   resolution: "shaka-twin-server@workspace:packages/shaka-twin-server"
   languageName: unknown
   linkType: soft
 
-"shaka-visreg@workspace:packages/shaka-visreg":
+"shaka-visreg@workspace:*, shaka-visreg@workspace:packages/shaka-visreg":
   version: 0.0.0-use.local
   resolution: "shaka-visreg@workspace:packages/shaka-visreg"
   languageName: unknown
