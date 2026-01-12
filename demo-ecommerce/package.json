@@ -9,12 +9,16 @@
   "dependencies": {
     "@swc/core": "^1.15.8",
     "compression-webpack-plugin": "^11.1.0",
-    "css-loader": "^7.1.2",
-    "mini-css-extract-plugin": "^2.9.4",
-    "react-on-rails": "npm:16.2.0-rc.0",
+    "css-loader": "7.1.2",
+    "css-minimizer-webpack-plugin": "7.0.4",
+    "mini-css-extract-plugin": "2.9.4",
+    "prop-types": "15.8.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-on-rails": "16.2.0-rc.0",
     "sass-loader": "^16.0.6",
     "shakapacker": "9.5.0",
-    "style-loader": "^4.0.0",
+    "style-loader": "4.0.0",
     "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.16",
     "webpack": "^5.104.1",
@@ -24,6 +28,8 @@
     "webpack-subresource-integrity": "^5.1.0"
   },
   "devDependencies": {
+    "@pmmmwh/react-refresh-webpack-plugin": "0.6.2",
+    "react-refresh": "0.18.0",
     "webpack-dev-server": "^5.2.2"
   }
 }

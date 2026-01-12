@@ -19,18 +19,6 @@ default: &default
   #  css_extract_ignore_order_warnings to true
   css_extract_ignore_order_warnings: false
 
-  # CSS Modules export mode
-  # Controls how CSS Module class names are exported in JavaScript
-  # Defaults to 'named' if not specified. Uncomment and change to 'default' for v8 behavior.
-  # Options:
-  #   - named (default): Use named exports with camelCase conversion (v9 default)
-  #     Example: import { button } from './styles.module.css'
-  #   - default: Use default export with both original and camelCase names (v8 behavior)
-  #     Example: import styles from './styles.module.css'
-  # For gradual migration, you can set this to default to maintain v8 behavior
-  # See https://github.com/shakacode/shakapacker/blob/main/docs/css-modules-export-mode.md
-  # css_modules_export_mode: named
-
   public_root_path: public
   public_output_path: packs
   cache_path: tmp/shakapacker
@@ -43,7 +31,8 @@ default: &default
 
   # Location for private server-side bundles (e.g., for SSR)
   # These bundles are not served publicly, unlike public_output_path
-  # private_output_path: ssr-generated
+  # Shakapacker 9.0+ feature - automatically detected by React on Rails
+  private_output_path: ssr-generated
 
   # Additional paths webpack should look up modules
   # ['app/assets', 'engine/foo/app/assets']
@@ -62,26 +51,26 @@ default: &default
   # Available options: 'webpack' (default) or 'rspack'
   assets_bundler: "webpack"
 
-  # Path to the directory containing webpack/rspack config files
-  # Defaults to 'config/webpack' for webpack or 'config/rspack' for rspack
-  # Use '.' to specify the root directory of your project
-  # assets_bundler_config_path: config/webpack
-
-  # Hook to run before webpack compilation (e.g., for generating dynamic entry points)
-  # SECURITY: Only reference trusted scripts within your project. The hook command will be
-  # validated to ensure it points to a file within the project root.
-  # Example: precompile_hook: 'bin/shakapacker-precompile-hook'
-  # precompile_hook: ~
-
   # Raises an error if there is a mismatch in the shakapacker gem and npm package being used
   ensure_consistent_versioning: true
+
+  # Hook to run before webpack compilation (e.g., for generating dynamic entry points)
+  # SECURITY: Only reference trusted scripts within your project. Ensure the hook path
+  # points to a file within the project root that you control.
+  precompile_hook: 'bin/shakapacker-precompile-hook'
 
   # Select whether the compiler will use SHA digest ('digest' option) or most recent modified timestamp ('mtime') to determine freshness
   compiler_strategy: digest
 
   # Select whether the compiler will always use a content hash and not just in production
-  # Content hashes are recommended for production cache busting
-  useContentHash: true
+  # Don't use contentHash except for production for performance
+  # https://webpack.js.org/guides/build-performance/#avoid-production-specific-tooling
+  useContentHash: false
+
+  # On-demand compilation of packs when modified. Defaults to false.
+  # Set to false if using bin/shakapacker-dev-server or bin/shakapacker --watch via Procfiles.
+  # Set to true only in test environment for on-demand compilation.
+  compile: false
 
   # Setting the asset host here will override Rails.application.config.asset_host.
   # Here, you can set different asset_host per environment. Note that
@@ -98,33 +87,9 @@ default: &default
     # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity#cross-origin_resource_sharing_and_subresource_integrity
     cross_origin: "anonymous"
 
-  # HTTP 103 Early Hints support for faster asset loading
-  # Sends Link headers to browsers so they can preload assets while Rails is rendering
-  # See docs/early_hints_new_api.md for setup instructions and requirements
-  # https://api.rubyonrails.org/classes/ActionDispatch/Request.html#method-i-send_early_hints
-  early_hints:
-    enabled: false
-    # css: "preload" # 'preload' | 'prefetch' | 'none' - default: 'preload'
-    # js: "preload" # 'preload' | 'prefetch' | 'none' - default: 'preload'
-    # debug: false # Output early hints info as HTML comments for troubleshooting
-
 development:
   <<: *default
-  compile: true
   compiler_strategy: mtime
-
-  # Disable content hashes in development for faster builds
-  # https://webpack.js.org/guides/caching/
-  useContentHash: false
-
-  # Early hints disabled by default in development
-  # To enable: Set enabled: true AND start Puma with: bundle exec puma --early-hints
-  # See docs/early_hints_new_api.md for setup instructions
-  # early_hints:
-  #   enabled: true
-  #   css: "preload"
-  #   js: "preload"
-  #   debug: true
 
   # Reference: https://webpack.js.org/configuration/dev-server/
   # Keys not described there are documented inline and in https://github.com/shakacode/shakapacker/
@@ -136,7 +101,7 @@ development:
     port: 3035
     # Hot Module Replacement updates modules while the application is running without a full reload
     # Used instead of the `hot` key in https://webpack.js.org/configuration/dev-server/#devserverhot
-    hmr: false
+    hmr: true
     # If HMR is on, CSS will be inlined by delivering it as part of the script payload via style-loader. Be sure
     # that you add style-loader to your project dependencies.
     #
@@ -158,14 +123,14 @@ development:
     # Should we use gzip compression?
     compress: true
     # Note that apps that do not check the host are vulnerable to DNS rebinding attacks
-    allowed_hosts: "auto"
+    allowed_hosts: 'auto'
     # Shows progress and colorizes output of bin/shakapacker[-dev-server]
     pretty: true
     headers:
-      "Access-Control-Allow-Origin": "*"
+      'Access-Control-Allow-Origin': '*'
     static:
       watch:
-        ignored: "**/node_modules/**"
+        ignored: '**/node_modules/**'
 
 test:
   <<: *default
@@ -180,13 +145,8 @@ production:
   # Production depends on precompilation of packs prior to booting for performance.
   compile: false
 
+  # Use content hash for naming assets. Cannot be overridden in production.
+  useContentHash: true
+
   # Cache manifest.json for performance
   cache_manifest: true
-
-  # Early hints disabled by default. See docs/early_hints_new_api.md before enabling.
-  # Requires proper server configuration (Puma + HTTP/2 proxy like nginx, Thruster, or Control Plane)
-  early_hints:
-    enabled: false
-    # css: "preload"
-    # js: "preload"
-    # debug: false
