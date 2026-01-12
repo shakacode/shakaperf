@@ -35,7 +35,6 @@ async function cartApi(endpoint: string, options: RequestInit = {}) {
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     cartApi('')
@@ -44,9 +43,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .catch((err) => {
         console.error('Failed to load cart:', err);
-      })
-      .finally(() => {
-        setIsLoading(false);
       });
   }, []);
 
@@ -140,10 +136,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     total,
     itemCount,
   }), [items, addToCart, removeFromCart, updateQuantity, clearCart, total, itemCount]);
-
-  if (isLoading) {
-    return <>{children}</>;
-  }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
