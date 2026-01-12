@@ -1,7 +1,8 @@
-// The source code including full typescript support is available at: 
+// The source code including full typescript support is available at:
 // https://github.com/shakacode/react_on_rails_demo_ssr_hmr/blob/master/config/webpack/clientWebpackConfig.js
 
 const commonWebpackConfig = require('./commonWebpackConfig');
+const LoadablePlugin = require('@loadable/webpack-plugin');
 
 const configureClient = () => {
   const clientConfig = commonWebpackConfig();
@@ -11,6 +12,9 @@ const configureClient = () => {
   // error shows referring to window["webpackJsonp"]. That is because the
   // client config is going to try to load chunks.
   delete clientConfig.entry['server-bundle'];
+
+  // Add Loadable Components plugin for code splitting
+  clientConfig.plugins.push(new LoadablePlugin());
 
   return clientConfig;
 };

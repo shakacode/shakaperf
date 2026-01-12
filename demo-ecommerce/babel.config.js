@@ -18,6 +18,8 @@ module.exports = function (api) {
       ]
     ].filter(Boolean),
     plugins: [
+      // Loadable Components babel plugin for code splitting
+      '@loadable/babel-plugin',
       // Enable React Refresh (Fast Refresh) only when webpack-dev-server is running (HMR mode)
       // This prevents React Refresh from trying to connect when using static compilation
       !isProductionEnv && process.env.WEBPACK_SERVE && 'react-refresh/babel',
