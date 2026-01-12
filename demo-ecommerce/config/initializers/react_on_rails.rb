@@ -47,8 +47,10 @@ ReactOnRails.configure do |config|
   #
   config.build_test_command = "RAILS_ENV=test bin/shakapacker"
 
-  config.auto_load_bundle = true
-  config.components_subdirectory = "ror_components"
+  # Disabled auto_load_bundle because App component uses manual registration
+  # in server.tsx/client.tsx for SSR with loadable components code splitting
+  config.auto_load_bundle = false
+  # config.components_subdirectory = "ror_components"
   ################################################################################
   # Advanced Configuration
   ################################################################################
