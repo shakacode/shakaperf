@@ -1,6 +1,6 @@
 import React from 'react';
-import { Container, Typography, Box, Grid, Button } from '@mui/material';
-import { ArrowForward } from '@mui/icons-material';
+import { Container, Typography, Box, Button, Paper } from '@mui/material';
+import { ArrowForward, LocalShipping, Security, Support } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../shared/ProductCard';
@@ -11,63 +11,125 @@ const HomePage: React.FC = () => {
   const featuredProducts = products.filter((p) => p.featured).slice(0, 4);
 
   return (
-    <Container maxWidth="lg" className="py-8">
+    <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Hero Section */}
-      <Box className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-8 mb-8">
-        <Typography variant="h3" component="h1" className="font-bold mb-4">
-          Welcome to Demo Store
-        </Typography>
-        <Typography variant="h6" className="mb-6 opacity-90">
-          Discover amazing products at great prices
-        </Typography>
-        <Button
-          variant="contained"
-          color="secondary"
-          component={Link}
-          to="/products"
-          endIcon={<ArrowForward />}
-          size="large"
-        >
-          Shop Now
-        </Button>
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          py: { xs: 6, md: 10 },
+          mb: 6,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Box sx={{ maxWidth: '600px' }}>
+            <Typography
+              variant="h2"
+              component="h1"
+              sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2.5rem', md: '3.5rem' } }}
+            >
+              Discover Your Style
+            </Typography>
+            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }}>
+              Shop the latest trends with free shipping on orders over $50
+            </Typography>
+            <Button
+              variant="contained"
+              component={Link}
+              to="/products"
+              endIcon={<ArrowForward />}
+              size="large"
+              sx={{
+                bgcolor: 'white',
+                color: '#667eea',
+                px: 4,
+                py: 1.5,
+                fontWeight: 600,
+                '&:hover': { bgcolor: '#f0f0f0' },
+              }}
+            >
+              Shop Now
+            </Button>
+          </Box>
+        </Container>
       </Box>
 
-      {/* Featured Products */}
-      <Typography variant="h4" component="h2" className="font-bold mb-6">
-        Featured Products
-      </Typography>
-
-      {loading && <LoadingSpinner />}
-
-      {error && (
-        <Typography color="error" className="text-center py-4">
-          {error}
-        </Typography>
-      )}
-
-      {!loading && !error && (
-        <Grid container spacing={3}>
-          {featuredProducts.map((product) => (
-            <Grid item xs={12} sm={6} md={3} key={product.id}>
-              <ProductCard product={product} />
-            </Grid>
+      <Container maxWidth="lg">
+        {/* Features Section */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+            gap: 3,
+            mb: 6,
+          }}
+        >
+          {[
+            { icon: <LocalShipping />, title: 'Free Shipping', desc: 'On orders over $50' },
+            { icon: <Security />, title: 'Secure Payment', desc: '100% secure checkout' },
+            { icon: <Support />, title: '24/7 Support', desc: 'Dedicated support team' },
+          ].map((feature, index) => (
+            <Paper
+              key={index}
+              elevation={0}
+              sx={{
+                p: 3,
+                textAlign: 'center',
+                borderRadius: 2,
+                bgcolor: 'white',
+              }}
+            >
+              <Box sx={{ color: '#667eea', mb: 1 }}>{feature.icon}</Box>
+              <Typography variant="subtitle1" fontWeight={600}>
+                {feature.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {feature.desc}
+              </Typography>
+            </Paper>
           ))}
-        </Grid>
-      )}
-
-      {!loading && featuredProducts.length > 0 && (
-        <Box className="text-center mt-8">
-          <Button
-            variant="outlined"
-            component={Link}
-            to="/products"
-            endIcon={<ArrowForward />}
-          >
-            View All Products
-          </Button>
         </Box>
-      )}
-    </Container>
+
+        {/* Featured Products */}
+        <Box sx={{ mb: 6 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h4" component="h2" fontWeight={700}>
+              Featured Products
+            </Typography>
+            <Button
+              component={Link}
+              to="/products"
+              endIcon={<ArrowForward />}
+              sx={{ color: '#667eea' }}
+            >
+              View All
+            </Button>
+          </Box>
+
+          {loading && <LoadingSpinner />}
+
+          {error && (
+            <Typography color="error" sx={{ textAlign: 'center', py: 4 }}>
+              {error}
+            </Typography>
+          )}
+
+          {!loading && !error && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                gap: 3,
+              }}
+            >
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </Box>
+          )}
+        </Box>
+      </Container>
+    </Box>
   );
 };
 

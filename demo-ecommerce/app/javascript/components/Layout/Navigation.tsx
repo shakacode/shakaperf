@@ -11,18 +11,29 @@ const Navigation: React.FC = () => {
   const location = useLocation();
 
   return (
-    <Box sx={{ display: 'flex', gap: 1, mr: 2 }}>
-      {navItems.map((item) => (
-        <Button
-          key={item.path}
-          component={Link}
-          to={item.path}
-          color="inherit"
-          variant={location.pathname === item.path ? 'outlined' : 'text'}
-        >
-          {item.label}
-        </Button>
-      ))}
+    <Box sx={{ display: 'flex', gap: 0.5, mr: 2 }}>
+      {navItems.map((item) => {
+        const isActive = location.pathname === item.path;
+        return (
+          <Button
+            key={item.path}
+            component={Link}
+            to={item.path}
+            sx={{
+              color: isActive ? '#667eea' : '#666',
+              fontWeight: isActive ? 600 : 500,
+              borderRadius: 2,
+              px: 2,
+              '&:hover': {
+                bgcolor: 'rgba(102, 126, 234, 0.08)',
+                color: '#667eea',
+              },
+            }}
+          >
+            {item.label}
+          </Button>
+        );
+      })}
     </Box>
   );
 };

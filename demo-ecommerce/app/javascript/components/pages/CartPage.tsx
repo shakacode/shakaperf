@@ -23,10 +23,10 @@ const CartPage: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <Container maxWidth="lg" className="py-8">
-        <Paper className="p-8 text-center">
-          <ShoppingBag className="text-gray-400 mb-4" style={{ fontSize: 80 }} />
-          <Typography variant="h5" className="mb-4">
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <ShoppingBag sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
+          <Typography variant="h5" sx={{ mb: 2 }}>
             Your cart is empty
           </Typography>
           <Button
@@ -34,6 +34,7 @@ const CartPage: React.FC = () => {
             component={Link}
             to="/products"
             startIcon={<ArrowBack />}
+            sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
           >
             Continue Shopping
           </Button>
@@ -43,36 +44,37 @@ const CartPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" className="py-8">
-      <Typography variant="h4" component="h1" className="font-bold mb-6">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
         Shopping Cart
       </Typography>
 
-      <TableContainer component={Paper} className="mb-6">
+      <TableContainer component={Paper} sx={{ mb: 3, borderRadius: 2 }}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell align="right">Price</TableCell>
-              <TableCell align="center">Quantity</TableCell>
-              <TableCell align="right">Subtotal</TableCell>
-              <TableCell align="center">Actions</TableCell>
+            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+              <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Price</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>Quantity</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Subtotal</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {items.map((item) => (
               <TableRow key={item.product.id}>
                 <TableCell>
-                  <Box className="flex items-center gap-4">
-                    <img
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      component="img"
                       src={item.product.image_url}
                       alt={item.product.name}
-                      className="w-16 h-16 object-cover rounded"
+                      sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1 }}
                     />
                     <Box>
                       <Link
                         to={`/products/${item.product.id}`}
-                        className="text-blue-600 hover:underline font-medium"
+                        style={{ color: '#667eea', textDecoration: 'none', fontWeight: 500 }}
                       >
                         {item.product.name}
                       </Link>
@@ -86,7 +88,7 @@ const CartPage: React.FC = () => {
                   ${item.product.price.toFixed(2)}
                 </TableCell>
                 <TableCell align="center">
-                  <Box className="flex items-center justify-center gap-2">
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                     <IconButton
                       size="small"
                       onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
@@ -115,7 +117,7 @@ const CartPage: React.FC = () => {
                     </IconButton>
                   </Box>
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ fontWeight: 600 }}>
                   ${(item.product.price * item.quantity).toFixed(2)}
                 </TableCell>
                 <TableCell align="center">
@@ -132,18 +134,22 @@ const CartPage: React.FC = () => {
         </Table>
       </TableContainer>
 
-      <Paper className="p-6">
-        <Box className="flex justify-between items-center mb-4">
+      <Paper sx={{ p: 3, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h5">Total</Typography>
-          <Typography variant="h4" color="primary" className="font-bold">
+          <Typography variant="h4" sx={{ fontWeight: 700, color: '#667eea' }}>
             ${total.toFixed(2)}
           </Typography>
         </Box>
-        <Box className="flex gap-4 justify-end">
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
           <Button variant="outlined" color="error" onClick={clearCart}>
             Clear Cart
           </Button>
-          <Button variant="contained" size="large">
+          <Button
+            variant="contained"
+            size="large"
+            sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+          >
             Proceed to Checkout
           </Button>
         </Box>

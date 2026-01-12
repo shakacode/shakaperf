@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import {
   Container,
   Typography,
-  Grid,
   Button,
   Chip,
   Box,
@@ -26,11 +25,11 @@ const ProductDetailPage: React.FC = () => {
 
   if (error || !product) {
     return (
-      <Container maxWidth="lg" className="py-8">
-        <Typography color="error" className="text-center">
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography color="error" sx={{ textAlign: 'center' }}>
           {error || 'Product not found'}
         </Typography>
-        <Box className="text-center mt-4">
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
           <Button component={Link} to="/products" startIcon={<ArrowBack />}>
             Back to Products
           </Button>
@@ -40,61 +39,83 @@ const ProductDetailPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" className="py-8">
-      <Breadcrumbs className="mb-6">
-        <Link to="/" className="text-blue-600 hover:underline">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Breadcrumbs sx={{ mb: 3 }}>
+        <Link to="/" style={{ color: '#667eea', textDecoration: 'none' }}>
           Home
         </Link>
-        <Link to="/products" className="text-blue-600 hover:underline">
+        <Link to="/products" style={{ color: '#667eea', textDecoration: 'none' }}>
           Products
         </Link>
         <Typography color="text.primary">{product.name}</Typography>
       </Breadcrumbs>
 
-      <Paper elevation={2} className="p-6">
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            <img
+      <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #e0e0e0' }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: 4,
+          }}
+        >
+          <Box>
+            <Box
+              component="img"
               src={product.image_url}
               alt={product.name}
-              className="w-full rounded-lg object-cover"
-              style={{ maxHeight: '400px' }}
+              sx={{
+                width: '100%',
+                maxHeight: 400,
+                objectFit: 'cover',
+                borderRadius: 2,
+              }}
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box className="flex items-start gap-2 mb-2">
-              <Typography variant="h4" component="h1" className="font-bold">
+          </Box>
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
                 {product.name}
               </Typography>
-              {product.featured && <Chip label="Featured" color="primary" />}
+              {product.featured && (
+                <Chip
+                  label="Featured"
+                  size="small"
+                  sx={{ bgcolor: '#667eea', color: 'white' }}
+                />
+              )}
             </Box>
 
-            <Chip label={product.category} variant="outlined" className="mb-4" />
+            <Chip label={product.category} variant="outlined" sx={{ mb: 2 }} />
 
-            <Typography variant="h3" color="primary" className="font-bold mb-4">
+            <Typography variant="h3" sx={{ fontWeight: 700, color: '#667eea', mb: 2 }}>
               ${product.price.toFixed(2)}
             </Typography>
 
-            <Typography variant="body1" className="mb-6 text-gray-700">
+            <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
               {product.description}
             </Typography>
 
             <Typography
               variant="body2"
-              className={`mb-6 ${product.stock > 10 ? 'text-green-600' : 'text-orange-600'}`}
+              sx={{
+                mb: 3,
+                color: product.stock > 10 ? 'success.main' : 'warning.main',
+                fontWeight: 500,
+              }}
             >
               {product.stock > 0
                 ? `${product.stock} items in stock`
                 : 'Out of stock'}
             </Typography>
 
-            <Box className="flex gap-4">
+            <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
                 variant="contained"
                 size="large"
                 startIcon={<ShoppingCart />}
                 onClick={() => addToCart(product)}
                 disabled={product.stock === 0}
+                sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
               >
                 Add to Cart
               </Button>
@@ -104,12 +125,13 @@ const ProductDetailPage: React.FC = () => {
                 component={Link}
                 to="/products"
                 startIcon={<ArrowBack />}
+                sx={{ borderColor: '#667eea', color: '#667eea' }}
               >
                 Back to Products
               </Button>
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Paper>
     </Container>
   );

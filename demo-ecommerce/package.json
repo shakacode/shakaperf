@@ -57,7 +57,6 @@
     "shaka-bundle-size": "workspace:*",
     "shaka-twin-server": "workspace:*",
     "shaka-visreg": "workspace:*",
-    "tailwindcss": "^3.4",
     "typescript": "^5.9.3",
     "webpack-dev-server": "^5.2.2"
   }

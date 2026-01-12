@@ -30,9 +30,16 @@ const App: React.FC = () => {
     <ThemeProvider>
       <CartProvider>
         <BrowserRouter>
-          <Box id="root" className="min-h-screen flex flex-col">
+          <Box
+            id="root"
+            sx={{
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             <Header />
-            <Box component="main" className="flex-grow">
+            <Box component="main" sx={{ flexGrow: 1 }}>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/products" element={<ProductListPage />} />
