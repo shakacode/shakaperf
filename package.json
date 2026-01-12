@@ -4,7 +4,8 @@
   "private": true,
   "description": "Performance tools monorepo for React and React on Rails apps",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "demo-ecommerce"
   ],
   "scripts": {
     "build": "yarn workspaces foreach -A run build"
