@@ -6,6 +6,10 @@ Rails.application.routes.draw do
   get '/products/:id', to: 'pages#index'
   get '/cart', to: 'pages#index'
 
+  # Admin SPA routes - all handled by React Router
+  get '/admin', to: 'admin#index'
+  get '/admin/*path', to: 'admin#index'
+
   # API endpoints
   namespace :api do
     namespace :v1 do

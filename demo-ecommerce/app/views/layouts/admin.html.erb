@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin - Demo E-Commerce</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="turbo-cache-control" content="no-cache">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_pack_tag 'admin' %>
+    <%= javascript_pack_tag 'admin' %>
+  </head>
+
+  <body>
+    <%= yield %>
+  </body>
+</html>
