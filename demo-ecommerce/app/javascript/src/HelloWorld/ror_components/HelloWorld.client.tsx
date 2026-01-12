@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import * as style from './HelloWorld.module.css';
 
-const HelloWorld = (props) => {
+interface HelloWorldProps {
+  name: string;
+}
+
+const HelloWorld: React.FC<HelloWorldProps> = (props) => {
   const [name, setName] = useState(props.name);
 
   return (
