@@ -1274,6 +1274,7 @@ __metadata:
     compression-webpack-plugin: "npm:^11.1.0"
     css-loader: "npm:^7.1.2"
     mini-css-extract-plugin: "npm:^2.9.4"
+    react-on-rails: "npm:16.2.0-rc.0"
     sass-loader: "npm:^16.0.6"
     shakapacker: "npm:9.5.0"
     style-loader: "npm:^4.0.0"
@@ -2871,6 +2872,16 @@ __metadata:
     iconv-lite: "npm:~0.4.24"
     unpipe: "npm:~1.0.0"
   checksum: 10c0/449844344fc90547fb994383a494b83300e4f22199f146a79f68d78a199a8f2a923ea9fd29c3be979bfd50291a3884733619ffc15ba02a32e703b612f8d3f74a
+  languageName: node
+  linkType: hard
+
+"react-on-rails@npm:16.2.0-rc.0":
+  version: 16.2.0-rc.0
+  resolution: "react-on-rails@npm:16.2.0-rc.0"
+  peerDependencies:
+    react: ">= 16"
+    react-dom: ">= 16"
+  checksum: 10c0/6cc8ed1cb77912eb4e4e951c539f140ac442a3e185a8345dd7118c8bf45ec7ae2cc0ad154f450456feec6527ac98956a7fa73b487e11df3d68ab92f7ff9ef2cf
   languageName: node
   linkType: hard
 
