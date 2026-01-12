@@ -10,6 +10,14 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :products, only: %i[index show]
+
+      # Cart endpoints
+      resource :cart, only: [:show] do
+        delete '/', to: 'carts#clear'
+        post 'items', to: 'carts#add_item'
+        patch 'items/:product_id', to: 'carts#update_item'
+        delete 'items/:product_id', to: 'carts#remove_item'
+      end
     end
   end
 
