@@ -16,7 +16,7 @@ module Api
         @cart.add_product(product, quantity)
         render json: @cart
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Product not found' }, status: :not_found
+        render json: { error: "Product not found" }, status: :not_found
       end
 
       # PATCH /api/v1/cart/items/:product_id
@@ -44,10 +44,10 @@ module Api
       private
 
       def set_cart
-        token = request.headers['X-Cart-Token']
+        token = request.headers["X-Cart-Token"]
 
         if token.blank?
-          render json: { error: 'X-Cart-Token header is required' }, status: :bad_request
+          render json: { error: "X-Cart-Token header is required" }, status: :bad_request
           return
         end
 

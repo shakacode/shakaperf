@@ -1,14 +1,14 @@
 Rails.application.routes.draw do
-  root 'pages#index'
+  root "pages#index"
 
   # React SPA routes - all handled by React Router
-  get '/products', to: 'pages#index'
-  get '/products/:id', to: 'pages#index'
-  get '/cart', to: 'pages#index'
+  get "/products", to: "pages#index"
+  get "/products/:id", to: "pages#index"
+  get "/cart", to: "pages#index"
 
   # Admin SPA routes - all handled by React Router
-  get '/admin', to: 'admin#index'
-  get '/admin/*path', to: 'admin#index'
+  get "/admin", to: "admin#index"
+  get "/admin/*path", to: "admin#index"
 
   # API endpoints
   namespace :api do
@@ -16,11 +16,11 @@ Rails.application.routes.draw do
       resources :products, only: %i[index show]
 
       # Cart endpoints
-      resource :cart, only: [:show] do
-        delete '/', to: 'carts#clear'
-        post 'items', to: 'carts#add_item'
-        patch 'items/:product_id', to: 'carts#update_item'
-        delete 'items/:product_id', to: 'carts#remove_item'
+      resource :cart, only: [ :show ] do
+        delete "/", to: "carts#clear"
+        post "items", to: "carts#add_item"
+        patch "items/:product_id", to: "carts#update_item"
+        delete "items/:product_id", to: "carts#remove_item"
       end
     end
   end

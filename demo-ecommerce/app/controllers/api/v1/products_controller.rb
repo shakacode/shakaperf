@@ -11,7 +11,7 @@ module Api
         product = Product.find(params[:id])
         render json: product
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Product not found' }, status: :not_found
+        render json: { error: "Product not found" }, status: :not_found
       end
     end
   end
