@@ -28,7 +28,10 @@ const configureClient = () => {
   // In development (no BUNDLE_NAME set), keep all entries
 
   // Add Loadable Components plugin for code splitting
-  clientConfig.plugins.push(new LoadablePlugin());
+  const bundleName = process.env.BUNDLE_NAME || 'app';
+  clientConfig.plugins.push(new LoadablePlugin({
+    filename: `${bundleName}-loadable-stats.json`
+  }));
 
   return clientConfig;
 };
