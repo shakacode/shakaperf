@@ -9,21 +9,19 @@ import Footer from './Layout/Footer';
 import LoadingSpinner from './shared/LoadingSpinner';
 
 // Code-split page components
-const HomePage = loadable(() => import(/* webpackChunkName: 'HomePage' */ './pages/HomePage'), {
+const HomePage = loadable(() => import('./pages/HomePage'), {
   fallback: <LoadingSpinner />,
 });
 
-const ProductListPage = loadable(() => import(/* webpackChunkName: 'ProductListPage' */ './pages/ProductListPage'), {
+const ProductListPage = loadable(() => import('./pages/ProductListPage'), {
   fallback: <LoadingSpinner />,
 });
 
-const ProductDetailPage = loadable(() => import(/* webpackChunkName: 'ProductDetailPage' */ './pages/ProductDetailPage'), {
+const ProductDetailPage = loadable(() => import('./pages/ProductDetailPage'), {
   fallback: <LoadingSpinner />,
 });
 
 const CartPage = loadable(() => import('./pages/CartPage'), {
-  // This will be added into uncategorized chunks because it doesn't have
-  // /* webpackChunkName: 'CartPage' */ in import()
   fallback: <LoadingSpinner />,
 });
 

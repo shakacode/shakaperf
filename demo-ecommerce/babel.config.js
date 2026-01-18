@@ -8,6 +8,7 @@ module.exports = function (api) {
 
   const changesOnDefault = {
     presets: [
+      '@babel/preset-typescript',
       [
         '@babel/preset-react',
         {
@@ -32,7 +33,7 @@ module.exports = function (api) {
   }
 
   resultConfig.presets = [...resultConfig.presets, ...changesOnDefault.presets]
-  resultConfig.plugins = [...resultConfig.plugins, ...changesOnDefault.plugins ]
+  resultConfig.plugins = [...resultConfig.plugins, ...changesOnDefault.plugins]
 
   return resultConfig
 }
