@@ -1,11 +1,13 @@
 {
   "name": "shaka-bundle-size",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Bundle size diffing and analysis tool for React and React on Rails apps using loadable components",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": "./dist/cli.js",
   "files": [
-    "dist"
+    "dist",
+    "templates"
   ],
   "scripts": {
     "build": "tsc",
@@ -28,5 +30,13 @@
   "homepage": "https://github.com/shakacode/shaka-perf#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "diff2html": "^3.4.48",
+    "webpack-bundle-analyzer": "^4.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
   }
 }

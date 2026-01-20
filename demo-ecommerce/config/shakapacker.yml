@@ -45,11 +45,12 @@ default: &default
   # Available options: 'swc' (default, 20x faster), 'babel', 'esbuild', or 'none'
   # Use 'none' when providing a completely custom webpack configuration
   # Note: When using rspack, swc is used automatically regardless of this setting
-  javascript_transpiler: "swc"
+  javascript_transpiler: 'babel'
+  webpack_loader: 'babel'
 
   # Select assets bundler to use
   # Available options: 'webpack' (default) or 'rspack'
-  assets_bundler: "webpack"
+  assets_bundler: 'webpack'
 
   # Raises an error if there is a mismatch in the shakapacker gem and npm package being used
   ensure_consistent_versioning: true
@@ -82,10 +83,10 @@ default: &default
   integrity:
     enabled: false
     # Which cryptographic function(s) to use, for generating the integrity hash(es). Default sha-384. Other possible values sha256, sha512
-    hash_functions: ["sha384"]
+    hash_functions: ['sha384']
     # Default "anonymous". Other possible value "use-credentials"
     # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity#cross-origin_resource_sharing_and_subresource_integrity
-    cross_origin: "anonymous"
+    cross_origin: 'anonymous'
 
 development:
   <<: *default

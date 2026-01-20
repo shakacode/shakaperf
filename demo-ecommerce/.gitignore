@@ -44,3 +44,5 @@ yarn-debug.log*
 # Generated React on Rails packs
 **/generated/**
 ssr-generated
+
+baseline/bundle_size/*

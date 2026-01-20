@@ -1,0 +1,113 @@
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.9.0/styles/github.min.css" />
+  <!--diff2html-css-->
+  <!--diff2html-js-ui-->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const targetElement = document.getElementById('diff');
+      const diff2htmlUi = new Diff2HtmlUI(targetElement);
+      //diff2html-fileListToggle
+      //diff2html-synchronisedScroll
+      //diff2html-highlightCode
+    });
+  </script>
+  <!--diff2html-title-->
+  <style >
+    .d2h-file-name-wrapper, .d2h-file-switch, .d2h-file-list-title {
+      display: none !important;
+    }
+  </style>
+
+  <style id="json-description-disabler">
+    .json-description {
+      display: none !important;
+    }
+  </style>
+  <style id="source-map-description-disabler">
+    .source-map-description {
+      display: none !important;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const header = document.getElementById('header');
+      
+      if (header.innerHTML.includes('.json')) {
+        const jsonDescriptionDisabler = document.getElementById('json-description-disabler');
+        jsonDescriptionDisabler.remove();
+      } else {
+        const sourceMapDescriptionDisabler = document.getElementById('source-map-description-disabler');
+        sourceMapDescriptionDisabler.remove();
+      }
+    });
+  </script>
+</head>
+<body>
+  <header id="header" style="font-family: Arial, sans-serif; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px;">
+      bundle-size-diffs/<span class="file-name"></span>
+    </h1>
+    <div style="background-color: #f0f0f0; border-radius: 5px; padding: 15px; margin-bottom: 20px;">
+      <details>
+        <summary style="color: #444; cursor: pointer; font-weight: bold;">What is this file?</summary>
+        <div style="margin-top: 10px;">
+          When you create a Loadable Component, webpack will create one or more JS chunks for it. <br>
+          These JS chunks can be shared between different components. <br><br>
+
+          <div class="json-description">
+            This file shows:
+            <ul>
+              <li>How many chunks are created for each Loadable Component (fewer chunks are better)</li>
+              <li>Their cumulative size:
+                <ul>
+                  <li><b>brotliSizeKb</b> - size when compressed by Brotli. Brotli is more efficient than gzip, but the resulting size may randomly fluctuate, making it a poor choice for A/B tests as it can trigger false regressions. Brotli compression is used in <b>production</b>.</li>
+                  <li><b>gzipSizeKb</b> - size when compressed by gzip. Gzip is less efficient, but the resulting size is more stable. Gzip compression is used in the <b>bundle-size</b> check only.</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <div class="source-map-description">
+            This file is a source map showing the list of source files composing each JS chunk for every Loadable Component. <br><br>
+            <b>By looking at the diff below, you can:</b>
+            <ul>
+              <li>See which source files are responsible for the growth of a specific Loadable Component</li>
+              <li>Identify which JS chunks are shared between different Loadable Components</li>
+            </ul>
+          </div>
+
+          <span class="description"></span>
+        </div>
+      </details>      
+      <details>
+        <summary style="color: #444; cursor: pointer; font-weight: bold;">How to generate this diff faster</summary>
+        <div style="margin-top: 10px;">
+          <p><strong>Trying to fix this issue for a long time and tired of waiting for slow CI? </strong>
+          <br> Set up twin servers on your local machine to see results faster:</p>
+          <ol style="padding-left: 20px;">
+            <li>Install <a href="https://www.meldmerge.org/" target="_blank" style="color: #0066cc;">Meld</a> or <a href="https://kdiff3.sourceforge.io/" target="_blank" style="color: #0066cc;">KDiff3</a></li>
+            <li>Create git repos for twin servers:
+              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">cp -r ~/popmenu ~/popmenu_experiment && cp -r ~/popmenu ~/popmenu_control</pre>
+            </li>
+            <li>Run the following command:
+              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">rake "twin_servers:checkout[<span class="branch-name"></span>]" && rake "twin_servers:compare_bundle_size"</pre>
+            </li>
+          </ol>
+        </div>
+      </details>
+    </div>
+
+    <div style="background-color: #e6f3ff; border-radius: 5px; padding: 15px; display: flex; justify-content: space-between;">
+      <div style="flex: 1;">
+        <strong>Left:</strong> master(<span class="master-commit"></span>)
+      </div>
+      <div style="flex: 1; text-align: center;">
+        <strong>Right:</strong> <span class="branch-name"></span>(<span class="current-commit"></span>)
+      </div>
+    </div>
+  </header>
+  <div id="diff">
+    <!--diff2html-diff-->
+  </div>
+</body>

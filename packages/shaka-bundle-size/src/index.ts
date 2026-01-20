@@ -1,4 +1,35 @@
-// shaka-bundle-size
-// Bundle size diffing and analysis for React apps with loadable components
+export {
+  defineConfig,
+  resolveConfig,
+  loadConfig,
+  loadConfigSync,
+  createDefaultPolicy,
+  getCurrentBranch,
+  isBranchIgnored,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_HTML_DIFFS,
+  DEFAULT_STORAGE,
+} from './config';
+export type {
+  BundleSizeConfig,
+  ResolvedConfig,
+  ThresholdConfig,
+  HtmlDiffConfig,
+  StorageConfig,
+} from './config';
 
-export {};
+export * from './types';
+
+export { BundleSizeChecker } from './BundleSizeChecker';
+export { BaselineStorage } from './BaselineStorage';
+export { Reporter, SilentReporter, ANSI, colorize } from './Reporter';
+export { WebpackStatsReader } from './WebpackStatsReader';
+export { SizeCalculator } from './SizeCalculator';
+export { BaselineComparator, UNCATEGORIZED_CHUNKS_NAME } from './BaselineComparator';
+export { RegressionDetector, RegressionType, defaultPolicy } from './RegressionDetector';
+export { BaselineWriter } from './BaselineWriter';
+export { SourceMapGenerator, UNCATEGORIZED_NAME } from './SourceMapGenerator';
+export { HtmlDiffGenerator } from './HtmlDiffGenerator';
+export { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
+
+export type { ColorName } from './helpers/colors';
