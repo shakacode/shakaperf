@@ -6494,6 +6494,7 @@ __metadata:
   dependencies:
     "@types/node": "npm:^20.0.0"
     diff2html: "npm:^3.4.48"
+    typescript: "npm:^5.3.3"
   bin:
     shaka-bundle-size: ./dist/cli.js
   languageName: unknown
