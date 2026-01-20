@@ -181,6 +181,23 @@ async function main(): Promise<void> {
 
   if (args.uploadMainBranchStats) {
     try {
+      // Generate extended stats first (needed for source maps)
+      if (resolvedConfig.generateSourceMaps) {
+        const bundlesDir = path.dirname(resolvedConfig.statsFile);
+        const extendedStatsGenerator = new ExtendedStatsGenerator({ bundlesDir });
+        const loadableStatsFilename = path.basename(resolvedConfig.statsFile);
+
+        const extendedStatsPath = extendedStatsGenerator.generate(
+          loadableStatsFilename,
+          resolvedConfig.baselineFile
+        );
+
+        if (!extendedStatsPath) {
+          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath(loadableStatsFilename);
+          reporter.warning(`Cannot generate source maps: webpack stats not found at ${webpackStatsPath}`);
+        }
+      }
+
       checker.updateBaseline();
       reporter.success('Generated current stats.');
 
