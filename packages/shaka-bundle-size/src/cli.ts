@@ -216,16 +216,14 @@ async function main(): Promise<void> {
         } else {
           const currentDir = resolvedConfig.htmlDiffs.currentDir;
           fs.mkdirSync(currentDir, { recursive: true });
-          const sourceMapPath = checker.generateSourceMapsTo(currentDir);
+          checker.generateCurrentStatsTo(currentDir);
 
-          if (sourceMapPath) {
-            checker.generateHtmlDiffs({
-              controlDir: resolvedConfig.baselineDir,
-              currentDir,
-              outputDir: resolvedConfig.htmlDiffs.outputDir,
-              metadata: getCiMetadata(),
-            });
-          }
+          checker.generateHtmlDiffs({
+            controlDir: resolvedConfig.baselineDir,
+            currentDir,
+            outputDir: resolvedConfig.htmlDiffs.outputDir,
+            metadata: getCiMetadata(),
+          });
         }
       }
 

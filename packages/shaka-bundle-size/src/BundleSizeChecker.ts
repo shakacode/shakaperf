@@ -269,10 +269,14 @@ export class BundleSizeChecker {
     };
   }
 
-  generateSourceMapsTo(outputDir: string): string | null {
+  generateCurrentStatsTo(outputDir: string): { configPath: string; sourceMapPath: string | null } {
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
+    const sizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
+
+    const tempWriter = new BaselineWriter({ baselineDir: outputDir });
+    const configPath = tempWriter.writeBaselineFile(this.baselineFile, sizes);
 
     const tempGenerator = new SourceMapGenerator({
       bundlesDir: this.bundlesDir,
@@ -282,12 +286,14 @@ export class BundleSizeChecker {
     const extendedStatsFile = deriveExtendedStatsFilename(this.baselineFile);
     const sourceMapFile = deriveSourceMapFilename(this.baselineFile);
 
-    return tempGenerator.generateToFile(
+    const sourceMapPath = tempGenerator.generateToFile(
       extendedStatsFile,
       sourceMapFile,
       namedChunkGroups,
       uncategorizedChunks
     );
+
+    return { configPath, sourceMapPath };
   }
 
   generateHtmlDiffs(options: {
