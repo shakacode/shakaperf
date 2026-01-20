@@ -6,7 +6,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { parse as parseDiff, html as diffToHtml } from 'diff2html';
 import type {
   DiffMetadata,
   SingleDiffOptions,
@@ -76,28 +75,53 @@ export class HtmlDiffGenerator {
   }
 
   generateHtmlFromDiff(diffContent: string, outputPath: string, templatePath: string, metadata: DiffMetadata, filename: string): void {
-    const diffJson = parseDiff(diffContent, {
-      drawFileList: true,
-      matching: 'lines',
-    });
-
-    const diffHtml = diffToHtml(diffJson, {
-      drawFileList: true,
-      matching: 'lines',
-      outputFormat: 'side-by-side',
-    });
-
     const template = fs.readFileSync(templatePath, 'utf8');
     const metadataScript = this.buildMetadataScript(filename, metadata);
     let html = template;
 
-    if (html.includes('{{diff}}')) {
-      html = html.replace('{{diff}}', diffHtml);
-    } else if (html.includes('<!-- diff-content -->')) {
-      html = html.replace('<!-- diff-content -->', diffHtml);
-    } else {
-      html = html.replace('</body>', `<div id="diff-container">${diffHtml}</div></body>`);
-    }
+    // Inject diff2html CSS (replicates CLI --hwt behavior)
+    html = html.replace(
+      '<!--diff2html-css-->',
+      '<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />'
+    );
+
+    // Inject diff2html JS UI (replicates CLI --hwt behavior)
+    html = html.replace(
+      '<!--diff2html-js-ui-->',
+      '<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>'
+    );
+
+    // Inject title (replicates CLI -t option)
+    html = html.replace(
+      '<!--diff2html-title-->',
+      `<title>${this.escapeHtml(filename)}</title>`
+    );
+
+    // Escape the diff content for embedding in JavaScript
+    const escapedDiffContent = JSON.stringify(diffContent);
+
+    // Configuration for side-by-side view (replicates CLI -s side option)
+    const config = JSON.stringify({
+      drawFileList: true,
+      matching: 'lines',
+      outputFormat: 'side-by-side',
+      synchronisedScroll: true,
+      highlight: true,
+    });
+
+    // Replace Diff2HtmlUI initialization with diff content and config, then call draw()
+    html = html.replace(
+      'const diff2htmlUi = new Diff2HtmlUI(targetElement);',
+      `const diff2htmlUi = new Diff2HtmlUI(targetElement, ${escapedDiffContent}, ${config});\n      diff2htmlUi.draw();`
+    );
+
+    // Enable UI features (replicates CLI --hwt behavior)
+    html = html.replace('//diff2html-fileListToggle', 'diff2htmlUi.fileListToggle(false);');
+    html = html.replace('//diff2html-synchronisedScroll', 'diff2htmlUi.synchronisedScroll();');
+    html = html.replace('//diff2html-highlightCode', 'diff2htmlUi.highlightCode();');
+
+    // Remove diff placeholder since Diff2HtmlUI renders into the target element
+    html = html.replace('<!--diff2html-diff-->', '');
 
     html = html.replace('</body>', `${metadataScript}</body>`);
 
