@@ -30,5 +30,6 @@ export { RegressionDetector, RegressionType, defaultPolicy } from './RegressionD
 export { BaselineWriter } from './BaselineWriter';
 export { SourceMapGenerator, UNCATEGORIZED_NAME } from './SourceMapGenerator';
 export { HtmlDiffGenerator } from './HtmlDiffGenerator';
+export { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 
 export type { ColorName } from './helpers/colors';

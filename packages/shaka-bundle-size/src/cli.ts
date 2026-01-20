@@ -6,6 +6,7 @@ import * as path from 'path';
 import { loadConfig, resolveConfig, isBranchIgnored, getCurrentBranch } from './config';
 import { BundleSizeChecker } from './BundleSizeChecker';
 import { BaselineStorage } from './BaselineStorage';
+import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
@@ -198,18 +199,34 @@ async function main(): Promise<void> {
       const result = checker.check();
 
       if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-        // Generate current source maps to a separate directory
-        const currentDir = resolvedConfig.htmlDiffs.currentDir;
-        fs.mkdirSync(currentDir, { recursive: true });
-        checker.generateSourceMapsTo(currentDir);
+        const bundlesDir = path.dirname(resolvedConfig.statsFile);
+        const extendedStatsGenerator = new ExtendedStatsGenerator({ bundlesDir });
+        const loadableStatsFilename = path.basename(resolvedConfig.statsFile);
 
-        const metadata = getCiMetadata();
-        checker.generateHtmlDiffs({
-          controlDir: resolvedConfig.baselineDir,  // Downloaded baseline = control
-          currentDir: currentDir,                   // Newly generated = current
-          outputDir: resolvedConfig.htmlDiffs.outputDir,
-          metadata,
-        });
+        const extendedStatsPath = extendedStatsGenerator.generate(
+          loadableStatsFilename,
+          resolvedConfig.baselineFile
+        );
+
+        if (!extendedStatsPath) {
+          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath(loadableStatsFilename);
+          const expectedPath = extendedStatsGenerator.getExtendedStatsPath(resolvedConfig.baselineFile);
+          reporter.error(`Cannot generate HTML diffs: failed to create ${expectedPath}`);
+          reporter.error(`Webpack stats not found at ${webpackStatsPath}`);
+        } else {
+          const currentDir = resolvedConfig.htmlDiffs.currentDir;
+          fs.mkdirSync(currentDir, { recursive: true });
+          const sourceMapPath = checker.generateSourceMapsTo(currentDir);
+
+          if (sourceMapPath) {
+            checker.generateHtmlDiffs({
+              controlDir: resolvedConfig.baselineDir,
+              currentDir,
+              outputDir: resolvedConfig.htmlDiffs.outputDir,
+              metadata: getCiMetadata(),
+            });
+          }
+        }
       }
 
       if (!result.passed && isBranchIgnored(resolvedConfig)) {
