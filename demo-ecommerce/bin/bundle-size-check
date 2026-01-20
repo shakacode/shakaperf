@@ -1,0 +1,199 @@
+#!/usr/bin/env node
+
+/**
+ * Demo-Ecommerce Bundle Size Check CLI
+ *
+ * This script is the main entry point for bundle size checking.
+ * Uses a local baseline folder for comparison (instead of S3).
+ *
+ * Architecture:
+ *   bin/bundle-size-check (this file)
+ *       └── bundle_size/demo-ecommerce-bundle-size-checker.js (Demo-Ecommerce config)
+ *               └── bundle_size/core/ (generic library)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const { runDemoEcommerceBundleSizeCheck, ExitStatus } = require('../../bundle_size/demo-ecommerce-bundle-size-checker');
+const { colorize } = require('../../bundle_size/core');
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const BUNDLE_SIZE_DATA_LOCATION = 'tmp/bundle_size';
+const BASELINE_STORAGE_DIR = 'baseline/bundle_size';
+const MAIN_COMMITS_TO_CHECK = 10;
+
+// ============================================================================
+// CLI Helpers
+// ============================================================================
+
+function showHelp() {
+  console.log(`
+Usage: bin/bundle-size-check [options]
+
+Options:
+  --update          Update baseline with current build sizes
+  --consumer-only   Only check consumer bundle
+  --download        Download baseline from local storage (finds merge-base with main)
+  --upload          Upload current baseline to local storage for current commit
+  --help            Show this help message
+
+Examples:
+  bin/bundle-size-check                     # Compare current build against local baseline
+  bin/bundle-size-check --download          # Copy baseline from storage, then compare
+  bin/bundle-size-check --update            # Update local baseline with current build
+  bin/bundle-size-check --upload            # Save current baseline to storage
+`);
+}
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  return {
+    update: args.includes('--update'),
+    consumerOnly: args.includes('--consumer-only'),
+    download: args.includes('--download'),
+    upload: args.includes('--upload'),
+    help: args.includes('--help') || args.includes('-h'),
+  };
+}
+
+// ============================================================================
+// Local Storage Logic (replaces S3)
+// ============================================================================
+
+function getGitMergeBase() {
+  try {
+    execSync('git fetch origin main', { stdio: 'inherit' });
+    const mergeBase = execSync('git merge-base origin/main HEAD', { encoding: 'utf8' }).trim();
+    return mergeBase;
+  } catch (error) {
+    console.error(colorize.red('Failed to get merge base with main'));
+    throw error;
+  }
+}
+
+function getRecentMainCommits(mergeBase, count) {
+  const output = execSync(`git log -${count} --pretty=format:"%H" ${mergeBase}`, { encoding: 'utf8' });
+  return output.split('\n').filter(Boolean);
+}
+
+function getCurrentCommit() {
+  return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+}
+
+function getBaselinePathForCommit(commit) {
+  return path.join(BASELINE_STORAGE_DIR, commit);
+}
+
+function baselineExistsForCommit(commit) {
+  const baselinePath = getBaselinePathForCommit(commit);
+  return fs.existsSync(baselinePath);
+}
+
+function copyDirectory(src, dest) {
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest, { recursive: true });
+  }
+  fs.cpSync(src, dest, { recursive: true });
+}
+
+function downloadBaseline() {
+  console.log(colorize.blue('Downloading baseline from local storage...'));
+
+  const mergeBase = getGitMergeBase();
+  const commits = getRecentMainCommits(mergeBase, MAIN_COMMITS_TO_CHECK);
+
+  for (const commit of commits) {
+    const baselinePath = getBaselinePathForCommit(commit);
+    console.log(`Checking for baseline at ${baselinePath}...`);
+
+    if (baselineExistsForCommit(commit)) {
+      console.log(colorize.green(`Found baseline for commit ${commit.substring(0, 7)}`));
+
+      // Copy baseline to working location
+      copyDirectory(baselinePath, BUNDLE_SIZE_DATA_LOCATION);
+      console.log(colorize.green(`Copied to ${BUNDLE_SIZE_DATA_LOCATION}`));
+
+      return commit;
+    } else {
+      console.log(colorize.yellow(`Baseline not found for commit ${commit.substring(0, 7)}. Trying older commits...`));
+    }
+  }
+
+  throw new Error(`No baseline found for any of the last ${MAIN_COMMITS_TO_CHECK} main commits`);
+}
+
+function uploadBaseline() {
+  console.log(colorize.blue('Uploading baseline to local storage...'));
+
+  if (!fs.existsSync(BUNDLE_SIZE_DATA_LOCATION)) {
+    throw new Error(`No baseline data found at ${BUNDLE_SIZE_DATA_LOCATION}. Run --update first.`);
+  }
+
+  const commit = getCurrentCommit();
+  const baselinePath = getBaselinePathForCommit(commit);
+
+  // Ensure storage directory exists
+  fs.mkdirSync(BASELINE_STORAGE_DIR, { recursive: true });
+
+  // Copy current baseline to storage
+  copyDirectory(BUNDLE_SIZE_DATA_LOCATION, baselinePath);
+  console.log(colorize.green(`Uploaded baseline for commit ${commit.substring(0, 7)} to ${baselinePath}`));
+
+  return commit;
+}
+
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
+function main() {
+  const args = parseArgs();
+
+  if (args.help) {
+    showHelp();
+    process.exit(ExitStatus.SUCCESS);
+  }
+
+  if (args.download && args.update) {
+    console.error(colorize.red('Cannot use --download and --update together'));
+    process.exit(ExitStatus.FAILURE);
+  }
+
+  // Download baseline from local storage if requested
+  if (args.download) {
+    try {
+      downloadBaseline();
+    } catch (error) {
+      console.error(colorize.red(`Failed to download baseline: ${error.message}`));
+      process.exit(ExitStatus.FAILURE);
+    }
+  }
+
+  // Upload baseline to local storage if requested
+  if (args.upload) {
+    try {
+      uploadBaseline();
+      process.exit(ExitStatus.SUCCESS);
+    } catch (error) {
+      console.error(colorize.red(`Failed to upload baseline: ${error.message}`));
+      process.exit(ExitStatus.FAILURE);
+    }
+  }
+
+  // Run the bundle size check
+  const exitCode = runDemoEcommerceBundleSizeCheck({
+    update: args.update,
+    consumerOnly: args.consumerOnly,
+    skipSourceMaps: false,
+    skipHtmlDiffs: false
+  });
+
+  process.exit(exitCode);
+}
+
+main();
