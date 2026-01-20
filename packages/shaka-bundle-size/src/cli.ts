@@ -20,13 +20,16 @@ const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
 
 Usage:
-  shaka-bundle-size --config <file> [options]
+  shaka-bundle-size --config <file> [command] [options]
+
+Commands:
+  --download-main-branch-stats  Download baseline from main branch (finds merge-base)
+  --compare                     Generate current stats and compare against baseline
+  --upload-main-branch-stats    Generate and upload baseline for current commit
 
 Options:
   -c, --config <file>    Config file path (.js or .ts) [required]
-  -u, --update           Update baseline with current build sizes
-      --download         Download baseline from storage before checking
-      --upload           Upload baseline to storage after updating
+      --commit <sha>     Specific commit SHA (for download or upload)
       --no-html-diffs    Skip HTML diff generation
   -v, --verbose          Verbose output
   -q, --quiet            Quiet output (errors only)
@@ -34,22 +37,31 @@ Options:
       --version          Show version
 
 Examples:
-  shaka-bundle-size --config bundle-size.config.js
-  shaka-bundle-size --config bundle-size.config.js --download
-  shaka-bundle-size --config bundle-size.config.js --update --upload
-  shaka-bundle-size -c admin.bundle-size.config.js --no-html-diffs
+  # Feature branch: download baseline and compare
+  shaka-bundle-size -c app.config.js --download-main-branch-stats
+  shaka-bundle-size -c app.config.js --compare
+
+  # Download from specific commit
+  shaka-bundle-size -c app.config.js --download-main-branch-stats --commit abc1234
+
+  # Main branch: upload new baseline after merge
+  shaka-bundle-size -c app.config.js --upload-main-branch-stats
+
+  # Upload baseline for specific commit
+  shaka-bundle-size -c app.config.js --upload-main-branch-stats --commit abc1234
 
 Exit codes:
-  0  Check passed
+  0  Success / Check passed
   1  Check failed (regressions detected)
   2  Configuration or runtime error
 `;
 
 interface CliOptions {
   config?: string;
-  update: boolean;
-  download: boolean;
-  upload: boolean;
+  downloadMainBranchStats: boolean;
+  compare: boolean;
+  uploadMainBranchStats: boolean;
+  commit?: string;
   noHtmlDiffs: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -61,9 +73,10 @@ function parseCliArgs(): CliOptions {
   const { values } = parseArgs({
     options: {
       config: { type: 'string', short: 'c' },
-      update: { type: 'boolean', short: 'u', default: false },
-      download: { type: 'boolean', default: false },
-      upload: { type: 'boolean', default: false },
+      'download-main-branch-stats': { type: 'boolean', default: false },
+      compare: { type: 'boolean', default: false },
+      'upload-main-branch-stats': { type: 'boolean', default: false },
+      commit: { type: 'string' },
       'no-html-diffs': { type: 'boolean', default: false },
       verbose: { type: 'boolean', short: 'v', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
@@ -75,9 +88,10 @@ function parseCliArgs(): CliOptions {
 
   return {
     config: values.config as string | undefined,
-    update: values.update as boolean,
-    download: values.download as boolean,
-    upload: values.upload as boolean,
+    downloadMainBranchStats: values['download-main-branch-stats'] as boolean,
+    compare: values.compare as boolean,
+    uploadMainBranchStats: values['upload-main-branch-stats'] as boolean,
+    commit: values.commit as string | undefined,
     noHtmlDiffs: values['no-html-diffs'] as boolean,
     verbose: values.verbose as boolean,
     quiet: values.quiet as boolean,
@@ -165,17 +179,21 @@ async function main(): Promise<void> {
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
   });
 
-  // Download baseline if requested
-  if (args.download) {
+  // Download main branch stats
+  if (args.downloadMainBranchStats) {
     try {
-      reporter.info('Downloading baseline from storage...');
-      const commit = storage.download();
+      reporter.info('Downloading main branch baseline...');
+      const commit = args.commit
+        ? storage.downloadForCommit(args.commit)
+        : storage.download();
+
       if (commit) {
         reporter.success(`Found baseline for commit ${commit.substring(0, 7)}`);
       } else {
-        reporter.error(`No baseline found in last ${resolvedConfig.storage.mainCommitsToCheck} main commits`);
+        reporter.error(`No baseline found${args.commit ? ` for commit ${args.commit}` : ` in last ${resolvedConfig.storage.mainCommitsToCheck} main commits`}`);
         process.exit(2);
       }
+      process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error downloading baseline: ${(error as Error).message}`));
       process.exit(2);
@@ -185,55 +203,57 @@ async function main(): Promise<void> {
   // Create checker
   const checker = new BundleSizeChecker(resolvedConfig, reporter);
 
-  // Update mode
-  if (args.update) {
+  // Upload main branch stats
+  if (args.uploadMainBranchStats) {
     try {
+      // First generate current stats
       checker.updateBaseline();
-      reporter.success('Baseline updated successfully.');
+      reporter.success('Generated current stats.');
 
-      // Upload if requested
-      if (args.upload) {
-        const commit = storage.upload();
-        reporter.success(`Uploaded baseline for commit ${commit.substring(0, 7)}`);
-      }
-
+      // Then upload (use specified commit or current HEAD)
+      const commit = args.commit
+        ? storage.uploadForCommit(args.commit)
+        : storage.upload();
+      reporter.success(`Uploaded baseline for commit ${commit.substring(0, 7)}`);
       process.exit(0);
     } catch (error) {
-      console.error(colorize.red(`Error updating baseline: ${(error as Error).message}`));
+      console.error(colorize.red(`Error uploading baseline: ${(error as Error).message}`));
       process.exit(2);
     }
   }
 
-  // Check mode
-  try {
-    // Copy baseline to control dir before check (for HTML diffs)
-    if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-      copyBaselineToControl(resolvedConfig.baselineDir, resolvedConfig.htmlDiffs.controlDir);
+  // Compare mode (explicit or default behavior)
+  if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats)) {
+    try {
+      // Copy baseline to control dir before check (for HTML diffs)
+      if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
+        copyBaselineToControl(resolvedConfig.baselineDir, resolvedConfig.htmlDiffs.controlDir);
+      }
+
+      const result = checker.check();
+
+      // Generate HTML diffs after check
+      if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
+        const metadata = getCiMetadata();
+        checker.generateHtmlDiffs({
+          controlDir: resolvedConfig.htmlDiffs.controlDir,
+          outputDir: resolvedConfig.htmlDiffs.outputDir,
+          metadata,
+        });
+      }
+
+      // Check if branch is ignored
+      if (!result.passed && isBranchIgnored(resolvedConfig)) {
+        const branch = getCurrentBranch();
+        console.log(colorize.yellow(`Branch ${branch} is in ignoredBranches - treating as warning`));
+        process.exit(0);
+      }
+
+      process.exit(result.passed ? 0 : 1);
+    } catch (error) {
+      console.error(colorize.red(`Error running check: ${(error as Error).message}`));
+      process.exit(2);
     }
-
-    const result = checker.check();
-
-    // Generate HTML diffs after check
-    if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-      const metadata = getCiMetadata();
-      checker.generateHtmlDiffs({
-        controlDir: resolvedConfig.htmlDiffs.controlDir,
-        outputDir: resolvedConfig.htmlDiffs.outputDir,
-        metadata,
-      });
-    }
-
-    // Check if branch is ignored
-    if (!result.passed && isBranchIgnored(resolvedConfig)) {
-      const branch = getCurrentBranch();
-      console.log(colorize.yellow(`Branch ${branch} is in ignoredBranches - treating as warning`));
-      process.exit(0);
-    }
-
-    process.exit(result.passed ? 0 : 1);
-  } catch (error) {
-    console.error(colorize.red(`Error running check: ${(error as Error).message}`));
-    process.exit(2);
   }
 }
 

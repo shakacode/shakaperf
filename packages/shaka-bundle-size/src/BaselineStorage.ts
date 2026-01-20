@@ -95,12 +95,25 @@ export class BaselineStorage {
   }
 
   /**
+   * Downloads baseline for a specific commit.
+   * Returns the commit hash if found, or null if not found.
+   */
+  downloadForCommit(commitSha: string): string | null {
+    if (this.baselineExistsForCommit(commitSha)) {
+      const storagePath = this.getStoragePathForCommit(commitSha);
+      this.copyDirectory(storagePath, this.baselineDir);
+      return commitSha;
+    }
+    return null;
+  }
+
+  /**
    * Uploads current baseline to storage for current commit.
    * Returns the commit hash.
    */
   upload(): string {
     if (!fs.existsSync(this.baselineDir)) {
-      throw new Error(`No baseline found at ${this.baselineDir}. Run --update first.`);
+      throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
     }
 
     const commit = this.getCurrentCommit();
@@ -110,6 +123,22 @@ export class BaselineStorage {
     this.copyDirectory(this.baselineDir, storagePath);
 
     return commit;
+  }
+
+  /**
+   * Uploads current baseline to storage for a specific commit.
+   * Use this when you want to associate the baseline with a specific main branch commit.
+   */
+  uploadForCommit(commitSha: string): string {
+    if (!fs.existsSync(this.baselineDir)) {
+      throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
+    }
+
+    const storagePath = this.getStoragePathForCommit(commitSha);
+    fs.mkdirSync(this.storageDir, { recursive: true });
+    this.copyDirectory(this.baselineDir, storagePath);
+
+    return commitSha;
   }
 
   /**
