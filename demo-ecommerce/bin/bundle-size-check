@@ -3,21 +3,19 @@
 /**
  * Demo-Ecommerce Bundle Size Check CLI
  *
- * This script is the main entry point for bundle size checking.
- * Uses a local baseline folder for comparison (instead of S3).
+ * Thin wrapper that calls the shaka-bundle-size CLI for each app.
  *
- * Architecture:
- *   bin/bundle-size-check (this file)
- *       └── lib/bundle-size/checker.js (Demo-Ecommerce config)
- *               └── shaka-bundle-size (generic library npm package)
+ * Usage:
+ *   bin/bundle-size-check                  # Check both apps
+ *   bin/bundle-size-check --consumer-only  # Check only consumer
+ *   bin/bundle-size-check --update         # Update baselines
+ *   bin/bundle-size-check --download       # Download baseline from storage first
+ *   bin/bundle-size-check --upload         # Upload baseline to storage
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-
-const { runDemoEcommerceBundleSizeCheck, ExitStatus } = require('../lib/bundle-size/checker');
-const { colorize } = require('shaka-bundle-size');
 
 // ============================================================================
 // Constants
@@ -26,6 +24,16 @@ const { colorize } = require('shaka-bundle-size');
 const BUNDLE_SIZE_DATA_LOCATION = 'tmp/bundle_size';
 const BASELINE_STORAGE_DIR = 'baseline/bundle_size';
 const MAIN_COMMITS_TO_CHECK = 10;
+
+// Config files for each app
+const ALL_CONFIGS = [
+  'consumer.bundle-size.config.js',
+  'admin.bundle-size.config.js',
+];
+
+const CONSUMER_ONLY_CONFIGS = [
+  'consumer.bundle-size.config.js',
+];
 
 // ============================================================================
 // CLI Helpers
@@ -61,8 +69,19 @@ function parseArgs() {
   };
 }
 
+function colorize(text, color) {
+  const colors = {
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    reset: '\x1b[0m',
+  };
+  return `${colors[color] || ''}${text}${colors.reset}`;
+}
+
 // ============================================================================
-// Local Storage Logic (replaces S3)
+// Local Storage Logic
 // ============================================================================
 
 function getGitMergeBase() {
@@ -71,7 +90,7 @@ function getGitMergeBase() {
     const mergeBase = execSync('git merge-base origin/main HEAD', { encoding: 'utf8' }).trim();
     return mergeBase;
   } catch (error) {
-    console.error(colorize.red('Failed to get merge base with main'));
+    console.error(colorize('Failed to get merge base with main', 'red'));
     throw error;
   }
 }
@@ -102,7 +121,7 @@ function copyDirectory(src, dest) {
 }
 
 function downloadBaseline() {
-  console.log(colorize.blue('Downloading baseline from local storage...'));
+  console.log(colorize('Downloading baseline from local storage...', 'blue'));
 
   const mergeBase = getGitMergeBase();
   const commits = getRecentMainCommits(mergeBase, MAIN_COMMITS_TO_CHECK);
@@ -112,15 +131,15 @@ function downloadBaseline() {
     console.log(`Checking for baseline at ${baselinePath}...`);
 
     if (baselineExistsForCommit(commit)) {
-      console.log(colorize.green(`Found baseline for commit ${commit.substring(0, 7)}`));
+      console.log(colorize(`Found baseline for commit ${commit.substring(0, 7)}`, 'green'));
 
       // Copy baseline to working location
       copyDirectory(baselinePath, BUNDLE_SIZE_DATA_LOCATION);
-      console.log(colorize.green(`Copied to ${BUNDLE_SIZE_DATA_LOCATION}`));
+      console.log(colorize(`Copied to ${BUNDLE_SIZE_DATA_LOCATION}`, 'green'));
 
       return commit;
     } else {
-      console.log(colorize.yellow(`Baseline not found for commit ${commit.substring(0, 7)}. Trying older commits...`));
+      console.log(colorize(`Baseline not found for commit ${commit.substring(0, 7)}. Trying older commits...`, 'yellow'));
     }
   }
 
@@ -128,7 +147,7 @@ function downloadBaseline() {
 }
 
 function uploadBaseline() {
-  console.log(colorize.blue('Uploading baseline to local storage...'));
+  console.log(colorize('Uploading baseline to local storage...', 'blue'));
 
   if (!fs.existsSync(BUNDLE_SIZE_DATA_LOCATION)) {
     throw new Error(`No baseline data found at ${BUNDLE_SIZE_DATA_LOCATION}. Run --update first.`);
@@ -142,7 +161,7 @@ function uploadBaseline() {
 
   // Copy current baseline to storage
   copyDirectory(BUNDLE_SIZE_DATA_LOCATION, baselinePath);
-  console.log(colorize.green(`Uploaded baseline for commit ${commit.substring(0, 7)} to ${baselinePath}`));
+  console.log(colorize(`Uploaded baseline for commit ${commit.substring(0, 7)} to ${baselinePath}`, 'green'));
 
   return commit;
 }
@@ -156,12 +175,12 @@ function main() {
 
   if (args.help) {
     showHelp();
-    process.exit(ExitStatus.SUCCESS);
+    process.exit(0);
   }
 
   if (args.download && args.update) {
-    console.error(colorize.red('Cannot use --download and --update together'));
-    process.exit(ExitStatus.FAILURE);
+    console.error(colorize('Cannot use --download and --update together', 'red'));
+    process.exit(1);
   }
 
   // Download baseline from local storage if requested
@@ -169,8 +188,8 @@ function main() {
     try {
       downloadBaseline();
     } catch (error) {
-      console.error(colorize.red(`Failed to download baseline: ${error.message}`));
-      process.exit(ExitStatus.FAILURE);
+      console.error(colorize(`Failed to download baseline: ${error.message}`, 'red'));
+      process.exit(1);
     }
   }
 
@@ -178,22 +197,31 @@ function main() {
   if (args.upload) {
     try {
       uploadBaseline();
-      process.exit(ExitStatus.SUCCESS);
+      process.exit(0);
     } catch (error) {
-      console.error(colorize.red(`Failed to upload baseline: ${error.message}`));
-      process.exit(ExitStatus.FAILURE);
+      console.error(colorize(`Failed to upload baseline: ${error.message}`, 'red'));
+      process.exit(1);
     }
   }
 
-  // Run the bundle size check
-  const exitCode = runDemoEcommerceBundleSizeCheck({
-    update: args.update,
-    consumerOnly: args.consumerOnly,
-    skipSourceMaps: false,
-    skipHtmlDiffs: false
-  });
+  // Run bundle size checks for each config
+  const configs = args.consumerOnly ? CONSUMER_ONLY_CONFIGS : ALL_CONFIGS;
+  let failed = false;
 
-  process.exit(exitCode);
+  for (const config of configs) {
+    console.log(colorize(`\nChecking ${config}...`, 'blue'));
+
+    try {
+      const flags = args.update ? '--update' : '';
+      const cmd = `yarn shaka-bundle-size --config ${config} ${flags}`.trim();
+      execSync(cmd, { stdio: 'inherit' });
+    } catch (error) {
+      // Command failed (non-zero exit code)
+      failed = true;
+    }
+  }
+
+  process.exit(failed ? 1 : 0);
 }
 
 main();

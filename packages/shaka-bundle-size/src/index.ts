@@ -3,6 +3,25 @@
  * Bundle size diffing and analysis for React apps with loadable components
  */
 
+// Config utilities
+export {
+  defineConfig,
+  resolveConfig,
+  loadConfig,
+  loadConfigSync,
+  createDefaultPolicy,
+  getCurrentBranch,
+  isBranchIgnored,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_HTML_DIFFS,
+} from './config';
+export type {
+  BundleSizeConfig,
+  ResolvedConfig,
+  ThresholdConfig,
+  HtmlDiffConfig,
+} from './config';
+
 // Types - export all types from types.ts
 export * from './types';
 

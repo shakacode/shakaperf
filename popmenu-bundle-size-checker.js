@@ -1,33 +1,29 @@
 /**
- * Demo-Ecommerce Bundle Size Checker - Project-specific wrapper
+ * Popmenu Bundle Size Checker - Project-specific wrapper
  *
- * This module provides Demo-Ecommerce-specific configuration for the generic
+ * This module provides Popmenu-specific configuration for the generic
  * bundle size checker library. It handles all hardcoded values, thresholds,
- * and policies specific to the Demo-Ecommerce codebase.
+ * and policies specific to the Popmenu codebase.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const {
-  BundleSizeChecker,
-  Reporter,
-  colorize,
-  RegressionType,
-} = require('shaka-bundle-size');
+const { BundleSizeChecker, Reporter, colorize, RegressionType } = require('./core');
 
 // ============================================================================
-// Demo-Ecommerce-Specific Configuration
+// Popmenu-Specific Configuration
 // ============================================================================
 
-const BUNDLES_DIR = 'public/packs';
+const BUNDLES_DIR = 'public/webpack/production';
 const BASELINE_DIR = 'tmp/bundle_size';
 
 /**
- * All apps in the Demo-Ecommerce codebase.
+ * All apps in the Popmenu codebase.
  */
 const ALL_APPS = [
   { name: 'admin', statsFile: 'admin-loadable-stats.json' },
+  { name: 'polyfilled-consumer', statsFile: 'polyfilled-consumer-loadable-stats.json' },
   { name: 'consumer', statsFile: 'consumer-loadable-stats.json' },
 ];
 
@@ -41,18 +37,33 @@ const CONSUMER_ONLY_APPS = [
 /**
  * Bundles to ignore during checking.
  */
-const IGNORED_BUNDLES = [];
+const IGNORED_BUNDLES = ['eat-bundle'];
 
 /**
  * Key components that have stricter thresholds.
- * These are the main entry points and any critical loadable components.
  */
 const KEY_COMPONENTS = {
   admin: [
-    'admin',  // main entry point
+    'admin-bundle',
+    'AdminParentContainer',
+    'AdminContainer',
+    'testingKeyComponent',
   ],
   consumer: [
-    'HomePage',
+    'consumer-bundle',
+    'menus-NextMenuGroup',
+    'NextMenuGroupTabPanel',
+    'NextMenuGroupPanelV2',
+    'menus-cart-MenuItemCartContainerV2',
+    'testingKeyComponent',
+  ],
+  'polyfilled-consumer': [
+    'consumer-bundle',
+    'menus-NextMenuGroup',
+    'NextMenuGroupTabPanel',
+    'NextMenuGroupPanelV2',
+    'menus-cart-MenuItemCartContainerV2',
+    'testingKeyComponent',
   ],
 };
 
@@ -66,18 +77,23 @@ const THRESHOLDS = {
     unimportantComponentsThresholdKb: 50,
   },
   consumer: {
-    keyComponentsThresholdKb: 1,
+    keyComponentsThresholdKb: 0.4,
     minComponentSizeKb: 1,
-    unimportantComponentsThresholdKb: 10,
+    unimportantComponentsThresholdKb: 5,
+  },
+  'polyfilled-consumer': {
+    keyComponentsThresholdKb: 0.4,
+    minComponentSizeKb: 1,
+    unimportantComponentsThresholdKb: 5,
   },
 };
 
 /**
- * Documentation links.
+ * Notion documentation links.
  */
-const DOC_LINKS = {
-  loadableComponents: 'https://loadable-components.com/',
-  resolvingErrors: 'https://github.com/your-org/demo-ecommerce/wiki/Bundle-Size-Errors',
+const NOTION_LINKS = {
+  loadableComponents: 'https://www.notion.so/popmenu/Loadable-Components-8a05987e9bb84e869eb0631c9cecee39',
+  resolvingErrors: 'https://www.notion.so/popmenu/Resolving-bundle-size-errors-a5326dc398154dca8b4265d72131219c',
 };
 
 /**
@@ -86,11 +102,11 @@ const DOC_LINKS = {
 const HTML_DIFF_CONFIG = {
   outputDir: 'bundle-size-diffs',
   controlDir: 'tmp/bundle_size_control',
-  templatePath: path.join(__dirname, '../../../bundle_size/diff-template-for-ci-artifacts.html'),
+  templatePath: 'lib/bundle_size/diff-template-for-ci-artifacts.html',
 };
 
 // ============================================================================
-// Demo-Ecommerce Regression Policy
+// Popmenu Regression Policy
 // ============================================================================
 
 /**
@@ -118,34 +134,44 @@ function getThreshold(appName, componentName) {
 }
 
 /**
- * Demo-Ecommerce-specific regression policy.
- * @param {import('shaka-bundle-size').Regression} regression - Regression to evaluate
- * @returns {import('shaka-bundle-size').PolicyResult} Policy result
+ * Popmenu-specific regression policy.
+ * Implements the same logic as the original shouldFailOnRegression.js
+ * @param {import('./core/types').Regression} regression - Regression to evaluate
+ * @returns {import('./core/types').PolicyResult} Policy result
  */
-function demoEcommerceRegressionPolicy(regression) {
+function popmenuRegressionPolicy(regression) {
   const { appName, componentName, type, sizeKb, sizeDiffKb } = regression;
   const threshold = getThreshold(appName, componentName);
   const isKey = isKeyComponent(appName, componentName);
+  const minSize = (THRESHOLDS[appName] || THRESHOLDS.consumer).minComponentSizeKb;
 
   switch (type) {
     case RegressionType.NEW_COMPONENT:
       // Consumer app is stricter about new components
       if (appName === 'consumer') {
-        console.log(colorize.red('New components on consumer require review for performance impact.'));
-        return { shouldFail: true, message: 'Performance review required for new consumer component' };
+        console.log(colorize.red('Even though introducing new components is generally a good thing, @popmenu/performance would like to take a look.'));
+        return { shouldFail: true, message: '@popmenu/performance review required' };
+      }
+      if (sizeKb > threshold) {
+        console.log(colorize.red(`The size of the new component is larger than threshold ${threshold} KB. Will it make sense to split it down further?`));
+        return { shouldFail: true, message: `Size ${sizeKb.toFixed(2)} KB exceeds threshold ${threshold} KB` };
+      }
+      if (sizeKb < minSize) {
+        console.log(colorize.red(`The size of the new component is smaller than ${minSize} KB. New components generate boilerplate. Does it really deserve a split?`));
+        return { shouldFail: true, message: `Size ${sizeKb.toFixed(2)} KB below minimum ${minSize} KB` };
       }
       break;
 
     case RegressionType.REMOVED_COMPONENT:
       if (isKey) {
-        console.log(colorize.red('Do not remove or update a key component without updating the bundle size configuration.'));
+        console.log(colorize.red('Do not remove or update a key component without updating lib/bundle_size/helpers/shouldFailOnRegression.js.'));
         return { shouldFail: true, message: 'Key component removed' };
       }
       break;
 
     case RegressionType.INCREASED_SIZE:
       if (sizeDiffKb > threshold) {
-        console.log(colorize.red(`The difference is larger than threshold ${threshold} KB. Consider introducing a new Loadable Component.`));
+        console.log(colorize.red(`The difference is larger than threshold ${threshold} KB. Will it make sense to introduce a new Loadable Component? ${NOTION_LINKS.loadableComponents}.`));
         if (isKey) {
           console.log(colorize.red(`Careful! "${componentName}" is a key component.`));
         }
@@ -154,7 +180,7 @@ function demoEcommerceRegressionPolicy(regression) {
       break;
 
     case RegressionType.INCREASED_CHUNKS_COUNT:
-      if (appName === 'consumer') {
+      if (appName === 'consumer' || appName === 'polyfilled-consumer') {
         console.log(colorize.red('Increasing chunks number means increased webpack and HTTP overhead. This may be bad for performance.'));
         return { shouldFail: true, message: 'Chunks count increased on consumer app' };
       }
@@ -167,16 +193,16 @@ function demoEcommerceRegressionPolicy(regression) {
 }
 
 // ============================================================================
-// Demo-Ecommerce Reporter
+// Popmenu Reporter (with Notion links and team mentions)
 // ============================================================================
 
 /**
- * Extended reporter with Demo-Ecommerce-specific output.
+ * Extended reporter with Popmenu-specific output.
  */
-class DemoEcommerceReporter extends Reporter {
+class PopmenuReporter extends Reporter {
   /**
-   * Reports the final summary with Demo-Ecommerce-specific guidance.
-   * @param {import('shaka-bundle-size').CheckResult} result - Check result
+   * Reports the final summary with Popmenu-specific guidance.
+   * @param {import('./core/types').CheckResult} result - Check result
    */
   summary(result) {
     if (result.passed) {
@@ -186,22 +212,22 @@ class DemoEcommerceReporter extends Reporter {
     }
 
     this.writeLine('');
-    this.error('\n\n\nThe test failed!');
-    this.info(`See ${this.color(DOC_LINKS.resolvingErrors, 'blue')}`);
+    this.error('\n\nThe test failed!');
+    this.info(`See ${this.color(NOTION_LINKS.resolvingErrors, 'blue')}`);
     this.info(`\nTo get insight why the bundle size changed ${this.color('see Artifacts', 'green')} for this CI job`);
 
-    this.info("\nIf the change is intended or if you don't know how to resolve the issue:");
+    this.info("\nIf the change is intended or if you don't know how to resolve the issue and docs aren't helpful, do the following:");
 
     const ignoreCommands = result.failedApps.map(app => `bin/ci/ignore-bundle-size-change ${app}`);
     this.info(`    * run ${this.color(ignoreCommands.join(' && '), 'green')}`);
     this.info('    * Commit and push the changes to your branch.');
 
     this.info('\nThis will make bundle-size green and invite review from the following teams:');
-    if (result.failedApps.includes('consumer')) {
-      this.error('    @demo-ecommerce/performance');
+    if (result.failedApps.includes('consumer') || result.failedApps.includes('polyfilled-consumer')) {
+      this.error('    @Popmenu/performance');
     }
     if (result.failedApps.includes('admin')) {
-      this.error('    @demo-ecommerce/architecture');
+      this.error('    @Popmenu/architecture');
     }
   }
 }
@@ -274,48 +300,15 @@ function ensureDiff2HtmlInstalled() {
 }
 
 /**
- * Gets the main branch commit SHA for diff metadata.
- * @returns {string} Main commit SHA or empty string
+ * Gets the master commit SHA for diff metadata.
+ * @returns {string} Master commit SHA or empty string
  */
-function getMainCommit() {
+function getMasterCommit() {
   try {
-    return execSync('git rev-parse origin/main', { encoding: 'utf8' }).trim().substring(0, 7);
+    return execSync('git rev-parse origin/master', { encoding: 'utf8' }).trim().substring(0, 7);
   } catch {
     return '';
   }
-}
-
-/**
- * Generates HTML diff artifacts for CI.
- * @param {BundleSizeChecker} checker - Bundle size checker instance
- */
-function generateHtmlDiffsForCI(checker) {
-  const branchName = process.env.CIRCLE_BRANCH || process.env.GITHUB_REF_NAME || '';
-  const currentCommit = (process.env.CIRCLE_SHA1 || process.env.GITHUB_SHA || '').substring(0, 7);
-  const mainCommit = getMainCommit();
-
-  console.log(colorize.green('\n\n\n\nGenerating *.diff.html Artifacts for this CI job'));
-
-  // Step 1: Copy current baseline (from download) to control directory
-  copyBaselineToControl(BASELINE_DIR, HTML_DIFF_CONFIG.controlDir);
-
-  // Step 2: Update baseline with current build sizes
-  checker.updateBaseline();
-
-  // Step 3: Ensure diff2html is installed
-  ensureDiff2HtmlInstalled();
-
-  // Step 4: Generate HTML diffs
-  checker.generateHtmlDiffs({
-    controlDir: HTML_DIFF_CONFIG.controlDir,
-    outputDir: HTML_DIFF_CONFIG.outputDir,
-    templatePath: HTML_DIFF_CONFIG.templatePath,
-    metadata: {
-      masterCommit: mainCommit,
-      branchName,
-      currentCommit,
-    },
-  });
 }
 
 // ============================================================================
@@ -333,7 +326,7 @@ const ExitStatus = {
 // ============================================================================
 
 /**
- * Runs the Demo-Ecommerce bundle size check.
+ * Runs the Popmenu bundle size check.
  * @param {Object} options - Check options
  * @param {boolean} [options.update=false] - Update baseline instead of checking
  * @param {boolean} [options.consumerOnly=false] - Only check consumer app
@@ -341,7 +334,7 @@ const ExitStatus = {
  * @param {boolean} [options.skipHtmlDiffs=false] - Skip HTML diff generation
  * @returns {number} Exit status code
  */
-function runDemoEcommerceBundleSizeCheck(options = {}) {
+function runPopmenuBundleSizeCheck(options = {}) {
   const {
     update = false,
     consumerOnly = process.env.CONSUMER_BUNDLE_ONLY === 'true',
@@ -350,7 +343,7 @@ function runDemoEcommerceBundleSizeCheck(options = {}) {
   } = options;
 
   const apps = consumerOnly ? CONSUMER_ONLY_APPS : ALL_APPS;
-  const reporter = new DemoEcommerceReporter();
+  const reporter = new PopmenuReporter();
 
   const checker = new BundleSizeChecker({
     bundlesDir: BUNDLES_DIR,
@@ -361,7 +354,7 @@ function runDemoEcommerceBundleSizeCheck(options = {}) {
     },
     ignoredBundles: IGNORED_BUNDLES,
     generateSourceMaps: !skipSourceMaps,
-    regressionPolicy: demoEcommerceRegressionPolicy,
+    regressionPolicy: popmenuRegressionPolicy,
     reporter,
   });
 
@@ -382,7 +375,7 @@ function runDemoEcommerceBundleSizeCheck(options = {}) {
   }
 
   // Check if any failed apps have the branch ignored
-  const branchName = process.env.CIRCLE_BRANCH || process.env.GITHUB_REF_NAME || 'your-branch-name';
+  const branchName = process.env.CIRCLE_BRANCH || 'your-branch-name';
 
   for (const appName of result.failedApps) {
     if (isBranchIgnored(appName, branchName)) {
@@ -394,8 +387,43 @@ function runDemoEcommerceBundleSizeCheck(options = {}) {
   return ExitStatus.FAILURE;
 }
 
+/**
+ * Generates HTML diff artifacts for CI.
+ * Copies current baseline to control, updates baseline with current build,
+ * then generates diffs between control and updated baseline.
+ * @param {BundleSizeChecker} checker - Bundle size checker instance
+ */
+function generateHtmlDiffsForCI(checker) {
+  const branchName = process.env.CIRCLE_BRANCH || '';
+  const currentCommit = process.env.CIRCLE_SHA1 ? process.env.CIRCLE_SHA1.substring(0, 7) : '';
+  const masterCommit = getMasterCommit();
+
+  console.log(colorize.green('\n\n\n\nGenerating *.diff.html Artifacts for this CI job'));
+
+  // Step 1: Copy current baseline (from download) to control directory
+  copyBaselineToControl(BASELINE_DIR, HTML_DIFF_CONFIG.controlDir);
+
+  // Step 2: Update baseline with current build sizes
+  checker.updateBaseline();
+
+  // Step 3: Ensure diff2html is installed
+  ensureDiff2HtmlInstalled();
+
+  // Step 4: Generate HTML diffs
+  checker.generateHtmlDiffs({
+    controlDir: HTML_DIFF_CONFIG.controlDir,
+    outputDir: HTML_DIFF_CONFIG.outputDir,
+    templatePath: HTML_DIFF_CONFIG.templatePath,
+    metadata: {
+      masterCommit,
+      branchName,
+      currentCommit,
+    },
+  });
+}
+
 module.exports = {
-  runDemoEcommerceBundleSizeCheck,
+  runPopmenuBundleSizeCheck,
   ExitStatus,
 
   // Export configuration for testing/inspection
@@ -403,21 +431,21 @@ module.exports = {
   CONSUMER_ONLY_APPS,
   KEY_COMPONENTS,
   THRESHOLDS,
-  DOC_LINKS,
+  NOTION_LINKS,
   IGNORED_BUNDLES,
   HTML_DIFF_CONFIG,
 
   // Export helper functions
   isKeyComponent,
   getThreshold,
-  demoEcommerceRegressionPolicy,
+  popmenuRegressionPolicy,
   isBranchIgnored,
   getIgnoreFilePath,
   copyBaselineToControl,
   ensureDiff2HtmlInstalled,
-  getMainCommit,
+  getMasterCommit,
   generateHtmlDiffsForCI,
 
   // Export classes
-  DemoEcommerceReporter,
+  PopmenuReporter,
 };

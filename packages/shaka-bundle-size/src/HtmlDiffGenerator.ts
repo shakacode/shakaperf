@@ -2,14 +2,14 @@
  * HtmlDiffGenerator - Generates HTML diff artifacts for CI visualization.
  *
  * Creates side-by-side HTML diffs comparing baseline JSON files against
- * current JSON files using diff2html-cli.
+ * current JSON files using diff2html.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { parse as parseDiff, html as diffToHtml } from 'diff2html';
 import type {
-  HtmlDiffGeneratorConfig,
   DiffMetadata,
   SingleDiffOptions,
   GenerateDiffsOptions,
@@ -19,15 +19,6 @@ import type {
  * Generates HTML diff artifacts for bundle size comparisons.
  */
 export class HtmlDiffGenerator {
-  private diff2htmlPath: string;
-
-  /**
-   * Creates a new HtmlDiffGenerator.
-   */
-  constructor({ diff2htmlPath = 'diff2html' }: HtmlDiffGeneratorConfig = {}) {
-    this.diff2htmlPath = diff2htmlPath;
-  }
-
   /**
    * Ensures the output directory exists.
    */
@@ -48,13 +39,12 @@ export class HtmlDiffGenerator {
   }
 
   /**
-   * Builds metadata injection script for HTML template.
+   * Builds metadata injection script for HTML.
    */
   buildMetadataScript(filename: string, metadata: DiffMetadata): string {
     const { masterCommit = '', branchName = '', currentCommit = '' } = metadata;
 
-    // Script that replaces placeholder elements with actual values
-    const script = `
+    return `
       <script>
         document.addEventListener('DOMContentLoaded', function() {
           function replaceContent(className, content) {
@@ -69,9 +59,6 @@ export class HtmlDiffGenerator {
         });
       </script>
     `;
-
-    // Compress to single line and use double quotes for shell compatibility
-    return script.replace(/\n/g, ' ').replace(/'/g, '"');
   }
 
   /**
@@ -109,26 +96,46 @@ export class HtmlDiffGenerator {
   }
 
   /**
-   * Generates HTML diff file using diff2html.
+   * Generates HTML from diff content using diff2html library.
    */
-  generateHtmlFromDiff(diffContent: string, outputPath: string, templatePath: string, titleScript: string): void {
-    // Write diff to temp file for piping
-    const tempDiffPath = `${outputPath}.diff.tmp`;
-    fs.writeFileSync(tempDiffPath, diffContent, 'utf8');
+  generateHtmlFromDiff(diffContent: string, outputPath: string, templatePath: string, metadata: DiffMetadata, filename: string): void {
+    // Parse the diff
+    const diffJson = parseDiff(diffContent, {
+      drawFileList: true,
+      matching: 'lines',
+    });
 
-    try {
-      const command = `cat "${tempDiffPath}" | ${this.diff2htmlPath} --hwt "${templatePath}" -i stdin -s side -o stdout -t '${titleScript}' > "${outputPath}"`;
-      execSync(command, {
-        encoding: 'utf8',
-        shell: '/bin/bash',
-        maxBuffer: 50 * 1024 * 1024,
-      });
-    } finally {
-      // Clean up temp file
-      if (fs.existsSync(tempDiffPath)) {
-        fs.unlinkSync(tempDiffPath);
-      }
+    // Generate HTML from diff
+    const diffHtml = diffToHtml(diffJson, {
+      drawFileList: true,
+      matching: 'lines',
+      outputFormat: 'side-by-side',
+    });
+
+    // Read the template
+    const template = fs.readFileSync(templatePath, 'utf8');
+
+    // Build metadata script
+    const metadataScript = this.buildMetadataScript(filename, metadata);
+
+    // Inject diff HTML and metadata into template
+    // The template should have a placeholder for the diff content
+    let html = template;
+
+    // Replace common template placeholders
+    if (html.includes('{{diff}}')) {
+      html = html.replace('{{diff}}', diffHtml);
+    } else if (html.includes('<!-- diff-content -->')) {
+      html = html.replace('<!-- diff-content -->', diffHtml);
+    } else {
+      // If no placeholder found, append before </body>
+      html = html.replace('</body>', `<div id="diff-container">${diffHtml}</div></body>`);
     }
+
+    // Inject metadata script before </body>
+    html = html.replace('</body>', `${metadataScript}</body>`);
+
+    fs.writeFileSync(outputPath, html, 'utf8');
   }
 
   /**
@@ -156,8 +163,7 @@ export class HtmlDiffGenerator {
       return null;
     }
 
-    const titleScript = this.buildMetadataScript(filename, metadata);
-    this.generateHtmlFromDiff(diffContent, outputFile, templatePath, titleScript);
+    this.generateHtmlFromDiff(diffContent, outputFile, templatePath, metadata, filename);
 
     return outputFile;
   }

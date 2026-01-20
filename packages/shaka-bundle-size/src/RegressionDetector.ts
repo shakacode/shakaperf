@@ -46,9 +46,8 @@ export class RegressionDetector {
   /**
    * Creates a regression object for a new component.
    */
-  createNewComponentRegression(appName: string, component: ComponentSize): Regression {
+  createNewComponentRegression(component: ComponentSize): Regression {
     return {
-      appName,
       componentName: component.name,
       type: RegressionType.NEW_COMPONENT,
       sizeKb: component.gzipSizeKb,
@@ -59,9 +58,8 @@ export class RegressionDetector {
   /**
    * Creates a regression object for a removed component.
    */
-  createRemovedComponentRegression(appName: string, component: BaselineComponent): Regression {
+  createRemovedComponentRegression(component: BaselineComponent): Regression {
     return {
-      appName,
       componentName: component.name,
       type: RegressionType.REMOVED_COMPONENT,
       sizeKb: Number(component.gzipSizeKb),
@@ -71,9 +69,8 @@ export class RegressionDetector {
   /**
    * Creates a regression object for increased size.
    */
-  createIncreasedSizeRegression(appName: string, comparison: SizeComparison): Regression {
+  createIncreasedSizeRegression(comparison: SizeComparison): Regression {
     return {
-      appName,
       componentName: comparison.name,
       type: RegressionType.INCREASED_SIZE,
       sizeDiffKb: comparison.sizeDiffKb,
@@ -85,9 +82,8 @@ export class RegressionDetector {
   /**
    * Creates a regression object for increased chunks count.
    */
-  createIncreasedChunksCountRegression(appName: string, comparison: SizeComparison): Regression {
+  createIncreasedChunksCountRegression(comparison: SizeComparison): Regression {
     return {
-      appName,
       componentName: comparison.name,
       type: RegressionType.INCREASED_CHUNKS_COUNT,
       expectedChunksCount: comparison.expectedChunksCount,
@@ -98,27 +94,27 @@ export class RegressionDetector {
   /**
    * Detects all regressions from comparison results.
    */
-  detectRegressions(appName: string, comparisonResult: ComparisonResult): Regression[] {
+  detectRegressions(comparisonResult: ComparisonResult): Regression[] {
     const regressions: Regression[] = [];
 
     // New components
     for (const component of comparisonResult.newComponents) {
-      regressions.push(this.createNewComponentRegression(appName, component));
+      regressions.push(this.createNewComponentRegression(component));
     }
 
     // Removed components
     for (const component of comparisonResult.removedComponents) {
-      regressions.push(this.createRemovedComponentRegression(appName, component));
+      regressions.push(this.createRemovedComponentRegression(component));
     }
 
     // Size increases
     for (const comparison of comparisonResult.sizeChanges) {
-      regressions.push(this.createIncreasedSizeRegression(appName, comparison));
+      regressions.push(this.createIncreasedSizeRegression(comparison));
     }
 
     // Chunks count increases
     for (const comparison of comparisonResult.chunksCountIncreases) {
-      regressions.push(this.createIncreasedChunksCountRegression(appName, comparison));
+      regressions.push(this.createIncreasedChunksCountRegression(comparison));
     }
 
     return regressions;

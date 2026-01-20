@@ -151,10 +151,10 @@ export class Reporter implements IReporter {
   }
 
   /**
-   * Reports that all components passed for an app.
+   * Reports that all components passed.
    */
-  reportAppPassed(appName: string): void {
-    this.info(`All ${appName} loadable components are within the expected size`);
+  reportPassed(): void {
+    this.info('All loadable components are within the expected size');
   }
 
   /**
@@ -169,7 +169,7 @@ export class Reporter implements IReporter {
 
     this.writeLine('');
     this.error('\n\nThe test failed!');
-    this.info(`Failed apps: ${result.failedApps.join(', ')}`);
+    this.info(`${result.regressions.length} regression(s) detected`);
   }
 }
 

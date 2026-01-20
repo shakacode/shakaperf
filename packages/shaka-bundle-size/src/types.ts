@@ -20,34 +20,6 @@ export enum RegressionType {
 export type VerbosityLevel = 'quiet' | 'normal' | 'verbose';
 
 /**
- * Configuration for a single application to check.
- */
-export interface AppConfig {
-  /** Unique identifier for the app (e.g., 'consumer', 'admin') */
-  name: string;
-  /** Filename of the webpack loadable stats JSON (e.g., 'consumer-loadable-stats.json') */
-  statsFile: string;
-  /** Optional filename for extended bundle stats (for source maps) */
-  extendedStatsFile?: string;
-}
-
-/**
- * Threshold configuration for regression detection.
- */
-export interface ThresholdConfig {
-  /** Maximum allowed size increase in KB before flagging (default: 0.1) */
-  sizeIncreaseKb: number;
-  /** List of component names considered critical */
-  keyComponents?: string[];
-  /** Stricter threshold for key components */
-  keyComponentThresholdKb?: number;
-  /** Minimum size to consider a component significant */
-  minComponentSizeKb?: number;
-  /** Lenient threshold for non-key components */
-  unimportantComponentThresholdKb?: number;
-}
-
-/**
  * Result of a regression policy evaluation.
  */
 export interface PolicyResult {
@@ -61,8 +33,6 @@ export interface PolicyResult {
  * Information about a detected regression.
  */
 export interface Regression {
-  /** Name of the app where regression was detected */
-  appName: string;
   /** Name of the affected component */
   componentName: string;
   /** Type of regression detected */
@@ -118,8 +88,8 @@ export interface IReporter {
   reportRemovedComponent(params: RemovedComponentParams): void;
   /** Report an increased chunks count */
   reportIncreasedChunksCount(params: ChunksCountParams): void;
-  /** Report that all components passed for an app */
-  reportAppPassed(appName: string): void;
+  /** Report that all components passed */
+  reportPassed(): void;
 }
 
 export interface SizeIncreaseParams {
@@ -151,30 +121,6 @@ export interface ChunksCountParams {
   componentName: string;
   actualCount: number;
   expectedCount: number;
-}
-
-/**
- * Main configuration for the BundleSizeChecker.
- */
-export interface BundleSizeCheckerConfig {
-  /** Directory containing webpack output (e.g., 'public/webpack/production') */
-  bundlesDir: string;
-  /** Directory for baseline config files (e.g., 'tmp/bundle_size') */
-  baselineDir: string;
-  /** List of applications to check */
-  apps: AppConfig[];
-  /** Default thresholds for all apps */
-  defaultThreshold?: ThresholdConfig;
-  /** Per-app threshold overrides */
-  appThresholds?: Record<string, Partial<ThresholdConfig>>;
-  /** Custom policy for handling regressions */
-  regressionPolicy?: RegressionPolicyFunction;
-  /** Bundle names to skip (e.g., ['eat-bundle']) */
-  ignoredBundles?: string[];
-  /** Whether to generate source map files on update */
-  generateSourceMaps?: boolean;
-  /** Custom reporter instance (defaults to ConsoleReporter) */
-  reporter?: IReporter;
 }
 
 /**
@@ -216,31 +162,17 @@ export interface BaselineComponent {
 }
 
 /**
- * Result of checking a single app.
+ * Result of the bundle size check.
  */
-export interface AppCheckResult {
-  /** App name */
-  name: string;
+export interface CheckResult {
   /** Whether all checks passed */
   passed: boolean;
-  /** List of detected regressions */
+  /** List of detected regressions that caused failures */
   regressions: Regression[];
   /** Actual sizes from current build */
   actualSizes: ComponentSize[];
   /** Expected sizes from baseline */
   expectedSizes: BaselineComponent[];
-}
-
-/**
- * Overall result of the bundle size check.
- */
-export interface CheckResult {
-  /** Whether all apps passed */
-  passed: boolean;
-  /** Results for each app */
-  apps: AppCheckResult[];
-  /** Names of apps that failed */
-  failedApps: string[];
 }
 
 /**
@@ -428,14 +360,6 @@ export interface BundleInfo {
 }
 
 /**
- * Configuration for HtmlDiffGenerator.
- */
-export interface HtmlDiffGeneratorConfig {
-  /** Path to diff2html-cli executable */
-  diff2htmlPath?: string;
-}
-
-/**
  * Metadata to inject into HTML diffs.
  */
 export interface DiffMetadata {
@@ -496,11 +420,9 @@ export interface HtmlDiffOptions {
 }
 
 /**
- * Result of updating an app's baseline.
+ * Result of updating the baseline.
  */
 export interface UpdateBaselineResult {
-  /** App name */
-  name: string;
   /** Component sizes */
   sizes: ComponentSize[];
   /** Path to the written config file */
@@ -520,3 +442,4 @@ export interface ReporterOptions {
   /** Output stream */
   output?: NodeJS.WriteStream;
 }
+

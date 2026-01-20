@@ -27,26 +27,6 @@ export class SourceMapGenerator {
   }
 
   /**
-   * Reads the extended stats file for an app.
-   */
-  readExtendedStats(appName: string): Record<string, BundleInfo> | null {
-    const statsPath = path.join(this.bundlesDir, `${appName}-bundlesize-extended-stats.json`);
-
-    if (!fs.existsSync(statsPath)) {
-      return null;
-    }
-
-    const bundles = JSON.parse(fs.readFileSync(statsPath, 'utf8')) as BundleInfo[];
-    const dictionary: Record<string, BundleInfo> = {};
-
-    for (const bundle of bundles) {
-      dictionary[bundle.label] = bundle;
-    }
-
-    return dictionary;
-  }
-
-  /**
    * Formats a bundle label for display.
    */
   formatLabel(label: string): string {
@@ -150,23 +130,42 @@ export class SourceMapGenerator {
   }
 
   /**
-   * Gets the output file path for an app.
+   * Gets the full output file path.
    */
-  getOutputPath(appName: string): string {
-    return path.join(this.baselineDir, `${appName}_loadable_components_source_map.txt`);
+  getOutputFilePath(filename: string): string {
+    return path.join(this.baselineDir, filename);
   }
 
   /**
-   * Generates source map file for an app.
+   * Generates source map file.
+   * @param extendedStatsFile - Path to extended stats JSON file (relative to bundlesDir or absolute)
+   * @param outputFilename - Output filename for the source map
+   * @param namedChunkGroups - Named chunk groups to include
+   * @param uncategorizedChunks - Uncategorized chunks to include
    */
-  generate(appName: string, namedChunkGroups: ChunkGroupInfo[], uncategorizedChunks: string[]): string | null {
-    const bundlesDictionary = this.readExtendedStats(appName);
+  generateToFile(
+    extendedStatsFile: string,
+    outputFilename: string,
+    namedChunkGroups: ChunkGroupInfo[],
+    uncategorizedChunks: string[]
+  ): string | null {
+    // Try to read extended stats from the provided path
+    const statsPath = path.isAbsolute(extendedStatsFile)
+      ? extendedStatsFile
+      : path.join(this.bundlesDir, extendedStatsFile);
 
-    if (!bundlesDictionary) {
+    if (!fs.existsSync(statsPath)) {
       return null;
     }
 
-    const outputPath = this.getOutputPath(appName);
+    const bundles = JSON.parse(fs.readFileSync(statsPath, 'utf8')) as BundleInfo[];
+    const bundlesDictionary: Record<string, BundleInfo> = {};
+
+    for (const bundle of bundles) {
+      bundlesDictionary[bundle.label] = bundle;
+    }
+
+    const outputPath = this.getOutputFilePath(outputFilename);
     const contentParts: string[] = [];
 
     contentParts.push('# This file is generated automatically by SourceMapGenerator\n');
@@ -180,7 +179,6 @@ export class SourceMapGenerator {
       contentParts.push(this.generateChunkGroup(UNCATEGORIZED_NAME, uncategorizedChunks, bundlesDictionary));
     }
 
-    // Use synchronous write to ensure file is on disk before returning
     fs.writeFileSync(outputPath, contentParts.join(''), 'utf8');
 
     return outputPath;

@@ -47,10 +47,10 @@ export class BaselineWriter {
   }
 
   /**
-   * Gets the config file path for an app.
+   * Gets the full path to a baseline file.
    */
-  getConfigPath(appName: string): string {
-    return path.join(this.baselineDir, `${appName}-config.json`);
+  getFilePath(filename: string): string {
+    return path.join(this.baselineDir, filename);
   }
 
   /**
@@ -86,13 +86,13 @@ export class BaselineWriter {
   }
 
   /**
-   * Writes baseline config for an app.
+   * Writes baseline config to a file.
    */
-  writeBaseline(appName: string, sizes: ComponentSize[]): string {
+  writeBaselineFile(filename: string, sizes: ComponentSize[]): string {
     this.ensureDirectoryExists();
 
     const config = this.createBaselineConfig(sizes);
-    const configPath = this.getConfigPath(appName);
+    const configPath = this.getFilePath(filename);
 
     const content = JSON.stringify(config, null, 2) + '\n';
     fs.writeFileSync(configPath, content, 'utf8');

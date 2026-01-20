@@ -34,26 +34,26 @@ export class BaselineComparator {
   }
 
   /**
-   * Gets the baseline config file path for an app.
+   * Gets the full path to a baseline file.
    */
-  getBaselineConfigPath(appName: string): string {
-    return path.join(this.baselineDir, `${appName}-config.json`);
+  getBaselineFilePath(filename: string): string {
+    return path.join(this.baselineDir, filename);
   }
 
   /**
-   * Loads baseline configuration for an app.
+   * Loads baseline configuration from a file.
    */
-  loadBaseline(appName: string): BaselineConfig {
-    const configPath = this.getBaselineConfigPath(appName);
+  loadBaselineFile(filename: string): BaselineConfig {
+    const configPath = this.getBaselineFilePath(filename);
     const content = fs.readFileSync(configPath, 'utf8');
     return JSON.parse(content) as BaselineConfig;
   }
 
   /**
-   * Checks if baseline exists for an app.
+   * Checks if a baseline file exists.
    */
-  baselineExists(appName: string): boolean {
-    return fs.existsSync(this.getBaselineConfigPath(appName));
+  baselineFileExists(filename: string): boolean {
+    return fs.existsSync(this.getBaselineFilePath(filename));
   }
 
   /**
