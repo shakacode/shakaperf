@@ -2,19 +2,22 @@ version: 2.1
 
 orbs:
   node: circleci/node@7.2.1
+  ruby: circleci/ruby@2.6.0
 
 executors:
-  node-executor:
+  ruby-node-executor:
     docker:
-      - image: cimg/node:20.18
+      - image: cimg/ruby:3.3-node
     working_directory: ~/project
 
 jobs:
   build-bundles:
-    executor: node-executor
+    executor: ruby-node-executor
     resource_class: large
     steps:
       - checkout
+      - ruby/install-deps:
+          app-dir: demo-ecommerce
       - node/install-packages:
           pkg-manager: yarn
       - run:
@@ -28,7 +31,7 @@ jobs:
             - demo-ecommerce/public/packs
 
   bundle-size-check:
-    executor: node-executor
+    executor: ruby-node-executor
     steps:
       - checkout
       - attach_workspace:
@@ -57,7 +60,7 @@ jobs:
           destination: bundle-size-diffs
 
   bundle-size-upload:
-    executor: node-executor
+    executor: ruby-node-executor
     steps:
       - checkout
       - attach_workspace:
