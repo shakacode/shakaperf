@@ -2011,6 +2011,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@profoundlogic/hogan@npm:^3.0.4":
+  version: 3.0.4
+  resolution: "@profoundlogic/hogan@npm:3.0.4"
+  dependencies:
+    nopt: "npm:1.0.10"
+  bin:
+    hulk: bin/hulk
+  checksum: 10c0/55848a0c2924a48301de565e40782780fad5c482889e76b81097f198138b636edba7108289da80e923f37600fa05f8fb2f6eb7eff3c93f8be4ab929e957c9ca9
+  languageName: node
+  linkType: hard
+
 "@sinclair/typebox@npm:^0.34.0":
   version: 0.34.47
   resolution: "@sinclair/typebox@npm:0.34.47"
@@ -2681,6 +2692,13 @@ __metadata:
   version: 4.2.2
   resolution: "@xtuc/long@npm:4.2.2"
   checksum: 10c0/8582cbc69c79ad2d31568c412129bf23d2b1210a1dfb60c82d5a1df93334da4ee51f3057051658569e2c196d8dc33bc05ae6b974a711d0d16e801e1d0647ccd1
+  languageName: node
+  linkType: hard
+
+"abbrev@npm:1":
+  version: 1.1.1
+  resolution: "abbrev@npm:1.1.1"
+  checksum: 10c0/3f762677702acb24f65e813070e306c61fafe25d4b2583f9dfc935131f774863f3addd5741572ed576bd69cabe473c5af18e1e108b829cb7b6b4747884f726e6
   languageName: node
   linkType: hard
 
@@ -3699,6 +3717,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"diff2html@npm:^3.4.48":
+  version: 3.4.55
+  resolution: "diff2html@npm:3.4.55"
+  dependencies:
+    "@profoundlogic/hogan": "npm:^3.0.4"
+    diff: "npm:^7.0.0"
+    highlight.js: "npm:11.9.0"
+  dependenciesMeta:
+    highlight.js:
+      optional: true
+  checksum: 10c0/608b51496930c3acd98fd72d0a94324e939fec03350df1f958a644b7b107d786fa6b72e708ede14fa61d963eab3bb662fe1af4c4ebc146c877efd1e41956a5bc
+  languageName: node
+  linkType: hard
+
+"diff@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "diff@npm:7.0.0"
+  checksum: 10c0/251fd15f85ffdf814cfc35a728d526b8d2ad3de338dcbd011ac6e57c461417090766b28995f8ff733135b5fbc3699c392db1d5e27711ac4e00244768cd1d577b
+  languageName: node
+  linkType: hard
+
 "dns-packet@npm:^5.2.2":
   version: 5.6.1
   resolution: "dns-packet@npm:5.6.1"
@@ -4307,6 +4346,13 @@ __metadata:
   dependencies:
     function-bind: "npm:^1.1.2"
   checksum: 10c0/3769d434703b8ac66b209a4cca0737519925bbdb61dd887f93a16372b14694c63ff4e797686d87c90f08168e81082248b9b028bad60d4da9e0d1148766f56eb9
+  languageName: node
+  linkType: hard
+
+"highlight.js@npm:11.9.0":
+  version: 11.9.0
+  resolution: "highlight.js@npm:11.9.0"
+  checksum: 10c0/27cfa8717dc9d200aecbdb383eb122d5f45ce715d2f468583785d36fbfe5076ce033abb02486dc13b407171721cda6f474ed3f3a5a8e8c3d91367fa5f51ee374
   languageName: node
   linkType: hard
 
@@ -5233,6 +5279,17 @@ __metadata:
   version: 2.0.27
   resolution: "node-releases@npm:2.0.27"
   checksum: 10c0/f1e6583b7833ea81880627748d28a3a7ff5703d5409328c216ae57befbced10ce2c991bea86434e8ec39003bd017f70481e2e5f8c1f7e0a7663241f81d6e00e2
+  languageName: node
+  linkType: hard
+
+"nopt@npm:1.0.10":
+  version: 1.0.10
+  resolution: "nopt@npm:1.0.10"
+  dependencies:
+    abbrev: "npm:1"
+  bin:
+    nopt: ./bin/nopt.js
+  checksum: 10c0/ddfbd892116a125fd68849ef564dd5b1f0a5ba0dbbf18782e9499e2efad8f4d3790635b47c6b5d3f7e014069e7b3ce5b8112687e9ae093fcd2678188c866fe28
   languageName: node
   linkType: hard
 
@@ -6436,6 +6493,9 @@ __metadata:
   resolution: "shaka-bundle-size@workspace:packages/shaka-bundle-size"
   dependencies:
     "@types/node": "npm:^20.0.0"
+    diff2html: "npm:^3.4.48"
+  bin:
+    shaka-bundle-size: ./dist/cli.js
   languageName: unknown
   linkType: soft
 
