@@ -269,19 +269,41 @@ export class BundleSizeChecker {
     };
   }
 
+  generateSourceMapsTo(outputDir: string): string | null {
+    const statsFilename = getStatsFilename(this.statsFile);
+    const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
+    const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
+
+    const tempGenerator = new SourceMapGenerator({
+      bundlesDir: this.bundlesDir,
+      baselineDir: outputDir,
+    });
+
+    const extendedStatsFile = deriveExtendedStatsFilename(this.baselineFile);
+    const sourceMapFile = deriveSourceMapFilename(this.baselineFile);
+
+    return tempGenerator.generateToFile(
+      extendedStatsFile,
+      sourceMapFile,
+      namedChunkGroups,
+      uncategorizedChunks
+    );
+  }
+
   generateHtmlDiffs(options: {
     controlDir: string;
+    currentDir: string;
     outputDir: string;
     metadata?: DiffMetadata;
   }): string[] {
-    const { controlDir, outputDir, metadata = {} } = options;
+    const { controlDir, currentDir, outputDir, metadata = {} } = options;
 
     this.reporter.header('Generating HTML diff artifacts');
     const templatePath = path.join(__dirname, '../templates/diff-template.html');
 
     const generatedFiles = this.htmlDiffGenerator.generateDiffs({
       controlDir,
-      currentDir: this.baselineDir,
+      currentDir,
       outputDir,
       templatePath,
       metadata,

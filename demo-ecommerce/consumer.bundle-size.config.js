@@ -23,7 +23,7 @@ module.exports = defineConfig({
   htmlDiffs: {
     enabled: true,
     outputDir: 'bundle-size-diffs',
-    controlDir: 'tmp/bundle_size_control',
+    currentDir: 'tmp/bundle_size_current',
   },
 
   // Baseline storage for --download/--upload (uses defaults)

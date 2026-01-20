@@ -103,16 +103,6 @@ function showVersion(): void {
   console.log(`shaka-bundle-size v${VERSION}`);
 }
 
-function copyBaselineToControl(baselineDir: string, controlDir: string): void {
-  if (fs.existsSync(controlDir)) {
-    fs.rmSync(controlDir, { recursive: true });
-  }
-
-  if (fs.existsSync(baselineDir)) {
-    fs.cpSync(baselineDir, controlDir, { recursive: true });
-  }
-}
-
 function getCiMetadata(): { branchName: string; currentCommit: string; masterCommit: string } {
   const branchName = getCurrentBranch() || '';
   const currentCommit = (process.env.CIRCLE_SHA1 || process.env.GITHUB_SHA || '').substring(0, 7);
@@ -205,16 +195,18 @@ async function main(): Promise<void> {
 
   if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats)) {
     try {
-      if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-        copyBaselineToControl(resolvedConfig.baselineDir, resolvedConfig.htmlDiffs.controlDir);
-      }
-
       const result = checker.check();
 
       if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
+        // Generate current source maps to a separate directory
+        const currentDir = resolvedConfig.htmlDiffs.currentDir;
+        fs.mkdirSync(currentDir, { recursive: true });
+        checker.generateSourceMapsTo(currentDir);
+
         const metadata = getCiMetadata();
         checker.generateHtmlDiffs({
-          controlDir: resolvedConfig.htmlDiffs.controlDir,
+          controlDir: resolvedConfig.baselineDir,  // Downloaded baseline = control
+          currentDir: currentDir,                   // Newly generated = current
           outputDir: resolvedConfig.htmlDiffs.outputDir,
           metadata,
         });

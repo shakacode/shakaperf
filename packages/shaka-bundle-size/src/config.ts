@@ -17,8 +17,8 @@ export interface HtmlDiffConfig {
   enabled?: boolean;
   /** Directory for output HTML diff files (default: 'bundle-size-diffs') */
   outputDir?: string;
-  /** Directory for control/baseline files for comparison (default: 'tmp/bundle_size_control') */
-  controlDir?: string;
+  /** Directory for current source maps during compare (default: 'tmp/bundle_size_current') */
+  currentDir?: string;
 }
 
 export interface StorageConfig {
@@ -92,7 +92,7 @@ export const DEFAULT_THRESHOLDS: Required<ThresholdConfig> = {
 export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
   enabled: true,
   outputDir: 'bundle-size-diffs',
-  controlDir: 'tmp/bundle_size_control',
+  currentDir: 'tmp/bundle_size_current',
 };
 
 export const DEFAULT_STORAGE: Required<StorageConfig> = {
