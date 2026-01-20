@@ -104,14 +104,14 @@ function showVersion(): void {
   console.log(`shaka-bundle-size v${VERSION}`);
 }
 
-function getCiMetadata(): { branchName: string; currentCommit: string; masterCommit: string } {
+function getCiMetadata(mainBranch: string): { branchName: string; currentCommit: string; masterCommit: string } {
   const branchName = getCurrentBranch() || '';
   const currentCommit = (process.env.CIRCLE_SHA1 || process.env.GITHUB_SHA || '').substring(0, 7);
 
   let masterCommit = '';
   try {
     const { execSync } = require('child_process');
-    masterCommit = execSync('git rev-parse origin/main', { encoding: 'utf8' }).trim().substring(0, 7);
+    masterCommit = execSync(`git rev-parse origin/${mainBranch}`, { encoding: 'utf8' }).trim().substring(0, 7);
   } catch {
     // Ignore if git is not available
   }
@@ -154,6 +154,7 @@ async function main(): Promise<void> {
     storageDir: resolvedConfig.storage.storageDir,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
+    mainBranch: resolvedConfig.storage.mainBranch,
   });
 
   if (args.downloadMainBranchStats) {
@@ -222,7 +223,7 @@ async function main(): Promise<void> {
             controlDir: resolvedConfig.baselineDir,
             currentDir,
             outputDir: resolvedConfig.htmlDiffs.outputDir,
-            metadata: getCiMetadata(),
+            metadata: getCiMetadata(resolvedConfig.storage.mainBranch),
           });
         }
       }

@@ -14,22 +14,30 @@ export interface BaselineStorageConfig {
   baselineDir: string;
   /** Number of main branch commits to search for baseline */
   mainCommitsToCheck: number;
+  /** Name of the main branch (default: 'main') */
+  mainBranch?: string;
 }
 
 export class BaselineStorage {
   private storageDir: string;
   private baselineDir: string;
   private mainCommitsToCheck: number;
+  private mainBranch: string;
 
   constructor(config: BaselineStorageConfig) {
     this.storageDir = config.storageDir;
     this.baselineDir = config.baselineDir;
     this.mainCommitsToCheck = config.mainCommitsToCheck;
+    this.mainBranch = config.mainBranch ?? 'main';
+  }
+
+  getMainBranch(): string {
+    return this.mainBranch;
   }
 
   getGitMergeBase(): string {
-    execSync('git fetch origin main', { stdio: 'pipe' });
-    return execSync('git merge-base origin/main HEAD', { encoding: 'utf8' }).trim();
+    execSync(`git fetch origin ${this.mainBranch}`, { stdio: 'pipe' });
+    return execSync(`git merge-base origin/${this.mainBranch} HEAD`, { encoding: 'utf8' }).trim();
   }
 
   getRecentMainCommits(mergeBase: string): string[] {

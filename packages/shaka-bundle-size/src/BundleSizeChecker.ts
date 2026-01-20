@@ -85,6 +85,9 @@ export class BundleSizeChecker {
 
     this.sizeCalculator = new SizeCalculator({
       bundlesDir: this.bundlesDir,
+      onMissingFile: (filePath) => {
+        this.reporter.verbose(`Missing compressed file: ${filePath}`);
+      },
     });
 
     this.baselineComparator = new BaselineComparator({

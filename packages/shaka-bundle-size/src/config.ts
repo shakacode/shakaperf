@@ -26,6 +26,8 @@ export interface StorageConfig {
   storageDir?: string;
   /** Number of main branch commits to search for baseline (default: 10) */
   mainCommitsToCheck?: number;
+  /** Name of the main branch (default: 'main'). Use 'master' for older repos. */
+  mainBranch?: string;
 }
 
 /** The config structure users define in their config files. */
@@ -98,6 +100,7 @@ export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
 export const DEFAULT_STORAGE: Required<StorageConfig> = {
   storageDir: 'baseline/bundle_size',
   mainCommitsToCheck: 10,
+  mainBranch: 'main',
 };
 
 /** Uses threshold-based checking for size increases. */

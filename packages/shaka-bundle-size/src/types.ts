@@ -279,6 +279,8 @@ export interface WebpackStatsReaderConfig {
 export interface SizeCalculatorConfig {
   /** Directory containing webpack bundles */
   bundlesDir: string;
+  /** Optional callback invoked when a compressed file (.gz or .br) is missing */
+  onMissingFile?: (filePath: string) => void;
 }
 
 /**

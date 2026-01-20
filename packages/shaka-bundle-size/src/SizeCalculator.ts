@@ -10,17 +10,22 @@ import type { SizeCalculatorConfig, ChunkSizes, TotalSizes } from './types';
 export class SizeCalculator {
   private bundlesDir: string;
   private sizeCache: Map<string, ChunkSizes>;
+  private onMissingFile?: (filePath: string) => void;
 
-  constructor({ bundlesDir }: SizeCalculatorConfig) {
+  constructor({ bundlesDir, onMissingFile }: SizeCalculatorConfig) {
     this.bundlesDir = bundlesDir;
     this.sizeCache = new Map();
+    this.onMissingFile = onMissingFile;
   }
 
-  /** Returns 0 if file doesn't exist. */
+  /** Returns 0 if file doesn't exist, and invokes onMissingFile callback if configured. */
   getFileSize(filePath: string): number {
     try {
       return fs.statSync(filePath).size;
     } catch {
+      if (this.onMissingFile) {
+        this.onMissingFile(filePath);
+      }
       return 0;
     }
   }
