@@ -38,6 +38,9 @@ jobs:
           at: .
       - node/install-packages:
           pkg-manager: yarn
+      - run:
+          name: Build packages
+          command: yarn build
       - restore_cache:
           keys:
             - bundle-size-baseline-main-
@@ -67,6 +70,9 @@ jobs:
           at: .
       - node/install-packages:
           pkg-manager: yarn
+      - run:
+          name: Build packages
+          command: yarn build
       - restore_cache:
           keys:
             - bundle-size-baseline-main-
