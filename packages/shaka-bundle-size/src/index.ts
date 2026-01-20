@@ -1,9 +1,3 @@
-/**
- * shaka-bundle-size
- * Bundle size diffing and analysis for React apps with loadable components
- */
-
-// Config utilities
 export {
   defineConfig,
   resolveConfig,
@@ -24,10 +18,8 @@ export type {
   StorageConfig,
 } from './config';
 
-// Types - export all types from types.ts
 export * from './types';
 
-// Core classes
 export { BundleSizeChecker } from './BundleSizeChecker';
 export { BaselineStorage } from './BaselineStorage';
 export { Reporter, SilentReporter, ANSI, colorize } from './Reporter';
@@ -39,5 +31,4 @@ export { BaselineWriter } from './BaselineWriter';
 export { SourceMapGenerator, UNCATEGORIZED_NAME } from './SourceMapGenerator';
 export { HtmlDiffGenerator } from './HtmlDiffGenerator';
 
-// Re-export color utilities from helpers
 export type { ColorName } from './helpers/colors';

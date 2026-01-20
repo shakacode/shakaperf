@@ -1,17 +1,8 @@
-/**
- * Configuration module for shaka-bundle-size.
- *
- * Provides config types, default values, and config loading utilities.
- */
-
 import * as fs from 'fs';
 import * as path from 'path';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 
-/**
- * Threshold configuration for regression detection.
- */
 export interface ThresholdConfig {
   /** Maximum allowed size increase in KB for normal components (default: 10) */
   default?: number;
@@ -21,9 +12,6 @@ export interface ThresholdConfig {
   keyComponentThreshold?: number;
 }
 
-/**
- * HTML diff generation configuration.
- */
 export interface HtmlDiffConfig {
   /** Whether to generate HTML diffs (default: true) */
   enabled?: boolean;
@@ -33,9 +21,6 @@ export interface HtmlDiffConfig {
   controlDir?: string;
 }
 
-/**
- * Baseline storage configuration for --download/--upload.
- */
 export interface StorageConfig {
   /** Directory for commit-based baseline storage (default: 'baseline/bundle_size') */
   storageDir?: string;
@@ -43,10 +28,7 @@ export interface StorageConfig {
   mainCommitsToCheck?: number;
 }
 
-/**
- * User-facing configuration for bundle size checking.
- * This is the config structure users define in their config files.
- */
+/** The config structure users define in their config files. */
 export interface BundleSizeConfig {
   /** Path to webpack loadable stats JSON file (required) */
   statsFile: string;
@@ -77,10 +59,7 @@ export interface BundleSizeConfig {
   regressionPolicy?: RegressionPolicyFunction;
 }
 
-/**
- * Resolved configuration with all defaults applied.
- * Used internally by BundleSizeChecker.
- */
+/** Configuration with all defaults applied, used internally by BundleSizeChecker. */
 export interface ResolvedConfig {
   /** Path to webpack loadable stats JSON file */
   statsFile: string;
@@ -104,36 +83,24 @@ export interface ResolvedConfig {
   regressionPolicy: RegressionPolicyFunction;
 }
 
-/**
- * Default threshold configuration.
- */
 export const DEFAULT_THRESHOLDS: Required<ThresholdConfig> = {
   default: 10, // 10 KB
   keyComponents: [],
   keyComponentThreshold: 1, // 1 KB
 };
 
-/**
- * Default HTML diff configuration.
- */
 export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
   enabled: true,
   outputDir: 'bundle-size-diffs',
   controlDir: 'tmp/bundle_size_control',
 };
 
-/**
- * Default storage configuration.
- */
 export const DEFAULT_STORAGE: Required<StorageConfig> = {
   storageDir: 'baseline/bundle_size',
   mainCommitsToCheck: 10,
 };
 
-/**
- * Default regression policy.
- * Uses threshold-based checking for size increases.
- */
+/** Uses threshold-based checking for size increases. */
 export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): RegressionPolicyFunction {
   return (regression): PolicyResult => {
     const { componentName, type, sizeDiffKb } = regression;
@@ -142,11 +109,9 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
 
     switch (type) {
       case RegressionType.NEW_COMPONENT:
-        // New components are informational by default
         return { shouldFail: false };
 
       case RegressionType.REMOVED_COMPONENT:
-        // Removed key components should fail
         if (isKeyComponent) {
           return { shouldFail: true, message: 'Key component was removed' };
         }
@@ -162,7 +127,6 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
         return { shouldFail: false };
 
       case RegressionType.INCREASED_CHUNKS_COUNT:
-        // Chunks count increases are informational by default
         return { shouldFail: false };
 
       default:
@@ -171,21 +135,13 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
   };
 }
 
-/**
- * Helper function for config files.
- * Provides type safety and documentation for config creation.
- */
 export function defineConfig(config: BundleSizeConfig): BundleSizeConfig {
   return config;
 }
 
-/**
- * Derives baseline filename from stats filename.
- * Example: 'consumer-loadable-stats.json' -> 'consumer-config.json'
- */
+/** Example: 'consumer-loadable-stats.json' -> 'consumer-config.json' */
 function deriveBaselineFile(statsFile: string): string {
   const basename = path.basename(statsFile, '.json');
-  // Remove common suffixes
   const name = basename
     .replace(/-loadable-stats$/, '')
     .replace(/-stats$/, '')
@@ -193,9 +149,6 @@ function deriveBaselineFile(statsFile: string): string {
   return `${name}-config.json`;
 }
 
-/**
- * Resolves a user config into a fully resolved config with all defaults applied.
- */
 export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
   if (!config.statsFile) {
     throw new Error('BundleSizeConfig: statsFile is required');
@@ -233,10 +186,7 @@ export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
   };
 }
 
-/**
- * Loads a config file from disk.
- * Supports .ts (via dynamic import) and .js files.
- */
+/** Supports .ts (via dynamic import) and .js files. */
 export async function loadConfig(configPath: string): Promise<BundleSizeConfig> {
   const absolutePath = path.resolve(configPath);
 
@@ -251,9 +201,6 @@ export async function loadConfig(configPath: string): Promise<BundleSizeConfig> 
   }
 
   try {
-    // For TypeScript files, we need tsx or ts-node registered
-    // For JavaScript files, we can require directly
-    // Using dynamic import which works for both in Node.js
     const configModule = await import(absolutePath);
     const config = configModule.default || configModule;
 
@@ -270,10 +217,7 @@ export async function loadConfig(configPath: string): Promise<BundleSizeConfig> 
   }
 }
 
-/**
- * Synchronously loads a config file.
- * Only supports .js files (TypeScript requires async import).
- */
+/** Only supports .js files (TypeScript requires async import). */
 export function loadConfigSync(configPath: string): BundleSizeConfig {
   const absolutePath = path.resolve(configPath);
 
@@ -305,9 +249,6 @@ export function loadConfigSync(configPath: string): BundleSizeConfig {
   }
 }
 
-/**
- * Gets the current git branch name from environment variables.
- */
 export function getCurrentBranch(): string | undefined {
   return (
     process.env.CIRCLE_BRANCH ||
@@ -317,9 +258,6 @@ export function getCurrentBranch(): string | undefined {
   );
 }
 
-/**
- * Checks if the current branch should be ignored for failures.
- */
 export function isBranchIgnored(config: ResolvedConfig): boolean {
   const currentBranch = getCurrentBranch();
   if (!currentBranch) {

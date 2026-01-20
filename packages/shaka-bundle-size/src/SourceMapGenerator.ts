@@ -1,6 +1,4 @@
 /**
- * SourceMapGenerator - Generates human-readable source maps for bundles.
- *
  * Creates text files showing the hierarchical breakdown of modules
  * included in each chunk, useful for understanding bundle composition.
  */
@@ -11,41 +9,26 @@ import type { SourceMapGeneratorConfig, ChunkGroupInfo, BundleInfo } from './typ
 
 const UNCATEGORIZED_NAME = 'uncategorized_chunks';
 
-/**
- * Generates source map files showing bundle composition.
- */
 export class SourceMapGenerator {
   private bundlesDir: string;
   private baselineDir: string;
 
-  /**
-   * Creates a new SourceMapGenerator.
-   */
   constructor({ bundlesDir, baselineDir }: SourceMapGeneratorConfig) {
     this.bundlesDir = bundlesDir;
     this.baselineDir = baselineDir;
   }
 
-  /**
-   * Formats a bundle label for display.
-   */
   formatLabel(label: string): string {
     return label
       .replace(/ /g, '_')
       .replace(/_\+_\d*_modules_\(concatenated\)/g, '+concatenated_modules');
   }
 
-  /**
-   * Formats a size value for display.
-   */
   formatSize(gzipSize?: number): string {
     if (!gzipSize) return '';
     return ` ${(gzipSize / 1024).toFixed(2)} KB`;
   }
 
-  /**
-   * Recursively writes source information to lines array.
-   */
   writeSources(bundle: BundleInfo, parents: string[], lines: string[]): void {
     const label = this.formatLabel(bundle.label);
     const sizeString = this.formatSize(bundle.gzipSize);
@@ -69,9 +52,6 @@ export class SourceMapGenerator {
     }
   }
 
-  /**
-   * Builds the parent path prefix for a line.
-   */
   buildParentsPath(parents: string[]): string {
     if (parents.length === 0) {
       return `./${this.bundlesDir}/`;
@@ -83,9 +63,6 @@ export class SourceMapGenerator {
     return pathString ? `${pathString}/` : '';
   }
 
-  /**
-   * Calculates total size for a list of chunks.
-   */
   calculateChunksSize(chunkNames: string[], bundlesDictionary: Record<string, BundleInfo>): number {
     return chunkNames.reduce((total, name) => {
       const bundle = bundlesDictionary[name];
@@ -93,17 +70,11 @@ export class SourceMapGenerator {
     }, 0);
   }
 
-  /**
-   * Generates separator lines.
-   */
   generateSeparator(count: number = 20): string {
     const separator = '='.repeat(200);
     return Array(count).fill(separator).join('\n') + '\n';
   }
 
-  /**
-   * Generates chunk group content.
-   */
   generateChunkGroup(groupName: string, chunkNames: string[], bundlesDictionary: Record<string, BundleInfo>): string {
     const lines: string[] = [];
     const sizeBytes = this.calculateChunksSize(chunkNames, bundlesDictionary);
@@ -129,20 +100,10 @@ export class SourceMapGenerator {
     return lines.join('\n');
   }
 
-  /**
-   * Gets the full output file path.
-   */
   getOutputFilePath(filename: string): string {
     return path.join(this.baselineDir, filename);
   }
 
-  /**
-   * Generates source map file.
-   * @param extendedStatsFile - Path to extended stats JSON file (relative to bundlesDir or absolute)
-   * @param outputFilename - Output filename for the source map
-   * @param namedChunkGroups - Named chunk groups to include
-   * @param uncategorizedChunks - Uncategorized chunks to include
-   */
   generateToFile(
     extendedStatsFile: string,
     outputFilename: string,

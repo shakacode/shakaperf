@@ -1,6 +1,4 @@
 /**
- * BaselineStorage - Git-based baseline storage for CI workflows.
- *
  * Handles downloading baselines from storage (finding merge-base with main)
  * and uploading baselines to storage for the current commit.
  */
@@ -9,9 +7,6 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-/**
- * Configuration for BaselineStorage.
- */
 export interface BaselineStorageConfig {
   /** Directory for commit-based baseline storage */
   storageDir: string;
@@ -21,9 +16,6 @@ export interface BaselineStorageConfig {
   mainCommitsToCheck: number;
 }
 
-/**
- * Manages baseline storage using git commit hashes.
- */
 export class BaselineStorage {
   private storageDir: string;
   private baselineDir: string;
@@ -35,17 +27,11 @@ export class BaselineStorage {
     this.mainCommitsToCheck = config.mainCommitsToCheck;
   }
 
-  /**
-   * Gets the merge base between HEAD and origin/main.
-   */
   getGitMergeBase(): string {
     execSync('git fetch origin main', { stdio: 'pipe' });
     return execSync('git merge-base origin/main HEAD', { encoding: 'utf8' }).trim();
   }
 
-  /**
-   * Gets recent commits on main from merge base.
-   */
   getRecentMainCommits(mergeBase: string): string[] {
     const output = execSync(
       `git log -${this.mainCommitsToCheck} --pretty=format:"%H" ${mergeBase}`,
@@ -54,31 +40,19 @@ export class BaselineStorage {
     return output.split('\n').filter(Boolean);
   }
 
-  /**
-   * Gets current HEAD commit.
-   */
   getCurrentCommit(): string {
     return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
   }
 
-  /**
-   * Gets storage path for a commit.
-   */
   getStoragePathForCommit(commit: string): string {
     return path.join(this.storageDir, commit);
   }
 
-  /**
-   * Checks if baseline exists for a commit.
-   */
   baselineExistsForCommit(commit: string): boolean {
     return fs.existsSync(this.getStoragePathForCommit(commit));
   }
 
-  /**
-   * Downloads baseline from storage (finds merge-base with main).
-   * Returns the commit hash that baseline was found for, or null if not found.
-   */
+  /** Returns the commit hash that baseline was found for, or null if not found. */
   download(): string | null {
     const mergeBase = this.getGitMergeBase();
     const commits = this.getRecentMainCommits(mergeBase);
@@ -94,10 +68,6 @@ export class BaselineStorage {
     return null;
   }
 
-  /**
-   * Downloads baseline for a specific commit.
-   * Returns the commit hash if found, or null if not found.
-   */
   downloadForCommit(commitSha: string): string | null {
     if (this.baselineExistsForCommit(commitSha)) {
       const storagePath = this.getStoragePathForCommit(commitSha);
@@ -107,10 +77,6 @@ export class BaselineStorage {
     return null;
   }
 
-  /**
-   * Uploads current baseline to storage for current commit.
-   * Returns the commit hash.
-   */
   upload(): string {
     if (!fs.existsSync(this.baselineDir)) {
       throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
@@ -125,10 +91,7 @@ export class BaselineStorage {
     return commit;
   }
 
-  /**
-   * Uploads current baseline to storage for a specific commit.
-   * Use this when you want to associate the baseline with a specific main branch commit.
-   */
+  /** Use this when you want to associate the baseline with a specific main branch commit. */
   uploadForCommit(commitSha: string): string {
     if (!fs.existsSync(this.baselineDir)) {
       throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
@@ -141,9 +104,6 @@ export class BaselineStorage {
     return commitSha;
   }
 
-  /**
-   * Copies a directory recursively.
-   */
   private copyDirectory(src: string, dest: string): void {
     if (fs.existsSync(dest)) {
       fs.rmSync(dest, { recursive: true });

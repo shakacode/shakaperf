@@ -1,6 +1,4 @@
 /**
- * BaselineComparator - Compares actual bundle sizes against baseline.
- *
  * Loads baseline configuration and compares with current build sizes
  * to detect changes and potential regressions.
  */
@@ -18,54 +16,33 @@ import type {
 
 export const UNCATEGORIZED_CHUNKS_NAME = 'uncategorized chunks';
 
-/**
- * Compares actual sizes against baseline expectations.
- */
 export class BaselineComparator {
   private baselineDir: string;
   private sizeThresholdKb: number;
 
-  /**
-   * Creates a new BaselineComparator.
-   */
   constructor({ baselineDir, sizeThresholdKb = 0.1 }: BaselineComparatorConfig) {
     this.baselineDir = baselineDir;
     this.sizeThresholdKb = sizeThresholdKb;
   }
 
-  /**
-   * Gets the full path to a baseline file.
-   */
   getBaselineFilePath(filename: string): string {
     return path.join(this.baselineDir, filename);
   }
 
-  /**
-   * Loads baseline configuration from a file.
-   */
   loadBaselineFile(filename: string): BaselineConfig {
     const configPath = this.getBaselineFilePath(filename);
     const content = fs.readFileSync(configPath, 'utf8');
     return JSON.parse(content) as BaselineConfig;
   }
 
-  /**
-   * Checks if a baseline file exists.
-   */
   baselineFileExists(filename: string): boolean {
     return fs.existsSync(this.getBaselineFilePath(filename));
   }
 
-  /**
-   * Finds a component in a list by name.
-   */
   findComponentByName<T extends { name: string }>(components: T[], name: string): T | undefined {
     return components.find(c => c.name === name);
   }
 
-  /**
-   * Compares actual sizes against baseline.
-   */
   compare(actualSizes: ComponentSize[], baseline: BaselineConfig): ComparisonResult {
     const expectedSizes = baseline.loadableComponents || [];
 
@@ -107,9 +84,6 @@ export class BaselineComparator {
     return result;
   }
 
-  /**
-   * Creates a comparison object between actual and expected sizes.
-   */
   createComparison(actual: ComponentSize, expected: BaselineComponent): SizeComparison {
     const actualSizeKb = Number(actual.gzipSizeKb.toFixed(2));
     const expectedSizeKb = Number(expected.gzipSizeKb);
@@ -124,23 +98,14 @@ export class BaselineComparator {
     };
   }
 
-  /**
-   * Checks if a comparison shows a significant size increase.
-   */
   hasSizeIncrease(comparison: SizeComparison): boolean {
     return comparison.sizeDiffKb > this.sizeThresholdKb;
   }
 
-  /**
-   * Checks if a comparison shows a size decrease.
-   */
   hasSizeDecrease(comparison: SizeComparison): boolean {
     return comparison.sizeDiffKb < 0;
   }
 
-  /**
-   * Checks if a comparison shows an increased chunks count.
-   */
   hasChunksCountIncrease(comparison: SizeComparison): boolean {
     return comparison.actualChunksCount > comparison.expectedChunksCount;
   }

@@ -1,6 +1,4 @@
 /**
- * BundleSizeChecker - Main orchestrator for bundle size checking.
- *
  * Coordinates the reading of webpack stats, size calculation, baseline comparison,
  * regression detection, and reporting. This is the main entry point for the library.
  */
@@ -27,43 +25,28 @@ import type {
   DiffMetadata,
 } from './types';
 
-/**
- * Gets the directory containing the stats file (bundlesDir).
- */
 function getBundlesDir(statsFile: string): string {
   return path.dirname(statsFile);
 }
 
-/**
- * Gets the basename of the stats file.
- */
 function getStatsFilename(statsFile: string): string {
   return path.basename(statsFile);
 }
 
-/**
- * Derives a source map filename from the baseline filename.
- * Example: 'consumer-config.json' -> 'consumer_loadable_components_source_map.txt'
- */
+/** Example: 'consumer-config.json' -> 'consumer_loadable_components_source_map.txt' */
 function deriveSourceMapFilename(baselineFile: string): string {
   const basename = path.basename(baselineFile, '.json');
   const name = basename.replace(/-config$/, '');
   return `${name}_loadable_components_source_map.txt`;
 }
 
-/**
- * Derives extended stats filename from baseline filename.
- * Example: 'consumer-config.json' -> 'consumer-bundlesize-extended-stats.json'
- */
+/** Example: 'consumer-config.json' -> 'consumer-bundlesize-extended-stats.json' */
 function deriveExtendedStatsFilename(baselineFile: string): string {
   const basename = path.basename(baselineFile, '.json');
   const name = basename.replace(/-config$/, '');
   return `${name}-bundlesize-extended-stats.json`;
 }
 
-/**
- * Main class for checking webpack bundle sizes against baselines.
- */
 export class BundleSizeChecker {
   private statsFile: string;
   private bundlesDir: string;
@@ -82,9 +65,6 @@ export class BundleSizeChecker {
   private sourceMapGenerator: SourceMapGenerator;
   private htmlDiffGenerator: HtmlDiffGenerator;
 
-  /**
-   * Creates a new BundleSizeChecker.
-   */
   constructor(config: ResolvedConfig, reporter?: IReporter) {
     this.validateConfig(config);
 
@@ -98,7 +78,6 @@ export class BundleSizeChecker {
 
     this.reporter = reporter || new Reporter();
 
-    // Initialize internal components
     this.statsReader = new WebpackStatsReader({
       bundlesDir: this.bundlesDir,
       ignoredBundles: this.ignoredBundles,
@@ -129,9 +108,6 @@ export class BundleSizeChecker {
     this.htmlDiffGenerator = new HtmlDiffGenerator();
   }
 
-  /**
-   * Validates the configuration object.
-   */
   private validateConfig(config: ResolvedConfig): void {
     if (!config.statsFile) {
       throw new Error('BundleSizeChecker: statsFile is required');
@@ -144,9 +120,6 @@ export class BundleSizeChecker {
     }
   }
 
-  /**
-   * Calculates sizes for all components.
-   */
   calculateComponentSizes(namedChunkGroups: ChunkGroupInfo[], uncategorizedChunks: string[]): ComponentSize[] {
     const sizes: ComponentSize[] = [];
 
@@ -173,11 +146,7 @@ export class BundleSizeChecker {
     return sizes;
   }
 
-  /**
-   * Reports regressions and improvements.
-   */
   private reportRegressions(actualSizes: ComponentSize[], baseline: BaselineConfig, comparisonResult: ComparisonResult): void {
-    // Report new components
     for (const component of comparisonResult.newComponents) {
       this.reporter.reportNewComponent({
         componentName: component.name,
@@ -186,7 +155,6 @@ export class BundleSizeChecker {
       });
     }
 
-    // Report removed components
     for (const component of comparisonResult.removedComponents) {
       this.reporter.reportRemovedComponent({
         componentName: component.name,
@@ -194,7 +162,6 @@ export class BundleSizeChecker {
       });
     }
 
-    // Report size changes
     for (const actual of actualSizes) {
       const expected = baseline.loadableComponents.find(c => c.name === actual.name);
       if (!expected) continue;
@@ -220,7 +187,6 @@ export class BundleSizeChecker {
       }
     }
 
-    // Report chunks count increases
     for (const comparison of comparisonResult.chunksCountIncreases) {
       this.reporter.reportIncreasedChunksCount({
         componentName: comparison.name,
@@ -230,24 +196,16 @@ export class BundleSizeChecker {
     }
   }
 
-  /**
-   * Runs the bundle size check.
-   */
   check(): CheckResult {
     this.reporter.header('Bundle Size Check');
 
     const statsFilename = getStatsFilename(this.statsFile);
-
-    // Read webpack stats
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
-
-    // Calculate current sizes
     const actualSizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
 
-    // Check if baseline exists
     if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
-      this.reporter.error(`No baseline found at ${this.baselineFile}. Run with --update to create one.`);
+      this.reporter.error(`No baseline found at ${this.baselineFile}. Run with  --download-main-branch-stats to create one.`);
       return {
         passed: false,
         regressions: [],
@@ -256,15 +214,10 @@ export class BundleSizeChecker {
       };
     }
 
-    // Load baseline and compare
     const baseline = this.baselineComparator.loadBaselineFile(this.baselineFile);
     const comparisonResult = this.baselineComparator.compare(actualSizes, baseline);
-
-    // Detect and report regressions
     const regressions = this.regressionDetector.detectRegressions(comparisonResult);
     this.reportRegressions(actualSizes, baseline, comparisonResult);
-
-    // Evaluate which regressions cause failures
     const { failures } = this.regressionDetector.evaluateAll(regressions);
     const passed = failures.length === 0;
 
@@ -284,26 +237,16 @@ export class BundleSizeChecker {
     return result;
   }
 
-  /**
-   * Updates the baseline with current build sizes.
-   */
   updateBaseline(): UpdateBaselineResult {
     this.reporter.header('Updating Baseline');
 
     const statsFilename = getStatsFilename(this.statsFile);
-
-    // Read webpack stats
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
-
-    // Calculate current sizes
     const sizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
-
-    // Write baseline
     const configPath = this.baselineWriter.writeBaselineFile(this.baselineFile, sizes);
     this.reporter.success(`Updated ${configPath}`);
 
-    // Generate source map if enabled
     let sourceMapPath: string | null = null;
     if (this.generateSourceMaps) {
       const extendedStatsFile = deriveExtendedStatsFilename(this.baselineFile);
@@ -326,9 +269,6 @@ export class BundleSizeChecker {
     };
   }
 
-  /**
-   * Generates HTML diff artifacts comparing baseline to current.
-   */
   generateHtmlDiffs(options: {
     controlDir: string;
     outputDir: string;
@@ -337,8 +277,6 @@ export class BundleSizeChecker {
     const { controlDir, outputDir, metadata = {} } = options;
 
     this.reporter.header('Generating HTML diff artifacts');
-
-    // Always use built-in template
     const templatePath = path.join(__dirname, '../templates/diff-template.html');
 
     const generatedFiles = this.htmlDiffGenerator.generateDiffs({
@@ -358,16 +296,10 @@ export class BundleSizeChecker {
     return generatedFiles;
   }
 
-  /**
-   * Gets the baseline directory.
-   */
   getBaselineDir(): string {
     return this.baselineDir;
   }
 
-  /**
-   * Gets the baseline filename.
-   */
   getBaselineFile(): string {
     return this.baselineFile;
   }

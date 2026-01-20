@@ -1,9 +1,4 @@
 #!/usr/bin/env node
-/**
- * shaka-bundle-size CLI
- *
- * Command-line interface for bundle size checking.
- */
 
 import { parseArgs } from 'node:util';
 import * as fs from 'fs';
@@ -108,9 +103,6 @@ function showVersion(): void {
   console.log(`shaka-bundle-size v${VERSION}`);
 }
 
-/**
- * Copies current baseline to control directory for diff comparison.
- */
 function copyBaselineToControl(baselineDir: string, controlDir: string): void {
   if (fs.existsSync(controlDir)) {
     fs.rmSync(controlDir, { recursive: true });
@@ -121,9 +113,6 @@ function copyBaselineToControl(baselineDir: string, controlDir: string): void {
   }
 }
 
-/**
- * Gets CI metadata for HTML diffs.
- */
 function getCiMetadata(): { branchName: string; currentCommit: string; masterCommit: string } {
   const branchName = getCurrentBranch() || '';
   const currentCommit = (process.env.CIRCLE_SHA1 || process.env.GITHUB_SHA || '').substring(0, 7);
@@ -158,7 +147,6 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  // Load and resolve config
   let resolvedConfig;
   try {
     const userConfig = await loadConfig(args.config);
@@ -168,18 +156,15 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  // Determine verbosity
   const verbosity = args.quiet ? 'quiet' : args.verbose ? 'verbose' : 'normal';
   const reporter = new Reporter({ verbosity });
 
-  // Create storage manager
   const storage = new BaselineStorage({
     storageDir: resolvedConfig.storage.storageDir,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
   });
 
-  // Download main branch stats
   if (args.downloadMainBranchStats) {
     try {
       reporter.info('Downloading main branch baseline...');
@@ -200,17 +185,13 @@ async function main(): Promise<void> {
     }
   }
 
-  // Create checker
   const checker = new BundleSizeChecker(resolvedConfig, reporter);
 
-  // Upload main branch stats
   if (args.uploadMainBranchStats) {
     try {
-      // First generate current stats
       checker.updateBaseline();
       reporter.success('Generated current stats.');
 
-      // Then upload (use specified commit or current HEAD)
       const commit = args.commit
         ? storage.uploadForCommit(args.commit)
         : storage.upload();
@@ -222,17 +203,14 @@ async function main(): Promise<void> {
     }
   }
 
-  // Compare mode (explicit or default behavior)
   if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats)) {
     try {
-      // Copy baseline to control dir before check (for HTML diffs)
       if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
         copyBaselineToControl(resolvedConfig.baselineDir, resolvedConfig.htmlDiffs.controlDir);
       }
 
       const result = checker.check();
 
-      // Generate HTML diffs after check
       if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
         const metadata = getCiMetadata();
         checker.generateHtmlDiffs({
@@ -242,7 +220,6 @@ async function main(): Promise<void> {
         });
       }
 
-      // Check if branch is ignored
       if (!result.passed && isBranchIgnored(resolvedConfig)) {
         const branch = getCurrentBranch();
         console.log(colorize.yellow(`Branch ${branch} is in ignoredBranches - treating as warning`));

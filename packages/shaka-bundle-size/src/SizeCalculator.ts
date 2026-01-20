@@ -1,7 +1,5 @@
 /**
- * SizeCalculator - Calculates compressed file sizes.
- *
- * Reads gzip (.gz) and brotli (.br) compressed file sizes and converts to KB.
+ * Reads gzip (.gz) and brotli (.br) compressed file sizes.
  * Handles missing files gracefully by returning 0.
  */
 
@@ -9,24 +7,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { SizeCalculatorConfig, ChunkSizes, TotalSizes } from './types';
 
-/**
- * Calculates compressed sizes for webpack bundle files.
- */
 export class SizeCalculator {
   private bundlesDir: string;
   private sizeCache: Map<string, ChunkSizes>;
 
-  /**
-   * Creates a new SizeCalculator.
-   */
   constructor({ bundlesDir }: SizeCalculatorConfig) {
     this.bundlesDir = bundlesDir;
     this.sizeCache = new Map();
   }
 
-  /**
-   * Gets the file size in bytes, returning 0 if file doesn't exist.
-   */
+  /** Returns 0 if file doesn't exist. */
   getFileSize(filePath: string): number {
     try {
       return fs.statSync(filePath).size;
@@ -35,17 +25,11 @@ export class SizeCalculator {
     }
   }
 
-  /**
-   * Gets the full path to a bundle file.
-   */
   getBundlePath(filename: string): string {
     return path.join(this.bundlesDir, filename);
   }
 
-  /**
-   * Calculates both gzip and brotli sizes for a chunk file.
-   * Results are cached for efficiency.
-   */
+  /** Results are cached. */
   getChunkSizes(chunkFilename: string): ChunkSizes {
     const cached = this.sizeCache.get(chunkFilename);
     if (cached) {
@@ -62,16 +46,10 @@ export class SizeCalculator {
     return sizes;
   }
 
-  /**
-   * Converts bytes to kilobytes.
-   */
   bytesToKb(bytes: number): number {
     return bytes / 1024;
   }
 
-  /**
-   * Calculates total sizes for a list of chunk files.
-   */
   calculateTotalSizes(chunkFilenames: string[]): TotalSizes {
     let totalGzip = 0;
     let totalBrotli = 0;
@@ -88,10 +66,7 @@ export class SizeCalculator {
     };
   }
 
-  /**
-   * Clears the size cache.
-   * Useful when files may have changed between calculations.
-   */
+  /** Useful when files may have changed between calculations. */
   clearCache(): void {
     this.sizeCache.clear();
   }

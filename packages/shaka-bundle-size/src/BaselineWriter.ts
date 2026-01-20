@@ -1,6 +1,4 @@
 /**
- * BaselineWriter - Writes baseline configuration files.
- *
  * Generates baseline config JSON files from current build sizes.
  * These files serve as the reference for future comparisons.
  */
@@ -14,31 +12,19 @@ import type {
   BaselineConfig,
 } from './types';
 
-/**
- * Writes baseline configuration files for bundle size comparisons.
- */
 export class BaselineWriter {
   private baselineDir: string;
 
-  /**
-   * Creates a new BaselineWriter.
-   */
   constructor({ baselineDir }: BaselineWriterConfig) {
     this.baselineDir = baselineDir;
   }
 
-  /**
-   * Ensures the baseline directory exists.
-   */
   ensureDirectoryExists(): void {
     if (!fs.existsSync(this.baselineDir)) {
       fs.mkdirSync(this.baselineDir, { recursive: true });
     }
   }
 
-  /**
-   * Clears existing baseline directory contents.
-   */
   clearDirectory(): void {
     if (fs.existsSync(this.baselineDir)) {
       fs.rmSync(this.baselineDir, { recursive: true });
@@ -46,16 +32,10 @@ export class BaselineWriter {
     this.ensureDirectoryExists();
   }
 
-  /**
-   * Gets the full path to a baseline file.
-   */
   getFilePath(filename: string): string {
     return path.join(this.baselineDir, filename);
   }
 
-  /**
-   * Formats component sizes for baseline config.
-   */
   formatComponents(sizes: ComponentSize[]): BaselineComponent[] {
     return sizes
       .map(size => ({
@@ -67,17 +47,11 @@ export class BaselineWriter {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  /**
-   * Calculates total gzip size from components.
-   */
   calculateTotalSize(sizes: ComponentSize[]): string {
     const total = sizes.reduce((sum, size) => sum + size.gzipSizeKb, 0);
     return total.toFixed(2);
   }
 
-  /**
-   * Creates baseline config object from component sizes.
-   */
   createBaselineConfig(sizes: ComponentSize[]): BaselineConfig {
     return {
       loadableComponents: this.formatComponents(sizes),
@@ -85,9 +59,6 @@ export class BaselineWriter {
     };
   }
 
-  /**
-   * Writes baseline config to a file.
-   */
   writeBaselineFile(filename: string, sizes: ComponentSize[]): string {
     this.ensureDirectoryExists();
 

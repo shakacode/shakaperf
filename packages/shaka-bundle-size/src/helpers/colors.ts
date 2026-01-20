@@ -1,6 +1,3 @@
-/**
- * ANSI color codes for terminal output.
- */
 export const ANSI = {
   RESET: '\x1b[0m',
   RED: '\x1b[31m',
@@ -11,9 +8,6 @@ export const ANSI = {
   DIM: '\x1b[2m',
 } as const;
 
-/**
- * Wraps text with ANSI color codes.
- */
 export const colorize = {
   red: (text: string): string => `${ANSI.RED}${text}${ANSI.RESET}`,
   green: (text: string): string => `${ANSI.GREEN}${text}${ANSI.RESET}`,

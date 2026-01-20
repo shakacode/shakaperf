@@ -1,6 +1,4 @@
 /**
- * RegressionDetector - Detects and classifies bundle size regressions.
- *
  * Analyzes comparison results and creates structured regression objects.
  * Uses a configurable policy function to determine failure conditions.
  */
@@ -20,9 +18,7 @@ import {
 
 export { RegressionType };
 
-/**
- * Default policy that fails on any regression.
- */
+/** Fails on any regression. */
 export function defaultPolicy(regression: Regression): PolicyResult {
   return {
     shouldFail: true,
@@ -30,22 +26,13 @@ export function defaultPolicy(regression: Regression): PolicyResult {
   };
 }
 
-/**
- * Detects and evaluates regressions in bundle sizes.
- */
 export class RegressionDetector {
   private policy: RegressionPolicyFunction;
 
-  /**
-   * Creates a new RegressionDetector.
-   */
   constructor({ policy = defaultPolicy }: RegressionDetectorConfig = {}) {
     this.policy = policy;
   }
 
-  /**
-   * Creates a regression object for a new component.
-   */
   createNewComponentRegression(component: ComponentSize): Regression {
     return {
       componentName: component.name,
@@ -55,9 +42,6 @@ export class RegressionDetector {
     };
   }
 
-  /**
-   * Creates a regression object for a removed component.
-   */
   createRemovedComponentRegression(component: BaselineComponent): Regression {
     return {
       componentName: component.name,
@@ -66,9 +50,6 @@ export class RegressionDetector {
     };
   }
 
-  /**
-   * Creates a regression object for increased size.
-   */
   createIncreasedSizeRegression(comparison: SizeComparison): Regression {
     return {
       componentName: comparison.name,
@@ -79,9 +60,6 @@ export class RegressionDetector {
     };
   }
 
-  /**
-   * Creates a regression object for increased chunks count.
-   */
   createIncreasedChunksCountRegression(comparison: SizeComparison): Regression {
     return {
       componentName: comparison.name,
@@ -91,9 +69,6 @@ export class RegressionDetector {
     };
   }
 
-  /**
-   * Detects all regressions from comparison results.
-   */
   detectRegressions(comparisonResult: ComparisonResult): Regression[] {
     const regressions: Regression[] = [];
 
@@ -120,16 +95,10 @@ export class RegressionDetector {
     return regressions;
   }
 
-  /**
-   * Evaluates a regression using the policy function.
-   */
   evaluateRegression(regression: Regression): PolicyResult {
     return this.policy(regression);
   }
 
-  /**
-   * Evaluates all regressions and determines which cause failures.
-   */
   evaluateAll(regressions: Regression[]): EvaluationResult {
     const failures: Regression[] = [];
     const warnings: Regression[] = [];
