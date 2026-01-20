@@ -8,16 +8,16 @@
  *
  * Architecture:
  *   bin/bundle-size-check (this file)
- *       └── bundle_size/demo-ecommerce-bundle-size-checker.js (Demo-Ecommerce config)
- *               └── bundle_size/core/ (generic library)
+ *       └── lib/bundle-size/checker.js (Demo-Ecommerce config)
+ *               └── shaka-bundle-size (generic library npm package)
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const { runDemoEcommerceBundleSizeCheck, ExitStatus } = require('../../bundle_size/demo-ecommerce-bundle-size-checker');
-const { colorize } = require('../../bundle_size/core');
+const { runDemoEcommerceBundleSizeCheck, ExitStatus } = require('../lib/bundle-size/checker');
+const { colorize } = require('shaka-bundle-size');
 
 // ============================================================================
 // Constants
