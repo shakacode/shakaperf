@@ -32,7 +32,8 @@
     "access": "public"
   },
   "dependencies": {
-    "diff2html": "^3.4.48"
+    "diff2html": "^3.4.48",
+    "webpack-bundle-analyzer": "^4.10.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
