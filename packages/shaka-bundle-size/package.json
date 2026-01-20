@@ -28,5 +28,8 @@
   "homepage": "https://github.com/shakacode/shaka-perf#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
   }
 }
