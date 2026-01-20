@@ -31,8 +31,16 @@ export interface HtmlDiffConfig {
   outputDir?: string;
   /** Directory for control/baseline files for comparison (default: 'tmp/bundle_size_control') */
   controlDir?: string;
-  /** Custom HTML template path (default: uses built-in template) */
-  templatePath?: string;
+}
+
+/**
+ * Baseline storage configuration for --download/--upload.
+ */
+export interface StorageConfig {
+  /** Directory for commit-based baseline storage (default: 'baseline/bundle_size') */
+  storageDir?: string;
+  /** Number of main branch commits to search for baseline (default: 10) */
+  mainCommitsToCheck?: number;
 }
 
 /**
@@ -62,6 +70,9 @@ export interface BundleSizeConfig {
   /** HTML diff generation configuration */
   htmlDiffs?: HtmlDiffConfig;
 
+  /** Baseline storage configuration for --download/--upload */
+  storage?: StorageConfig;
+
   /** Custom regression policy function */
   regressionPolicy?: RegressionPolicyFunction;
 }
@@ -87,6 +98,8 @@ export interface ResolvedConfig {
   generateSourceMaps: boolean;
   /** Resolved HTML diff configuration */
   htmlDiffs: Required<HtmlDiffConfig>;
+  /** Resolved storage configuration */
+  storage: Required<StorageConfig>;
   /** Regression policy function */
   regressionPolicy: RegressionPolicyFunction;
 }
@@ -107,7 +120,14 @@ export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
   enabled: true,
   outputDir: 'bundle-size-diffs',
   controlDir: 'tmp/bundle_size_control',
-  templatePath: '', // Empty means use built-in template
+};
+
+/**
+ * Default storage configuration.
+ */
+export const DEFAULT_STORAGE: Required<StorageConfig> = {
+  storageDir: 'baseline/bundle_size',
+  mainCommitsToCheck: 10,
 };
 
 /**
@@ -192,6 +212,11 @@ export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
     ...config.htmlDiffs,
   };
 
+  const storage: Required<StorageConfig> = {
+    ...DEFAULT_STORAGE,
+    ...config.storage,
+  };
+
   const regressionPolicy = config.regressionPolicy || createDefaultPolicy(thresholds);
 
   return {
@@ -203,6 +228,7 @@ export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
     ignoredBranches: config.ignoredBranches ?? [],
     generateSourceMaps: config.generateSourceMaps !== false,
     htmlDiffs,
+    storage,
     regressionPolicy,
   };
 }

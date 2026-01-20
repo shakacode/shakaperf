@@ -332,21 +332,20 @@ export class BundleSizeChecker {
   generateHtmlDiffs(options: {
     controlDir: string;
     outputDir: string;
-    templatePath?: string;
     metadata?: DiffMetadata;
   }): string[] {
-    const { controlDir, outputDir, templatePath, metadata = {} } = options;
+    const { controlDir, outputDir, metadata = {} } = options;
 
     this.reporter.header('Generating HTML diff artifacts');
 
-    // Use built-in template if not provided
-    const template = templatePath || path.join(__dirname, '../templates/diff-template.html');
+    // Always use built-in template
+    const templatePath = path.join(__dirname, '../templates/diff-template.html');
 
     const generatedFiles = this.htmlDiffGenerator.generateDiffs({
       controlDir,
       currentDir: this.baselineDir,
       outputDir,
-      templatePath: template,
+      templatePath,
       metadata,
     });
 

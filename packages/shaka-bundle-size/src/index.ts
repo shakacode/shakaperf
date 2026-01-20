@@ -14,12 +14,14 @@ export {
   isBranchIgnored,
   DEFAULT_THRESHOLDS,
   DEFAULT_HTML_DIFFS,
+  DEFAULT_STORAGE,
 } from './config';
 export type {
   BundleSizeConfig,
   ResolvedConfig,
   ThresholdConfig,
   HtmlDiffConfig,
+  StorageConfig,
 } from './config';
 
 // Types - export all types from types.ts
@@ -27,6 +29,7 @@ export * from './types';
 
 // Core classes
 export { BundleSizeChecker } from './BundleSizeChecker';
+export { BaselineStorage } from './BaselineStorage';
 export { Reporter, SilentReporter, ANSI, colorize } from './Reporter';
 export { WebpackStatsReader } from './WebpackStatsReader';
 export { SizeCalculator } from './SizeCalculator';

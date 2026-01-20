@@ -26,6 +26,12 @@ module.exports = defineConfig({
     controlDir: 'tmp/bundle_size_control',
   },
 
+  // Baseline storage for --download/--upload (uses defaults)
+  storage: {
+    storageDir: 'baseline/bundle_size',
+    mainCommitsToCheck: 10,
+  },
+
   // Custom regression policy for admin app
   regressionPolicy: (regression) => {
     const { componentName, type, sizeDiffKb } = regression;

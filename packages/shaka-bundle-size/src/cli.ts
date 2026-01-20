@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig, resolveConfig, isBranchIgnored, getCurrentBranch } from './config';
 import { BundleSizeChecker } from './BundleSizeChecker';
+import { BaselineStorage } from './BaselineStorage';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
@@ -24,6 +25,8 @@ Usage:
 Options:
   -c, --config <file>    Config file path (.js or .ts) [required]
   -u, --update           Update baseline with current build sizes
+      --download         Download baseline from storage before checking
+      --upload           Upload baseline to storage after updating
       --no-html-diffs    Skip HTML diff generation
   -v, --verbose          Verbose output
   -q, --quiet            Quiet output (errors only)
@@ -32,7 +35,8 @@ Options:
 
 Examples:
   shaka-bundle-size --config bundle-size.config.js
-  shaka-bundle-size --config consumer.bundle-size.config.ts --update
+  shaka-bundle-size --config bundle-size.config.js --download
+  shaka-bundle-size --config bundle-size.config.js --update --upload
   shaka-bundle-size -c admin.bundle-size.config.js --no-html-diffs
 
 Exit codes:
@@ -44,6 +48,8 @@ Exit codes:
 interface CliOptions {
   config?: string;
   update: boolean;
+  download: boolean;
+  upload: boolean;
   noHtmlDiffs: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -56,6 +62,8 @@ function parseCliArgs(): CliOptions {
     options: {
       config: { type: 'string', short: 'c' },
       update: { type: 'boolean', short: 'u', default: false },
+      download: { type: 'boolean', default: false },
+      upload: { type: 'boolean', default: false },
       'no-html-diffs': { type: 'boolean', default: false },
       verbose: { type: 'boolean', short: 'v', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
@@ -68,6 +76,8 @@ function parseCliArgs(): CliOptions {
   return {
     config: values.config as string | undefined,
     update: values.update as boolean,
+    download: values.download as boolean,
+    upload: values.upload as boolean,
     noHtmlDiffs: values['no-html-diffs'] as boolean,
     verbose: values.verbose as boolean,
     quiet: values.quiet as boolean,
@@ -148,6 +158,30 @@ async function main(): Promise<void> {
   const verbosity = args.quiet ? 'quiet' : args.verbose ? 'verbose' : 'normal';
   const reporter = new Reporter({ verbosity });
 
+  // Create storage manager
+  const storage = new BaselineStorage({
+    storageDir: resolvedConfig.storage.storageDir,
+    baselineDir: resolvedConfig.baselineDir,
+    mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
+  });
+
+  // Download baseline if requested
+  if (args.download) {
+    try {
+      reporter.info('Downloading baseline from storage...');
+      const commit = storage.download();
+      if (commit) {
+        reporter.success(`Found baseline for commit ${commit.substring(0, 7)}`);
+      } else {
+        reporter.error(`No baseline found in last ${resolvedConfig.storage.mainCommitsToCheck} main commits`);
+        process.exit(2);
+      }
+    } catch (error) {
+      console.error(colorize.red(`Error downloading baseline: ${(error as Error).message}`));
+      process.exit(2);
+    }
+  }
+
   // Create checker
   const checker = new BundleSizeChecker(resolvedConfig, reporter);
 
@@ -155,7 +189,14 @@ async function main(): Promise<void> {
   if (args.update) {
     try {
       checker.updateBaseline();
-      console.log(colorize.green('Baseline updated successfully.'));
+      reporter.success('Baseline updated successfully.');
+
+      // Upload if requested
+      if (args.upload) {
+        const commit = storage.upload();
+        reporter.success(`Uploaded baseline for commit ${commit.substring(0, 7)}`);
+      }
+
       process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error updating baseline: ${(error as Error).message}`));
@@ -178,7 +219,6 @@ async function main(): Promise<void> {
       checker.generateHtmlDiffs({
         controlDir: resolvedConfig.htmlDiffs.controlDir,
         outputDir: resolvedConfig.htmlDiffs.outputDir,
-        templatePath: resolvedConfig.htmlDiffs.templatePath || undefined,
         metadata,
       });
     }
