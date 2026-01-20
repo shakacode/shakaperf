@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Container,
@@ -8,8 +8,15 @@ import {
   Box,
   Breadcrumbs,
   Paper,
+  Tabs,
+  Tab,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TextField,
+  Divider,
 } from '@mui/material';
-import { ShoppingCart, ArrowBack } from '@mui/icons-material';
+import { ShoppingCart, ArrowBack, ExpandMore } from '@mui/icons-material';
 import { useProduct } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -18,6 +25,8 @@ const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { product, loading, error } = useProduct(Number(id));
   const { addToCart } = useCart();
+  const [tab, setTab] = useState(0);
+  const [quantity, setQuantity] = useState(1);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -108,6 +117,18 @@ const ProductDetailPage: React.FC = () => {
                 : 'Out of stock'}
             </Typography>
 
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Typography variant="body2">Quantity:</Typography>
+              <TextField
+                type="number"
+                size="small"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                inputProps={{ min: 1, max: product.stock }}
+                sx={{ width: 80 }}
+              />
+            </Box>
+
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button
                 variant="contained"
@@ -133,6 +154,46 @@ const ProductDetailPage: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+
+      <Divider sx={{ my: 4 }} />
+
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+        <Tab label="Description" />
+        <Tab label="Specifications" />
+        <Tab label="FAQ" />
+      </Tabs>
+
+      {tab === 0 && (
+        <Typography>{product.description}</Typography>
+      )}
+
+      {tab === 1 && (
+        <Box>
+          <Typography variant="body2">Category: {product.category}</Typography>
+          <Typography variant="body2">Stock: {product.stock} units</Typography>
+        </Box>
+      )}
+
+      {tab === 2 && (
+        <Box>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography>What is the return policy?</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography>30-day money back guarantee.</Typography>
+            </AccordionDetails>
+          </Accordion>
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography>How long does shipping take?</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography>3-5 business days for standard shipping.</Typography>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+      )}
     </Container>
   );
 };
