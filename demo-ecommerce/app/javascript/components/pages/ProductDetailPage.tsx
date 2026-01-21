@@ -159,8 +159,8 @@ const ProductDetailPage: React.FC = () => {
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="Description" />
-        <Tab label="Specifications" />
         <Tab label="FAQ" />
+        <Tab label="Specifications" />
       </Tabs>
 
       {tab === 0 && (
@@ -168,13 +168,6 @@ const ProductDetailPage: React.FC = () => {
       )}
 
       {tab === 1 && (
-        <Box>
-          <Typography variant="body2">Category: {product.category}</Typography>
-          <Typography variant="body2">Stock: {product.stock} units</Typography>
-        </Box>
-      )}
-
-      {tab === 2 && (
         <Box>
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
@@ -192,6 +185,13 @@ const ProductDetailPage: React.FC = () => {
               <Typography>3-5 business days for standard shipping.</Typography>
             </AccordionDetails>
           </Accordion>
+        </Box>
+      )}
+
+      {tab === 2 && (
+        <Box>
+          <Typography variant="body2">Category: {product.category}</Typography>
+          <Typography variant="body2">Stock: {product.stock} units</Typography>
         </Box>
       )}
     </Container>
