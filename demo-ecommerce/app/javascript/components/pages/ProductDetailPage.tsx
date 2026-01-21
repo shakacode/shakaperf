@@ -13,6 +13,7 @@ import { ShoppingCart, ArrowBack } from '@mui/icons-material';
 import { useProduct } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import LoadingSpinner from '../shared/LoadingSpinner';
+import ProductFeatures from '../shared/ProductFeatures';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,6 +134,8 @@ const ProductDetailPage: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+
+      <ProductFeatures productName={product.name} />
     </Container>
   );
 };
