@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "bin/shakapacker",
-    "build:prod": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=production bin/shakapacker --bundler webpack --config config/webpack/webpack.config.js",
+    "build:prod": "NODE_OPTIONS='--max-old-space-size=4096' NODE_ENV=production bin/shakapacker --bundler webpack",
     "build:prod:stats": "CLIENT_BUNDLE_ONLY=true yarn build:prod --json public/packs/${BUNDLE_NAME:-app}-webpack-stats.json",
     "build:prod:consumer": "BUNDLE_NAME=consumer yarn build:prod:stats",
     "build:prod:admin": "BUNDLE_NAME=admin ADMIN_BUNDLE_ONLY=true yarn build:prod:stats",
