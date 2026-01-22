@@ -26,9 +26,11 @@ module.exports = defineConfig({
     currentDir: 'tmp/bundle_size_current',
   },
 
-  // Baseline storage for --download/--upload (uses defaults)
+  // Baseline storage for --download/--upload (S3/R2)
   storage: {
-    storageDir: 'baseline/bundle_size',
+    s3Bucket: 'shaka-perf-demo-storage',
+    s3Prefix: 'bundle-size/',
+    // endpoint and credentials come from env vars: S3_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
     mainCommitsToCheck: 10,
   },
 

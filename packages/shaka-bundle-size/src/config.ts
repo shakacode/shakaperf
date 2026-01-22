@@ -22,8 +22,14 @@ export interface HtmlDiffConfig {
 }
 
 export interface StorageConfig {
-  /** Directory for commit-based baseline storage (default: 'baseline/bundle_size') */
-  storageDir?: string;
+  /** S3/R2 bucket name for baseline storage */
+  s3Bucket: string;
+  /** S3/R2 key prefix for baselines (default: 'bundle-size-baselines/') */
+  s3Prefix?: string;
+  /** AWS region (default: uses AWS_REGION env var or 'auto'). Use 'auto' for R2. */
+  awsRegion?: string;
+  /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com') */
+  endpoint?: string;
   /** Number of main branch commits to search for baseline (default: 10) */
   mainCommitsToCheck?: number;
   /** Name of the main branch (default: 'main'). Use 'master' for older repos. */
@@ -98,7 +104,10 @@ export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
 };
 
 export const DEFAULT_STORAGE: Required<StorageConfig> = {
-  storageDir: 'baseline/bundle_size',
+  s3Bucket: '',
+  s3Prefix: 'bundle-size-baselines/',
+  awsRegion: '',
+  endpoint: '',
   mainCommitsToCheck: 10,
   mainBranch: 'main',
 };
@@ -155,6 +164,10 @@ function deriveBaselineFile(statsFile: string): string {
 export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
   if (!config.statsFile) {
     throw new Error('BundleSizeConfig: statsFile is required');
+  }
+
+  if (!config.storage?.s3Bucket) {
+    throw new Error('BundleSizeConfig: storage.s3Bucket is required');
   }
 
   const thresholds: Required<ThresholdConfig> = {

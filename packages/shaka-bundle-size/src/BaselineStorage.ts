@@ -1,15 +1,30 @@
 /**
- * Handles downloading baselines from storage (finding merge-base with main)
- * and uploading baselines to storage for the current commit.
+ * Handles downloading baselines from S3 storage (finding merge-base with main)
+ * and uploading baselines to S3 for the current commit.
  */
 
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+  PutObjectCommand,
+  DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 export interface BaselineStorageConfig {
-  /** Directory for commit-based baseline storage */
-  storageDir: string;
+  /** S3 bucket name */
+  s3Bucket: string;
+  /** S3 key prefix (e.g., 'bundle-size-baselines/') */
+  s3Prefix: string;
+  /** AWS region (optional, falls back to AWS_REGION env or 'us-east-1'). Use 'auto' for R2. */
+  awsRegion?: string;
+  /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com') */
+  endpoint?: string;
   /** Working directory for current baseline */
   baselineDir: string;
   /** Number of main branch commits to search for baseline */
@@ -19,16 +34,25 @@ export interface BaselineStorageConfig {
 }
 
 export class BaselineStorage {
-  private storageDir: string;
+  private s3Client: S3Client;
+  private bucket: string;
+  private prefix: string;
   private baselineDir: string;
   private mainCommitsToCheck: number;
   private mainBranch: string;
 
   constructor(config: BaselineStorageConfig) {
-    this.storageDir = config.storageDir;
+    this.bucket = config.s3Bucket;
+    this.prefix = config.s3Prefix.endsWith('/') ? config.s3Prefix : `${config.s3Prefix}/`;
     this.baselineDir = config.baselineDir;
     this.mainCommitsToCheck = config.mainCommitsToCheck;
     this.mainBranch = config.mainBranch ?? 'main';
+
+    const endpoint = config.endpoint || process.env.S3_ENDPOINT;
+    this.s3Client = new S3Client({
+      region: config.awsRegion || process.env.AWS_REGION || 'auto',
+      ...(endpoint && { endpoint }),
+    });
   }
 
   getMainBranch(): string {
@@ -52,23 +76,36 @@ export class BaselineStorage {
     return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
   }
 
-  getStoragePathForCommit(commit: string): string {
-    return path.join(this.storageDir, commit);
+  getS3KeyForCommit(commit: string): string {
+    return `${this.prefix}${commit}/`;
   }
 
-  baselineExistsForCommit(commit: string): boolean {
-    return fs.existsSync(this.getStoragePathForCommit(commit));
+  async baselineExistsForCommit(commit: string): Promise<boolean> {
+    const prefix = this.getS3KeyForCommit(commit);
+
+    try {
+      const response = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          MaxKeys: 1,
+        })
+      );
+
+      return (response.Contents?.length ?? 0) > 0;
+    } catch {
+      return false;
+    }
   }
 
   /** Returns the commit hash that baseline was found for, or null if not found. */
-  download(): string | null {
+  async download(): Promise<string | null> {
     const mergeBase = this.getGitMergeBase();
     const commits = this.getRecentMainCommits(mergeBase);
 
     for (const commit of commits) {
-      if (this.baselineExistsForCommit(commit)) {
-        const storagePath = this.getStoragePathForCommit(commit);
-        this.copyDirectory(storagePath, this.baselineDir);
+      if (await this.baselineExistsForCommit(commit)) {
+        await this.downloadFromS3(commit);
         return commit;
       }
     }
@@ -76,46 +113,164 @@ export class BaselineStorage {
     return null;
   }
 
-  downloadForCommit(commitSha: string): string | null {
-    if (this.baselineExistsForCommit(commitSha)) {
-      const storagePath = this.getStoragePathForCommit(commitSha);
-      this.copyDirectory(storagePath, this.baselineDir);
+  async downloadForCommit(commitSha: string): Promise<string | null> {
+    if (await this.baselineExistsForCommit(commitSha)) {
+      await this.downloadFromS3(commitSha);
       return commitSha;
     }
     return null;
   }
 
-  upload(): string {
+  async upload(): Promise<string> {
     if (!fs.existsSync(this.baselineDir)) {
       throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
     }
 
     const commit = this.getCurrentCommit();
-    const storagePath = this.getStoragePathForCommit(commit);
-
-    fs.mkdirSync(this.storageDir, { recursive: true });
-    this.copyDirectory(this.baselineDir, storagePath);
-
+    await this.uploadToS3(commit);
     return commit;
   }
 
   /** Use this when you want to associate the baseline with a specific main branch commit. */
-  uploadForCommit(commitSha: string): string {
+  async uploadForCommit(commitSha: string): Promise<string> {
     if (!fs.existsSync(this.baselineDir)) {
       throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
     }
 
-    const storagePath = this.getStoragePathForCommit(commitSha);
-    fs.mkdirSync(this.storageDir, { recursive: true });
-    this.copyDirectory(this.baselineDir, storagePath);
-
+    await this.uploadToS3(commitSha);
     return commitSha;
   }
 
-  private copyDirectory(src: string, dest: string): void {
-    if (fs.existsSync(dest)) {
-      fs.rmSync(dest, { recursive: true });
+  private async downloadFromS3(commit: string): Promise<void> {
+    const prefix = this.getS3KeyForCommit(commit);
+
+    const listResponse = await this.s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: prefix,
+      })
+    );
+
+    if (!listResponse.Contents || listResponse.Contents.length === 0) {
+      throw new Error(`No files found for commit ${commit}`);
     }
-    fs.cpSync(src, dest, { recursive: true });
+
+    // Clear and recreate local baselineDir
+    if (fs.existsSync(this.baselineDir)) {
+      fs.rmSync(this.baselineDir, { recursive: true });
+    }
+    fs.mkdirSync(this.baselineDir, { recursive: true });
+
+    // Download each file
+    for (const object of listResponse.Contents) {
+      if (!object.Key) continue;
+
+      // Extract relative path (remove prefix)
+      const relativePath = object.Key.slice(prefix.length);
+      if (!relativePath) continue; // Skip the "directory" itself
+
+      const localPath = path.join(this.baselineDir, relativePath);
+
+      // Ensure parent directory exists
+      const parentDir = path.dirname(localPath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+
+      // Download the file
+      const getResponse = await this.s3Client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: object.Key,
+        })
+      );
+
+      if (getResponse.Body) {
+        const writeStream = fs.createWriteStream(localPath);
+        await pipeline(getResponse.Body as Readable, writeStream);
+      }
+    }
+  }
+
+  private async uploadToS3(commit: string): Promise<void> {
+    const prefix = this.getS3KeyForCommit(commit);
+
+    // Delete existing objects for this commit (if any)
+    await this.deleteS3Prefix(prefix);
+
+    // Upload all files from baselineDir
+    const files = this.getAllFiles(this.baselineDir);
+
+    for (const filePath of files) {
+      const relativePath = path.relative(this.baselineDir, filePath);
+      const s3Key = `${prefix}${relativePath}`;
+
+      const fileContent = fs.readFileSync(filePath);
+
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: s3Key,
+          Body: fileContent,
+          ContentType: this.getContentType(filePath),
+        })
+      );
+    }
+  }
+
+  private async deleteS3Prefix(prefix: string): Promise<void> {
+    const listResponse = await this.s3Client.send(
+      new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: prefix,
+      })
+    );
+
+    if (!listResponse.Contents || listResponse.Contents.length === 0) {
+      return;
+    }
+
+    const objectsToDelete: { Key: string }[] = [];
+    for (const obj of listResponse.Contents) {
+      if (obj.Key) {
+        objectsToDelete.push({ Key: obj.Key });
+      }
+    }
+
+    if (objectsToDelete.length > 0) {
+      await this.s3Client.send(
+        new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: { Objects: objectsToDelete },
+        })
+      );
+    }
+  }
+
+  private getAllFiles(dir: string): string[] {
+    const files: string[] = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        files.push(...this.getAllFiles(fullPath));
+      } else {
+        files.push(fullPath);
+      }
+    }
+
+    return files;
+  }
+
+  private getContentType(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypes: Record<string, string> = {
+      '.json': 'application/json',
+      '.js': 'application/javascript',
+      '.html': 'text/html',
+      '.txt': 'text/plain',
+    };
+    return contentTypes[ext] || 'application/octet-stream';
   }
 }

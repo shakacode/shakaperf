@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { parseArgs } from 'node:util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -151,7 +152,10 @@ async function main(): Promise<void> {
   const reporter = new Reporter({ verbosity });
 
   const storage = new BaselineStorage({
-    storageDir: resolvedConfig.storage.storageDir,
+    s3Bucket: resolvedConfig.storage.s3Bucket,
+    s3Prefix: resolvedConfig.storage.s3Prefix,
+    awsRegion: resolvedConfig.storage.awsRegion,
+    endpoint: resolvedConfig.storage.endpoint,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
     mainBranch: resolvedConfig.storage.mainBranch,
@@ -159,10 +163,10 @@ async function main(): Promise<void> {
 
   if (args.downloadMainBranchStats) {
     try {
-      reporter.info('Downloading main branch baseline...');
+      reporter.info('Downloading main branch baseline from S3...');
       const commit = args.commit
-        ? storage.downloadForCommit(args.commit)
-        : storage.download();
+        ? await storage.downloadForCommit(args.commit)
+        : await storage.download();
 
       if (commit) {
         reporter.success(`Found baseline for commit ${commit.substring(0, 7)}`);
@@ -202,9 +206,9 @@ async function main(): Promise<void> {
       reporter.success('Generated current stats.');
 
       const commit = args.commit
-        ? storage.uploadForCommit(args.commit)
-        : storage.upload();
-      reporter.success(`Uploaded baseline for commit ${commit.substring(0, 7)}`);
+        ? await storage.uploadForCommit(args.commit)
+        : await storage.upload();
+      reporter.success(`Uploaded baseline to S3 for commit ${commit.substring(0, 7)}`);
       process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error uploading baseline: ${(error as Error).message}`));
