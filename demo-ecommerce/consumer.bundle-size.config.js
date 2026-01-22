@@ -5,6 +5,7 @@
 const { defineConfig, RegressionType } = require('shaka-bundle-size');
 
 module.exports = defineConfig({
+  ignoredBranches: 'ramezweissa/sample-ignored-regression',
   // Path to webpack loadable stats
   statsFile: 'public/packs/consumer-loadable-stats.json',
 
