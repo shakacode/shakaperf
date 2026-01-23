@@ -1,5 +1,5 @@
 {
-  "name": "shaka-twin-server",
+  "name": "shaka-twin-servers",
   "version": "0.0.1",
   "description": "Twin server for performance testing React and React on Rails apps",
   "main": "dist/index.js",
@@ -22,7 +22,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/shakacode/shaka-perf.git",
-    "directory": "packages/shaka-twin-server"
+    "directory": "packages/shaka-twin-servers"
   },
   "homepage": "https://github.com/shakacode/shaka-perf#readme",
   "publishConfig": {

@@ -4965,7 +4965,7 @@ __metadata:
     sass-loader: "npm:^16.0.6"
     shaka-bench: "workspace:*"
     shaka-bundle-size: "workspace:*"
-    shaka-twin-server: "workspace:*"
+    shaka-twin-servers: "workspace:*"
     shaka-visreg: "workspace:*"
     shakapacker: "npm:9.5.0"
     style-loader: "npm:4.0.0"
@@ -7837,9 +7837,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-twin-server@workspace:*, shaka-twin-server@workspace:packages/shaka-twin-server":
+"shaka-twin-servers@workspace:*, shaka-twin-servers@workspace:packages/shaka-twin-servers":
   version: 0.0.0-use.local
-  resolution: "shaka-twin-server@workspace:packages/shaka-twin-server"
+  resolution: "shaka-twin-servers@workspace:packages/shaka-twin-servers"
   languageName: unknown
   linkType: soft
 
