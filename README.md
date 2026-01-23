@@ -1,5 +1,5 @@
 # shaka-perf
-## The easiest way to test Frontend Performance.
+## The easiest way to test Frontend Performance
 Do you want to improve `Lighthose` & `Web Vitals` without breaking your site?
 `shaka-perf` will measure the impact of your PRs on performance and detect visual changes.
 
