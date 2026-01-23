@@ -30,7 +30,7 @@ graph TD
 
     A --> C
 
-    D --> H[Human-readable HTML Reports]
+    D --> H[HTML Report<br>Includes stats and profiles<br>Only important stuff]
     E --> H
     F --> H
     G --> H
