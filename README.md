@@ -16,22 +16,19 @@ This is a chef kiss toolset for quick performance optimization without risk of b
 
 ```mermaid
 graph TD
-    A[Your Docker Image] --> B[experiment-container]
-    A --> C[control-container]
-    P[Single Playwright Test] --> D
-    P --> E
-    P --> G
+    A[Your Docker Image] --> B
+    P[Single Playwright Test] --> T
 
     subgraph CircleCI Integration
-        B --> D[Visual Regression Tests]
-        B --> E[Performance Tests]
-        B --> F[Bundle Size Tests]
-        B --> G[Accessibility Tests]
-        C --> D
-        C --> E
-        C --> F
-        C --> G
+        B[experiment-container<br>feature branch] --> T[Twin Servers]
+        C[control-container<br>main branch] --> T
+        T --> F[Bundle Size Tests]
+        T --> D[Visual Regression Tests]
+        T --> E[Performance AB Tests]
+        T --> G[Accessibility Tests]
     end
+
+    A --> C
 
     D --> H[Human-readable HTML Reports]
     E --> H
