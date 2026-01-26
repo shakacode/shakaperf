@@ -9,34 +9,41 @@ import * as path from 'path';
 
 export interface ExtendedStatsGeneratorConfig {
   bundlesDir: string;
+  bundleNamePrefix?: string;
 }
 
 const FIVE_MINUTES_MS = 300000;
 
 export class ExtendedStatsGenerator {
   private bundlesDir: string;
+  private bundleNamePrefix?: string;
 
   constructor(config: ExtendedStatsGeneratorConfig) {
     this.bundlesDir = config.bundlesDir;
+    this.bundleNamePrefix = config.bundleNamePrefix;
   }
 
-  getWebpackStatsPath(loadableStatsFilename: string): string {
-    const bundleName = this.extractBundleName(loadableStatsFilename);
-    return path.join(this.bundlesDir, `${bundleName}-webpack-stats.json`);
+  getWebpackStatsPath(): string {
+    const filename = this.bundleNamePrefix
+      ? `${this.bundleNamePrefix}-webpack-stats.json`
+      : 'webpack-stats.json';
+    return path.join(this.bundlesDir, filename);
   }
 
-  getExtendedStatsPath(baselineFilename: string): string {
-    const bundleName = baselineFilename.replace(/-config\.json$/, '');
-    return path.join(this.bundlesDir, `${bundleName}-bundlesize-extended-stats.json`);
+  getExtendedStatsPath(): string {
+    const filename = this.bundleNamePrefix
+      ? `${this.bundleNamePrefix}-bundlesize-extended-stats.json`
+      : 'bundlesize-extended-stats.json';
+    return path.join(this.bundlesDir, filename);
   }
 
   /**
    * Generates extended stats from webpack stats.
    * Returns the output path on success, null if webpack stats don't exist or generation fails.
    */
-  generate(loadableStatsFilename: string, baselineFilename: string): string | null {
-    const webpackStatsPath = this.getWebpackStatsPath(loadableStatsFilename);
-    const extendedStatsPath = this.getExtendedStatsPath(baselineFilename);
+  generate(): string | null {
+    const webpackStatsPath = this.getWebpackStatsPath();
+    const extendedStatsPath = this.getExtendedStatsPath();
 
     if (!fs.existsSync(webpackStatsPath)) {
       return null;
@@ -51,11 +58,5 @@ export class ExtendedStatsGenerator {
     } catch {
       return null;
     }
-  }
-
-  private extractBundleName(loadableStatsFilename: string): string {
-    return path.basename(loadableStatsFilename, '.json')
-      .replace(/-loadable-stats$/, '')
-      .replace(/-stats$/, '');
   }
 }

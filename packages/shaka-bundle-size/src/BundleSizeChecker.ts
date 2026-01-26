@@ -33,18 +33,18 @@ function getStatsFilename(statsFile: string): string {
   return path.basename(statsFile);
 }
 
-/** Example: 'consumer-config.json' -> 'consumer_loadable_components_source_map.txt' */
-function deriveSourceMapFilename(baselineFile: string): string {
-  const basename = path.basename(baselineFile, '.json');
-  const name = basename.replace(/-config$/, '');
-  return `${name}_loadable_components_source_map.txt`;
+/** Returns source map filename based on bundleNamePrefix */
+function deriveSourceMapFilename(bundleNamePrefix: string | undefined): string {
+  return bundleNamePrefix
+    ? `${bundleNamePrefix}_loadable_components_source_map.txt`
+    : 'loadable_components_source_map.txt';
 }
 
-/** Example: 'consumer-config.json' -> 'consumer-bundlesize-extended-stats.json' */
-function deriveExtendedStatsFilename(baselineFile: string): string {
-  const basename = path.basename(baselineFile, '.json');
-  const name = basename.replace(/-config$/, '');
-  return `${name}-bundlesize-extended-stats.json`;
+/** Returns extended stats filename based on bundleNamePrefix */
+function deriveExtendedStatsFilename(bundleNamePrefix: string | undefined): string {
+  return bundleNamePrefix
+    ? `${bundleNamePrefix}-bundlesize-extended-stats.json`
+    : 'bundlesize-extended-stats.json';
 }
 
 export class BundleSizeChecker {
@@ -52,6 +52,7 @@ export class BundleSizeChecker {
   private bundlesDir: string;
   private baselineDir: string;
   private baselineFile: string;
+  private bundleNamePrefix: string | undefined;
   private ignoredBundles: string[];
   private generateSourceMaps: boolean;
   private regressionPolicy: RegressionPolicyFunction;
@@ -72,6 +73,7 @@ export class BundleSizeChecker {
     this.bundlesDir = getBundlesDir(config.statsFile);
     this.baselineDir = config.baselineDir;
     this.baselineFile = config.baselineFile;
+    this.bundleNamePrefix = config.bundleNamePrefix;
     this.ignoredBundles = config.ignoredBundles;
     this.generateSourceMaps = config.generateSourceMaps;
     this.regressionPolicy = config.regressionPolicy;
@@ -252,8 +254,8 @@ export class BundleSizeChecker {
 
     let sourceMapPath: string | null = null;
     if (this.generateSourceMaps) {
-      const extendedStatsFile = deriveExtendedStatsFilename(this.baselineFile);
-      const sourceMapFile = deriveSourceMapFilename(this.baselineFile);
+      const extendedStatsFile = deriveExtendedStatsFilename(this.bundleNamePrefix);
+      const sourceMapFile = deriveSourceMapFilename(this.bundleNamePrefix);
       sourceMapPath = this.sourceMapGenerator.generateToFile(
         extendedStatsFile,
         sourceMapFile,
@@ -286,8 +288,8 @@ export class BundleSizeChecker {
       baselineDir: outputDir,
     });
 
-    const extendedStatsFile = deriveExtendedStatsFilename(this.baselineFile);
-    const sourceMapFile = deriveSourceMapFilename(this.baselineFile);
+    const extendedStatsFile = deriveExtendedStatsFilename(this.bundleNamePrefix);
+    const sourceMapFile = deriveSourceMapFilename(this.bundleNamePrefix);
 
     const sourceMapPath = tempGenerator.generateToFile(
       extendedStatsFile,

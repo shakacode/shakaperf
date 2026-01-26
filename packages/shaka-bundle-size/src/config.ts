@@ -46,6 +46,9 @@ export interface BundleSizeConfig {
   /** Baseline config filename (default: derived from statsFile name) */
   baselineFile?: string;
 
+  /** Prefix for webpack stats and extended stats files (e.g., 'consumer' -> 'consumer-webpack-stats.json'). If not set, no prefix is used. */
+  bundleNamePrefix?: string;
+
   /** Threshold configuration */
   thresholds?: ThresholdConfig;
 
@@ -75,6 +78,8 @@ export interface ResolvedConfig {
   baselineDir: string;
   /** Baseline config filename */
   baselineFile: string;
+  /** Prefix for webpack stats and extended stats files */
+  bundleNamePrefix: string | undefined;
   /** Resolved threshold configuration */
   thresholds: Required<ThresholdConfig>;
   /** Bundle names to skip */
@@ -151,14 +156,9 @@ export function defineConfig(config: BundleSizeConfig): BundleSizeConfig {
   return config;
 }
 
-/** Example: 'consumer-loadable-stats.json' -> 'consumer-config.json' */
-function deriveBaselineFile(statsFile: string): string {
-  const basename = path.basename(statsFile, '.json');
-  const name = basename
-    .replace(/-loadable-stats$/, '')
-    .replace(/-stats$/, '')
-    .replace(/-webpack-stats$/, '');
-  return `${name}-config.json`;
+/** Returns baseline filename based on bundleNamePrefix */
+function deriveBaselineFile(bundleNamePrefix: string | undefined): string {
+  return bundleNamePrefix ? `${bundleNamePrefix}-config.json` : 'config.json';
 }
 
 export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
@@ -191,7 +191,8 @@ export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
   return {
     statsFile: config.statsFile,
     baselineDir: config.baselineDir ?? 'tmp/bundle_size',
-    baselineFile: config.baselineFile ?? deriveBaselineFile(config.statsFile),
+    baselineFile: config.baselineFile ?? deriveBaselineFile(config.bundleNamePrefix),
+    bundleNamePrefix: config.bundleNamePrefix,
     thresholds,
     ignoredBundles: config.ignoredBundles ?? [],
     ignoredBranches: config.ignoredBranches ?? [],

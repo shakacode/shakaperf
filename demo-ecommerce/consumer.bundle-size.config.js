@@ -10,7 +10,8 @@ module.exports = defineConfig({
 
   // Baseline configuration
   baselineDir: 'tmp/bundle_size',
-  baselineFile: 'consumer-config.json',
+  bundleNamePrefix: 'consumer',
+  // baselineFile: 'consumer-config.json', // default value. dervied from bundleNamePrefix
 
   // Thresholds
   thresholds: {
