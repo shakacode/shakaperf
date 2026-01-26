@@ -1,6 +1,6 @@
 {
   "name": "shaka-bundle-size",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Bundle size diffing and analysis tool for React and React on Rails apps using loadable components",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
