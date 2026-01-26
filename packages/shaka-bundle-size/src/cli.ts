@@ -188,16 +188,15 @@ async function main(): Promise<void> {
       // Generate extended stats first (needed for source maps)
       if (resolvedConfig.generateSourceMaps) {
         const bundlesDir = path.dirname(resolvedConfig.statsFile);
-        const extendedStatsGenerator = new ExtendedStatsGenerator({ bundlesDir });
-        const loadableStatsFilename = path.basename(resolvedConfig.statsFile);
+        const extendedStatsGenerator = new ExtendedStatsGenerator({
+          bundlesDir,
+          bundleNamePrefix: resolvedConfig.bundleNamePrefix,
+        });
 
-        const extendedStatsPath = extendedStatsGenerator.generate(
-          loadableStatsFilename,
-          resolvedConfig.baselineFile
-        );
+        const extendedStatsPath = extendedStatsGenerator.generate();
 
         if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath(loadableStatsFilename);
+          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
           reporter.warning(`Cannot generate source maps: webpack stats not found at ${webpackStatsPath}`);
         }
       }
@@ -222,17 +221,16 @@ async function main(): Promise<void> {
 
       if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
         const bundlesDir = path.dirname(resolvedConfig.statsFile);
-        const extendedStatsGenerator = new ExtendedStatsGenerator({ bundlesDir });
-        const loadableStatsFilename = path.basename(resolvedConfig.statsFile);
+        const extendedStatsGenerator = new ExtendedStatsGenerator({
+          bundlesDir,
+          bundleNamePrefix: resolvedConfig.bundleNamePrefix,
+        });
 
-        const extendedStatsPath = extendedStatsGenerator.generate(
-          loadableStatsFilename,
-          resolvedConfig.baselineFile
-        );
+        const extendedStatsPath = extendedStatsGenerator.generate();
 
         if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath(loadableStatsFilename);
-          const expectedPath = extendedStatsGenerator.getExtendedStatsPath(resolvedConfig.baselineFile);
+          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
+          const expectedPath = extendedStatsGenerator.getExtendedStatsPath();
           reporter.error(`Cannot generate HTML diffs: failed to create ${expectedPath}`);
           reporter.error(`Webpack stats not found at ${webpackStatsPath}`);
         } else {

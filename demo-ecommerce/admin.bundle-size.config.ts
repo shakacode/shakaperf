@@ -10,7 +10,8 @@ export default defineConfig({
 
   // Baseline configuration
   baselineDir: 'tmp/bundle_size',
-  baselineFile: 'admin-config.json',
+  bundleNamePrefix: 'admin',
+  // baselineFile: 'admin-config.json', // default value. dervied from bundleNamePrefix
 
   // Thresholds (admin is more lenient than consumer)
   thresholds: {
