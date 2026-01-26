@@ -2,9 +2,9 @@
  * Admin app bundle size configuration
  */
 
-const { defineConfig, RegressionType } = require('shaka-bundle-size');
+import { defineConfig, RegressionType, type Regression } from 'shaka-bundle-size';
 
-module.exports = defineConfig({
+export default defineConfig({
   // Path to webpack loadable stats
   statsFile: 'public/packs/admin-loadable-stats.json',
 
@@ -35,7 +35,7 @@ module.exports = defineConfig({
   },
 
   // Custom regression policy for admin app
-  regressionPolicy: (regression) => {
+  regressionPolicy: (regression: Regression) => {
     const { componentName, type, sizeDiffKb } = regression;
     const isKeyComponent = ['admin'].includes(componentName);
     const threshold = isKeyComponent ? 5 : 50;
@@ -54,7 +54,7 @@ module.exports = defineConfig({
         break;
 
       case RegressionType.INCREASED_SIZE:
-        if (sizeDiffKb > threshold) {
+        if (sizeDiffKb !== undefined && sizeDiffKb > threshold) {
           console.log(`\x1b[31mThe difference is larger than threshold ${threshold} KB. Consider introducing a new Loadable Component.\x1b[0m`);
           if (isKeyComponent) {
             console.log(`\x1b[31mCareful! "${componentName}" is a key component.\x1b[0m`);

@@ -202,7 +202,7 @@ export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
   };
 }
 
-/** Supports .ts (via dynamic import) and .js files. */
+/** Supports .ts (via tsx/tsImport) and .js files. */
 export async function loadConfig(configPath: string): Promise<BundleSizeConfig> {
   const absolutePath = path.resolve(configPath);
 
@@ -217,7 +217,20 @@ export async function loadConfig(configPath: string): Promise<BundleSizeConfig> 
   }
 
   try {
-    const configModule = await import(absolutePath);
+    let configModule;
+
+    if (ext === '.ts') {
+      // Use tsx's tsImport for TypeScript files
+      // tsImport returns { default: { default: actualConfig } } for ESM default exports
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { tsImport } = require('tsx/esm/api');
+      const tsModule = await tsImport(absolutePath, __filename);
+      // Unwrap the double-nested default export
+      configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
+    } else {
+      configModule = await import(absolutePath);
+    }
+
     const config = configModule.default || configModule;
 
     if (!config || typeof config !== 'object') {

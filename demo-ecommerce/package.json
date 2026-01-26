@@ -14,9 +14,9 @@
     "build:prod:admin": "BUNDLE_NAME=admin ADMIN_BUNDLE_ONLY=true yarn build:prod:stats",
     "build:prod:all:stats": "yarn build:prod:consumer && yarn build:prod:admin",
     "build:analyze": "ANALYZE=true bin/shakapacker",
-    "bundle-size:download": "shaka-bundle-size -c consumer.bundle-size.config.js --download-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.js --download-main-branch-stats",
-    "bundle-size:compare": "shaka-bundle-size -c consumer.bundle-size.config.js --compare && shaka-bundle-size -c admin.bundle-size.config.js --compare",
-    "bundle-size:upload": "shaka-bundle-size -c consumer.bundle-size.config.js --upload-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.js --upload-main-branch-stats"
+    "bundle-size:download": "shaka-bundle-size -c consumer.bundle-size.config.js --download-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts --download-main-branch-stats",
+    "bundle-size:compare": "shaka-bundle-size -c consumer.bundle-size.config.js --compare && shaka-bundle-size -c admin.bundle-size.config.ts --compare",
+    "bundle-size:upload": "shaka-bundle-size -c consumer.bundle-size.config.js --upload-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts --upload-main-branch-stats"
   },
   "dependencies": {
     "@babel/helper-plugin-utils": "^7.28.6",
