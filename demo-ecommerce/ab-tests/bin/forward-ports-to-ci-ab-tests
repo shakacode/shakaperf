@@ -1,0 +1,65 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/colors.sh"
+source "$SCRIPT_DIR/lib/ui.sh"
+source "$SCRIPT_DIR/lib/ssh-utils.sh"
+
+print_banner "SSH Port Forwarding to a CI Job with running Twin Servers"
+
+parse_ssh_args "$@"
+
+LOCAL_CONTROL_PORT="3020"
+LOCAL_EXPERIMENT_PORT="3030"
+REMOTE_CONTROL_PORT="3020"
+REMOTE_EXPERIMENT_PORT="3030"
+
+echo "🔗 Setting up SSH port forwarding..."
+echo "   Remote host: $SSH_HOST:$SSH_PORT"
+echo "   Control server: localhost:$LOCAL_CONTROL_PORT -> remote:$REMOTE_CONTROL_PORT"
+echo "   Experiment server: localhost:$LOCAL_EXPERIMENT_PORT -> remote:$REMOTE_EXPERIMENT_PORT"
+echo ""
+
+check_port() {
+  local port=$1
+  local name=$2
+  if lsof -i :$port >/dev/null 2>&1; then
+    print_warning "Port $port is already in use for $name"
+    echo "   You may need to stop the local twin servers first:"
+    echo "   twin_servers_compose down"
+    echo ""
+  fi
+}
+
+check_port $LOCAL_CONTROL_PORT "Control Server"
+check_port $LOCAL_EXPERIMENT_PORT "Experiment Server"
+
+echo "🚀 Starting SSH port forwarding..."
+echo "   Press Ctrl+C to stop"
+echo ""
+
+ab-tests/bin/stop || true
+
+ssh -N -L $LOCAL_CONTROL_PORT:localhost:$REMOTE_CONTROL_PORT -L $LOCAL_EXPERIMENT_PORT:localhost:$REMOTE_EXPERIMENT_PORT -p $SSH_PORT $SSH_HOST &
+
+SSH_PID=$!
+
+cleanup() {
+  echo ""
+  echo "🛑 Stopping SSH port forwarding..."
+  kill $SSH_PID 2>/dev/null || true
+  print_success "Port forwarding stopped"
+  exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+print_success "Port forwarding active!"
+echo ""
+print_banner "CI Twin Servers Accessible Locally"
+echo "Control Server:    http://localhost:$LOCAL_CONTROL_PORT"
+echo "Experiment Server: http://localhost:$LOCAL_EXPERIMENT_PORT"
+echo "=========================================="
+
+wait $SSH_PID
+

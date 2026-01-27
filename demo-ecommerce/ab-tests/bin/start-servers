@@ -1,0 +1,11 @@
+#!/bin/bash
+# Without --stop-signals, ab-tests/bin/run-overmind-command-in-container won't work. Overmind is tricky in combination with trap/docker.
+
+source ab-tests/bin/define-helper-functions
+
+overmind start --stop-signals experiment-renderer=TERM,experiment-rails=TERM,control-renderer=TERM,control-rails=TERM -f ab-tests/Procfile || true
+
+# Kill old processes and clean up PID files from previous runs
+for server in control-server experiment-server; do
+  run_cmd_in_container $server "cat /tmp/overmind-pid.* 2>/dev/null | xargs -i bash -c 'kill {} || true'; rm -f /tmp/overmind-pid.*"
+done
