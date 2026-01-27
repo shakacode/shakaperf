@@ -105,8 +105,8 @@ export class RegressionDetector {
 
     for (const regression of regressions) {
       const result = this.evaluateRegression(regression);
+      regression.policyMessage = result.message;
       if (result.shouldFail) {
-        regression.policyMessage = result.message;
         failures.push(regression);
       } else {
         warnings.push(regression);

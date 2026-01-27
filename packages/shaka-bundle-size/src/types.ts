@@ -169,6 +169,8 @@ export interface CheckResult {
   passed: boolean;
   /** List of detected regressions that caused failures */
   regressions: Regression[];
+  /** List of detected regressions that did not cause failures */
+  warnings: Regression[];
   /** Actual sizes from current build */
   actualSizes: ComponentSize[];
   /** Expected sizes from baseline */
