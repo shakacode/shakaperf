@@ -10,6 +10,8 @@ export interface ThresholdConfig {
   keyComponents?: string[];
   /** Stricter threshold for key components in KB (default: 1) */
   keyComponentThreshold?: number;
+  /** Minimum size in KB for a new component to trigger a review (default: 1) */
+  minComponentSizeKb?: number;
 }
 
 export interface HtmlDiffConfig {
@@ -100,6 +102,7 @@ export const DEFAULT_THRESHOLDS: Required<ThresholdConfig> = {
   default: 10, // 10 KB
   keyComponents: [],
   keyComponentThreshold: 1, // 1 KB
+  minComponentSizeKb: 1, // 1 KB
 };
 
 export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
@@ -120,35 +123,42 @@ export const DEFAULT_STORAGE: Required<StorageConfig> = {
 /** Uses threshold-based checking for size increases. */
 export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): RegressionPolicyFunction {
   return (regression): PolicyResult => {
-    const { componentName, type, sizeDiffKb } = regression;
+    const { componentName, type, sizeDiffKb, sizeKb } = regression;
     const isKeyComponent = thresholds.keyComponents.includes(componentName);
     const threshold = isKeyComponent ? thresholds.keyComponentThreshold : thresholds.default;
 
     switch (type) {
       case RegressionType.NEW_COMPONENT:
-        return { shouldFail: false };
+        const minComponentSizeKbThreshold = thresholds.minComponentSizeKb;
+        if (sizeKb && sizeKb < minComponentSizeKbThreshold) {
+          return { shouldFail: false, message: `New component is smaller than the minimum component size of ${minComponentSizeKbThreshold}Kb. Will it make sense to introduce a new Loadable Component?` };
+        }
+
+        return { shouldFail: true, message: 'Even though introducing new components is generally a good thing, performance team would like to take a look.' };
 
       case RegressionType.REMOVED_COMPONENT:
         if (isKeyComponent) {
-          return { shouldFail: true, message: 'Key component was removed' };
+          return { shouldFail: true, message: 'Do not remove or update a key component without updating configuration to remove the key component.' };
         }
-        return { shouldFail: false };
+        break;
 
       case RegressionType.INCREASED_SIZE:
         if (sizeDiffKb !== undefined && sizeDiffKb > threshold) {
           return {
             shouldFail: true,
-            message: `Size increase ${sizeDiffKb.toFixed(2)} KB exceeds threshold ${threshold} KB`,
+            message: `Size increase ${sizeDiffKb.toFixed(2)} KB exceeds threshold ${threshold} KB. Will it make sense to introduce a new Loadable Component?`,
           };
         }
-        return { shouldFail: false };
+        break;
 
       case RegressionType.INCREASED_CHUNKS_COUNT:
-        return { shouldFail: false };
+        return { shouldFail: true, message: 'Increasing chunks number means increased webpack and HTTP overhead. This may be bad for performance.' };
 
       default:
-        return { shouldFail: false };
+        break;
     }
+
+    return { shouldFail: false };
   };
 }
 
