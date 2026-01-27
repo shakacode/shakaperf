@@ -131,7 +131,7 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
       case RegressionType.NEW_COMPONENT:
         const minComponentSizeKbThreshold = thresholds.minComponentSizeKb;
         if (sizeKb && sizeKb < minComponentSizeKbThreshold) {
-          return { shouldFail: false, message: `New component is smaller than the minimum component size of ${minComponentSizeKbThreshold}Kb. Will it make sense to introduce a new Loadable Component?` };
+          return { shouldFail: true, message: `New component is smaller than the minimum component size of ${minComponentSizeKbThreshold}Kb. Will it make sense to introduce a new Loadable Component?` };
         }
 
         return { shouldFail: true, message: 'Even though introducing new components is generally a good thing, performance team would like to take a look.' };
