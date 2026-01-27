@@ -108,15 +108,23 @@ export class Reporter implements IReporter {
   }
 
   summary(result: CheckResult): void {
+    if (result.warnings.length > 0) {
+      this.warning('\nThe following regressions do not fail regression policy:');
+      for (const regression of result.warnings) {
+        this.warning(`- ${regression.componentName}: [${regression.type}] ${regression.policyMessage ?? ''}`);
+      }
+    }
+
     if (result.passed) {
-      this.writeLine('');
-      this.success('All bundle size checks passed!');
+      this.success('\nAll bundle size checks passed!');
       return;
     }
 
-    this.writeLine('');
-    this.error('\n\nThe test failed!');
+    this.error('\nThe test failed!');
     this.info(`${result.regressions.length} regression(s) detected`);
+    for (const regression of result.regressions) {
+      this.error(`- ${regression.componentName}: [${regression.type}] ${regression.policyMessage ?? ''}`);
+    }
   }
 }
 
