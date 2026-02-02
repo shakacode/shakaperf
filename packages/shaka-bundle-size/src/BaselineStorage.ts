@@ -31,6 +31,8 @@ export interface BaselineStorageConfig {
   mainCommitsToCheck: number;
   /** Name of the main branch (default: 'main') */
   mainBranch?: string;
+  /** Skip non-merge commits when searching for baseline commits*/
+  skipNonMergeCommits?: boolean;
 }
 
 export class BaselineStorage {
@@ -40,14 +42,14 @@ export class BaselineStorage {
   private baselineDir: string;
   private mainCommitsToCheck: number;
   private mainBranch: string;
-
+  private skipNonMergeCommits: boolean;
   constructor(config: BaselineStorageConfig) {
     this.bucket = config.s3Bucket;
     this.prefix = config.s3Prefix.endsWith('/') ? config.s3Prefix : `${config.s3Prefix}/`;
     this.baselineDir = config.baselineDir;
     this.mainCommitsToCheck = config.mainCommitsToCheck;
     this.mainBranch = config.mainBranch ?? 'main';
-
+    this.skipNonMergeCommits = config.skipNonMergeCommits ?? false;
     const endpoint = config.endpoint || process.env.S3_ENDPOINT;
     this.s3Client = new S3Client({
       region: config.awsRegion || process.env.AWS_REGION || 'auto',
@@ -66,7 +68,7 @@ export class BaselineStorage {
 
   getRecentMainCommits(mergeBase: string): string[] {
     const output = execSync(
-      `git log -${this.mainCommitsToCheck} --pretty=format:"%H" ${mergeBase}`,
+      `git log -${this.mainCommitsToCheck} ${this.skipNonMergeCommits ? '--merges' : ''} --pretty=format:"%H" ${mergeBase}`,
       { encoding: 'utf8' }
     );
     return output.split('\n').filter(Boolean);

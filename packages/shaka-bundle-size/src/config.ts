@@ -36,6 +36,8 @@ export interface StorageConfig {
   mainCommitsToCheck?: number;
   /** Name of the main branch (default: 'main'). Use 'master' for older repos. */
   mainBranch?: string;
+  /** Skip non-merge commits when searching for baseline commits*/
+  skipNonMergeCommits?: boolean;
 }
 
 /** The config structure users define in their config files. */
@@ -118,6 +120,7 @@ export const DEFAULT_STORAGE: Required<StorageConfig> = {
   endpoint: '',
   mainCommitsToCheck: 10,
   mainBranch: 'main',
+  skipNonMergeCommits: false,
 };
 
 /** Uses threshold-based checking for size increases. */
