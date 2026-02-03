@@ -1,0 +1,157 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Source helper functions if they exist
+if [ -f "$DEMO_ECOMMERCE_DIR/ab-tests/bin/lib/ui.sh" ]; then
+  source "$DEMO_ECOMMERCE_DIR/ab-tests/bin/lib/ui.sh"
+  print_banner "Starting Twin Servers Locally"
+else
+  echo "=========================================="
+  echo "Starting Twin Servers Locally"
+  echo "=========================================="
+  echo ""
+fi
+
+# Check for required environment variables
+if [ -z "$RAILS_MASTER_KEY" ]; then
+  echo "❌ Error: RAILS_MASTER_KEY not set"
+  echo ""
+  echo "Set it with:"
+  echo "  export RAILS_MASTER_KEY=\$(cat demo-ecommerce/config/master.key)"
+  exit 1
+fi
+
+# Set default image names if not provided
+export CI_IMAGE_NAME="${CI_IMAGE_NAME:-demo-ecommerce:experiment}"
+export CI_CONTROL_IMAGE_NAME="${CI_CONTROL_IMAGE_NAME:-demo-ecommerce:control}"
+
+echo "📝 Using images:"
+echo "  - Experiment: $CI_IMAGE_NAME"
+echo "  - Control: $CI_CONTROL_IMAGE_NAME"
+echo ""
+
+# Check if images exist
+for img in "$CI_IMAGE_NAME" "$CI_CONTROL_IMAGE_NAME"; do
+  if ! docker image inspect "$img" >/dev/null 2>&1; then
+    echo "⚠️  Warning: Image $img not found locally"
+    echo "   Will build on first start (slower) or run:"
+    echo "   ./demo-ecommerce/bin/build-twin-servers"
+    echo ""
+  fi
+done
+
+# Create bind-mount directories
+CONTROL_VOLUME_DIR="$HOME/demo_ecommerce_control_docker_volume"
+EXPERIMENT_VOLUME_DIR="$HOME/demo_ecommerce_experiment_docker_volume"
+
+echo "📁 Ensuring bind-mount directories exist..."
+mkdir -p "$CONTROL_VOLUME_DIR"
+mkdir -p "$EXPERIMENT_VOLUME_DIR"
+echo "   ✓ $CONTROL_VOLUME_DIR"
+echo "   ✓ $EXPERIMENT_VOLUME_DIR"
+echo ""
+
+cd "$DEMO_ECOMMERCE_DIR"
+
+echo "🛑 Stopping any existing twin servers..."
+docker compose down --remove-orphans 2>/dev/null || true
+
+echo "🚀 Starting twin servers..."
+docker compose up -d
+
+echo "⏳ Waiting for containers to start..."
+sleep 5
+
+echo "📊 Checking container status..."
+docker compose ps
+
+# Helper function to run commands in containers
+run_cmd_in_container() {
+  local container_name=$1
+  local cmd=$2
+  echo "Running in $container_name: $cmd"
+  docker compose exec -T "$container_name" bash -c "$cmd"
+}
+
+# Helper function to wait for container
+wait_for_container() {
+  local container_name=$1
+  echo "⏳ Waiting for $container_name to be ready..."
+
+  local max_attempts=30
+  local attempt=0
+
+  while [ $attempt -lt $max_attempts ]; do
+    if docker compose exec -T "$container_name" echo "ready" >/dev/null 2>&1; then
+      echo "   ✓ $container_name is ready"
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+
+  echo "   ❌ $container_name failed to start"
+  return 1
+}
+
+echo ""
+echo "⏳ Waiting for containers to be ready..."
+wait_for_container control-server
+wait_for_container experiment-server
+
+# Setup database for each server
+setup_database_for_server() {
+  local server_type=$1
+  local container_name="${server_type}-server"
+
+  echo ""
+  echo "📊 Setting up database for $server_type..."
+
+  # Create database and load schema
+  run_cmd_in_container "$container_name" "bin/rails db:prepare"
+
+  # Run seeds if needed
+  if run_cmd_in_container "$container_name" "test -f db/seeds.rb" 2>/dev/null; then
+    run_cmd_in_container "$container_name" "bin/rails db:seed"
+  fi
+
+  echo "   ✓ Database ready for $server_type"
+}
+
+setup_database_for_server control
+setup_database_for_server experiment
+
+echo ""
+echo "✅ Both servers are ready!"
+echo ""
+echo "=========================================="
+echo "Twin Servers Started"
+echo "=========================================="
+echo ""
+echo "🌐 Access your servers at:"
+echo "   Control:    http://localhost:3020"
+echo "   Experiment: http://localhost:3030"
+echo ""
+echo "📂 Edit project code inside containers:"
+echo "   Control:    $CONTROL_VOLUME_DIR"
+echo "   Experiment: $EXPERIMENT_VOLUME_DIR"
+echo ""
+echo "🐚 Access container shells:"
+echo "   docker compose exec control-server bash"
+echo "   docker compose exec experiment-server bash"
+echo ""
+echo "🔄 Next steps:"
+echo "   1. Start the Rails servers:"
+echo "      ./bin/start-servers"
+echo ""
+echo "   2. Stop containers when done:"
+echo "      docker compose down"
+echo ""
+echo "   3. View logs:"
+echo "      docker compose logs -f control-server"
+echo "      docker compose logs -f experiment-server"
+echo ""

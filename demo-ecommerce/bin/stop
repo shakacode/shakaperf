@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$DEMO_ECOMMERCE_DIR"
+
+echo "=========================================="
+echo "Stopping Twin Servers"
+echo "=========================================="
+echo ""
+
+echo "🛑 Stopping Rails servers..."
+docker compose exec -T control-server bash -c "pkill -f 'rails server' || true" 2>/dev/null || true
+docker compose exec -T experiment-server bash -c "pkill -f 'rails server' || true" 2>/dev/null || true
+echo "   ✓ Rails servers stopped"
+
+echo ""
+echo "🛑 Stopping Docker containers..."
+docker compose down --remove-orphans
+echo "   ✓ Containers stopped"
+
+echo ""
+echo "✅ Twin servers stopped successfully!"
+echo ""
+echo "To start again, run:"
+echo "  ./bin/start-containers"
+echo ""

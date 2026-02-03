@@ -2,32 +2,28 @@
 
 # Production Dockerfile for demo-ecommerce with twin-servers A/B testing support
 # Build from monorepo root: docker build -f demo-ecommerce/Dockerfile.production -t demo-ecommerce .
-# Or use docker compose from demo-ecommerce directory: docker compose up --build
 
 ARG RUBY_VERSION=3.3.7
-ARG NODE_VERSION=20
+ARG NON_ROOT_USER=rails
 ARG UID=1000
 ARG GID=1000
-ARG NON_ROOT_USER=rails
 ARG BUNDLE_PATH=/home/${NON_ROOT_USER}/bundle
 ARG NODE_PATH=/home/${NON_ROOT_USER}/node
 ARG APP_PATH=/home/${NON_ROOT_USER}/app
 
-# ============================================
-# Base stage with runtime dependencies
-# ============================================
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+FROM ruby:${RUBY_VERSION}-bullseye as base
 
 # Re-declare ARGs after FROM (they don't persist across stages)
+ARG NON_ROOT_USER
 ARG UID
 ARG GID
-ARG NON_ROOT_USER
 ARG BUNDLE_PATH
 ARG NODE_PATH
 ARG APP_PATH
-ARG NODE_VERSION
 
-# Install base packages needed at runtime
+ARG NODE_VERSION=20
+
+# Install base packages
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
     apt-transport-https \
@@ -37,6 +33,9 @@ RUN apt-get update -qq && \
     sqlite3 \
     libpq-dev \
     build-essential \
+    git \
+    libyaml-dev \
+    pkg-config \
     vim \
     nano \
     libmariadb-dev \
@@ -58,7 +57,7 @@ ENV RAILS_ENV="production" \
     NODE_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH=${BUNDLE_PATH} \
-    BUNDLE_WITHOUT="development:test"
+    BUNDLE_WITHOUT="development test"
 
 # Mac/Linux GID compatibility: Delete any existing group with the same GID
 RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true
@@ -74,30 +73,7 @@ WORKDIR $APP_PATH
 
 USER ${NON_ROOT_USER}
 
-# ============================================
-# Build stage for gems and assets
-# ============================================
-FROM base AS build
-
-# Re-declare ARGs after FROM (they don't persist across stages)
-ARG UID
-ARG GID
-ARG NON_ROOT_USER
-ARG BUNDLE_PATH
-ARG APP_PATH
-
-# Install build dependencies
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y \
-        git \
-        libyaml-dev \
-        pkg-config && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
-
-# Set up monorepo structure for yarn workspace resolution
-WORKDIR /app
-
-# Copy monorepo root files needed for yarn workspace resolution
+# Copy monorepo root files for yarn workspace resolution
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
 COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn ./.yarn
 
@@ -112,46 +88,27 @@ COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./demo-ecommerce
 RUN yarn install --immutable
 
 # Now work inside demo-ecommerce for Ruby operations
-WORKDIR /app/demo-ecommerce
+WORKDIR ${APP_PATH}/demo-ecommerce
 
-# Install Ruby gems
+# Install application gems
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce/Gemfile demo-ecommerce/Gemfile.lock ./
 RUN bundle install && \
-    rm -rf /home/${NON_ROOT_USER}/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    bundle exec bootsnap precompile --gemfile
+    rm -rf /home/${NON_ROOT_USER}/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
+
+# Copy the rest of the application
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./
 
 # Precompile bootsnap code for faster boot times
-RUN bundle exec bootsnap precompile app/ lib/
+RUN bundle exec bootsnap precompile --gemfile app/ lib/
+
+# Set dummy credentials for asset precompilation
+ENV SECRET_KEY_BASE=NOT_USED_NON_BLANK
 
 # Precompile assets (webpack + sprockets)
-# SECRET_KEY_BASE_DUMMY=1 allows precompilation without real credentials
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
-# ============================================
-# Production stage (minimal runtime image)
-# ============================================
-FROM base AS production
-
-# Re-declare ARGs after FROM (they don't persist across stages)
-ARG UID
-ARG GID
-ARG NON_ROOT_USER
-ARG BUNDLE_PATH
-ARG APP_PATH
-
-WORKDIR ${APP_PATH}
-
-# Copy built Ruby gems
-COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
-
-# Copy the Rails application (compiled assets included)
-COPY --from=build /app/demo-ecommerce ${APP_PATH}
+EXPOSE 3000
 
 # For twin-servers A/B testing: CMD and ENTRYPOINT are removed
 # docker-compose will use 'command: sleep infinity' instead
 # This allows starting/stopping/restarting servers without restarting containers
-
-# Entrypoint prepares the database
-# ENTRYPOINT ["/rails/bin/docker-entrypoint"]
-
-EXPOSE 3000
-# CMD ["./bin/rails", "server", "-b", "0.0.0.0"]
