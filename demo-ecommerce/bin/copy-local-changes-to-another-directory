@@ -1,6 +1,6 @@
 #!/bin/bash
 # This command copies local changes to another directory.
-# Usage: copy-local-changes-to-another-directory <path>
+# Usage: bin/copy-local-changes-to-another-directory <path>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/colors.sh"
@@ -8,7 +8,6 @@ source "$SCRIPT_DIR/lib/ui.sh"
 source "$SCRIPT_DIR/lib/git-utils.sh"
 
 TARGET_DIR=$1
-
 
 # Change to git root directory so file paths are correct
 GIT_ROOT=$(git rev-parse --show-toplevel)
@@ -37,10 +36,8 @@ fi
 
 print_info "Copying files to ${TARGET_DIR}..."
 while IFS= read -r file; do
-  echo "$file" "$TARGET_DIR/$file"
   cp -f "$file" "$TARGET_DIR/$file"
   echo "  Copied: $file"
 done <<< "$FILES"
 
 print_success "All files successfully copied to ${TARGET_DIR}!"
-

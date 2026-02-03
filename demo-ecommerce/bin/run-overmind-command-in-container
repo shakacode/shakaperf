@@ -1,0 +1,17 @@
+#!/bin/bash
+# Necessary to make Overmind work with Docker. See https://github.com/DarthSim/overmind?tab=readme-ov-file#overmind-does-not-stop-the-docker-process-properly
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$DEMO_ECOMMERCE_DIR"
+
+TWIN_SERVERS_COMPOSE_FILE=docker-compose.yml
+source bin/define-helper-functions
+
+container_name=$1
+shift
+# We save the PID to a file to kill the process after the container is stopped.
+pid_path=$(mktemp /tmp/overmind-pid.XXXXXXXXXXXXXXXX)
+echo "PID path: $pid_path for $1"
+run_cmd_in_container $container_name "$@ & echo \$! > $pid_path; cat $pid_path; wait"

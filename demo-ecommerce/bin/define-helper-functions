@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source helper libraries
+source "$SCRIPT_DIR/lib/colors.sh"
+source "$SCRIPT_DIR/lib/ui.sh"
+source "$SCRIPT_DIR/lib/validation.sh"
+source "$SCRIPT_DIR/lib/git-utils.sh"
+source "$SCRIPT_DIR/lib/ssh-utils.sh"
+
+# Set default image names for local development (not set in CI)
+if [ -z "$CI" ]; then
+  export CI_CONTROL_IMAGE_NAME='demo-ecommerce:control'
+  export CI_IMAGE_NAME='demo-ecommerce:experiment'
+fi
+
+function twin_servers_compose() {
+  local compose_file="${TWIN_SERVERS_COMPOSE_FILE:-docker-compose.yml}"
+  if [ ! -f "$compose_file" ]; then
+    echo -e "\e[31mError: Docker compose file not found: $compose_file\e[0m" >&2
+    echo -e "\e[31mAre you running the command from the correct directory?\e[0m" >&2
+    return 1
+  fi
+  docker compose -f "$compose_file" "$@"
+}
+
+function run_cmd_in_container() {
+  echo -e "Running \e[32m${@:2}\e[0m in $1"
+  twin_servers_compose exec "$1" /bin/bash -i -c "${@:2}"
+}
+
+function run_cmd_in_experiment_container() {
+  run_cmd_in_container experiment-server "$@"
+}
+
+function run_cmd_in_control_container() {
+  run_cmd_in_container control-server "$@"
+}
+
+function quote_args() {
+  quoted_args=""
+  for arg in "$@"; do
+    escaped_arg=$(echo "$arg" | sed 's/\$/\\$/g')
+    quoted_args="$quoted_args \"$escaped_arg\""
+  done
+  echo "$quoted_args"
+}
+
+function wait_for_container() {
+  container_name=$1
+  echo "Waiting for $container_name container to boot"
+  container_id=$(twin_servers_compose ps -q $container_name || echo "")
+  while [ -z "$container_id" ]; do
+      sleep 5
+      container_id=$(twin_servers_compose ps -q $container_name || echo "")
+  done
+}
+
+# Run a function in parallel for both experiment and control servers
+# with colorful tagged output
+function run_for_both_servers_in_parallel() {
+  local function_name=$1
+
+  # Colorful prefixes for GNU parallel output
+  # Blue for EXPERIMENT, Green for CONTROL
+  local parallel_tagstring='{=
+    if ($_ eq "experiment") {
+      $_ = "\033[1;34m[EXPERIMENT]\033[0m";
+    } elsif ($_ eq "control") {
+      $_ = "\033[1;32m[CONTROL]\033[0m";
+    }
+  =}'
+
+  parallel --tagstring "$parallel_tagstring" --line-buffer -j 2 "$function_name" ::: experiment control
+}
+
+# Export functions to BASH_ENV for use in CircleCI steps (only if BASH_ENV is set)
+if [ -n "$BASH_ENV" ]; then
+  declare -f twin_servers_compose >> $BASH_ENV
+  declare -f run_cmd_in_container >> $BASH_ENV
+  declare -f run_cmd_in_experiment_container >> $BASH_ENV
+  declare -f run_cmd_in_control_container >> $BASH_ENV
+  declare -f quote_args >> $BASH_ENV
+  declare -f wait_for_container >> $BASH_ENV
+  declare -f run_for_both_servers_in_parallel >> $BASH_ENV
+
+  cat $BASH_ENV
+fi

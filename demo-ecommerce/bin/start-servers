@@ -1,88 +1,12 @@
 #!/bin/bash
+# Without --stop-signals, bin/run-overmind-command-in-container won't work. Overmind is tricky in combination with trap/docker.
 
-set -e
+source bin/define-helper-functions
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+overmind start --stop-signals experiment-rails=TERM,control-rails=TERM -f Procfile || true
+# overmind start --stop-signals experiment-renderer=TERM,experiment-rails=TERM,control-renderer=TERM,control-rails=TERM -f Procfile || true
 
-cd "$DEMO_ECOMMERCE_DIR"
-
-echo "=========================================="
-echo "Starting Rails Servers"
-echo "=========================================="
-echo ""
-
-# Check if containers are running
-if ! docker compose ps | grep -q "running"; then
-  echo "❌ Error: Containers are not running"
-  echo ""
-  echo "Start containers first with:"
-  echo "  ./bin/start-containers"
-  exit 1
-fi
-
-# Function to start server in background
-start_server() {
-  local server_type=$1
-  local container_name="${server_type}-server"
-  local port=$2
-
-  echo "🚀 Starting $server_type Rails server on port $port..."
-
-  # Kill any existing Rails processes
-  docker compose exec -T "$container_name" bash -c "pkill -f 'rails server' || true"
-  docker compose exec -T "$container_name" bash -c "rm -f tmp/pids/server.pid"
-
-  # Start the Rails server in the background
-  docker compose exec -d "$container_name" bash -c "bin/rails server -b 0.0.0.0 -p 3000"
-
-  echo "   ✓ $server_type server started"
-}
-
-# Start both servers
-start_server control 3020
-start_server experiment 3030
-
-echo ""
-echo "⏳ Waiting for servers to be ready..."
-sleep 5
-
-# Check if servers are responding
-check_server() {
-  local name=$1
-  local port=$2
-
-  if curl -sf "http://localhost:${port}/up" >/dev/null 2>&1; then
-    echo "   ✅ $name server is responding at http://localhost:${port}"
-    return 0
-  else
-    echo "   ⚠️  $name server may still be starting... (check logs if it doesn't respond soon)"
-    return 1
-  fi
-}
-
-echo ""
-check_server "Control" 3020
-check_server "Experiment" 3030
-
-echo ""
-echo "=========================================="
-echo "✅ Both Rails servers are running!"
-echo "=========================================="
-echo ""
-echo "🌐 Access your servers:"
-echo "   Control:    http://localhost:3020"
-echo "   Experiment: http://localhost:3030"
-echo ""
-echo "📊 View server logs:"
-echo "   docker compose logs -f control-server"
-echo "   docker compose logs -f experiment-server"
-echo ""
-echo "🛑 Stop servers:"
-echo "   docker compose exec control-server pkill -f 'rails server'"
-echo "   docker compose exec experiment-server pkill -f 'rails server'"
-echo ""
-echo "🐚 Debug inside containers:"
-echo "   docker compose exec control-server bash"
-echo "   docker compose exec experiment-server bash"
-echo ""
+# Kill old processes and clean up PID files from previous runs
+for server in control-server experiment-server; do
+  run_cmd_in_container $server "cat /tmp/overmind-pid.* 2>/dev/null | xargs -i bash -c 'kill {} || true'; rm -f /tmp/overmind-pid.*"
+done

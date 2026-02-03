@@ -13,7 +13,17 @@ This guide explains how to use the twin-servers setup for A/B performance testin
    sudo apt-get install parallel
    ```
 
-2. **Control Repository** (baseline branch):
+2. **Overmind** (for process management):
+   ```bash
+   # macOS
+   brew install tmux overmind
+
+   # Linux
+   sudo apt-get install tmux
+   # Download overmind from: https://github.com/DarthSim/overmind/releases
+   ```
+
+3. **Control Repository** (baseline branch):
    ```bash
    cd ..
    git clone <repo-url> shaka-perf-control

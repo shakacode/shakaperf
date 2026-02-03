@@ -1,0 +1,6 @@
+control-rails: bin/run-overmind-command-in-container control-server "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# control-renderer: bin/run-overmind-command-in-container control-server "node node-renderer.js"
+experiment-rails: bin/run-overmind-command-in-container experiment-server "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# experiment-renderer: bin/run-overmind-command-in-container experiment-server "node node-renderer.js"
+notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && bin/say "Control server started" && echo "visit http://localhost:3020 to access the control server" && sleep 9999999
+notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && sleep 2 && bin/say "Experiment server started" && echo "visit http://localhost:3030 to access the experiment server" && sleep 9999999

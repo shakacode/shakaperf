@@ -3,13 +3,15 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/ui.sh"
-source "$SCRIPT_DIR/lib/validation.sh"
+DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$DEMO_ECOMMERCE_DIR"
+
 source "$SCRIPT_DIR/define-helper-functions"
 
 # Validate argument
 if [ -z "$1" ]; then
-  print_error "Usage: ab-tests/bin/compile-assets <experiment|control>"
+  print_error "Usage: bin/assets-precompile <experiment|control>"
   exit 1
 fi
 
@@ -31,3 +33,9 @@ run_cmd_in_container "$server_type-server" "RAILS_ENV=production NODE_ENV=produc
 
 echo ""
 print_success "Assets compiled successfully for $server_type server!"
+echo ""
+echo "Next steps:"
+echo "  1. Restart the server to pick up new assets:"
+echo "     overmind restart ${server_type}-rails"
+echo "  2. Or restart all servers:"
+echo "     ./bin/stop && ./bin/start-containers && ./bin/start-servers"

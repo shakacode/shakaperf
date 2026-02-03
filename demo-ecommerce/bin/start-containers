@@ -5,16 +5,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMO_ECOMMERCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source helper functions if they exist
-if [ -f "$DEMO_ECOMMERCE_DIR/ab-tests/bin/lib/ui.sh" ]; then
-  source "$DEMO_ECOMMERCE_DIR/ab-tests/bin/lib/ui.sh"
-  print_banner "Starting Twin Servers Locally"
-else
-  echo "=========================================="
-  echo "Starting Twin Servers Locally"
-  echo "=========================================="
-  echo ""
-fi
+# Source helper functions
+source "$DEMO_ECOMMERCE_DIR/bin/define-helper-functions"
+print_banner "Starting Twin Servers Locally"
 
 # Check for required environment variables
 if [ -z "$RAILS_MASTER_KEY" ]; then

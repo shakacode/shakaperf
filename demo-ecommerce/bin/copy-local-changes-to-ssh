@@ -1,0 +1,56 @@
+#!/bin/bash
+# This command copies local changes to CircleCI nodes or remote servers.
+# It is used to troubleshoot CI failures using SSH
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/colors.sh"
+source "$SCRIPT_DIR/lib/ui.sh"
+source "$SCRIPT_DIR/lib/ssh-utils.sh"
+source "$SCRIPT_DIR/lib/git-utils.sh"
+
+print_banner "Copying local git changes to CI (or other remote) using SSH"
+
+parse_ssh_args "$@"
+
+# Get both changed and untracked files (excluding deleted files)
+FILES=$(get_changed_files)
+
+PRIMARY_TARGET="local-changes"
+SECONDARY_TARGETS=("project" "demo_ecommerce_experiment_docker_volume" "demo_ecommerce_control_docker_volume")
+ALL_TARGETS=("$PRIMARY_TARGET" "${SECONDARY_TARGETS[@]}")
+
+DIRS=$(echo "$FILES" | extract_directories)
+
+# Step 1: Create all directories for all targets in a single SSH command
+if [ -n "$DIRS" ]; then
+  MKDIR_CMD="mkdir -p"
+  for TARGET in "${ALL_TARGETS[@]}"; do
+    while IFS= read -r dir; do
+      MKDIR_CMD+=" $TARGET/$dir"
+    done <<< "$DIRS"
+  done
+
+  print_info "Creating all directories in all targets..."
+  echo -e "Running: ${YELLOW}${MKDIR_CMD}${NO_COLOR}"
+  ssh -p $SSH_PORT $SSH_HOST "$MKDIR_CMD"
+fi
+
+# Step 2: Upload all files to the primary target
+print_info "Uploading files to ${PRIMARY_TARGET}... ($SSH_PORT $SSH_HOST)"
+echo "$FILES" | xargs -I {} scp -O -P $SSH_PORT {} $SSH_HOST:${PRIMARY_TARGET}/{}
+
+# Step 3: Copy files from primary target to secondary targets using a single SSH command
+if [ ${#SECONDARY_TARGETS[@]} -gt 0 ] && [ -n "$FILES" ]; then
+  print_info "Copying files from ${PRIMARY_TARGET} to secondary targets..."
+
+  ssh -p $SSH_PORT $SSH_HOST bash << EOF
+    set -e
+    $(for file in $FILES; do
+      for TARGET in "${SECONDARY_TARGETS[@]}"; do
+        echo "cp -f ${PRIMARY_TARGET}/$file ${TARGET}/$file"
+      done
+    done)
+EOF
+fi
+
+print_success "All files successfully uploaded to the CI host!"

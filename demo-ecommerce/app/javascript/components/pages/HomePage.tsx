@@ -65,8 +65,8 @@ const HomePage: React.FC = () => {
           }}
         >
           {[
-            { icon: <LocalShipping />, title: 'Free Shipping', desc: 'On orders over $50' },
-            { icon: <Security />, title: 'Secure Payment', desc: '100% secure checkout' },
+            { icon: <LocalShipping />, title: 'Super Fine Shipping', desc: 'On orders over $50' },
+            { icon: <Security />, title: 'Secure Payments', desc: '100% secure checkout' },
             { icon: <Support />, title: '24/7 Support', desc: 'Dedicated support team' },
           ].map((feature, index) => (
             <Paper
