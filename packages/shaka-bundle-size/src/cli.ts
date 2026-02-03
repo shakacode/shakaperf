@@ -11,7 +11,7 @@ import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
-const VERSION = '0.0.8';
+const VERSION = '0.0.9';
 
 const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
@@ -105,13 +105,14 @@ function showVersion(): void {
   console.log(`shaka-bundle-size v${VERSION}`);
 }
 
-function getCiMetadata(mainBranch: string): { branchName: string; currentCommit: string; masterCommit: string } {
+function getCiMetadata(storage: BaselineStorage): { branchName: string; currentCommit: string; masterCommit: string } {
   const branchName = getCurrentBranch() || '';
   const currentCommit = (process.env.CIRCLE_SHA1 || process.env.GITHUB_SHA || '').substring(0, 7);
 
   let masterCommit = '';
   try {
     const { execSync } = require('child_process');
+    const mainBranch = storage.getMainBranch();
     masterCommit = execSync(`git rev-parse origin/${mainBranch}`, { encoding: 'utf8' }).trim().substring(0, 7);
   } catch {
     // Ignore if git is not available
@@ -158,8 +159,6 @@ async function main(): Promise<void> {
     endpoint: resolvedConfig.storage.endpoint,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
-    skipNonMergeCommits: resolvedConfig.storage.skipNonMergeCommits,
-    mainBranch: resolvedConfig.storage.mainBranch,
   });
 
   if (args.downloadMainBranchStats) {
@@ -243,7 +242,7 @@ async function main(): Promise<void> {
             controlDir: resolvedConfig.baselineDir,
             currentDir,
             outputDir: resolvedConfig.htmlDiffs.outputDir,
-            metadata: getCiMetadata(resolvedConfig.storage.mainBranch),
+            metadata: getCiMetadata(storage),
           });
         }
       }
