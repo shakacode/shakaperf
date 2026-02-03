@@ -45,4 +45,4 @@ yarn-debug.log*
 **/generated/**
 ssr-generated
 
-baseline/bundle_size/*
+bundle-size-diffs/*

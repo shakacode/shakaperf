@@ -34,10 +34,6 @@ export interface StorageConfig {
   endpoint?: string;
   /** Number of main branch commits to search for baseline (default: 10) */
   mainCommitsToCheck?: number;
-  /** Name of the main branch (default: 'main'). Use 'master' for older repos. */
-  mainBranch?: string;
-  /** Skip non-merge commits when searching for baseline commits*/
-  skipNonMergeCommits?: boolean;
 }
 
 /** The config structure users define in their config files. */
@@ -119,8 +115,6 @@ export const DEFAULT_STORAGE: Required<StorageConfig> = {
   awsRegion: '',
   endpoint: '',
   mainCommitsToCheck: 10,
-  mainBranch: 'main',
-  skipNonMergeCommits: false,
 };
 
 /** Uses threshold-based checking for size increases. */
@@ -293,12 +287,29 @@ export function loadConfigSync(configPath: string): BundleSizeConfig {
 }
 
 export function getCurrentBranch(): string | undefined {
-  return (
+  // First try environment variables (CI providers)
+  const envBranch =
     process.env.CIRCLE_BRANCH ||
     process.env.GITHUB_REF_NAME ||
-    process.env.GIT_BRANCH ||
-    undefined
-  );
+    process.env.GIT_BRANCH;
+
+  if (envBranch) {
+    return envBranch;
+  }
+
+  // Fallback to git command
+  try {
+    const { execSync } = require('child_process');
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+    // Avoid returning 'HEAD' in detached state
+    return branch !== 'HEAD' ? branch : undefined;
+  } catch {
+    // Git not available or not in a git repo
+    return undefined;
+  }
 }
 
 export function isBranchIgnored(config: ResolvedConfig): boolean {

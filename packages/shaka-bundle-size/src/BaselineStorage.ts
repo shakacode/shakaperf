@@ -21,7 +21,7 @@ export interface BaselineStorageConfig {
   s3Bucket: string;
   /** S3 key prefix (e.g., 'bundle-size-baselines/') */
   s3Prefix: string;
-  /** AWS region (optional, falls back to AWS_REGION env or 'us-east-1'). Use 'auto' for R2. */
+  /** AWS region (optional, falls back to AWS_REGION env or 'auto'). Use 'auto' for R2. */
   awsRegion?: string;
   /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com') */
   endpoint?: string;
@@ -29,10 +29,6 @@ export interface BaselineStorageConfig {
   baselineDir: string;
   /** Number of main branch commits to search for baseline */
   mainCommitsToCheck: number;
-  /** Name of the main branch (default: 'main') */
-  mainBranch?: string;
-  /** Skip non-merge commits when searching for baseline commits*/
-  skipNonMergeCommits?: boolean;
 }
 
 export class BaselineStorage {
@@ -42,14 +38,13 @@ export class BaselineStorage {
   private baselineDir: string;
   private mainCommitsToCheck: number;
   private mainBranch: string;
-  private skipNonMergeCommits: boolean;
   constructor(config: BaselineStorageConfig) {
     this.bucket = config.s3Bucket;
     this.prefix = config.s3Prefix.endsWith('/') ? config.s3Prefix : `${config.s3Prefix}/`;
     this.baselineDir = config.baselineDir;
     this.mainCommitsToCheck = config.mainCommitsToCheck;
-    this.mainBranch = config.mainBranch ?? 'main';
-    this.skipNonMergeCommits = config.skipNonMergeCommits ?? false;
+    // Auto-detect main branch
+    this.mainBranch = this.detectMainBranch();
     const endpoint = config.endpoint || process.env.S3_ENDPOINT;
     this.s3Client = new S3Client({
       region: config.awsRegion || process.env.AWS_REGION || 'auto',
@@ -61,6 +56,27 @@ export class BaselineStorage {
     return this.mainBranch;
   }
 
+  private detectMainBranch(): string {
+    try {
+      // Get the default branch from origin/HEAD
+      const result = execSync('git rev-parse --abbrev-ref origin/HEAD', {
+        encoding: 'utf8',
+        stdio: 'pipe'
+      }).trim();
+
+      // origin/HEAD format is "origin/main" or "origin/master"
+      if (result && result.startsWith('origin/')) {
+        return result.substring(7); // Remove "origin/" prefix
+      }
+    } catch (error) {
+      throw new Error(
+        'Could not detect main branch. Please run: git remote set-head origin --auto'
+      );
+    }
+
+    throw new Error('Could not detect main branch from origin/HEAD');
+  }
+
   getGitMergeBase(): string {
     execSync(`git fetch origin ${this.mainBranch}`, { stdio: 'pipe' });
     return execSync(`git merge-base origin/${this.mainBranch} HEAD`, { encoding: 'utf8' }).trim();
@@ -68,7 +84,7 @@ export class BaselineStorage {
 
   getRecentMainCommits(mergeBase: string): string[] {
     const output = execSync(
-      `git log -${this.mainCommitsToCheck} ${this.skipNonMergeCommits ? '--merges' : ''} --pretty=format:"%H" ${mergeBase}`,
+      `git log -${this.mainCommitsToCheck} --first-parent --pretty=format:"%H" ${mergeBase}`,
       { encoding: 'utf8' }
     );
     return output.split('\n').filter(Boolean);
