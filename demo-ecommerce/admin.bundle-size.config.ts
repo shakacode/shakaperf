@@ -2,7 +2,7 @@
  * Admin app bundle size configuration
  */
 
-import { defineConfig, RegressionType, type Regression } from 'shaka-bundle-size';
+import { defineConfig, RegressionType } from 'shaka-bundle-size';
 
 export default defineConfig({
   // Path to webpack loadable stats
@@ -42,7 +42,7 @@ export default defineConfig({
   acknowledgedBranchesFilePath: 'test/acknowledge-bundle-size.txt',
 
   // Custom regression policy for admin app
-  regressionPolicy: (regression: Regression) => {
+  regressionPolicy: (regression) => {
     const { componentName, type, sizeDiffKb } = regression;
     const isKeyComponent = ['admin'].includes(componentName);
     const threshold = isKeyComponent ? 5 : 50;
