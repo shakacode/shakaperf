@@ -11,6 +11,7 @@ const thresholds = {
 };
 
 module.exports = defineConfig({
+  ignoredBranches: 'ramezweissa/sample-ignored-regression',
   // Path to webpack loadable stats
   statsFile: 'public/packs/consumer-loadable-stats.json',
   baselineDir: 'tmp/bundle_size',
