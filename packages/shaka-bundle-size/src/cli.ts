@@ -18,7 +18,7 @@ import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
-const VERSION = '0.0.9';
+const VERSION = '0.0.10';
 
 const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
