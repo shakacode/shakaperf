@@ -35,6 +35,9 @@ export default defineConfig({
     mainCommitsToCheck: 10,
   },
 
+  // Path to file to acknowledge bundle-size regressions
+  acknowledgedBranchesFilePath: 'test/acknowledge-bundle-size.txt',
+
   // Custom regression policy for admin app
   regressionPolicy: (regression: Regression) => {
     const { componentName, type, sizeDiffKb } = regression;
