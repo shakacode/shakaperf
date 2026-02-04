@@ -4,14 +4,21 @@ import 'dotenv/config';
 import { parseArgs } from 'node:util';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadConfig, resolveConfig, isBranchIgnored, getCurrentBranch } from './config';
+import {
+  loadConfig,
+  resolveConfig,
+  isBranchAcknowledged,
+  getCurrentBranch,
+  writeAcknowledgedBranchFile,
+  RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL,
+} from './config';
 import { BundleSizeChecker } from './BundleSizeChecker';
 import { BaselineStorage } from './BaselineStorage';
 import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
-const VERSION = '0.0.9';
+const VERSION = '0.0.10';
 
 const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
@@ -23,10 +30,12 @@ Commands:
   --download-main-branch-stats  Download baseline from main branch (finds merge-base)
   --compare                     Generate current stats and compare against baseline
   --upload-main-branch-stats    Generate and upload baseline for current commit
+  --acknowledge-failure         Acknowledge bundle-size failure for current branch
 
 Options:
   -c, --config <file>    Config file path (.js or .ts) [required]
       --commit <sha>     Specific commit SHA (for download or upload)
+      --branch <name>    Branch name to acknowledge (only for --acknowledge-failure)
       --no-html-diffs    Skip HTML diff generation
   -v, --verbose          Verbose output
   -q, --quiet            Quiet output (errors only)
@@ -58,7 +67,9 @@ interface CliOptions {
   downloadMainBranchStats: boolean;
   compare: boolean;
   uploadMainBranchStats: boolean;
+  acknowledgeFailure: boolean;
   commit?: string;
+  branch?: string;
   noHtmlDiffs: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -73,7 +84,9 @@ function parseCliArgs(): CliOptions {
       'download-main-branch-stats': { type: 'boolean', default: false },
       compare: { type: 'boolean', default: false },
       'upload-main-branch-stats': { type: 'boolean', default: false },
+      'acknowledge-failure': { type: 'boolean', default: false },
       commit: { type: 'string' },
+      branch: { type: 'string' },
       'no-html-diffs': { type: 'boolean', default: false },
       verbose: { type: 'boolean', short: 'v', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
@@ -88,7 +101,9 @@ function parseCliArgs(): CliOptions {
     downloadMainBranchStats: values['download-main-branch-stats'] as boolean,
     compare: values.compare as boolean,
     uploadMainBranchStats: values['upload-main-branch-stats'] as boolean,
+    acknowledgeFailure: values['acknowledge-failure'] as boolean,
     commit: values.commit as string | undefined,
+    branch: values.branch as string | undefined,
     noHtmlDiffs: values['no-html-diffs'] as boolean,
     verbose: values.verbose as boolean,
     quiet: values.quiet as boolean,
@@ -119,6 +134,22 @@ function getCiMetadata(storage: BaselineStorage): { branchName: string; currentC
   }
 
   return { branchName, currentCommit, masterCommit };
+}
+
+function printCompareFailureGuidance(configPath: string): void {
+  const acknowledgeCmd = `shaka-bundle-size -c ${configPath} --acknowledge-failure`;
+
+  // Printed as stderr so it's visible even in "quiet" mode logs.
+  console.error('');
+  console.error('To get insights into why the bundle size changed, see Artifacts for this CI job');
+  console.error('');
+  console.error(`Also, see docs: ${RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL}`);
+  console.error('');
+  console.error(`If the change is intended or if you don't know how to resolve the issue and the docs aren't helpful, do the following:`);
+  console.error(`    * run \`${acknowledgeCmd}\``);
+  console.error('    * Commit and push the changes to your branch.');
+  console.error('This will make bundle-size green and may invite performance reviewers according to your CODEOWNERS file');
+  console.error('');
 }
 
 async function main(): Promise<void> {
@@ -215,7 +246,24 @@ async function main(): Promise<void> {
     }
   }
 
-  if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats)) {
+  if (args.acknowledgeFailure) {
+    if (!resolvedConfig.acknowledgedBranchesFilePath) {
+      console.error(colorize.red('Error: acknowledgedBranchesFilePath must be set in config to use --acknowledge-failure'));
+      process.exit(2);
+    }
+    try {
+      writeAcknowledgedBranchFile(resolvedConfig.acknowledgedBranchesFilePath, args.branch);
+      const branch = args.branch ?? getCurrentBranch();
+      reporter.success(`Acknowledged bundle-size failure for branch: ${branch}`);
+      reporter.info(`File updated: ${resolvedConfig.acknowledgedBranchesFilePath}`);
+      process.exit(0);
+    } catch (error) {
+      console.error(colorize.red(`Error: ${(error as Error).message}`));
+      process.exit(2);
+    }
+  }
+
+  if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats && !args.acknowledgeFailure)) {
     try {
       const result = checker.check();
 
@@ -247,13 +295,18 @@ async function main(): Promise<void> {
         }
       }
 
-      if (!result.passed && isBranchIgnored(resolvedConfig)) {
-        const branch = getCurrentBranch();
-        console.log(colorize.yellow(`Branch ${branch} is in ignoredBranches - treating as warning`));
+      if (result.passed) {
         process.exit(0);
       }
 
-      process.exit(result.passed ? 0 : 1);
+      if (isBranchAcknowledged(resolvedConfig)) {
+        const branch = getCurrentBranch();
+        console.log(colorize.yellow(`Branch ${branch} is acknowledged - treating as warning`));
+        process.exit(0);
+      }
+
+      printCompareFailureGuidance(args.config);
+      process.exit(1);
     } catch (error) {
       console.error(colorize.red(`Error running check: ${(error as Error).message}`));
       process.exit(2);

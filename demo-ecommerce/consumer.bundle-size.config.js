@@ -11,6 +11,8 @@ const thresholds = {
 };
 
 module.exports = defineConfig({
+  acknowledgedBranchesFilePath: 'test/acknowledge-bundle-size.txt',
+
   // Path to webpack loadable stats
   statsFile: 'public/packs/consumer-loadable-stats.json',
   baselineDir: 'tmp/bundle_size',
