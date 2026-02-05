@@ -11,7 +11,7 @@ ARG BUNDLE_PATH=/home/${NON_ROOT_USER}/bundle
 ARG NODE_PATH=/home/${NON_ROOT_USER}/node
 ARG APP_PATH=/home/${NON_ROOT_USER}/app
 
-FROM ruby:${RUBY_VERSION}-bullseye as base
+FROM ruby:${RUBY_VERSION}-bullseye AS base
 
 # Re-declare ARGs after FROM (they don't persist across stages)
 ARG NON_ROOT_USER
@@ -21,7 +21,7 @@ ARG BUNDLE_PATH
 ARG NODE_PATH
 ARG APP_PATH
 
-ARG NODE_VERSION=20
+ARG NODE_VERSION=24.13.0
 
 # Install base packages
 RUN apt-get update -qq && \
@@ -44,13 +44,11 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
-    apt-get install --no-install-recommends -y nodejs && \
-    corepack enable && \
-    corepack prepare yarn@4.12.0 --activate && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
-
 ENV PATH=$NODE_PATH/bin:$PATH
+RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
+    /tmp/node-build-master/bin/node-build "${NODE_VERSION}" ${NODE_PATH} && \
+    corepack enable && \
+    rm -rf /tmp/node-build-master
 
 # Set production environment
 ENV RAILS_ENV="production" \

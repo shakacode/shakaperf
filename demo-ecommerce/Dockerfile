@@ -16,7 +16,7 @@ ARG BUNDLE_PATH
 ARG NODE_PATH
 ARG APP_PATH
 
-ARG NODE_VERSION=20.17.0
+ARG NODE_VERSION=24.13.0
 
 # Install base packages
 RUN apt-get update -qq && \
