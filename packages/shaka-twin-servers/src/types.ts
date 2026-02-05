@@ -1,3 +1,10 @@
+export interface SetupCommand {
+  /** The shell command to execute in the container */
+  command: string;
+  /** Human-readable description shown during execution */
+  description: string;
+}
+
 export interface TwinServersConfig {
   projectDir: string;
   controlDir: string;
@@ -14,6 +21,8 @@ export interface TwinServersConfig {
     control: string;
     experiment: string;
   };
+  /** Optional setup commands to run in containers after they start */
+  setupCommands?: SetupCommand[];
 }
 
 export interface ResolvedConfig {
@@ -32,6 +41,8 @@ export interface ResolvedConfig {
     control: string;
     experiment: string;
   };
+  /** Setup commands to run (empty array if none provided) */
+  setupCommands: SetupCommand[];
 }
 
 export interface CliOptions {

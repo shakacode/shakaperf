@@ -22,4 +22,8 @@ export default defineConfig({
     control: '~/demo_ecommerce_control_docker_volume',
     experiment: '~/demo_ecommerce_experiment_docker_volume',
   },
+  setupCommands: [
+    { command: 'bin/rails db:prepare', description: 'Preparing database' },
+    { command: 'bin/rails db:seed', description: 'Seeding database' },
+  ],
 });

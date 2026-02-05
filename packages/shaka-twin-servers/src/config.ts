@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { TwinServersConfig, ResolvedConfig } from './types';
+import type { TwinServersConfig, ResolvedConfig, SetupCommand } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
@@ -116,6 +116,33 @@ export function resolveConfig(config: TwinServersConfig, cwd: string = process.c
     throw new Error(`Docker build root not found: ${dockerBuildDir}`);
   }
 
+  // Validate setupCommands if provided
+  const setupCommands: SetupCommand[] = [];
+  if (config.setupCommands) {
+    if (!Array.isArray(config.setupCommands)) {
+      throw new Error('setupCommands must be an array');
+    }
+
+    for (let i = 0; i < config.setupCommands.length; i++) {
+      const cmd = config.setupCommands[i];
+
+      if (!cmd || typeof cmd !== 'object') {
+        throw new Error(`setupCommands[${i}] must be an object`);
+      }
+      if (!cmd.command || typeof cmd.command !== 'string') {
+        throw new Error(`setupCommands[${i}].command is required and must be a string`);
+      }
+      if (!cmd.description || typeof cmd.description !== 'string') {
+        throw new Error(`setupCommands[${i}].description is required and must be a string`);
+      }
+
+      setupCommands.push({
+        command: cmd.command,
+        description: cmd.description,
+      });
+    }
+  }
+
   return {
     projectDir,
     controlDir,
@@ -132,5 +159,6 @@ export function resolveConfig(config: TwinServersConfig, cwd: string = process.c
       control: expandTilde(config.volumes.control),
       experiment: expandTilde(config.volumes.experiment),
     },
+    setupCommands,
   };
 }

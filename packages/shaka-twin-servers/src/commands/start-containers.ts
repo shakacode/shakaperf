@@ -14,31 +14,38 @@ export interface StartContainersOptions {
   verbose?: boolean;
 }
 
-async function setupDatabaseForServer(
+async function runSetupCommands(
   config: ResolvedConfig,
   serverType: 'control' | 'experiment',
   composeEnv: Record<string, string>
 ): Promise<void> {
+  // Skip if no setup commands configured
+  if (config.setupCommands.length === 0) {
+    return;
+  }
+
   const containerName = `${serverType}-server`;
   const composeOptions = { composeFile: config.composeFile, cwd: config.projectDir, env: composeEnv };
 
   console.log('');
-  console.log(`Setting up database for ${serverType}...`);
+  console.log(`Running setup commands for ${serverType}...`);
 
-  const prepareResult = await dockerComposeExec(composeOptions, containerName, 'bin/rails db:prepare');
-  if (prepareResult.code !== 0) {
-    throw new Error(`Failed to prepare database for ${serverType}: ${prepareResult.stderr}`);
-  }
+  for (const cmd of config.setupCommands) {
+    console.log(`   Started ${cmd.description} for ${serverType}...`);
 
-  const seedsExist = await dockerComposeExec(composeOptions, containerName, 'test -f db/seeds.rb');
-  if (seedsExist.code === 0) {
-    const seedResult = await dockerComposeExec(composeOptions, containerName, 'bin/rails db:seed');
-    if (seedResult.code !== 0) {
-      console.log(`   Warning: db:seed failed for ${serverType}`);
+    const result = await dockerComposeExec(composeOptions, containerName, cmd.command);
+
+    if (result.code !== 0) {
+      throw new Error(
+        `Setup command failed for ${serverType}: ${cmd.description}\n` +
+          `Command: ${cmd.command}\n` +
+          `Error: ${result.stderr || 'Unknown error'}`
+      );
     }
+    console.log(`   Completed ${cmd.description} for ${serverType} successfully`);
   }
 
-  console.log(`   Database ready for ${serverType}`);
+  console.log(`   Setup complete for ${serverType}`);
 }
 
 export async function startContainers(
@@ -112,8 +119,8 @@ export async function startContainers(
   }
 
   await Promise.all([
-    setupDatabaseForServer(config, 'control', composeEnv),
-    setupDatabaseForServer(config, 'experiment', composeEnv),
+    runSetupCommands(config, 'control', composeEnv),
+    runSetupCommands(config, 'experiment', composeEnv),
   ]);
 
   console.log('');
