@@ -1,9 +1,10 @@
 {
   "name": "shaka-twin-servers",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Twin server for performance testing React and React on Rails apps",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": "./dist/cli.js",
   "files": [
     "dist"
   ],
@@ -27,5 +28,13 @@
   "homepage": "https://github.com/shakacode/shaka-perf#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
   }
 }

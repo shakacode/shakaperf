@@ -8138,6 +8138,13 @@ __metadata:
 "shaka-twin-servers@workspace:*, shaka-twin-servers@workspace:packages/shaka-twin-servers":
   version: 0.0.0-use.local
   resolution: "shaka-twin-servers@workspace:packages/shaka-twin-servers"
+  dependencies:
+    "@types/node": "npm:^20.0.0"
+    dotenv: "npm:^16.0.0"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.3.3"
+  bin:
+    shaka-twin-servers: ./dist/cli.js
   languageName: unknown
   linkType: soft
 
