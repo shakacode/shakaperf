@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { TwinServersConfig, ResolvedConfig, SetupCommand } from './types';
+import { TwinServersConfigSchema, type TwinServersConfig, type ResolvedConfig } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
@@ -66,45 +66,20 @@ function expandTilde(filePath: string): string {
   return filePath;
 }
 
-export function resolveConfig(config: TwinServersConfig, cwd: string = process.cwd()): ResolvedConfig {
-  // Validate all required fields
-  if (!config.projectDir) {
-    throw new Error('projectDir is required in config');
+export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {
+  // Validate schema with Zod
+  const parseResult = TwinServersConfigSchema.safeParse(config);
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    const fieldPath = firstError.path.join('.');
+    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
   }
-  if (!config.controlDir) {
-    throw new Error('controlDir is required in config');
-  }
-  if (!config.dockerBuildDir) {
-    throw new Error('dockerBuildDir is required in config');
-  }
-  if (!config.dockerBuildArgs) {
-    throw new Error('dockerBuildArgs is required in config');
-  }
-  if (!config.composeFile) {
-    throw new Error('composeFile is required in config');
-  }
-  if (!config.procfile) {
-    throw new Error('procfile is required in config');
-  }
-  if (!config.stopSignals || Object.keys(config.stopSignals).length === 0) {
-    throw new Error('stopSignals is required in config');
-  }
-  if (!config.images.control) {
-    throw new Error('images.control is required in config');
-  }
-  if (!config.images.experiment) {
-    throw new Error('images.experiment is required in config');
-  }
-  if (!config.volumes.control) {
-    throw new Error('volumes.control is required in config');
-  }
-  if (!config.volumes.experiment) {
-    throw new Error('volumes.experiment is required in config');
-  }
+  const validConfig = parseResult.data;
 
-  const projectDir = path.resolve(cwd, expandTilde(config.projectDir));
-  const controlDir = path.resolve(cwd, expandTilde(config.controlDir));
-  const dockerBuildDir = path.resolve(cwd, expandTilde(config.dockerBuildDir));
+  // Resolve paths and validate existence
+  const projectDir = path.resolve(cwd, expandTilde(validConfig.projectDir));
+  const controlDir = path.resolve(cwd, expandTilde(validConfig.controlDir));
+  const dockerBuildDir = path.resolve(cwd, expandTilde(validConfig.dockerBuildDir));
 
   if (!fs.existsSync(projectDir)) {
     throw new Error(`Project directory not found: ${projectDir}`);
@@ -116,49 +91,19 @@ export function resolveConfig(config: TwinServersConfig, cwd: string = process.c
     throw new Error(`Docker build root not found: ${dockerBuildDir}`);
   }
 
-  // Validate setupCommands if provided
-  const setupCommands: SetupCommand[] = [];
-  if (config.setupCommands) {
-    if (!Array.isArray(config.setupCommands)) {
-      throw new Error('setupCommands must be an array');
-    }
-
-    for (let i = 0; i < config.setupCommands.length; i++) {
-      const cmd = config.setupCommands[i];
-
-      if (!cmd || typeof cmd !== 'object') {
-        throw new Error(`setupCommands[${i}] must be an object`);
-      }
-      if (!cmd.command || typeof cmd.command !== 'string') {
-        throw new Error(`setupCommands[${i}].command is required and must be a string`);
-      }
-      if (!cmd.description || typeof cmd.description !== 'string') {
-        throw new Error(`setupCommands[${i}].description is required and must be a string`);
-      }
-
-      setupCommands.push({
-        command: cmd.command,
-        description: cmd.description,
-      });
-    }
-  }
-
   return {
     projectDir,
     controlDir,
     dockerBuildDir,
-    dockerBuildArgs: config.dockerBuildArgs,
-    composeFile: path.resolve(projectDir, config.composeFile),
-    procfile: path.resolve(projectDir, config.procfile),
-    stopSignals: config.stopSignals,
-    images: {
-      control: config.images.control,
-      experiment: config.images.experiment,
-    },
+    dockerBuildArgs: validConfig.dockerBuildArgs,
+    composeFile: path.resolve(projectDir, validConfig.composeFile),
+    procfile: path.resolve(projectDir, validConfig.procfile),
+    stopSignals: validConfig.stopSignals,
+    images: validConfig.images,
     volumes: {
-      control: expandTilde(config.volumes.control),
-      experiment: expandTilde(config.volumes.experiment),
+      control: expandTilde(validConfig.volumes.control),
+      experiment: expandTilde(validConfig.volumes.experiment),
     },
-    setupCommands,
+    setupCommands: validConfig.setupCommands ?? [],
   };
 }
