@@ -1,5 +1,6 @@
 import type { ResolvedConfig } from '../types';
 import { dockerComposeExec } from '../helpers/docker';
+import { colorize } from '../helpers/ui';
 
 export interface RunCmdOptions {
   verbose?: boolean;
@@ -22,7 +23,7 @@ export async function runCmd(
 ): Promise<void> {
   const containerName = target === 'control' ? 'control-server' : 'experiment-server';
 
-  console.log(`Running \x1b[32m${command}\x1b[0m in ${containerName}`);
+  console.log(`Running ${colorize(command, 'green')} in ${containerName}`);
 
   const result = await dockerComposeExec(
     {

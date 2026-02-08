@@ -8,6 +8,12 @@ const colors = {
   reset: supportsColor ? '\x1b[0m' : '',
 };
 
+export type Color = 'red' | 'green' | 'yellow' | 'blue';
+
+export function colorize(text: string, color: Color): string {
+  return `${colors[color]}${text}${colors.reset}`;
+}
+
 export function printError(message: string): void {
   console.error(`${colors.red}Error: ${message}${colors.reset}`);
 }

@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import type { ResolvedConfig } from '../types';
 import { dockerComposeExec } from '../helpers/docker';
+import { colorize } from '../helpers/ui';
 
 export interface RunOvermindCommandOptions {
   verbose?: boolean;
@@ -45,7 +46,7 @@ export async function runOvermindCommand(
   // 4. Waits for completion
   const wrappedCommand = `${command} & echo $! > ${pidPath}; cat ${pidPath}; wait`;
 
-  console.log(`Running \x1b[32m${command}\x1b[0m in ${containerName}`);
+  console.log(`Running ${colorize(command, 'green')} in ${containerName}`);
 
   const result = await dockerComposeExec(
     {

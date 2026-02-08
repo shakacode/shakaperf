@@ -10,6 +10,7 @@ import { runOvermindCommand } from './commands/run-overmind-command';
 import { runCmd } from './commands/run-cmd';
 import { syncChanges } from './commands/sync-changes';
 import type { Command } from './types';
+import { colorize } from './helpers/ui';
 
 const VERSION = '0.0.2';
 
@@ -63,15 +64,6 @@ function showHelp(): void {
 
 function showVersion(): void {
   console.log(`shaka-twin-servers v${VERSION}`);
-}
-
-function colorize(text: string, color: 'red' | 'green' | 'yellow'): string {
-  const colors = {
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-  };
-  return `${colors[color]}${text}\x1b[0m`;
 }
 
 function requireTarget(target: string | undefined, usage: string): asserts target is 'control' | 'experiment' {
