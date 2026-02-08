@@ -1,4 +1,5 @@
 import { exec, execSync_ } from './shell';
+import type { ResolvedConfig } from '../types';
 
 export interface DockerBuildOptions {
   imageName: string;
@@ -29,34 +30,43 @@ export function dockerImageExists(imageName: string): boolean {
   return result !== '';
 }
 
-export interface DockerComposeOptions {
-  composeFile: string;
-  cwd: string;
-  env?: Record<string, string>;
+function buildComposeOptions(config: ResolvedConfig) {
+  return {
+    composeFile: config.composeFile,
+    cwd: config.projectDir,
+    env: {
+      ...process.env,
+      CI_IMAGE_NAME: config.images.experiment,
+      CI_CONTROL_IMAGE_NAME: config.images.control,
+    },
+  };
 }
 
-export async function dockerComposeUp(options: DockerComposeOptions): Promise<void> {
-  const result = await exec('docker', ['compose', '-f', options.composeFile, 'up', '-d'], {
-    cwd: options.cwd,
-    env: options.env ? { ...process.env, ...options.env } : undefined,
+export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {
+  const opts = buildComposeOptions(config);
+  const result = await exec('docker', ['compose', '-f', opts.composeFile, 'up', '-d'], {
+    cwd: opts.cwd,
+    env: opts.env,
   });
   if (result.code !== 0) {
     throw new Error('Docker compose up failed');
   }
 }
 
-export async function dockerComposeDown(options: DockerComposeOptions): Promise<void> {
-  await exec('docker', ['compose', '-f', options.composeFile, 'down', '--remove-orphans'], {
-    cwd: options.cwd,
-    env: options.env ? { ...process.env, ...options.env } : undefined,
+export async function dockerComposeDown(config: ResolvedConfig): Promise<void> {
+  const opts = buildComposeOptions(config);
+  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--remove-orphans'], {
+    cwd: opts.cwd,
+    env: opts.env,
     silent: true,
   });
 }
 
-export async function dockerComposePs(options: DockerComposeOptions): Promise<void> {
-  await exec('docker', ['compose', '-f', options.composeFile, 'ps'], {
-    cwd: options.cwd,
-    env: options.env ? { ...process.env, ...options.env } : undefined,
+export async function dockerComposePs(config: ResolvedConfig): Promise<void> {
+  const opts = buildComposeOptions(config);
+  await exec('docker', ['compose', '-f', opts.composeFile, 'ps'], {
+    cwd: opts.cwd,
+    env: opts.env,
   });
 }
 
@@ -66,33 +76,34 @@ export interface DockerComposeExecOptions {
 }
 
 export async function dockerComposeExec(
-  options: DockerComposeOptions,
+  config: ResolvedConfig,
   containerName: string,
   command: string,
   execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const { interactive = false, stream = false } = execOptions;
 
-  const args = ['compose', '-f', options.composeFile, 'exec'];
+  const opts = buildComposeOptions(config);
+  const args = ['compose', '-f', opts.composeFile, 'exec'];
   if (!interactive) {
     args.push('-T');
   }
   args.push(containerName, 'bash', '-c', command);
 
   return exec('docker', args, {
-    cwd: options.cwd,
-    env: options.env ? { ...process.env, ...options.env } : undefined,
+    cwd: opts.cwd,
+    env: opts.env,
     silent: !stream,
   });
 }
 
 export async function waitForContainer(
-  options: DockerComposeOptions,
+  config: ResolvedConfig,
   containerName: string,
   maxAttempts: number = 30
 ): Promise<boolean> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const result = await dockerComposeExec(options, containerName, 'echo ready');
+    const result = await dockerComposeExec(config, containerName, 'echo ready');
     if (result.code === 0) {
       return true;
     }

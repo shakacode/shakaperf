@@ -49,14 +49,7 @@ export async function runOvermindCommand(
   console.log(`Running ${colorize(command, 'green')} in ${containerName}`);
 
   const result = await dockerComposeExec(
-    {
-      composeFile: config.composeFile,
-      cwd: config.projectDir,
-      env: {
-        CI_IMAGE_NAME: config.images.experiment,
-        CI_CONTROL_IMAGE_NAME: config.images.control,
-      },
-    },
+    config,
     containerName,
     wrappedCommand,
     { stream: true }

@@ -34,10 +34,6 @@ export async function startServers(
     ], {
       cwd: config.projectDir,
       stdio: 'inherit',
-      env: {
-        ...process.env,
-        TWIN_SERVERS_COMPOSE_FILE: config.composeFile,
-      },
     });
 
     let cleanupDone = false;
@@ -60,18 +56,9 @@ export async function startServers(
       }
 
       // Cleanup: kill any remaining overmind processes in containers
-      const composeOptions = {
-        composeFile: config.composeFile,
-        cwd: config.projectDir,
-        env: {
-          CI_IMAGE_NAME: config.images.experiment,
-          CI_CONTROL_IMAGE_NAME: config.images.control,
-        },
-      };
-
       for (const server of ['control-server', 'experiment-server']) {
         await dockerComposeExec(
-          composeOptions,
+          config,
           server,
           "cat /tmp/overmind-pid.* 2>/dev/null | xargs -i bash -c 'kill {} || true'; rm -f /tmp/overmind-pid.*"
         );

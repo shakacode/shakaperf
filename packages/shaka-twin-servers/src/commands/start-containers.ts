@@ -16,8 +16,7 @@ export interface StartContainersOptions {
 
 async function runSetupCommands(
   config: ResolvedConfig,
-  serverType: 'control' | 'experiment',
-  composeEnv: Record<string, string>
+  serverType: 'control' | 'experiment'
 ): Promise<void> {
   // Skip if no setup commands configured
   if (config.setupCommands.length === 0) {
@@ -25,7 +24,6 @@ async function runSetupCommands(
   }
 
   const containerName = `${serverType}-server`;
-  const composeOptions = { composeFile: config.composeFile, cwd: config.projectDir, env: composeEnv };
 
   console.log('');
   console.log(`Running setup commands for ${serverType}...`);
@@ -33,7 +31,7 @@ async function runSetupCommands(
   for (const cmd of config.setupCommands) {
     console.log(`   Started ${cmd.description} for ${serverType}...`);
 
-    const result = await dockerComposeExec(composeOptions, containerName, cmd.command);
+    const result = await dockerComposeExec(config, containerName, cmd.command);
 
     if (result.code !== 0) {
       throw new Error(
@@ -55,11 +53,6 @@ export async function startContainers(
   const { verbose } = options;
 
   printBanner('Starting Twin Servers Locally');
-
-  const composeEnv = {
-    CI_IMAGE_NAME: config.images.experiment,
-    CI_CONTROL_IMAGE_NAME: config.images.control,
-  };
 
   console.log('Using images:');
   console.log(`  - Experiment: ${config.images.experiment}`);
@@ -85,24 +78,22 @@ export async function startContainers(
   console.log(`   ${config.volumes.experiment}`);
   console.log('');
 
-  const composeOptions = { composeFile: config.composeFile, cwd: config.projectDir, env: composeEnv };
-
   console.log('Stopping any existing twin servers...');
-  await dockerComposeDown(composeOptions);
+  await dockerComposeDown(config);
 
   console.log('Starting twin servers...');
-  await dockerComposeUp(composeOptions);
+  await dockerComposeUp(config);
 
   console.log('Waiting for containers to start...');
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   console.log('Checking container status...');
-  await dockerComposePs(composeOptions);
+  await dockerComposePs(config);
 
   console.log('');
   console.log('Waiting for containers to be ready...');
 
-  const controlReady = await waitForContainer(composeOptions, 'control-server');
+  const controlReady = await waitForContainer(config, 'control-server');
   if (controlReady) {
     console.log('   control-server is ready');
   } else {
@@ -110,7 +101,7 @@ export async function startContainers(
     process.exit(1);
   }
 
-  const experimentReady = await waitForContainer(composeOptions, 'experiment-server');
+  const experimentReady = await waitForContainer(config, 'experiment-server');
   if (experimentReady) {
     console.log('   experiment-server is ready');
   } else {
@@ -119,8 +110,8 @@ export async function startContainers(
   }
 
   await Promise.all([
-    runSetupCommands(config, 'control', composeEnv),
-    runSetupCommands(config, 'experiment', composeEnv),
+    runSetupCommands(config, 'control'),
+    runSetupCommands(config, 'experiment'),
   ]);
 
   console.log('');
