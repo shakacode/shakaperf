@@ -226,23 +226,16 @@ workflows:
   # Performance testing workflow with twin servers for A/B testing
   perf-test-twin-servers:
     jobs:
-      - approve-perf-tests:
-          type: approval
-          filters:
-            branches:
-              ignore: main
-
-      # Build images in parallel after approval
       - build-experiment-image:
-          requires:
-            - approve-perf-tests
+          # requires:
+          #   - approve-perf-tests
           filters:
             branches:
               ignore: main
 
       - build-control-image:
-          requires:
-            - approve-perf-tests
+          # requires:
+          #   - approve-perf-tests
           filters:
             branches:
               ignore: main
