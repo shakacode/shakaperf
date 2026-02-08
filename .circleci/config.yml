@@ -180,7 +180,7 @@ jobs:
           command: |
             echo "export CI_IMAGE_NAME=demo-ecommerce:experiment" >> $BASH_ENV
             echo "export CI_CONTROL_IMAGE_NAME=demo-ecommerce:control" >> $BASH_ENV
-            echo "export RAILS_MASTER_KEY=dummy_key_for_ci" >> $BASH_ENV
+            echo "export RAILS_MASTER_KEY=dummy_key_for_cidummy_key_for_ci" >> $BASH_ENV
             echo "export USER=$(whoami)" >> $BASH_ENV
             source $BASH_ENV
       - run:
