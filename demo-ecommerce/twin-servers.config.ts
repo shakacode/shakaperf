@@ -10,10 +10,6 @@ export default defineConfig({
   },
   composeFile: 'docker-compose.yml',
   procfile: 'Procfile',
-  stopSignals: {
-    'experiment-rails': 'TERM',
-    'control-rails': 'TERM',
-  },
   images: {
     control: 'demo-ecommerce:control',
     experiment: 'demo-ecommerce:experiment',

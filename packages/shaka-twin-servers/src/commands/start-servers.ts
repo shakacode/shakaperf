@@ -27,15 +27,9 @@ export async function startServers(
   console.log('Starting servers via Overmind...');
   console.log('');
 
-  // Build stop signals string from config: { 'experiment-rails': 'TERM', 'control-rails': 'TERM' } => 'experiment-rails=TERM,control-rails=TERM'
-  const stopSignalsStr = Object.entries(config.stopSignals)
-    .map(([process, signal]) => `${process}=${signal}`)
-    .join(',');
-
   return new Promise((resolve, reject) => {
     const child = spawn('overmind', [
       'start',
-      '--stop-signals', stopSignalsStr,
       '-f', config.procfile,
     ], {
       cwd: config.projectDir,

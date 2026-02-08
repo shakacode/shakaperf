@@ -14,10 +14,6 @@ export const TwinServersConfigSchema = z.object({
   dockerBuildArgs: z.record(z.string(), z.string()),
   composeFile: z.string().min(1, 'composeFile is required'),
   procfile: z.string().min(1, 'procfile is required'),
-  stopSignals: z.record(z.string(), z.string()).refine(
-    (obj: Record<string, string>) => Object.keys(obj).length > 0,
-    { message: 'stopSignals must have at least one entry' }
-  ),
   images: z.object({
     control: z.string().min(1, 'images.control is required'),
     experiment: z.string().min(1, 'images.experiment is required'),

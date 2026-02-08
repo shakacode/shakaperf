@@ -98,7 +98,6 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     dockerBuildArgs: validConfig.dockerBuildArgs,
     composeFile: path.resolve(projectDir, validConfig.composeFile),
     procfile: path.resolve(projectDir, validConfig.procfile),
-    stopSignals: validConfig.stopSignals,
     images: validConfig.images,
     volumes: {
       control: expandTilde(validConfig.volumes.control),
