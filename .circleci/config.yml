@@ -115,6 +115,16 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
+      - node/install:
+          node-version: '24.13.0'
+      - run:
+          name: Enable corepack for Yarn
+          command: corepack enable && corepack install
+      - node/install-packages:
+          pkg-manager: yarn
+      - run:
+          name: Build shaka-twin-servers package
+          command: yarn build
       - run:
           name: Copy Dockerfile to temp location
           command: |
@@ -131,15 +141,8 @@ jobs:
           command: |
             # Copy the Dockerfile from current branch into the control checkout
             cp /tmp/docker-build/Dockerfile.production /home/circleci/control_checkout/demo-ecommerce/
-            cd /home/circleci/control_checkout
-            docker build -t demo-ecommerce:control \
-              -f demo-ecommerce/Dockerfile.production \
-              --build-arg UID=$(id -u) \
-              --build-arg GID=$(id -g) \
-              --build-arg NON_ROOT_USER=$(whoami) \
-              --build-arg RUBY_VERSION=3.3.7 \
-              --build-arg NODE_VERSION=24.13.0 \
-              .
+            cd demo-ecommerce
+            yarn shaka-twin-servers build --target control -c twin-servers.config.ci.ts
       - run:
           name: Save Docker image
           command: |
@@ -180,7 +183,6 @@ jobs:
           command: |
             echo "export CI_IMAGE_NAME=demo-ecommerce:experiment" >> $BASH_ENV
             echo "export CI_CONTROL_IMAGE_NAME=demo-ecommerce:control" >> $BASH_ENV
-            echo "export RAILS_MASTER_KEY=dummy_key_for_cidummy_key_for_ci" >> $BASH_ENV
             echo "export USER=$(whoami)" >> $BASH_ENV
             source $BASH_ENV
       - run:

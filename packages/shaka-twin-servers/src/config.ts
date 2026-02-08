@@ -84,9 +84,7 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
   if (!fs.existsSync(projectDir)) {
     throw new Error(`Project directory not found: ${projectDir}`);
   }
-  if (!fs.existsSync(controlDir)) {
-    throw new Error(`Control directory not found: ${controlDir}`);
-  }
+  // Note: controlDir is only validated when building control target (in build.ts)
   if (!fs.existsSync(dockerBuildDir)) {
     throw new Error(`Docker build root not found: ${dockerBuildDir}`);
   }
