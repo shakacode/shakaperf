@@ -3765,6 +3765,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:24":
+  version: 24.10.12
+  resolution: "@types/node@npm:24.10.12"
+  dependencies:
+    undici-types: "npm:~7.16.0"
+  checksum: 10c0/fa39b88c8d82a2cec41544bee3426c4b78a13cc3c5ccf6fcb6c9528a68466ffcc73772833c612c7bb7e5fe1bc8e38002d1d543152e43b20b0600096cf6f210d1
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:^20.0.0":
   version: 20.19.29
   resolution: "@types/node@npm:20.19.29"
@@ -5128,6 +5137,7 @@ __metadata:
     "@types/loadable__component": "npm:^5.13.10"
     "@types/loadable__server": "npm:^5.12.11"
     "@types/loadable__webpack-plugin": "npm:^5"
+    "@types/node": "npm:24"
     "@types/react": "npm:^19.2.8"
     "@types/react-dom": "npm:^19.2.3"
     autoprefixer: "npm:^10.4.23"

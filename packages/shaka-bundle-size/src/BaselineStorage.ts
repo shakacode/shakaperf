@@ -23,8 +23,12 @@ export interface BaselineStorageConfig {
   s3Prefix: string;
   /** AWS region (optional, falls back to AWS_REGION env or 'auto'). Use 'auto' for R2. */
   awsRegion?: string;
-  /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com') */
-  endpoint?: string;
+  /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com'). Falls back to S3_ENDPOINT env var. */
+  s3Endpoint?: string;
+  /** AWS access key ID (optional, falls back to AWS_ACCESS_KEY_ID env var) */
+  awsAccessKeyId?: string;
+  /** AWS secret access key (optional, falls back to AWS_SECRET_ACCESS_KEY env var) */
+  awsSecretAccessKey?: string;
   /** Working directory for current baseline */
   baselineDir: string;
   /** Number of main branch commits to search for baseline */
@@ -45,10 +49,15 @@ export class BaselineStorage {
     this.mainCommitsToCheck = config.mainCommitsToCheck;
     // Auto-detect main branch
     this.mainBranch = this.detectMainBranch();
-    const endpoint = config.endpoint || process.env.S3_ENDPOINT;
+    const endpoint = config.s3Endpoint || process.env.S3_ENDPOINT;
+    const accessKeyId = config.awsAccessKeyId || process.env.AWS_ACCESS_KEY_ID;
+    const secretAccessKey = config.awsSecretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
     this.s3Client = new S3Client({
       region: config.awsRegion || process.env.AWS_REGION || 'auto',
       ...(endpoint && { endpoint }),
+      ...(accessKeyId && secretAccessKey && {
+        credentials: { accessKeyId, secretAccessKey },
+      }),
     });
   }
 
