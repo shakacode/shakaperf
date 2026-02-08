@@ -16,8 +16,8 @@ export default defineConfig({
     experiment: 'demo-ecommerce:experiment',
   },
   volumes: {
-    control: '/tmp/demo_ecommerce_control',
-    experiment: '/tmp/demo_ecommerce_experiment',
+    control: '~/demo_ecommerce_control_docker_volume',
+    experiment: '~/demo_ecommerce_experiment_docker_volume',
   },
   setupCommands: [
     { command: 'bin/rails db:prepare', description: 'Preparing database' },
