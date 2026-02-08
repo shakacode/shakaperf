@@ -152,6 +152,9 @@ jobs:
       - checkout
       - node/install:
           node-version: '24.13.0'
+      - run:
+          name: Enable corepack for Yarn
+          command: corepack enable && corepack install
       - node/install-packages:
           pkg-manager: yarn
       - run:
