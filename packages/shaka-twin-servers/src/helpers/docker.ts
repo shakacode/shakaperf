@@ -38,6 +38,7 @@ function buildComposeOptions(config: ResolvedConfig) {
       ...process.env,
       CI_IMAGE_NAME: config.images.experiment,
       CI_CONTROL_IMAGE_NAME: config.images.control,
+      USER: process.env.USER || getUsername(),
     },
   };
 }
