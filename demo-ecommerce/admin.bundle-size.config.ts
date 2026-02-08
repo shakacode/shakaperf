@@ -31,7 +31,10 @@ export default defineConfig({
   storage: {
     s3Bucket: 'shaka-perf-demo-storage',
     s3Prefix: 'bundle-size/',
-    // endpoint and credentials come from env vars: S3_ENDPOINT, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+    awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID, // By default, it looks for env.AWS_ACCESS_KEY_ID
+    awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // By default, it looks for env.AWS_SECRET_ACCESS_KEY
+    s3Endpoint: process.env.S3_ENDPOINT,
+    awsRegion: 'auto',
     mainCommitsToCheck: 10,
   },
 

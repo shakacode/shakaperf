@@ -18,7 +18,7 @@ import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
 
-const VERSION = '0.0.10';
+const VERSION = '0.0.11';
 
 const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
@@ -187,7 +187,9 @@ async function main(): Promise<void> {
     s3Bucket: resolvedConfig.storage.s3Bucket,
     s3Prefix: resolvedConfig.storage.s3Prefix,
     awsRegion: resolvedConfig.storage.awsRegion,
-    endpoint: resolvedConfig.storage.endpoint,
+    s3Endpoint: resolvedConfig.storage.s3Endpoint,
+    awsAccessKeyId: resolvedConfig.storage.awsAccessKeyId,
+    awsSecretAccessKey: resolvedConfig.storage.awsSecretAccessKey,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
   });

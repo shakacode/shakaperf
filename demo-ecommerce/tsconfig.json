@@ -18,6 +18,6 @@
       "@hooks/*": ["app/javascript/hooks/*"]
     }
   },
-  "include": ["app/javascript/**/*"],
+  "include": ["app/javascript/**/*", "admin.bundle-size.config.ts"],
   "exclude": ["public"]
 }
