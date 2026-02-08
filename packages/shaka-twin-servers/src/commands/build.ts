@@ -13,8 +13,12 @@ import {
 } from '../helpers/docker';
 import { printBanner, printSuccess, printError } from '../helpers/ui';
 
+export type BuildTarget = 'control' | 'experiment';
+
 export interface BuildOptions {
   verbose?: boolean;
+  /** Build only a single target (control or experiment). If not specified, builds both. */
+  target?: BuildTarget;
 }
 
 interface BuildServerOptions {
@@ -71,42 +75,70 @@ async function buildInParallel(config: ResolvedConfig, verbose?: boolean): Promi
 }
 
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
-  const { verbose } = options;
+  const { verbose, target } = options;
 
-  printBanner('Building Twin Servers Docker Images');
+  const buildingBoth = !target;
+  const buildingControl = target === 'control' || buildingBoth;
+  const buildingExperiment = target === 'experiment' || buildingBoth;
+
+  if (target) {
+    printBanner(`Building ${target} Docker Image`);
+  } else {
+    printBanner('Building Twin Servers Docker Images');
+  }
 
   requireCommand('docker', 'Install Docker from https://docs.docker.com/get-docker/');
 
-  if (!fs.existsSync(config.controlDir)) {
+  // Only check controlDir if building control image
+  if (buildingControl && !fs.existsSync(config.controlDir)) {
     printError(`Control directory not found: ${config.controlDir}`);
     console.log('The control directory should contain the baseline version of your code.');
     process.exit(1);
   }
 
   console.log('Creating bind-mount directories...');
-  fs.mkdirSync(config.volumes.control, { recursive: true });
-  fs.mkdirSync(config.volumes.experiment, { recursive: true });
-  console.log(`   ${config.volumes.control}`);
-  console.log(`   ${config.volumes.experiment}`);
+  if (buildingControl) {
+    fs.mkdirSync(config.volumes.control, { recursive: true });
+    console.log(`   ${config.volumes.control}`);
+  }
+  if (buildingExperiment) {
+    fs.mkdirSync(config.volumes.experiment, { recursive: true });
+    console.log(`   ${config.volumes.experiment}`);
+  }
   console.log('');
 
-  console.log('Building both Docker images in parallel...');
-  console.log('');
+  if (target) {
+    console.log(`Building ${target} Docker image...`);
+    console.log('');
+    await buildServer({ serverType: target, config, verbose });
+  } else {
+    console.log('Building both Docker images in parallel...');
+    console.log('');
+    await buildInParallel(config, verbose);
+  }
 
-  await buildInParallel(config, verbose);
-
   console.log('');
-  printSuccess('Docker images built successfully!');
+  printSuccess('Docker image(s) built successfully!');
   console.log('');
   console.log('Images created:');
-  console.log(`  - ${config.images.experiment} (current branch: ${getGitBranch(config.dockerBuildDir)})`);
-  console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(path.dirname(config.controlDir))})`);
+  if (buildingExperiment) {
+    console.log(`  - ${config.images.experiment} (current branch: ${getGitBranch(config.dockerBuildDir)})`);
+  }
+  if (buildingControl) {
+    console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(path.dirname(config.controlDir))})`);
+  }
   console.log('');
   console.log('Bind-mount directories:');
-  console.log(`  - Control: ${config.volumes.control}`);
-  console.log(`  - Experiment: ${config.volumes.experiment}`);
+  if (buildingControl) {
+    console.log(`  - Control: ${config.volumes.control}`);
+  }
+  if (buildingExperiment) {
+    console.log(`  - Experiment: ${config.volumes.experiment}`);
+  }
   console.log('');
-  console.log('Next steps:');
-  console.log('  shaka-twin-servers start-containers');
-  console.log('');
+  if (buildingBoth) {
+    console.log('Next steps:');
+    console.log('  shaka-twin-servers start-containers');
+    console.log('');
+  }
 }

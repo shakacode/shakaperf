@@ -3,7 +3,7 @@
 import 'dotenv/config';
 import { parseArgs } from 'node:util';
 import { loadConfig, resolveConfig, findConfigFile } from './config';
-import { build } from './commands/build';
+import { build, type BuildTarget } from './commands/build';
 import { startContainers } from './commands/start-containers';
 import { startServers } from './commands/start-servers';
 import { runOvermindCommand } from './commands/run-overmind-command';
@@ -22,7 +22,7 @@ Usage:
   shaka-twin-servers <command> [options]
 
 Commands:
-  build                                 Build Docker images for control and experiment servers
+  build [--target <control|experiment>] Build Docker images (both by default, or single target)
   start-containers                      Start Docker containers
   start-servers                         Start Rails servers via Overmind
   run-cmd <target> <cmd>                Run a command in a container interactively
@@ -35,6 +35,7 @@ Commands:
 Options:
   -c, --config <file>    Config file path (.js or .ts)
                          Default: twin-servers.config.ts in current directory
+  -t, --target <target>  Build target (control or experiment) - for build command only
   -v, --verbose          Verbose output
   -h, --help             Show this help message
       --version          Show version
@@ -42,6 +43,8 @@ Options:
 Examples:
   # Auto-discovers twin-servers.config.ts in current directory
   shaka-twin-servers build
+  shaka-twin-servers build --target experiment  # Build only experiment image
+  shaka-twin-servers build --target control     # Build only control image
   shaka-twin-servers start-containers
   shaka-twin-servers start-servers
 
@@ -91,6 +94,7 @@ async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     options: {
       config: { type: 'string', short: 'c' },
+      target: { type: 'string', short: 't' },
       verbose: { type: 'boolean', short: 'v', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', default: false },
@@ -149,9 +153,18 @@ async function main(): Promise<void> {
     const options = { verbose: values.verbose };
 
     switch (command) {
-      case 'build':
-        await build(resolvedConfig, options);
+      case 'build': {
+        let target: BuildTarget | undefined;
+        if (values.target) {
+          if (values.target !== 'control' && values.target !== 'experiment') {
+            console.error(colorize('Error: --target must be "control" or "experiment"', 'red'));
+            process.exit(2);
+          }
+          target = values.target;
+        }
+        await build(resolvedConfig, { ...options, target });
         break;
+      }
       case 'start-containers':
         await startContainers(resolvedConfig, options);
         break;

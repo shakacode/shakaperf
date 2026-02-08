@@ -86,22 +86,26 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
+      - node/install:
+          node-version: '24.13.0'
+      - run:
+          name: Enable corepack for Yarn
+          command: corepack enable && corepack install
+      - node/install-packages:
+          pkg-manager: yarn
+      - run:
+          name: Build shaka-twin-servers package
+          command: yarn build
       - run:
           name: Build experiment Docker image
           command: |
-            docker build -t demo-ecommerce:experiment-${CIRCLE_SHA1} \
-              -f demo-ecommerce/Dockerfile.production \
-              --build-arg UID=$(id -u) \
-              --build-arg GID=$(id -g) \
-              --build-arg NON_ROOT_USER=$(whoami) \
-              --build-arg RUBY_VERSION=3.3.7 \
-              --build-arg NODE_VERSION=24.13.0 \
-              .
+            cd demo-ecommerce
+            yarn shaka-twin-servers build --target experiment -c twin-servers.config.ci.ts
       - run:
           name: Save Docker image
           command: |
             mkdir -p /tmp/docker-images
-            docker save -o /tmp/docker-images/experiment.tar demo-ecommerce:experiment-${CIRCLE_SHA1}
+            docker save -o /tmp/docker-images/experiment.tar demo-ecommerce:experiment
       - persist_to_workspace:
           root: /tmp
           paths:
@@ -125,10 +129,10 @@ jobs:
       - run:
           name: Build control Docker image
           command: |
-            # Copy the Dockerfile from current branch into the master checkout
+            # Copy the Dockerfile from current branch into the control checkout
             cp /tmp/docker-build/Dockerfile.production /home/circleci/control_checkout/demo-ecommerce/
             cd /home/circleci/control_checkout
-            docker build -t demo-ecommerce:control-${CIRCLE_SHA1} \
+            docker build -t demo-ecommerce:control \
               -f demo-ecommerce/Dockerfile.production \
               --build-arg UID=$(id -u) \
               --build-arg GID=$(id -g) \
@@ -140,7 +144,7 @@ jobs:
           name: Save Docker image
           command: |
             mkdir -p /tmp/docker-images
-            docker save -o /tmp/docker-images/control.tar demo-ecommerce:control-${CIRCLE_SHA1}
+            docker save -o /tmp/docker-images/control.tar demo-ecommerce:control
       - persist_to_workspace:
           root: /tmp
           paths:
@@ -167,12 +171,10 @@ jobs:
           command: |
             curl -sSL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | sudo tar -xz -C /usr/local/bin
       - run:
-          name: Load and tag Docker images
+          name: Load Docker images
           command: |
             docker load -i /tmp/workspace/docker-images/experiment.tar
             docker load -i /tmp/workspace/docker-images/control.tar
-            docker tag demo-ecommerce:experiment-${CIRCLE_SHA1} demo-ecommerce:experiment
-            docker tag demo-ecommerce:control-${CIRCLE_SHA1} demo-ecommerce:control
       - run:
           name: Set environment variables for docker-compose
           command: |
