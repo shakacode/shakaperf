@@ -6,6 +6,9 @@ import { loadConfig, resolveConfig, findConfigFile } from './config';
 import { build } from './commands/build';
 import { startContainers } from './commands/start-containers';
 import { startServers } from './commands/start-servers';
+import { runOvermindCommand } from './commands/run-overmind-command';
+import { runCmd } from './commands/run-cmd';
+import { syncChanges } from './commands/sync-changes';
 import type { Command } from './types';
 
 const VERSION = '0.0.2';
@@ -17,9 +20,14 @@ Usage:
   shaka-twin-servers <command> [options]
 
 Commands:
-  build              Build Docker images for control and experiment servers
-  start-containers   Start Docker containers
-  start-servers      Start Rails servers via Overmind
+  build                                 Build Docker images for control and experiment servers
+  start-containers                      Start Docker containers
+  start-servers                         Start Rails servers via Overmind
+  run-cmd <target> <cmd>                Run a command in a container interactively
+  run-overmind-command <target> <cmd>   Run a command in a container using overmind with PID tracking (for Procfile)
+  sync-changes <target>                 Sync git changes to control or experiment volume
+
+  <target> is either "control" or "experiment"
 
 Options:
   -c, --config <file>    Config file path (.js or .ts)
@@ -34,11 +42,20 @@ Examples:
   shaka-twin-servers start-containers
   shaka-twin-servers start-servers
 
+  # Sync changes to experiment volume
+  shaka-twin-servers sync-changes experiment
+
+  # Run command in container interactively
+  shaka-twin-servers run-cmd experiment "bundle exec rails console"
+
+  # Run command in container with PID tracking (used in Procfile)
+  shaka-twin-servers run-overmind-command control "bundle exec puma -b tcp://0.0.0.0:3000"
+
   # Specify config explicitly
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers'];
+const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-overmind-command', 'sync-changes'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -55,6 +72,22 @@ function colorize(text: string, color: 'red' | 'green' | 'yellow'): string {
     yellow: '\x1b[33m',
   };
   return `${colors[color]}${text}\x1b[0m`;
+}
+
+function requireTarget(target: string | undefined, usage: string): asserts target is 'control' | 'experiment' {
+  if (!target || (target !== 'control' && target !== 'experiment')) {
+    console.error(colorize('Error: Target must be "control" or "experiment"', 'red'));
+    console.error(`Usage: ${usage}`);
+    process.exit(2);
+  }
+}
+
+function requireCommand(cmd: string | undefined, usage: string): asserts cmd is string {
+  if (!cmd) {
+    console.error(colorize('Error: Command required', 'red'));
+    console.error(`Usage: ${usage}`);
+    process.exit(2);
+  }
 }
 
 async function main(): Promise<void> {
@@ -128,6 +161,31 @@ async function main(): Promise<void> {
       case 'start-servers':
         await startServers(resolvedConfig, options);
         break;
+      case 'run-cmd': {
+        const target = positionals[1];
+        const cmd = positionals.slice(2).join(' ') || undefined;
+        const usage = 'shaka-twin-servers run-cmd <control|experiment> <command>';
+        requireTarget(target, usage);
+        requireCommand(cmd, usage);
+        await runCmd(resolvedConfig, target, cmd, options);
+        break;
+      }
+      case 'run-overmind-command': {
+        const target = positionals[1];
+        const cmd = positionals.slice(2).join(' ') || undefined;
+        const usage = 'shaka-twin-servers run-overmind-command <control|experiment> <command>';
+        requireTarget(target, usage);
+        requireCommand(cmd, usage);
+        await runOvermindCommand(resolvedConfig, target, cmd, options);
+        break;
+      }
+      case 'sync-changes': {
+        const target = positionals[1];
+        const usage = 'shaka-twin-servers sync-changes <control|experiment>';
+        requireTarget(target, usage);
+        await syncChanges(resolvedConfig, target, options);
+        break;
+      }
     }
   } catch (error) {
     console.error(colorize(`Error: ${(error as Error).message}`, 'red'));

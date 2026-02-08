@@ -60,12 +60,19 @@ export async function dockerComposePs(options: DockerComposeOptions): Promise<vo
   });
 }
 
+export interface DockerComposeExecOptions {
+  interactive?: boolean;
+  stream?: boolean;
+}
+
 export async function dockerComposeExec(
   options: DockerComposeOptions,
   containerName: string,
   command: string,
-  interactive: boolean = false
+  execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
+  const { interactive = false, stream = false } = execOptions;
+
   const args = ['compose', '-f', options.composeFile, 'exec'];
   if (!interactive) {
     args.push('-T');
@@ -75,7 +82,7 @@ export async function dockerComposeExec(
   return exec('docker', args, {
     cwd: options.cwd,
     env: options.env ? { ...process.env, ...options.env } : undefined,
-    silent: true,
+    silent: !stream,
   });
 }
 

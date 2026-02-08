@@ -1,0 +1,44 @@
+import type { ResolvedConfig } from '../types';
+import { dockerComposeExec } from '../helpers/docker';
+
+export interface RunCmdOptions {
+  verbose?: boolean;
+}
+
+export type ServerTarget = 'control' | 'experiment';
+
+/**
+ * Executes a command in a Docker container interactively.
+ *
+ * Usage:
+ *   shaka-twin-servers run-cmd control "bundle exec rails console"
+ *   shaka-twin-servers run-cmd experiment "yarn test"
+ */
+export async function runCmd(
+  config: ResolvedConfig,
+  target: ServerTarget,
+  command: string,
+  options: RunCmdOptions = {}
+): Promise<void> {
+  const containerName = target === 'control' ? 'control-server' : 'experiment-server';
+
+  console.log(`Running \x1b[32m${command}\x1b[0m in ${containerName}`);
+
+  const result = await dockerComposeExec(
+    {
+      composeFile: config.composeFile,
+      cwd: config.projectDir,
+      env: {
+        CI_IMAGE_NAME: config.images.experiment,
+        CI_CONTROL_IMAGE_NAME: config.images.control,
+      },
+    },
+    containerName,
+    command,
+    { interactive: true, stream: true }
+  );
+
+  if (result.code !== 0) {
+    throw new Error(`Command exited with code ${result.code}`);
+  }
+}

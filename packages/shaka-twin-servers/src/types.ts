@@ -47,4 +47,4 @@ export interface CliOptions {
   version: boolean;
 }
 
-export type Command = 'build' | 'start-containers' | 'start-servers';
+export type Command = 'build' | 'start-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'sync-changes';
