@@ -125,6 +125,7 @@ jobs:
       - run:
           name: Build control Docker image
           command: |
+            # Copy the Dockerfile from current branch into the master checkout
             cp /tmp/docker-build/Dockerfile.production /home/circleci/control_checkout/demo-ecommerce/
             cd /home/circleci/control_checkout
             docker build -t demo-ecommerce:control-${CIRCLE_SHA1} \
@@ -149,6 +150,8 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
+      - node/install:
+          node-version: '24.13.0'
       - node/install-packages:
           pkg-manager: yarn
       - run:
