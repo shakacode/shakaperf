@@ -2,7 +2,7 @@ import { defineConfig } from 'shaka-twin-servers';
 
 export default defineConfig({
   projectDir: '.',
-  controlDir: '../../shaka-perf-control/demo-ecommerce',
+  controlDir: process.env.CONTROL_REPO_DIR || '../../shaka-perf-control/demo-ecommerce',
   dockerBuildDir: '..',
   dockerBuildArgs: {
     RUBY_VERSION: '3.3.7',

@@ -100,7 +100,7 @@ jobs:
           name: Build experiment Docker image
           command: |
             cd demo-ecommerce
-            yarn shaka-twin-servers build --target experiment -c twin-servers.config.ci.ts
+            yarn shaka-twin-servers build --target experiment
       - run:
           name: Save Docker image
           command: |
@@ -113,6 +113,8 @@ jobs:
 
   build-control-image:
     executor: machine-executor
+    environment:
+      CONTROL_REPO_DIR: /home/circleci/control_checkout/demo-ecommerce
     steps:
       - checkout
       - node/install:
@@ -140,9 +142,9 @@ jobs:
           name: Build control Docker image
           command: |
             # Copy the Dockerfile from current branch into the control checkout
-            cp /tmp/docker-build/Dockerfile.production /home/circleci/control_checkout/demo-ecommerce/
+            cp /tmp/docker-build/Dockerfile.production $CONTROL_REPO_DIR/
             cd demo-ecommerce
-            yarn shaka-twin-servers build --target control -c twin-servers.config.ci.ts
+            yarn shaka-twin-servers build --target control
       - run:
           name: Save Docker image
           command: |
@@ -179,17 +181,10 @@ jobs:
             docker load -i /tmp/workspace/docker-images/experiment.tar
             docker load -i /tmp/workspace/docker-images/control.tar
       - run:
-          name: Set environment variables for docker-compose
-          command: |
-            echo "export CI_IMAGE_NAME=demo-ecommerce:experiment" >> $BASH_ENV
-            echo "export CI_CONTROL_IMAGE_NAME=demo-ecommerce:control" >> $BASH_ENV
-            echo "export USER=$(whoami)" >> $BASH_ENV
-            source $BASH_ENV
-      - run:
           name: Start containers
           command: |
             cd demo-ecommerce
-            yarn shaka-twin-servers start-containers -c twin-servers.config.ci.ts
+            yarn shaka-twin-servers start-containers
       - run:
           name: Wait for servers
           command: |
@@ -199,7 +194,7 @@ jobs:
           name: Run performance tests
           command: |
             cd demo-ecommerce
-            yarn shaka-twin-servers run-cmd-parallel -c twin-servers.config.ci.ts "bundle exec rake perf:benchmark"
+            yarn shaka-twin-servers run-cmd-parallel "bundle exec rake perf:benchmark"
       - store_artifacts:
           path: demo-ecommerce/perf-results
           destination: perf-results

@@ -21,7 +21,7 @@
   "include": [
     "app/javascript/**/*",
     "admin.bundle-size.config.ts",
-    "twin-servers.config.ci.ts"
+    "twin-servers.config.ts"
   ],
   "exclude": ["public"]
 }

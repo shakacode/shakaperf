@@ -1,3 +1,0 @@
-# CI-specific Procfile for twin servers (no notification processes)
-control-rails: shaka-twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-experiment-rails: shaka-twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
