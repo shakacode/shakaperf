@@ -58,6 +58,15 @@ commands:
             - docker-images/<< parameters.target >>.tar
 
 jobs:
+  test:
+    executor: ruby-node-executor
+    steps:
+      - checkout
+      - setup-yarn-and-build
+      - run:
+          name: Run shaka-bundle-size tests
+          command: yarn workspace shaka-bundle-size test
+
   build-bundles:
     executor: ruby-node-executor
     resource_class: large
@@ -208,6 +217,7 @@ jobs:
 workflows:
   build-and-check:
     jobs:
+      - test
       - build-bundles
 
       # Feature branches: download and compare
