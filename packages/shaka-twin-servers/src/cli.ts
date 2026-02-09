@@ -11,6 +11,8 @@ import { runCmd } from './commands/run-cmd';
 import { runCmdParallel } from './commands/run-cmd-parallel';
 import { syncChanges } from './commands/sync-changes';
 import { say } from './commands/say';
+import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
+import { forwardPorts } from './commands/forward-ports';
 import type { Command } from './types';
 import { colorize } from './helpers/ui';
 
@@ -31,6 +33,8 @@ Commands:
   run-overmind-command <target> <cmd>   Run a command in a container with PID tracking (for Procfile)
   sync-changes <target>                 Sync git changes to control or experiment volume
   say <message>                         Speak a message using text-to-speech (macOS/Linux)
+  copy-changes-to-ssh <port> <host> [target]  Copy local git changes to SSH (target: control|experiment|all)
+  forward-ports <port> <host> [ctrl-port] [exp-port]  Forward CI ports (default: 3020, 3030)
 
   <target> is either "control" or "experiment"
 
@@ -62,11 +66,20 @@ Examples:
   # Run command in container with PID tracking (used in Procfile)
   shaka-twin-servers run-overmind-command control "bundle exec puma -b tcp://0.0.0.0:3000"
 
+  # Copy local git changes to CI via SSH (for debugging)
+  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22              # all targets
+  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22 experiment   # experiment only
+
+  # Forward CI twin server ports to localhost
+  shaka-twin-servers forward-ports 54782 18.210.27.22                    # default ports 3020, 3030
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3000 3001          # custom ports
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3010:3020 3030     # local:remote mapping
+
   # Specify config explicitly
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say'];
+const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -90,6 +103,32 @@ function requireCommand(cmd: string | undefined, usage: string): asserts cmd is 
     console.error(`Usage: ${usage}`);
     process.exit(2);
   }
+}
+
+interface SshTarget {
+  host: string;
+  port: string;
+}
+
+function parseSshArgs(positionals: string[], commandName: string): SshTarget {
+  const usage = `shaka-twin-servers ${commandName} <port> <host>`;
+
+  const port = positionals[1];
+  const host = positionals[2];
+
+  if (!port || !host) {
+    console.error(colorize('Error: SSH port and host are required', 'red'));
+    console.error(`Usage: ${usage}`);
+    console.error('');
+    console.error('To get the correct arguments:');
+    console.error('1. Go to your CircleCI job');
+    console.error('2. Click "Rerun job with SSH"');
+    console.error('3. Copy the SSH command from the job logs');
+    console.error('4. Extract the port and host from: ssh -p <PORT> <HOST>');
+    process.exit(2);
+  }
+
+  return { port, host };
 }
 
 async function main(): Promise<void> {
@@ -210,6 +249,23 @@ async function main(): Promise<void> {
         const usage = 'shaka-twin-servers sync-changes <control|experiment>';
         requireTarget(target, usage);
         await syncChanges(resolvedConfig, target, options);
+        break;
+      }
+      case 'copy-changes-to-ssh': {
+        const sshTarget = parseSshArgs(positionals, 'copy-changes-to-ssh');
+        const copyTarget = positionals[3] as 'control' | 'experiment' | 'all' | undefined;
+        if (copyTarget && copyTarget !== 'control' && copyTarget !== 'experiment' && copyTarget !== 'all') {
+          console.error(colorize('Error: Target must be "control", "experiment", or "all"', 'red'));
+          process.exit(2);
+        }
+        await copyChangesToSsh(resolvedConfig, sshTarget, { ...options, target: copyTarget });
+        break;
+      }
+      case 'forward-ports': {
+        const sshTarget = parseSshArgs(positionals, 'forward-ports');
+        const controlPort = positionals[3] || '3020';
+        const experimentPort = positionals[4] || '3030';
+        await forwardPorts(resolvedConfig, sshTarget, { ...options, controlPort, experimentPort });
         break;
       }
     }

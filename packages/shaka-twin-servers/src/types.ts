@@ -43,4 +43,4 @@ export interface CliOptions {
   version: boolean;
 }
 
-export type Command = 'build' | 'start-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say';
+export type Command = 'build' | 'start-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports';
