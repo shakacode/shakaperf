@@ -15,6 +15,48 @@ executors:
       image: ubuntu-2204:2023.10.1
     resource_class: large
 
+commands:
+  setup-yarn:
+    description: Install Node packages with Yarn
+    steps:
+      - node/install-packages:
+          pkg-manager: yarn
+
+  setup-yarn-and-build:
+    description: Install Node packages with Yarn and build all packages
+    steps:
+      - setup-yarn
+      - run:
+          name: Build packages
+          command: yarn build
+
+  setup-machine-node:
+    description: Setup Node.js with corepack and Yarn on machine executor
+    steps:
+      - node/install
+      - run:
+          name: Enable corepack for Yarn
+          command: corepack enable && corepack install
+      - setup-yarn-and-build
+
+  save-docker-image:
+    description: Save a Docker image to workspace
+    parameters:
+      image-name:
+        type: string
+      target:
+        type: string
+    steps:
+      - run:
+          name: Save Docker image
+          command: |
+            mkdir -p /tmp/docker-images
+            docker save -o /tmp/docker-images/<< parameters.target >>.tar << parameters.image-name >>:<< parameters.target >>
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - docker-images/<< parameters.target >>.tar
+
 jobs:
   build-bundles:
     executor: ruby-node-executor
@@ -23,8 +65,7 @@ jobs:
       - checkout
       - ruby/install-deps:
           app-dir: demo-ecommerce
-      - node/install-packages:
-          pkg-manager: yarn
+      - setup-yarn
       - run:
           name: Build consumer and admin bundles
           command: |
@@ -41,11 +82,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - node/install-packages:
-          pkg-manager: yarn
-      - run:
-          name: Build packages
-          command: yarn build
+      - setup-yarn-and-build
       - run:
           name: Download baseline
           command: |
@@ -70,11 +107,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - node/install-packages:
-          pkg-manager: yarn
-      - run:
-          name: Build packages
-          command: yarn build
+      - setup-yarn-and-build
       - run:
           name: Upload bundle size baseline
           command: |
@@ -86,30 +119,15 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
-      - node/install:
-          node-version: '24.13.0'
-      - run:
-          name: Enable corepack for Yarn
-          command: corepack enable && corepack install
-      - node/install-packages:
-          pkg-manager: yarn
-      - run:
-          name: Build shaka-twin-servers package
-          command: yarn build
+      - setup-machine-node
       - run:
           name: Build experiment Docker image
           command: |
             cd demo-ecommerce
             yarn shaka-twin-servers build --target experiment
-      - run:
-          name: Save Docker image
-          command: |
-            mkdir -p /tmp/docker-images
-            docker save -o /tmp/docker-images/experiment.tar demo-ecommerce:experiment
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - docker-images/experiment.tar
+      - save-docker-image:
+          image-name: demo-ecommerce
+          target: experiment
 
   build-control-image:
     executor: machine-executor
@@ -117,16 +135,7 @@ jobs:
       CONTROL_REPO_DIR: /home/circleci/control_checkout/demo-ecommerce
     steps:
       - checkout
-      - node/install:
-          node-version: '24.13.0'
-      - run:
-          name: Enable corepack for Yarn
-          command: corepack enable && corepack install
-      - node/install-packages:
-          pkg-manager: yarn
-      - run:
-          name: Build shaka-twin-servers package
-          command: yarn build
+      - setup-machine-node
       - run:
           name: Copy Dockerfile to temp location
           command: |
@@ -145,30 +154,15 @@ jobs:
             cp /tmp/docker-build/Dockerfile.production $CONTROL_REPO_DIR/
             cd demo-ecommerce
             yarn shaka-twin-servers build --target control
-      - run:
-          name: Save Docker image
-          command: |
-            mkdir -p /tmp/docker-images
-            docker save -o /tmp/docker-images/control.tar demo-ecommerce:control
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - docker-images/control.tar
+      - save-docker-image:
+          image-name: demo-ecommerce
+          target: control
 
   perf-tests:
     executor: machine-executor
     steps:
       - checkout
-      - node/install:
-          node-version: '24.13.0'
-      - run:
-          name: Enable corepack for Yarn
-          command: corepack enable && corepack install
-      - node/install-packages:
-          pkg-manager: yarn
-      - run:
-          name: Build shaka-twin-servers package
-          command: yarn build
+      - setup-machine-node
       - attach_workspace:
           at: /tmp/workspace
       - run:
@@ -185,6 +179,18 @@ jobs:
           command: |
             cd demo-ecommerce
             yarn shaka-twin-servers start-containers
+      - run:
+          name: Run rails server (control)
+          command: |
+            cd demo-ecommerce
+            yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+          background: true
+      - run:
+          name: Run rails server (experiment)
+          command: |
+            cd demo-ecommerce
+            yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+          background: true
       - run:
           name: Wait for servers
           command: |
@@ -226,15 +232,11 @@ workflows:
   perf-test-twin-servers:
     jobs:
       - build-experiment-image:
-          # requires:
-          #   - approve-perf-tests
           filters:
             branches:
               ignore: main
 
       - build-control-image:
-          # requires:
-          #   - approve-perf-tests
           filters:
             branches:
               ignore: main
