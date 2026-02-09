@@ -36,7 +36,8 @@
     "diff2html": "^3.4.48",
     "dotenv": "^16.0.0",
     "tsx": "^4.21.0",
-    "webpack-bundle-analyzer": "^4.10.0"
+    "webpack-bundle-analyzer": "^4.10.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
