@@ -1,5 +1,6 @@
 export {
   defineConfig,
+  findConfigFile,
   resolveConfig,
   loadConfig,
   loadConfigSync,
