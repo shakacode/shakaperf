@@ -59,3 +59,60 @@ export function requireCommand(command: string, installHint: string): void {
     throw new Error(`Required command '${command}' not found.\nInstall with: ${installHint}`);
   }
 }
+
+export interface ExecWithStdinOptions extends ExecOptions {
+  stdin: string;
+}
+
+/**
+ * Execute a command with stdin input (like a heredoc in bash).
+ */
+export function execWithStdin(
+  command: string,
+  args: string[],
+  options: ExecWithStdinOptions
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  return new Promise((resolve) => {
+    const spawnOptions: SpawnOptions = {
+      cwd: options.cwd,
+      env: options.env ?? process.env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    };
+
+    const child = spawn(command, args, spawnOptions);
+    let stdout = '';
+    let stderr = '';
+
+    if (child.stdout) {
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+        if (!options.silent) {
+          process.stdout.write(data);
+        }
+      });
+    }
+
+    if (child.stderr) {
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+        if (!options.silent) {
+          process.stderr.write(data);
+        }
+      });
+    }
+
+    child.on('error', (error) => {
+      resolve({ stdout, stderr: error.message, code: 1 });
+    });
+
+    child.on('close', (code) => {
+      resolve({ stdout, stderr, code: code ?? 0 });
+    });
+
+    // Write stdin and close
+    if (child.stdin) {
+      child.stdin.write(options.stdin);
+      child.stdin.end();
+    }
+  });
+}
