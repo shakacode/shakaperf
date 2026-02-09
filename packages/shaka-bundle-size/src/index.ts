@@ -10,6 +10,10 @@ export {
   DEFAULT_THRESHOLDS,
   DEFAULT_HTML_DIFFS,
   DEFAULT_STORAGE,
+  BundleSizeConfigSchema,
+  ThresholdConfigSchema,
+  HtmlDiffConfigSchema,
+  StorageConfigSchema,
 } from './config';
 export type {
   BundleSizeConfig,

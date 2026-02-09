@@ -1,81 +1,93 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { z } from 'zod';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 
 export const RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL =
   'https://github.com/shakacode/shaka-perf/blob/main/docs/resolving-bundle-size-issues.md';
 
-export interface ThresholdConfig {
+export const ThresholdConfigSchema = z.object({
   /** Maximum allowed size increase in KB for normal components (default: 10) */
-  default?: number;
+  default: z.number().optional(),
   /** List of component names considered critical */
-  keyComponents?: string[];
+  keyComponents: z.array(z.string()).optional(),
   /** Stricter threshold for key components in KB (default: 1) */
-  keyComponentThreshold?: number;
+  keyComponentThreshold: z.number().optional(),
   /** Minimum size in KB for a new component to trigger a review (default: 1) */
-  minComponentSizeKb?: number;
-}
+  minComponentSizeKb: z.number().optional(),
+});
 
-export interface HtmlDiffConfig {
+export type ThresholdConfig = z.infer<typeof ThresholdConfigSchema>;
+
+export const HtmlDiffConfigSchema = z.object({
   /** Whether to generate HTML diffs (default: true) */
-  enabled?: boolean;
+  enabled: z.boolean().optional(),
   /** Directory for output HTML diff files (default: 'bundle-size-diffs') */
-  outputDir?: string;
+  outputDir: z.string().optional(),
   /** Directory for current source maps during compare (default: 'tmp/bundle_size_current') */
-  currentDir?: string;
-}
+  currentDir: z.string().optional(),
+});
 
-export interface StorageConfig {
+export type HtmlDiffConfig = z.infer<typeof HtmlDiffConfigSchema>;
+
+export const StorageConfigSchema = z.object({
   /** S3/R2 bucket name for baseline storage */
-  s3Bucket: string;
+  s3Bucket: z.string().min(1, 'storage.s3Bucket is required'),
   /** S3/R2 key prefix for baselines (default: 'bundle-size-baselines/') */
-  s3Prefix?: string;
+  s3Prefix: z.string().optional(),
   /** AWS region (default: uses AWS_REGION env var or 'auto'). Use 'auto' for R2. */
-  awsRegion?: string;
+  awsRegion: z.string().optional(),
   /** Custom endpoint URL for S3-compatible services like Cloudflare R2 (e.g., 'https://<account_id>.r2.cloudflarestorage.com'). Falls back to S3_ENDPOINT env var. */
-  s3Endpoint?: string;
+  s3Endpoint: z.string().optional(),
   /** AWS access key ID (default: uses AWS_ACCESS_KEY_ID env var) */
-  awsAccessKeyId?: string;
+  awsAccessKeyId: z.string().optional(),
   /** AWS secret access key (default: uses AWS_SECRET_ACCESS_KEY env var) */
-  awsSecretAccessKey?: string;
+  awsSecretAccessKey: z.string().optional(),
   /** Number of main branch commits to search for baseline (default: 10) */
-  mainCommitsToCheck?: number;
-}
+  mainCommitsToCheck: z.number().optional(),
+});
+
+export type StorageConfig = z.infer<typeof StorageConfigSchema>;
 
 /** The config structure users define in their config files. */
-export interface BundleSizeConfig {
+export const BundleSizeConfigSchema = z.object({
   /** Path to webpack loadable stats JSON file (required) */
-  statsFile: string;
+  statsFile: z.string().min(1, 'statsFile is required'),
 
   /** Directory for baseline config files (default: 'tmp/bundle_size') */
-  baselineDir?: string;
+  baselineDir: z.string().optional(),
   /** Baseline config filename (default: derived from statsFile name) */
-  baselineFile?: string;
+  baselineFile: z.string().optional(),
 
   /** Prefix for webpack stats and extended stats files (e.g., 'consumer' -> 'consumer-webpack-stats.json'). If not set, no prefix is used. */
-  bundleNamePrefix?: string;
+  bundleNamePrefix: z.string().optional(),
 
   /** Threshold configuration */
-  thresholds?: ThresholdConfig;
+  thresholds: ThresholdConfigSchema.optional(),
 
   /** Bundle names to skip during checking */
-  ignoredBundles?: string[];
+  ignoredBundles: z.array(z.string()).optional(),
   /** Path to file containing acknowledged branch name (for acknowledging bundle-size failures) */
-  acknowledgedBranchesFilePath?: string;
+  acknowledgedBranchesFilePath: z.string().optional(),
 
   /** Whether to generate source map files on update (default: true) */
-  generateSourceMaps?: boolean;
+  generateSourceMaps: z.boolean().optional(),
 
   /** HTML diff generation configuration */
-  htmlDiffs?: HtmlDiffConfig;
+  htmlDiffs: HtmlDiffConfigSchema.optional(),
 
   /** Baseline storage configuration for --download/--upload */
-  storage?: StorageConfig;
+  storage: StorageConfigSchema,
 
   /** Custom regression policy function */
-  regressionPolicy?: RegressionPolicyFunction;
-}
+  regressionPolicy: z.custom<RegressionPolicyFunction>(
+    (val) => typeof val === 'function',
+    { message: 'regressionPolicy must be a function' }
+  ).optional(),
+});
+
+export type BundleSizeConfig = z.infer<typeof BundleSizeConfigSchema>;
 
 /** Configuration with all defaults applied, used internally by BundleSizeChecker. */
 export interface ResolvedConfig {
@@ -177,42 +189,42 @@ function deriveBaselineFile(bundleNamePrefix: string | undefined): string {
   return bundleNamePrefix ? `${bundleNamePrefix}-config.json` : 'config.json';
 }
 
-export function resolveConfig(config: BundleSizeConfig): ResolvedConfig {
-  if (!config.statsFile) {
-    throw new Error('BundleSizeConfig: statsFile is required');
+export function resolveConfig(config: unknown): ResolvedConfig {
+  const parseResult = BundleSizeConfigSchema.safeParse(config);
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    const fieldPath = firstError.path.join('.');
+    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
   }
-
-  if (!config.storage?.s3Bucket) {
-    throw new Error('BundleSizeConfig: storage.s3Bucket is required');
-  }
+  const validConfig = parseResult.data;
 
   const thresholds: Required<ThresholdConfig> = {
     ...DEFAULT_THRESHOLDS,
-    ...config.thresholds,
-    keyComponents: config.thresholds?.keyComponents ?? DEFAULT_THRESHOLDS.keyComponents,
+    ...validConfig.thresholds,
+    keyComponents: validConfig.thresholds?.keyComponents ?? DEFAULT_THRESHOLDS.keyComponents,
   };
 
   const htmlDiffs: Required<HtmlDiffConfig> = {
     ...DEFAULT_HTML_DIFFS,
-    ...config.htmlDiffs,
+    ...validConfig.htmlDiffs,
   };
 
   const storage: Required<StorageConfig> = {
     ...DEFAULT_STORAGE,
-    ...config.storage,
+    ...validConfig.storage,
   };
 
-  const regressionPolicy = config.regressionPolicy || createDefaultPolicy(thresholds);
+  const regressionPolicy = validConfig.regressionPolicy || createDefaultPolicy(thresholds);
 
   return {
-    statsFile: config.statsFile,
-    baselineDir: config.baselineDir ?? 'tmp/bundle_size',
-    baselineFile: config.baselineFile ?? deriveBaselineFile(config.bundleNamePrefix),
-    bundleNamePrefix: config.bundleNamePrefix,
+    statsFile: validConfig.statsFile,
+    baselineDir: validConfig.baselineDir ?? 'tmp/bundle_size',
+    baselineFile: validConfig.baselineFile ?? deriveBaselineFile(validConfig.bundleNamePrefix),
+    bundleNamePrefix: validConfig.bundleNamePrefix,
     thresholds,
-    ignoredBundles: config.ignoredBundles ?? [],
-    acknowledgedBranchesFilePath: config.acknowledgedBranchesFilePath,
-    generateSourceMaps: config.generateSourceMaps !== false,
+    ignoredBundles: validConfig.ignoredBundles ?? [],
+    acknowledgedBranchesFilePath: validConfig.acknowledgedBranchesFilePath,
+    generateSourceMaps: validConfig.generateSourceMaps !== false,
     htmlDiffs,
     storage,
     regressionPolicy,
