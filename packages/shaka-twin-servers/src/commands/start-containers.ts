@@ -8,7 +8,7 @@ import {
   dockerComposeExec,
   waitForContainer,
 } from '../helpers/docker';
-import { printBanner, printSuccess, printError, printWarning } from '../helpers/ui';
+import { printBanner, printSuccess, printError, printWarning, colorize } from '../helpers/ui';
 
 export interface StartContainersOptions {
   verbose?: boolean;
@@ -24,14 +24,17 @@ async function runSetupCommands(
   }
 
   const containerName = `${serverType}-server`;
+  const prefix = serverType === 'experiment'
+    ? colorize('[EXPERIMENT]', 'blue')
+    : colorize('[CONTROL]', 'green');
 
   console.log('');
-  console.log(`Running setup commands for ${serverType}...`);
+  console.log(`${prefix} Running setup commands...`);
 
   for (const cmd of config.setupCommands) {
-    console.log(`   Started ${cmd.description} for ${serverType}...`);
+    console.log(`${prefix}    Started ${cmd.description}...`);
 
-    const result = await dockerComposeExec(config, containerName, cmd.command);
+    const result = await dockerComposeExec(config, containerName, cmd.command, { prefix });
 
     if (result.code !== 0) {
       throw new Error(
@@ -40,10 +43,10 @@ async function runSetupCommands(
           `Error: ${result.stderr || 'Unknown error'}`
       );
     }
-    console.log(`   Completed ${cmd.description} for ${serverType} successfully`);
+    console.log(`${prefix}    Completed ${cmd.description} successfully`);
   }
 
-  console.log(`   Setup complete for ${serverType}`);
+  console.log(`${prefix}    Setup complete`);
 }
 
 export async function startContainers(

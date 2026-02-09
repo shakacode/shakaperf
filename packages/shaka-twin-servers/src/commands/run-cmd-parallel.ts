@@ -1,15 +1,10 @@
 import type { ResolvedConfig } from '../types';
 import { dockerComposeExec } from '../helpers/docker';
+import { colorize } from '../helpers/ui';
 
 export interface RunCmdParallelOptions {
   verbose?: boolean;
 }
-
-const COLORS = {
-  blue: '\x1b[1;34m',
-  green: '\x1b[1;32m',
-  reset: '\x1b[0m',
-};
 
 /**
  * Runs a command in both experiment and control containers in parallel
@@ -32,27 +27,15 @@ export async function runCmdParallel(
   const runInContainer = async (target: 'experiment' | 'control') => {
     const containerName = target === 'control' ? 'control-server' : 'experiment-server';
     const prefix = target === 'experiment'
-      ? `${COLORS.blue}[EXPERIMENT]${COLORS.reset}`
-      : `${COLORS.green}[CONTROL]${COLORS.reset}`;
+      ? colorize('[EXPERIMENT]', 'blue')
+      : colorize('[CONTROL]', 'green');
 
     const result = await dockerComposeExec(
       config,
       containerName,
       command,
-      { interactive: true }
+      { interactive: true, prefix }
     );
-
-    // Print output with prefix
-    if (result.stdout) {
-      for (const line of result.stdout.split('\n')) {
-        if (line) console.log(`${prefix} ${line}`);
-      }
-    }
-    if (result.stderr) {
-      for (const line of result.stderr.split('\n')) {
-        if (line) console.error(`${prefix} ${line}`);
-      }
-    }
 
     return { target, code: result.code };
   };
