@@ -1,0 +1,112 @@
+# syntax = docker/dockerfile:1
+
+# Production Dockerfile for demo-ecommerce with twin-servers A/B testing support
+# Build from monorepo root: docker build -f demo-ecommerce/Dockerfile.production -t demo-ecommerce .
+
+ARG RUBY_VERSION=3.3.7
+ARG NON_ROOT_USER=rails
+ARG UID=1000
+ARG GID=1000
+ARG BUNDLE_PATH=/home/${NON_ROOT_USER}/bundle
+ARG NODE_PATH=/home/${NON_ROOT_USER}/node
+ARG APP_PATH=/home/${NON_ROOT_USER}/app
+
+FROM ruby:${RUBY_VERSION}-bullseye AS base
+
+# Re-declare ARGs after FROM (they don't persist across stages)
+ARG NON_ROOT_USER
+ARG UID
+ARG GID
+ARG BUNDLE_PATH
+ARG NODE_PATH
+ARG APP_PATH
+
+ARG NODE_VERSION=24.13.0
+
+# Install base packages
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    apt-transport-https \
+    curl \
+    libjemalloc2 \
+    libvips \
+    sqlite3 \
+    libpq-dev \
+    build-essential \
+    git \
+    libyaml-dev \
+    pkg-config \
+    vim \
+    nano \
+    libmariadb-dev \
+    net-tools \
+    psmisc && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# Install Node.js
+ENV PATH=$NODE_PATH/bin:$PATH
+RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
+    /tmp/node-build-master/bin/node-build "${NODE_VERSION}" ${NODE_PATH} && \
+    corepack enable && \
+    rm -rf /tmp/node-build-master
+
+# Set production environment
+ENV RAILS_ENV="production" \
+    NODE_ENV="production" \
+    BUNDLE_DEPLOYMENT="1" \
+    BUNDLE_PATH=${BUNDLE_PATH} \
+    BUNDLE_WITHOUT="development test"
+
+# Mac/Linux GID compatibility: Delete any existing group with the same GID
+RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true
+
+# Create non-root user and workspace with matching UID/GID from host
+RUN groupadd --gid $GID ${NON_ROOT_USER} && \
+    useradd --uid $UID \
+    --gid ${NON_ROOT_USER} \
+    --shell /bin/sh \
+    --create-home ${NON_ROOT_USER}
+RUN mkdir -p $APP_PATH && chown -R ${NON_ROOT_USER}:${NON_ROOT_USER} /home/${NON_ROOT_USER}
+WORKDIR $APP_PATH
+
+USER ${NON_ROOT_USER}
+
+# Copy monorepo root files for yarn workspace resolution
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} package.json yarn.lock .yarnrc.yml ./
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} .yarn ./.yarn
+
+# Copy workspace packages (dependencies for demo-ecommerce)
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} packages ./packages
+
+# Copy demo-ecommerce app
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./demo-ecommerce
+
+# Install all JavaScript dependencies (monorepo-aware)
+# This generates .pnp.cjs and .pnp.loader.mjs files (not committed to git)
+RUN yarn install --immutable
+
+# Now work inside demo-ecommerce for Ruby operations
+WORKDIR ${APP_PATH}/demo-ecommerce
+
+# Install application gems
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce/Gemfile demo-ecommerce/Gemfile.lock ./
+RUN bundle install && \
+    rm -rf /home/${NON_ROOT_USER}/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git
+
+# Copy the rest of the application
+COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./
+
+# Precompile bootsnap code for faster boot times
+RUN bundle exec bootsnap precompile --gemfile app/ lib/
+
+# Set dummy credentials for asset precompilation
+ENV SECRET_KEY_BASE=NOT_USED_NON_BLANK
+
+# Precompile assets (webpack + sprockets)
+RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+EXPOSE 3000
+
+# For twin-servers A/B testing: CMD and ENTRYPOINT are removed
+# docker-compose will use 'command: sleep infinity' instead
+# This allows starting/stopping/restarting servers without restarting containers

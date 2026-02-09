@@ -34,7 +34,7 @@ export class WebpackStatsReader {
 
   extractAssetNames(chunkGroup: ChunkGroup): string[] {
     if (!chunkGroup.assets || chunkGroup.assets.length === 0) {
-      throw new Error(`Loadable component ${chunkGroup.name} has no assets.`);
+      throw new Error(`Loadable component ${chunkGroup.name} has no assets. This can happen happen if you directly import a loadable component bypassing '@loadable/component'. Please either remove the direct import or remove the loadable component.`);
     }
     return chunkGroup.assets.map(asset => asset.name);
   }
