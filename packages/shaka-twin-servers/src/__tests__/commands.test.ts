@@ -74,12 +74,20 @@ describe('sync-changes command', () => {
   });
 
   it('creates target directory if it does not exist', async () => {
+    const { execSync } = require('child_process');
     const { syncChanges } = require('../commands/sync-changes');
     const config = createMockConfig(tmpDir);
 
-    // Create source files that the mocked git says are changed
-    const sourceDir = '/project';
-    fs.mkdirSync(sourceDir, { recursive: true });
+    // Override git root to return the build dir inside tmpDir
+    (execSync as jest.Mock).mockImplementation((cmd: string) => {
+      if (cmd.includes('rev-parse --show-toplevel')) return config.dockerBuildDir;
+      if (cmd.includes('diff --name-only')) return 'file1.ts';
+      if (cmd.includes('ls-files --others')) return '';
+      return '';
+    });
+
+    // Create the source file that the mock says is changed
+    fs.writeFileSync(path.join(config.dockerBuildDir, 'file1.ts'), 'content');
 
     await syncChanges(config, 'experiment', { verbose: false });
 
