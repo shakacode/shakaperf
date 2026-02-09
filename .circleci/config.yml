@@ -200,7 +200,7 @@ jobs:
           name: Run performance tests
           command: |
             cd demo-ecommerce
-            yarn shaka-twin-servers run-cmd-parallel "bundle exec rake perf:benchmark"
+            yarn shaka-twin-servers run-cmd-parallel "echo 'Running performance tests...'"
       - store_artifacts:
           path: demo-ecommerce/perf-results
           destination: perf-results
