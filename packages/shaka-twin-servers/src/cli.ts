@@ -34,7 +34,7 @@ Commands:
   sync-changes <target>                 Sync git changes to control or experiment volume
   say <message>                         Speak a message using text-to-speech (macOS/Linux)
   copy-changes-to-ssh <port> <host> [target]  Copy local git changes to SSH (target: control|experiment|all)
-  forward-ports <port> <host>           Forward CI twin server ports to localhost
+  forward-ports <port> <host> [ctrl-port] [exp-port]  Forward CI ports (default: 3020, 3030)
 
   <target> is either "control" or "experiment"
 
@@ -71,7 +71,9 @@ Examples:
   shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22 experiment   # experiment only
 
   # Forward CI twin server ports to localhost
-  shaka-twin-servers forward-ports 54782 18.210.27.22
+  shaka-twin-servers forward-ports 54782 18.210.27.22                    # default ports 3020, 3030
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3000 3001          # custom ports
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3010:3020 3030     # local:remote mapping
 
   # Specify config explicitly
   shaka-twin-servers build -c path/to/twin-servers.config.ts
@@ -261,7 +263,9 @@ async function main(): Promise<void> {
       }
       case 'forward-ports': {
         const sshTarget = parseSshArgs(positionals, 'forward-ports');
-        await forwardPorts(resolvedConfig, sshTarget, options);
+        const controlPort = positionals[3] || '3020';
+        const experimentPort = positionals[4] || '3030';
+        await forwardPorts(resolvedConfig, sshTarget, { ...options, controlPort, experimentPort });
         break;
       }
     }
