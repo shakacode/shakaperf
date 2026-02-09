@@ -10,6 +10,7 @@ import { runOvermindCommand } from './commands/run-overmind-command';
 import { runCmd } from './commands/run-cmd';
 import { runCmdParallel } from './commands/run-cmd-parallel';
 import { syncChanges } from './commands/sync-changes';
+import { say } from './commands/say';
 import type { Command } from './types';
 import { colorize } from './helpers/ui';
 
@@ -29,6 +30,7 @@ Commands:
   run-cmd-parallel <cmd>                Run a command in both containers in parallel
   run-overmind-command <target> <cmd>   Run a command in a container with PID tracking (for Procfile)
   sync-changes <target>                 Sync git changes to control or experiment volume
+  say <message>                         Speak a message using text-to-speech (macOS/Linux)
 
   <target> is either "control" or "experiment"
 
@@ -64,7 +66,7 @@ Examples:
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes'];
+const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -125,6 +127,13 @@ async function main(): Promise<void> {
     console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
     console.error(`Valid commands: ${VALID_COMMANDS.join(', ')}`);
     process.exit(2);
+  }
+
+  // Handle commands that don't require config
+  if (command === 'say') {
+    const message = positionals.slice(1).join(' ');
+    await say(message);
+    process.exit(0);
   }
 
   let configPath = values.config;
