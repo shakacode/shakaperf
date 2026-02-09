@@ -52,8 +52,8 @@ describe('resolveConfig', () => {
     expect(() => resolveConfig({ statsFile: '' } as BundleSizeConfig)).toThrow('statsFile is required');
   });
 
-  it('throws if storage.s3Bucket is missing', () => {
-    expect(() => resolveConfig({ statsFile: 'stats.json' } as BundleSizeConfig)).toThrow('storage.s3Bucket is required');
+  it('throws if storage is missing', () => {
+    expect(() => resolveConfig({ statsFile: 'stats.json' } as BundleSizeConfig)).toThrow('storage');
   });
 
   it('respects custom baselineDir', () => {

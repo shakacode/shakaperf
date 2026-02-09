@@ -66,6 +66,9 @@ jobs:
       - run:
           name: Run shaka-bundle-size tests
           command: yarn workspace shaka-bundle-size test
+      - run:
+          name: Run shaka-twin-servers tests
+          command: yarn workspace shaka-twin-servers test
 
   build-bundles:
     executor: ruby-node-executor
