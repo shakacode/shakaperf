@@ -7,6 +7,7 @@ import * as path from 'path';
 import {
   loadConfig,
   resolveConfig,
+  findConfigFile,
   isBranchAcknowledged,
   getCurrentBranch,
   writeAcknowledgedBranchFile,
@@ -24,7 +25,7 @@ const HELP = `
 shaka-bundle-size - Bundle size checking for webpack builds
 
 Usage:
-  shaka-bundle-size --config <file> [command] [options]
+  shaka-bundle-size [command] [options]
 
 Commands:
   --download-main-branch-stats  Download baseline from main branch (finds merge-base)
@@ -33,7 +34,8 @@ Commands:
   --acknowledge-failure         Acknowledge bundle-size failure for current branch
 
 Options:
-  -c, --config <file>    Config file path (.js or .ts) [required]
+  -c, --config <file>    Config file path (.js or .ts)
+                         Default: bundle-size.config.ts in current directory
       --commit <sha>     Specific commit SHA (for download or upload)
       --branch <name>    Branch name to acknowledge (only for --acknowledge-failure)
       --no-html-diffs    Skip HTML diff generation
@@ -43,18 +45,21 @@ Options:
       --version          Show version
 
 Examples:
-  # Feature branch: download baseline and compare
-  shaka-bundle-size -c app.config.js --download-main-branch-stats
-  shaka-bundle-size -c app.config.js --compare
+  # Auto-discovers bundle-size.config.ts in current directory
+  shaka-bundle-size --download-main-branch-stats
+  shaka-bundle-size --compare
+
+  # Specify config explicitly
+  shaka-bundle-size -c admin.bundle-size.config.ts --compare
 
   # Download from specific commit
-  shaka-bundle-size -c app.config.js --download-main-branch-stats --commit abc1234
+  shaka-bundle-size --download-main-branch-stats --commit abc1234
 
   # Main branch: upload new baseline after merge
-  shaka-bundle-size -c app.config.js --upload-main-branch-stats
+  shaka-bundle-size --upload-main-branch-stats
 
   # Upload baseline for specific commit
-  shaka-bundle-size -c app.config.js --upload-main-branch-stats --commit abc1234
+  shaka-bundle-size --upload-main-branch-stats --commit abc1234
 
 Exit codes:
   0  Success / Check passed
@@ -165,15 +170,22 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  if (!args.config) {
-    console.error(colorize.red('Error: --config is required'));
-    console.error('Run with --help for usage information');
-    process.exit(2);
+  let configPath = args.config;
+  if (!configPath) {
+    configPath = findConfigFile() ?? undefined;
+    if (!configPath) {
+      console.error(colorize.red('Error: No config file found'));
+      console.error('Create a bundle-size.config.ts file or specify one with --config');
+      process.exit(2);
+    }
+    if (args.verbose) {
+      console.log(`Using config: ${configPath}`);
+    }
   }
 
   let resolvedConfig;
   try {
-    const userConfig = await loadConfig(args.config);
+    const userConfig = await loadConfig(configPath);
     resolvedConfig = resolveConfig(userConfig);
   } catch (error) {
     console.error(colorize.red(`Error loading config: ${(error as Error).message}`));
@@ -307,7 +319,7 @@ async function main(): Promise<void> {
         process.exit(0);
       }
 
-      printCompareFailureGuidance(args.config);
+      printCompareFailureGuidance(configPath);
       process.exit(1);
     } catch (error) {
       console.error(colorize.red(`Error running check: ${(error as Error).message}`));

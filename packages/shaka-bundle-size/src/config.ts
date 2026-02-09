@@ -4,6 +4,18 @@ import { z } from 'zod';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 
+const CONFIG_FILENAMES = ['bundle-size.config.ts', 'bundle-size.config.js'];
+
+export function findConfigFile(cwd: string = process.cwd()): string | null {
+  for (const filename of CONFIG_FILENAMES) {
+    const configPath = path.join(cwd, filename);
+    if (fs.existsSync(configPath)) {
+      return configPath;
+    }
+  }
+  return null;
+}
+
 export const RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL =
   'https://github.com/shakacode/shaka-perf/blob/main/docs/resolving-bundle-size-issues.md';
 
