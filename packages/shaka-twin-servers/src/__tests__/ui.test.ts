@@ -1,26 +1,69 @@
-import { colorize, printError, printSuccess, printWarning, printInfo, printBanner } from '../helpers/ui';
-import type { Color } from '../helpers/ui';
+const ANSI = {
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  reset: '\x1b[0m',
+};
 
 describe('colorize', () => {
-  it('wraps text with color and reset codes', () => {
-    const result = colorize('hello', 'red');
-    // The result depends on TTY support; in test it's likely non-TTY
-    // so colors may be empty strings. Either way, the text should appear.
-    expect(result).toContain('hello');
+  beforeEach(() => {
+    jest.resetModules();
   });
 
-  it('works with all color values', () => {
-    const colors: Color[] = ['red', 'green', 'yellow', 'blue'];
-    for (const color of colors) {
-      const result = colorize('text', color);
-      expect(result).toContain('text');
-    }
+  it('wraps text with color and reset codes when TTY is supported', () => {
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+
+    const { colorize } = require('../helpers/ui');
+    const result = colorize('hello', 'red');
+
+    expect(result).toBe(`${ANSI.red}hello${ANSI.reset}`);
+
+    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
+  });
+
+  it('returns plain text when TTY is not supported', () => {
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, 'isTTY', { value: false, configurable: true });
+
+    const { colorize } = require('../helpers/ui');
+    const result = colorize('hello', 'red');
+
+    expect(result).toBe('hello');
+
+    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
+  });
+
+  it('applies correct ANSI codes for each color', () => {
+    const originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+
+    const { colorize } = require('../helpers/ui');
+
+    expect(colorize('text', 'red')).toBe(`${ANSI.red}text${ANSI.reset}`);
+    expect(colorize('text', 'green')).toBe(`${ANSI.green}text${ANSI.reset}`);
+    expect(colorize('text', 'yellow')).toBe(`${ANSI.yellow}text${ANSI.reset}`);
+    expect(colorize('text', 'blue')).toBe(`${ANSI.blue}text${ANSI.reset}`);
+
+    Object.defineProperty(process.stdout, 'isTTY', { value: originalIsTTY, configurable: true });
   });
 
   it('handles empty string', () => {
+    const { colorize } = require('../helpers/ui');
     const result = colorize('', 'red');
     expect(typeof result).toBe('string');
   });
+});
+
+let printError: typeof import('../helpers/ui').printError;
+let printSuccess: typeof import('../helpers/ui').printSuccess;
+let printWarning: typeof import('../helpers/ui').printWarning;
+let printInfo: typeof import('../helpers/ui').printInfo;
+let printBanner: typeof import('../helpers/ui').printBanner;
+
+beforeEach(() => {
+  ({ printError, printSuccess, printWarning, printInfo, printBanner } = require('../helpers/ui'));
 });
 
 describe('printError', () => {

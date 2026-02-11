@@ -6,57 +6,172 @@ import {
   getGroupId,
   getUsername,
 } from '../helpers/docker';
+import * as shell from '../helpers/shell';
+
+jest.mock('../helpers/shell');
+const mockExecSync = shell.execSync_ as jest.MockedFunction<typeof shell.execSync_>;
 
 describe('dockerImageExists', () => {
-  it('returns false for non-existent image', () => {
-    expect(dockerImageExists('nonexistent-image-xyz:latest')).toBe(false);
+  beforeEach(() => {
+    mockExecSync.mockReset();
+  });
+
+  it('calls docker image inspect with correct command', () => {
+    mockExecSync.mockReturnValue('');
+
+    dockerImageExists('my-app:v1.2.3');
+
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'docker image inspect "my-app:v1.2.3"',
+      { silent: true }
+    );
+  });
+
+  it('returns true when image exists', () => {
+    mockExecSync.mockReturnValue('[{"Id": "sha256:abc123"}]');
+
+    expect(dockerImageExists('existing-image:latest')).toBe(true);
+  });
+
+  it('returns false when image does not exist', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(dockerImageExists('nonexistent-image:latest')).toBe(false);
   });
 });
 
 describe('getGitSha', () => {
-  it('returns a short SHA for a valid git directory', () => {
-    const sha = getGitSha(process.cwd());
-    expect(sha).toBeTruthy();
-    expect(sha.length).toBeLessThanOrEqual(12);
-    expect(sha).not.toBe('unknown');
+  beforeEach(() => {
+    mockExecSync.mockReset();
   });
 
-  it('returns "unknown" for invalid directory', () => {
-    const sha = getGitSha('/nonexistent/path');
-    expect(sha).toBe('unknown');
+  it('calls git rev-parse with correct command', () => {
+    mockExecSync.mockReturnValue('abc123');
+
+    getGitSha('/my/repo');
+
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'git rev-parse --short HEAD',
+      { cwd: '/my/repo' }
+    );
+  });
+
+  it('returns the SHA from git', () => {
+    mockExecSync.mockReturnValue('abc123def');
+
+    expect(getGitSha('/repo')).toBe('abc123def');
+  });
+
+  it('returns "unknown" when git command fails', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(getGitSha('/not-a-repo')).toBe('unknown');
   });
 });
 
 describe('getGitBranch', () => {
-  it('returns a branch name for a valid git directory', () => {
-    const branch = getGitBranch(process.cwd());
-    expect(branch).toBeTruthy();
+  beforeEach(() => {
+    mockExecSync.mockReset();
   });
 
-  it('returns "unknown" for invalid directory', () => {
-    const branch = getGitBranch('/nonexistent/path');
-    expect(branch).toBe('unknown');
+  it('calls git branch with correct command', () => {
+    mockExecSync.mockReturnValue('main');
+
+    getGitBranch('/my/repo');
+
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'git branch --show-current',
+      { cwd: '/my/repo' }
+    );
+  });
+
+  it('returns the branch name from git', () => {
+    mockExecSync.mockReturnValue('feature/my-branch');
+
+    expect(getGitBranch('/repo')).toBe('feature/my-branch');
+  });
+
+  it('returns "unknown" when git command fails', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(getGitBranch('/not-a-repo')).toBe('unknown');
   });
 });
 
 describe('getUserId', () => {
-  it('returns a numeric string', () => {
-    const uid = getUserId();
-    expect(uid).toMatch(/^\d+$/);
+  beforeEach(() => {
+    mockExecSync.mockReset();
+  });
+
+  it('calls id -u', () => {
+    mockExecSync.mockReturnValue('501');
+
+    getUserId();
+
+    expect(mockExecSync).toHaveBeenCalledWith('id -u');
+  });
+
+  it('returns the user id', () => {
+    mockExecSync.mockReturnValue('1001');
+
+    expect(getUserId()).toBe('1001');
+  });
+
+  it('returns "1000" as fallback', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(getUserId()).toBe('1000');
   });
 });
 
 describe('getGroupId', () => {
-  it('returns a numeric string', () => {
-    const gid = getGroupId();
-    expect(gid).toMatch(/^\d+$/);
+  beforeEach(() => {
+    mockExecSync.mockReset();
+  });
+
+  it('calls id -g', () => {
+    mockExecSync.mockReturnValue('20');
+
+    getGroupId();
+
+    expect(mockExecSync).toHaveBeenCalledWith('id -g');
+  });
+
+  it('returns the group id', () => {
+    mockExecSync.mockReturnValue('1001');
+
+    expect(getGroupId()).toBe('1001');
+  });
+
+  it('returns "1000" as fallback', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(getGroupId()).toBe('1000');
   });
 });
 
 describe('getUsername', () => {
-  it('returns a non-empty string', () => {
-    const username = getUsername();
-    expect(username).toBeTruthy();
-    expect(username.length).toBeGreaterThan(0);
+  beforeEach(() => {
+    mockExecSync.mockReset();
+  });
+
+  it('calls whoami', () => {
+    mockExecSync.mockReturnValue('testuser');
+
+    getUsername();
+
+    expect(mockExecSync).toHaveBeenCalledWith('whoami');
+  });
+
+  it('returns the username', () => {
+    mockExecSync.mockReturnValue('johndoe');
+
+    expect(getUsername()).toBe('johndoe');
+  });
+
+  it('returns "user" as fallback', () => {
+    mockExecSync.mockReturnValue('');
+
+    expect(getUsername()).toBe('user');
   });
 });

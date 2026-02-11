@@ -23,7 +23,7 @@ describe('defineConfig', () => {
 describe('findConfigFile', () => {
   const tmpDir = path.join(__dirname, 'tmp-find-config');
 
-  afterEach(() => {
+  beforeEach(() => {
     if (fs.existsSync(tmpDir)) {
       fs.rmSync(tmpDir, { recursive: true });
     }
@@ -61,15 +61,12 @@ describe('resolveConfig', () => {
   const dockerBuildDir = path.join(tmpDir, 'build');
 
   beforeEach(() => {
-    fs.mkdirSync(projectDir, { recursive: true });
-    fs.mkdirSync(controlDir, { recursive: true });
-    fs.mkdirSync(dockerBuildDir, { recursive: true });
-  });
-
-  afterEach(() => {
     if (fs.existsSync(tmpDir)) {
       fs.rmSync(tmpDir, { recursive: true });
     }
+    fs.mkdirSync(projectDir, { recursive: true });
+    fs.mkdirSync(controlDir, { recursive: true });
+    fs.mkdirSync(dockerBuildDir, { recursive: true });
   });
 
   function makeConfig(overrides: Partial<TwinServersConfig> = {}): TwinServersConfig {

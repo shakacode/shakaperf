@@ -1,4 +1,5 @@
 import { exec, execSync_, commandExists, requireCommand, execWithStdin } from '../helpers/shell';
+import { realpathSync } from 'fs';
 
 describe('exec', () => {
   it('executes a command and returns stdout', async () => {
@@ -25,7 +26,7 @@ describe('exec', () => {
 
   it('supports cwd option', async () => {
     const result = await exec('pwd', [], { cwd: '/tmp', silent: true });
-    expect(result.stdout.trim()).toBe('/tmp');
+    expect(result.stdout.trim()).toBe(realpathSync('/tmp'));
   });
 });
 
@@ -42,7 +43,7 @@ describe('execSync_', () => {
 
   it('supports cwd option', () => {
     const result = execSync_('pwd', { cwd: '/tmp' });
-    expect(result).toBe('/tmp');
+    expect(result).toBe(realpathSync('/tmp'));
   });
 });
 
