@@ -1,0 +1,68 @@
+description: |
+  Build the control Docker image from the merge-base with main branch.
+
+executor:
+  name: machine
+  resource-class: << parameters.resource-class >>
+
+parameters:
+  resource-class:
+    type: enum
+    enum: ["medium", "large", "xlarge", "2xlarge"]
+    default: "large"
+    description: "Machine resource class"
+  node-version:
+    type: string
+    default: ""
+    description: "Node.js version"
+  base-branch:
+    type: string
+    default: "origin/main"
+    description: "Branch to find merge-base against"
+  control-dir:
+    type: string
+    default: "/home/circleci/control_checkout"
+    description: "Directory for control checkout"
+  project-subdir:
+    type: string
+    default: ""
+    description: "Subdirectory within repo containing the project"
+  dockerfile-path:
+    type: string
+    default: "Dockerfile.production"
+    description: "Path to Dockerfile relative to project"
+  working-directory:
+    type: string
+    default: "."
+    description: "Directory containing twin-servers.config.ts"
+  image-name:
+    type: string
+    description: "Docker image name"
+  config-path:
+    type: string
+    default: ""
+    description: "Custom config file path"
+  verbose:
+    type: boolean
+    default: false
+    description: "Enable verbose output"
+
+steps:
+  - checkout
+  - steps: << parameters.pre-steps >>
+  - setup-node:
+      node-version: << parameters.node-version >>
+  - checkout-control:
+      base-branch: << parameters.base-branch >>
+      control-dir: << parameters.control-dir >>
+      project-subdir: << parameters.project-subdir >>
+      dockerfile-path: << parameters.dockerfile-path >>
+  - build-image:
+      target: control
+      working-directory: << parameters.working-directory >>
+      config-path: << parameters.config-path >>
+      verbose: << parameters.verbose >>
+  - save-image:
+      image-name: << parameters.image-name >>
+      target: control
+  - steps: << parameters.post-steps >>

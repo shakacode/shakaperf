@@ -1,0 +1,63 @@
+description: |
+  Fully customized A/B performance testing workflow with monorepo structure,
+  custom health checks, resource classes, and additional setup steps.
+
+usage:
+  version: 2.1
+
+  orbs:
+    twin-servers: shaka-perf/twin-servers@1.0.0
+
+  workflows:
+    perf-test-full:
+      jobs:
+        - twin-servers/build-experiment:
+            name: build-experiment-image
+            image-name: demo-ecommerce
+            working-directory: demo-ecommerce
+            resource-class: xlarge
+            node-version: "20.11.0"
+            pre-steps:
+              - run:
+                  name: Set up custom environment
+                  command: |
+                    echo "Setting up custom environment..."
+            filters:
+              branches:
+                ignore: main
+
+        - twin-servers/build-control:
+            name: build-control-image
+            image-name: demo-ecommerce
+            working-directory: demo-ecommerce
+            project-subdir: demo-ecommerce
+            base-branch: origin/main
+            dockerfile-path: Dockerfile.production
+            resource-class: xlarge
+            node-version: "20.11.0"
+            filters:
+              branches:
+                ignore: main
+
+        - twin-servers/run-tests:
+            name: performance-tests
+            requires:
+              - build-experiment-image
+              - build-control-image
+            working-directory: demo-ecommerce
+            server-command: "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+            control-health-url: "http://localhost:3020/up"
+            experiment-health-url: "http://localhost:3030/up"
+            health-timeout: "180s"
+            test-command: "bundle exec rspec spec/performance --format json --out perf-results/results.json"
+            test-parallel: false
+            artifact-path: demo-ecommerce/perf-results
+            artifact-destination: performance-results
+            post-steps:
+              - run:
+                  name: Generate performance report
+                  command: |
+                    echo "Generating performance comparison report..."
+            filters:
+              branches:
+                ignore: main

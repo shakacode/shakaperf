@@ -1,0 +1,39 @@
+description: |
+  Wait for servers to be healthy using dockerize health checks.
+
+parameters:
+  control-health-url:
+    type: string
+    default: "http://localhost:3020/up"
+    description: "Control server health check endpoint"
+  experiment-health-url:
+    type: string
+    default: "http://localhost:3030/up"
+    description: "Experiment server health check endpoint"
+  timeout:
+    type: string
+    default: "120s"
+    description: "Timeout for each health check"
+  install-dockerize:
+    type: boolean
+    default: true
+    description: "Install dockerize before health check"
+  dockerize-version:
+    type: string
+    default: "v0.6.1"
+    description: "Dockerize version to install"
+
+steps:
+  - when:
+      condition: << parameters.install-dockerize >>
+      steps:
+        - run:
+            name: Install dockerize
+            command: |
+              curl -sSL "https://github.com/jwilder/dockerize/releases/download/<< parameters.dockerize-version >>/dockerize-linux-amd64-<< parameters.dockerize-version >>.tar.gz" | sudo tar -xz -C /usr/local/bin
+  - run:
+      name: Wait for control server
+      command: dockerize -wait "<< parameters.control-health-url >>" -timeout "<< parameters.timeout >>"
+  - run:
+      name: Wait for experiment server
+      command: dockerize -wait "<< parameters.experiment-health-url >>" -timeout "<< parameters.timeout >>"

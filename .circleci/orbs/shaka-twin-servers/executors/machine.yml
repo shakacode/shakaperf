@@ -1,0 +1,18 @@
+description: |
+  Ubuntu machine executor for Docker operations. Uses ubuntu-2204:2023.10.1
+  with configurable resource class.
+
+parameters:
+  image:
+    type: string
+    default: "ubuntu-2204:2023.10.1"
+    description: "Ubuntu machine image version"
+  resource-class:
+    type: enum
+    enum: ["medium", "large", "xlarge", "2xlarge"]
+    default: "large"
+    description: "Resource class for the machine executor"
+
+machine:
+  image: << parameters.image >>
+resource_class: << parameters.resource-class >>

@@ -1,0 +1,97 @@
+description: |
+  Run A/B performance tests with both twin server images.
+
+executor:
+  name: machine
+  resource-class: << parameters.resource-class >>
+
+parameters:
+  resource-class:
+    type: enum
+    enum: ["medium", "large", "xlarge", "2xlarge"]
+    default: "large"
+    description: "Machine resource class"
+  node-version:
+    type: string
+    default: ""
+    description: "Node.js version"
+  working-directory:
+    type: string
+    default: "."
+    description: "Directory containing twin-servers.config.ts"
+  server-command:
+    type: string
+    description: "Command to start the server in each container"
+  control-health-url:
+    type: string
+    default: "http://localhost:3020/up"
+    description: "Control server health endpoint"
+  experiment-health-url:
+    type: string
+    default: "http://localhost:3030/up"
+    description: "Experiment server health endpoint"
+  health-timeout:
+    type: string
+    default: "120s"
+    description: "Health check timeout"
+  test-command:
+    type: string
+    description: "Performance test command"
+  test-parallel:
+    type: boolean
+    default: true
+    description: "Run test command in both containers in parallel"
+  artifact-path:
+    type: string
+    default: ""
+    description: "Path to store artifacts (empty to skip)"
+  artifact-destination:
+    type: string
+    default: "perf-results"
+    description: "Artifact destination name"
+  workspace-attach-at:
+    type: string
+    default: "/tmp/workspace"
+    description: "Path to attach workspace"
+
+steps:
+  - checkout
+  - attach_workspace:
+      at: << parameters.workspace-attach-at >>
+  - steps: << parameters.pre-steps >>
+  - setup-node:
+      node-version: << parameters.node-version >>
+  - load-images:
+      workspace-path: << parameters.workspace-attach-at >>/docker-images
+  - start-containers:
+      working-directory: << parameters.working-directory >>
+  - run-server:
+      target: control
+      command: << parameters.server-command >>
+      working-directory: << parameters.working-directory >>
+      background: true
+  - run-server:
+      target: experiment
+      command: << parameters.server-command >>
+      working-directory: << parameters.working-directory >>
+      background: true
+  - wait-for-servers:
+      control-health-url: << parameters.control-health-url >>
+      experiment-health-url: << parameters.experiment-health-url >>
+      timeout: << parameters.health-timeout >>
+  - run:
+      name: Run performance tests
+      working_directory: << parameters.working-directory >>
+      command: |
+        if [ "<< parameters.test-parallel >>" = "true" ]; then
+          yarn shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
+        else
+          yarn shaka-twin-servers run-cmd experiment "<< parameters.test-command >>"
+        fi
+  - steps: << parameters.post-steps >>
+  - when:
+      condition: << parameters.artifact-path >>
+      steps:
+        - store_artifacts:
+            path: << parameters.artifact-path >>
+            destination: << parameters.artifact-destination >>

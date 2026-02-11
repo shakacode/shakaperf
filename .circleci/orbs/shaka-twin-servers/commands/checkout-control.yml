@@ -1,0 +1,55 @@
+description: |
+  Checkout the merge-base commit using git worktree for control image build.
+  Sets CONTROL_REPO_DIR environment variable.
+
+parameters:
+  base-branch:
+    type: string
+    default: "origin/main"
+    description: "Branch to find merge-base against"
+  control-dir:
+    type: string
+    default: "/home/circleci/control_checkout"
+    description: "Directory for control checkout"
+  project-subdir:
+    type: string
+    default: ""
+    description: "Subdirectory within repo containing the project"
+  dockerfile-path:
+    type: string
+    default: "Dockerfile.production"
+    description: "Path to Dockerfile relative to project"
+
+steps:
+  - run:
+      name: Copy Dockerfile to temp location
+      command: |
+        mkdir -p /tmp/docker-build
+        if [ -n "<< parameters.project-subdir >>" ]; then
+          cp "<< parameters.project-subdir >>/<< parameters.dockerfile-path >>" /tmp/docker-build/
+        else
+          cp "<< parameters.dockerfile-path >>" /tmp/docker-build/
+        fi
+  - run:
+      name: Checkout control (merge-base with << parameters.base-branch >>)
+      command: |
+        MERGE_BASE=$(git merge-base HEAD << parameters.base-branch >>)
+        echo "Merge base commit: $MERGE_BASE"
+        mkdir -p "<< parameters.control-dir >>"
+        git worktree add "<< parameters.control-dir >>" "$MERGE_BASE"
+  - run:
+      name: Restore Dockerfile to control checkout
+      command: |
+        if [ -n "<< parameters.project-subdir >>" ]; then
+          cp /tmp/docker-build/<< parameters.dockerfile-path >> "<< parameters.control-dir >>/<< parameters.project-subdir >>/"
+        else
+          cp /tmp/docker-build/<< parameters.dockerfile-path >> "<< parameters.control-dir >>/"
+        fi
+  - run:
+      name: Set CONTROL_REPO_DIR environment variable
+      command: |
+        if [ -n "<< parameters.project-subdir >>" ]; then
+          echo "export CONTROL_REPO_DIR=<< parameters.control-dir >>/<< parameters.project-subdir >>" >> "$BASH_ENV"
+        else
+          echo "export CONTROL_REPO_DIR=<< parameters.control-dir >>" >> "$BASH_ENV"
+        fi

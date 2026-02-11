@@ -1,0 +1,47 @@
+description: |
+  Build the experiment Docker image from the current branch.
+
+executor:
+  name: machine
+  resource-class: << parameters.resource-class >>
+
+parameters:
+  resource-class:
+    type: enum
+    enum: ["medium", "large", "xlarge", "2xlarge"]
+    default: "large"
+    description: "Machine resource class"
+  node-version:
+    type: string
+    default: ""
+    description: "Node.js version"
+  working-directory:
+    type: string
+    default: "."
+    description: "Directory containing twin-servers.config.ts"
+  image-name:
+    type: string
+    description: "Docker image name (e.g., my-app)"
+  config-path:
+    type: string
+    default: ""
+    description: "Custom config file path"
+  verbose:
+    type: boolean
+    default: false
+    description: "Enable verbose output"
+
+steps:
+  - checkout
+  - steps: << parameters.pre-steps >>
+  - setup-node:
+      node-version: << parameters.node-version >>
+  - build-image:
+      target: experiment
+      working-directory: << parameters.working-directory >>
+      config-path: << parameters.config-path >>
+      verbose: << parameters.verbose >>
+  - save-image:
+      image-name: << parameters.image-name >>
+      target: experiment
+  - steps: << parameters.post-steps >>

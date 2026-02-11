@@ -1,0 +1,23 @@
+description: |
+  Start twin server containers using docker-compose via shaka-twin-servers.
+
+parameters:
+  working-directory:
+    type: string
+    default: "."
+    description: "Directory containing twin-servers.config.ts"
+  config-path:
+    type: string
+    default: ""
+    description: "Custom config file path (optional)"
+
+steps:
+  - run:
+      name: Start twin server containers
+      working_directory: << parameters.working-directory >>
+      command: |
+        CONFIG_FLAG=""
+        if [ -n "<< parameters.config-path >>" ]; then
+          CONFIG_FLAG="--config << parameters.config-path >>"
+        fi
+        yarn shaka-twin-servers start-containers $CONFIG_FLAG
