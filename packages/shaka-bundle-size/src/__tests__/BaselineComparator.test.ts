@@ -59,6 +59,17 @@ describe('BaselineComparator', () => {
       expect(loaded.loadableComponents).toHaveLength(1);
       expect(loaded.loadableComponents[0].name).toBe('App');
     });
+
+    it('throws for invalid JSON syntax', () => {
+      fs.writeFileSync(path.join(tmpDir, 'invalid.json'), '{ invalid json }');
+      const comparator = new BaselineComparator({ baselineDir: tmpDir });
+      expect(() => comparator.loadBaselineFile('invalid.json')).toThrow();
+    });
+
+    it('throws for non-existent file', () => {
+      const comparator = new BaselineComparator({ baselineDir: tmpDir });
+      expect(() => comparator.loadBaselineFile('nonexistent.json')).toThrow();
+    });
   });
 
   describe('findComponentByName', () => {

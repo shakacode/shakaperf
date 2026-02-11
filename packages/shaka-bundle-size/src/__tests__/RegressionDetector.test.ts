@@ -2,14 +2,48 @@ import { RegressionDetector, RegressionType, defaultPolicy } from '../Regression
 import type { ComparisonResult, ComponentSize, BaselineComponent, SizeComparison, Regression } from '../types';
 
 describe('defaultPolicy', () => {
-  it('always returns shouldFail: true', () => {
+  it('returns shouldFail: true for INCREASED_SIZE', () => {
     const regression: Regression = {
       componentName: 'App',
       type: RegressionType.INCREASED_SIZE,
     };
     const result = defaultPolicy(regression);
     expect(result.shouldFail).toBe(true);
-    expect(result.message).toContain('Regression detected');
+    expect(result.message).toContain('increasedSize');
+    expect(result.message).toContain('App');
+  });
+
+  it('returns shouldFail: true for NEW_COMPONENT', () => {
+    const regression: Regression = {
+      componentName: 'NewWidget',
+      type: RegressionType.NEW_COMPONENT,
+    };
+    const result = defaultPolicy(regression);
+    expect(result.shouldFail).toBe(true);
+    expect(result.message).toContain('newComponent');
+    expect(result.message).toContain('NewWidget');
+  });
+
+  it('returns shouldFail: true for REMOVED_COMPONENT', () => {
+    const regression: Regression = {
+      componentName: 'OldWidget',
+      type: RegressionType.REMOVED_COMPONENT,
+    };
+    const result = defaultPolicy(regression);
+    expect(result.shouldFail).toBe(true);
+    expect(result.message).toContain('removedComponent');
+    expect(result.message).toContain('OldWidget');
+  });
+
+  it('returns shouldFail: true for INCREASED_CHUNKS_COUNT', () => {
+    const regression: Regression = {
+      componentName: 'Header',
+      type: RegressionType.INCREASED_CHUNKS_COUNT,
+    };
+    const result = defaultPolicy(regression);
+    expect(result.shouldFail).toBe(true);
+    expect(result.message).toContain('increasedChunksCount');
+    expect(result.message).toContain('Header');
   });
 });
 

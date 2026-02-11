@@ -319,15 +319,63 @@ describe('Reporter', () => {
 });
 
 describe('SilentReporter', () => {
-  it('produces no output for any method', () => {
-    // Cast to IReporter to use the base interface signatures
+  let consoleSpy: jest.SpyInstance;
+  let stdoutSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+    stdoutSpy.mockRestore();
+  });
+
+  it('produces no output for info', () => {
     const reporter: IReporter = new SilentReporter();
     reporter.info('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for success', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.success('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for warning', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.warning('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for error', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.error('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for header', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.header('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for verbose', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.verbose('test');
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for summary', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.summary({
       passed: true,
       regressions: [],
@@ -335,6 +383,14 @@ describe('SilentReporter', () => {
       actualSizes: [],
       expectedSizes: [],
     });
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('produces no output for reportPassed', () => {
+    const reporter: IReporter = new SilentReporter();
     reporter.reportPassed();
+    expect(consoleSpy).not.toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
   });
 });

@@ -83,9 +83,30 @@ describe('ExtendedStatsGenerator', () => {
       const gen = new ExtendedStatsGenerator({ bundlesDir: tmpDir, bundleNamePrefix: 'consumer' });
       gen.generate();
 
+      const webpackStatsPath = path.join(tmpDir, 'consumer-webpack-stats.json');
+      const extendedStatsPath = path.join(tmpDir, 'consumer-bundlesize-extended-stats.json');
+
       expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining('consumer-webpack-stats.json'),
-        expect.any(Object)
+        `yarn webpack-bundle-analyzer -m json -s gzip "${webpackStatsPath}" -r "${extendedStatsPath}"`,
+        { stdio: 'pipe', timeout: 300000 }
+      );
+    });
+
+    it('uses correct command without bundleNamePrefix', () => {
+      const { execSync } = require('child_process');
+      execSync.mockImplementation(() => '');
+
+      fs.writeFileSync(path.join(tmpDir, 'webpack-stats.json'), '{}');
+
+      const gen = new ExtendedStatsGenerator({ bundlesDir: tmpDir });
+      gen.generate();
+
+      const webpackStatsPath = path.join(tmpDir, 'webpack-stats.json');
+      const extendedStatsPath = path.join(tmpDir, 'bundlesize-extended-stats.json');
+
+      expect(execSync).toHaveBeenCalledWith(
+        `yarn webpack-bundle-analyzer -m json -s gzip "${webpackStatsPath}" -r "${extendedStatsPath}"`,
+        { stdio: 'pipe', timeout: 300000 }
       );
     });
   });

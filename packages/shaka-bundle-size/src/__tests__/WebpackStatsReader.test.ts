@@ -171,5 +171,40 @@ describe('WebpackStatsReader', () => {
       const reader = new WebpackStatsReader({ bundlesDir: tmpDir });
       expect(() => reader.readJsonFile('nonexistent.json')).toThrow();
     });
+
+    it('throws for invalid JSON', () => {
+      fs.writeFileSync(path.join(tmpDir, 'invalid.json'), '{ invalid json }');
+      const reader = new WebpackStatsReader({ bundlesDir: tmpDir });
+      expect(() => reader.readJsonFile('invalid.json')).toThrow();
+    });
+  });
+
+  describe('malformed stats handling', () => {
+    it('throws when namedChunkGroups is missing', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'malformed.json'),
+        JSON.stringify({ chunks: [{ files: ['a.js'] }] })
+      );
+      const reader = new WebpackStatsReader({ bundlesDir: tmpDir });
+      expect(() => reader.readStats('malformed.json')).toThrow();
+    });
+
+    it('throws when chunks is missing', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'malformed.json'),
+        JSON.stringify({ namedChunkGroups: {} })
+      );
+      const reader = new WebpackStatsReader({ bundlesDir: tmpDir });
+      expect(() => reader.readStats('malformed.json')).toThrow();
+    });
+
+    it('throws when namedChunkGroups is null', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'malformed.json'),
+        JSON.stringify({ namedChunkGroups: null, chunks: [] })
+      );
+      const reader = new WebpackStatsReader({ bundlesDir: tmpDir });
+      expect(() => reader.readStats('malformed.json')).toThrow();
+    });
   });
 });

@@ -229,6 +229,7 @@ describe('getCurrentBranch', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    jest.resetModules();
   });
 
   it('returns CIRCLE_BRANCH if set', () => {
@@ -246,11 +247,36 @@ describe('getCurrentBranch', () => {
     expect(getCurrentBranch()).toBe('develop');
   });
 
+  it('prefers CIRCLE_BRANCH over other env vars', () => {
+    process.env.CIRCLE_BRANCH = 'circle-branch';
+    process.env.GITHUB_REF_NAME = 'github-branch';
+    process.env.GIT_BRANCH = 'git-branch';
+    expect(getCurrentBranch()).toBe('circle-branch');
+  });
+
   it('falls back to git command when no env vars', () => {
-    // In a git repo, this should return the branch name or undefined
+    // We're in a real git repo, should return the actual branch
     const branch = getCurrentBranch();
-    // We're in a git repo, so it should return something
-    expect(branch === undefined || typeof branch === 'string').toBe(true);
+    expect(typeof branch).toBe('string');
+    expect(branch!.length).toBeGreaterThan(0);
+  });
+
+  it('returns undefined when git returns HEAD (detached state)', () => {
+    jest.resetModules();
+    jest.doMock('child_process', () => ({
+      execSync: () => 'HEAD\n',
+    }));
+    const { getCurrentBranch: getCurrentBranchMocked } = require('../config');
+    expect(getCurrentBranchMocked()).toBeUndefined();
+  });
+
+  it('returns undefined when git command fails', () => {
+    jest.resetModules();
+    jest.doMock('child_process', () => ({
+      execSync: () => { throw new Error('not a git repo'); },
+    }));
+    const { getCurrentBranch: getCurrentBranchMocked } = require('../config');
+    expect(getCurrentBranchMocked()).toBeUndefined();
   });
 });
 

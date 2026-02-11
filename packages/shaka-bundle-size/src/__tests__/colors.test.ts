@@ -1,5 +1,4 @@
 import { ANSI, colorize } from '../helpers/colors';
-import type { ColorName } from '../helpers/colors';
 
 describe('ANSI', () => {
   it('defines RESET code', () => {
@@ -63,14 +62,5 @@ describe('colorize', () => {
   it('handles strings with existing ANSI codes', () => {
     const nested = colorize.red(colorize.bold('hello'));
     expect(nested).toBe(`${ANSI.RED}${ANSI.BOLD}hello${ANSI.RESET}${ANSI.RESET}`);
-  });
-});
-
-describe('ColorName type', () => {
-  it('all colorize keys are valid ColorName values', () => {
-    const names: ColorName[] = ['red', 'green', 'blue', 'yellow', 'bold', 'dim'];
-    for (const name of names) {
-      expect(typeof colorize[name]).toBe('function');
-    }
   });
 });
