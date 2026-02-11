@@ -3,17 +3,13 @@ version: 2.1
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
+  twin-servers: ramez/shaka-twin-servers@dev:alpha
 
 executors:
   ruby-node-executor:
     docker:
       - image: cimg/ruby:3.3-node
     working_directory: ~/project
-
-  machine-executor:
-    machine:
-      image: ubuntu-2204:2023.10.1
-    resource_class: large
 
 commands:
   setup-yarn:
@@ -29,50 +25,6 @@ commands:
       - run:
           name: Build packages
           command: yarn build
-
-  setup-machine-node:
-    description: Setup Node.js with corepack and Yarn on machine executor
-    steps:
-      - node/install
-      - run:
-          name: Enable corepack for Yarn
-          command: corepack enable && corepack install
-      - setup-yarn-and-build
-
-  install-playwright:
-    description: Install Playwright Chromium browser with caching
-    steps:
-      - restore_cache:
-          keys:
-            - playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
-            - playwright-v1-{{ arch }}-
-      - run:
-          name: Install Playwright Chromium
-          command: |
-            cd demo-ecommerce
-            DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
-      - save_cache:
-          key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
-          paths:
-            - ~/.cache/ms-playwright
-
-  save-docker-image:
-    description: Save a Docker image to workspace
-    parameters:
-      image-name:
-        type: string
-      target:
-        type: string
-    steps:
-      - run:
-          name: Save Docker image
-          command: |
-            mkdir -p /tmp/docker-images
-            docker save -o /tmp/docker-images/<< parameters.target >>.tar << parameters.image-name >>:<< parameters.target >>
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - docker-images/<< parameters.target >>.tar
 
 jobs:
   test:
@@ -143,119 +95,6 @@ jobs:
             cd demo-ecommerce
             yarn bundle-size:upload
 
-  # Performance testing jobs for A/B testing with twin servers
-  build-experiment-image:
-    executor: machine-executor
-    steps:
-      - checkout
-      - setup-machine-node
-      - run:
-          name: Build experiment Docker image
-          command: |
-            cd demo-ecommerce
-            yarn shaka-twin-servers build --target experiment
-      - save-docker-image:
-          image-name: demo-ecommerce
-          target: experiment
-
-  build-control-image:
-    executor: machine-executor
-    environment:
-      CONTROL_REPO_DIR: /home/circleci/control_checkout/demo-ecommerce
-    steps:
-      - checkout
-      - setup-machine-node
-      - run:
-          name: Copy Dockerfile to temp location
-          command: |
-            mkdir -p /tmp/docker-build
-            cp demo-ecommerce/Dockerfile.production /tmp/docker-build/
-      - run:
-          name: Checkout control (merge-base with main)
-          command: |
-            MERGE_BASE=$(git merge-base HEAD origin/main)
-            mkdir -p /home/circleci/control_checkout
-            git worktree add /home/circleci/control_checkout $MERGE_BASE
-      - run:
-          name: Build control Docker image
-          command: |
-            # Copy the Dockerfile from current branch into the control checkout
-            cp /tmp/docker-build/Dockerfile.production $CONTROL_REPO_DIR/
-            cd demo-ecommerce
-            yarn shaka-twin-servers build --target control
-      - save-docker-image:
-          image-name: demo-ecommerce
-          target: control
-
-  perf-tests:
-    executor: machine-executor
-    steps:
-      - checkout
-      - setup-machine-node
-      - attach_workspace:
-          at: /tmp/workspace
-      - run:
-          name: Install dockerize
-          command: |
-            curl -sSL https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | sudo tar -xz -C /usr/local/bin
-      - run:
-          name: Load Docker images
-          command: |
-            docker load -i /tmp/workspace/docker-images/experiment.tar
-            docker load -i /tmp/workspace/docker-images/control.tar
-      - run:
-          name: Start containers
-          command: |
-            cd demo-ecommerce
-            yarn shaka-twin-servers start-containers
-      - run:
-          name: Run rails server (control)
-          command: |
-            cd demo-ecommerce
-            yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-          background: true
-      - run:
-          name: Run rails server (experiment)
-          command: |
-            cd demo-ecommerce
-            yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-          background: true
-      - run:
-          name: Wait for servers
-          command: |
-            dockerize -wait http://localhost:3020/up -timeout 120s
-            dockerize -wait http://localhost:3030/up -timeout 120s
-      - install-playwright
-      - run:
-          name: Run visual regression -- generate reference images
-          command: |
-            cd demo-ecommerce
-            yarn visreg:reference
-      - run:
-          name: Run visual regression -- test
-          command: |
-            cd demo-ecommerce
-            yarn visreg:test:retry
-      - run:
-          name: Run performance tests
-          command: |
-            cd demo-ecommerce
-            yarn shaka-twin-servers run-cmd-parallel "echo 'Running performance tests...'"
-      - store_artifacts:
-          path: demo-ecommerce/backstop_data/html_report
-          destination: visreg-report
-      - store_artifacts:
-          path: demo-ecommerce/backstop_data/bitmaps_reference
-          destination: bitmaps_reference
-      - store_artifacts:
-          path: demo-ecommerce/backstop_data/bitmaps_test
-          destination: bitmaps_test
-      - store_test_results:
-          path: demo-ecommerce/backstop_data/ci_report
-      - store_artifacts:
-          path: demo-ecommerce/perf-results
-          destination: perf-results
-
 workflows:
   build-and-check:
     jobs:
@@ -283,21 +122,29 @@ workflows:
   # Performance testing workflow with twin servers for A/B testing
   perf-test-twin-servers:
     jobs:
-      - build-experiment-image:
+      - twin-servers/build-experiment:
+          image-name: demo-ecommerce
+          working-directory: demo-ecommerce
           filters:
             branches:
               ignore: main
 
-      - build-control-image:
+      - twin-servers/build-control:
+          image-name: demo-ecommerce
+          working-directory: demo-ecommerce
+          project-subdir: demo-ecommerce
           filters:
             branches:
               ignore: main
 
-      # Run perf tests after both images are built
-      - perf-tests:
+      - twin-servers/run-tests:
           requires:
-            - build-experiment-image
-            - build-control-image
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+          working-directory: demo-ecommerce
+          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+          test-command: "echo 'Running performance tests...'"
+          artifact-path: demo-ecommerce/perf-results
           filters:
             branches:
               ignore: main
