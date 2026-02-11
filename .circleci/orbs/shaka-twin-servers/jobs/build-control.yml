@@ -11,10 +11,6 @@ parameters:
     enum: ["medium", "large", "xlarge", "2xlarge"]
     default: "large"
     description: "Machine resource class"
-  node-version:
-    type: string
-    default: ""
-    description: "Node.js version"
   base-branch:
     type: string
     default: "origin/main"
@@ -46,12 +42,23 @@ parameters:
     type: boolean
     default: false
     description: "Enable verbose output"
+  cli-prefix:
+    type: string
+    default: "npx"
+    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+  setup-steps:
+    type: steps
+    default: []
+    description: "Steps to run before build (use this for package manager setup)"
+  teardown-steps:
+    type: steps
+    default: []
+    description: "Steps to run after build"
 
 steps:
   - checkout
-  - steps: << parameters.pre-steps >>
-  - setup-node:
-      node-version: << parameters.node-version >>
+  - setup-node
+  - steps: << parameters.setup-steps >>
   - checkout-control:
       base-branch: << parameters.base-branch >>
       control-dir: << parameters.control-dir >>
@@ -62,7 +69,8 @@ steps:
       working-directory: << parameters.working-directory >>
       config-path: << parameters.config-path >>
       verbose: << parameters.verbose >>
+      cli-prefix: << parameters.cli-prefix >>
   - save-image:
       image-name: << parameters.image-name >>
       target: control
-  - steps: << parameters.post-steps >>
+  - steps: << parameters.teardown-steps >>

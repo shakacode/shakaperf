@@ -19,6 +19,10 @@ parameters:
     type: boolean
     default: false
     description: "Enable verbose output"
+  cli-prefix:
+    type: string
+    default: "npx"
+    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
 
 steps:
   - run:
@@ -33,4 +37,4 @@ steps:
         if [ "<< parameters.verbose >>" = "true" ]; then
           VERBOSE_FLAG="--verbose"
         fi
-        yarn shaka-twin-servers build --target << parameters.target >> $CONFIG_FLAG $VERBOSE_FLAG
+        << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> $CONFIG_FLAG $VERBOSE_FLAG

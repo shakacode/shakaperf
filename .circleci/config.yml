@@ -26,19 +26,6 @@ commands:
           name: Build packages
           command: yarn build
 
-  setup-machine-node:
-    description: Setup Node.js with corepack and Yarn on machine executor
-    steps:
-      - run:
-          name: Enable corepack for Yarn
-          command: corepack enable && corepack install
-      - run:
-          name: Install dependencies
-          command: yarn install
-      - run:
-          name: Build packages
-          command: yarn build
-
 jobs:
   test:
     executor: ruby-node-executor
@@ -141,7 +128,7 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           setup-steps:
-            - setup-machine-node
+            - setup-yarn-and-build
           filters:
             branches:
               ignore: main
@@ -153,7 +140,7 @@ workflows:
           cli-prefix: yarn
           project-subdir: demo-ecommerce
           setup-steps:
-            - setup-machine-node
+            - setup-yarn-and-build
           filters:
             branches:
               ignore: main
@@ -166,7 +153,7 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           setup-steps:
-            - setup-machine-node
+            - setup-yarn-and-build
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
           test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
           teardown-steps:

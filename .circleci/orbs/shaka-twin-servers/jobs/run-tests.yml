@@ -11,10 +11,6 @@ parameters:
     enum: ["medium", "large", "xlarge", "2xlarge"]
     default: "large"
     description: "Machine resource class"
-  node-version:
-    type: string
-    default: ""
-    description: "Node.js version"
   working-directory:
     type: string
     default: "."
@@ -53,28 +49,42 @@ parameters:
     type: string
     default: "/tmp/workspace"
     description: "Path to attach workspace"
+  cli-prefix:
+    type: string
+    default: "npx"
+    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+  setup-steps:
+    type: steps
+    default: []
+    description: "Steps to run before tests (use this for package manager setup)"
+  teardown-steps:
+    type: steps
+    default: []
+    description: "Steps to run after tests"
 
 steps:
   - checkout
   - attach_workspace:
       at: << parameters.workspace-attach-at >>
-  - steps: << parameters.pre-steps >>
-  - setup-node:
-      node-version: << parameters.node-version >>
+  - setup-node
+  - steps: << parameters.setup-steps >>
   - load-images:
       workspace-path: << parameters.workspace-attach-at >>/docker-images
   - start-containers:
       working-directory: << parameters.working-directory >>
+      cli-prefix: << parameters.cli-prefix >>
   - run-server:
       target: control
       command: << parameters.server-command >>
       working-directory: << parameters.working-directory >>
       background: true
+      cli-prefix: << parameters.cli-prefix >>
   - run-server:
       target: experiment
       command: << parameters.server-command >>
       working-directory: << parameters.working-directory >>
       background: true
+      cli-prefix: << parameters.cli-prefix >>
   - wait-for-servers:
       control-health-url: << parameters.control-health-url >>
       experiment-health-url: << parameters.experiment-health-url >>
@@ -84,11 +94,11 @@ steps:
       working_directory: << parameters.working-directory >>
       command: |
         if [ "<< parameters.test-parallel >>" = "true" ]; then
-          yarn shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
+          << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
         else
-          yarn shaka-twin-servers run-cmd experiment "<< parameters.test-command >>"
+          << parameters.cli-prefix >> shaka-twin-servers run-cmd experiment "<< parameters.test-command >>"
         fi
-  - steps: << parameters.post-steps >>
+  - steps: << parameters.teardown-steps >>
   - when:
       condition: << parameters.artifact-path >>
       steps:

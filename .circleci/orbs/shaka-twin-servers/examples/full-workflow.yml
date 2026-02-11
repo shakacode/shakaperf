@@ -17,7 +17,7 @@ usage:
             working-directory: demo-ecommerce
             resource-class: xlarge
             node-version: "20.11.0"
-            pre-steps:
+            setup-steps:
               - run:
                   name: Set up custom environment
                   command: |
@@ -53,7 +53,7 @@ usage:
             test-parallel: false
             artifact-path: demo-ecommerce/perf-results
             artifact-destination: performance-results
-            post-steps:
+            teardown-steps:
               - run:
                   name: Generate performance report
                   command: |

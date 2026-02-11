@@ -10,6 +10,10 @@ parameters:
     type: string
     default: ""
     description: "Custom config file path (optional)"
+  cli-prefix:
+    type: string
+    default: "npx"
+    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
 
 steps:
   - run:
@@ -20,4 +24,4 @@ steps:
         if [ -n "<< parameters.config-path >>" ]; then
           CONFIG_FLAG="--config << parameters.config-path >>"
         fi
-        yarn shaka-twin-servers start-containers $CONFIG_FLAG
+        << parameters.cli-prefix >> shaka-twin-servers start-containers $CONFIG_FLAG

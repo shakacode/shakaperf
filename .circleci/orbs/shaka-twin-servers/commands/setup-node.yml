@@ -1,42 +1,12 @@
 description: |
-  Install Node.js with corepack enabled for Yarn 4 support. Optionally runs
-  yarn install and build.
+  Install Node.js on the machine executor. This is required for shaka-twin-servers.
 
 parameters:
   node-version:
     type: string
     default: ""
     description: "Node.js version to install (empty for CircleCI default)"
-  run-install:
-    type: boolean
-    default: true
-    description: "Run yarn install after setup"
-  run-build:
-    type: boolean
-    default: true
-    description: "Run yarn build after install"
-  working-directory:
-    type: string
-    default: "."
-    description: "Directory to run yarn commands in"
 
 steps:
   - node/install:
       node-version: << parameters.node-version >>
-  - run:
-      name: Enable corepack for Yarn
-      command: corepack enable && corepack install
-  - when:
-      condition: << parameters.run-install >>
-      steps:
-        - run:
-            name: Install dependencies
-            command: yarn install
-            working_directory: << parameters.working-directory >>
-  - when:
-      condition: << parameters.run-build >>
-      steps:
-        - run:
-            name: Build packages
-            command: yarn build
-            working_directory: << parameters.working-directory >>
