@@ -124,6 +124,7 @@ workflows:
     jobs:
       - twin-servers/build-experiment:
           image-name: demo-ecommerce
+          resource-class: medium
           working-directory: demo-ecommerce
           filters:
             branches:
@@ -131,6 +132,7 @@ workflows:
 
       - twin-servers/build-control:
           image-name: demo-ecommerce
+          resource-class: medium
           working-directory: demo-ecommerce
           project-subdir: demo-ecommerce
           filters:
@@ -141,9 +143,10 @@ workflows:
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
+          resource-class: medium
           working-directory: demo-ecommerce
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          test-command: "echo 'Running performance tests...'"
+          test-command: "echo 'Running performance tests...' > demo-ecommerce/perf-results/test-output.txt && echo 'Running performance tests...'"
           artifact-path: demo-ecommerce/perf-results
           filters:
             branches:
