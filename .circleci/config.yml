@@ -146,8 +146,15 @@ workflows:
           resource-class: medium
           working-directory: demo-ecommerce
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          test-command: "echo 'Running performance tests...' > demo-ecommerce/perf-results/test-output.txt && echo 'Running performance tests...'"
-          artifact-path: demo-ecommerce/perf-results
+          test-command: "mkdir -p perf-results && echo 'Running performance tests...' > perf-results/test-output.txt"
+          post-steps:
+            - run:
+                name: Collect results from both containers
+                command: |
+                  mkdir -p /tmp/perf-results
+                  cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
+                  cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
+          artifact-path: /tmp/perf-results
           filters:
             branches:
               ignore: main
