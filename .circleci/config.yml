@@ -168,7 +168,7 @@ workflows:
           setup-steps:
             - setup-machine-node
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          test-command: "mkdir -p perf-results && echo 'Running performance tests...' > perf-results/test-output.txt"
+          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
           teardown-steps:
             - run:
                 name: Collect results from both containers
