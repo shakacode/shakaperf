@@ -1,7 +1,7 @@
 import type { Page } from 'playwright-core';
 import type { Scenario, KeypressSelector } from '../types';
 
-module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
+export default async function clickAndHoverHelper(page: Page, scenario: Scenario): Promise<void> {
   const hoverSelector = scenario.hoverSelectors || scenario.hoverSelector;
   const clickSelector = scenario.clickSelectors || scenario.clickSelector;
   const keyPressSelector = scenario.keyPressSelectors || scenario.keyPressSelector;
@@ -50,4 +50,4 @@ module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
       document.querySelector(selector)?.scrollIntoView();
     }, scrollToSelector);
   }
-};
+}

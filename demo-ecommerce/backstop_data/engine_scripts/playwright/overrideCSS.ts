@@ -4,11 +4,12 @@
  *
  * Use this in an onReady script E.G.
   ```
-  module.exports = async function(page, scenario) {
-    await require('./overrideCSS')(page, scenario);
+  import overrideCSS from './overrideCSS';
+
+  export default async function onReady(page, scenario) {
+    await overrideCSS(page, scenario);
   }
   ```
- *
  */
 
 import type { Page } from 'playwright-core';
@@ -20,11 +21,11 @@ const BACKSTOP_TEST_CSS_OVERRIDE = `
   }
 `;
 
-module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
+export default async function overrideCSS(page: Page, scenario: Scenario): Promise<void> {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: BACKSTOP_TEST_CSS_OVERRIDE
   });
 
   console.log('BACKSTOP_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
-};
+}

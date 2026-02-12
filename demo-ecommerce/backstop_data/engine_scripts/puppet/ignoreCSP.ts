@@ -10,11 +10,12 @@
  *
  * Use this in an onBefore script E.G.
   ```
-  module.exports = async function(page, scenario) {
-    require('./removeCSP')(page, scenario);
+  import ignoreCSP from './ignoreCSP';
+
+  export default async function onBefore(page, scenario) {
+    await ignoreCSP(page, scenario);
   }
   ```
- *
  */
 
 import https from 'https';
@@ -25,7 +26,7 @@ const agent = new https.Agent({
   rejectUnauthorized: false
 });
 
-module.exports = async function (page: Page, scenario: Scenario): Promise<void> {
+export default async function ignoreCSP(page: Page, scenario: Scenario): Promise<void> {
   const intercept = async (request: HTTPRequest, targetUrl: string) => {
     const requestUrl = request.url();
 
@@ -67,4 +68,4 @@ module.exports = async function (page: Page, scenario: Scenario): Promise<void> 
   page.on('request', req => {
     intercept(req, scenario.url);
   });
-};
+}

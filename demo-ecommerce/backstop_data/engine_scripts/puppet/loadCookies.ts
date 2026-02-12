@@ -13,7 +13,7 @@ interface PuppeteerCookie {
   sameSite?: 'Strict' | 'Lax' | 'None';
 }
 
-module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
+export default async function loadCookies(page: Page, scenario: Scenario): Promise<void> {
   let cookies: BackstopCookie[] = [];
   const cookiePath = scenario.cookiePath;
 
@@ -51,4 +51,4 @@ module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
   );
 
   console.log('Cookie state restored with:', JSON.stringify(mungedCookies, null, 2));
-};
+}

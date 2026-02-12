@@ -1,3 +1,17 @@
+/**
+ * OVERRIDE CSS
+ * Apply this CSS to the loaded page, as a way to override styles.
+ *
+ * Use this in an onReady script E.G.
+  ```
+  import overrideCSS from './overrideCSS';
+
+  export default async function onReady(page, scenario) {
+    await overrideCSS(page, scenario);
+  }
+  ```
+ */
+
 import type { Page } from 'puppeteer-core';
 import type { Scenario } from '../types';
 
@@ -9,7 +23,7 @@ declare global {
 
 const BACKSTOP_TEST_CSS_OVERRIDE = 'html {background-image: none;}';
 
-module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
+export default async function overrideCSS(page: Page, scenario: Scenario): Promise<void> {
   // inject arbitrary css to override styles
   await page.evaluate(`window._styleData = '${BACKSTOP_TEST_CSS_OVERRIDE}'`);
   await page.evaluate(() => {
@@ -21,4 +35,4 @@ module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
   });
 
   console.log('BACKSTOP_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
-};
+}

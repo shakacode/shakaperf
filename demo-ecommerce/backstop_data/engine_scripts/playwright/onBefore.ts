@@ -1,12 +1,16 @@
 import type { Page, BrowserContext } from 'playwright-core';
 import type { Scenario, Viewport } from '../types';
+import loadCookies from './loadCookies';
 
-module.exports = async (
+async function onBefore(
   _page: Page,
   scenario: Scenario,
   _viewport: Viewport,
   _isReference: boolean,
   browserContext: BrowserContext
-): Promise<void> => {
-  await require('./loadCookies')(browserContext, scenario);
-};
+): Promise<void> {
+  await loadCookies(browserContext, scenario);
+}
+
+export default onBefore;
+module.exports = onBefore;

@@ -2,7 +2,7 @@ import fs from 'fs';
 import type { BrowserContext } from 'playwright-core';
 import type { Scenario, BackstopCookie } from '../types';
 
-module.exports = async (browserContext: BrowserContext, scenario: Scenario): Promise<void> => {
+export default async function loadCookies(browserContext: BrowserContext, scenario: Scenario): Promise<void> {
   let cookies: BackstopCookie[] = [];
   const cookiePath = scenario.cookiePath;
 
@@ -15,4 +15,4 @@ module.exports = async (browserContext: BrowserContext, scenario: Scenario): Pro
   await browserContext.addCookies(cookies);
 
   console.log('Cookie state restored with:', JSON.stringify(cookies, null, 2));
-};
+}

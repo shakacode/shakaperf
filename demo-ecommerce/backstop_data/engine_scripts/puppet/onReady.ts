@@ -1,9 +1,10 @@
 import type { Page } from 'puppeteer-core';
 import type { Scenario, Viewport } from '../types';
+import clickAndHoverHelper from './clickAndHoverHelper';
 
-module.exports = async (page: Page, scenario: Scenario, _vp: Viewport): Promise<void> => {
+async function onReady(page: Page, scenario: Scenario, _vp: Viewport): Promise<void> {
   console.log('SCENARIO > ' + scenario.label);
-  await require('./clickAndHoverHelper')(page, scenario);
+  await clickAndHoverHelper(page, scenario);
 
   // Wait for all images to load
   await page.evaluate(async () => {
@@ -21,4 +22,7 @@ module.exports = async (page: Page, scenario: Scenario, _vp: Viewport): Promise<
 
   // Wait for network to be idle
   await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {});
-};
+}
+
+export default onReady;
+module.exports = onReady;
