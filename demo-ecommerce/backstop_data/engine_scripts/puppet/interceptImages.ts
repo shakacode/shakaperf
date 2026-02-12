@@ -12,16 +12,18 @@
  *
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import type { Page, HTTPRequest } from 'puppeteer-core';
+import type { Scenario } from '../types';
 
 const IMAGE_URL_RE = /\.gif|\.jpg|\.png/i;
-const IMAGE_STUB_URL = path.resolve(__dirname, '../imageStub.jpg');
+const IMAGE_STUB_URL = path.resolve(__dirname, '../../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};
 
-module.exports = async function (page, scenario) {
-  const intercept = async (request, targetUrl) => {
+module.exports = async function (page: Page, _scenario: Scenario): Promise<void> {
+  const intercept = async (request: HTTPRequest) => {
     if (IMAGE_URL_RE.test(request.url())) {
       await request.respond({
         body: IMAGE_DATA_BUFFER,
@@ -29,9 +31,10 @@ module.exports = async function (page, scenario) {
         status: 200
       });
     } else {
-      request.continue();
+      await request.continue();
     }
   };
+
   await page.setRequestInterception(true);
   page.on('request', intercept);
 };

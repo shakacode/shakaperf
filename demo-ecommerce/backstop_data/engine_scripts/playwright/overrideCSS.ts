@@ -11,13 +11,16 @@
  *
  */
 
+import type { Page } from 'playwright-core';
+import type { Scenario } from '../types';
+
 const BACKSTOP_TEST_CSS_OVERRIDE = `
   html {
     background-image: none;
   }
 `;
 
-module.exports = async (page, scenario) => {
+module.exports = async (page: Page, scenario: Scenario): Promise<void> => {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: BACKSTOP_TEST_CSS_OVERRIDE

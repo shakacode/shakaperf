@@ -1,4 +1,7 @@
-module.exports = async (page, scenario, vp) => {
+import type { Page } from 'puppeteer-core';
+import type { Scenario, Viewport } from '../types';
+
+module.exports = async (page: Page, scenario: Scenario, _vp: Viewport): Promise<void> => {
   console.log('SCENARIO > ' + scenario.label);
   await require('./clickAndHoverHelper')(page, scenario);
 
@@ -8,9 +11,9 @@ module.exports = async (page, scenario, vp) => {
     await Promise.all(
       images.map((img) => {
         if (img.complete) return Promise.resolve();
-        return new Promise((resolve) => {
-          img.addEventListener('load', resolve);
-          img.addEventListener('error', resolve);
+        return new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve());
+          img.addEventListener('error', () => resolve());
         });
       })
     );

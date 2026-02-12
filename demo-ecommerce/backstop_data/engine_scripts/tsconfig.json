@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": false,
+    "declarationMap": false,
+    "lib": ["ES2020", "DOM"]
+  },
+  "include": ["types.ts", "puppet/**/*.ts", "playwright/**/*.ts"],
+  "exclude": ["dist"]
+}
