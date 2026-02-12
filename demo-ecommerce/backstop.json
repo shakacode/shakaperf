@@ -17,8 +17,8 @@
       "height": 800
     }
   ],
-  "onBeforeScript": "dist/puppet/onBefore.js",
-  "onReadyScript": "dist/puppet/onReady.js",
+  "onBeforeScript": "dist/playwright/onBefore.js",
+  "onReadyScript": "dist/playwright/onReady.js",
   "scenarios": [
     {
       "label": "Homepage",
@@ -66,11 +66,9 @@
   "report": [
     "browser"
   ],
-  "engine": "puppeteer",
+  "engine": "playwright",
   "engineOptions": {
-    "args": [
-      "--no-sandbox"
-    ]
+    "browser": "chromium"
   },
   "asyncCaptureLimit": 5,
   "asyncCompareLimit": 50,
