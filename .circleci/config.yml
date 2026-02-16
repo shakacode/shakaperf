@@ -44,7 +44,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - playwright-v1-{{ arch }}-{{ checksum "demo-ecommerce/yarn.lock" }}
+            - playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
             - playwright-v1-{{ arch }}-
       - run:
           name: Install Playwright Chromium
@@ -52,7 +52,7 @@ commands:
             cd demo-ecommerce
             DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
       - save_cache:
-          key: playwright-v1-{{ arch }}-{{ checksum "demo-ecommerce/yarn.lock" }}
+          key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
           paths:
             - ~/.cache/ms-playwright
 
