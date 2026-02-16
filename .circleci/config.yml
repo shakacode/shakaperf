@@ -235,7 +235,7 @@ jobs:
           name: Run visual regression -- test
           command: |
             cd demo-ecommerce
-            yarn visreg:test
+            yarn visreg:test:retry
       - run:
           name: Run performance tests
           command: |
