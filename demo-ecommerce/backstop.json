@@ -35,6 +35,14 @@
       "misMatchThreshold": 0.1
     },
     {
+      "label": "Products - Electronics Filter",
+      "url": "http://localhost:3030/products",
+      "referenceUrl": "http://localhost:3020/products",
+      "onReadyScript": "dist/playwright/onReadyElectronicsFilter.js",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
       "label": "Product Detail",
       "url": "http://localhost:3030/products/1",
       "referenceUrl": "http://localhost:3020/products/1",

@@ -11,7 +11,7 @@ const SPINNER_SELECTOR = '';
  * Wait until the page has settled - DOM mutations stopped, network idle, fonts loaded, images rendered.
  * Adapted from helper.ts waitUntilPageSettled for BackstopJS context.
  */
-async function waitUntilPageSettled(page: Page): Promise<void> {
+export async function waitUntilPageSettled(page: Page): Promise<void> {
   const url = page.url();
 
   // Wait for DOM mutations to stop (debounced) and loading indicators to disappear
@@ -177,3 +177,4 @@ async function onReady(
 
 export default onReady;
 module.exports = onReady;
+module.exports.waitUntilPageSettled = waitUntilPageSettled;
