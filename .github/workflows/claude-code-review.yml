@@ -24,6 +24,9 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
+      actions: read
+      checks: read
+      statuses: read
 
     steps:
       - name: Checkout repository
@@ -35,7 +38,12 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
+          github_token: ${{ github.token }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+            checks: read
+            statuses: read
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
