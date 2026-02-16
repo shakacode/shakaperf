@@ -20,7 +20,6 @@
     "visreg:build": "tsc -p backstop_data/engine_scripts",
     "visreg:reference": "yarn visreg:build && backstop reference",
     "visreg:test": "yarn visreg:build && backstop test",
-    "visreg:approve": "backstop approve",
     "visreg:open": "backstop openReport"
   },
   "dependencies": {

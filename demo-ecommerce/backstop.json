@@ -72,7 +72,8 @@
     "ci_report": "backstop_data/ci_report"
   },
   "report": [
-    "browser"
+    "browser",
+    "CI"
   ],
   "engine": "playwright",
   "engineOptions": {
