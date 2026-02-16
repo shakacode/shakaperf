@@ -1,4 +1,3 @@
-import type { Page as PuppeteerPage } from 'puppeteer-core';
 import type { Page as PlaywrightPage, BrowserContext } from 'playwright-core';
 import type { Scenario, Viewport as BackstopViewport } from 'backstopjs';
 
@@ -21,12 +20,6 @@ export interface BackstopCookie {
   secure?: boolean;
   sameSite?: 'Strict' | 'Lax' | 'None';
 }
-
-export type PuppeteerScriptFn = (
-  page: PuppeteerPage,
-  scenario: Scenario,
-  viewport: Viewport
-) => Promise<void>;
 
 export type PlaywrightScriptFn = (
   page: PlaywrightPage,

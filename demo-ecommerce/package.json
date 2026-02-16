@@ -80,7 +80,6 @@
     "backstopjs": "^6.3.25",
     "playwright-core": "^1.52.0",
     "postcss": "^8.5.6",
-    "puppeteer-core": "^24.0.0",
     "react-refresh": "0.18.0",
     "shaka-bench": "workspace:*",
     "shaka-bundle-size": "workspace:*",
