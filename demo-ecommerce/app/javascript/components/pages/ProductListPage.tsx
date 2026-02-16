@@ -38,10 +38,11 @@ const ProductListPage: React.FC = () => {
               label="Category"
               onChange={handleCategoryChange}
               sx={{ bgcolor: 'white' }}
+              data-cy="category-select"
             >
-              <MenuItem value="">All Categories</MenuItem>
+              <MenuItem value="" data-cy="category-option-all">All Categories</MenuItem>
               {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
+                <MenuItem key={cat} value={cat} data-cy={`category-option-${cat.toLowerCase()}`}>
                   {cat}
                 </MenuItem>
               ))}
