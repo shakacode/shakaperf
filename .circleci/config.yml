@@ -46,7 +46,7 @@ commands:
           name: Install Playwright Chromium
           command: |
             cd demo-ecommerce
-            npx playwright install chromium --with-deps
+            DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
 
   save-docker-image:
     description: Save a Docker image to workspace
