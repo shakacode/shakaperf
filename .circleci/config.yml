@@ -40,13 +40,21 @@ commands:
       - setup-yarn-and-build
 
   install-playwright:
-    description: Install Playwright Chromium browser
+    description: Install Playwright Chromium browser with caching
     steps:
+      - restore_cache:
+          keys:
+            - playwright-v1-{{ arch }}-{{ checksum "demo-ecommerce/yarn.lock" }}
+            - playwright-v1-{{ arch }}-
       - run:
           name: Install Playwright Chromium
           command: |
             cd demo-ecommerce
             DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
+      - save_cache:
+          key: playwright-v1-{{ arch }}-{{ checksum "demo-ecommerce/yarn.lock" }}
+          paths:
+            - ~/.cache/ms-playwright
 
   save-docker-image:
     description: Save a Docker image to workspace
