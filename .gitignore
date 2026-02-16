@@ -45,3 +45,4 @@ demo-ecommerce/backstop_data/bitmaps_reference
 demo-ecommerce/backstop_data/bitmaps_test
 demo-ecommerce/backstop_data/html_report
 demo-ecommerce/backstop_data/engine_scripts/dist
+demo-ecommerce/backstop_data/ci_report/xunit.xml
