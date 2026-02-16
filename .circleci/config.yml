@@ -245,8 +245,11 @@ jobs:
           path: demo-ecommerce/backstop_data/html_report
           destination: visreg-report
       - store_artifacts:
+          path: demo-ecommerce/backstop_data/bitmaps_reference
+          destination: bitmaps_reference
+      - store_artifacts:
           path: demo-ecommerce/backstop_data/bitmaps_test
-          destination: visreg-screenshots
+          destination: bitmaps_test
       - store_test_results:
           path: demo-ecommerce/backstop_data/ci_report
       - store_artifacts:
