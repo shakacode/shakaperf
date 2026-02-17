@@ -1,0 +1,86 @@
+{
+  "id": "demo-ecommerce",
+  "viewports": [
+    {
+      "label": "phone",
+      "width": 375,
+      "height": 667
+    },
+    {
+      "label": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "label": "desktop",
+      "width": 1280,
+      "height": 800
+    }
+  ],
+  "onBeforeScript": "dist/playwright/onBefore.js",
+  "onReadyScript": "dist/playwright/onReady.js",
+  "scenarios": [
+    {
+      "label": "Homepage",
+      "url": "http://localhost:3030/",
+      "referenceUrl": "http://localhost:3020/",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Products List",
+      "url": "http://localhost:3030/products",
+      "referenceUrl": "http://localhost:3020/products",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Products - Electronics Filter",
+      "url": "http://localhost:3030/products",
+      "referenceUrl": "http://localhost:3020/products",
+      "onReadyScript": "dist/playwright/onReadyElectronicsFilter.js",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Product Detail",
+      "url": "http://localhost:3030/products/1",
+      "referenceUrl": "http://localhost:3020/products/1",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Cart",
+      "url": "http://localhost:3030/cart",
+      "referenceUrl": "http://localhost:3020/cart",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Admin Dashboard",
+      "url": "http://localhost:3030/admin",
+      "referenceUrl": "http://localhost:3020/admin",
+      "delay": 1000,
+      "misMatchThreshold": 0.1
+    }
+  ],
+  "paths": {
+    "bitmaps_reference": "backstop_data/bitmaps_reference",
+    "bitmaps_test": "backstop_data/bitmaps_test",
+    "engine_scripts": "backstop_data/engine_scripts",
+    "html_report": "backstop_data/html_report",
+    "ci_report": "backstop_data/ci_report"
+  },
+  "report": [
+    "browser",
+    "CI"
+  ],
+  "engine": "playwright",
+  "engineOptions": {
+    "browser": "chromium"
+  },
+  "asyncCaptureLimit": 5,
+  "asyncCompareLimit": 50,
+  "debug": false,
+  "debugWindow": false
+}

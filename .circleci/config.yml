@@ -39,6 +39,23 @@ commands:
           command: corepack enable && corepack install
       - setup-yarn-and-build
 
+  install-playwright:
+    description: Install Playwright Chromium browser with caching
+    steps:
+      - restore_cache:
+          keys:
+            - playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
+            - playwright-v1-{{ arch }}-
+      - run:
+          name: Install Playwright Chromium
+          command: |
+            cd demo-ecommerce
+            DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
+      - save_cache:
+          key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/ms-playwright
+
   save-docker-image:
     description: Save a Docker image to workspace
     parameters:
@@ -208,11 +225,33 @@ jobs:
           command: |
             dockerize -wait http://localhost:3020/up -timeout 120s
             dockerize -wait http://localhost:3030/up -timeout 120s
+      - install-playwright
+      - run:
+          name: Run visual regression -- generate reference images
+          command: |
+            cd demo-ecommerce
+            yarn visreg:reference
+      - run:
+          name: Run visual regression -- test
+          command: |
+            cd demo-ecommerce
+            yarn visreg:test:retry
       - run:
           name: Run performance tests
           command: |
             cd demo-ecommerce
             yarn shaka-twin-servers run-cmd-parallel "echo 'Running performance tests...'"
+      - store_artifacts:
+          path: demo-ecommerce/backstop_data/html_report
+          destination: visreg-report
+      - store_artifacts:
+          path: demo-ecommerce/backstop_data/bitmaps_reference
+          destination: bitmaps_reference
+      - store_artifacts:
+          path: demo-ecommerce/backstop_data/bitmaps_test
+          destination: bitmaps_test
+      - store_test_results:
+          path: demo-ecommerce/backstop_data/ci_report
       - store_artifacts:
           path: demo-ecommerce/perf-results
           destination: perf-results
