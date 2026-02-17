@@ -25,6 +25,10 @@ const CartPage = loadable(() => import('./pages/CartPage'), {
   fallback: <LoadingSpinner />,
 });
 
+const CarouselDemoPage = loadable(() => import('./pages/CarouselDemoPage'), {
+  fallback: <LoadingSpinner />,
+});
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -45,6 +49,7 @@ const App: React.FC = () => {
                 <Route path="/products" element={<ProductListPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
                 <Route path="/cart" element={<CartPage />} />
+                <Route path="/carousel-demo" element={<CarouselDemoPage />} />
               </Routes>
             </Box>
             <Footer />

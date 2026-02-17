@@ -5,6 +5,7 @@ Rails.application.routes.draw do
   get "/products", to: "pages#index"
   get "/products/:id", to: "pages#index"
   get "/cart", to: "pages#index"
+  get "/carousel-demo", to: "pages#index"
 
   # Admin SPA routes - all handled by React Router
   get "/admin", to: "admin#index"
