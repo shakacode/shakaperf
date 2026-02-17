@@ -1,0 +1,12 @@
+[
+  {
+    "name": "demo_ecommerce_admin_auth",
+    "value": "1",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
