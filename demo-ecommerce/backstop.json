@@ -62,6 +62,22 @@
       "referenceUrl": "http://localhost:3020/admin",
       "delay": 1000,
       "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Carousel Demo - Pause With Override CSS",
+      "url": "http://localhost:3030/carousel-demo",
+      "referenceUrl": "http://localhost:3020/carousel-demo",
+      "onReadyScript": "dist/playwright/onReadyCarouselPaused.js",
+      "delay": 50,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Carousel Demo - Stub Slider Images",
+      "url": "http://localhost:3030/carousel-demo",
+      "referenceUrl": "http://localhost:3020/carousel-demo",
+      "onReadyScript": "dist/playwright/onReadyCarouselStubImages.js",
+      "delay": 50,
+      "misMatchThreshold": 0.1
     }
   ],
   "paths": {
