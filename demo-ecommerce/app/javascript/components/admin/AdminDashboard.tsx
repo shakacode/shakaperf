@@ -15,7 +15,7 @@ const stats = [
 const AdminDashboard: React.FC = () => {
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography data-cy="admin-dashboard-title" variant="h4" gutterBottom>
         Dashboard
       </Typography>
       <Grid container spacing={3}>
