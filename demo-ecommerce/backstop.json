@@ -24,14 +24,14 @@
       "label": "Homepage",
       "url": "http://localhost:3030/",
       "referenceUrl": "http://localhost:3020/",
-      "delay": 1000,
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
       "label": "Products List",
       "url": "http://localhost:3030/products",
       "referenceUrl": "http://localhost:3020/products",
-      "delay": 1000,
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
@@ -39,28 +39,38 @@
       "url": "http://localhost:3030/products",
       "referenceUrl": "http://localhost:3020/products",
       "onReadyScript": "dist/playwright/onReadyElectronicsFilter.js",
-      "delay": 1000,
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
       "label": "Product Detail",
       "url": "http://localhost:3030/products/1",
       "referenceUrl": "http://localhost:3020/products/1",
-      "delay": 1000,
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
       "label": "Cart",
       "url": "http://localhost:3030/cart",
       "referenceUrl": "http://localhost:3020/cart",
-      "delay": 1000,
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
-      "label": "Admin Dashboard",
+      "label": "Admin Dashboard - Cookie Login",
       "url": "http://localhost:3030/admin",
       "referenceUrl": "http://localhost:3020/admin",
-      "delay": 1000,
+      "cookiePath": "backstop_data/engine_scripts/admin-auth-cookie.json",
+      "onReadyScript": "dist/playwright/onReadyAdminWithCookie.js",
+      "delay": 50,
+      "misMatchThreshold": 0.1
+    },
+    {
+      "label": "Admin Orders - Form Login Interaction",
+      "url": "http://localhost:3030/admin/orders",
+      "referenceUrl": "http://localhost:3020/admin/orders",
+      "onReadyScript": "dist/playwright/onReadyAdminWithInteraction.js",
+      "delay": 50,
       "misMatchThreshold": 0.1
     },
     {
