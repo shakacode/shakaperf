@@ -4,7 +4,7 @@ import {
   TraceEvent,
   TraceEventArgs,
   TraceEvents
-} from '@tracerbench/trace-event';
+} from '../../trace-event';
 
 import type {
   AsyncBeginEventModel,

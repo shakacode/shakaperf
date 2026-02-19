@@ -2,7 +2,7 @@ import {
   TraceEvent,
   TraceMetadata,
   TraceStreamJson
-} from '@tracerbench/trace-event';
+} from '../../trace-event';
 
 import type {
   EventModel,

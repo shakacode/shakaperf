@@ -13,8 +13,8 @@ import {
   NavigationSample,
   networkConditions,
   run,
-} from "@tracerbench/core";
-import type { ChromeSpawnOptions } from "@tracerbench/spawn-chrome";
+} from "../../../core";
+import type { ChromeSpawnOptions } from "chrome-debugging-client";
 import Protocol from "devtools-protocol";
 import {
   createWriteStream,

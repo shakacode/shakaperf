@@ -1,7 +1,7 @@
 /* eslint-disable prefer-const */
-import type { Stats } from "@tracerbench/stats";
-import * as chalk from "chalk";
-import * as Table from "cli-table3";
+import type { Stats } from "../../stats";
+import chalk from "chalk";
+import Table from "cli-table3";
 
 import { chalkScheme } from "../helpers/utils";
 import { ICompareJSONResult } from "./compare-results";

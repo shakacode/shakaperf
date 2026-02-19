@@ -1,9 +1,9 @@
-import type { IConfidenceInterval } from "@tracerbench/stats";
+import type { IConfidenceInterval } from "../../stats";
 import {
   convertMicrosecondsToMS,
   roundFloatAndConvertMicrosecondsToMS,
   Stats,
-} from "@tracerbench/stats";
+} from "../../stats";
 
 import { md5sum } from "../helpers/utils";
 export interface ParsedTitleConfigs {

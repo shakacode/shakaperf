@@ -1,6 +1,6 @@
 import { flags as oclifFlags } from "@oclif/command";
-import { IConditions, recordHARClient } from "@tracerbench/core";
-import type { Archive } from "@tracerbench/har";
+import { IConditions, recordHARClient } from "../../../core";
+import type { Archive } from "../../../har";
 import { mkdirpSync, readJson, writeFileSync, writeJsonSync } from "fs-extra";
 import { join, resolve } from "path";
 

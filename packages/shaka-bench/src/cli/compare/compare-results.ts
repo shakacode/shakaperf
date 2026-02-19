@@ -3,8 +3,8 @@ import type {
   IAsPercentage,
   IConfidenceInterval,
   ISevenFigureSummary,
-} from "@tracerbench/stats";
-import * as chalk from "chalk";
+} from "../../stats";
+import chalk from "chalk";
 
 import { fidelityLookup } from "../command-config";
 import type { RegressionThresholdStat } from "../command-config/tb-config";

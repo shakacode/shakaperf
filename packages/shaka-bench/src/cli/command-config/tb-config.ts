@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { INetworkConditions, Marker } from "@tracerbench/core";
+import { INetworkConditions, Marker } from "../../core";
 
 import { PerformanceTimingMark } from "./default-flag-args";
 

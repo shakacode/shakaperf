@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint:disable:no-console*/
 
-import { Marker } from "@tracerbench/core";
-import * as chalk from "chalk";
+import { Marker } from "../../core";
+import chalk from "chalk";
 import { createHash } from "crypto";
 
 import {

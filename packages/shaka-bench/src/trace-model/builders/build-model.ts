@@ -1,4 +1,4 @@
-import type { TraceEvent, TraceStreamJson } from '@tracerbench/trace-event';
+import type { TraceEvent, TraceStreamJson } from '../../trace-event';
 
 import type { TraceModel } from '../types';
 import ModelBuilder from './model-builder';

@@ -1,4 +1,4 @@
-import { Archive, Entry, Header } from '@tracerbench/har';
+import { Archive, Entry, Header } from '../../har';
 import { SessionConnection } from 'chrome-debugging-client';
 import Protocol from 'devtools-protocol';
 

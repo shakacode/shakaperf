@@ -1,4 +1,4 @@
-import type * as HAR from '@tracerbench/har';
+import type * as HAR from '../har';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 export interface Response {

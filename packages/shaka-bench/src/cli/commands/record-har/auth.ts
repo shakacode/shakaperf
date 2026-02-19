@@ -1,5 +1,5 @@
 /* eslint-disable filenames/match-exported */
-import { authClient } from "@tracerbench/core";
+import { authClient } from "../../../core";
 import Protocol from "devtools-protocol";
 import { mkdirpSync, writeFileSync } from "fs-extra";
 import { join, resolve } from "path";

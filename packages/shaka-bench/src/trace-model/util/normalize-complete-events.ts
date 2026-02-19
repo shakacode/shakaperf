@@ -1,4 +1,4 @@
-import { Constants } from '@tracerbench/trace-event';
+import { Constants } from '../../trace-event';
 
 import { BeginEventModel, EndEventModel, EventModel } from '../types';
 import mergeEndEvent from './merge-end-event';

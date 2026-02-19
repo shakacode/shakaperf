@@ -1,6 +1,6 @@
 import { spawnChrome } from "chrome-debugging-client";
 import { writeFileSync } from "fs-extra";
-import * as listr from "listr";
+import listr from "listr";
 
 import { sleep } from "../helpers/utils";
 

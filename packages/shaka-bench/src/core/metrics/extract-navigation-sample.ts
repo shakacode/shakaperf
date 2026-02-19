@@ -1,11 +1,11 @@
-import { TraceEventArgs, TraceMetadata } from '@tracerbench/trace-event';
+import { TraceEventArgs, TraceMetadata } from '../../trace-event';
 import {
   CompleteEventModel,
   EventModel,
   InstantEventModel,
   MarkEventModel,
   TraceModel
-} from '@tracerbench/trace-model';
+} from '../../trace-model';
 
 import { Marker } from '../create-trace-navigation-benchmark';
 import { LCP_EVENT_NAME, isTraceEndAtLCP, isLCPEvent } from '../trace/utils';

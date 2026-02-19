@@ -1,4 +1,4 @@
-import type { Archive, Entry } from '@tracerbench/har';
+import type { Archive, Entry } from '../har';
 import { readFileSync } from 'fs';
 import type { IncomingMessage, Server, ServerResponse } from 'http';
 import { createServer as httpCreateServer } from 'http';

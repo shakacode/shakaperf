@@ -1,4 +1,4 @@
-import { TraceStreamJson } from '@tracerbench/trace-event';
+import { TraceStreamJson } from '../trace-event';
 import type { ProtocolConnection, SpawnOptions } from 'chrome-debugging-client';
 import type { RaceCancellation } from 'race-cancellation';
 

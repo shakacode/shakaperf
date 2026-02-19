@@ -1,4 +1,4 @@
-import { buildModel } from '@tracerbench/trace-model';
+import { buildModel } from '../trace-model';
 
 import type { TraceBenchmarkOptions } from './create-trace-benchmark';
 import createTraceBenchmark from './create-trace-benchmark';

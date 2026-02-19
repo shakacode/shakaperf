@@ -1,4 +1,4 @@
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import { execSync } from 'child_process';
 import { launch, LaunchedChrome } from 'chrome-launcher';
 import type { LighthouseResult } from 'lighthouse';

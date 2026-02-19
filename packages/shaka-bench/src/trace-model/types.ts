@@ -30,7 +30,7 @@ import type {
   TraceEvents,
   TraceMetadata,
   TraceStreamJson
-} from '@tracerbench/trace-event';
+} from '../trace-event';
 
 export interface Bounds {
   start: number;

@@ -1,4 +1,4 @@
-import type { TraceStreamJson } from '@tracerbench/trace-event';
+import type { TraceStreamJson } from '../../trace-event';
 import type { ProtocolConnection } from 'chrome-debugging-client';
 import type { Protocol } from 'devtools-protocol';
 import { writeFileSync } from 'fs-extra';

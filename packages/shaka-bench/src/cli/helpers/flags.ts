@@ -10,7 +10,7 @@ import deviceSettings, {
   EmulateDeviceSettingCliOption,
 } from "./device-settings";
 import { parseMarkers } from "./utils";
-import { LCP_EVENT_NAME, LCP_EVENT_NAME_ALIAS } from "@tracerbench/core";
+import { LCP_EVENT_NAME, LCP_EVENT_NAME_ALIAS } from "../../core";
 /*
 ! oclif oclifFlags.build#parse will only execute when the flag:string is passed directly
 ! from the cli. thus when passed via the tbconfig.json or the defaultFlagArgs
@@ -149,7 +149,7 @@ export const fidelity = oclifFlags.build({
         console.warn(`${warnMessage}`);
       }
     }
-    return fidelity === "number" ? fidelity : getDefaultValue("fidelity");
+    return typeof fidelity === "number" ? fidelity : getDefaultValue("fidelity");
   },
 });
 
