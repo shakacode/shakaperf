@@ -1,6 +1,9 @@
 description: |
-  Checkout the merge-base commit using git worktree for control image build.
+  Checkout the control commit using git worktree for control image build.
   Sets CONTROL_REPO_DIR environment variable.
+  By default uses merge-base with the default branch. If PERF_BASELINE_SHA
+  environment variable is set (e.g., via a prior setup step), uses that
+  commit SHA instead.
 
 parameters:
   control-dir:
@@ -34,14 +37,19 @@ steps:
         # Store dockerfile basename for later steps
         echo "$DOCKERFILE_NAME" > /tmp/docker-build/.dockerfile-name
   - run:
-      name: Checkout control (merge-base with default branch)
+      name: Checkout control commit
       command: |
-        BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "origin/main")
-        echo "Detected base branch: $BASE_BRANCH"
-        MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
-        echo "Merge base commit: $MERGE_BASE"
+        if [ -n "$PERF_BASELINE_SHA" ]; then
+          CONTROL_SHA="$PERF_BASELINE_SHA"
+          echo "Using baseline SHA from environment: $CONTROL_SHA"
+        else
+          BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "origin/main")
+          echo "Detected base branch: $BASE_BRANCH"
+          CONTROL_SHA=$(git merge-base HEAD "$BASE_BRANCH")
+          echo "Using merge-base commit: $CONTROL_SHA"
+        fi
         mkdir -p "<< parameters.control-dir >>"
-        git worktree add "<< parameters.control-dir >>" "$MERGE_BASE"
+        git worktree add "<< parameters.control-dir >>" "$CONTROL_SHA"
   - run:
       name: Restore Dockerfile to control checkout
       command: |

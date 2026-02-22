@@ -1,5 +1,13 @@
 version: 2.1
 
+parameters:
+  run-scheduled-perf-tests:
+    type: boolean
+    default: false
+  update-perf-baseline:
+    type: boolean
+    default: false
+
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
@@ -48,6 +56,13 @@ commands:
           key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
           paths:
             - ~/.cache/ms-playwright
+
+  download-perf-baseline:
+    description: Download perf test baseline commit SHA from S3
+    steps:
+      - run:
+          name: Download perf test baseline SHA
+          command: bash .circleci/scripts/perf-test-baseline.sh download
 
 jobs:
   jest-tests:
@@ -118,8 +133,20 @@ jobs:
             cd demo-ecommerce
             yarn bundle-size:upload
 
+  update-perf-baseline:
+    executor: twin-servers/machine
+    steps:
+      - checkout
+      - run:
+          name: Upload current HEAD as perf test baseline
+          command: bash .circleci/scripts/perf-test-baseline.sh upload
+
 workflows:
   build-and-check:
+    when:
+      and:
+        - not: << pipeline.parameters.run-scheduled-perf-tests >>
+        - not: << pipeline.parameters.update-perf-baseline >>
     jobs:
       - jest-tests
       - build-bundles
@@ -144,6 +171,10 @@ workflows:
 
   # Performance, Visual Regression testing workflow with twin servers for A/B testing
   twin-server-tests:
+    when:
+      and:
+        - not: << pipeline.parameters.run-scheduled-perf-tests >>
+        - not: << pipeline.parameters.update-perf-baseline >>
     jobs:
       - twin-servers/build-experiment:
           image-name: demo-ecommerce
@@ -233,3 +264,115 @@ workflows:
           filters:
             branches:
               ignore: main
+
+  # Scheduled A/B perf tests on main branch (triggered via CircleCI scheduled pipeline)
+  scheduled-perf-tests:
+    when: << pipeline.parameters.run-scheduled-perf-tests >>
+    jobs:
+      - twin-servers/build-experiment:
+          image-name: demo-ecommerce
+          resource-class: medium
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+
+      - twin-servers/build-control:
+          image-name: demo-ecommerce
+          resource-class: medium
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+          project-subdir: demo-ecommerce
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+            - download-perf-baseline
+
+      - twin-servers/run-tests:
+          name: scheduled-visual-regression
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+          resource-class: medium
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+          post-steps:
+            - install-playwright
+            - run:
+                name: Run visual regression -- generate reference images
+                command: |
+                  cd demo-ecommerce
+                  yarn visreg:reference
+            - run:
+                name: Run visual regression -- test
+                command: |
+                  cd demo-ecommerce
+                  yarn visreg:test:retry
+            - run:
+                name: Update perf baseline (tests passed)
+                command: bash .circleci/scripts/perf-test-baseline.sh upload
+                when: on_success
+            - run:
+                name: List commits since baseline
+                command: bash .circleci/scripts/perf-test-baseline.sh commits
+                when: on_fail
+            - run:
+                name: Print acknowledgement instructions
+                command: bash .circleci/scripts/perf-test-baseline.sh ack-instructions
+                when: on_fail
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/html_report
+                destination: visreg-report
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/bitmaps_reference
+                destination: bitmaps_reference
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/bitmaps_test
+                destination: bitmaps_test
+            - store_test_results:
+                path: demo-ecommerce/backstop_data/ci_report
+
+      - twin-servers/run-tests:
+          name: scheduled-perf-tests
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+          resource-class: medium
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+          # TODO: Replace with actual performance test command (e.g., k6, Playwright, ab)
+          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
+          post-steps:
+            - run:
+                name: Collect results from both containers
+                command: |
+                  mkdir -p /tmp/perf-results
+                  cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
+                  cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
+            - run:
+                name: Update perf baseline (tests passed)
+                command: bash .circleci/scripts/perf-test-baseline.sh upload
+                when: on_success
+            - run:
+                name: List commits since baseline
+                command: bash .circleci/scripts/perf-test-baseline.sh commits
+                when: on_fail
+            - run:
+                name: Print acknowledgement instructions
+                command: bash .circleci/scripts/perf-test-baseline.sh ack-instructions
+                when: on_fail
+
+  # Manual baseline update (for acknowledging regressions)
+  manual-update-perf-baseline:
+    when: << pipeline.parameters.update-perf-baseline >>
+    jobs:
+      - update-perf-baseline
