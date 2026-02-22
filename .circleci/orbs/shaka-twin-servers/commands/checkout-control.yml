@@ -28,11 +28,8 @@ steps:
         DOCKERFILE=$(<< parameters.cli-prefix >> shaka-twin-servers get-config dockerfile)
         echo "Dockerfile from config: $DOCKERFILE"
         mkdir -p /tmp/docker-build
-        if [ -n "<< parameters.project-subdir >>" ]; then
-          cp "<< parameters.project-subdir >>/$DOCKERFILE" /tmp/docker-build/
-        else
-          cp "$DOCKERFILE" /tmp/docker-build/
-        fi
+        # Copy from current working directory (working-directory already handles project location)
+        cp "$DOCKERFILE" /tmp/docker-build/
         # Store dockerfile name for later steps
         echo "$DOCKERFILE" > /tmp/docker-build/.dockerfile-name
   - run:
