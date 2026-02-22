@@ -29,12 +29,12 @@ steps:
       name: Build << parameters.target >> Docker image
       working_directory: << parameters.working-directory >>
       command: |
-        CONFIG_FLAG=""
-        if [ -n "<< parameters.config-path >>" ]; then
-          CONFIG_FLAG="--config << parameters.config-path >>"
-        fi
         VERBOSE_FLAG=""
         if [ "<< parameters.verbose >>" = "true" ]; then
           VERBOSE_FLAG="--verbose"
         fi
-        << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> $CONFIG_FLAG $VERBOSE_FLAG
+        if [ -n "<< parameters.config-path >>" ]; then
+          << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> --config "<< parameters.config-path >>" $VERBOSE_FLAG
+        else
+          << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> $VERBOSE_FLAG
+        fi

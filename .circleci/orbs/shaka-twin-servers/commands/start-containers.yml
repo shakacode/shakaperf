@@ -20,8 +20,8 @@ steps:
       name: Start twin server containers
       working_directory: << parameters.working-directory >>
       command: |
-        CONFIG_FLAG=""
         if [ -n "<< parameters.config-path >>" ]; then
-          CONFIG_FLAG="--config << parameters.config-path >>"
+          << parameters.cli-prefix >> shaka-twin-servers start-containers --config "<< parameters.config-path >>"
+        else
+          << parameters.cli-prefix >> shaka-twin-servers start-containers
         fi
-        << parameters.cli-prefix >> shaka-twin-servers start-containers $CONFIG_FLAG

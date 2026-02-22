@@ -30,7 +30,7 @@ commands:
     steps:
       - run:
           name: Enable Corepack for Yarn
-          command: corepack enable
+          command: corepack enable && corepack install
 
   install-playwright:
     description: Install Playwright Chromium browser with caching
@@ -221,6 +221,7 @@ workflows:
             - enable-corepack
             - setup-yarn-and-build-packages
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+          # TODO: Replace with actual performance test command (e.g., k6, Playwright, ab)
           test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
           post-steps:
             - run:

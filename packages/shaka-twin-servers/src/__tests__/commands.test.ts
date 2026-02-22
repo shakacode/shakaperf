@@ -64,8 +64,6 @@ describe('sync-changes command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterAll(() => {
@@ -98,7 +96,6 @@ describe('sync-changes command', () => {
 describe('say command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
   });
 
   it('returns early for empty message', async () => {
@@ -116,8 +113,6 @@ describe('run-cmd command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterAll(() => {
@@ -160,8 +155,6 @@ describe('run-cmd-parallel command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterAll(() => {
@@ -193,8 +186,6 @@ describe('run-overmind-command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterAll(() => {
@@ -245,8 +236,6 @@ describe('get-config command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterAll(() => {
