@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@dev:alpha0.1
+  twin-servers: ramez/shaka-twin-servers@dev:alpha0.2
 
 executors:
   ruby-node-executor:
@@ -163,6 +163,7 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           project-subdir: demo-ecommerce
+          dockerfile-path: Dockerfile.production
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
@@ -230,7 +231,6 @@ workflows:
                   mkdir -p /tmp/perf-results
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
-          artifact-path: /tmp/perf-results
           filters:
             branches:
               ignore: main

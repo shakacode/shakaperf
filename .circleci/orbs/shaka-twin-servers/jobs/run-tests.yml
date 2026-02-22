@@ -33,18 +33,6 @@ parameters:
   test-command:
     type: string
     description: "Performance test command"
-  test-parallel:
-    type: boolean
-    default: true
-    description: "Run test command in both containers in parallel"
-  artifact-path:
-    type: string
-    default: ""
-    description: "Path to store artifacts (empty to skip)"
-  artifact-destination:
-    type: string
-    default: "perf-results"
-    description: "Artifact destination name"
   workspace-attach-at:
     type: string
     default: "/tmp/workspace"
@@ -87,15 +75,4 @@ steps:
   - run:
       name: Run performance tests
       working_directory: << parameters.working-directory >>
-      command: |
-        if [ "<< parameters.test-parallel >>" = "true" ]; then
-          << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
-        else
-          << parameters.cli-prefix >> shaka-twin-servers run-cmd experiment "<< parameters.test-command >>"
-        fi
-  - when:
-      condition: << parameters.artifact-path >>
-      steps:
-        - store_artifacts:
-            path: << parameters.artifact-path >>
-            destination: << parameters.artifact-destination >>
+      command: << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"

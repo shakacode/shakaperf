@@ -31,7 +31,6 @@ usage:
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
             project-subdir: demo-ecommerce
-            base-branch: origin/main
             dockerfile-path: Dockerfile.production
             resource-class: xlarge
             node-version: '20.11.0'
@@ -50,9 +49,6 @@ usage:
             experiment-health-url: 'http://localhost:3030/up'
             health-timeout: '180s'
             test-command: 'bundle exec rspec spec/performance --format json --out perf-results/results.json'
-            test-parallel: false
-            artifact-path: demo-ecommerce/perf-results
-            artifact-destination: performance-results
             post-steps:
               - run:
                   name: Generate performance report

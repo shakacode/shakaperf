@@ -3,10 +3,6 @@ description: |
   Sets CONTROL_REPO_DIR environment variable.
 
 parameters:
-  base-branch:
-    type: string
-    default: "origin/main"
-    description: "Branch to find merge-base against"
   control-dir:
     type: string
     default: "/home/circleci/control_checkout"
@@ -31,9 +27,11 @@ steps:
           cp "<< parameters.dockerfile-path >>" /tmp/docker-build/
         fi
   - run:
-      name: Checkout control (merge-base with << parameters.base-branch >>)
+      name: Checkout control (merge-base with default branch)
       command: |
-        MERGE_BASE=$(git merge-base HEAD << parameters.base-branch >>)
+        BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD)
+        echo "Detected base branch: $BASE_BRANCH"
+        MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
         echo "Merge base commit: $MERGE_BASE"
         mkdir -p "<< parameters.control-dir >>"
         git worktree add "<< parameters.control-dir >>" "$MERGE_BASE"

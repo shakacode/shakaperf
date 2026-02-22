@@ -29,7 +29,6 @@ usage:
               - twin-servers/build-control
             server-command: "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
             test-command: "bundle exec rake perf:benchmark"
-            artifact-path: ./perf-results
             filters:
               branches:
                 ignore: main

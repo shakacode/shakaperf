@@ -11,10 +11,6 @@ parameters:
     enum: ["medium", "large", "xlarge", "2xlarge"]
     default: "large"
     description: "Machine resource class"
-  base-branch:
-    type: string
-    default: "origin/main"
-    description: "Branch to find merge-base against"
   control-dir:
     type: string
     default: "/home/circleci/control_checkout"
@@ -55,7 +51,6 @@ steps:
   - setup-node
   - steps: << parameters.setup-steps >>
   - checkout-control:
-      base-branch: << parameters.base-branch >>
       control-dir: << parameters.control-dir >>
       project-subdir: << parameters.project-subdir >>
       dockerfile-path: << parameters.dockerfile-path >>
