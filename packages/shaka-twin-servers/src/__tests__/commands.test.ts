@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import type { ResolvedConfig } from '../types';
 
 // Mock child_process for all command tests
@@ -46,6 +45,7 @@ function createMockConfig(tmpDir: string): ResolvedConfig {
     projectDir,
     controlDir,
     dockerBuildDir,
+    dockerfile: 'Dockerfile',
     dockerBuildArgs: { NODE_ENV: 'production' },
     composeFile: path.join(projectDir, 'docker-compose.yml'),
     procfile: path.join(projectDir, 'Procfile.twin'),
@@ -64,13 +64,10 @@ describe('sync-changes command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
-  afterEach(() => {
+  afterAll(() => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
-    jest.restoreAllMocks();
   });
 
   it('creates target directory if it does not exist', async () => {
@@ -99,11 +96,6 @@ describe('sync-changes command', () => {
 describe('say command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   it('returns early for empty message', async () => {
@@ -121,13 +113,10 @@ describe('run-cmd command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
-  afterEach(() => {
+  afterAll(() => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
-    jest.restoreAllMocks();
   });
 
   it('maps control target to control-server container', async () => {
@@ -166,13 +155,10 @@ describe('run-cmd-parallel command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
-  afterEach(() => {
+  afterAll(() => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
-    jest.restoreAllMocks();
   });
 
   it('runs command in both containers', async () => {
@@ -200,13 +186,10 @@ describe('run-overmind-command', () => {
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
-    jest.spyOn(console, 'log').mockImplementation();
-    jest.spyOn(console, 'error').mockImplementation();
   });
 
-  afterEach(() => {
+  afterAll(() => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
-    jest.restoreAllMocks();
   });
 
   it('wraps command with PID tracking', async () => {
@@ -244,5 +227,55 @@ describe('copy-changes-to-ssh command', () => {
   it('exports copyChangesToSsh function', () => {
     const mod = require('../commands/copy-changes-to-ssh');
     expect(mod.copyChangesToSsh).toBeDefined();
+  });
+});
+
+describe('get-config command', () => {
+  const tmpDir = path.join(__dirname, 'tmp-get-config');
+
+  beforeEach(() => {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  it('returns dockerfile value from config', () => {
+    const config = createMockConfig(tmpDir);
+    expect(config.dockerfile).toBe('Dockerfile');
+  });
+
+  it('returns controlDir value from config', () => {
+    const config = createMockConfig(tmpDir);
+    expect(config.controlDir).toBe(path.join(tmpDir, 'control'));
+  });
+
+  it('returns volumes object from config', () => {
+    const config = createMockConfig(tmpDir);
+    expect(config.volumes).toEqual({
+      control: path.join(tmpDir, 'volumes', 'control'),
+      experiment: path.join(tmpDir, 'volumes', 'experiment'),
+    });
+  });
+
+  it('config has all expected keys', () => {
+    const config = createMockConfig(tmpDir);
+    const expectedKeys = [
+      'projectDir',
+      'controlDir',
+      'dockerBuildDir',
+      'dockerfile',
+      'dockerBuildArgs',
+      'composeFile',
+      'procfile',
+      'images',
+      'volumes',
+      'setupCommands',
+    ];
+    expectedKeys.forEach((key) => {
+      expect(config).toHaveProperty(key);
+    });
   });
 });

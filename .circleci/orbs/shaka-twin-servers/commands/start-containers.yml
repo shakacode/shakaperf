@@ -1,0 +1,27 @@
+description: |
+  Start twin server containers using docker-compose via shaka-twin-servers.
+
+parameters:
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Start twin server containers
+      working_directory: << parameters.working-directory >>
+      command: |
+        if [ -n "<< parameters.config-path >>" ]; then
+          << parameters.cli-prefix >> shaka-twin-servers start-containers --config "<< parameters.config-path >>"
+        else
+          << parameters.cli-prefix >> shaka-twin-servers start-containers
+        fi

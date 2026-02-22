@@ -93,6 +93,7 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     projectDir,
     controlDir,
     dockerBuildDir,
+    dockerfile: validConfig.dockerfile,
     dockerBuildArgs: validConfig.dockerBuildArgs,
     composeFile: path.resolve(projectDir, validConfig.composeFile),
     procfile: path.resolve(projectDir, validConfig.procfile),

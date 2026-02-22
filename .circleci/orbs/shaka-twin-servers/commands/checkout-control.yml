@@ -1,0 +1,61 @@
+description: |
+  Checkout the merge-base commit using git worktree for control image build.
+  Sets CONTROL_REPO_DIR environment variable.
+
+parameters:
+  control-dir:
+    type: string
+    default: '/home/circleci/control_checkout'
+    description: 'Directory for control checkout'
+  project-subdir:
+    type: string
+    default: ''
+    description: 'Subdirectory within repo containing the project'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Copy Dockerfile to temp location
+      working_directory: << parameters.working-directory >>
+      command: |
+        DOCKERFILE=$(<< parameters.cli-prefix >> shaka-twin-servers get-config dockerfile)
+        DOCKERFILE_NAME=$(basename "$DOCKERFILE")
+        echo "Dockerfile from config: $DOCKERFILE (basename: $DOCKERFILE_NAME)"
+        mkdir -p /tmp/docker-build
+        # Copy from current working directory (working-directory already handles project location)
+        cp "$DOCKERFILE" /tmp/docker-build/
+        # Store dockerfile basename for later steps
+        echo "$DOCKERFILE_NAME" > /tmp/docker-build/.dockerfile-name
+  - run:
+      name: Checkout control (merge-base with default branch)
+      command: |
+        BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "origin/main")
+        echo "Detected base branch: $BASE_BRANCH"
+        MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
+        echo "Merge base commit: $MERGE_BASE"
+        mkdir -p "<< parameters.control-dir >>"
+        git worktree add "<< parameters.control-dir >>" "$MERGE_BASE"
+  - run:
+      name: Restore Dockerfile to control checkout
+      command: |
+        DOCKERFILE=$(cat /tmp/docker-build/.dockerfile-name)
+        if [ -n "<< parameters.project-subdir >>" ]; then
+          cp "/tmp/docker-build/$DOCKERFILE" "<< parameters.control-dir >>/<< parameters.project-subdir >>/"
+        else
+          cp "/tmp/docker-build/$DOCKERFILE" "<< parameters.control-dir >>/"
+        fi
+  - run:
+      name: Set CONTROL_REPO_DIR environment variable
+      command: |
+        if [ -n "<< parameters.project-subdir >>" ]; then
+          echo "export CONTROL_REPO_DIR=<< parameters.control-dir >>/<< parameters.project-subdir >>" >> "$BASH_ENV"
+        else
+          echo "export CONTROL_REPO_DIR=<< parameters.control-dir >>" >> "$BASH_ENV"
+        fi

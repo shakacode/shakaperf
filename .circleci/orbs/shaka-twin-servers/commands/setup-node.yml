@@ -1,0 +1,12 @@
+description: |
+  Install Node.js on the machine executor. This is required for shaka-twin-servers.
+
+parameters:
+  node-version:
+    type: string
+    default: ''
+    description: 'Node.js version to install (empty for CircleCI default)'
+
+steps:
+  - node/install:
+      node-version: << parameters.node-version >>
