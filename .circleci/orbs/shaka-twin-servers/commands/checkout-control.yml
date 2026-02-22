@@ -11,21 +11,30 @@ parameters:
     type: string
     default: ""
     description: "Subdirectory within repo containing the project"
-  dockerfile-path:
+  working-directory:
     type: string
-    default: "Dockerfile.production"
-    description: "Path to Dockerfile relative to project"
+    default: "."
+    description: "Directory containing twin-servers.config.ts"
+  cli-prefix:
+    type: string
+    default: "npx"
+    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
 
 steps:
   - run:
       name: Copy Dockerfile to temp location
+      working_directory: << parameters.working-directory >>
       command: |
+        DOCKERFILE=$(<< parameters.cli-prefix >> shaka-twin-servers get-config dockerfile)
+        echo "Dockerfile from config: $DOCKERFILE"
         mkdir -p /tmp/docker-build
         if [ -n "<< parameters.project-subdir >>" ]; then
-          cp "<< parameters.project-subdir >>/<< parameters.dockerfile-path >>" /tmp/docker-build/
+          cp "<< parameters.project-subdir >>/$DOCKERFILE" /tmp/docker-build/
         else
-          cp "<< parameters.dockerfile-path >>" /tmp/docker-build/
+          cp "$DOCKERFILE" /tmp/docker-build/
         fi
+        # Store dockerfile name for later steps
+        echo "$DOCKERFILE" > /tmp/docker-build/.dockerfile-name
   - run:
       name: Checkout control (merge-base with default branch)
       command: |
@@ -38,10 +47,11 @@ steps:
   - run:
       name: Restore Dockerfile to control checkout
       command: |
+        DOCKERFILE=$(cat /tmp/docker-build/.dockerfile-name)
         if [ -n "<< parameters.project-subdir >>" ]; then
-          cp /tmp/docker-build/<< parameters.dockerfile-path >> "<< parameters.control-dir >>/<< parameters.project-subdir >>/"
+          cp "/tmp/docker-build/$DOCKERFILE" "<< parameters.control-dir >>/<< parameters.project-subdir >>/"
         else
-          cp /tmp/docker-build/<< parameters.dockerfile-path >> "<< parameters.control-dir >>/"
+          cp "/tmp/docker-build/$DOCKERFILE" "<< parameters.control-dir >>/"
         fi
   - run:
       name: Set CONTROL_REPO_DIR environment variable

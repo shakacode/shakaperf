@@ -163,7 +163,6 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           project-subdir: demo-ecommerce
-          dockerfile-path: Dockerfile.production
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
@@ -183,7 +182,6 @@ workflows:
             - enable-corepack
             - setup-yarn-and-build-packages
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
           post-steps:
             - install-playwright
             - run:

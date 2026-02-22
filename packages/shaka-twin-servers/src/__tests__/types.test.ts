@@ -45,6 +45,7 @@ describe('TwinServersConfigSchema', () => {
     projectDir: '/project',
     controlDir: '/control',
     dockerBuildDir: '/build',
+    dockerfile: 'Dockerfile',
     dockerBuildArgs: { KEY: 'value' },
     composeFile: 'docker-compose.yml',
     procfile: 'Procfile.twin',
@@ -93,6 +94,14 @@ describe('TwinServersConfigSchema', () => {
     const result = TwinServersConfigSchema.safeParse({
       ...validConfig,
       dockerBuildDir: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty dockerfile', () => {
+    const result = TwinServersConfigSchema.safeParse({
+      ...validConfig,
+      dockerfile: '',
     });
     expect(result.success).toBe(false);
   });

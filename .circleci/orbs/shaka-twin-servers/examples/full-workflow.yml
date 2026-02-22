@@ -31,7 +31,6 @@ usage:
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
             project-subdir: demo-ecommerce
-            dockerfile-path: Dockerfile.production
             resource-class: xlarge
             node-version: '20.11.0'
             filters:

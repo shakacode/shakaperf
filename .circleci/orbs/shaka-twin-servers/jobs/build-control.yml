@@ -19,10 +19,6 @@ parameters:
     type: string
     default: ""
     description: "Subdirectory within repo containing the project"
-  dockerfile-path:
-    type: string
-    default: "Dockerfile.production"
-    description: "Path to Dockerfile relative to project"
   working-directory:
     type: string
     default: "."
@@ -53,7 +49,8 @@ steps:
   - checkout-control:
       control-dir: << parameters.control-dir >>
       project-subdir: << parameters.project-subdir >>
-      dockerfile-path: << parameters.dockerfile-path >>
+      working-directory: << parameters.working-directory >>
+      cli-prefix: << parameters.cli-prefix >>
   - build-image:
       target: control
       working-directory: << parameters.working-directory >>

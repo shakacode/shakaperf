@@ -11,6 +11,7 @@ export const TwinServersConfigSchema = z.object({
   projectDir: z.string().min(1, 'projectDir is required'),
   controlDir: z.string().min(1, 'controlDir is required'),
   dockerBuildDir: z.string().min(1, 'dockerBuildDir is required'),
+  dockerfile: z.string().min(1, 'dockerfile is required'),
   dockerBuildArgs: z.record(z.string(), z.string()),
   composeFile: z.string().min(1, 'composeFile is required'),
   procfile: z.string().min(1, 'procfile is required'),
@@ -43,4 +44,4 @@ export interface CliOptions {
   version: boolean;
 }
 
-export type Command = 'build' | 'start-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports';
+export type Command = 'build' | 'get-config' | 'start-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports';

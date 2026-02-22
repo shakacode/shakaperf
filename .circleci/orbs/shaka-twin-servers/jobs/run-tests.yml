@@ -73,6 +73,11 @@ steps:
       experiment-health-url: << parameters.experiment-health-url >>
       timeout: << parameters.health-timeout >>
   - run:
-      name: Run performance tests
+      name: Run test command for both containers in parallel
       working_directory: << parameters.working-directory >>
-      command: << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
+      command: |
+        if [ -n "<< parameters.test-command >>" ]; then
+          << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
+        else
+          echo "No test command specified, skipping"
+        fi
