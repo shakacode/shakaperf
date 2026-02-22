@@ -16,7 +16,6 @@ usage:
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
             resource-class: xlarge
-            node-version: '20.11.0'
             setup-steps:
               - run:
                   name: Set up custom environment
@@ -32,7 +31,6 @@ usage:
             working-directory: demo-ecommerce
             project-subdir: demo-ecommerce
             resource-class: xlarge
-            node-version: '20.11.0'
             filters:
               branches:
                 ignore: main

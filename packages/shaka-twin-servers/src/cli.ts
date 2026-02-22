@@ -222,10 +222,6 @@ async function main(): Promise<void> {
           process.exit(2);
         }
         const value = resolvedConfig[key as keyof ResolvedConfig];
-        if (value === undefined) {
-          console.error(colorize(`Error: Unknown config key '${key}'`, 'red'));
-          process.exit(2);
-        }
         console.log(value);
         break;
       }

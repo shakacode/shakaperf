@@ -9,17 +9,13 @@ parameters:
     type: enum
     enum: ['control', 'experiment']
     description: 'Image target/tag'
-  workspace-path:
-    type: string
-    default: '/tmp/docker-images'
-    description: 'Directory to save images'
 
 steps:
   - run:
       name: Save << parameters.target >> Docker image
       command: |
-        mkdir -p "<< parameters.workspace-path >>"
-        docker save -o "<< parameters.workspace-path >>/<< parameters.target >>.tar" "<< parameters.image-name >>:<< parameters.target >>"
+        mkdir -p /tmp/docker-images
+        docker save -o "/tmp/docker-images/<< parameters.target >>.tar" "<< parameters.image-name >>:<< parameters.target >>"
   - persist_to_workspace:
       root: /tmp
       paths:

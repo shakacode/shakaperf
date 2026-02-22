@@ -26,16 +26,17 @@ steps:
       working_directory: << parameters.working-directory >>
       command: |
         DOCKERFILE=$(<< parameters.cli-prefix >> shaka-twin-servers get-config dockerfile)
-        echo "Dockerfile from config: $DOCKERFILE"
+        DOCKERFILE_NAME=$(basename "$DOCKERFILE")
+        echo "Dockerfile from config: $DOCKERFILE (basename: $DOCKERFILE_NAME)"
         mkdir -p /tmp/docker-build
         # Copy from current working directory (working-directory already handles project location)
         cp "$DOCKERFILE" /tmp/docker-build/
-        # Store dockerfile name for later steps
-        echo "$DOCKERFILE" > /tmp/docker-build/.dockerfile-name
+        # Store dockerfile basename for later steps
+        echo "$DOCKERFILE_NAME" > /tmp/docker-build/.dockerfile-name
   - run:
       name: Checkout control (merge-base with default branch)
       command: |
-        BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD)
+        BASE_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "origin/main")
         echo "Detected base branch: $BASE_BRANCH"
         MERGE_BASE=$(git merge-base HEAD "$BASE_BRANCH")
         echo "Merge base commit: $MERGE_BASE"

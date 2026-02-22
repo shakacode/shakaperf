@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@dev:alpha0.2
+  twin-servers: ramez/shaka-twin-servers@1.0.1
 
 executors:
   ruby-node-executor:
