@@ -16,7 +16,7 @@ usage:
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
             resource-class: xlarge
-            node-version: "20.11.0"
+            node-version: '20.11.0'
             setup-steps:
               - run:
                   name: Set up custom environment
@@ -34,7 +34,7 @@ usage:
             base-branch: origin/main
             dockerfile-path: Dockerfile.production
             resource-class: xlarge
-            node-version: "20.11.0"
+            node-version: '20.11.0'
             filters:
               branches:
                 ignore: main
@@ -45,15 +45,15 @@ usage:
               - build-experiment-image
               - build-control-image
             working-directory: demo-ecommerce
-            server-command: "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-            control-health-url: "http://localhost:3020/up"
-            experiment-health-url: "http://localhost:3030/up"
-            health-timeout: "180s"
-            test-command: "bundle exec rspec spec/performance --format json --out perf-results/results.json"
+            server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+            control-health-url: 'http://localhost:3020/up'
+            experiment-health-url: 'http://localhost:3030/up'
+            health-timeout: '180s'
+            test-command: 'bundle exec rspec spec/performance --format json --out perf-results/results.json'
             test-parallel: false
             artifact-path: demo-ecommerce/perf-results
             artifact-destination: performance-results
-            teardown-steps:
+            post-steps:
               - run:
                   name: Generate performance report
                   command: |

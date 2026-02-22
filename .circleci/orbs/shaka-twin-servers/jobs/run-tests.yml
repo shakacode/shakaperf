@@ -57,11 +57,6 @@ parameters:
     type: steps
     default: []
     description: "Steps to run before tests (use this for package manager setup)"
-  teardown-steps:
-    type: steps
-    default: []
-    description: "Steps to run after tests"
-
 steps:
   - checkout
   - attach_workspace:
@@ -98,7 +93,6 @@ steps:
         else
           << parameters.cli-prefix >> shaka-twin-servers run-cmd experiment "<< parameters.test-command >>"
         fi
-  - steps: << parameters.teardown-steps >>
   - when:
       condition: << parameters.artifact-path >>
       steps:

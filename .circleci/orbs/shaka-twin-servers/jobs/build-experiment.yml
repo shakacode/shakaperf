@@ -34,11 +34,6 @@ parameters:
     type: steps
     default: []
     description: "Steps to run before build (use this for package manager setup)"
-  teardown-steps:
-    type: steps
-    default: []
-    description: "Steps to run after build"
-
 steps:
   - checkout
   - setup-node
@@ -52,4 +47,3 @@ steps:
   - save-image:
       image-name: << parameters.image-name >>
       target: experiment
-  - steps: << parameters.teardown-steps >>
