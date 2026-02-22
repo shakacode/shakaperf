@@ -18,7 +18,7 @@ commands:
       - node/install-packages:
           pkg-manager: yarn
 
-  setup-yarn-and-build:
+  setup-yarn-and-build-packages:
     description: Install Node packages with Yarn and build all packages
     steps:
       - setup-yarn
@@ -26,12 +26,35 @@ commands:
           name: Build packages
           command: yarn build
 
+  enable-corepack:
+    steps:
+      - run:
+          name: Enable Corepack for Yarn
+          command: corepack enable
+
+  install-playwright:
+    description: Install Playwright Chromium browser with caching
+    steps:
+      - restore_cache:
+          keys:
+            - playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
+            - playwright-v1-{{ arch }}-
+      - run:
+          name: Install Playwright Chromium
+          command: |
+            cd demo-ecommerce
+            DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
+      - save_cache:
+          key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/ms-playwright
+
 jobs:
-  test:
+  jest-tests:
     executor: ruby-node-executor
     steps:
       - checkout
-      - setup-yarn-and-build
+      - setup-yarn-and-build-packages
       - run:
           name: Run shaka-bundle-size tests
           command: yarn workspace shaka-bundle-size test
@@ -63,7 +86,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - setup-yarn-and-build
+      - setup-yarn-and-build-packages
       - run:
           name: Download baseline
           command: |
@@ -88,7 +111,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - setup-yarn-and-build
+      - setup-yarn-and-build-packages
       - run:
           name: Upload bundle size baseline
           command: |
@@ -98,7 +121,7 @@ jobs:
 workflows:
   build-and-check:
     jobs:
-      - test
+      - jest-tests
       - build-bundles
 
       # Feature branches: download and compare
@@ -119,8 +142,8 @@ workflows:
               only:
                 - main
 
-  # Performance testing workflow with twin servers for A/B testing
-  perf-test-twin-servers:
+  # Performance, Visual Regression testing workflow with twin servers for A/B testing
+  twin-server-tests:
     jobs:
       - twin-servers/build-experiment:
           image-name: demo-ecommerce
@@ -128,7 +151,8 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           setup-steps:
-            - setup-yarn-and-build
+            - enable-corepack
+            - setup-yarn-and-build-packages
           filters:
             branches:
               ignore: main
@@ -140,12 +164,14 @@ workflows:
           cli-prefix: yarn
           project-subdir: demo-ecommerce
           setup-steps:
-            - setup-yarn-and-build
+            - enable-corepack
+            - setup-yarn-and-build-packages
           filters:
             branches:
               ignore: main
 
       - twin-servers/run-tests:
+          name: visual-regression
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
@@ -153,10 +179,51 @@ workflows:
           working-directory: demo-ecommerce
           cli-prefix: yarn
           setup-steps:
-            - setup-yarn-and-build
+            - enable-corepack
+            - setup-yarn-and-build-packages
           server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
           test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
-          teardown-steps:
+          post-steps:
+            - install-playwright
+            - run:
+                name: Run visual regression -- generate reference images
+                command: |
+                  cd demo-ecommerce
+                  yarn visreg:reference
+            - run:
+                name: Run visual regression -- test
+                command: |
+                  cd demo-ecommerce
+                  yarn visreg:test:retry
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/html_report
+                destination: visreg-report
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/bitmaps_reference
+                destination: bitmaps_reference
+            - store_artifacts:
+                path: demo-ecommerce/backstop_data/bitmaps_test
+                destination: bitmaps_test
+            - store_test_results:
+                path: demo-ecommerce/backstop_data/ci_report
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/run-tests:
+          name: perf-tests
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+          resource-class: medium
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
+          post-steps:
             - run:
                 name: Collect results from both containers
                 command: |
