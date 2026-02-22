@@ -4,16 +4,16 @@ description: |
 parameters:
   workspace-path:
     type: string
-    default: "/tmp/workspace/docker-images"
-    description: "Path to workspace containing images"
+    default: '/tmp/workspace/docker-images'
+    description: 'Path to workspace containing images'
   load-control:
     type: boolean
     default: true
-    description: "Load control image"
+    description: 'Load control image'
   load-experiment:
     type: boolean
     default: true
-    description: "Load experiment image"
+    description: 'Load experiment image'
 
 steps:
   - when:

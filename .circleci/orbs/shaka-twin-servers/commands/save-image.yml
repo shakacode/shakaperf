@@ -4,15 +4,15 @@ description: |
 parameters:
   image-name:
     type: string
-    description: "Docker image name (without tag)"
+    description: 'Docker image name (without tag)'
   target:
     type: enum
-    enum: ["control", "experiment"]
-    description: "Image target/tag"
+    enum: ['control', 'experiment']
+    description: 'Image target/tag'
   workspace-path:
     type: string
-    default: "/tmp/docker-images"
-    description: "Directory to save images"
+    default: '/tmp/docker-images'
+    description: 'Directory to save images'
 
 steps:
   - run:

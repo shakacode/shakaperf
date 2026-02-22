@@ -4,8 +4,8 @@ description: |
 parameters:
   node-version:
     type: string
-    default: ""
-    description: "Node.js version to install (empty for CircleCI default)"
+    default: ''
+    description: 'Node.js version to install (empty for CircleCI default)'
 
 steps:
   - node/install:

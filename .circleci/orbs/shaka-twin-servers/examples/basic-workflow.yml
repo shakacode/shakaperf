@@ -27,8 +27,8 @@ usage:
             requires:
               - twin-servers/build-experiment
               - twin-servers/build-control
-            server-command: "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-            test-command: "bundle exec rake perf:benchmark"
+            server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+            test-command: 'bundle exec rake perf:benchmark'
             filters:
               branches:
                 ignore: main

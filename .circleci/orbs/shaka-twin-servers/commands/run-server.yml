@@ -4,23 +4,23 @@ description: |
 parameters:
   target:
     type: enum
-    enum: ["control", "experiment"]
-    description: "Target container"
+    enum: ['control', 'experiment']
+    description: 'Target container'
   command:
     type: string
-    description: "Server start command"
+    description: 'Server start command'
   working-directory:
     type: string
-    default: "."
-    description: "Directory containing twin-servers.config.ts"
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
   background:
     type: boolean
     default: true
-    description: "Run in background"
+    description: 'Run in background'
   cli-prefix:
     type: string
-    default: "npx"
-    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
 
 steps:
   - run:

@@ -5,20 +5,20 @@ description: |
 parameters:
   control-dir:
     type: string
-    default: "/home/circleci/control_checkout"
-    description: "Directory for control checkout"
+    default: '/home/circleci/control_checkout'
+    description: 'Directory for control checkout'
   project-subdir:
     type: string
-    default: ""
-    description: "Subdirectory within repo containing the project"
+    default: ''
+    description: 'Subdirectory within repo containing the project'
   working-directory:
     type: string
-    default: "."
-    description: "Directory containing twin-servers.config.ts"
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
   cli-prefix:
     type: string
-    default: "npx"
-    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
 
 steps:
   - run:

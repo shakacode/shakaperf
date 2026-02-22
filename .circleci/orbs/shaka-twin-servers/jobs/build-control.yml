@@ -8,40 +8,40 @@ executor:
 parameters:
   resource-class:
     type: enum
-    enum: ["medium", "large", "xlarge", "2xlarge"]
-    default: "large"
-    description: "Machine resource class"
+    enum: ['medium', 'large', 'xlarge', '2xlarge']
+    default: 'large'
+    description: 'Machine resource class'
   control-dir:
     type: string
-    default: "/home/circleci/control_checkout"
-    description: "Directory for control checkout"
+    default: '/home/circleci/control_checkout'
+    description: 'Directory for control checkout'
   project-subdir:
     type: string
-    default: ""
-    description: "Subdirectory within repo containing the project"
+    default: ''
+    description: 'Subdirectory within repo containing the project'
   working-directory:
     type: string
-    default: "."
-    description: "Directory containing twin-servers.config.ts"
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
   image-name:
     type: string
-    description: "Docker image name"
+    description: 'Docker image name'
   config-path:
     type: string
-    default: ""
-    description: "Custom config file path"
+    default: ''
+    description: 'Custom config file path'
   verbose:
     type: boolean
     default: false
-    description: "Enable verbose output"
+    description: 'Enable verbose output'
   cli-prefix:
     type: string
-    default: "npx"
-    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
   setup-steps:
     type: steps
     default: []
-    description: "Steps to run before build (use this for package manager setup)"
+    description: 'Steps to run before build (use this for package manager setup)'
 steps:
   - checkout
   - setup-node

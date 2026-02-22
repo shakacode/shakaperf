@@ -4,16 +4,16 @@ description: |
 parameters:
   working-directory:
     type: string
-    default: "."
-    description: "Directory containing twin-servers.config.ts"
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
   config-path:
     type: string
-    default: ""
-    description: "Custom config file path (optional)"
+    default: ''
+    description: 'Custom config file path (optional)'
   cli-prefix:
     type: string
-    default: "npx"
-    description: "Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)"
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
 
 steps:
   - run:
