@@ -33,7 +33,6 @@ import {
   debug,
   experimentURL,
   fidelity,
-  isCIEnv,
   lhPresets,
   regressionThreshold,
   regressionThresholdStat,
@@ -61,7 +60,6 @@ export interface ICompareFlags {
   sampleTimeout: number;
   config?: string;
   report?: boolean;
-  isCIEnv?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   lhPresets?: string;
 }
@@ -83,7 +81,6 @@ export default class Compare extends TBBaseCommand {
     config: config(),
     report,
     debug,
-    isCIEnv: isCIEnv(),
     regressionThresholdStat,
     lhPresets,
   };
@@ -109,7 +106,6 @@ export default class Compare extends TBBaseCommand {
   }
 
   public async run(): Promise<string> {
-    const { hideAnalysis } = this.compareFlags;
     const lhPresets = this.compareFlags.lhPresets;
     const options: Partial<LighthouseBenchmarkOptions> = { lhPresets };
 
@@ -191,15 +187,13 @@ export default class Compare extends TBBaseCommand {
     this.log(`\n${message}`);
 
     // if the stdout analysis is not hidden show it
-    if (!hideAnalysis) {
+    if (!this.compareFlags.hideAnalysis) {
       this.analyzedJSONString = await CompareAnalyze.run([
         resultJSONPath,
         "--fidelity",
         `${this.parsedConfig.fidelity}`,
         "--regressionThreshold",
         `${this.parsedConfig.regressionThreshold}`,
-        "--isCIEnv",
-        `${this.parsedConfig.isCIEnv}`,
         `--regressionThresholdStat`,
         `${this.parsedConfig.regressionThresholdStat}`,
         `--jsonReport`,
@@ -213,8 +207,6 @@ export default class Compare extends TBBaseCommand {
         `${this.parsedConfig.tbResultsFolder}`,
         "--config",
         `${this.parsedConfig.config}`,
-        "--isCIEnv",
-        `${this.parsedConfig.isCIEnv}`,
       ]);
     }
 

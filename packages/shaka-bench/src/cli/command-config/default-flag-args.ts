@@ -12,7 +12,6 @@ export const defaultFlagArgs: ITBConfig = {
   fidelity: "low",
   tbResultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
-  isCIEnv: false,
   sampleTimeout: 30,
   regressionThresholdStat: "estimator",
 };

@@ -17,7 +17,6 @@ import parseCompareResult from "../../compare/parse-compare-result";
 import { resultsFile } from "../../helpers/args";
 import {
   fidelity,
-  isCIEnv,
   jsonReport,
   regressionThreshold,
   regressionThresholdStat,
@@ -25,7 +24,6 @@ import {
 export interface CompareAnalyzeFlags {
   fidelity: number;
   regressionThreshold: number;
-  isCIEnv: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   jsonReport: boolean;
 }
@@ -37,7 +35,6 @@ export default class CompareAnalyze extends TBBaseCommand {
   public static flags = {
     fidelity: fidelity({ required: true }),
     regressionThreshold: regressionThreshold({ required: true }),
-    isCIEnv: isCIEnv({ required: true }),
     regressionThresholdStat,
     jsonReport,
   };
@@ -49,7 +46,7 @@ export default class CompareAnalyze extends TBBaseCommand {
 
   private parseFlags(CompareAnalyze: Parser.Input<any>): CompareAnalyzeFlags {
     const { flags } = this.parse(CompareAnalyze);
-    const { isCIEnv, regressionThresholdStat, jsonReport } = flags;
+    const { regressionThresholdStat, jsonReport } = flags;
     let { regressionThreshold, fidelity } = flags;
 
     if (typeof regressionThreshold === "string") {
@@ -70,7 +67,6 @@ export default class CompareAnalyze extends TBBaseCommand {
     return {
       fidelity,
       regressionThreshold,
-      isCIEnv,
       regressionThresholdStat,
       jsonReport,
     };
@@ -95,11 +91,7 @@ export default class CompareAnalyze extends TBBaseCommand {
       this.typedFlags.regressionThresholdStat
     );
 
-    if (!this.typedFlags.isCIEnv) {
-      // then log the tables
-      compareResults.logTables();
-    }
-
+    compareResults.logTables();
     compareResults.logSummary();
 
     // optionally generate a JSON file from the stdout report

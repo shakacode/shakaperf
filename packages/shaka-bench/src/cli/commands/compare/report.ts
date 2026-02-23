@@ -20,7 +20,6 @@ import parseCompareResult from "../../compare/parse-compare-result";
 import printToPDF from "../../compare/print-to-pdf";
 import {
   config,
-  isCIEnv,
   plotTitle,
   tbResultsFolder,
 } from "../../helpers/flags";
@@ -66,7 +65,6 @@ export interface IReportFlags {
   tbResultsFolder: string;
   config?: string;
   plotTitle?: string;
-  isCIEnv?: boolean;
 }
 
 export default class CompareReport extends TBBaseCommand {
@@ -77,7 +75,6 @@ export default class CompareReport extends TBBaseCommand {
     tbResultsFolder: tbResultsFolder({ required: true }),
     config: config(),
     plotTitle: plotTitle(),
-    isCIEnv: isCIEnv(),
   };
   public reportFlags: IReportFlags;
 
@@ -107,9 +104,7 @@ export default class CompareReport extends TBBaseCommand {
       tbResultsFolder
     );
 
-    if (!this.parsedConfig.isCIEnv) {
-      this.logReportPaths(tbResultsFolder, absOutputPath, absPathToHTML);
-    }
+    this.logReportPaths(tbResultsFolder, absOutputPath, absPathToHTML);
   }
 
   private logReportPaths(

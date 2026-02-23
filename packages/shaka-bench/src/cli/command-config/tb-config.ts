@@ -12,7 +12,6 @@ export interface ITBConfig {
   regressionThreshold?: number | string;
   sampleTimeout?: number;
   debug?: boolean;
-  isCIEnv?: boolean | string;
   regressionThresholdStat?: RegressionThresholdStat;
   lhPresets?: string;
   config?: string;

@@ -6,19 +6,6 @@ import {
   getDefaultValue,
 } from "../command-config/default-flag-args";
 
-export const isCIEnv = oclifFlags.build({
-  description: `Provides a drastically slimmed down stdout report for CI workflows. However does NOT hide analysis.`,
-  default: () => getDefaultValue("isCIEnv"),
-  parse: (ci): boolean => {
-    // if boolean return
-    if (typeof ci === "boolean") {
-      return ci;
-    }
-    // if string return boolean value
-    return ci === "true";
-  },
-});
-
 export const config = oclifFlags.build({
   description: `Specify an alternative directory rather than the project root for the tbconfig.json. This explicit config will overwrite all.`,
 });
