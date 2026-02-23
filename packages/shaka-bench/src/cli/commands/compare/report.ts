@@ -249,16 +249,6 @@ export default class CompareReport extends TBBaseCommand {
       browserVersion: version,
     };
 
-    if (tbConfig.servers) {
-      reportTitles.servers = tbConfig.servers.map((titleConfig, idx) => {
-        if (idx === 0) {
-          return { name: `Control: ${titleConfig.name}` };
-        } else {
-          return { name: `Experiment: ${titleConfig.name}` };
-        }
-      });
-    }
-
     // if passing an explicit plotTitle via cli flag this trumps
     // the tbConfig.plotTitle and defaults
     if (plotTitle) {

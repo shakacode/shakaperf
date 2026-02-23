@@ -14,8 +14,6 @@ const configFileKeys = [
   "outputFilePath",
 ] as const;
 
-const serverFileKeys = ["har", "dist"] as const;
-
 // STEP 1
 // takes a command flags object with all the flags the command accepts
 // runs that commands object thru the defaults and returns those values
@@ -67,11 +65,6 @@ export function readConfig(fileOrDir = "tbconfig.json"): ITBConfig | undefined {
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function resolveConfigFileKeys(config: ITBConfig, configDir = process.cwd()) {
   resolveFileKeys(config, configFileKeys, configDir);
-  if (Array.isArray(config.servers)) {
-    for (const server of config.servers) {
-      resolveFileKeys(server, serverFileKeys, configDir);
-    }
-  }
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

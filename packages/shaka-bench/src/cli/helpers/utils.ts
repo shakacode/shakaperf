@@ -1,46 +1,8 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint:disable:no-console*/
 
-import { Marker } from "../../core";
 import chalk from "chalk";
 import { createHash } from "crypto";
-
-import {
-  IBenchmarkEnvironmentOverride,
-  ITBConfig,
-} from "../command-config/tb-config";
-import { ICompareFlags } from "../commands/compare";
-
-/**
- * Handles checking if there is a specific override for the attributeName in the tbConfigs for the given overrideObjectName.
- * Defaults to whatever is in the flags object if there is no override.
- *
- * @param attributeName - Attribute name to check if there is an override in overrideObjectName from tbConfig
- * @param flags - Object containing configs parsed from the Command class
- * @param overrideObjectName - Either "controlBenchmarkEnvironment" or "experimentBenchmarkEnvironment"
- * @param tbConfig - This refers to the parsed JSON from the config file if it exists
- */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function checkEnvironmentSpecificOverride(
-  attributeName: keyof ICompareFlags,
-  flags: ICompareFlags,
-  overrideObjectName: string,
-  tbConfig?: ITBConfig
-): any {
-  if (!tbConfig || !tbConfig[overrideObjectName]) {
-    return flags[attributeName];
-  }
-
-  const environmentSpecificConfigs: IBenchmarkEnvironmentOverride =
-    tbConfig[overrideObjectName]!; //eslint-disable-line @typescript-eslint/no-non-null-assertion
-
-  if (!environmentSpecificConfigs[attributeName]) {
-    return flags[attributeName];
-  }
-
-  return environmentSpecificConfigs[attributeName];
-}
 
 /**
  * Merge the contents of the right object into the left. Simply replace numbers, strings, arrays
@@ -80,27 +42,6 @@ export function convertMicrosecondsToMS(ms: string | number): number {
 export function convertMSToMicroseconds(ms: string | number): number {
   ms = typeof ms === "string" ? parseInt(ms, 10) : ms;
   return Math.floor(ms * 1000);
-}
-
-export function parseMarkers(m: string | string[]): Marker[] {
-  const a: Marker[] = [];
-  if (typeof m === "string") {
-    m = m.split(",");
-  }
-
-  for (let i = 1; i < m.length; i += 2) {
-    a.push({
-      start: m[i - 1],
-      label: m[i],
-    });
-  }
-
-  a.push({
-    start: m[m.length - 1],
-    label: "paint",
-  });
-
-  return a;
 }
 
 /**
