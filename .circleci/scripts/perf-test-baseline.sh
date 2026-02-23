@@ -6,10 +6,8 @@
 # of the last commit where perf tests passed on the main branch.
 #
 # Usage:
-#   perf-test-baseline.sh download          Download baseline SHA, set $PERF_BASELINE_SHA
-#   perf-test-baseline.sh upload            Upload current HEAD as new baseline
-#   perf-test-baseline.sh commits           List commits since baseline
-#   perf-test-baseline.sh ack-instructions  Print acknowledgement instructions
+#   perf-test-baseline.sh download   Download baseline SHA, set $PERF_BASELINE_SHA
+#   perf-test-baseline.sh upload     Upload current HEAD as new baseline
 #
 # Environment variables:
 #   S3_BUCKET           S3 bucket name (default: shaka-perf-demo-storage)
@@ -78,65 +76,6 @@ cmd_upload() {
   echo "Perf test baseline updated to: ${sha:0:7} ($sha)"
 }
 
-cmd_commits() {
-  # Source BASH_ENV to get PERF_BASELINE_SHA if set by a prior step
-  if [ -f "$BASH_ENV" ]; then
-    # shellcheck disable=SC1090
-    source "$BASH_ENV"
-  fi
-
-  if [ -z "${PERF_BASELINE_SHA:-}" ]; then
-    echo "Error: PERF_BASELINE_SHA is not set. Run 'download' first."
-    exit 1
-  fi
-
-  local current_sha
-  current_sha=$(git rev-parse HEAD)
-
-  echo "=== Commits since baseline ==="
-  echo "Baseline: ${PERF_BASELINE_SHA:0:7} ($PERF_BASELINE_SHA)"
-  echo "Current:  ${current_sha:0:7} ($current_sha)"
-  echo ""
-
-  local commit_list
-  commit_list=$(git log --first-parent --oneline "${PERF_BASELINE_SHA}..HEAD")
-  local count
-  count=$(echo "$commit_list" | grep -c . || true)
-
-  if [ "$count" -eq 0 ]; then
-    echo "No commits found between baseline and HEAD."
-  else
-    echo "$count commit(s) since baseline:"
-    echo ""
-    echo "$commit_list"
-  fi
-}
-
-cmd_ack_instructions() {
-  local current_sha
-  current_sha=$(git rev-parse HEAD)
-
-  echo ""
-  echo "=== Perf Test Regression Acknowledgement ==="
-  echo ""
-  echo "The performance tests detected a regression compared to the baseline."
-  echo ""
-  echo "To investigate, review the commits listed above and the test artifacts."
-  echo ""
-  echo "To acknowledge this regression and update the baseline to ${current_sha:0:7}:"
-  echo ""
-  echo "  Option 1: Trigger the pipeline via CircleCI UI or API with update-perf-baseline=true"
-  echo ""
-  echo "    curl -X POST https://circleci.com/api/v2/project/gh/shakacode/shaka-perf/pipeline \\"
-  echo "      -H 'Circle-Token: \$CIRCLECI_TOKEN' -H 'content-type: application/json' \\"
-  echo "      -d '{\"branch\": \"main\", \"parameters\": {\"update-perf-baseline\": true}}'"
-  echo ""
-  echo "  Option 2: Use the AWS CLI directly"
-  echo ""
-  echo "    echo -n '$current_sha' | aws s3 cp - $S3_URI"
-  echo ""
-}
-
 case "${1:-}" in
   download)
     cmd_download
@@ -144,14 +83,8 @@ case "${1:-}" in
   upload)
     cmd_upload
     ;;
-  commits)
-    cmd_commits
-    ;;
-  ack-instructions)
-    cmd_ack_instructions
-    ;;
   *)
-    echo "Usage: perf-test-baseline.sh <download|upload|commits|ack-instructions>"
+    echo "Usage: perf-test-baseline.sh <download|upload>"
     exit 1
     ;;
 esac
