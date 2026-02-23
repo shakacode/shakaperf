@@ -470,8 +470,8 @@ describe('Reporter', () => {
       expect(output).toContain('size increased by');
       expect(output).toContain('chunks: 5 (was 3)');
       // Both policy messages shown
-      expect(output).toContain('FAILED: Size too big');
-      expect(output).toContain('FAILED: Too many chunks');
+      expect(output).toContain('FAILED : Size too big');
+      expect(output).toContain('FAILED : Too many chunks');
       // Component mentioned only once in the component header line
       const appLines = output.split('\n').filter((l: string) => l.includes('App:'));
       expect(appLines.length).toBe(1);
