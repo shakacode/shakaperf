@@ -18,6 +18,7 @@ import { BaselineStorage } from './BaselineStorage';
 import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
+import { getPackageRunCommand } from './helpers/packageManager';
 
 const VERSION = '0.0.11';
 
@@ -142,7 +143,8 @@ function getCiMetadata(storage: BaselineStorage): { branchName: string; currentC
 }
 
 function printCompareFailureGuidance(configPath: string): void {
-  const acknowledgeCmd = `yarn shaka-bundle-size -c ${configPath} --acknowledge-failure`;
+  const packageManagerCmd = getPackageRunCommand();
+  const acknowledgeCmd = `${packageManagerCmd} shaka-bundle-size -c ${configPath} --acknowledge-failure`;
 
   // Printed as stderr so it's visible even in "quiet" mode logs.
   console.error('');
