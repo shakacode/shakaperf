@@ -4,9 +4,6 @@ parameters:
   run-scheduled-perf-tests:
     type: boolean
     default: false
-  update-perf-baseline:
-    type: boolean
-    default: false
 
 orbs:
   node: circleci/node@7.2.1
@@ -144,9 +141,7 @@ jobs:
 workflows:
   build-and-check:
     when:
-      and:
-        - not: << pipeline.parameters.run-scheduled-perf-tests >>
-        - not: << pipeline.parameters.update-perf-baseline >>
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
       - jest-tests
       - build-bundles
@@ -172,9 +167,7 @@ workflows:
   # Performance, Visual Regression testing workflow with twin servers for A/B testing
   twin-server-tests:
     when:
-      and:
-        - not: << pipeline.parameters.run-scheduled-perf-tests >>
-        - not: << pipeline.parameters.update-perf-baseline >>
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
       - twin-servers/build-experiment:
           image-name: demo-ecommerce
@@ -313,18 +306,6 @@ workflows:
                 command: |
                   cd demo-ecommerce
                   yarn visreg:test:retry
-            - run:
-                name: Update perf baseline (tests passed)
-                command: bash .circleci/scripts/perf-test-baseline.sh upload
-                when: on_success
-            - run:
-                name: List commits since baseline
-                command: bash .circleci/scripts/perf-test-baseline.sh commits
-                when: on_fail
-            - run:
-                name: Print acknowledgement instructions
-                command: bash .circleci/scripts/perf-test-baseline.sh ack-instructions
-                when: on_fail
             - store_artifacts:
                 path: demo-ecommerce/backstop_data/html_report
                 destination: visreg-report
@@ -358,21 +339,21 @@ workflows:
                   mkdir -p /tmp/perf-results
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
-            - run:
-                name: Update perf baseline (tests passed)
-                command: bash .circleci/scripts/perf-test-baseline.sh upload
-                when: on_success
-            - run:
-                name: List commits since baseline
-                command: bash .circleci/scripts/perf-test-baseline.sh commits
-                when: on_fail
-            - run:
-                name: Print acknowledgement instructions
-                command: bash .circleci/scripts/perf-test-baseline.sh ack-instructions
-                when: on_fail
 
-  # Manual baseline update (for acknowledging regressions)
-  manual-update-perf-baseline:
-    when: << pipeline.parameters.update-perf-baseline >>
-    jobs:
-      - update-perf-baseline
+      # Step 3: Update baseline (only runs when all tests pass)
+      - update-perf-baseline:
+          requires:
+            - scheduled-visual-regression
+            - scheduled-perf-tests
+
+      # Approval path: if tests fail, approve to update baseline anyway
+      - approve-baseline-update:
+          type: approval
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+
+      - update-perf-baseline:
+          name: force-update-perf-baseline
+          requires:
+            - approve-baseline-update
