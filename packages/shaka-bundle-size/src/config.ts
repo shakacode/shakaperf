@@ -170,7 +170,7 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
         if (isKeyComponent) {
           return { shouldFail: true, message: 'Do not remove or update a key component without updating configuration to remove the key component.' };
         }
-        break;
+        return { shouldFail: false, message: 'Removed component (non-key component removal is allowed).' };
 
       case RegressionType.INCREASED_SIZE:
         if (sizeDiffKb !== undefined && sizeDiffKb > threshold) {
@@ -179,7 +179,13 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
             message: `Size increase ${sizeDiffKb.toFixed(2)} KB exceeds threshold ${threshold} KB. Will it make sense to introduce a new Loadable Component?`,
           };
         }
-        break;
+        // Size increase within threshold - return message for visibility
+        return {
+          shouldFail: false,
+          message: sizeDiffKb !== undefined
+            ? `Size increase ${sizeDiffKb.toFixed(2)} KB is within threshold ${threshold} KB.`
+            : 'Size increase detected but size data unavailable.',
+        };
 
       case RegressionType.INCREASED_CHUNKS_COUNT:
         return { shouldFail: true, message: 'Increasing chunks number means increased webpack and HTTP overhead. This may be bad for performance.' };

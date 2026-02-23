@@ -330,7 +330,7 @@ describe('Reporter', () => {
       };
       reporter.summary(result);
       const output = getOutput();
-      expect(output).toContain('Minor regression (ignored)');
+      expect(output).toContain('IGNORED:');
       expect(output).toContain('Footer');
       expect(output).toContain('Small increase');
     });
@@ -367,7 +367,7 @@ describe('Reporter', () => {
       const output = getOutput();
       // New component with warning
       expect(output).toContain('pages-ProductPage: new component, 5.97 KB');
-      expect(output).toContain('Minor regression (ignored): Performance team would like to take a look.');
+      expect(output).toContain('IGNORED: Performance team would like to take a look.');
       // Size increase
       expect(output).toContain('App: size increased by 4.64 KB');
       expect(output).toContain('was 244.49 KB');
@@ -396,7 +396,7 @@ describe('Reporter', () => {
       };
       reporter.summary(result);
       const output = getOutput();
-      expect(output).toContain('Minor regressions (ignored)');
+      expect(output).toContain('Ignored regressions:');
       expect(output).toContain('Footer');
     });
 

@@ -200,16 +200,16 @@ export class Reporter implements IReporter {
 
     // Use red color if there are failures for this component
     const lineColor = hasFailure ? 'red' : defaultColor;
-    this.writeLine(this.color(`\n${name}: ${description}`, lineColor));
+    this.writeLine(this.color(`${name}: ${description}`, lineColor));
 
     for (const reg of failures) {
       if (reg.policyMessage) {
-        this.error(`  FAILED: ${reg.policyMessage}`);
+        this.error(`  FAILED : ${reg.policyMessage}`);
       }
     }
     for (const reg of componentWarnings) {
       if (reg.policyMessage) {
-        this.warning(`  Minor regression (ignored): ${reg.policyMessage}`);
+        this.warning(`  IGNORED: ${reg.policyMessage}`);
       }
     }
   }
@@ -217,7 +217,7 @@ export class Reporter implements IReporter {
   /** Fallback for CheckResult without comparison data */
   private summaryLegacy(result: CheckResult): void {
     if (result.warnings.length > 0) {
-      this.warning('\nMinor regressions (ignored):');
+      this.warning('\nIgnored regressions:');
       for (const regression of result.warnings) {
         this.warning(`- ${regression.componentName}: ${regression.policyMessage ?? ''}`);
       }
