@@ -81,19 +81,21 @@
         </div>
       </details>      
       <details>
-        <summary style="color: #444; cursor: pointer; font-weight: bold;">How to generate this diff faster</summary>
+        <summary style="color: #444; cursor: pointer; font-weight: bold;">How to compare locally</summary>
         <div style="margin-top: 10px;">
-          <p><strong>Trying to fix this issue for a long time and tired of waiting for slow CI? </strong>
-          <br> Set up twin servers on your local machine to see results faster:</p>
+          <p><strong>Tired of waiting for slow CI?</strong> Run the comparison locally:</p>
           <ol style="padding-left: 20px;">
-            <li>Install <a href="https://www.meldmerge.org/" target="_blank" style="color: #0066cc;">Meld</a> or <a href="https://kdiff3.sourceforge.io/" target="_blank" style="color: #0066cc;">KDiff3</a></li>
-            <li>Create git repos for twin servers:
-              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">cp -r ~/popmenu ~/popmenu_experiment && cp -r ~/popmenu ~/popmenu_control</pre>
+            <li>Build your project first (command may differ, but should look like this):
+              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">bin/shakapacker --json public/webpack/production/webpack-stats.json</pre>
             </li>
-            <li>Run the following command:
-              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">rake "twin_servers:checkout[<span class="branch-name"></span>]" && rake "twin_servers:compare_bundle_size"</pre>
+            <li>Download baseline from main branch:
+              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">yarn shaka-bundle-size --config path/to/bundle-size.config.ts --download-main-branch-stats</pre>
+            </li>
+            <li>Compare current build against baseline:
+              <pre style="background-color: #e0e0e0; padding: 5px; border-radius: 3px;">yarn shaka-bundle-size --config path/to/bundle-size.config.ts --compare</pre>
             </li>
           </ol>
+          <p style="margin-top: 10px; font-size: 0.9em; color: #666;">Use your package manager (yarn, npm, pnpm, etc.) to run the commands.</p>
         </div>
       </details>
     </div>
