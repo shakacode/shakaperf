@@ -9579,6 +9579,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jest-junit@npm:^16.0.0":
+  version: 16.0.0
+  resolution: "jest-junit@npm:16.0.0"
+  dependencies:
+    mkdirp: "npm:^1.0.4"
+    strip-ansi: "npm:^6.0.1"
+    uuid: "npm:^8.3.2"
+    xml: "npm:^1.0.1"
+  checksum: 10c0/d813d4d142341c2b51b634db7ad6ceb9849514cb58f96ec5e7e4cf4031a557133490452710c2d9dec9b1dd546334d9ca663e042d3070c3e8f102ce6217bd8e2e
+  languageName: node
+  linkType: hard
+
 "jest-leak-detector@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest-leak-detector@npm:29.7.0"
@@ -10759,6 +10771,15 @@ __metadata:
   bin:
     mkdirp: bin/cmd.js
   checksum: 10c0/e2e2be789218807b58abced04e7b49851d9e46e88a2f9539242cc8a92c9b5c3a0b9bab360bd3014e02a140fc4fbc58e31176c408b493f8a2a6f4986bd7527b01
+  languageName: node
+  linkType: hard
+
+"mkdirp@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "mkdirp@npm:1.0.4"
+  bin:
+    mkdirp: bin/cmd.js
+  checksum: 10c0/46ea0f3ffa8bc6a5bc0c7081ffc3907777f0ed6516888d40a518c5111f8366d97d2678911ad1a6882bf592fa9de6c784fea32e1687bb94e1f4944170af48a5cf
   languageName: node
   linkType: hard
 
@@ -12754,6 +12775,7 @@ __metadata:
     diff2html: "npm:^3.4.48"
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
+    jest-junit: "npm:^16.0.0"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
@@ -12780,6 +12802,7 @@ __metadata:
     "@types/node": "npm:^20.0.0"
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
+    jest-junit: "npm:^16.0.0"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
@@ -14579,6 +14602,13 @@ __metadata:
   bin:
     xml2json: bin/xml2json
   checksum: 10c0/9269e4cb14ce30ca821a4e628b185c97b720e93dde2d34639d83ce0e59100afbb4b94a8f96f3966a1db270391b448a2a828f731b6d43369e7bf0b1367b285021
+  languageName: node
+  linkType: hard
+
+"xml@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "xml@npm:1.0.1"
+  checksum: 10c0/04bcc9b8b5e7b49392072fbd9c6b0f0958bd8e8f8606fee460318e43991349a68cbc5384038d179ff15aef7d222285f69ca0f067f53d071084eb14c7fdb30411
   languageName: node
   linkType: hard
 
