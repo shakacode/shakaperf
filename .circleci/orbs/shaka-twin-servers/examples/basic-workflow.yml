@@ -1,0 +1,34 @@
+description: |
+  Basic A/B performance testing workflow for a Rails application.
+  Shows minimal configuration needed to run twin server tests.
+
+usage:
+  version: 2.1
+
+  orbs:
+    twin-servers: shaka-perf/twin-servers@1.0.0
+
+  workflows:
+    perf-test:
+      jobs:
+        - twin-servers/build-experiment:
+            image-name: my-rails-app
+            filters:
+              branches:
+                ignore: main
+
+        - twin-servers/build-control:
+            image-name: my-rails-app
+            filters:
+              branches:
+                ignore: main
+
+        - twin-servers/run-tests:
+            requires:
+              - twin-servers/build-experiment
+              - twin-servers/build-control
+            server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+            test-command: 'bundle exec rake perf:benchmark'
+            filters:
+              branches:
+                ignore: main

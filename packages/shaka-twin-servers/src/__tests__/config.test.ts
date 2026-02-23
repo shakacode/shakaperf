@@ -10,6 +10,7 @@ describe('defineConfig', () => {
       projectDir: '/project',
       controlDir: '/control',
       dockerBuildDir: '/build',
+      dockerfile: 'Dockerfile',
       dockerBuildArgs: {},
       composeFile: 'docker-compose.yml',
       procfile: 'Procfile',
@@ -27,27 +28,30 @@ describe('findConfigFile', () => {
     if (fs.existsSync(tmpDir)) {
       fs.rmSync(tmpDir, { recursive: true });
     }
+    fs.mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
   });
 
   it('returns null when no config file found', () => {
-    fs.mkdirSync(tmpDir, { recursive: true });
     expect(findConfigFile(tmpDir)).toBeNull();
   });
 
   it('finds twin-servers.config.ts', () => {
-    fs.mkdirSync(tmpDir, { recursive: true });
     fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.ts'), 'export default {}');
     expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.ts'));
   });
 
   it('finds twin-servers.config.js', () => {
-    fs.mkdirSync(tmpDir, { recursive: true });
     fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.js'), 'module.exports = {}');
     expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.js'));
   });
 
   it('prefers .ts over .js', () => {
-    fs.mkdirSync(tmpDir, { recursive: true });
     fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.ts'), 'export default {}');
     fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.js'), 'module.exports = {}');
     expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.ts'));
@@ -69,11 +73,18 @@ describe('resolveConfig', () => {
     fs.mkdirSync(dockerBuildDir, { recursive: true });
   });
 
+  afterAll(() => {
+    if (fs.existsSync(tmpDir)) {
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  });
+
   function makeConfig(overrides: Partial<TwinServersConfig> = {}): TwinServersConfig {
     return {
       projectDir,
       controlDir,
       dockerBuildDir,
+      dockerfile: 'Dockerfile',
       dockerBuildArgs: { KEY: 'val' },
       composeFile: 'docker-compose.yml',
       procfile: 'Procfile.twin',

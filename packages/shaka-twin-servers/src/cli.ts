@@ -13,7 +13,7 @@ import { syncChanges } from './commands/sync-changes';
 import { say } from './commands/say';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
-import type { Command } from './types';
+import type { Command, ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 
 const VERSION = '0.0.2';
@@ -26,6 +26,7 @@ Usage:
 
 Commands:
   build [--target <control|experiment>] Build Docker images (both by default, or single target)
+  get-config <key>                      Get a config value (e.g., dockerfile)
   start-containers                      Start Docker containers
   start-servers                         Start Rails servers via Overmind
   run-cmd <target> <cmd>                Run a command in a container interactively
@@ -79,7 +80,7 @@ Examples:
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
+const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -211,6 +212,17 @@ async function main(): Promise<void> {
           target = values.target;
         }
         await build(resolvedConfig, { ...options, target });
+        break;
+      }
+      case 'get-config': {
+        const key = positionals[1];
+        if (!key || !(key in resolvedConfig)) {
+          console.error(colorize(`Error: ${key ? `Unknown config key '${key}'`: "Config key required"}`, 'red'));
+          console.error(`Available keys: ${Object.keys(resolvedConfig).join(', ')}`);
+          process.exit(2);
+        }
+        const value = resolvedConfig[key as keyof ResolvedConfig];
+        console.log(value);
         break;
       }
       case 'start-containers':

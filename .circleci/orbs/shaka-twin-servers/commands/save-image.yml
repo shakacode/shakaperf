@@ -1,0 +1,22 @@
+description: |
+  Save a Docker image to the workspace for sharing between jobs.
+
+parameters:
+  image-name:
+    type: string
+    description: 'Docker image name (without tag)'
+  target:
+    type: enum
+    enum: ['control', 'experiment']
+    description: 'Image target/tag'
+
+steps:
+  - run:
+      name: Save << parameters.target >> Docker image
+      command: |
+        mkdir -p /tmp/docker-images
+        docker save -o "/tmp/docker-images/<< parameters.target >>.tar" "<< parameters.image-name >>:<< parameters.target >>"
+  - persist_to_workspace:
+      root: /tmp
+      paths:
+        - docker-images/<< parameters.target >>.tar

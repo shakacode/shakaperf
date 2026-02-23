@@ -36,7 +36,7 @@ async function buildServer(options: BuildServerOptions): Promise<void> {
   const gitSha = getGitSha(buildDir);
 
   const projectName = path.basename(config.projectDir);
-  const dockerfilePath = path.join(projectName, 'Dockerfile.production');
+  const dockerfilePath = path.join(projectName, config.dockerfile);
 
   console.log(`Building ${serverType} from ${buildDir}...`);
   if (verbose) {

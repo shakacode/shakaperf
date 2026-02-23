@@ -1,0 +1,40 @@
+description: |
+  Build a Docker image using shaka-twin-servers. Requires twin-servers.config.ts
+  in the working directory.
+
+parameters:
+  target:
+    type: enum
+    enum: ['control', 'experiment']
+    description: 'Build target (control or experiment)'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  verbose:
+    type: boolean
+    default: false
+    description: 'Enable verbose output'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Build << parameters.target >> Docker image
+      working_directory: << parameters.working-directory >>
+      command: |
+        VERBOSE_FLAG=""
+        if [ "<< parameters.verbose >>" = "true" ]; then
+          VERBOSE_FLAG="--verbose"
+        fi
+        if [ -n "<< parameters.config-path >>" ]; then
+          << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> --config "<< parameters.config-path >>" $VERBOSE_FLAG
+        else
+          << parameters.cli-prefix >> shaka-twin-servers build --target << parameters.target >> $VERBOSE_FLAG
+        fi
