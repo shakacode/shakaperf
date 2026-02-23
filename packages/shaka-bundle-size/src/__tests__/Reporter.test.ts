@@ -247,15 +247,6 @@ describe('Reporter', () => {
     });
   });
 
-  describe('reportPassed', () => {
-    it('outputs passing message', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream });
-      reporter.reportPassed();
-      expect(getOutput()).toContain('within the expected size');
-    });
-  });
-
   describe('summary', () => {
     const emptyComparison: ComparisonResult = {
       sizeChanges: [],
@@ -548,10 +539,4 @@ describe('SilentReporter', () => {
     expect(stdoutSpy).not.toHaveBeenCalled();
   });
 
-  it('produces no output for reportPassed', () => {
-    const reporter: IReporter = new SilentReporter();
-    reporter.reportPassed();
-    expect(consoleSpy).not.toHaveBeenCalled();
-    expect(stdoutSpy).not.toHaveBeenCalled();
-  });
 });

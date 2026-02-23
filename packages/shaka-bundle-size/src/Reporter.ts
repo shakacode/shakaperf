@@ -130,8 +130,9 @@ export class Reporter implements IReporter {
       warningsByComponent.set(reg.componentName, list);
     }
 
-    // Track which components have chunks count increases
-    const chunksIncreaseSet = new Set(comparison.chunksCountIncreases.map(c => c.name));
+    // Build lookup maps for O(1) access
+    const expectedByName = new Map(result.expectedSizes.map(c => [c.name, c]));
+    const chunksIncreaseByName = new Map(comparison.chunksCountIncreases.map(c => [c.name, c]));
 
     // 1. New components
     for (const comp of comparison.newComponents) {
@@ -144,27 +145,28 @@ export class Reporter implements IReporter {
 
     // 2. Existing components with size changes
     for (const actual of result.actualSizes) {
-      const expected = result.expectedSizes.find(c => c.name === actual.name);
+      const expected = expectedByName.get(actual.name);
       if (!expected) continue; // new component, already handled above
 
       const actualSizeKb = Number(actual.gzipSizeKb.toFixed(2));
       const expectedSizeKb = Number(expected.gzipSizeKb);
       const sizeDiffKb = actualSizeKb - expectedSizeKb;
-      const hasChunksIncrease = chunksIncreaseSet.has(actual.name);
+      const chunksIncrease = chunksIncreaseByName.get(actual.name);
 
       if (sizeDiffKb > 0.1) {
         let desc = `size increased by ${sizeDiffKb.toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
-        if (hasChunksIncrease) {
-          const ci = comparison.chunksCountIncreases.find(c => c.name === actual.name)!;
-          desc += `, chunks: ${ci.actualChunksCount} (was ${ci.expectedChunksCount})`;
+        if (chunksIncrease) {
+          desc += `, chunks: ${chunksIncrease.actualChunksCount} (was ${chunksIncrease.expectedChunksCount})`;
         }
         this.writeComponentEntry(actual.name, desc, 'red', failuresByComponent, warningsByComponent);
       } else if (sizeDiffKb < 0) {
-        const desc = `size reduced by ${(-sizeDiffKb).toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
-        this.writeComponentEntry(actual.name, desc, 'green', failuresByComponent, warningsByComponent);
-      } else if (hasChunksIncrease) {
-        const ci = comparison.chunksCountIncreases.find(c => c.name === actual.name)!;
-        const desc = `chunks count increased — ${ci.actualChunksCount} chunks (was ${ci.expectedChunksCount})`;
+        let desc = `size reduced by ${(-sizeDiffKb).toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
+        if (chunksIncrease) {
+          desc += `, chunks: ${chunksIncrease.actualChunksCount} (was ${chunksIncrease.expectedChunksCount})`;
+        }
+        this.writeComponentEntry(actual.name, desc, chunksIncrease ? 'yellow' : 'green', failuresByComponent, warningsByComponent);
+      } else if (chunksIncrease) {
+        const desc = `chunks count increased — ${chunksIncrease.actualChunksCount} chunks (was ${chunksIncrease.expectedChunksCount})`;
         this.writeComponentEntry(actual.name, desc, 'red', failuresByComponent, warningsByComponent);
       }
     }

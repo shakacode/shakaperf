@@ -18,8 +18,6 @@ import type {
   IReporter,
   ComponentSize,
   ChunkGroupInfo,
-  BaselineConfig,
-  ComparisonResult,
   CheckResult,
   UpdateBaselineResult,
   DiffMetadata,
@@ -149,56 +147,6 @@ export class BundleSizeChecker {
     }
 
     return sizes;
-  }
-
-  private reportRegressions(actualSizes: ComponentSize[], baseline: BaselineConfig, comparisonResult: ComparisonResult): void {
-    for (const component of comparisonResult.newComponents) {
-      this.reporter.reportNewComponent({
-        componentName: component.name,
-        sizeKb: component.gzipSizeKb,
-        chunksCount: component.chunksCount,
-      });
-    }
-
-    for (const component of comparisonResult.removedComponents) {
-      this.reporter.reportRemovedComponent({
-        componentName: component.name,
-        sizeKb: component.gzipSizeKb,
-      });
-    }
-
-    for (const actual of actualSizes) {
-      const expected = baseline.loadableComponents.find(c => c.name === actual.name);
-      if (!expected) continue;
-
-      const actualSizeKb = Number(actual.gzipSizeKb.toFixed(2));
-      const expectedSizeKb = Number(expected.gzipSizeKb);
-      const sizeDiffKb = actualSizeKb - expectedSizeKb;
-
-      if (sizeDiffKb > 0.01) {
-        this.reporter.reportSizeIncrease({
-          componentName: actual.name,
-          sizeDiffKb,
-          actualSizeKb: actual.gzipSizeKb,
-          expectedSizeKb,
-        });
-      } else if (sizeDiffKb < 0) {
-        this.reporter.reportSizeDecrease({
-          componentName: actual.name,
-          sizeDiffKb: -sizeDiffKb,
-          actualSizeKb: actual.gzipSizeKb,
-          expectedSizeKb,
-        });
-      }
-    }
-
-    for (const comparison of comparisonResult.chunksCountIncreases) {
-      this.reporter.reportIncreasedChunksCount({
-        componentName: comparison.name,
-        actualCount: comparison.actualChunksCount,
-        expectedCount: comparison.expectedChunksCount,
-      });
-    }
   }
 
   check(): CheckResult {

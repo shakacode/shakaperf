@@ -52,12 +52,13 @@ export function detectPackageManager(): PackageManager {
     if (userAgent.startsWith('npm')) return 'npm';
   }
 
-  // 3. Fall back to lock files
-  const cwd = process.cwd();
-  if (fs.existsSync(path.join(cwd, 'yarn.lock'))) return 'yarn';
-  if (fs.existsSync(path.join(cwd, 'pnpm-lock.yaml'))) return 'pnpm';
-  if (fs.existsSync(path.join(cwd, 'bun.lockb'))) return 'bun';
-  if (fs.existsSync(path.join(cwd, 'package-lock.json'))) return 'npm';
+  // 3. Fall back to lock files (check in the same directory as package.json)
+  const lockDir = pkgPath ? path.dirname(pkgPath) : process.cwd();
+  if (fs.existsSync(path.join(lockDir, 'yarn.lock'))) return 'yarn';
+  if (fs.existsSync(path.join(lockDir, 'pnpm-lock.yaml'))) return 'pnpm';
+  if (fs.existsSync(path.join(lockDir, 'bun.lock'))) return 'bun';
+  if (fs.existsSync(path.join(lockDir, 'bun.lockb'))) return 'bun';
+  if (fs.existsSync(path.join(lockDir, 'package-lock.json'))) return 'npm';
 
   return 'npm';
 }

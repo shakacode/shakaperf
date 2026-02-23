@@ -88,8 +88,6 @@ export interface IReporter {
   reportRemovedComponent(params: RemovedComponentParams): void;
   /** Report an increased chunks count */
   reportIncreasedChunksCount(params: ChunksCountParams): void;
-  /** Report that all components passed */
-  reportPassed(): void;
 }
 
 export interface SizeIncreaseParams {
