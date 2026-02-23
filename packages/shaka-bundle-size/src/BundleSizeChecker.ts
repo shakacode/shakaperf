@@ -223,13 +223,8 @@ export class BundleSizeChecker {
     const baseline = this.baselineComparator.loadBaselineFile(this.baselineFile);
     const comparisonResult = this.baselineComparator.compare(actualSizes, baseline);
     const regressions = this.regressionDetector.detectRegressions(comparisonResult);
-    this.reportRegressions(actualSizes, baseline, comparisonResult);
     const { failures, warnings } = this.regressionDetector.evaluateAll(regressions);
     const passed = failures.length === 0;
-
-    if (passed) {
-      this.reporter.reportPassed();
-    }
 
     const result: CheckResult = {
       passed,
@@ -237,6 +232,7 @@ export class BundleSizeChecker {
       warnings,
       actualSizes,
       expectedSizes: baseline.loadableComponents,
+      comparison: comparisonResult,
     };
 
     this.reporter.summary(result);

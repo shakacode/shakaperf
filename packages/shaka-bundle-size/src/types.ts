@@ -175,6 +175,8 @@ export interface CheckResult {
   actualSizes: ComponentSize[];
   /** Expected sizes from baseline */
   expectedSizes: BaselineComponent[];
+  /** Comparison result with per-component change details (used for grouped reporting) */
+  comparison?: ComparisonResult;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Writable } from 'stream';
 import { Reporter, SilentReporter, ANSI } from '../Reporter';
-import type { CheckResult, IReporter } from '../types';
+import type { CheckResult, ComparisonResult, IReporter } from '../types';
 import { RegressionType } from '../types';
 
 function createOutputStream(): { stream: NodeJS.WriteStream; getOutput: () => string } {
@@ -257,6 +257,13 @@ describe('Reporter', () => {
   });
 
   describe('summary', () => {
+    const emptyComparison: ComparisonResult = {
+      sizeChanges: [],
+      newComponents: [],
+      removedComponents: [],
+      chunksCountIncreases: [],
+    };
+
     it('outputs success message when passed', () => {
       const { stream, getOutput } = createOutputStream();
       const reporter = new Reporter({ output: stream });
@@ -266,6 +273,7 @@ describe('Reporter', () => {
         warnings: [],
         actualSizes: [],
         expectedSizes: [],
+        comparison: emptyComparison,
       };
       reporter.summary(result);
       expect(getOutput()).toContain('passed');
@@ -284,17 +292,93 @@ describe('Reporter', () => {
           },
         ],
         warnings: [],
-        actualSizes: [],
-        expectedSizes: [],
+        actualSizes: [{ name: 'App', chunksCount: 1, gzipSizeKb: 120, brotliSizeKb: 100 }],
+        expectedSizes: [{ name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' }],
+        comparison: {
+          ...emptyComparison,
+          sizeChanges: [{ name: 'App', actualSizeKb: 120, expectedSizeKb: 100, sizeDiffKb: 20, actualChunksCount: 1, expectedChunksCount: 1 }],
+        },
       };
       reporter.summary(result);
       const output = getOutput();
       expect(output).toContain('failed');
       expect(output).toContain('1 regression');
       expect(output).toContain('App');
+      expect(output).toContain('FAILED');
+      expect(output).toContain('Size too big');
     });
 
-    it('outputs warnings when present', () => {
+    it('outputs warnings as minor regressions', () => {
+      const { stream, getOutput } = createOutputStream();
+      const reporter = new Reporter({ output: stream });
+      const result: CheckResult = {
+        passed: true,
+        regressions: [],
+        warnings: [
+          {
+            componentName: 'Footer',
+            type: RegressionType.INCREASED_SIZE,
+            policyMessage: 'Small increase',
+          },
+        ],
+        actualSizes: [{ name: 'Footer', chunksCount: 1, gzipSizeKb: 102, brotliSizeKb: 80 }],
+        expectedSizes: [{ name: 'Footer', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' }],
+        comparison: {
+          ...emptyComparison,
+          sizeChanges: [{ name: 'Footer', actualSizeKb: 102, expectedSizeKb: 100, sizeDiffKb: 2, actualChunksCount: 1, expectedChunksCount: 1 }],
+        },
+      };
+      reporter.summary(result);
+      const output = getOutput();
+      expect(output).toContain('Minor regression (ignored)');
+      expect(output).toContain('Footer');
+      expect(output).toContain('Small increase');
+    });
+
+    it('groups component changes with policy messages', () => {
+      const { stream, getOutput } = createOutputStream();
+      const reporter = new Reporter({ output: stream, colors: false });
+      const result: CheckResult = {
+        passed: true,
+        regressions: [],
+        warnings: [
+          {
+            componentName: 'pages-ProductPage',
+            type: RegressionType.NEW_COMPONENT,
+            policyMessage: 'Performance team would like to take a look.',
+          },
+        ],
+        actualSizes: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: 249.131, brotliSizeKb: 200 },
+          { name: 'pages-HomePage', chunksCount: 1, gzipSizeKb: 16.653, brotliSizeKb: 14 },
+        ],
+        expectedSizes: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '244.49', brotliSizeKb: '195.00' },
+          { name: 'pages-HomePage', chunksCount: 1, gzipSizeKb: '17.33', brotliSizeKb: '14.50' },
+        ],
+        comparison: {
+          sizeChanges: [{ name: 'App', actualSizeKb: 249.13, expectedSizeKb: 244.49, sizeDiffKb: 4.64, actualChunksCount: 1, expectedChunksCount: 1 }],
+          newComponents: [{ name: 'pages-ProductPage', chunksCount: 1, gzipSizeKb: 5.97, brotliSizeKb: 4.5 }],
+          removedComponents: [],
+          chunksCountIncreases: [],
+        },
+      };
+      reporter.summary(result);
+      const output = getOutput();
+      // New component with warning
+      expect(output).toContain('pages-ProductPage: new component, 5.97 KB');
+      expect(output).toContain('Minor regression (ignored): Performance team would like to take a look.');
+      // Size increase
+      expect(output).toContain('App: size increased by 4.64 KB');
+      expect(output).toContain('was 244.49 KB');
+      // Size decrease
+      expect(output).toContain('pages-HomePage: size reduced by');
+      expect(output).toContain('was 17.33 KB');
+      // Component names should appear exactly once each (not duplicated in a separate section)
+      expect(output.split('pages-ProductPage').length).toBe(2); // one occurrence + 1 from split
+    });
+
+    it('uses legacy format when comparison data is absent', () => {
       const { stream, getOutput } = createOutputStream();
       const reporter = new Reporter({ output: stream });
       const result: CheckResult = {
@@ -312,8 +396,85 @@ describe('Reporter', () => {
       };
       reporter.summary(result);
       const output = getOutput();
-      expect(output).toContain('do not fail');
+      expect(output).toContain('Minor regressions (ignored)');
       expect(output).toContain('Footer');
+    });
+
+    it('reports new uncategorized chunks', () => {
+      const { stream, getOutput } = createOutputStream();
+      const reporter = new Reporter({ output: stream, colors: false });
+      const result: CheckResult = {
+        passed: true,
+        regressions: [],
+        warnings: [],
+        actualSizes: [],
+        expectedSizes: [],
+        comparison: {
+          ...emptyComparison,
+          newComponents: [{ name: 'uncategorized chunks', chunksCount: 3, gzipSizeKb: 10.5, brotliSizeKb: 8 }],
+        },
+      };
+      reporter.summary(result);
+      const output = getOutput();
+      expect(output).toContain('3 new uncategorized chunks, 10.50 KB');
+    });
+
+    it('reports removed components', () => {
+      const { stream, getOutput } = createOutputStream();
+      const reporter = new Reporter({ output: stream, colors: false });
+      const result: CheckResult = {
+        passed: true,
+        regressions: [],
+        warnings: [],
+        actualSizes: [],
+        expectedSizes: [],
+        comparison: {
+          ...emptyComparison,
+          removedComponents: [{ name: 'OldWidget', chunksCount: 1, gzipSizeKb: '50.00', brotliSizeKb: '40.00' }],
+        },
+      };
+      reporter.summary(result);
+      const output = getOutput();
+      expect(output).toContain('OldWidget: removed (was 50.00 KB)');
+    });
+
+    it('reports chunks count increase alongside size increase', () => {
+      const { stream, getOutput } = createOutputStream();
+      const reporter = new Reporter({ output: stream, colors: false });
+      const result: CheckResult = {
+        passed: false,
+        regressions: [
+          {
+            componentName: 'App',
+            type: RegressionType.INCREASED_SIZE,
+            policyMessage: 'Size too big',
+          },
+          {
+            componentName: 'App',
+            type: RegressionType.INCREASED_CHUNKS_COUNT,
+            policyMessage: 'Too many chunks',
+          },
+        ],
+        warnings: [],
+        actualSizes: [{ name: 'App', chunksCount: 5, gzipSizeKb: 120, brotliSizeKb: 100 }],
+        expectedSizes: [{ name: 'App', chunksCount: 3, gzipSizeKb: '100.00', brotliSizeKb: '80.00' }],
+        comparison: {
+          ...emptyComparison,
+          sizeChanges: [{ name: 'App', actualSizeKb: 120, expectedSizeKb: 100, sizeDiffKb: 20, actualChunksCount: 5, expectedChunksCount: 3 }],
+          chunksCountIncreases: [{ name: 'App', actualSizeKb: 120, expectedSizeKb: 100, sizeDiffKb: 20, actualChunksCount: 5, expectedChunksCount: 3 }],
+        },
+      };
+      reporter.summary(result);
+      const output = getOutput();
+      // Size increase and chunks info in one line
+      expect(output).toContain('size increased by');
+      expect(output).toContain('chunks: 5 (was 3)');
+      // Both policy messages shown
+      expect(output).toContain('FAILED: Size too big');
+      expect(output).toContain('FAILED: Too many chunks');
+      // Component mentioned only once in the component header line
+      const appLines = output.split('\n').filter((l: string) => l.includes('App:'));
+      expect(appLines.length).toBe(1);
     });
   });
 });

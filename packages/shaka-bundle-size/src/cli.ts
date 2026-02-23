@@ -142,7 +142,7 @@ function getCiMetadata(storage: BaselineStorage): { branchName: string; currentC
 }
 
 function printCompareFailureGuidance(configPath: string): void {
-  const acknowledgeCmd = `shaka-bundle-size -c ${configPath} --acknowledge-failure`;
+  const acknowledgeCmd = `yarn shaka-bundle-size -c ${configPath} --acknowledge-failure`;
 
   // Printed as stderr so it's visible even in "quiet" mode logs.
   console.error('');
@@ -151,7 +151,7 @@ function printCompareFailureGuidance(configPath: string): void {
   console.error(`Also, see docs: ${RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL}`);
   console.error('');
   console.error(`If the change is intended or if you don't know how to resolve the issue and the docs aren't helpful, do the following:`);
-  console.error(`    * run \`${acknowledgeCmd}\``);
+  console.error(`    * run \`${colorize.green(acknowledgeCmd)}\``);
   console.error('    * Commit and push the changes to your branch.');
   console.error('This will make bundle-size green and may invite performance reviewers according to your CODEOWNERS file');
   console.error('');
