@@ -152,7 +152,7 @@ export class Reporter implements IReporter {
       const sizeDiffKb = actualSizeKb - expectedSizeKb;
       const hasChunksIncrease = chunksIncreaseSet.has(actual.name);
 
-      if (sizeDiffKb > 0.01) {
+      if (sizeDiffKb > 0.1) {
         let desc = `size increased by ${sizeDiffKb.toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
         if (hasChunksIncrease) {
           const ci = comparison.chunksCountIncreases.find(c => c.name === actual.name)!;

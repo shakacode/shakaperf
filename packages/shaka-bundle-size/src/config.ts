@@ -180,12 +180,13 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
           };
         }
         // Size increase within threshold - return message for visibility
-        return {
-          shouldFail: false,
-          message: sizeDiffKb !== undefined
-            ? `Size increase ${sizeDiffKb.toFixed(2)} KB is within threshold ${threshold} KB.`
-            : 'Size increase detected but size data unavailable.',
-        };
+        if (sizeDiffKb !== undefined && (sizeDiffKb > 0.1)) {
+          return {
+            shouldFail: false,
+            message:  `Size increase ${sizeDiffKb.toFixed(2)} KB is within threshold ${threshold} KB.`
+          };
+        }
+        break;
 
       case RegressionType.INCREASED_CHUNKS_COUNT:
         return { shouldFail: true, message: 'Increasing chunks number means increased webpack and HTTP overhead. This may be bad for performance.' };
