@@ -8,7 +8,7 @@ parameters:
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@1.0.1
+  twin-servers: ramez/shaka-twin-servers@dev:alpha2
 
 executors:
   ruby-node-executor:
@@ -155,105 +155,12 @@ workflows:
               only:
                 - main
 
-  # Performance, Visual Regression testing workflow with twin servers for A/B testing
-  twin-server-tests:
-    when:
-      not: << pipeline.parameters.run-scheduled-perf-tests >>
-    jobs:
-      - twin-servers/build-experiment:
-          image-name: demo-ecommerce
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          filters:
-            branches:
-              ignore: main
-
-      - twin-servers/build-control:
-          image-name: demo-ecommerce
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          project-subdir: demo-ecommerce
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          filters:
-            branches:
-              ignore: main
-
-      - twin-servers/run-tests:
-          name: visual-regression
-          requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          post-steps:
-            - install-playwright
-            - run:
-                name: Run visual regression -- generate reference images
-                command: |
-                  cd demo-ecommerce
-                  yarn visreg:reference
-            - run:
-                name: Run visual regression -- test
-                command: |
-                  cd demo-ecommerce
-                  yarn visreg:test:retry
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/html_report
-                destination: visreg-report
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_reference
-                destination: bitmaps_reference
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_test
-                destination: bitmaps_test
-            - store_test_results:
-                path: demo-ecommerce/backstop_data/ci_report
-          filters:
-            branches:
-              ignore: main
-
-      - twin-servers/run-tests:
-          name: perf-tests
-          requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          # TODO: Replace with actual performance test command (e.g., k6, Playwright, ab)
-          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
-          post-steps:
-            - run:
-                name: Collect results from both containers
-                command: |
-                  mkdir -p /tmp/perf-results
-                  cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
-                  cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
-          filters:
-            branches:
-              ignore: main
-
   # Scheduled A/B perf tests on main branch (triggered via CircleCI scheduled pipeline)
+  # NOTE: Defined before twin-server-tests so YAML anchors can be referenced below
   scheduled-perf-tests:
     when: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
-      - twin-servers/build-experiment:
+      - twin-servers/build-experiment: &build-experiment-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -262,7 +169,7 @@ workflows:
             - enable-corepack
             - setup-yarn-and-build-packages
 
-      - twin-servers/build-control:
+      - twin-servers/build-control: &build-control-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -271,9 +178,12 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
+            - run:
+                name: Set S3 bucket name
+                command: echo 'export S3_BUCKET=shaka-perf-demo-storage' >> "$BASH_ENV"
             - twin-servers/download-baseline-control-git-sha
 
-      - twin-servers/run-tests:
+      - twin-servers/run-tests: &visual-regression-job
           name: scheduled-visual-regression
           requires:
             - twin-servers/build-experiment
@@ -309,7 +219,7 @@ workflows:
             - store_test_results:
                 path: demo-ecommerce/backstop_data/ci_report
 
-      - twin-servers/run-tests:
+      - twin-servers/run-tests: &perf-tests-job
           name: scheduled-perf-tests
           requires:
             - twin-servers/build-experiment
@@ -333,6 +243,11 @@ workflows:
 
       # Update baseline (only runs when all tests pass)
       - twin-servers/update-baseline-control-git-sha:
+          environment:
+            - S3_BUCKET: shaka-perf-demo-storage # Either define here or CircleCI Env
+            - S3_ENDPOINT: ${PERF_BASELINE_S3_ENDPOINT} # If the CI variable has a different name, you can override it here
+            - AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID} # Job expectes these variables to be set
+            - AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY} # We can set it here or in CircleCI Env
           requires:
             - scheduled-visual-regression
             - scheduled-perf-tests
@@ -346,5 +261,41 @@ workflows:
 
       - twin-servers/update-baseline-control-git-sha:
           name: force-update-perf-baseline
+          environment:
+            - S3_BUCKET: shaka-perf-demo-storage # Either define here or CircleCI Env
           requires:
             - approve-baseline-update
+
+  # Performance, Visual Regression testing workflow with twin servers for A/B testing
+  twin-server-tests:
+    when:
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
+    jobs:
+      - twin-servers/build-experiment:
+          <<: *build-experiment-job
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/build-control:
+          <<: *build-control-job
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/run-tests:
+          <<: *visual-regression-job
+          name: visual-regression
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/run-tests:
+          <<: *perf-tests-job
+          name: perf-tests
+          filters:
+            branches:
+              ignore: main
