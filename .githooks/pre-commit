@@ -1,0 +1,26 @@
+#!/bin/sh
+
+staged=$(git diff --cached --name-only --diff-filter=d)
+[ -z "$staged" ] && exit 0
+
+# If base tsconfig changed, check everything
+if echo "$staged" | grep -q '^tsconfig\.base\.json$'; then
+  exec yarn workspaces foreach -Ap run typecheck
+fi
+
+args=""
+packages_changed=false
+for pkg in shaka-bundle-size shaka-twin-servers shaka-bench shaka-visreg; do
+  if echo "$staged" | grep -q "^packages/$pkg/"; then
+    args="$args --include $pkg"
+    packages_changed=true
+  fi
+done
+
+if echo "$staged" | grep -q '^demo-ecommerce/' || [ "$packages_changed" = true ]; then
+  args="$args --include demo-ecommerce"
+fi
+
+[ -z "$args" ] && exit 0
+
+yarn workspaces foreach -Ap $args run typecheck
