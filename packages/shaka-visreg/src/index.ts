@@ -1,4 +1,4 @@
 // shaka-visreg
-// Visual regression testing tools for React apps
+// Visual regression testing for web applications
 
 export {};
