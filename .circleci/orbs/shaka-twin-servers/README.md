@@ -24,7 +24,7 @@ circleci setup  # Authenticate with your token
 Combine all component files into a single packed orb:
 
 ```bash
-circleci orb pack .circleci/orbs/shaka-twin-servers > shaka-twin-servers-orb.yml
+circleci orb pack .circleci/orbs/shaka-twin-servers/src > shaka-twin-servers-orb.yml
 ```
 
 ### Validate

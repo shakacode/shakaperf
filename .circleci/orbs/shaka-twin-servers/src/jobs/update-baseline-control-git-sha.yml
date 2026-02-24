@@ -1,5 +1,5 @@
 description: |
-  Update the perf test baseline in S3 by uploading the current HEAD SHA.
+  Update the baseline control git SHA in S3 by uploading the current HEAD SHA.
   Use after tests pass to advance the baseline, or after a manual approval
   gate to force-update when tests fail.
 
@@ -14,11 +14,11 @@ parameters:
     description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
   resource-class:
     type: enum
-    enum: ['medium', 'large', 'xlarge', '2xlarge']
-    default: 'medium'
+    enum: ['small', 'medium', 'large', 'xlarge', '2xlarge']
+    default: 'small'
     description: 'Machine resource class'
 
 steps:
   - checkout
-  - upload-perf-baseline:
+  - upload-baseline-control-git-sha:
       s3-key-prefix: << parameters.s3-key-prefix >>

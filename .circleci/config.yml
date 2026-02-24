@@ -265,7 +265,7 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
-            - twin-servers/download-perf-baseline
+            - twin-servers/download-baseline-control-git-sha
 
       - twin-servers/run-tests:
           name: scheduled-visual-regression
@@ -326,7 +326,7 @@ workflows:
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
 
       # Update baseline (only runs when all tests pass)
-      - twin-servers/update-perf-baseline:
+      - twin-servers/update-baseline-control-git-sha:
           requires:
             - scheduled-visual-regression
             - scheduled-perf-tests
@@ -338,7 +338,7 @@ workflows:
             - twin-servers/build-experiment
             - twin-servers/build-control
 
-      - twin-servers/update-perf-baseline:
+      - twin-servers/update-baseline-control-git-sha:
           name: force-update-perf-baseline
           requires:
             - approve-baseline-update
