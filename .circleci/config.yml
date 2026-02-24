@@ -54,9 +54,19 @@ commands:
           paths:
             - ~/.cache/ms-playwright
 
+  set-s3-env:
+    description: Set S3 environment variables for perf baseline storage
+    steps:
+      - run:
+          name: Set S3 environment variables
+          command: |
+            echo 'export S3_BUCKET="$PERF_BASELINE_S3_BUCKET"' >> "$BASH_ENV"
+            echo 'export S3_ENDPOINT="$PERF_BASELINE_S3_ENDPOINT"' >> "$BASH_ENV"
+
   download-perf-baseline:
     description: Download perf test baseline commit SHA from S3
     steps:
+      - set-s3-env
       - run:
           name: Download perf test baseline SHA
           command: bash .circleci/scripts/perf-test-baseline.sh download
@@ -140,6 +150,7 @@ jobs:
     executor: twin-servers/machine
     steps:
       - checkout
+      - set-s3-env
       - run:
           name: Upload current HEAD as perf test baseline
           command: bash .circleci/scripts/perf-test-baseline.sh upload

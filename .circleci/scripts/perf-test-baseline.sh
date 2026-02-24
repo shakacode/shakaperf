@@ -10,15 +10,19 @@
 #   perf-test-baseline.sh upload     Upload current HEAD as new baseline
 #
 # Environment variables:
-#   S3_BUCKET           S3 bucket name (default: shaka-perf-demo-storage)
+#   S3_BUCKET           S3 bucket name (required)
 #   S3_ENDPOINT         Custom S3 endpoint for R2 etc. (optional)
 #   AWS_ACCESS_KEY_ID   AWS credentials
 #   AWS_SECRET_ACCESS_KEY
 
 set -euo pipefail
 
-BUCKET="${S3_BUCKET:-shaka-perf-demo-storage}"
-S3_KEY="perf-test-baseline/demo-ecommerce"
+if [ -z "${S3_BUCKET:-}" ]; then
+  echo "Error: S3_BUCKET environment variable is required"
+  exit 1
+fi
+BUCKET="$S3_BUCKET"
+S3_KEY="perf-test-baseline/baseline-git-sha.txt"
 S3_URI="s3://${BUCKET}/${S3_KEY}"
 
 aws_cmd() {
