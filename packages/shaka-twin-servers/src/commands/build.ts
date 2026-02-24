@@ -1,8 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
 import type { ResolvedConfig } from '../types';
-import { requireCommand } from '../helpers/shell';
+import { requireCommand, confirm, exec } from '../helpers/shell';
 import {
   dockerBuild,
   getGitSha,
@@ -11,7 +10,8 @@ import {
   getGroupId,
   getUsername,
 } from '../helpers/docker';
-import { printBanner, printSuccess, printError } from '../helpers/ui';
+import { getGitRemoteUrl, getDefaultBranch } from '../helpers/git';
+import { printBanner, printSuccess, printError, printInfo } from '../helpers/ui';
 
 export type BuildTarget = 'control' | 'experiment';
 
@@ -91,9 +91,38 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
 
   // Only check controlDir if building control image
   if (buildingControl && !fs.existsSync(config.controlDir)) {
-    printError(`Control directory not found: ${config.controlDir}`);
-    console.log('The control directory should contain the baseline version of your code.');
-    process.exit(1);
+    const cloneTarget = path.dirname(config.controlDir);
+    const remoteUrl = getGitRemoteUrl(config.dockerBuildDir);
+    const defaultBranch = getDefaultBranch(config.dockerBuildDir);
+
+    if (!remoteUrl) {
+      printError(`Control directory not found: ${config.controlDir}`);
+      console.log('The control directory should contain the baseline version of your code.');
+      console.log(`Clone your repo to: ${cloneTarget}`);
+      process.exit(1);
+    }
+
+    printInfo(`Control directory not found: ${config.controlDir}`);
+    console.log('');
+    console.log('To build the control image, we need a checkout of the baseline branch.');
+    console.log(`  git clone --branch ${defaultBranch} --single-branch ${remoteUrl} ${cloneTarget}`);
+    console.log('');
+
+    const yes = await confirm('Clone now?');
+    if (!yes) {
+      console.log('Skipping. Clone manually and re-run the build.');
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log(`Cloning ${remoteUrl} (branch: ${defaultBranch}) to ${cloneTarget}...`);
+    const result = await exec('git', ['clone', '--branch', defaultBranch, '--single-branch', remoteUrl, cloneTarget]);
+    if (result.code !== 0) {
+      printError('Clone failed');
+      process.exit(1);
+    }
+    printSuccess('Clone complete');
+    console.log('');
   }
 
   console.log('Creating bind-mount directories...');
