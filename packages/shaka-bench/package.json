@@ -1,6 +1,6 @@
 {
   "name": "shaka-bench",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Benchmarking tools for React and React on Rails apps",
   "main": "dist/cli/index.js",
   "types": "dist/cli/index.d.ts",

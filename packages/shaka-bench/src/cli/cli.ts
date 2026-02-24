@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name("shaka-bench")
   .description("Benchmarking tools for React and React on Rails apps")
-  .version("0.0.2");
+  .version(require("../../package.json").version);
 
 program
   .command("compare")
