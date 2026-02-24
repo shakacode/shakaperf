@@ -1,15 +1,8 @@
 import { ITBConfig } from "./tb-config";
 
-export const fidelityLookup = {
-  test: 2,
-  low: 20,
-  medium: 30,
-  high: 50,
-};
-
 export const defaultFlagArgs: ITBConfig = {
   plotTitle: "TracerBench",
-  numberOfMeasurements: "low",
+  numberOfMeasurements: 20,
   tbResultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
   sampleTimeout: 30,

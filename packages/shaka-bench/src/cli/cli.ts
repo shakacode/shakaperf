@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { getDefaultValue, fidelityLookup } from "./command-config/default-flag-args";
+import { getDefaultValue } from "./command-config/default-flag-args";
 import { runCompare } from "./commands/compare";
 import { runAnalyze } from "./commands/compare/analyze";
 import { runReport } from "./commands/compare/report";
+
+function parseIntArg(value: string): number {
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed)) {
+    throw new Error(`Expected an integer, got "${value}"`);
+  }
+  return parsed;
+}
 
 const program = new Command();
 
@@ -20,8 +28,9 @@ program
   )
   .option("--hideAnalysis", "Hide the analysis output in terminal", false)
   .option(
-    "-n, --numberOfMeasurements <value>",
-    `Number of measurements: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
+    "-n, --numberOfMeasurements <n>",
+    "Number of measurements (2-100)",
+    parseIntArg,
     getDefaultValue("numberOfMeasurements")
   )
   .option(
@@ -37,15 +46,16 @@ program
   .option(
     "--regressionThreshold <ms>",
     "Upper limit the experiment can regress slower in ms",
+    parseIntArg,
     getDefaultValue("regressionThreshold")
   )
   .option(
     "--sampleTimeout <seconds>",
     "Seconds to wait for a sample",
+    parseIntArg,
     getDefaultValue("sampleTimeout")
   )
   .option("--report", "Generate a PDF report after compare", false)
-  .option("--debug", "Debug flag, outputs verbose information", false)
   .option(
     "--regressionThresholdStat <stat>",
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
@@ -63,13 +73,15 @@ program
   )
   .argument("<resultsFile>", "The tracerbench compare command json output file")
   .option(
-    "-n, --numberOfMeasurements <value>",
-    `Number of measurements: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
+    "-n, --numberOfMeasurements <n>",
+    "Number of measurements (2-100)",
+    parseIntArg,
     getDefaultValue("numberOfMeasurements")
   )
   .option(
     "--regressionThreshold <ms>",
     "Upper limit the experiment can regress slower in ms",
+    parseIntArg,
     getDefaultValue("regressionThreshold")
   )
   .option(

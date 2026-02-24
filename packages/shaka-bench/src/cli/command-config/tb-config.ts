@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface ITBConfig {
   plotTitle?: string;
-  numberOfMeasurements?: "test" | "low" | "medium" | "high" | number;
+  numberOfMeasurements?: number;
   report?: string;
   tbResultsFolder?: string;
   controlURL?: string;
   experimentURL?: string;
-  regressionThreshold?: number | string;
+  regressionThreshold?: number;
   sampleTimeout?: number;
-  debug?: boolean;
   regressionThresholdStat?: RegressionThresholdStat;
   lhPresets?: string;
   config?: string;

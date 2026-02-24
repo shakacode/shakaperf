@@ -18,18 +18,10 @@ export interface CompareAnalyzeFlags {
 }
 
 export interface RunAnalyzeOptions {
-  numberOfMeasurements: string | number;
-  regressionThreshold: string | number;
+  numberOfMeasurements: number;
+  regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
   jsonReport?: boolean;
-}
-
-function parseNumberOfMeasurements(value: string | number): number {
-  const parsed = typeof value === "string" ? parseInt(value, 10) : value;
-  if (!Number.isInteger(parsed)) {
-    throw new Error(`Invalid numberOfMeasurements: "${value}". Expected an integer.`);
-  }
-  return parsed;
 }
 
 function getReportTitles(
@@ -47,12 +39,7 @@ export async function runAnalyze(
   resultsFile: string,
   options: RunAnalyzeOptions
 ): Promise<string> {
-  const numberOfMeasurements = parseNumberOfMeasurements(options.numberOfMeasurements);
-  const regressionThreshold =
-    typeof options.regressionThreshold === "string"
-      ? parseInt(options.regressionThreshold, 10)
-      : options.regressionThreshold;
-  const { regressionThresholdStat } = options;
+  const { numberOfMeasurements, regressionThreshold, regressionThresholdStat } = options;
   const jsonReport = options.jsonReport ?? false;
 
   const { controlData, experimentData } = parseCompareResult(resultsFile);

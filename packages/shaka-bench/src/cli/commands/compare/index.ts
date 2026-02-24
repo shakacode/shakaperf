@@ -12,12 +12,8 @@ import {
 import {
   mkdirpSync,
   writeFileSync,
-  writeJSONSync,
 } from "fs-extra";
 
-import {
-  fidelityLookup,
-} from "../../command-config/default-flag-args";
 import type { RegressionThresholdStat } from "../../command-config/tb-config";
 import {
   chalkScheme,
@@ -34,7 +30,6 @@ export interface ICompareFlags {
   tbResultsFolder: string;
   controlURL: string | undefined;
   experimentURL: string | undefined;
-  debug: boolean;
   regressionThreshold?: number;
   sampleTimeout: number;
   report?: boolean;
@@ -45,18 +40,6 @@ export interface ICompareFlags {
 export async function runCompare(flags: Record<string, any>): Promise<string> {
   const compareFlags = { ...flags } as ICompareFlags;
 
-  // Parse numberOfMeasurements
-  const nVal = compareFlags.numberOfMeasurements;
-  if (typeof nVal === "string") {
-    if (nVal in fidelityLookup) {
-      compareFlags.numberOfMeasurements = (fidelityLookup as any)[nVal];
-    } else {
-      compareFlags.numberOfMeasurements = parseInt(nVal, 10);
-    }
-  }
-  if (typeof compareFlags.regressionThreshold === "string") {
-    compareFlags.regressionThreshold = parseInt(compareFlags.regressionThreshold, 10);
-  }
   if (!compareFlags.controlURL) {
     console.error("controlURL is required as a cli flag");
     process.exit(2);
@@ -82,14 +65,6 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     options
   );
 
-  if (compareFlags.debug) {
-    Object.entries(compareFlags).forEach(([key, value]) => {
-      if (value) {
-        console.log(`${key}: ${JSON.stringify(value)}`);
-      }
-    });
-  }
-
   const sampleTimeout = compareFlags.sampleTimeout;
 
   const startTime = timestamp();
@@ -97,9 +72,9 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     await run(
       [control, experiment],
       compareFlags.numberOfMeasurements as number,
-      (elasped, completed, remaining, group, iteration) => {
+      (elapsed, completed, remaining, group, iteration) => {
         if (completed > 0) {
-          const average = elasped / completed;
+          const average = elapsed / completed;
           const remainingSecs = Math.round((remaining * average) / 1000);
           const remainingTime = secondsToTime(remainingSecs);
           console.log(
@@ -165,14 +140,6 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     await runReport({
       tbResultsFolder: compareFlags.tbResultsFolder!,
     });
-  }
-
-  // with debug flag output three files on config specifics
-  if (compareFlags.debug) {
-    writeJSONSync(
-      `${compareFlags.tbResultsFolder}/compare-flags-settings.json`,
-      JSON.stringify(Object.assign(compareFlags), null, 2)
-    );
   }
 
   return analyzedJSONString;

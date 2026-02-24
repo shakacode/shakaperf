@@ -6,7 +6,6 @@ import type {
 } from "../../stats";
 import chalk from "chalk";
 
-import { fidelityLookup } from "../command-config";
 import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
@@ -165,8 +164,7 @@ export class CompareResults {
     benchmarkIsSigArray: boolean[],
     phaseIsSigArray: boolean[]
   ): boolean {
-    // if numberOfMeasurements !== 'test'
-    if (this.numberOfMeasurements > fidelityLookup.test) {
+    if (this.numberOfMeasurements > 2) {
       return (
         benchmarkIsSigArray.includes(true) || phaseIsSigArray.includes(true)
       );
