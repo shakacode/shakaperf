@@ -1,4 +1,5 @@
 import { spawn, execSync, SpawnOptions } from 'child_process';
+import * as readline from 'readline';
 
 export interface ExecOptions {
   cwd?: string;
@@ -114,5 +115,15 @@ export function execWithStdin(
       child.stdin.write(options.stdin);
       child.stdin.end();
     }
+  });
+}
+
+export function confirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(`${question} [Y/n] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() !== 'n');
+    });
   });
 }
