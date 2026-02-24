@@ -6,12 +6,14 @@ export interface DockerBuildOptions {
   dockerfile: string;
   buildContext: string;
   buildArgs?: Record<string, string>;
+  noCache?: boolean;
 }
 
 export async function dockerBuild(options: DockerBuildOptions): Promise<void> {
   const { imageName, dockerfile, buildContext, buildArgs = {} } = options;
 
   const args = ['build', '-t', imageName, '-f', dockerfile];
+  if (options.noCache) args.push('--no-cache');
 
   for (const [key, value] of Object.entries(buildArgs)) {
     args.push('--build-arg', `${key}=${value}`);

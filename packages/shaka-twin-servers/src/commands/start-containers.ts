@@ -35,7 +35,7 @@ export -f setup_server`;
     USER: process.env.USER || 'user',
   };
 
-  await runForBothServersInParallel('setup_server', bashFn, env);
+  await runForBothServersInParallel(bashFn, env);
 }
 
 export async function startContainers(
@@ -122,7 +122,7 @@ export async function startContainers(
   console.log('');
   console.log('Next steps:');
   console.log('   1. Start the servers:');
-  console.log('      shaka-twin-servers start-servers');
+  console.log('      yarn shaka-twin-servers start-servers');
   console.log('');
   console.log('   2. Stop containers when done:');
   console.log('      docker compose down');
