@@ -3,20 +3,16 @@ description: |
   Use after tests pass to advance the control commit, or after a manual
   approval gate to force-update when tests fail.
 
-executor:
-  name: machine
-  resource-class: << parameters.resource-class >>
+docker:
+  - image: cimg/aws:current
+
+resource_class: small
 
 parameters:
   s3-key-prefix:
     type: string
     default: 'perf-tests-baseline-shas'
     description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
-  resource-class:
-    type: enum
-    enum: ['small', 'medium', 'large', 'xlarge', '2xlarge']
-    default: 'small'
-    description: 'Machine resource class'
 
 steps:
   - checkout
