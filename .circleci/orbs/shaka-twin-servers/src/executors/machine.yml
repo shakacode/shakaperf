@@ -9,7 +9,7 @@ parameters:
     description: 'Ubuntu machine image version'
   resource-class:
     type: enum
-    enum: ['small', 'medium', 'large', 'xlarge', '2xlarge']
+    enum: ['medium', 'large', 'xlarge', '2xlarge', '2xlarge+']
     default: 'large'
     description: 'Resource class for the machine executor'
 
