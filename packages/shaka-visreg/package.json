@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "yarn build"
   },
   "keywords": [
@@ -27,5 +28,8 @@
   "homepage": "https://github.com/shakacode/shaka-perf#readme",
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
   }
 }

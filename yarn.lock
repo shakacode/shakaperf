@@ -12011,6 +12011,8 @@ __metadata:
 "shaka-visreg@workspace:*, shaka-visreg@workspace:packages/shaka-visreg":
   version: 0.0.0-use.local
   resolution: "shaka-visreg@workspace:packages/shaka-visreg"
+  dependencies:
+    typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft
 
