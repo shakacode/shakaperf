@@ -133,7 +133,13 @@ function getScriptsDir(): string {
  *
  * The function will be called with "experiment" and "control" as arguments.
  */
-export async function runForBothServersInParallel(functionName: string, bashFn: string, env?: NodeJS.ProcessEnv): Promise<void> {
+export async function runForBothServersInParallel(bashFn: string, env?: NodeJS.ProcessEnv): Promise<void> {
+  const match = bashFn.match(/^(\w+)\s*\(\)/m);
+  if (!match) {
+    throw new Error('Could not detect function name in bashFn. Expected "func_name() {" pattern.');
+  }
+  const functionName = match[1];
+
   requireCommand('parallel', 'brew install parallel (Mac) or sudo apt-get install parallel (Linux)');
 
   const helperScript = path.join(getScriptsDir(), 'run-for-both-servers-in-parallel.sh');

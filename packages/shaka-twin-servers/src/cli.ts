@@ -137,6 +137,7 @@ async function main(): Promise<void> {
     options: {
       config: { type: 'string', short: 'c' },
       target: { type: 'string', short: 't' },
+      'no-cache': { type: 'boolean', default: false },
       verbose: { type: 'boolean', short: 'v', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', default: false },
@@ -211,7 +212,7 @@ async function main(): Promise<void> {
           }
           target = values.target;
         }
-        await build(resolvedConfig, { ...options, target });
+        await build(resolvedConfig, { ...options, target, noCache: values['no-cache'] });
         break;
       }
       case 'get-config': {

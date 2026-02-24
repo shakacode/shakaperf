@@ -1,0 +1,22 @@
+# Dockerignore for demo-ecommerce production build
+# Build context is the monorepo root, so paths are prefixed with demo-ecommerce/
+
+# Ignore credentials (generated inside Docker during build)
+demo-ecommerce/config/master.key
+demo-ecommerce/config/credentials.yml.enc
+demo-ecommerce/config/credentials/*.key
+
+# Ignore git directory
+.git/
+
+# Ignore node_modules (yarn PnP install happens in Docker)
+demo-ecommerce/node_modules/
+
+# Ignore logs, tmp, storage
+demo-ecommerce/log/*
+demo-ecommerce/tmp/*
+demo-ecommerce/storage/*
+
+# Ignore built assets (rebuilt in Docker)
+demo-ecommerce/public/assets
+demo-ecommerce/app/assets/builds/*

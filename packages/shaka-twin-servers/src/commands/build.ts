@@ -19,9 +19,11 @@ export interface BuildOptions {
   verbose?: boolean;
   /** Build only a single target (control or experiment). If not specified, builds both. */
   target?: BuildTarget;
+  /** Disable Docker layer cache (docker build --no-cache). */
+  noCache?: boolean;
 }
 
-function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedConfig): { cmd: string; cwd: string } {
+function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedConfig, noCache?: boolean): { cmd: string; cwd: string } {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
   const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
@@ -29,6 +31,7 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   const dockerfilePath = path.join(projectName, config.dockerfile);
 
   const args = ['build', '--progress=plain', '-t', imageName, '-f', dockerfilePath];
+  if (noCache) args.push('--no-cache');
   const buildArgs: Record<string, string> = {
     ...config.dockerBuildArgs,
     UID: getUserId(),
@@ -43,7 +46,7 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   return { cmd: `docker ${args.map(a => `'${a}'`).join(' ')}`, cwd: buildDir };
 }
 
-async function buildServer(serverType: 'control' | 'experiment', config: ResolvedConfig, verbose?: boolean): Promise<void> {
+async function buildServer(serverType: 'control' | 'experiment', config: ResolvedConfig, options: { verbose?: boolean; noCache?: boolean } = {}): Promise<void> {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
   const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
@@ -51,7 +54,7 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
   const dockerfilePath = path.join(projectName, config.dockerfile);
 
   console.log(`Building ${serverType} from ${buildDir}...`);
-  if (verbose) {
+  if (options.verbose) {
     console.log(`  Image: ${imageName}`);
     console.log(`  Dockerfile: ${dockerfilePath}`);
     console.log(`  Git SHA: ${getGitSha(buildDir)}`);
@@ -61,6 +64,7 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
     imageName,
     dockerfile: dockerfilePath,
     buildContext: buildDir,
+    noCache: options.noCache,
     buildArgs: {
       ...config.dockerBuildArgs,
       UID: getUserId(),
@@ -72,9 +76,9 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
   console.log(`Finished building ${serverType}`);
 }
 
-async function buildInParallel(config: ResolvedConfig): Promise<void> {
-  const experiment = buildDockerCmd('experiment', config);
-  const control = buildDockerCmd('control', config);
+async function buildInParallel(config: ResolvedConfig, noCache?: boolean): Promise<void> {
+  const experiment = buildDockerCmd('experiment', config, noCache);
+  const control = buildDockerCmd('control', config, noCache);
 
   const bashFn = `build_server() {
   if [ "$1" = "experiment" ]; then
@@ -85,11 +89,11 @@ async function buildInParallel(config: ResolvedConfig): Promise<void> {
 }
 export -f build_server`;
 
-  await runForBothServersInParallel('build_server', bashFn);
+  await runForBothServersInParallel(bashFn);
 }
 
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
-  const { verbose, target } = options;
+  const { verbose, target, noCache } = options;
 
   const buildingBoth = !target;
   const buildingControl = target === 'control' || buildingBoth;
@@ -119,7 +123,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     printInfo(`Control directory not found: ${config.controlDir}`);
     console.log('');
     console.log('To build the control image, we need a checkout of the baseline branch.');
-    console.log(`  git clone --branch ${defaultBranch} --single-branch ${remoteUrl} ${cloneTarget}`);
+    console.log(`  git clone --branch ${defaultBranch} ${remoteUrl} ${cloneTarget}`);
     console.log('');
 
     const yes = await confirm('Clone now?');
@@ -153,11 +157,11 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   if (target) {
     console.log(`Building ${target} Docker image...`);
     console.log('');
-    await buildServer(target, config, verbose);
+    await buildServer(target, config, { verbose, noCache });
   } else {
     console.log('Building both Docker images in parallel...');
     console.log('');
-    await buildInParallel(config);
+    await buildInParallel(config, noCache);
   }
 
   console.log('');
@@ -181,7 +185,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   console.log('');
   if (buildingBoth) {
     console.log('Next steps:');
-    console.log('  shaka-twin-servers start-containers');
+    console.log('  yarn shaka-twin-servers start-containers');
     console.log('');
   }
 }
