@@ -4,36 +4,6 @@
 import chalk from "chalk";
 import { createHash } from "crypto";
 
-/**
- * Merge the contents of the right object into the left. Simply replace numbers, strings, arrays
- * and recursively call this function with objects.
- *
- * Note that typeof null == 'object'
- *
- * @param left - Destination object
- * @param right - Content of this object takes precedence
- */
-export function mergeLeft(
-  left: { [key: string]: any },
-  right: { [key: string]: any }
-): { [key: string]: any } {
-  Object.keys(right).forEach((key) => {
-    const leftValue = left[key];
-    const rightValue = left[key];
-    const matchingObjectType =
-      typeof leftValue === "object" && typeof rightValue === "object";
-    const isOneArray = Array.isArray(leftValue) || Array.isArray(rightValue);
-
-    if (matchingObjectType && (left[key] || right[key]) && !isOneArray) {
-      mergeLeft(left[key], right[key]);
-    } else {
-      left[key] = right[key];
-    }
-  });
-
-  return left;
-}
-
 export function convertMicrosecondsToMS(ms: string | number): number {
   ms = typeof ms === "string" ? parseInt(ms, 10) : ms;
   return Math.floor(ms * 100) / 100000;

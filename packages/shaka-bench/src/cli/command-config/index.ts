@@ -7,4 +7,3 @@ export {
   defaultFlagArgs,
   getDefaultValue,
 } from "./default-flag-args";
-export { getConfig } from "./build-config";

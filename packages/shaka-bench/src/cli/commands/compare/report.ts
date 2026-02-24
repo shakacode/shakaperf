@@ -5,7 +5,6 @@ import { join, resolve } from "path";
 import { minify } from "html-minifier-terser";
 import {
   defaultFlagArgs,
-  getConfig,
   ITBConfig,
 } from "../../command-config";
 import {
@@ -55,7 +54,6 @@ const ARTIFACT_FILE_NAME = "artifact";
 // TYPINGS
 export interface IReportFlags {
   tbResultsFolder: string;
-  config?: string;
   plotTitle?: string;
 }
 
@@ -181,18 +179,7 @@ function logReportPaths(
 }
 
 export async function runReport(options: IReportFlags): Promise<void> {
-  const explicitFlags: string[] = [];
-  if (options.tbResultsFolder) explicitFlags.push("--tbResultsFolder");
-  if (options.config) explicitFlags.push("--config");
-  if (options.plotTitle) explicitFlags.push("--plotTitle");
-
-  const parsedConfig = getConfig(
-    options.config ?? "tbconfig.json",
-    options as any,
-    explicitFlags
-  );
-
-  const { tbResultsFolder } = parsedConfig as unknown as IReportFlags;
+  const tbResultsFolder = options.tbResultsFolder ?? defaultFlagArgs.tbResultsFolder!;
 
   try {
     mkdirSync(tbResultsFolder, { recursive: true });
@@ -207,7 +194,7 @@ export async function runReport(options: IReportFlags): Promise<void> {
     controlData,
     experimentData,
     tbResultsFolder,
-    parsedConfig,
+    { tbResultsFolder, plotTitle: options.plotTitle },
     options.plotTitle
   );
 

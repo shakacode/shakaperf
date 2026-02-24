@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const EXTENDS = "extends";
-
 export interface ITBConfig {
-  [EXTENDS]?: string;
   plotTitle?: string;
-  fidelity?: "test" | "low" | "medium" | "high" | number;
+  numberOfMeasurements?: "test" | "low" | "medium" | "high" | number;
   report?: string;
   tbResultsFolder?: string;
   controlURL?: string;

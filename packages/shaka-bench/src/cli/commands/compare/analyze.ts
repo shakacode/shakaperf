@@ -12,29 +12,29 @@ import {
 import parseCompareResult from "../../compare/parse-compare-result";
 
 export interface CompareAnalyzeFlags {
-  fidelity: number;
+  numberOfMeasurements: number;
   regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
   jsonReport: boolean;
 }
 
 export interface RunAnalyzeOptions {
-  fidelity: string | number;
+  numberOfMeasurements: string | number;
   regressionThreshold: string | number;
   regressionThresholdStat: RegressionThresholdStat;
   jsonReport?: boolean;
 }
 
-function parseFidelity(fidelity: string | number): number {
-  if (typeof fidelity === "string") {
-    if (Number.isInteger(parseInt(fidelity, 10))) {
-      return parseInt(fidelity, 10);
+function parseNumberOfMeasurements(value: string | number): number {
+  if (typeof value === "string") {
+    if (Number.isInteger(parseInt(value, 10))) {
+      return parseInt(value, 10);
     }
-    if (Object.keys(fidelityLookup).includes(fidelity)) {
-      return parseInt((fidelityLookup as any)[fidelity], 10);
+    if (Object.keys(fidelityLookup).includes(value)) {
+      return parseInt((fidelityLookup as any)[value], 10);
     }
   }
-  return typeof fidelity === "number" ? fidelity : 0;
+  return typeof value === "number" ? value : 0;
 }
 
 function getReportTitles(
@@ -52,7 +52,7 @@ export async function runAnalyze(
   resultsFile: string,
   options: RunAnalyzeOptions
 ): Promise<string> {
-  const fidelity = parseFidelity(options.fidelity);
+  const numberOfMeasurements = parseNumberOfMeasurements(options.numberOfMeasurements);
   const regressionThreshold =
     typeof options.regressionThreshold === "string"
       ? parseInt(options.regressionThreshold, 10)
@@ -69,7 +69,7 @@ export async function runAnalyze(
   const stats = new GenerateStats(controlData, experimentData, reportTitles);
   const compareResults = new CompareResults(
     stats,
-    fidelity,
+    numberOfMeasurements,
     regressionThreshold,
     regressionThresholdStat
   );

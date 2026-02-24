@@ -1,7 +1,6 @@
 import { IReportFlags } from "./commands/compare/report";
 
 export {
-  getConfig,
   ITBConfig,
   defaultFlagArgs,
 } from "./command-config";

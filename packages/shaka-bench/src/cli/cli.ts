@@ -20,9 +20,9 @@ program
   )
   .option("--hideAnalysis", "Hide the analysis output in terminal", false)
   .option(
-    "--fidelity <value>",
-    `Number of samples per trace: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
-    getDefaultValue("fidelity")
+    "-n, --numberOfMeasurements <value>",
+    `Number of measurements: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
+    getDefaultValue("numberOfMeasurements")
   )
   .option(
     "--tbResultsFolder <path>",
@@ -44,7 +44,6 @@ program
     "Seconds to wait for a sample",
     getDefaultValue("sampleTimeout")
   )
-  .option("--config <path>", "Path to tbconfig.json")
   .option("--report", "Generate a PDF report after compare", false)
   .option("--debug", "Debug flag, outputs verbose information", false)
   .option(
@@ -64,9 +63,9 @@ program
   )
   .argument("<resultsFile>", "The tracerbench compare command json output file")
   .option(
-    "--fidelity <value>",
-    `Number of samples per trace: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
-    getDefaultValue("fidelity")
+    "-n, --numberOfMeasurements <value>",
+    `Number of measurements: ${Object.keys(fidelityLookup).join(", ")} or 2-100`,
+    getDefaultValue("numberOfMeasurements")
   )
   .option(
     "--regressionThreshold <ms>",
@@ -93,7 +92,6 @@ program
     "The output folder path for all tracerbench results",
     getDefaultValue("tbResultsFolder")
   )
-  .option("--config <path>", "Path to tbconfig.json")
   .option("--plotTitle <title>", "Title of the report pdf/html files")
   .action(async (opts: Record<string, unknown>) => {
     await runReport(opts as any);

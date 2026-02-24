@@ -9,7 +9,7 @@ export const fidelityLookup = {
 
 export const defaultFlagArgs: ITBConfig = {
   plotTitle: "TracerBench",
-  fidelity: "low",
+  numberOfMeasurements: "low",
   tbResultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
   sampleTimeout: 30,
