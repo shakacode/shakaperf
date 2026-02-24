@@ -1,4 +1,3 @@
-import { OutputFlags } from "@oclif/parser";
 import * as fs from "fs-extra";
 import * as JSON5 from "json5";
 import * as path from "path";
@@ -14,11 +13,8 @@ const configFileKeys = [
   "outputFilePath",
 ] as const;
 
-// STEP 1
-// takes a command flags object with all the flags the command accepts
-// runs that commands object thru the defaults and returns those values
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getCommandDefaults(flags: OutputFlags<any>): OutputFlags<any> {
+function getCommandDefaults(flags: Record<string, any>): Record<string, any> {
   const f = flags;
   Object.entries(f).forEach(([key]) => {
     f[key] = getDefaultValue(key) || flags[key];
@@ -99,7 +95,7 @@ function resolveConfigFile(fileOrDir: string): [string, string] {
 // overwrite all flags explicity flagged within cli command
 function handleExplicitFlags(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  flags: OutputFlags<any>,
+  flags: Record<string, any>,
   explicitFlags: string[]
 ): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
@@ -124,7 +120,7 @@ function handleExplicitFlags(
 export function getConfig(
   configFileOrDir = "tbconfig.json",
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  flags: OutputFlags<any>,
+  flags: Record<string, any>,
   explicitFlags: string[]
 ): ITBConfig {
   const ef = handleExplicitFlags(flags, explicitFlags);

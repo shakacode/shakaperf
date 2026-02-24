@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { flags as oclifFlags } from "@oclif/command";
-import { IConfig } from "@oclif/config";
 import {
   Benchmark,
   compareNetworkActivity,
@@ -16,9 +14,8 @@ import {
   writeFileSync,
   writeJSONSync,
 } from "fs-extra";
-import { join } from "path";
 
-import { getConfig, TBBaseCommand } from "../../command-config";
+import { getConfig } from "../../command-config";
 import {
   defaultFlagArgs,
   fidelityLookup,
@@ -28,26 +25,13 @@ import {
   ITBConfig,
 } from "../../command-config/tb-config";
 import {
-  config,
-  controlURL,
-  debug,
-  experimentURL,
-  fidelity,
-  lhPresets,
-  regressionThreshold,
-  regressionThresholdStat,
-  report,
-  sampleTimeout,
-  tbResultsFolder,
-} from "../../helpers/flags";
-import {
   chalkScheme,
   durationInSec,
   secondsToTime,
   timestamp,
 } from "../../helpers/utils";
-import CompareAnalyze from "./analyze";
-import CompareReport from "./report";
+import { runAnalyze } from "./analyze";
+import { runReport } from "./report";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -64,196 +48,152 @@ export interface ICompareFlags {
   lhPresets?: string;
 }
 
-export default class Compare extends TBBaseCommand {
-  public static description =
-    "Compare the performance delta between an experiment and control";
-  public static flags: oclifFlags.Input<any> = {
-    hideAnalysis: oclifFlags.boolean({
-      default: false,
-      description: "Hide the the analysis output in terminal",
-    }),
-    fidelity: fidelity({ required: true }),
-    tbResultsFolder: tbResultsFolder({ required: true }),
-    controlURL: controlURL({ required: false }),
-    experimentURL: experimentURL({ required: false }),
-    regressionThreshold: regressionThreshold(),
-    sampleTimeout: sampleTimeout(),
-    config: config(),
-    report,
-    debug,
-    regressionThresholdStat,
-    lhPresets,
-  };
-  public compareFlags: ICompareFlags;
-  public parsedConfig: ITBConfig = defaultFlagArgs;
-  // flags explicitly specified within the cli when
-  // running the command. these will override all
-  public explicitFlags: string[];
-  public analyzedJSONString = "";
-  constructor(argv: string[], config: IConfig) {
-    super(argv, config);
-    const { flags } = this.parse(Compare);
-    this.explicitFlags = argv;
-    this.compareFlags = flags as ICompareFlags;
+export async function runCompare(flags: Record<string, any>): Promise<string> {
+  const explicitFlags: string[] = [];
+  for (const key of Object.keys(flags)) {
+    explicitFlags.push(`--${key}`);
   }
 
-  // instantiated before this.run()
-  public async init(): Promise<void> {
-    const { flags } = this.parse(Compare);
-    this.parsedConfig = getConfig(flags.config, flags, this.explicitFlags);
-    this.compareFlags = flags as ICompareFlags;
-    await this.parseFlags();
+  const parsedConfig: ITBConfig = getConfig(
+    flags.config ?? "tbconfig.json",
+    flags,
+    explicitFlags
+  );
+
+  // Parse fidelity
+  let compareFlags = { ...flags } as ICompareFlags;
+  const fidelityVal = parsedConfig.fidelity;
+  if (typeof fidelityVal === "string") {
+    compareFlags.fidelity = parseInt(
+      (fidelityLookup as any)[fidelityVal],
+      10
+    );
+  }
+  if (typeof parsedConfig.regressionThreshold === "string") {
+    parsedConfig.regressionThreshold = parseInt(parsedConfig.regressionThreshold, 10);
+  }
+  if (typeof parsedConfig.controlURL === undefined) {
+    console.error(
+      "controlURL is required either in the tbconfig.json or as cli flag"
+    );
+    process.exit(2);
+  }
+  if (typeof parsedConfig.experimentURL === undefined) {
+    console.error(
+      "experimentURL is required either in the tbconfig.json or as cli flag"
+    );
+    process.exit(2);
   }
 
-  public async run(): Promise<string> {
-    const lhPresets = this.compareFlags.lhPresets;
-    const options: Partial<LighthouseBenchmarkOptions> = { lhPresets };
+  mkdirpSync(parsedConfig.tbResultsFolder!);
 
-    const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
-      "control",
-      this.compareFlags.controlURL!,
-      options
-    );
-    const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
-      "experiment",
-      this.compareFlags.experimentURL!,
-      options
-    );
+  const lhPresets = parsedConfig.lhPresets;
+  const options: Partial<LighthouseBenchmarkOptions> = { lhPresets };
 
-    // this should be directly above the instantiation of the InitialRenderBenchmarks
-    if (this.parsedConfig.debug) {
-      Object.entries(this.parsedConfig).forEach(([key, value]) => {
-        if (value) {
-          this.log(`${key}: ${JSON.stringify(value)}`);
-        }
-      });
-    }
+  const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
+    "control",
+    parsedConfig.controlURL!,
+    options
+  );
+  const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
+    "experiment",
+    parsedConfig.experimentURL!,
+    options
+  );
 
-    const sampleTimeout = this.parsedConfig.sampleTimeout;
-
-    const startTime = timestamp();
-    const results = (
-      await run(
-        [control, experiment],
-        this.parsedConfig.fidelity as number,
-        (elasped, completed, remaining, group, iteration) => {
-          if (completed > 0) {
-            const average = elasped / completed;
-            const remainingSecs = Math.round((remaining * average) / 1000);
-            const remainingTime = secondsToTime(remainingSecs);
-            console.log(
-              "%s: %s %s remaining",
-              group.padStart(15),
-              iteration.toString().padStart(2),
-              `${remainingTime}`.padStart(10)
-            );
-          } else {
-            console.log(
-              "%s: %s",
-              group.padStart(15),
-              iteration.toString().padStart(2)
-            );
-          }
-        },
-        {
-          sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
-        }
-      )
-    ).map(({ group, samples }) => {
-      const meta = samples.length > 0 ? samples[0].metadata : {};
-      return {
-        group,
-        set: group,
-        samples,
-        meta,
-      };
+  if (parsedConfig.debug) {
+    Object.entries(parsedConfig).forEach(([key, value]) => {
+      if (value) {
+        console.log(`${key}: ${JSON.stringify(value)}`);
+      }
     });
-    const endTime = timestamp();
-    if (!results[0].samples[0]) {
-      this.error(
-        `Could not sample from provided urls\nCONTROL: ${this.parsedConfig.controlURL}\nEXPERIMENT: ${this.parsedConfig.experimentURL}.`
-      );
-    }
-    const resultJSONPath = `${this.parsedConfig.tbResultsFolder}/compare.json`;
-    compareNetworkActivity();
-
-    writeFileSync(resultJSONPath, JSON.stringify(results));
-
-    const duration = secondsToTime(durationInSec(endTime, startTime));
-    const message = `${chalkScheme.blackBgGreen(
-      `    ${chalkScheme.white("SUCCESS")}    `
-    )} ${this.parsedConfig.fidelity} test samples took ${duration}`;
-
-    this.log(`\n${message}`);
-
-    // if the stdout analysis is not hidden show it
-    if (!this.compareFlags.hideAnalysis) {
-      this.analyzedJSONString = await CompareAnalyze.run([
-        resultJSONPath,
-        "--fidelity",
-        `${this.parsedConfig.fidelity}`,
-        "--regressionThreshold",
-        `${this.parsedConfig.regressionThreshold}`,
-        `--regressionThresholdStat`,
-        `${this.parsedConfig.regressionThresholdStat}`,
-        `--jsonReport`,
-      ]);
-    }
-
-    // if we want to run the CompareReport without calling a separate command
-    if (this.parsedConfig.report) {
-      await CompareReport.run([
-        "--tbResultsFolder",
-        `${this.parsedConfig.tbResultsFolder}`,
-        "--config",
-        `${this.parsedConfig.config}`,
-      ]);
-    }
-
-    // with debug flag output three files
-    // on config specifics
-    if (this.parsedConfig.debug) {
-      writeJSONSync(
-        `${this.parsedConfig.tbResultsFolder}/compare-flags-settings.json`,
-        JSON.stringify(Object.assign(this.parsedConfig), null, 2)
-      );
-    }
-
-    return this.analyzedJSONString;
   }
 
-  private async parseFlags(): Promise<void> {
-    const {
-      tbResultsFolder,
-      fidelity,
-      regressionThreshold,
-      controlURL,
-      experimentURL,
-    } = this.parsedConfig as unknown as ICompareFlags;
+  const sampleTimeout = parsedConfig.sampleTimeout;
 
-    if (typeof fidelity === "string") {
-      this.compareFlags.fidelity = parseInt(
-        (fidelityLookup as any)[fidelity],
-        10
-      );
-    }
-    if (typeof regressionThreshold === "string") {
-      this.parsedConfig.regressionThreshold = parseInt(regressionThreshold, 10);
-    }
-    if (typeof controlURL === undefined) {
-      this.error(
-        "controlURL is required either in the tbconfig.json or as cli flag"
-      );
-    }
-
-    if (typeof experimentURL === undefined) {
-      this.error(
-        "experimentURL is required either in the tbconfig.json or as cli flag"
-      );
-    }
-
-    // if the folder for the tracerbench results file
-    // does not exist then create it
-    mkdirpSync(tbResultsFolder);
+  const startTime = timestamp();
+  const results = (
+    await run(
+      [control, experiment],
+      parsedConfig.fidelity as number,
+      (elasped, completed, remaining, group, iteration) => {
+        if (completed > 0) {
+          const average = elasped / completed;
+          const remainingSecs = Math.round((remaining * average) / 1000);
+          const remainingTime = secondsToTime(remainingSecs);
+          console.log(
+            "%s: %s %s remaining",
+            group.padStart(15),
+            iteration.toString().padStart(2),
+            `${remainingTime}`.padStart(10)
+          );
+        } else {
+          console.log(
+            "%s: %s",
+            group.padStart(15),
+            iteration.toString().padStart(2)
+          );
+        }
+      },
+      {
+        sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
+      }
+    )
+  ).map(({ group, samples }) => {
+    const meta = samples.length > 0 ? samples[0].metadata : {};
+    return {
+      group,
+      set: group,
+      samples,
+      meta,
+    };
+  });
+  const endTime = timestamp();
+  if (!results[0].samples[0]) {
+    console.error(
+      `Could not sample from provided urls\nCONTROL: ${parsedConfig.controlURL}\nEXPERIMENT: ${parsedConfig.experimentURL}.`
+    );
+    process.exit(2);
   }
+  const resultJSONPath = `${parsedConfig.tbResultsFolder}/compare.json`;
+  compareNetworkActivity();
+
+  writeFileSync(resultJSONPath, JSON.stringify(results));
+
+  const duration = secondsToTime(durationInSec(endTime, startTime));
+  const message = `${chalkScheme.blackBgGreen(
+    `    ${chalkScheme.white("SUCCESS")}    `
+  )} ${parsedConfig.fidelity} test samples took ${duration}`;
+
+  console.log(`\n${message}`);
+
+  let analyzedJSONString = "";
+
+  // if the stdout analysis is not hidden show it
+  if (!compareFlags.hideAnalysis) {
+    analyzedJSONString = await runAnalyze(resultJSONPath, {
+      fidelity: parsedConfig.fidelity!,
+      regressionThreshold: parsedConfig.regressionThreshold!,
+      regressionThresholdStat: parsedConfig.regressionThresholdStat!,
+      jsonReport: true,
+    });
+  }
+
+  // if we want to run the CompareReport without calling a separate command
+  if (parsedConfig.report) {
+    await runReport({
+      tbResultsFolder: parsedConfig.tbResultsFolder!,
+      config: parsedConfig.config,
+    });
+  }
+
+  // with debug flag output three files on config specifics
+  if (parsedConfig.debug) {
+    writeJSONSync(
+      `${parsedConfig.tbResultsFolder}/compare-flags-settings.json`,
+      JSON.stringify(Object.assign(parsedConfig), null, 2)
+    );
+  }
+
+  return analyzedJSONString;
 }

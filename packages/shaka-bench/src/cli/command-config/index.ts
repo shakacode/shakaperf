@@ -1,5 +1,3 @@
-import TBBaseCommand, { flags } from "./tb-base";
-
 export {
   ITBConfig,
   RegressionThresholdStat,
@@ -10,4 +8,3 @@ export {
   getDefaultValue,
 } from "./default-flag-args";
 export { getConfig } from "./build-config";
-export { TBBaseCommand, flags };
