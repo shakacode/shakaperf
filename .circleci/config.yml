@@ -54,23 +54,6 @@ commands:
           paths:
             - ~/.cache/ms-playwright
 
-  set-s3-env:
-    description: Set S3 environment variables for perf baseline storage
-    steps:
-      - run:
-          name: Set S3 environment variables
-          command: |
-            echo 'export S3_BUCKET="$PERF_BASELINE_S3_BUCKET"' >> "$BASH_ENV"
-            echo 'export S3_ENDPOINT="$PERF_BASELINE_S3_ENDPOINT"' >> "$BASH_ENV"
-
-  download-perf-baseline:
-    description: Download perf test baseline commit SHA from S3
-    steps:
-      - set-s3-env
-      - run:
-          name: Download perf test baseline SHA
-          command: bash .circleci/scripts/perf-test-baseline.sh download
-
 jobs:
   jest-tests:
     executor: ruby-node-executor
@@ -145,15 +128,6 @@ jobs:
           command: |
             cd demo-ecommerce
             yarn bundle-size:upload
-
-  update-perf-baseline:
-    executor: twin-servers/machine
-    steps:
-      - checkout
-      - set-s3-env
-      - run:
-          name: Upload current HEAD as perf test baseline
-          command: bash .circleci/scripts/perf-test-baseline.sh upload
 
 workflows:
   build-and-check:
@@ -297,7 +271,7 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
-            - download-perf-baseline
+            - twin-servers/download-perf-baseline
 
       - twin-servers/run-tests:
           name: scheduled-visual-regression
@@ -357,8 +331,8 @@ workflows:
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
 
-      # Step 3: Update baseline (only runs when all tests pass)
-      - update-perf-baseline:
+      # Update baseline (only runs when all tests pass)
+      - twin-servers/update-perf-baseline:
           requires:
             - scheduled-visual-regression
             - scheduled-perf-tests
@@ -370,7 +344,7 @@ workflows:
             - twin-servers/build-experiment
             - twin-servers/build-control
 
-      - update-perf-baseline:
+      - twin-servers/update-perf-baseline:
           name: force-update-perf-baseline
           requires:
             - approve-baseline-update

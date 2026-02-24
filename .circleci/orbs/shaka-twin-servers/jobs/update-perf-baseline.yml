@@ -1,0 +1,24 @@
+description: |
+  Update the perf test baseline in S3 by uploading the current HEAD SHA.
+  Use after tests pass to advance the baseline, or after a manual approval
+  gate to force-update when tests fail.
+
+executor:
+  name: machine
+  resource-class: << parameters.resource-class >>
+
+parameters:
+  s3-key-prefix:
+    type: string
+    default: 'perf-tests-baseline-shas'
+    description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
+  resource-class:
+    type: enum
+    enum: ['medium', 'large', 'xlarge', '2xlarge']
+    default: 'medium'
+    description: 'Machine resource class'
+
+steps:
+  - checkout
+  - upload-perf-baseline:
+      s3-key-prefix: << parameters.s3-key-prefix >>
