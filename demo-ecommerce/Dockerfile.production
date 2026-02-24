@@ -99,8 +99,8 @@ COPY --chown=${NON_ROOT_USER}:${NON_ROOT_USER} demo-ecommerce ./
 # Precompile bootsnap code for faster boot times
 RUN bundle exec bootsnap precompile --gemfile app/ lib/
 
-# Set dummy credentials for asset precompilation
-ENV SECRET_KEY_BASE=NOT_USED_NON_BLANK
+# Generate throwaway credentials for asset precompilation (demo app has no real secrets)
+RUN EDITOR="true" RAILS_ENV=production SECRET_KEY_BASE=dummy bundle exec rails credentials:edit 2>/dev/null; true
 
 # Precompile assets (webpack + sprockets)
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile

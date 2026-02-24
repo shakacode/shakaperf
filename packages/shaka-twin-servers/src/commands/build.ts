@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ResolvedConfig } from '../types';
-import { requireCommand, confirm, exec } from '../helpers/shell';
+import { requireCommand, confirm, exec, runForBothServersInParallel } from '../helpers/shell';
 import {
   dockerBuild,
   getGitSha,
@@ -21,20 +21,32 @@ export interface BuildOptions {
   target?: BuildTarget;
 }
 
-interface BuildServerOptions {
-  serverType: 'control' | 'experiment';
-  config: ResolvedConfig;
-  verbose?: boolean;
-}
-
-async function buildServer(options: BuildServerOptions): Promise<void> {
-  const { serverType, config, verbose } = options;
-
+function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedConfig): { cmd: string; cwd: string } {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
   const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
-  const gitSha = getGitSha(buildDir);
+  const projectName = path.basename(config.projectDir);
+  const dockerfilePath = path.join(projectName, config.dockerfile);
 
+  const args = ['build', '--progress=plain', '-t', imageName, '-f', dockerfilePath];
+  const buildArgs: Record<string, string> = {
+    ...config.dockerBuildArgs,
+    UID: getUserId(),
+    GID: getGroupId(),
+    NON_ROOT_USER: getUsername(),
+  };
+  for (const [key, value] of Object.entries(buildArgs)) {
+    args.push('--build-arg', `${key}=${value}`);
+  }
+  args.push('.');
+
+  return { cmd: `docker ${args.map(a => `'${a}'`).join(' ')}`, cwd: buildDir };
+}
+
+async function buildServer(serverType: 'control' | 'experiment', config: ResolvedConfig, verbose?: boolean): Promise<void> {
+  const isControl = serverType === 'control';
+  const imageName = isControl ? config.images.control : config.images.experiment;
+  const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
   const projectName = path.basename(config.projectDir);
   const dockerfilePath = path.join(projectName, config.dockerfile);
 
@@ -42,7 +54,7 @@ async function buildServer(options: BuildServerOptions): Promise<void> {
   if (verbose) {
     console.log(`  Image: ${imageName}`);
     console.log(`  Dockerfile: ${dockerfilePath}`);
-    console.log(`  Git SHA: ${gitSha}`);
+    console.log(`  Git SHA: ${getGitSha(buildDir)}`);
   }
 
   await dockerBuild({
@@ -60,18 +72,20 @@ async function buildServer(options: BuildServerOptions): Promise<void> {
   console.log(`Finished building ${serverType}`);
 }
 
-async function buildInParallel(config: ResolvedConfig, verbose?: boolean): Promise<void> {
-  const buildPromises = (['experiment', 'control'] as const).map((serverType) =>
-    buildServer({ serverType, config, verbose })
-  );
+async function buildInParallel(config: ResolvedConfig): Promise<void> {
+  const experiment = buildDockerCmd('experiment', config);
+  const control = buildDockerCmd('control', config);
 
-  const results = await Promise.allSettled(buildPromises);
+  const bashFn = `build_server() {
+  if [ "$1" = "experiment" ]; then
+    cd '${experiment.cwd}' && ${experiment.cmd}
+  else
+    cd '${control.cwd}' && ${control.cmd}
+  fi
+}
+export -f build_server`;
 
-  const failures = results.filter((r) => r.status === 'rejected') as PromiseRejectedResult[];
-  if (failures.length > 0) {
-    const errors = failures.map((f) => f.reason?.message || String(f.reason)).join('\n');
-    throw new Error(`Build failed:\n${errors}`);
-  }
+  await runForBothServersInParallel('build_server', bashFn);
 }
 
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
@@ -139,11 +153,11 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   if (target) {
     console.log(`Building ${target} Docker image...`);
     console.log('');
-    await buildServer({ serverType: target, config, verbose });
+    await buildServer(target, config, verbose);
   } else {
     console.log('Building both Docker images in parallel...');
     console.log('');
-    await buildInParallel(config, verbose);
+    await buildInParallel(config);
   }
 
   console.log('');

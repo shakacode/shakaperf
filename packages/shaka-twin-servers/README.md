@@ -17,13 +17,13 @@ Docker-based A/B performance testing infrastructure. Runs two identical servers 
 cd your-app
 
 # 1. Build Docker images for both servers
-shaka-twin-servers build
+yarn shaka-twin-servers build
 
 # 2. Start containers (they start with `sleep infinity` — servers are started separately)
-shaka-twin-servers start-containers
+yarn shaka-twin-servers start-containers
 
 # 3. Start Rails servers via Overmind
-shaka-twin-servers start-servers
+yarn shaka-twin-servers start-servers
 
 # 4. Visit the servers
 #    Control:    http://localhost:3020
@@ -38,13 +38,13 @@ Docker volumes are bind-mounted to host directories, so you can sync changes wit
 # After making code changes to your experiment branch:
 # A. Stop the servers (Ctrl+C on Overmind)
 # B. Sync changes to the experiment volume
-shaka-twin-servers sync-changes experiment
+yarn shaka-twin-servers sync-changes experiment
 
 # C. (If needed) Run setup commands inside the container
-shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
+yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 
 # D. Restart the servers
-shaka-twin-servers start-servers
+yarn shaka-twin-servers start-servers
 ```
 
 ### Stop Everything
@@ -126,12 +126,12 @@ Both servers run in **production mode** for accurate benchmarking. The only conf
 
 Volumes are bind-mounted to host directories (not Docker-managed volumes). This means:
 - Files are directly accessible on the host without `sudo`
-- You can sync changes with `shaka-twin-servers sync-changes` instead of rebuilding images
+- You can sync changes with `sync-changes` instead of rebuilding images
 - Changes persist across container restarts
 
 ### Procfile
 
-The Procfile uses `shaka-twin-servers run-overmind-command` to run server processes inside the Docker containers with proper PID tracking:
+The Procfile uses `run-overmind-command` to run server processes inside the Docker containers with proper PID tracking:
 
 ```
 control-rails: shaka-twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
@@ -145,31 +145,31 @@ Logs are displayed side-by-side with `[CONTROL]`/`[EXPERIMENT]` prefixes.
 ### Core Workflow
 
 ```bash
-shaka-twin-servers build                          # Build both images
-shaka-twin-servers build --target experiment      # Build only one
-shaka-twin-servers start-containers               # Start Docker containers
-shaka-twin-servers start-servers                  # Start servers via Overmind
+yarn shaka-twin-servers build                          # Build both images
+yarn shaka-twin-servers build --target experiment      # Build only one
+yarn shaka-twin-servers start-containers               # Start Docker containers
+yarn shaka-twin-servers start-servers                  # Start servers via Overmind
 ```
 
 ### Running Commands in Containers
 
 ```bash
 # Interactive shell in a container
-shaka-twin-servers run-cmd experiment bash
+yarn shaka-twin-servers run-cmd experiment bash
 
 # Run a specific command
-shaka-twin-servers run-cmd experiment "bundle exec rails console"
+yarn shaka-twin-servers run-cmd experiment "bundle exec rails console"
 
 # Run the same command in both containers in parallel
-shaka-twin-servers run-cmd-parallel "bundle exec rake db:migrate"
+yarn shaka-twin-servers run-cmd-parallel "bundle exec rake db:migrate"
 ```
 
 ### Syncing Changes
 
 ```bash
 # Sync local git changes to a volume (uses git diff to copy only changed files)
-shaka-twin-servers sync-changes experiment
-shaka-twin-servers sync-changes control
+yarn shaka-twin-servers sync-changes experiment
+yarn shaka-twin-servers sync-changes control
 ```
 
 ### CircleCI Integration
@@ -178,11 +178,11 @@ For debugging CI runs with SSH:
 
 ```bash
 # Copy local changes to CI containers via SSH
-shaka-twin-servers copy-changes-to-ssh <port> <host>              # both targets
-shaka-twin-servers copy-changes-to-ssh <port> <host> experiment   # one target
+yarn shaka-twin-servers copy-changes-to-ssh <port> <host>              # both targets
+yarn shaka-twin-servers copy-changes-to-ssh <port> <host> experiment   # one target
 
 # Forward CI ports to localhost for browser access
-shaka-twin-servers forward-ports <port> <host>                    # default 3020/3030
+yarn shaka-twin-servers forward-ports <port> <host>                    # default 3020/3030
 ```
 
 To get the SSH port and host:
@@ -193,8 +193,8 @@ To get the SSH port and host:
 ### Other
 
 ```bash
-shaka-twin-servers get-config <key>               # Print a resolved config value
-shaka-twin-servers say "Build complete"            # Text-to-speech notification (macOS/Linux)
+yarn shaka-twin-servers get-config <key>               # Print a resolved config value
+yarn shaka-twin-servers say "Build complete"            # Text-to-speech notification (macOS/Linux)
 ```
 
 ## Options

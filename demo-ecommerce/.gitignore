@@ -32,8 +32,9 @@
 
 /public/assets
 
-# Ignore master key for decrypting credentials and more.
+# Ignore credentials and master key (demo app uses SECRET_KEY_BASE env var directly)
 /config/master.key
+/config/credentials.yml.enc
 
 /public/packs
 /public/packs-test

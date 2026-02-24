@@ -1,52 +1,41 @@
 import * as fs from 'fs';
 import type { ResolvedConfig } from '../types';
+import { runForBothServersInParallel } from '../helpers/shell';
 import {
   dockerImageExists,
   dockerComposeUp,
   dockerComposeDown,
   dockerComposePs,
-  dockerComposeExec,
   waitForContainer,
 } from '../helpers/docker';
-import { printBanner, printSuccess, printError, printWarning, colorize } from '../helpers/ui';
+import { printBanner, printSuccess, printError, printWarning } from '../helpers/ui';
 
 export interface StartContainersOptions {
   verbose?: boolean;
 }
 
-async function runSetupCommands(
-  config: ResolvedConfig,
-  serverType: 'control' | 'experiment'
-): Promise<void> {
-  // Skip if no setup commands configured
-  if (config.setupCommands.length === 0) {
-    return;
-  }
+async function runSetupCommandsParallel(config: ResolvedConfig): Promise<void> {
+  // Build docker compose exec commands for each setup command
+  const composeArgs = [
+    'compose', '-f', config.composeFile, 'exec', '-T',
+  ];
+  const setupScript = config.setupCommands
+    .map(cmd => `docker ${composeArgs.map(a => `'${a}'`).join(' ')} "$1-server" bash -c '${cmd.command.replace(/'/g, "'\\''")}'`)
+    .join(' && ');
 
-  const containerName = `${serverType}-server`;
-  const prefix = serverType === 'experiment'
-    ? colorize('[EXPERIMENT]', 'blue')
-    : colorize('[CONTROL]', 'green');
+  const bashFn = `setup_server() {
+  ${setupScript}
+}
+export -f setup_server`;
 
-  console.log('');
-  console.log(`${prefix} Running setup commands...`);
+  const env = {
+    ...process.env,
+    CI_IMAGE_NAME: config.images.experiment,
+    CI_CONTROL_IMAGE_NAME: config.images.control,
+    USER: process.env.USER || 'user',
+  };
 
-  for (const cmd of config.setupCommands) {
-    console.log(`${prefix}    Started ${cmd.description}...`);
-
-    const result = await dockerComposeExec(config, containerName, cmd.command, { prefix });
-
-    if (result.code !== 0) {
-      throw new Error(
-        `Setup command failed for ${serverType}: ${cmd.description}\n` +
-          `Command: ${cmd.command}\n` +
-          `Error: ${result.stderr || 'Unknown error'}`
-      );
-    }
-    console.log(`${prefix}    Completed ${cmd.description} successfully`);
-  }
-
-  console.log(`${prefix}    Setup complete`);
+  await runForBothServersInParallel('setup_server', bashFn, env);
 }
 
 export async function startContainers(
@@ -112,10 +101,11 @@ export async function startContainers(
     process.exit(1);
   }
 
-  await Promise.all([
-    runSetupCommands(config, 'control'),
-    runSetupCommands(config, 'experiment'),
-  ]);
+  if (config.setupCommands.length > 0) {
+    console.log('');
+    console.log('Running setup commands...');
+    await runSetupCommandsParallel(config);
+  }
 
   console.log('');
   printSuccess('Both servers are ready!');
