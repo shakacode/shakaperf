@@ -1,12 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable filenames/match-exported */
-import { IConfig } from "@oclif/config";
-import * as Parser from "@oclif/parser";
 import { writeFileSync } from "fs-extra";
 import { dirname, join } from "path";
 
-import { TBBaseCommand } from "../../command-config";
-import { fidelityLookup } from "../../command-config/default-flag-args";
 import type { RegressionThresholdStat } from "../../command-config/tb-config";
 import { CompareResults } from "../../compare/compare-results";
 import {
@@ -14,115 +9,63 @@ import {
   ParsedTitleConfigs,
 } from "../../compare/generate-stats";
 import parseCompareResult from "../../compare/parse-compare-result";
-import { resultsFile } from "../../helpers/args";
-import {
-  fidelity,
-  isCIEnv,
-  jsonReport,
-  regressionThreshold,
-  regressionThresholdStat,
-} from "../../helpers/flags";
+
 export interface CompareAnalyzeFlags {
-  fidelity: number;
+  numberOfMeasurements: number;
   regressionThreshold: number;
-  isCIEnv: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   jsonReport: boolean;
 }
 
-export default class CompareAnalyze extends TBBaseCommand {
-  public static description = `Generates stdout report from the "tracerbench compare" command output, 'compare.json'`;
+export interface RunAnalyzeOptions {
+  numberOfMeasurements: number;
+  regressionThreshold: number;
+  regressionThresholdStat: RegressionThresholdStat;
+  jsonReport?: boolean;
+}
 
-  public static args = [resultsFile];
-  public static flags = {
-    fidelity: fidelity({ required: true }),
-    regressionThreshold: regressionThreshold({ required: true }),
-    isCIEnv: isCIEnv({ required: true }),
-    regressionThresholdStat,
-    jsonReport,
+function getReportTitles(
+  plotTitle: string,
+  browserVersion: string
+): ParsedTitleConfigs {
+  return {
+    servers: [{ name: "Control" }, { name: "Experiment" }],
+    plotTitle,
+    browserVersion,
   };
-  public typedFlags: CompareAnalyzeFlags;
-  constructor(argv: string[], config: IConfig) {
-    super(argv, config);
-    this.typedFlags = this.parseFlags(CompareAnalyze);
-  }
+}
 
-  private parseFlags(CompareAnalyze: Parser.Input<any>): CompareAnalyzeFlags {
-    const { flags } = this.parse(CompareAnalyze);
-    const { isCIEnv, regressionThresholdStat, jsonReport } = flags;
-    let { regressionThreshold, fidelity } = flags;
+export async function runAnalyze(
+  resultsFile: string,
+  options: RunAnalyzeOptions
+): Promise<string> {
+  const { numberOfMeasurements, regressionThreshold, regressionThresholdStat } = options;
+  const jsonReport = options.jsonReport ?? false;
 
-    if (typeof regressionThreshold === "string") {
-      regressionThreshold = parseInt(regressionThreshold, 10);
-    }
+  const { controlData, experimentData } = parseCompareResult(resultsFile);
+  const reportTitles = getReportTitles(
+    "TracerBench",
+    controlData.meta.browserVersion
+  );
 
-    if (typeof fidelity === "string") {
-      // integers are coming as string from oclif
-      if (Number.isInteger(parseInt(fidelity, 10))) {
-        fidelity = parseInt(fidelity, 10);
-      }
-      // is a string and is either test/low/med/high
-      if (Object.keys(fidelityLookup).includes(fidelity)) {
-        fidelity = parseInt((fidelityLookup as any)[fidelity], 10);
-      }
-    }
+  const stats = new GenerateStats(controlData, experimentData, reportTitles);
+  const compareResults = new CompareResults(
+    stats,
+    numberOfMeasurements,
+    regressionThreshold,
+    regressionThresholdStat
+  );
 
-    return {
-      fidelity,
-      regressionThreshold,
-      isCIEnv,
-      regressionThresholdStat,
-      jsonReport,
-    };
-  }
+  compareResults.logTables();
+  compareResults.logSummary();
 
-  public async run(): Promise<string> {
-    const { args } = this.parse(CompareAnalyze);
-    const { controlData, experimentData } = parseCompareResult(
-      args.resultsFile
+  if (jsonReport) {
+    const resultFileDir = dirname(resultsFile);
+    writeFileSync(
+      join(resultFileDir, "report.json"),
+      compareResults.stringifyJSON()
     );
-    const reportTitles = this.getReportTitles(
-      "TracerBench",
-      controlData.meta.browserVersion
-    );
-
-    // generate all relevant statistics from the compare.json resultsFile
-    const stats = new GenerateStats(controlData, experimentData, reportTitles);
-    const compareResults = new CompareResults(
-      stats,
-      this.typedFlags.fidelity,
-      this.typedFlags.regressionThreshold,
-      this.typedFlags.regressionThresholdStat
-    );
-
-    if (!this.typedFlags.isCIEnv) {
-      // then log the tables
-      compareResults.logTables();
-    }
-
-    compareResults.logSummary();
-
-    // optionally generate a JSON file from the stdout report
-    if (jsonReport) {
-      const resultFileDir = dirname(args.resultsFile);
-      writeFileSync(
-        join(resultFileDir, "report.json"),
-        compareResults.stringifyJSON()
-      );
-    }
-
-    // return the Stringified<ICompareJSONResults> stat summary report
-    return compareResults.stringifyJSON();
   }
 
-  private getReportTitles(
-    plotTitle: string,
-    browserVersion: string
-  ): ParsedTitleConfigs {
-    return {
-      servers: [{ name: "Control" }, { name: "Experiment" }],
-      plotTitle,
-      browserVersion,
-    };
-  }
+  return compareResults.stringifyJSON();
 }

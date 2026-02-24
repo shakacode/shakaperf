@@ -8,15 +8,30 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import {
-  Marker,
-  NavigationBenchmarkOptions
-} from './create-trace-navigation-benchmark';
-import {
-  NavigationSample,
-  PhaseSample
-} from './metrics/extract-navigation-sample';
 import { Benchmark, BenchmarkSampler } from './run';
+
+export interface Marker {
+  start: string;
+  label: string;
+}
+
+export interface LighthouseBenchmarkOptions {
+  lhPresets?: string;
+}
+
+export interface PhaseSample {
+  phase: string;
+  start: number;
+  duration: number;
+  sign: 1 | -1;
+  unit: string;
+}
+
+export interface NavigationSample {
+  duration: number;
+  phases: PhaseSample[];
+  metadata: Record<string, unknown>;
+}
 
 interface DownloadsSizesKB {
   [filename: string]: number[];
@@ -352,7 +367,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
   constructor(
     private url: string,
-    private options: Partial<NavigationBenchmarkOptions>
+    private options: Partial<LighthouseBenchmarkOptions>
   ) {}
 
   async setupBrowser(): Promise<void> {
@@ -464,7 +479,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     };
 
     const presetsToRun = (
-      this.options.pageSetupOptions?.lhPresets ?? 'mobile'
+      this.options.lhPresets ?? 'mobile'
     ).split(',');
 
     let phases: PhaseSample[] = [];
@@ -520,8 +535,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 export default function createLighthouseBenchmark(
   group: string,
   url: string,
-  _markers: Marker[],
-  options: Partial<NavigationBenchmarkOptions> = {}
+  options: Partial<LighthouseBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
   return {
     group,

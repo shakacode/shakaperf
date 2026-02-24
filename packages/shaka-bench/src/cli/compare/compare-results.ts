@@ -6,7 +6,6 @@ import type {
 } from "../../stats";
 import chalk from "chalk";
 
-import { fidelityLookup } from "../command-config";
 import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
@@ -58,16 +57,16 @@ export class CompareResults {
   phaseResultsFormatted: PhaseResultsFormatted = [];
   areResultsSignificant = false;
   isBelowRegressionThreshold = true;
-  fidelity: number;
+  numberOfMeasurements: number;
   regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
   constructor(
     generateStats: GenerateStats,
-    fidelity: number,
+    numberOfMeasurements: number,
     regressionThreshold: number,
     regressionThresholdStat: RegressionThresholdStat = "estimator"
   ) {
-    this.fidelity = fidelity;
+    this.numberOfMeasurements = numberOfMeasurements;
     this.regressionThreshold = regressionThreshold;
     this.regressionThresholdStat = regressionThresholdStat;
     this.phaseResultsFormatted.push(generateStats.durationSection);
@@ -99,10 +98,10 @@ export class CompareResults {
   // output meta data about the benchmark run and FYI messages to the user
   private logMetaMessagesAndWarnings(): void {
     const LOW_FIDELITY_WARNING =
-      'The fidelity setting was set below the recommended for a viable result. Rerun TracerBench with at least "--fidelity=low" OR >= 10';
+      'The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10';
     const REGRESSION_ALERT = `Regression found exceeding the set regression threshold of ${this.regressionThreshold} ms`;
 
-    if (this.fidelity < 10) {
+    if (this.numberOfMeasurements < 10) {
       logHeading(LOW_FIDELITY_WARNING, "warn");
     }
 
@@ -128,7 +127,7 @@ export class CompareResults {
 
       if (
         (isSignificant && estimatorISig) ||
-        (this.fidelity === 1 && hlDiff !== 0)
+        (this.numberOfMeasurements === 1 && hlDiff !== 0)
       ) {
         msg += "estimated ";
         const diffToS = (diff: number): string => {
@@ -146,7 +145,7 @@ export class CompareResults {
         } else {
           msg += `improvement ${chalk.green(coloredDiff)}`;
         }
-        if (this.fidelity !== 1) msg += ` p=${pValue}`;
+        if (this.numberOfMeasurements !== 1) msg += ` p=${pValue}`;
       } else {
         msg += `${chalk.grey(
           `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`
@@ -160,13 +159,12 @@ export class CompareResults {
     return;
   }
 
-  // if fidelity is at acceptable number, return true if any of the phase results were significant
+  // if numberOfMeasurements is at acceptable number, return true if any of the phase results were significant
   public anyResultsSignificant(
     benchmarkIsSigArray: boolean[],
     phaseIsSigArray: boolean[]
   ): boolean {
-    // if fidelity !== 'test'
-    if (this.fidelity > fidelityLookup.test) {
+    if (this.numberOfMeasurements > 2) {
       return (
         benchmarkIsSigArray.includes(true) || phaseIsSigArray.includes(true)
       );
@@ -260,7 +258,7 @@ export class CompareResults {
   }
 
   public logSummary(): void {
-    // log the fidelity and regression warnings
+    // log the measurement count and regression warnings
     this.logMetaMessagesAndWarnings();
 
     // log the summary delta with confidence interval and estimator
