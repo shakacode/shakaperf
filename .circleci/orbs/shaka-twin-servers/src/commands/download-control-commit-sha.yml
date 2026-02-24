@@ -1,5 +1,5 @@
 description: |
-  Download the baseline control commit SHA from S3 and set PERF_BASELINE_SHA
+  Download the control commit SHA from S3 and set PERF_BASELINE_SHA
   in $BASH_ENV. The checkout-control command will use this SHA to determine
   which commit to build the control image from.
 
@@ -9,7 +9,7 @@ description: |
     AWS_ACCESS_KEY_ID      - AWS credentials (required)
     AWS_SECRET_ACCESS_KEY  - AWS credentials (required)
 
-  Falls back to HEAD~1 if the baseline is not found, has an invalid format,
+  Falls back to HEAD~1 if the SHA is not found, has an invalid format,
   or refers to a commit not in the current git history.
 
 parameters:
@@ -22,5 +22,5 @@ steps:
   - run:
       environment:
         PARAM_S3_KEY_PREFIX: <<parameters.s3-key-prefix>>
-      name: Download baseline control git SHA from S3
-      command: <<include(scripts/download-baseline-control-git-sha.sh)>>
+      name: Download control commit SHA from S3
+      command: <<include(scripts/download-control-commit-sha.sh)>>

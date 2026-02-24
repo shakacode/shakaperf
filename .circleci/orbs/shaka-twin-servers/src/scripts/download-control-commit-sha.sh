@@ -19,7 +19,7 @@ aws_cmd() {
 
 tmp_file=$(mktemp)
 
-echo "Downloading baseline control git SHA from ${S3_URI}..."
+echo "Downloading control commit SHA from ${S3_URI}..."
 
 if aws_cmd cp "$S3_URI" "$tmp_file" 2>/dev/null; then
   sha=$(tr -d '[:space:]' < "$tmp_file")
@@ -27,25 +27,25 @@ if aws_cmd cp "$S3_URI" "$tmp_file" 2>/dev/null; then
 
   # Validate it looks like a SHA
   if ! echo "$sha" | grep -qE '^[0-9a-f]{40}$'; then
-    echo "Warning: Invalid baseline SHA format: '$sha'"
+    echo "Warning: Invalid SHA format: '$sha'"
     echo "Falling back to HEAD~1"
     sha=$(git rev-parse HEAD~1)
   fi
 
   # Validate the commit exists in the repo
   if ! git cat-file -t "$sha" >/dev/null 2>&1; then
-    echo "Warning: Baseline commit $sha not found in git history"
+    echo "Warning: Commit $sha not found in git history"
     echo "Falling back to HEAD~1"
     sha=$(git rev-parse HEAD~1)
   fi
 
-  echo "Baseline control git SHA: ${sha:0:7} ($sha)"
+  echo "Control commit SHA: ${sha:0:7} ($sha)"
   echo "export PERF_BASELINE_SHA=$sha" >> "$BASH_ENV"
 else
   rm -f "$tmp_file"
-  echo "Warning: No baseline found in S3. This appears to be the first run."
-  echo "Falling back to HEAD~1 as initial baseline."
+  echo "Warning: No control commit SHA found in S3. This appears to be the first run."
+  echo "Falling back to HEAD~1 as initial control commit."
   sha=$(git rev-parse HEAD~1)
-  echo "Using fallback baseline SHA: ${sha:0:7} ($sha)"
+  echo "Using fallback control commit SHA: ${sha:0:7} ($sha)"
   echo "export PERF_BASELINE_SHA=$sha" >> "$BASH_ENV"
 fi

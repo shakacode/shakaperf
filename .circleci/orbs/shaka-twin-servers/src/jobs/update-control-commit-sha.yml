@@ -1,7 +1,7 @@
 description: |
-  Update the baseline control git SHA in S3 by uploading the current HEAD SHA.
-  Use after tests pass to advance the baseline, or after a manual approval
-  gate to force-update when tests fail.
+  Update the control commit SHA in S3 by uploading the current HEAD SHA.
+  Use after tests pass to advance the control commit, or after a manual
+  approval gate to force-update when tests fail.
 
 executor:
   name: machine
@@ -20,5 +20,5 @@ parameters:
 
 steps:
   - checkout
-  - upload-baseline-control-git-sha:
+  - upload-control-commit-sha:
       s3-key-prefix: << parameters.s3-key-prefix >>

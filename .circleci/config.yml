@@ -179,7 +179,7 @@ workflows:
                   echo 'export S3_ENDPOINT=${PERF_BASELINE_S3_ENDPOINT}' >> "$BASH_ENV" # If the CI variable has a different name, you can override it here
                   echo 'export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}' >> "$BASH_ENV" # Job expects these variables to be set
                   echo 'export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}' >> "$BASH_ENV" # We can set it here or in CircleCI Env
-            - twin-servers/download-baseline-control-git-sha
+            - twin-servers/download-control-commit-sha
 
       - twin-servers/run-tests: &visual-regression-job
           name: scheduled-visual-regression
@@ -239,8 +239,8 @@ workflows:
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
 
-      # Update baseline (only runs when all tests pass)
-      - twin-servers/update-baseline-control-git-sha: &update-baseline-job
+      # Update control commit SHA (only runs when all tests pass)
+      - twin-servers/update-control-commit-sha: &update-control-sha-job
           pre-steps:
             - run:
                 name: Set S3 environment variables
@@ -253,15 +253,15 @@ workflows:
             - scheduled-visual-regression
             - scheduled-perf-tests
 
-      # Approval path: if tests fail, approve to update baseline anyway
+      # Approval path: if tests fail, approve to update control commit SHA anyway
       - approve-baseline-update:
           type: approval
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
 
-      - twin-servers/update-baseline-control-git-sha:
-          <<: *update-baseline-job
+      - twin-servers/update-control-commit-sha:
+          <<: *update-control-sha-job
           name: force-update-perf-baseline
           requires:
             - approve-baseline-update

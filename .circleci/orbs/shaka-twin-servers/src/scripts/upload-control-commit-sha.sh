@@ -18,6 +18,6 @@ aws_cmd() {
 }
 
 sha=$(git rev-parse HEAD)
-echo "Uploading baseline control git SHA to ${S3_URI}..."
+echo "Uploading control commit SHA to ${S3_URI}..."
 echo -n "$sha" | aws_cmd cp - "$S3_URI"
-echo "Baseline control git SHA updated to: ${sha:0:7} ($sha)"
+echo "Control commit SHA updated to: ${sha:0:7} ($sha)"
