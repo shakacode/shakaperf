@@ -2,7 +2,6 @@
 import { writeFileSync } from "fs-extra";
 import { dirname, join } from "path";
 
-import { fidelityLookup } from "../../command-config/default-flag-args";
 import type { RegressionThresholdStat } from "../../command-config/tb-config";
 import { CompareResults } from "../../compare/compare-results";
 import {
@@ -26,15 +25,11 @@ export interface RunAnalyzeOptions {
 }
 
 function parseNumberOfMeasurements(value: string | number): number {
-  if (typeof value === "string") {
-    if (Number.isInteger(parseInt(value, 10))) {
-      return parseInt(value, 10);
-    }
-    if (Object.keys(fidelityLookup).includes(value)) {
-      return parseInt((fidelityLookup as any)[value], 10);
-    }
+  const parsed = typeof value === "string" ? parseInt(value, 10) : value;
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`Invalid numberOfMeasurements: "${value}". Expected an integer.`);
   }
-  return typeof value === "number" ? value : 0;
+  return parsed;
 }
 
 function getReportTitles(

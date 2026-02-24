@@ -79,8 +79,7 @@ export function resolveTitles(
 
 function determineOutputFileNamePrefix(outputFolder: string): string {
   let count = 1;
-  const running = true;
-  while (running) {
+  while (true) {
     const candidateHTML = join(
       outputFolder,
       `${ARTIFACT_FILE_NAME}-${count}.html`
@@ -181,11 +180,7 @@ function logReportPaths(
 export async function runReport(options: IReportFlags): Promise<void> {
   const tbResultsFolder = options.tbResultsFolder ?? defaultFlagArgs.tbResultsFolder!;
 
-  try {
-    mkdirSync(tbResultsFolder, { recursive: true });
-  } catch (e) {
-    // ignore
-  }
+  mkdirSync(tbResultsFolder, { recursive: true });
 
   const inputFilePath = join(tbResultsFolder, "compare.json");
   const { controlData, experimentData } = parseCompareResult(inputFilePath);
