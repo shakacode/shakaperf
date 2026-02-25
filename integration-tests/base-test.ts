@@ -1,5 +1,6 @@
 import { test as base } from '@playwright/test';
-import { loud, stopServers, startServers, waitForPort, run } from './helpers';
+import { execSync } from 'child_process';
+import { TEMP_CLONE_PATH, loud, startServers, waitForPort, run } from './helpers';
 
 export const test = base.extend({});
 
@@ -10,8 +11,10 @@ test.beforeEach(async ({}, testInfo) => {
 });
 
 test.afterEach(async () => {
+  loud('Resetting git changes in temp clone');
+  execSync('git checkout .', { cwd: TEMP_CLONE_PATH, stdio: 'inherit' });
+
   loud('Resetting containers and servers to initial state');
-  stopServers();
   run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
   startServers();
   loud('Waiting for ports 3020 + 3030');
