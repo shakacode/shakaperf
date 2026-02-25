@@ -11,13 +11,6 @@ test.beforeEach(async ({}, testInfo) => {
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  if (testInfo.project.use.headless === false) {
-    loud('HEADED MODE: Browser is open for inspection. Press Enter to continue...');
-    await new Promise<void>(resolve => {
-      process.stdin.once('data', () => resolve());
-    });
-  }
-
   loud('Resetting git changes in temp clone');
   execSync('git checkout .', { cwd: TEMP_CLONE_PATH, stdio: 'inherit' });
 
