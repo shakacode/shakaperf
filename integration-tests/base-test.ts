@@ -1,10 +1,11 @@
 import { test as base } from '@playwright/test';
-import { loud } from './helpers';
-
 export const test = base.extend({});
 
 test.beforeEach(async ({}, testInfo) => {
-  loud(`TEST: ${testInfo.title}`);
+  console.log(`\n\x1b[1;31m>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\x1b[0m\n`);
+
+  console.log(`\n\x1b[1;31m>>>>>>>>>>>>>>>>>> TEST: ${testInfo.title}\x1b[0m\n`);
+  console.log(`\n\x1b[1;31m>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\x1b[0m\n`);
 });
 
 export { expect } from '@playwright/test';
