@@ -63,7 +63,9 @@ export async function startContainers(
     }
   }
 
-  console.log('Ensuring bind-mount directories exist...');
+  console.log('Clearing stale volume contents...');
+  fs.rmSync(config.volumes.control, { recursive: true, force: true });
+  fs.rmSync(config.volumes.experiment, { recursive: true, force: true });
   fs.mkdirSync(config.volumes.control, { recursive: true });
   fs.mkdirSync(config.volumes.experiment, { recursive: true });
   console.log(`   ${config.volumes.control}`);
