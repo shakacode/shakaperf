@@ -2,17 +2,24 @@ import { test, expect } from './base-test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  TEMP_CLONE_PATH,
+  EXPERIMENT_CLONE_PATH,
   loud, run, startServers, stopServers, waitForPort,
 } from './helpers';
 
 const HOME_PAGE_FILE = path.join(
-  TEMP_CLONE_PATH,
+  EXPERIMENT_CLONE_PATH,
   'demo-ecommerce/app/javascript/components/pages/HomePage.tsx',
 );
 
 test('modify experiment, rebuild, and verify servers diverge', async ({ page }) => {
   test.setTimeout(10 * 60 * 1000);
+
+  startServers();
+  loud('Waiting for ports 3020 + 3030');
+  await Promise.all([
+    waitForPort(3020),
+    waitForPort(3030),
+  ]);
 
   // Verify both servers initially serve the same content
   loud('Verifying experiment server has "Discover Your Style"');

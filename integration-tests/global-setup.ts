@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import {
-  TMP_ROOT, TEMP_CLONE_PATH, CONTROL_CLONE_PATH, ORIGINAL_REPO, DEMO_CWD,
+  TMP_ROOT, EXPERIMENT_CLONE_PATH, CONTROL_CLONE_PATH, ORIGINAL_REPO, DEMO_CWD,
   env, loud, run, startServers, waitForPort,
 } from './helpers';
 
@@ -54,7 +54,7 @@ export default async function globalSetup() {
   // Clone experiment copy (current branch)
   loud(`Cloning experiment repo (branch: ${branch})`);
   execSync(
-    `git clone --branch ${branch} "${ORIGINAL_REPO}" "${TEMP_CLONE_PATH}"`,
+    `git clone --branch ${branch} "${ORIGINAL_REPO}" "${EXPERIMENT_CLONE_PATH}"`,
     { stdio: 'inherit' },
   );
 
@@ -68,7 +68,7 @@ export default async function globalSetup() {
   // Install and build in temp clone
   loud('Installing dependencies in temp clone');
   execSync('yarn install', {
-    cwd: TEMP_CLONE_PATH,
+    cwd: EXPERIMENT_CLONE_PATH,
     env,
     stdio: 'inherit',
     timeout: 5 * 60 * 1000,
@@ -76,7 +76,7 @@ export default async function globalSetup() {
 
   loud('Building packages in temp clone');
   execSync('yarn build', {
-    cwd: TEMP_CLONE_PATH,
+    cwd: EXPERIMENT_CLONE_PATH,
     env,
     stdio: 'inherit',
     timeout: 5 * 60 * 1000,
@@ -84,15 +84,4 @@ export default async function globalSetup() {
 
   // Build docker images
   run('yarn shaka-twin-servers build', { timeout: 15 * 60 * 1000 });
-
-  // Start containers
-  run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
-
-  // Start servers
-  startServers();
-  loud('Waiting for ports 3020 + 3030');
-  await Promise.all([
-    waitForPort(3020),
-    waitForPort(3030),
-  ]);
 }

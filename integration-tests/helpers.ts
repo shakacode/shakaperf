@@ -3,10 +3,10 @@ import * as path from 'path';
 import * as http from 'http';
 
 export const TMP_ROOT = '/tmp/temp-shaka-perf-repos-for-tests';
-export const TEMP_CLONE_PATH = path.join(TMP_ROOT, 'shaka-perf');
+export const EXPERIMENT_CLONE_PATH = path.join(TMP_ROOT, 'shaka-perf');
 export const CONTROL_CLONE_PATH = path.join(TMP_ROOT, 'shaka-perf-control');
 export const ORIGINAL_REPO = path.resolve(__dirname, '..');
-export const DEMO_CWD = path.join(TEMP_CLONE_PATH, 'demo-ecommerce');
+export const DEMO_CWD = path.join(EXPERIMENT_CLONE_PATH, 'demo-ecommerce');
 
 export const env: Record<string, string> = {
   ...process.env as Record<string, string>,
