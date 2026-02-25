@@ -18,11 +18,7 @@ export async function runCmdParallel(
   command: string,
   options: RunCmdParallelOptions = {}
 ): Promise<void> {
-  const { verbose } = options;
-
-  if (verbose) {
-    console.log(`Running in parallel: ${command}`);
-  }
+  console.log(`Running in parallel: ${colorize(command, 'green')} in both containers`);
 
   const runInContainer = async (target: 'experiment' | 'control') => {
     const containerName = target === 'control' ? 'control-server' : 'experiment-server';
