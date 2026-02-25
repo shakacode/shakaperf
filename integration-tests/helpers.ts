@@ -64,8 +64,8 @@ const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
 export function startServers(): void {
   loud('Starting puma in both containers');
-  run(`yarn shaka-twin-servers run-cmd control "${PUMA_CMD} -d"`);
-  run(`yarn shaka-twin-servers run-cmd experiment "${PUMA_CMD} -d"`);
+  run(`yarn shaka-twin-servers run-cmd control "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
+  run(`yarn shaka-twin-servers run-cmd experiment "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
 }
 
 export function stopServers(): void {
