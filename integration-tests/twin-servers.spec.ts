@@ -4,8 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 
-const TMP_ROOT = '/tmp/shaka-perf';
-const TEMP_CLONE_PATH = path.join(TMP_ROOT, 'temp-git-repo-for-tests');
+const TMP_ROOT = '/tmp/temp-shaka-perf-repos-for-tests';
+const TEMP_CLONE_PATH = path.join(TMP_ROOT, 'shaka-perf');
 const CONTROL_CLONE_PATH = path.join(TMP_ROOT, 'shaka-perf-control');
 const ORIGINAL_REPO = path.resolve(__dirname, '..');
 const DEMO_CWD = path.join(TEMP_CLONE_PATH, 'demo-ecommerce');
