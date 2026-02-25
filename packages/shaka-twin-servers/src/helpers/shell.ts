@@ -140,7 +140,7 @@ export async function runForBothServersInParallel(bashFn: string, env?: NodeJS.P
   }
   const functionName = match[1];
 
-  requireCommand('parallel', 'brew install parallel (Mac) or sudo apt-get install parallel (Linux)');
+  requireCommand('parallel', '`brew install parallel` (Mac) or `sudo apt-get install parallel` (Ubuntu)');
 
   const helperScript = path.join(getScriptsDir(), 'run-for-both-servers-in-parallel.sh');
   const script = `${bashFn}

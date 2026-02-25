@@ -38,11 +38,10 @@ yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 yarn shaka-twin-servers start-servers
 ```
 
-### Stop Everything
+### Stop Everything (shut down docker containers)
 
 ```bash
-# Ctrl+C on Overmind to stop servers, then:
-docker compose down
+yarn shaka-twin-servers stop-containers
 ```
 
 ## Architecture
