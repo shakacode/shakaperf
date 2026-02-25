@@ -56,5 +56,43 @@ test('modify experiment, rebuild, and verify servers diverge', async ({ page }) 
   loud('Verifying control (3020) still has "Discover Your Style"');
   await page.goto('http://localhost:3020');
   await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
+});
 
+test('run-cmd experiment works with quoted string', async ({ page }) => {
+  test.setTimeout(10 * 60 * 1000);
+
+  // Stop servers, modify experiment, sync, rebuild using run-cmd with quoted string
+  stopServers();
+
+  loud('Modifying HomePage.tsx: "Discover Your Style" -> "Run Cmd Works"');
+  const homePageContent = fs.readFileSync(HOME_PAGE_FILE, 'utf-8');
+  const updatedContent = homePageContent.replace(
+    'Discover Your Style',
+    'Run Cmd Works',
+  );
+  fs.writeFileSync(HOME_PAGE_FILE, updatedContent);
+
+  run('yarn shaka-twin-servers sync-changes experiment');
+
+  // Use run-cmd with a quoted string argument
+  run('yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"', {
+    timeout: 5 * 60 * 1000,
+  });
+
+  startServers();
+  loud('Waiting for ports 3020 + 3030');
+  await Promise.all([
+    waitForPort(3020),
+    waitForPort(3030),
+  ]);
+
+  // Verify experiment has new content
+  loud('Verifying experiment (3030) has "Run Cmd Works"');
+  await page.goto('http://localhost:3030');
+  await expect(page.getByText('Run Cmd Works')).toBeVisible({ timeout: 30_000 });
+
+  // Verify control still has original content
+  loud('Verifying control (3020) still has "Discover Your Style"');
+  await page.goto('http://localhost:3020');
+  await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
 });
