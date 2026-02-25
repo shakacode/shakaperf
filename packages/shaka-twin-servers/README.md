@@ -31,7 +31,7 @@ Docker volumes are bind-mounted to host directories, so you can sync changes wit
 # Stop servers (Ctrl+C on Overmind), then:
 yarn shaka-twin-servers sync-changes experiment
 
-# Run commands inside the container if needed
+# Rebuild JS in experiment container. E.G., for RORP, run:
 yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 
 # Restart servers

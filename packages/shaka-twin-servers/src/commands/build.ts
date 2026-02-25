@@ -113,6 +113,8 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     const remoteUrl = getGitRemoteUrl(config.dockerBuildDir);
     const defaultBranch = getDefaultBranch(config.dockerBuildDir);
 
+    console.log(`Remote:${remoteUrl} Default Branch:${defaultBranch}`)
+
     if (!remoteUrl) {
       printError(`Control directory not found: ${config.controlDir}`);
       console.log('The control directory should contain the baseline version of your code.');
