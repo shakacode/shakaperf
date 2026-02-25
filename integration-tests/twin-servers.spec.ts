@@ -35,12 +35,12 @@ const GREEN_BOLD = '\x1b[1;32m';
 const RESET = '\x1b[0m';
 
 function loud(msg: string): void {
-  console.log(`\n${GREEN_BOLD}>>> ${msg.toUpperCase()}${RESET}\n`);
+  console.log(`\n${GREEN_BOLD}>>> ${msg}${RESET}\n`);
 }
 
 function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
   const { cwd = DEMO_CWD, timeout = 10 * 60 * 1000 } = opts;
-  loud(`RUN: ${cmd}`);
+  loud(`run: ${cmd}`);
   const output = execSync(cmd, {
     cwd,
     env,
@@ -93,13 +93,13 @@ function dockerCompose(args: string, opts: { timeout?: number } = {}): string {
 }
 
 function startServers(): void {
-  loud('STARTING PUMA IN BOTH CONTAINERS (DETACHED)');
+  loud('Starting puma in both containers (detached)');
   dockerCompose(`exec -d -T control-server bash -c '${PUMA_CMD}'`);
   dockerCompose(`exec -d -T experiment-server bash -c '${PUMA_CMD}'`);
 }
 
 function stopServers(): void {
-  loud('STOPPING PUMA IN BOTH CONTAINERS');
+  loud('Stopping puma in both containers');
   for (const container of ['control-server', 'experiment-server']) {
     try {
       dockerCompose(`exec -T ${container} bash -c "pkill -f puma || true"`);
@@ -129,7 +129,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     const branch = execSync('git branch --show-current', {
       cwd: ORIGINAL_REPO,
     }).toString().trim();
-    loud(`CURRENT BRANCH: ${branch}`);
+    loud(`Current branch: ${branch}`);
 
     // Ensure working tree is clean and all commits are pushed to origin
     const dirty = execSync('git status --porcelain', {
@@ -165,21 +165,21 @@ test.describe.serial('twin-servers lifecycle', () => {
     }
 
     // Clone experiment copy (current branch)
-    loud(`CLONING EXPERIMENT REPO (BRANCH: ${branch})`);
+    loud(`Cloning experiment repo (branch: ${branch})`);
     execSync(
       `git clone --branch ${branch} "${ORIGINAL_REPO}" "${TEMP_CLONE_PATH}"`,
       { stdio: 'inherit' },
     );
 
     // Clone control copy (main branch)
-    loud('CLONING CONTROL REPO (BRANCH: MAIN)');
+    loud('Cloning control repo (branch: main)');
     execSync(
       `git clone --branch main "${ORIGINAL_REPO}" "${CONTROL_CLONE_PATH}"`,
       { stdio: 'inherit' },
     );
 
     // Install and build in temp clone
-    loud('INSTALLING DEPENDENCIES IN TEMP CLONE');
+    loud('Installing dependencies in temp clone');
     execSync('yarn install', {
       cwd: TEMP_CLONE_PATH,
       env,
@@ -187,7 +187,7 @@ test.describe.serial('twin-servers lifecycle', () => {
       timeout: 5 * 60 * 1000,
     });
 
-    loud('BUILDING PACKAGES IN TEMP CLONE');
+    loud('Building packages in temp clone');
     execSync('yarn build', {
       cwd: TEMP_CLONE_PATH,
       env,
@@ -215,6 +215,10 @@ test.describe.serial('twin-servers lifecycle', () => {
     // Leave /tmp/shaka-perf/ for debugging
   });
 
+  test.beforeEach(async ({}, testInfo) => {
+    loud(`TEST: ${testInfo.title}`);
+  });
+
   test('build docker images', async () => {
     test.setTimeout(15 * 60 * 1000);
     run('yarn shaka-twin-servers build', { timeout: 15 * 60 * 1000 });
@@ -230,15 +234,13 @@ test.describe.serial('twin-servers lifecycle', () => {
 
     startServers();
 
-    // Wait for both ports
-    loud('WAITING FOR PORTS 3020 + 3030');
+    loud('Waiting for ports 3020 + 3030');
     await Promise.all([
       waitForPort(3020),
       waitForPort(3030),
     ]);
 
-    // Verify experiment server has initial content
-    loud('VERIFYING EXPERIMENT SERVER HAS "DISCOVER YOUR STYLE"');
+    loud('Verifying experiment server has "Discover Your Style"');
     await page.goto('http://localhost:3030');
     await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
   });
@@ -250,7 +252,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     stopServers();
 
     // 2. Modify HomePage.tsx in the temp clone
-    loud('MODIFYING HOMEPAGE.TSX: "DISCOVER YOUR STYLE" -> "DISCOVER YOUR NEW SELF"');
+    loud('Modifying HomePage.tsx: "Discover Your Style" -> "Discover Your New Self"');
     const homePageContent = fs.readFileSync(HOME_PAGE_FILE, 'utf-8');
     const updatedContent = homePageContent.replace(
       'Discover Your Style',
@@ -268,19 +270,19 @@ test.describe.serial('twin-servers lifecycle', () => {
 
     // 5. Restart servers
     startServers();
-    loud('WAITING FOR PORTS 3020 + 3030');
+    loud('Waiting for ports 3020 + 3030');
     await Promise.all([
       waitForPort(3020),
       waitForPort(3030),
     ]);
 
     // 6. Verify experiment has new content
-    loud('VERIFYING EXPERIMENT (3030) HAS "DISCOVER YOUR NEW SELF"');
+    loud('Verifying experiment (3030) has "Discover Your New Self"');
     await page.goto('http://localhost:3030');
     await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
 
     // 7. Verify control still has original content
-    loud('VERIFYING CONTROL (3020) STILL HAS "DISCOVER YOUR STYLE"');
+    loud('Verifying control (3020) still has "Discover Your Style"');
     await page.goto('http://localhost:3020');
     await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
   });
