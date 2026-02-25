@@ -13,12 +13,6 @@ export const env: Record<string, string> = {
   CONTROL_REPO_DIR: path.join(CONTROL_CLONE_PATH, 'demo-ecommerce'),
 };
 
-export const composeEnv: Record<string, string> = {
-  ...env,
-  CI_IMAGE_NAME: 'demo-ecommerce:experiment',
-  CI_CONTROL_IMAGE_NAME: 'demo-ecommerce:control',
-  USER: process.env.USER || 'user',
-};
 
 const GREEN_BOLD = '\x1b[1;32m';
 const RESET = '\x1b[0m';
@@ -68,32 +62,14 @@ export function waitForPort(port: number, timeout = 180_000): Promise<void> {
 
 const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
-export function dockerCompose(args: string, opts: { timeout?: number } = {}): string {
-  const cmd = `docker compose -f docker-compose.yml ${args}`;
-  const output = execSync(cmd, {
-    cwd: DEMO_CWD,
-    env: composeEnv,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    timeout: opts.timeout ?? 60_000,
-  });
-  const text = output.toString();
-  if (text) console.log(text);
-  return text;
-}
-
 export function startServers(): void {
-  loud('Starting puma in both containers (detached)');
-  dockerCompose(`exec -d -T control-server bash -c '${PUMA_CMD}'`);
-  dockerCompose(`exec -d -T experiment-server bash -c '${PUMA_CMD}'`);
+  loud('Starting puma in both containers');
+  run(`yarn shaka-twin-servers run-cmd control "${PUMA_CMD} -d"`);
+  run(`yarn shaka-twin-servers run-cmd experiment "${PUMA_CMD} -d"`);
 }
 
 export function stopServers(): void {
   loud('Stopping puma in both containers');
-  for (const container of ['control-server', 'experiment-server']) {
-    try {
-      dockerCompose(`exec -T ${container} bash -c "pkill -f puma || true"`);
-    } catch {
-      // ignore — container may already be stopped
-    }
-  }
+  try { run('yarn shaka-twin-servers run-cmd control "pkill -f puma || true"'); } catch { /* ignore */ }
+  try { run('yarn shaka-twin-servers run-cmd experiment "pkill -f puma || true"'); } catch { /* ignore */ }
 }
