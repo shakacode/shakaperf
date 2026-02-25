@@ -17,6 +17,7 @@ for pkg in shaka-bundle-size shaka-twin-servers shaka-bench shaka-visreg; do
   fi
 done
 
+# demo-ecommerce depends on the workspace packages, so typecheck it whenever a package changes
 if echo "$staged" | grep -q '^demo-ecommerce/' || [ "$packages_changed" = true ]; then
   args="$args --include demo-ecommerce"
 fi
