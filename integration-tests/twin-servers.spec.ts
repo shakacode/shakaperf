@@ -31,9 +31,16 @@ const composeEnv: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const GREEN_BOLD = '\x1b[1;32m';
+const RESET = '\x1b[0m';
+
+function loud(msg: string): void {
+  console.log(`\n${GREEN_BOLD}>>> ${msg.toUpperCase()}${RESET}\n`);
+}
+
 function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
   const { cwd = DEMO_CWD, timeout = 10 * 60 * 1000 } = opts;
-  console.log(`\n>>> [run] ${cmd}  (cwd: ${cwd})`);
+  loud(`RUN: ${cmd}`);
   const output = execSync(cmd, {
     cwd,
     env,
@@ -74,7 +81,6 @@ const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
 function dockerCompose(args: string, opts: { timeout?: number } = {}): string {
   const cmd = `docker compose -f docker-compose.yml ${args}`;
-  console.log(`\n>>> [docker-compose] ${cmd}`);
   const output = execSync(cmd, {
     cwd: DEMO_CWD,
     env: composeEnv,
@@ -87,13 +93,13 @@ function dockerCompose(args: string, opts: { timeout?: number } = {}): string {
 }
 
 function startServers(): void {
-  console.log('\n>>> Starting puma in both containers (detached)...');
+  loud('STARTING PUMA IN BOTH CONTAINERS (DETACHED)');
   dockerCompose(`exec -d -T control-server bash -c '${PUMA_CMD}'`);
   dockerCompose(`exec -d -T experiment-server bash -c '${PUMA_CMD}'`);
 }
 
 function stopServers(): void {
-  console.log('\n>>> Stopping puma in both containers...');
+  loud('STOPPING PUMA IN BOTH CONTAINERS');
   for (const container of ['control-server', 'experiment-server']) {
     try {
       dockerCompose(`exec -T ${container} bash -c "pkill -f puma || true"`);
@@ -123,7 +129,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     const branch = execSync('git branch --show-current', {
       cwd: ORIGINAL_REPO,
     }).toString().trim();
-    console.log(`Current branch: ${branch}`);
+    loud(`CURRENT BRANCH: ${branch}`);
 
     // Ensure working tree is clean and all commits are pushed to origin
     const dirty = execSync('git status --porcelain', {
@@ -159,21 +165,21 @@ test.describe.serial('twin-servers lifecycle', () => {
     }
 
     // Clone experiment copy (current branch)
-    console.log(`Cloning experiment repo (branch: ${branch})...`);
+    loud(`CLONING EXPERIMENT REPO (BRANCH: ${branch})`);
     execSync(
       `git clone --branch ${branch} "${ORIGINAL_REPO}" "${TEMP_CLONE_PATH}"`,
       { stdio: 'inherit' },
     );
 
     // Clone control copy (main branch)
-    console.log('Cloning control repo (branch: main)...');
+    loud('CLONING CONTROL REPO (BRANCH: MAIN)');
     execSync(
       `git clone --branch main "${ORIGINAL_REPO}" "${CONTROL_CLONE_PATH}"`,
       { stdio: 'inherit' },
     );
 
     // Install and build in temp clone
-    console.log('Installing dependencies in temp clone...');
+    loud('INSTALLING DEPENDENCIES IN TEMP CLONE');
     execSync('yarn install', {
       cwd: TEMP_CLONE_PATH,
       env,
@@ -181,7 +187,7 @@ test.describe.serial('twin-servers lifecycle', () => {
       timeout: 5 * 60 * 1000,
     });
 
-    console.log('Building packages in temp clone...');
+    loud('BUILDING PACKAGES IN TEMP CLONE');
     execSync('yarn build', {
       cwd: TEMP_CLONE_PATH,
       env,
@@ -194,7 +200,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     // Tear down docker compose (only if the clone exists)
     if (fs.existsSync(DEMO_CWD)) {
       try {
-        console.log('Running docker compose down...');
+        loud('RUNNING DOCKER COMPOSE DOWN');
         execSync('docker compose down --remove-orphans', {
           cwd: DEMO_CWD,
           env: composeEnv,
@@ -225,12 +231,14 @@ test.describe.serial('twin-servers lifecycle', () => {
     startServers();
 
     // Wait for both ports
+    loud('WAITING FOR PORTS 3020 + 3030');
     await Promise.all([
       waitForPort(3020),
       waitForPort(3030),
     ]);
 
     // Verify experiment server has initial content
+    loud('VERIFYING EXPERIMENT SERVER HAS "DISCOVER YOUR STYLE"');
     await page.goto('http://localhost:3030');
     await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
   });
@@ -242,6 +250,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     stopServers();
 
     // 2. Modify HomePage.tsx in the temp clone
+    loud('MODIFYING HOMEPAGE.TSX: "DISCOVER YOUR STYLE" -> "DISCOVER YOUR NEW SELF"');
     const homePageContent = fs.readFileSync(HOME_PAGE_FILE, 'utf-8');
     const updatedContent = homePageContent.replace(
       'Discover Your Style',
@@ -259,16 +268,19 @@ test.describe.serial('twin-servers lifecycle', () => {
 
     // 5. Restart servers
     startServers();
+    loud('WAITING FOR PORTS 3020 + 3030');
     await Promise.all([
       waitForPort(3020),
       waitForPort(3030),
     ]);
 
     // 6. Verify experiment has new content
+    loud('VERIFYING EXPERIMENT (3030) HAS "DISCOVER YOUR NEW SELF"');
     await page.goto('http://localhost:3030');
     await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
 
     // 7. Verify control still has original content
+    loud('VERIFYING CONTROL (3020) STILL HAS "DISCOVER YOUR STYLE"');
     await page.goto('http://localhost:3020');
     await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
   });
