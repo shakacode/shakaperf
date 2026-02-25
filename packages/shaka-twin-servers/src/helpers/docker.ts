@@ -58,7 +58,7 @@ export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {
 
 export async function dockerComposeDown(config: ResolvedConfig): Promise<void> {
   const opts = buildComposeOptions(config);
-  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--remove-orphans'], {
+  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--volumes', '--remove-orphans'], {
     cwd: opts.cwd,
     env: opts.env,
     silent: true,
