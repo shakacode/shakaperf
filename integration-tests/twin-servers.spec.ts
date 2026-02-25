@@ -1,5 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import { execSync, spawn, type ChildProcess } from 'child_process';
+import { test, expect } from '@playwright/test';
+import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
@@ -70,41 +70,42 @@ function waitForPort(port: number, timeout = 180_000): Promise<void> {
   });
 }
 
-function startServersInBackground(): ChildProcess {
-  console.log('\n>>> [spawn] yarn shaka-twin-servers start-servers');
-  const child = spawn('yarn', ['shaka-twin-servers', 'start-servers'], {
+const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
+
+function dockerCompose(args: string, opts: { timeout?: number } = {}): string {
+  const cmd = `docker compose -f docker-compose.yml ${args}`;
+  console.log(`\n>>> [docker-compose] ${cmd}`);
+  const output = execSync(cmd, {
     cwd: DEMO_CWD,
-    env,
-    stdio: 'pipe',
+    env: composeEnv,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    timeout: opts.timeout ?? 60_000,
   });
-  child.stdout?.on('data', (d) => process.stdout.write(`[servers:stdout] ${d}`));
-  child.stderr?.on('data', (d) => process.stderr.write(`[servers:stderr] ${d}`));
-  return child;
+  const text = output.toString();
+  if (text) console.log(text);
+  return text;
 }
 
-function stopServers(child: ChildProcess): Promise<void> {
-  return new Promise((resolve) => {
-    if (child.exitCode !== null) {
-      resolve();
-      return;
+function startServers(): void {
+  console.log('\n>>> Starting puma in both containers (detached)...');
+  dockerCompose(`exec -d -T control-server bash -c '${PUMA_CMD}'`);
+  dockerCompose(`exec -d -T experiment-server bash -c '${PUMA_CMD}'`);
+}
+
+function stopServers(): void {
+  console.log('\n>>> Stopping puma in both containers...');
+  for (const container of ['control-server', 'experiment-server']) {
+    try {
+      dockerCompose(`exec -T ${container} bash -c "pkill -f puma || true"`);
+    } catch {
+      // ignore — container may already be stopped
     }
-    const timeout = setTimeout(() => {
-      child.kill('SIGKILL');
-      resolve();
-    }, 15_000);
-    child.once('close', () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    child.kill('SIGTERM');
-  });
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown
 // ---------------------------------------------------------------------------
-
-let serversChild: ChildProcess | null = null;
 
 // ---------------------------------------------------------------------------
 // Tests (serial — each step depends on the previous one)
@@ -190,13 +191,6 @@ test.describe.serial('twin-servers lifecycle', () => {
   });
 
   test.afterAll(async () => {
-    // Kill servers if still running
-    if (serversChild) {
-      console.log('Stopping servers...');
-      await stopServers(serversChild);
-      serversChild = null;
-    }
-
     // Tear down docker compose (only if the clone exists)
     if (fs.existsSync(DEMO_CWD)) {
       try {
@@ -228,7 +222,7 @@ test.describe.serial('twin-servers lifecycle', () => {
   test('start servers and verify initial content', async ({ page }) => {
     test.setTimeout(3 * 60 * 1000);
 
-    serversChild = startServersInBackground();
+    startServers();
 
     // Wait for both ports
     await Promise.all([
@@ -245,10 +239,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     test.setTimeout(10 * 60 * 1000);
 
     // 1. Stop servers
-    if (serversChild) {
-      await stopServers(serversChild);
-      serversChild = null;
-    }
+    stopServers();
 
     // 2. Modify HomePage.tsx in the temp clone
     const homePageContent = fs.readFileSync(HOME_PAGE_FILE, 'utf-8');
@@ -267,7 +258,7 @@ test.describe.serial('twin-servers lifecycle', () => {
     });
 
     // 5. Restart servers
-    serversChild = startServersInBackground();
+    startServers();
     await Promise.all([
       waitForPort(3020),
       waitForPort(3030),
