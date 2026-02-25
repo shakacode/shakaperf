@@ -47,15 +47,15 @@ test('modify experiment, rebuild, and verify servers diverge', async ({ page }) 
     waitForPort(3030),
   ]);
 
-  // Verify experiment has new content
-  loud('Verifying experiment (3030) has "Discover Your New Self"');
-  await page.goto('http://localhost:3030');
-  await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
-
   // Verify control still has original content
   loud('Verifying control (3020) still has "Discover Your Style"');
   await page.goto('http://localhost:3020');
   await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
+
+  // Verify experiment has new content
+  loud('Verifying experiment (3030) has "Discover Your New Self"');
+  await page.goto('http://localhost:3030');
+  await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
 });
 
 test('run-cmd preserves single and double quotes', async ({ page }) => {
@@ -77,11 +77,11 @@ test('run-cmd preserves single and double quotes', async ({ page }) => {
   loud('Waiting for ports 3020 + 3030');
   await Promise.all([waitForPort(3020), waitForPort(3030)]);
 
-  loud('Verifying experiment (3030) has text with single and double quotes');
-  await page.goto('http://localhost:3030');
-  await expect(page.getByText(`It's a "quoted" world`)).toBeVisible({ timeout: 30_000 });
-
   loud('Verifying control (3020) still has "Discover Your Style"');
   await page.goto('http://localhost:3020');
   await expect(page.getByText('Discover Your Style')).toBeVisible({ timeout: 30_000 });
+  
+  loud('Verifying experiment (3030) has text with single and double quotes');
+  await page.goto('http://localhost:3030');
+  await expect(page.getByText(`It's a "quoted" world`)).toBeVisible({ timeout: 30_000 });
 });
