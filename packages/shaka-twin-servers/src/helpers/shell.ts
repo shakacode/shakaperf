@@ -142,6 +142,9 @@ export async function runForBothServersInParallel(bashFn: string, env?: NodeJS.P
 
   requireCommand('parallel', '`brew install parallel` (Mac) or `sudo apt-get install parallel` (Ubuntu)');
 
+  console.log(`Running command below in both control and experiment containers${!!env ? ` with env ${JSON.stringify(env)}`: ''}
+${bashFn}`)
+
   const helperScript = path.join(getScriptsDir(), 'run-for-both-servers-in-parallel.sh');
   const script = `${bashFn}
 source '${helperScript}'
