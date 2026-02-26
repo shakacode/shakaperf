@@ -3,7 +3,6 @@ import * as path from 'path';
 import type { ResolvedConfig } from '../types';
 import { requireCommand, confirm, exec, runInParallel } from '../helpers/shell';
 import {
-  dockerBuild,
   getGitSha,
   getGitBranch,
   getUserId,
@@ -43,35 +42,28 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   }
   args.push('.');
 
-  return { cmd: `docker ${args.map(a => `'${a}'`).join(' ')}`, cwd: buildDir };
+  const escaped = args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ');
+  return { cmd: `docker ${escaped}`, cwd: buildDir };
 }
 
 async function buildServer(serverType: 'control' | 'experiment', config: ResolvedConfig, options: { verbose?: boolean; noCache?: boolean } = {}): Promise<void> {
-  const isControl = serverType === 'control';
-  const imageName = isControl ? config.images.control : config.images.experiment;
-  const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
-  const projectName = path.basename(config.projectDir);
-  const dockerfilePath = path.join(projectName, config.dockerfile);
+  const { cmd, cwd } = buildDockerCmd(serverType, config, options.noCache);
 
-  console.log(`Building ${serverType} from ${buildDir}...`);
+  console.log(`Building ${serverType} from ${cwd}...`);
   if (options.verbose) {
+    const isControl = serverType === 'control';
+    const imageName = isControl ? config.images.control : config.images.experiment;
+    const projectName = path.basename(config.projectDir);
+    const dockerfilePath = path.join(projectName, config.dockerfile);
     console.log(`  Image: ${imageName}`);
     console.log(`  Dockerfile: ${dockerfilePath}`);
-    console.log(`  Git SHA: ${getGitSha(buildDir)}`);
+    console.log(`  Git SHA: ${getGitSha(cwd)}`);
   }
 
-  await dockerBuild({
-    imageName,
-    dockerfile: dockerfilePath,
-    buildContext: buildDir,
-    noCache: options.noCache,
-    buildArgs: {
-      ...config.dockerBuildArgs,
-      UID: getUserId(),
-      GID: getGroupId(),
-      NON_ROOT_USER: getUsername(),
-    },
-  });
+  const result = await exec('bash', ['-c', `cd '${cwd.replace(/'/g, "'\\''")}' && ${cmd}`]);
+  if (result.code !== 0) {
+    throw new Error(`Docker build failed for ${serverType}`);
+  }
 
   console.log(`Finished building ${serverType}`);
 }

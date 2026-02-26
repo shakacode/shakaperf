@@ -96,18 +96,14 @@ export async function startContainers(
   console.log(`   Experiment: ${config.volumes.experiment}`);
   console.log('');
   console.log('Access container shells:');
-  console.log('   docker compose exec control-server bash');
-  console.log('   docker compose exec experiment-server bash');
+  console.log('   yarn shaka-twin-servers run-cmd control bash');
+  console.log('   yarn shaka-twin-servers run-cmd experiment bash');
   console.log('');
   console.log('Next steps:');
   console.log('   1. Start the servers:');
   console.log('      yarn shaka-twin-servers start-servers');
   console.log('');
   console.log('   2. Stop containers when done:');
-  console.log('      docker compose down');
-  console.log('');
-  console.log('   3. View logs:');
-  console.log('      docker compose logs -f control-server');
-  console.log('      docker compose logs -f experiment-server');
+  console.log('      yarn shaka-twin-servers stop-containers');
   console.log('');
 }
