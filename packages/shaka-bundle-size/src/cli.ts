@@ -150,8 +150,9 @@ function printCompareFailureGuidance(configPath: string): void {
   console.error('');
   console.error('To get insights into why the bundle size changed, see Artifacts for this CI job');
   console.error('');
-  console.error(`Also, see docs: ${RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL}`);
+  console.error(`Also, see docs: ${colorize.blue(RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL)}`);
   console.error('');
+  console.error(colorize.bold(colorize.yellow('HOW TO RESOLVE THIS ISSUE')));
   console.error(`If the change is intended or if you don't know how to resolve the issue and the docs aren't helpful, do the following:`);
   console.error(`    * run \`${colorize.green(acknowledgeCmd)}\``);
   console.error('    * Commit and push the changes to your branch.');
