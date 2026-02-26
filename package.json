@@ -10,7 +10,7 @@
   "scripts": {
     "build": "yarn workspaces foreach -A --include 'packages/*' run build",
     "typecheck": "yarn workspaces foreach -Ap run typecheck",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "postinstall": "git config core.hooksPath .githooks"
   },
   "repository": {
     "type": "git",

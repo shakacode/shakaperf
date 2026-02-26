@@ -30,10 +30,8 @@ if [ -n "$args" ]; then
   yarn workspaces foreach -Ap $args run typecheck || exit 1
 fi
 
-# Build changed packages before checking demo-ecommerce so it sees fresh types
+# Build all packages before checking demo-ecommerce so it can resolve all workspace imports
 if [ "$check_demo" = true ]; then
-  if [ -n "$args" ]; then
-    yarn workspaces foreach -Ap $args run build || exit 1
-  fi
+  yarn workspaces foreach -Ap --include 'packages/*' run build || exit 1
   yarn workspace demo-ecommerce run typecheck || exit 1
 fi
