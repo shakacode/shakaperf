@@ -12,53 +12,20 @@ export default async function globalSetup() {
   }
   fs.mkdirSync(TMP_ROOT, { recursive: true });
 
-  // Detect current branch
-  const branch = execSync('git branch --show-current', {
-    cwd: ORIGINAL_REPO,
-  }).toString().trim();
-  loud(`Current branch: ${branch}`);
-
-  // Ensure working tree is clean and all commits are pushed to origin
-  const dirty = execSync('git status --porcelain', {
-    cwd: ORIGINAL_REPO,
-  }).toString().trim();
-  if (dirty) {
-    throw new Error(
-      'Working tree has uncommitted changes. Commit and push your changes before running integration tests.\n' +
-      `Dirty files:\n${dirty}`,
-    );
-  }
-
-  const localSha = execSync(`git rev-parse ${branch}`, {
-    cwd: ORIGINAL_REPO,
-  }).toString().trim();
-  let remoteSha: string;
-  try {
-    remoteSha = execSync(`git rev-parse origin/${branch}`, {
-      cwd: ORIGINAL_REPO,
-    }).toString().trim();
-  } catch {
-    throw new Error(
-      `Branch "${branch}" does not exist on origin. Push your branch before running integration tests:\n` +
-      `  git push -u origin ${branch}`,
-    );
-  }
-  if (localSha !== remoteSha) {
-    throw new Error(
-      `Branch "${branch}" has unpushed commits (local: ${localSha.slice(0, 8)}, origin: ${remoteSha.slice(0, 8)}). ` +
-      `Push your changes before running integration tests:\n` +
-      `  git push origin ${branch}`,
-    );
-  }
-
-  // Clone experiment copy (current branch)
-  loud(`Cloning experiment repo (branch: ${branch})`);
+  // Copy current working directory as the experiment repo (includes uncommitted changes)
+  loud('Copying current directory as experiment repo');
   execSync(
-    `git clone --branch ${branch} "${ORIGINAL_REPO}" "${EXPERIMENT_CLONE_PATH}"`,
+    `rsync -a --exclude=node_modules "${ORIGINAL_REPO}/" "${EXPERIMENT_CLONE_PATH}/"`,
     { stdio: 'inherit' },
   );
 
-  // Clone control copy (main branch)
+  // Commit any uncommitted changes in the copy so git checkout . works in afterEach
+  execSync('git add -A && git commit --allow-empty -m "integration test snapshot"', {
+    cwd: EXPERIMENT_CLONE_PATH,
+    stdio: 'inherit',
+  });
+
+  // Clone control copy (main branch) from local repo
   loud('Cloning control repo (branch: main)');
   execSync(
     `git clone --branch main "${ORIGINAL_REPO}" "${CONTROL_CLONE_PATH}"`,
