@@ -27,6 +27,7 @@ If changes in output are meaningful and desired, update `integration-tests/basel
 - Zod for runtime validation
 - PascalCase for classes/types, camelCase for functions
 - Node.js native `parseArgs` for CLIs
+- In new code don't use docker compose directly, see @packages/shaka-twin-servers/README.md
 
 ## Package Structure
 

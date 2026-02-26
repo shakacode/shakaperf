@@ -76,7 +76,6 @@ export async function dockerComposePs(config: ResolvedConfig): Promise<void> {
 export interface DockerComposeExecOptions {
   interactive?: boolean;
   stream?: boolean;
-  prefix?: string;
 }
 
 export async function dockerComposeExec(
@@ -85,7 +84,7 @@ export async function dockerComposeExec(
   command: string,
   execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const { interactive = false, stream = false, prefix } = execOptions;
+  const { interactive = false, stream = false } = execOptions;
 
   const opts = buildComposeOptions(config);
   const args = ['compose', '-f', opts.composeFile, 'exec'];
@@ -94,26 +93,11 @@ export async function dockerComposeExec(
   }
   args.push(containerName, 'bash', '-c', command);
 
-  const result = await exec('docker', args, {
+  return exec('docker', args, {
     cwd: opts.cwd,
     env: opts.env,
     silent: !stream,
   });
-
-  if (prefix) {
-    if (result.stdout) {
-      for (const line of result.stdout.split('\n')) {
-        if (line) console.log(`${prefix} ${line}`);
-      }
-    }
-    if (result.stderr) {
-      for (const line of result.stderr.split('\n')) {
-        if (line) console.error(`${prefix} ${line}`);
-      }
-    }
-  }
-
-  return result;
 }
 
 export async function waitForContainer(
