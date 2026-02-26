@@ -1,0 +1,22 @@
+description: |
+  Upload the current HEAD commit SHA as the new control commit SHA to S3.
+  Call this after tests pass to advance the control commit.
+
+  Expects environment variables:
+    S3_BUCKET              - S3 bucket name (required)
+    S3_ENDPOINT            - Custom S3 endpoint for R2, MinIO, etc. (optional)
+    AWS_ACCESS_KEY_ID      - AWS credentials (required)
+    AWS_SECRET_ACCESS_KEY  - AWS credentials (required)
+
+parameters:
+  s3-key-prefix:
+    type: string
+    default: 'twin-servers-scheduled-tests-control-shas'
+    description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
+
+steps:
+  - run:
+      environment:
+        PARAM_S3_KEY_PREFIX: <<parameters.s3-key-prefix>>
+      name: Upload control commit SHA to S3
+      command: <<include(scripts/upload-control-commit-sha.sh)>>

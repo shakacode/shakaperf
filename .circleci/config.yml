@@ -1,9 +1,14 @@
 version: 2.1
 
+parameters:
+  run-scheduled-perf-tests:
+    type: boolean
+    default: false
+
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@1.0.1
+  twin-servers: ramez/shaka-twin-servers@1.0.3
 
 executors:
   ruby-node-executor:
@@ -126,6 +131,8 @@ jobs:
 
 workflows:
   build-and-check:
+    when:
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
       - jest-tests
       - build-bundles
@@ -148,10 +155,12 @@ workflows:
               only:
                 - main
 
-  # Performance, Visual Regression testing workflow with twin servers for A/B testing
-  twin-server-tests:
+  # Scheduled A/B perf tests on main branch (triggered via CircleCI scheduled pipeline)
+  # NOTE: Defined before twin-server-tests so YAML anchors can be referenced below
+  scheduled-perf-tests:
+    when: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
-      - twin-servers/build-experiment:
+      - twin-servers/build-experiment: &build-experiment-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -159,11 +168,8 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
-          filters:
-            branches:
-              ignore: main
 
-      - twin-servers/build-control:
+      - twin-servers/build-control: &build-control-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -172,12 +178,17 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
-          filters:
-            branches:
-              ignore: main
+            - run:
+                name: Set S3 environment variables
+                command: |
+                  echo 'export S3_BUCKET=shaka-perf-demo-storage' >> "$BASH_ENV" # Either define here or in CircleCI Env
+                  echo "export S3_ENDPOINT='${PERF_BASELINE_S3_ENDPOINT}'" >> "$BASH_ENV" # If the CI variable has a different name, you can override it here
+                  echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
+                  echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
+            - twin-servers/download-control-commit-sha
 
-      - twin-servers/run-tests:
-          name: visual-regression
+      - twin-servers/run-tests: &visual-regression-job
+          name: scheduled-visual-regression
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
@@ -211,12 +222,9 @@ workflows:
                 destination: bitmaps_test
             - store_test_results:
                 path: demo-ecommerce/backstop_data/ci_report
-          filters:
-            branches:
-              ignore: main
 
-      - twin-servers/run-tests:
-          name: perf-tests
+      - twin-servers/run-tests: &perf-tests-job
+          name: scheduled-perf-tests
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
@@ -236,6 +244,64 @@ workflows:
                   mkdir -p /tmp/perf-results
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
+
+      # Update control commit SHA (only runs when all tests pass)
+      - twin-servers/update-control-commit-sha: &update-control-sha-job
+          pre-steps:
+            - run:
+                name: Set S3 environment variables
+                command: |
+                  echo 'export S3_BUCKET=shaka-perf-demo-storage' >> "$BASH_ENV" # Either define here or in CircleCI Env
+                  echo "export S3_ENDPOINT='${PERF_BASELINE_S3_ENDPOINT}'" >> "$BASH_ENV" # If the CI variable has a different name, you can override it here
+                  echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
+                  echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
+          requires:
+            - scheduled-visual-regression
+            - scheduled-perf-tests
+
+      # Approval path: if tests fail, approve to update control commit SHA anyway
+      - approve-baseline-update:
+          type: approval
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+
+      - twin-servers/update-control-commit-sha:
+          <<: *update-control-sha-job
+          name: force-update-perf-baseline
+          requires:
+            - approve-baseline-update
+
+  # Performance, Visual Regression testing workflow with twin servers for A/B testing
+  twin-server-tests:
+    when:
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
+    jobs:
+      - twin-servers/build-experiment:
+          <<: *build-experiment-job
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/build-control:
+          <<: *build-control-job
+          setup-steps:
+            - enable-corepack
+            - setup-yarn-and-build-packages
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/run-tests:
+          <<: *visual-regression-job
+          name: visual-regression
+          filters:
+            branches:
+              ignore: main
+
+      - twin-servers/run-tests:
+          <<: *perf-tests-job
+          name: perf-tests
           filters:
             branches:
               ignore: main
