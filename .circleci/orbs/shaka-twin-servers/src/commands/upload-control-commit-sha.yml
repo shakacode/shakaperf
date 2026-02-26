@@ -11,7 +11,7 @@ description: |
 parameters:
   s3-key-prefix:
     type: string
-    default: 'perf-tests-baseline-shas'
+    default: 'twin-servers-scheduled-tests-control-shas'
     description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
 
 steps:
