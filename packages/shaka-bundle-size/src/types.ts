@@ -88,8 +88,6 @@ export interface IReporter {
   reportRemovedComponent(params: RemovedComponentParams): void;
   /** Report an increased chunks count */
   reportIncreasedChunksCount(params: ChunksCountParams): void;
-  /** Report that all components passed */
-  reportPassed(): void;
 }
 
 export interface SizeIncreaseParams {
@@ -175,6 +173,8 @@ export interface CheckResult {
   actualSizes: ComponentSize[];
   /** Expected sizes from baseline */
   expectedSizes: BaselineComponent[];
+  /** Comparison result with per-component change details (used for grouped reporting) */
+  comparison?: ComparisonResult;
 }
 
 /**

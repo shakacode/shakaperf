@@ -18,6 +18,7 @@ import { BaselineStorage } from './BaselineStorage';
 import { ExtendedStatsGenerator } from './ExtendedStatsGenerator';
 import { Reporter } from './Reporter';
 import { colorize } from './helpers/colors';
+import { getPackageRunCommand } from './helpers/packageManager';
 
 const VERSION = '0.0.11';
 
@@ -142,16 +143,18 @@ function getCiMetadata(storage: BaselineStorage): { branchName: string; currentC
 }
 
 function printCompareFailureGuidance(configPath: string): void {
-  const acknowledgeCmd = `shaka-bundle-size -c ${configPath} --acknowledge-failure`;
+  const packageManagerCmd = getPackageRunCommand();
+  const acknowledgeCmd = `${packageManagerCmd} shaka-bundle-size -c ${configPath} --acknowledge-failure`;
 
   // Printed as stderr so it's visible even in "quiet" mode logs.
   console.error('');
   console.error('To get insights into why the bundle size changed, see Artifacts for this CI job');
   console.error('');
-  console.error(`Also, see docs: ${RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL}`);
+  console.error(`Also, see docs: ${colorize.blue(RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL)}`);
   console.error('');
+  console.error(colorize.bold(colorize.yellow('HOW TO RESOLVE THIS ISSUE')));
   console.error(`If the change is intended or if you don't know how to resolve the issue and the docs aren't helpful, do the following:`);
-  console.error(`    * run \`${acknowledgeCmd}\``);
+  console.error(`    * run \`${colorize.green(acknowledgeCmd)}\``);
   console.error('    * Commit and push the changes to your branch.');
   console.error('This will make bundle-size green and may invite performance reviewers according to your CODEOWNERS file');
   console.error('');

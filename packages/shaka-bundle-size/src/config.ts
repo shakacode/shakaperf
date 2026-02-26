@@ -170,13 +170,20 @@ export function createDefaultPolicy(thresholds: Required<ThresholdConfig>): Regr
         if (isKeyComponent) {
           return { shouldFail: true, message: 'Do not remove or update a key component without updating configuration to remove the key component.' };
         }
-        break;
+        return { shouldFail: false, message: 'Removed component (non-key component removal is allowed).' };
 
       case RegressionType.INCREASED_SIZE:
         if (sizeDiffKb !== undefined && sizeDiffKb > threshold) {
           return {
             shouldFail: true,
             message: `Size increase ${sizeDiffKb.toFixed(2)} KB exceeds threshold ${threshold} KB. Will it make sense to introduce a new Loadable Component?`,
+          };
+        }
+        // Size increase within threshold - return message for visibility
+        if (sizeDiffKb !== undefined && (sizeDiffKb > 0.1)) {
+          return {
+            shouldFail: false,
+            message:  `Size increase ${sizeDiffKb.toFixed(2)} KB is within threshold ${threshold} KB.`
           };
         }
         break;

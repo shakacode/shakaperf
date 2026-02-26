@@ -14,6 +14,7 @@ import type {
   NewComponentParams,
   RemovedComponentParams,
   ChunksCountParams,
+  Regression,
 } from './types';
 
 export { ANSI, colorize };
@@ -108,10 +109,119 @@ export class Reporter implements IReporter {
   }
 
   summary(result: CheckResult): void {
+    if (!result.comparison) {
+      this.summaryLegacy(result);
+      return;
+    }
+
+    const { comparison, regressions, warnings } = result;
+
+    // Build regression lookup by component name
+    const failuresByComponent = new Map<string, Regression[]>();
+    for (const reg of regressions) {
+      const list = failuresByComponent.get(reg.componentName) ?? [];
+      list.push(reg);
+      failuresByComponent.set(reg.componentName, list);
+    }
+    const warningsByComponent = new Map<string, Regression[]>();
+    for (const reg of warnings) {
+      const list = warningsByComponent.get(reg.componentName) ?? [];
+      list.push(reg);
+      warningsByComponent.set(reg.componentName, list);
+    }
+
+    // Build lookup maps for O(1) access
+    const expectedByName = new Map(result.expectedSizes.map(c => [c.name, c]));
+    const chunksIncreaseByName = new Map(comparison.chunksCountIncreases.map(c => [c.name, c]));
+
+    // 1. New components
+    for (const comp of comparison.newComponents) {
+      const isUncategorized = comp.name === 'uncategorized chunks';
+      const desc = isUncategorized
+        ? `${comp.chunksCount} new uncategorized ${comp.chunksCount === 1 ? 'chunk' : 'chunks'}, ${comp.gzipSizeKb.toFixed(2)} KB`
+        : `new component, ${comp.gzipSizeKb.toFixed(2)} KB`;
+      this.writeComponentEntry(comp.name, desc, 'yellow', failuresByComponent, warningsByComponent);
+    }
+
+    // 2. Existing components with size changes
+    for (const actual of result.actualSizes) {
+      const expected = expectedByName.get(actual.name);
+      if (!expected) continue; // new component, already handled above
+
+      const actualSizeKb = Number(actual.gzipSizeKb.toFixed(2));
+      const expectedSizeKb = Number(expected.gzipSizeKb);
+      const sizeDiffKb = actualSizeKb - expectedSizeKb;
+      const chunksIncrease = chunksIncreaseByName.get(actual.name);
+
+      if (sizeDiffKb > 0.1) {
+        let desc = `size increased by ${sizeDiffKb.toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
+        if (chunksIncrease) {
+          desc += `, chunks: ${chunksIncrease.actualChunksCount} (was ${chunksIncrease.expectedChunksCount})`;
+        }
+        this.writeComponentEntry(actual.name, desc, 'red', failuresByComponent, warningsByComponent);
+      } else if (sizeDiffKb < 0) {
+        let desc = `size reduced by ${(-sizeDiffKb).toFixed(2)} KB — ${actual.gzipSizeKb.toFixed(3)} KB (was ${expectedSizeKb} KB)`;
+        if (chunksIncrease) {
+          desc += `, chunks: ${chunksIncrease.actualChunksCount} (was ${chunksIncrease.expectedChunksCount})`;
+        }
+        this.writeComponentEntry(actual.name, desc, chunksIncrease ? 'yellow' : 'green', failuresByComponent, warningsByComponent);
+      } else if (chunksIncrease) {
+        const desc = `chunks count increased — ${chunksIncrease.actualChunksCount} chunks (was ${chunksIncrease.expectedChunksCount})`;
+        this.writeComponentEntry(actual.name, desc, 'red', failuresByComponent, warningsByComponent);
+      }
+    }
+
+    // 3. Removed components
+    for (const comp of comparison.removedComponents) {
+      const isUncategorized = comp.name === 'uncategorized chunks';
+      const desc = isUncategorized
+        ? `all uncategorized chunks removed (was ${comp.gzipSizeKb} KB)`
+        : `removed (was ${comp.gzipSizeKb} KB)`;
+      this.writeComponentEntry(comp.name, desc, 'blue', failuresByComponent, warningsByComponent);
+    }
+
+    // Final result
+    if (result.passed) {
+      this.success('\nAll bundle size checks passed!');
+    } else {
+      this.error('\nThe test failed!');
+      this.info(`${result.regressions.length} regression(s) detected`);
+    }
+  }
+
+  private writeComponentEntry(
+    name: string,
+    description: string,
+    defaultColor: ColorName,
+    failuresByComponent: Map<string, Regression[]>,
+    warningsByComponent: Map<string, Regression[]>,
+  ): void {
+    const failures = failuresByComponent.get(name) ?? [];
+    const componentWarnings = warningsByComponent.get(name) ?? [];
+    const hasFailure = failures.length > 0;
+
+    // Use red color if there are failures for this component
+    const lineColor = hasFailure ? 'red' : defaultColor;
+    this.writeLine(this.color(`${name}: ${description}`, lineColor));
+
+    for (const reg of failures) {
+      if (reg.policyMessage) {
+        this.error(`  FAILED : ${reg.policyMessage}`);
+      }
+    }
+    for (const reg of componentWarnings) {
+      if (reg.policyMessage) {
+        this.warning(`  IGNORED: ${reg.policyMessage}`);
+      }
+    }
+  }
+
+  /** Fallback for CheckResult without comparison data */
+  private summaryLegacy(result: CheckResult): void {
     if (result.warnings.length > 0) {
-      this.warning('\nThe following regressions do not fail regression policy:');
+      this.warning('\nIgnored regressions:');
       for (const regression of result.warnings) {
-        this.warning(`- ${regression.componentName}: [${regression.type}] ${regression.policyMessage ?? ''}`);
+        this.warning(`- ${regression.componentName}: ${regression.policyMessage ?? ''}`);
       }
     }
 
@@ -123,7 +233,7 @@ export class Reporter implements IReporter {
     this.error('\nThe test failed!');
     this.info(`${result.regressions.length} regression(s) detected`);
     for (const regression of result.regressions) {
-      this.error(`- ${regression.componentName}: [${regression.type}] ${regression.policyMessage ?? ''}`);
+      this.error(`- ${regression.componentName}: ${regression.policyMessage ?? ''}`);
     }
   }
 }

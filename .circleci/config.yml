@@ -57,10 +57,16 @@ jobs:
       - setup-yarn-and-build-packages
       - run:
           name: Run shaka-bundle-size tests
-          command: yarn workspace shaka-bundle-size test
+          command: |
+            yarn workspace shaka-bundle-size test --reporters=default --reporters=jest-junit
       - run:
           name: Run shaka-twin-servers tests
-          command: yarn workspace shaka-twin-servers test
+          command: |
+            yarn workspace shaka-twin-servers test --reporters=default --reporters=jest-junit
+      - store_test_results:
+          path: packages/shaka-bundle-size/junit.xml
+      - store_test_results:
+          path: packages/shaka-twin-servers/junit.xml
 
   build-bundles:
     executor: ruby-node-executor
