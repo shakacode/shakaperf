@@ -4,7 +4,7 @@ description: |
   approval gate to force-update when tests fail.
 
 docker:
-  - image: cimg/aws:current
+  - image: cimg/aws:2025.01
 
 resource_class: small
 
