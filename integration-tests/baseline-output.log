@@ -1,8 +1,8 @@
 
 >>> Copying current directory as experiment repo
 
-[roman-kuksin/twin-servers-fix-issues-during-setup 41bca48] integration test snapshot
- 6 files changed, 176 insertions(+), 191 deletions(-)
+[roman-kuksin/twin-servers-fix-issues-during-setup 46ff565] integration test snapshot
+ 2 files changed, 16 insertions(+), 28 deletions(-)
 
 >>> Cloning control repo (branch: main)
 
@@ -13,13 +13,13 @@ done.
 
 ➤ YN0000: · Yarn 4.12.0
 ➤ YN0000: ┌ Resolution step
-➤ YN0000: └ Completed in 0s 929ms
+➤ YN0000: └ Completed in 0s 895ms
 ➤ YN0000: ┌ Post-resolution validation
 ➤ YN0002: │ shaka-bench@workspace:packages/shaka-bench doesn't provide devtools-protocol (pce8fde), requested by chrome-debugging-client.
 ➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
 ➤ YN0000: └ Completed
 ➤ YN0000: ┌ Fetch step
-➤ YN0000: └ Completed in 0s 689ms
+➤ YN0000: └ Completed in 0s 650ms
 ➤ YN0000: ┌ Link step
 ➤ YN0000: │ ESM support for PnP uses the experimental loader API and is therefore experimental
 ➤ YN0007: │ node-expat@npm:2.4.1 must be built because it never has been before or the last one failed
@@ -27,12 +27,12 @@ done.
 ➤ YN0007: │ esbuild@npm:0.27.2 must be built because it never has been before or the last one failed
 ➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
 ➤ YN0000: │ [Warning] The runtime detected new information in a PnP file; reloading the API instance (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/.pnp.cjs)
-➤ YN0000: └ Completed in 4s 816ms
-➤ YN0000: · Done with warnings in 6s 579ms
+➤ YN0000: └ Completed in 5s 227ms
+➤ YN0000: · Done with warnings in 6s 916ms
 
 >>> Building packages in temp clone
 
-Done in 5s 313ms
+Done in 5s 202ms
 
 >>> run: yarn shaka-twin-servers build
 
@@ -97,16 +97,16 @@ Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[CONTROL]	I, [2026-02-26T08:00:14.796222 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [2026-02-26T08:00:14.796406 #26]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	I, [2026-02-26T08:00:14.816177 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [2026-02-26T08:00:14.816428 #26]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	I, [2026-02-26T11:42:49.851904 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [2026-02-26T11:42:49.852198 #26]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	I, [2026-02-26T11:42:49.786199 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [2026-02-26T11:42:49.786446 #26]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
-[CONTROL]	I, [2026-02-26T08:00:15.835765 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [2026-02-26T08:00:15.835973 #20]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	I, [2026-02-26T08:00:15.813230 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [2026-02-26T08:00:15.813428 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	I, [2026-02-26T11:42:50.875534 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [2026-02-26T11:42:50.875753 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [2026-02-26T11:42:50.945099 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [2026-02-26T11:42:50.945325 #20]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
 [CONTROL]	Created 10 products
 
@@ -123,19 +123,15 @@ Edit project code inside containers:
    Experiment: /home/romex/demo_ecommerce_experiment_docker_volume
 
 Access container shells:
-   docker compose exec control-server bash
-   docker compose exec experiment-server bash
+   yarn shaka-twin-servers run-cmd control bash
+   yarn shaka-twin-servers run-cmd experiment bash
 
 Next steps:
    1. Start the servers:
       yarn shaka-twin-servers start-servers
 
    2. Stop containers when done:
-      docker compose down
-
-   3. View logs:
-      docker compose logs -f control-server
-      docker compose logs -f experiment-server
+      yarn shaka-twin-servers stop-containers
 
 
 
@@ -201,25 +197,25 @@ Files synced to: /home/romex/demo_ecommerce_experiment_docker_volume
 Running in parallel: bundle exec rake assets:precompile in both containers
 [CONTROL]	Running bundle exec rake assets:precompile in control-server
 [EXPERIMENT]	Running bundle exec rake assets:precompile in experiment-server
-[EXPERIMENT]	I, [2026-02-26T08:00:29.493328 #77]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [2026-02-26T08:00:29.493638 #77]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	I, [2026-02-26T08:00:29.551737 #78]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [2026-02-26T08:00:29.552064 #78]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [2026-02-26T11:43:04.733132 #79]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [2026-02-26T11:43:04.733331 #79]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	I, [2026-02-26T11:43:04.788925 #78]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [2026-02-26T11:43:04.789256 #78]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
-[EXPERIMENT]	I, [2026-02-26T08:00:29.997614 #77]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
 [CONTROL]	using yarn@4.12.0 to manage dependencies and scripts in package.json
-[CONTROL]	D, [2026-02-26T08:00:30.136280 #78] DEBUG -- : Everything's up-to-date. Nothing to do
-[EXPERIMENT]	I, [2026-02-26T08:00:31.275158 #77]  INFO -- : Precompile hook completed successfully
-[EXPERIMENT]	I, [2026-02-26T08:00:31.275206 #77]  INFO -- : 🔄 Running React on Rails precompile hook...
+[EXPERIMENT]	I, [2026-02-26T11:43:05.271678 #78]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
+[CONTROL]	D, [2026-02-26T11:43:05.345816 #79] DEBUG -- : Everything's up-to-date. Nothing to do
+[EXPERIMENT]	I, [2026-02-26T11:43:06.463979 #78]  INFO -- : Precompile hook completed successfully
+[EXPERIMENT]	I, [2026-02-26T11:43:06.464043 #78]  INFO -- : 🔄 Running React on Rails precompile hook...
 [EXPERIMENT]	
-[EXPERIMENT]	I, [2026-02-26T08:00:31.275218 #77]  INFO -- : Compiling...
-[EXPERIMENT]	I, [2026-02-26T08:00:47.675876 #77]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
-[EXPERIMENT]	W, [2026-02-26T08:00:47.675934 #77]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
+[EXPERIMENT]	I, [2026-02-26T11:43:06.464063 #78]  INFO -- : Compiling...
+[EXPERIMENT]	I, [2026-02-26T11:43:22.958813 #78]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
+[EXPERIMENT]	W, [2026-02-26T11:43:22.958876 #78]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
 [EXPERIMENT]	   Add to config/shakapacker.yml:
 [EXPERIMENT]	     private_output_path: ssr-generated
 [EXPERIMENT]	   Run: rails react_on_rails:doctor to validate your configuration
 [EXPERIMENT]	
-[EXPERIMENT]	I, [2026-02-26T08:00:47.675949 #77]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT]	I, [2026-02-26T11:43:22.958896 #78]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
 [EXPERIMENT]	[Shakapacker] Found Webpack config: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
 [EXPERIMENT]	[Shakapacker] Preparing environment for assets bundler execution...
 [EXPERIMENT]	[Shakapacker] Base command: yarn exec webpack
@@ -280,12 +276,12 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	      js/148-7088267baa9e2e0c2764.js
 [EXPERIMENT]	      js/server-4e59f613aeaa2331d3ff.js
 [EXPERIMENT]	
-[EXPERIMENT]	webpack 5.104.1 compiled with 2 warnings in 14160 ms
+[EXPERIMENT]	webpack 5.104.1 compiled with 2 warnings in 14306 ms
 [EXPERIMENT]	
 [EXPERIMENT]	asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
 [EXPERIMENT]	./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
-[EXPERIMENT]	webpack 5.104.1 compiled successfully in 508 ms
-[EXPERIMENT]	[Shakapacker] Completed webpack build in 16.17s (16.17s)
+[EXPERIMENT]	webpack 5.104.1 compiled successfully in 529 ms
+[EXPERIMENT]	[Shakapacker] Completed webpack build in 16.26s (16.26s)
 [EXPERIMENT]	
 
 
@@ -315,7 +311,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 Updated 1 path from the index
 Updated 0 paths from the index
-  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge (49.3s)
+  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge (50.2s)
 
 >>> run: yarn shaka-twin-servers start-containers
 
@@ -346,18 +342,18 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[CONTROL]	I, [2026-02-26T08:01:14.604258 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [2026-02-26T08:01:14.604477 #26]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	I, [2026-02-26T08:01:14.586271 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [2026-02-26T08:01:14.586485 #26]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[EXPERIMENT]	I, [2026-02-26T11:43:49.522133 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [2026-02-26T11:43:49.522369 #26]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [2026-02-26T11:43:49.693873 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [2026-02-26T11:43:49.694094 #26]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
-[CONTROL]	I, [2026-02-26T08:01:15.713979 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [2026-02-26T08:01:15.714247 #20]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	I, [2026-02-26T08:01:15.644480 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [2026-02-26T08:01:15.644695 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	I, [2026-02-26T11:43:50.563197 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [2026-02-26T11:43:50.563405 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [2026-02-26T11:43:50.714705 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [2026-02-26T11:43:50.714989 #20]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
 [CONTROL]	Created 10 products
 
@@ -374,19 +370,15 @@ Edit project code inside containers:
    Experiment: /home/romex/demo_ecommerce_experiment_docker_volume
 
 Access container shells:
-   docker compose exec control-server bash
-   docker compose exec experiment-server bash
+   yarn shaka-twin-servers run-cmd control bash
+   yarn shaka-twin-servers run-cmd experiment bash
 
 Next steps:
    1. Start the servers:
       yarn shaka-twin-servers start-servers
 
    2. Stop containers when done:
-      docker compose down
-
-   3. View logs:
-      docker compose logs -f control-server
-      docker compose logs -f experiment-server
+      yarn shaka-twin-servers stop-containers
 
 
 
@@ -416,21 +408,21 @@ Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 
 Running bundle exec rake assets:precompile in experiment-server
-I, [2026-02-26T08:01:22.697233 #53]  INFO -- : [React on Rails] Validating package version and compatibility...
-I, [2026-02-26T08:01:22.697474 #53]  INFO -- : [React on Rails] Package validation successful
+I, [2026-02-26T11:43:58.032457 #53]  INFO -- : [React on Rails] Validating package version and compatibility...
+I, [2026-02-26T11:43:58.032842 #53]  INFO -- : [React on Rails] Package validation successful
 using yarn@4.12.0 to manage dependencies and scripts in package.json
-I, [2026-02-26T08:01:23.193718 #53]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
-I, [2026-02-26T08:01:24.300272 #53]  INFO -- : Precompile hook completed successfully
-I, [2026-02-26T08:01:24.300321 #53]  INFO -- : 🔄 Running React on Rails precompile hook...
+I, [2026-02-26T11:43:58.574100 #53]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
+I, [2026-02-26T11:43:59.809355 #53]  INFO -- : Precompile hook completed successfully
+I, [2026-02-26T11:43:59.809424 #53]  INFO -- : 🔄 Running React on Rails precompile hook...
 
-I, [2026-02-26T08:01:24.300333 #53]  INFO -- : Compiling...
-I, [2026-02-26T08:01:41.043248 #53]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
-W, [2026-02-26T08:01:41.043299 #53]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
+I, [2026-02-26T11:43:59.809446 #53]  INFO -- : Compiling...
+I, [2026-02-26T11:44:16.882316 #53]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
+W, [2026-02-26T11:44:16.882400 #53]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
    Add to config/shakapacker.yml:
      private_output_path: ssr-generated
    Run: rails react_on_rails:doctor to validate your configuration
 
-I, [2026-02-26T08:01:41.043318 #53]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+I, [2026-02-26T11:44:16.882420 #53]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
 [Shakapacker] Found Webpack config: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
 [Shakapacker] Preparing environment for assets bundler execution...
 [Shakapacker] Base command: yarn exec webpack
@@ -491,12 +483,12 @@ Entrypoints:
       js/148-7088267baa9e2e0c2764.js
       js/server-4e59f613aeaa2331d3ff.js
 
-webpack 5.104.1 compiled with 2 warnings in 14542 ms
+webpack 5.104.1 compiled with 2 warnings in 14839 ms
 
 asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
 ./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
-webpack 5.104.1 compiled successfully in 531 ms
-[Shakapacker] Completed webpack build in 16.52s (16.52s)
+webpack 5.104.1 compiled successfully in 533 ms
+[Shakapacker] Completed webpack build in 16.8s (16.8s)
 
 
 
@@ -526,7 +518,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 Updated 0 paths from the index
 Updated 0 paths from the index
-  ✓  2 integration-tests/twin-servers.spec.ts:68:5 › run-cmd preserves single and double quotes (53.3s)
+  ✓  2 integration-tests/twin-servers.spec.ts:68:5 › run-cmd preserves single and double quotes (54.0s)
 
 >>> Stopping containers
 
@@ -542,4 +534,4 @@ Stopping containers and removing volumes...
 Containers stopped
 
 
-  2 passed (3.4m)
+  2 passed (3.5m)
