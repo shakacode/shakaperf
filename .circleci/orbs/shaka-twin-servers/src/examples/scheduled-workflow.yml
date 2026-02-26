@@ -11,23 +11,25 @@ description: |
   To trigger this workflow on a schedule, you need to create a Scheduled Trigger
   in the CircleCI UI:
 
-  1. Go to your project in CircleCI (app.circleci.com)
+  1. Go to your project in **CircleCI** (app.circleci.com)
   2. Navigate to **Project Settings** (gear icon)
-  3. Click **Triggers** in the left sidebar
-  4. Click **Add Trigger**
+  3. Click **Project Setup** in the left sidebar
+  4. Click **Schedule +**
   5. Fill in:
-     - **Trigger type**: Scheduled
-     - **Name**: e.g. "Nightly Perf Tests"
+     - **Name**: e.g. "Nightly Twin Server Tests"
      - **Branch**: `main`
      - **Schedule**: set your desired cron expression (e.g. `0 0 * * *` for midnight UTC)
      - **Pipeline Parameters**: add `run-scheduled-perf-tests` with value `true`
   6. Save
 
-  You also need the following environment variables set in your CircleCI project:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - S3_BUCKET (or set inline in setup-steps)
-    - S3_ENDPOINT (if using R2, MinIO, etc.)
+  ## Required Environment Variables
+
+  Set these in your CircleCI project settings under **Environment Variables**:
+
+    - AWS_ACCESS_KEY_ID - AWS credentials for S3 access
+    - AWS_SECRET_ACCESS_KEY - AWS credentials for S3 access
+    - S3_BUCKET - S3 bucket name (can also be set inline in setup-steps)
+    - S3_ENDPOINT - Custom S3 endpoint for R2, MinIO, etc. (optional)
 
 usage:
   version: 2.1

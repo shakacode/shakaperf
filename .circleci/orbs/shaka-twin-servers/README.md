@@ -100,11 +100,10 @@ To schedule the nightly/weekly trigger, you need to create a **Scheduled Trigger
 
 1. Go to your project in **CircleCI** (app.circleci.com)
 2. Navigate to **Project Settings** (gear icon)
-3. Click **Triggers** in the left sidebar
-4. Click **Add Trigger**
+3. Click **Project Setup** in the left sidebar
+4. Click **Schedule +**
 5. Fill in:
-   - **Trigger type**: Scheduled
-   - **Name**: e.g. "Nightly Perf Tests"
+   - **Name**: e.g. "Nightly Twin Server Tests"
    - **Branch**: `main`
    - **Schedule**: set your desired cron expression (e.g. `0 0 * * *` for midnight UTC)
    - **Pipeline Parameters**: add `run-scheduled-perf-tests` with value `true`
