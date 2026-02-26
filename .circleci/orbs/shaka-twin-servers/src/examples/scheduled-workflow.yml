@@ -38,7 +38,7 @@ usage:
       default: false
 
   orbs:
-    twin-servers: shaka-perf/twin-servers@1.0.2
+    twin-servers: shaka-perf/twin-servers@1.0.3
 
   workflows:
     # Guard your normal workflows so they don't run on scheduled triggers

@@ -8,7 +8,7 @@ parameters:
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@dev:alpha
+  twin-servers: ramez/shaka-twin-servers@1.0.3
 
 executors:
   ruby-node-executor:
