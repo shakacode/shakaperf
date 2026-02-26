@@ -119,6 +119,17 @@ describe('SourceMapGenerator', () => {
       expect(output).toContain('chunksNumber=1');
     });
 
+    it('lists chunks missing from extended stats with clarification', () => {
+      const gen = new SourceMapGenerator({ bundlesDir: 'public/packs', baselineDir: tmpBaselineDir });
+      const dict: Record<string, BundleInfo> = {
+        'app.js': { label: 'app.js', gzipSize: 10240 },
+      };
+      const output = gen.generateChunkGroup('AppComponent', ['app.js', 'shared-runtime.js'], dict);
+      expect(output).toContain('chunksNumber=2');
+      expect(output).toContain('app.js');
+      expect(output).toContain('./public/packs/shared-runtime.js (no extended stats available)');
+    });
+
     it('generates uncategorized section', () => {
       const gen = new SourceMapGenerator({ bundlesDir: tmpBundlesDir, baselineDir: tmpBaselineDir });
       const dict: Record<string, BundleInfo> = {

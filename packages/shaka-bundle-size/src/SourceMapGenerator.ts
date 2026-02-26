@@ -88,7 +88,10 @@ export class SourceMapGenerator {
 
     for (const chunkName of chunkNames) {
       const bundle = bundlesDictionary[chunkName];
-      if (!bundle) continue;
+      if (!bundle) {
+        lines.push(`./${this.bundlesDir}/${chunkName} (no extended stats available)`);
+        continue;
+      }
 
       const sourceLines: string[] = [];
       this.writeSources(bundle, [], sourceLines);
