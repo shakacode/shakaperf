@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import type { ResolvedConfig } from '../types';
-import { runForBothServersInParallel } from '../helpers/shell';
 import {
   dockerImageExists,
   dockerComposeUp,
@@ -9,33 +8,10 @@ import {
   waitForContainer,
 } from '../helpers/docker';
 import { printBanner, printSuccess, printError, printWarning } from '../helpers/ui';
+import { runCmdParallel } from './run-cmd-parallel';
 
 export interface StartContainersOptions {
   verbose?: boolean;
-}
-
-async function runSetupCommandsParallel(config: ResolvedConfig): Promise<void> {
-  // Build docker compose exec commands for each setup command
-  const composeArgs = [
-    'compose', '-f', config.composeFile, 'exec', '-T',
-  ];
-  const setupScript = config.setupCommands
-    .map(cmd => `docker ${composeArgs.map(a => `'${a}'`).join(' ')} "$1-server" bash -c '${cmd.command.replace(/'/g, "'\\''")}'`)
-    .join(' && ');
-
-  const bashFn = `setup_server() {
-  ${setupScript}
-}
-export -f setup_server`;
-
-  const env = {
-    ...process.env,
-    CI_IMAGE_NAME: config.images.experiment,
-    CI_CONTROL_IMAGE_NAME: config.images.control,
-    USER: process.env.USER || 'user',
-  };
-
-  await runForBothServersInParallel(bashFn, env);
 }
 
 export async function startContainers(
@@ -106,7 +82,8 @@ export async function startContainers(
   if (config.setupCommands.length > 0) {
     console.log('');
     console.log('Running setup commands...');
-    await runSetupCommandsParallel(config);
+    const setupScript = config.setupCommands.map(c => c.command).join(' && ');
+    await runCmdParallel(config, setupScript);
   }
 
   console.log('');
