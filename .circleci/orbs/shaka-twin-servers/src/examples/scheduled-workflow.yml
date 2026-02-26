@@ -1,0 +1,100 @@
+description: |
+  Scheduled A/B performance testing workflow that runs on a cron schedule (e.g. nightly).
+  Uses an S3-stored control commit SHA as the control point instead of git merge-base.
+
+  When tests pass, the control automatically advances to the current HEAD.
+  When tests fail, you can click the "approve-control-update" approval job in
+  CircleCI to acknowledge the regression and advance the control anyway.
+
+  ## CircleCI Setup
+
+  To trigger this workflow on a schedule, you need to create a Scheduled Trigger
+  in the CircleCI UI:
+
+  1. Go to your project in CircleCI (app.circleci.com)
+  2. Navigate to **Project Settings** (gear icon)
+  3. Click **Triggers** in the left sidebar
+  4. Click **Add Trigger**
+  5. Fill in:
+     - **Trigger type**: Scheduled
+     - **Name**: e.g. "Nightly Perf Tests"
+     - **Branch**: `main`
+     - **Schedule**: set your desired cron expression (e.g. `0 0 * * *` for midnight UTC)
+     - **Pipeline Parameters**: add `run-scheduled-perf-tests` with value `true`
+  6. Save
+
+  You also need the following environment variables set in your CircleCI project:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - S3_BUCKET (or set inline in setup-steps)
+    - S3_ENDPOINT (if using R2, MinIO, etc.)
+
+usage:
+  version: 2.1
+
+  parameters:
+    run-scheduled-perf-tests:
+      type: boolean
+      default: false
+
+  orbs:
+    twin-servers: shaka-perf/twin-servers@1.0.2
+
+  workflows:
+    # Guard your normal workflows so they don't run on scheduled triggers
+    build-and-test:
+      when:
+        not: << pipeline.parameters.run-scheduled-perf-tests >>
+      jobs:
+        - build
+        - test
+
+    # Scheduled workflow: only runs when triggered with run-scheduled-perf-tests=true
+    scheduled-perf-tests:
+      when: << pipeline.parameters.run-scheduled-perf-tests >>
+      jobs:
+        - twin-servers/build-experiment:
+            image-name: my-app
+            working-directory: my-app
+            setup-steps:
+              - run:
+                  name: Install dependencies
+                  command: npm install
+
+        - twin-servers/build-control:
+            image-name: my-app
+            working-directory: my-app
+            setup-steps:
+              - run:
+                  name: Install dependencies
+                  command: npm install
+              - run:
+                  name: Set S3 environment variables
+                  command: |
+                    echo 'export S3_BUCKET=my-perf-control-bucket' >> "$BASH_ENV"
+              - twin-servers/download-control-commit-sha
+
+        - twin-servers/run-tests:
+            name: scheduled-perf-tests
+            requires:
+              - twin-servers/build-experiment
+              - twin-servers/build-control
+            server-command: 'npm start'
+            test-command: 'npm run perf:test'
+
+        # Auto-advance control when all tests pass
+        - twin-servers/update-control-commit-sha:
+            requires:
+              - scheduled-perf-tests
+
+        # Manual approval path: acknowledge a regression and advance control anyway
+        - approve-control-update:
+            type: approval
+            requires:
+              - twin-servers/build-experiment
+              - twin-servers/build-control
+
+        - twin-servers/update-control-commit-sha:
+            name: force-update-control
+            requires:
+              - approve-control-update

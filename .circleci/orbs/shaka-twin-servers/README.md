@@ -80,6 +80,69 @@ workflows:
           # Other required params
 ```
 
+## Scheduled Nightly Perf Tests
+
+The orb supports scheduled A/B testing where an S3-stored commit SHA is used as the control instead of git merge-base. This lets you run nightly or weekly performance tests on the main branch against a known-good control commit.
+
+See [examples/scheduled-workflow.yml](src/examples/scheduled-workflow.yml) for a full config example, or [our demo CI config](../../../config.yml) for a working implementation.
+
+### How It Works
+
+1. A scheduled pipeline triggers with `run-scheduled-perf-tests: true`
+2. `build-control` uses `download-control-commit-sha` to fetch the control SHA from S3
+3. Tests run against the control and experiment (current HEAD) images
+4. If tests pass, `update-control-commit-sha` advances the control to HEAD
+5. If tests fail, you can click the `approve-control-update` approval job in the CircleCI UI to acknowledge the regression and advance the control anyway
+
+### CircleCI Setup
+
+To schedule the nightly/weekly trigger, you need to create a **Scheduled Trigger** in the CircleCI UI:
+
+1. Go to your project in **CircleCI** (app.circleci.com)
+2. Navigate to **Project Settings** (gear icon)
+3. Click **Triggers** in the left sidebar
+4. Click **Add Trigger**
+5. Fill in:
+   - **Trigger type**: Scheduled
+   - **Name**: e.g. "Nightly Perf Tests"
+   - **Branch**: `main`
+   - **Schedule**: set your desired cron expression (e.g. `0 0 * * *` for midnight UTC)
+   - **Pipeline Parameters**: add `run-scheduled-perf-tests` with value `true`
+6. Save
+
+### Required Environment Variables
+
+Set these in your CircleCI project settings under **Environment Variables**:
+
+| Variable                | Description                                            |
+| ----------------------- | ------------------------------------------------------ |
+| `AWS_ACCESS_KEY_ID`     | AWS credentials for S3 access                          |
+| `AWS_SECRET_ACCESS_KEY` | AWS credentials for S3 access                          |
+| `S3_BUCKET`             | S3 bucket name (can also be set inline in setup-steps) |
+| `S3_ENDPOINT`           | Custom S3 endpoint for R2, MinIO, etc. (optional)      |
+
+### Pipeline Parameter
+
+Add this parameter to the top of your `.circleci/config.yml`:
+
+```yaml
+parameters:
+  run-scheduled-perf-tests:
+    type: boolean
+    default: false
+```
+
+Guard your normal workflows so they don't run on scheduled triggers:
+
+```yaml
+workflows:
+  build-and-test:
+    when:
+      not: << pipeline.parameters.run-scheduled-perf-tests >>
+    jobs:
+      # ...your normal jobs
+```
+
 ## Local Testing
 
 To test orb changes without publishing:
