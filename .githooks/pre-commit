@@ -18,10 +18,22 @@ for pkg in shaka-bundle-size shaka-twin-servers shaka-bench shaka-visreg; do
 done
 
 # demo-ecommerce depends on the workspace packages, so typecheck it whenever a package changes
+check_demo=false
 if echo "$staged" | grep -q '^demo-ecommerce/' || [ "$packages_changed" = true ]; then
-  args="$args --include demo-ecommerce"
+  check_demo=true
 fi
 
-[ -z "$args" ] && exit 0
+[ -z "$args" ] && [ "$check_demo" = false ] && exit 0
 
-yarn workspaces foreach -Ap $args run typecheck
+# Typecheck changed packages first
+if [ -n "$args" ]; then
+  yarn workspaces foreach -Ap $args run typecheck || exit 1
+fi
+
+# Build changed packages before checking demo-ecommerce so it sees fresh types
+if [ "$check_demo" = true ]; then
+  if [ -n "$args" ]; then
+    yarn workspaces foreach -Ap $args run build || exit 1
+  fi
+  yarn workspace demo-ecommerce run typecheck || exit 1
+fi
