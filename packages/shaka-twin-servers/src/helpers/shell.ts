@@ -1,6 +1,5 @@
 import { spawn, execSync, SpawnOptions } from 'child_process';
 import * as readline from 'readline';
-import * as path from 'path';
 
 export interface ExecOptions {
   cwd?: string;
@@ -117,43 +116,6 @@ export function execWithStdin(
       child.stdin.end();
     }
   });
-}
-
-function getScriptsDir(): string {
-  // From dist/helpers/shell.js -> ../../scripts/
-  return path.resolve(__dirname, '..', '..', 'scripts');
-}
-
-/**
- * Run a bash function in parallel for both experiment and control servers
- * using GNU parallel with colored [EXPERIMENT]/[CONTROL] prefixes.
- *
- * The bashFn string should define and export a function, e.g.:
- *   `my_func() { docker build ...; }\nexport -f my_func`
- *
- * The function will be called with "experiment" and "control" as arguments.
- */
-export async function runForBothServersInParallel(bashFn: string, env?: NodeJS.ProcessEnv): Promise<void> {
-  const match = bashFn.match(/^(\w+)\s*\(\)/m);
-  if (!match) {
-    throw new Error('Could not detect function name in bashFn. Expected "func_name() {" pattern.');
-  }
-  const functionName = match[1];
-
-  requireCommand('parallel', '`brew install parallel` (Mac) or `sudo apt-get install parallel` (Ubuntu)');
-
-  console.log(`Running command below in both control and experiment containers${!!env ? ` with env ${JSON.stringify(env)}`: ''}
-${bashFn}`)
-
-  const helperScript = path.join(getScriptsDir(), 'run-for-both-servers-in-parallel.sh');
-  const script = `${bashFn}
-source '${helperScript}'
-run_for_both_servers_in_parallel ${functionName}`;
-
-  const result = await exec('bash', ['-c', script], { env });
-  if (result.code !== 0) {
-    throw new Error(`Parallel execution of ${functionName} failed`);
-  }
 }
 
 export function confirm(question: string): Promise<boolean> {

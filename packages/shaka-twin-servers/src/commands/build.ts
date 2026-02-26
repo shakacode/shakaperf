@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ResolvedConfig } from '../types';
-import { requireCommand, confirm, exec, runForBothServersInParallel } from '../helpers/shell';
+import { requireCommand, confirm, exec } from '../helpers/shell';
 import {
   dockerBuild,
   getGitSha,
@@ -77,19 +77,26 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
 }
 
 async function buildInParallel(config: ResolvedConfig, noCache?: boolean): Promise<void> {
+  requireCommand('parallel', '`brew install parallel` (Mac) or `sudo apt-get install parallel` (Ubuntu)');
+
   const experiment = buildDockerCmd('experiment', config, noCache);
   const control = buildDockerCmd('control', config, noCache);
 
-  const bashFn = `build_server() {
-  if [ "$1" = "experiment" ]; then
-    cd '${experiment.cwd}' && ${experiment.cmd}
-  else
-    cd '${control.cwd}' && ${control.cmd}
-  fi
-}
-export -f build_server`;
+  const result = await exec('parallel', [
+    '--line-buffer',
+    '--tagstring', '{2}',
+    '{1}',
+    ':::',
+    `cd '${experiment.cwd}' && ${experiment.cmd}`,
+    `cd '${control.cwd}' && ${control.cmd}`,
+    ':::+',
+    '\x1b[1;34m[EXPERIMENT]\x1b[0m',
+    '\x1b[1;32m[CONTROL]\x1b[0m',
+  ]);
 
-  await runForBothServersInParallel(bashFn);
+  if (result.code !== 0) {
+    throw new Error('Parallel build failed');
+  }
 }
 
 export async function build(config: ResolvedConfig, options: BuildOptions = {}): Promise<void> {
