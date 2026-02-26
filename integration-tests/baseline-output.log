@@ -1,0 +1,533 @@
+
+>>> Copying current directory as experiment repo
+
+[roman-kuksin/twin-servers-fix-issues-during-setup 31d7665] integration test snapshot
+ 4 files changed, 21 insertions(+), 101 deletions(-)
+ delete mode 100755 packages/shaka-twin-servers/scripts/run-for-both-servers-in-parallel.sh
+
+>>> Cloning control repo (branch: main)
+
+Cloning into '/tmp/temp-shaka-perf-repos-for-tests/shaka-perf-control'...
+done.
+
+>>> Installing dependencies in temp clone
+
+➤ YN0000: · Yarn 4.12.0
+➤ YN0000: ┌ Resolution step
+➤ YN0000: └ Completed in 0s 841ms
+➤ YN0000: ┌ Post-resolution validation
+➤ YN0002: │ shaka-bench@workspace:packages/shaka-bench doesn't provide devtools-protocol (pce8fde), requested by chrome-debugging-client.
+➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Fetch step
+➤ YN0000: └ Completed in 0s 608ms
+➤ YN0000: ┌ Link step
+➤ YN0000: │ ESM support for PnP uses the experimental loader API and is therefore experimental
+➤ YN0007: │ node-expat@npm:2.4.1 must be built because it never has been before or the last one failed
+➤ YN0007: │ puppeteer@npm:22.15.0 must be built because it never has been before or the last one failed
+➤ YN0007: │ esbuild@npm:0.27.2 must be built because it never has been before or the last one failed
+➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
+➤ YN0000: │ [Warning] The runtime detected new information in a PnP file; reloading the API instance (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/.pnp.cjs)
+➤ YN0000: └ Completed in 4s 790ms
+➤ YN0000: · Done with warnings in 6s 378ms
+
+>>> Building packages in temp clone
+
+Done in 5s 112ms
+
+>>> run: yarn shaka-twin-servers build
+
+
+=======================================
+  Building Twin Servers Docker Images  
+=======================================
+
+Creating bind-mount directories...
+   /home/romex/demo_ecommerce_control_docker_volume
+   /home/romex/demo_ecommerce_experiment_docker_volume
+
+Building both Docker images in parallel...
+
+
+Docker image(s) built successfully!
+
+Images created:
+  - demo-ecommerce:experiment (current branch: roman-kuksin/twin-servers-fix-issues-during-setup)
+  - demo-ecommerce:control (baseline branch: main)
+
+Bind-mount directories:
+  - Control: /home/romex/demo_ecommerce_control_docker_volume
+  - Experiment: /home/romex/demo_ecommerce_experiment_docker_volume
+
+Next steps:
+  yarn shaka-twin-servers start-containers
+
+
+
+Running 2 tests using 1 worker
+
+
+>>> run: yarn shaka-twin-servers start-containers
+
+
+=================================
+  Starting Twin Servers Locally  
+=================================
+
+Using images:
+  - Experiment: demo-ecommerce:experiment
+  - Control: demo-ecommerce:control
+
+Clearing stale volume contents...
+   /home/romex/demo_ecommerce_control_docker_volume
+   /home/romex/demo_ecommerce_experiment_docker_volume
+
+Stopping any existing twin servers...
+Starting twin servers...
+Waiting for containers to start...
+Checking container status...
+NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS                            PORTS
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      6 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   6 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:3030->3000/tcp
+
+Waiting for containers to be ready...
+   control-server is ready
+   experiment-server is ready
+
+Running setup commands...
+Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
+[CONTROL] I, [2026-02-26T07:20:41.058020 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL] I, [2026-02-26T07:20:41.058248 #26]  INFO -- : [React on Rails] Package validation successful
+[CONTROL] Created 10 products
+[CONTROL] I, [2026-02-26T07:20:42.121141 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL] I, [2026-02-26T07:20:42.121369 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL] Created 10 products
+[EXPERIMENT] I, [2026-02-26T07:20:41.083611 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT] I, [2026-02-26T07:20:41.083873 #26]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT] Created 10 products
+[EXPERIMENT] I, [2026-02-26T07:20:42.166141 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT] I, [2026-02-26T07:20:42.166401 #20]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT] Created 10 products
+
+Both servers are ready!
+
+
+===================================
+  Twin Servers containers Started  
+===================================
+
+
+Edit project code inside containers:
+   Control:    /home/romex/demo_ecommerce_control_docker_volume
+   Experiment: /home/romex/demo_ecommerce_experiment_docker_volume
+
+Access container shells:
+   docker compose exec control-server bash
+   docker compose exec experiment-server bash
+
+Next steps:
+   1. Start the servers:
+      yarn shaka-twin-servers start-servers
+
+   2. Stop containers when done:
+      docker compose down
+
+   3. View logs:
+      docker compose logs -f control-server
+      docker compose logs -f experiment-server
+
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: modify experiment, rebuild, and verify servers diverge
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Starting puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+
+
+>>> Waiting for ports 3020 + 3030
+
+
+>>> Verifying experiment server has "Discover Your Style"
+
+
+>>> Verifying control server has "Discover Your Style"
+
+
+>>> Stopping puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "pkill -f puma || true"
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "pkill -f puma || true"
+
+
+>>> Modifying HomePage.tsx: "Discover Your Style" -> "Discover Your New Self"
+
+
+>>> run: yarn shaka-twin-servers sync-changes experiment
+
+
+=================================
+  Syncing Changes to experiment  
+=================================
+
+Found 1 changed files
+
+
+Summary:
+  Copied: 1 files
+
+Successfully synced changes to experiment
+Files synced to: /home/romex/demo_ecommerce_experiment_docker_volume
+
+
+>>> run: yarn shaka-twin-servers run-cmd-parallel -- bundle exec rake assets:precompile
+
+Running in parallel: bundle exec rake assets:precompile in both containers
+[CONTROL] I, [2026-02-26T07:20:54.258771 #77]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL] I, [2026-02-26T07:20:54.259026 #77]  INFO -- : [React on Rails] Package validation successful
+[CONTROL] using yarn@4.12.0 to manage dependencies and scripts in package.json
+[CONTROL] D, [2026-02-26T07:20:54.779182 #77] DEBUG -- : Everything's up-to-date. Nothing to do
+[EXPERIMENT] I, [2026-02-26T07:20:54.238041 #77]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT] I, [2026-02-26T07:20:54.238338 #77]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT] using yarn@4.12.0 to manage dependencies and scripts in package.json
+[EXPERIMENT] I, [2026-02-26T07:20:54.777048 #77]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
+[EXPERIMENT] I, [2026-02-26T07:20:55.935240 #77]  INFO -- : Precompile hook completed successfully
+[EXPERIMENT] I, [2026-02-26T07:20:55.935284 #77]  INFO -- : 🔄 Running React on Rails precompile hook...
+[EXPERIMENT] I, [2026-02-26T07:20:55.935295 #77]  INFO -- : Compiling...
+[EXPERIMENT] I, [2026-02-26T07:21:12.180821 #77]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
+[EXPERIMENT] W, [2026-02-26T07:21:12.180893 #77]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
+[EXPERIMENT]    Add to config/shakapacker.yml:
+[EXPERIMENT]      private_output_path: ssr-generated
+[EXPERIMENT]    Run: rails react_on_rails:doctor to validate your configuration
+[EXPERIMENT] I, [2026-02-26T07:21:12.180910 #77]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT] [Shakapacker] Found Webpack config: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT] [Shakapacker] Preparing environment for assets bundler execution...
+[EXPERIMENT] [Shakapacker] Base command: yarn exec webpack
+[EXPERIMENT] [Shakapacker] Adding config file: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT] [Shakapacker] Final command: yarn exec webpack --config /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT] [Shakapacker] Working directory: /home/romex/app/demo-ecommerce
+[EXPERIMENT] Loading ENV specific webpack configuration file /home/romex/app/demo-ecommerce/config/webpack/production.js
+[EXPERIMENT] [React on Rails] Creating both client and server bundles.
+[EXPERIMENT] assets by status 806 KiB [cached] 16 assets
+[EXPERIMENT] assets by path . 52.5 KiB
+[EXPERIMENT]   assets by path js/*.js 13.1 KiB
+[EXPERIMENT]     asset js/pages-HomePage-fa6c2b68881f0c7d1717.chunk.js 9.32 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
+[EXPERIMENT]     asset js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
+[EXPERIMENT]   assets by path *.json 39.4 KiB
+[EXPERIMENT]     asset app-loadable-stats.json 23 KiB [emitted] [compared for emit] 2 related assets
+[EXPERIMENT]     asset manifest.json 16.4 KiB [emitted] 2 related assets
+[EXPERIMENT] Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
+[EXPERIMENT] Entrypoint client [big] 628 KiB (3.02 MiB) = js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-bba6d40feae61b296fcb.js 8.63 KiB 5 auxiliary assets
+[EXPERIMENT] Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-4e59f613aeaa2331d3ff.js 8.63 KiB 4 auxiliary assets
+[EXPERIMENT] orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11518 modules
+[EXPERIMENT] runtime modules 9.12 KiB 13 modules
+[EXPERIMENT] cacheable modules 2.55 MiB (javascript) 49 bytes (css/mini-extract)
+[EXPERIMENT]   modules by path ../.yarn/__virtual__/ 2.36 MiB 172 modules
+[EXPERIMENT]   modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
+[EXPERIMENT]   modules by path ./app/javascript/ 114 KiB (javascript) 49 bytes (css/mini-extract)
+[EXPERIMENT]     modules by path ./app/javascript/components/ 53.9 KiB 9 modules
+[EXPERIMENT]     modules by path ./app/javascript/packs/*.tsx 55.6 KiB 3 modules
+[EXPERIMENT]     modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
+[EXPERIMENT]     css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+[EXPERIMENT] WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+[EXPERIMENT] This can impact web performance.
+[EXPERIMENT] Assets: 
+[EXPERIMENT]   js/192-b63cfebd9a83a6087244.js (599 KiB)
+[EXPERIMENT]   js/192-b63cfebd9a83a6087244.js.map.gz (710 KiB)
+[EXPERIMENT]   js/192-b63cfebd9a83a6087244.js.map.br (515 KiB)
+[EXPERIMENT] WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+[EXPERIMENT] Entrypoints:
+[EXPERIMENT]   admin (704 KiB)
+[EXPERIMENT]       js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]       js/719-f34241d7c2d17031511d.js
+[EXPERIMENT]       js/192-b63cfebd9a83a6087244.js
+[EXPERIMENT]       js/905-dcf07c7ad76793afd2b3.js
+[EXPERIMENT]       js/165-a84e39f36532b79695dd.js
+[EXPERIMENT]       js/704-96835d695da6c934bc93.js
+[EXPERIMENT]       css/admin-72e38325.css
+[EXPERIMENT]       js/admin-9316c7683c2f095fb43f.js
+[EXPERIMENT]   client (628 KiB)
+[EXPERIMENT]       js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]       js/192-b63cfebd9a83a6087244.js
+[EXPERIMENT]       js/148-7088267baa9e2e0c2764.js
+[EXPERIMENT]       css/client-72e38325.css
+[EXPERIMENT]       js/client-bba6d40feae61b296fcb.js
+[EXPERIMENT]   server (628 KiB)
+[EXPERIMENT]       js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]       js/192-b63cfebd9a83a6087244.js
+[EXPERIMENT]       js/148-7088267baa9e2e0c2764.js
+[EXPERIMENT]       js/server-4e59f613aeaa2331d3ff.js
+[EXPERIMENT] webpack 5.104.1 compiled with 2 warnings in 14041 ms
+[EXPERIMENT] asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
+[EXPERIMENT] ./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
+[EXPERIMENT] webpack 5.104.1 compiled successfully in 511 ms
+[EXPERIMENT] [Shakapacker] Completed webpack build in 16.01s (16.01s)
+
+
+>>> Starting puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+
+
+>>> Waiting for ports 3020 + 3030
+
+
+>>> Verifying control (3020) still has "Discover Your Style"
+
+
+>>> Verifying experiment (3030) has "Discover Your New Self"
+
+
+>>> Resetting git changes in temp clone
+
+Updated 1 path from the index
+Updated 0 paths from the index
+  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge (45.9s)
+
+>>> run: yarn shaka-twin-servers start-containers
+
+
+=================================
+  Starting Twin Servers Locally  
+=================================
+
+Using images:
+  - Experiment: demo-ecommerce:experiment
+  - Control: demo-ecommerce:control
+
+Clearing stale volume contents...
+   /home/romex/demo_ecommerce_control_docker_volume
+   /home/romex/demo_ecommerce_experiment_docker_volume
+
+Stopping any existing twin servers...
+Starting twin servers...
+Waiting for containers to start...
+Checking container status...
+NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS                            PORTS
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      7 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   7 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:3030->3000/tcp
+
+Waiting for containers to be ready...
+   control-server is ready
+   experiment-server is ready
+
+Running setup commands...
+Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
+[EXPERIMENT] I, [2026-02-26T07:21:37.955781 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT] I, [2026-02-26T07:21:37.956035 #26]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT] Created 10 products
+[EXPERIMENT] I, [2026-02-26T07:21:39.024061 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT] I, [2026-02-26T07:21:39.024345 #20]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT] Created 10 products
+[CONTROL] I, [2026-02-26T07:21:37.962122 #26]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL] I, [2026-02-26T07:21:37.962387 #26]  INFO -- : [React on Rails] Package validation successful
+[CONTROL] Created 10 products
+[CONTROL] I, [2026-02-26T07:21:39.129551 #20]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL] I, [2026-02-26T07:21:39.129788 #20]  INFO -- : [React on Rails] Package validation successful
+[CONTROL] Created 10 products
+
+Both servers are ready!
+
+
+===================================
+  Twin Servers containers Started  
+===================================
+
+
+Edit project code inside containers:
+   Control:    /home/romex/demo_ecommerce_control_docker_volume
+   Experiment: /home/romex/demo_ecommerce_experiment_docker_volume
+
+Access container shells:
+   docker compose exec control-server bash
+   docker compose exec experiment-server bash
+
+Next steps:
+   1. Start the servers:
+      yarn shaka-twin-servers start-servers
+
+   2. Stop containers when done:
+      docker compose down
+
+   3. View logs:
+      docker compose logs -f control-server
+      docker compose logs -f experiment-server
+
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: run-cmd preserves single and double quotes
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Stopping puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "pkill -f puma || true"
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "pkill -f puma || true"
+
+
+>>> Using run-cmd with sed to replace "Discover Your Style" with "It's a \"quoted\" world"
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "sed -i 's/Discover Your Style/It'\''s a \"quoted\" world/' app/javascript/components/pages/HomePage.tsx"
+
+Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
+
+Running bundle exec rake assets:precompile in experiment-server
+I, [2026-02-26T07:21:46.060063 #53]  INFO -- : [React on Rails] Validating package version and compatibility...
+I, [2026-02-26T07:21:46.060289 #53]  INFO -- : [React on Rails] Package validation successful
+using yarn@4.12.0 to manage dependencies and scripts in package.json
+I, [2026-02-26T07:21:46.585792 #53]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
+I, [2026-02-26T07:21:47.711519 #53]  INFO -- : Precompile hook completed successfully
+I, [2026-02-26T07:21:47.711580 #53]  INFO -- : 🔄 Running React on Rails precompile hook...
+
+I, [2026-02-26T07:21:47.711598 #53]  INFO -- : Compiling...
+I, [2026-02-26T07:22:03.505839 #53]  INFO -- : Compiled all packs in /home/romex/app/demo-ecommerce/public/packs
+W, [2026-02-26T07:22:03.505883 #53]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
+   Add to config/shakapacker.yml:
+     private_output_path: ssr-generated
+   Run: rails react_on_rails:doctor to validate your configuration
+
+I, [2026-02-26T07:22:03.505897 #53]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[Shakapacker] Found Webpack config: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[Shakapacker] Preparing environment for assets bundler execution...
+[Shakapacker] Base command: yarn exec webpack
+[Shakapacker] Adding config file: /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[Shakapacker] Final command: yarn exec webpack --config /home/romex/app/demo-ecommerce/config/webpack/webpack.config.js
+[Shakapacker] Working directory: /home/romex/app/demo-ecommerce
+Loading ENV specific webpack configuration file /home/romex/app/demo-ecommerce/config/webpack/production.js
+[React on Rails] Creating both client and server bundles.
+assets by status 806 KiB [cached] 16 assets
+assets by path . 52.5 KiB
+  assets by path js/*.js 13.1 KiB
+    asset js/pages-HomePage-7f44d89f176add203d06.chunk.js 9.32 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
+    asset js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
+  assets by path *.json 39.4 KiB
+    asset app-loadable-stats.json 23 KiB [emitted] [compared for emit] 2 related assets
+    asset manifest.json 16.4 KiB [emitted] 2 related assets
+Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
+Entrypoint client [big] 628 KiB (3.02 MiB) = js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-bba6d40feae61b296fcb.js 8.63 KiB 5 auxiliary assets
+Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-4e59f613aeaa2331d3ff.js 8.63 KiB 4 auxiliary assets
+orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11518 modules
+runtime modules 9.12 KiB 13 modules
+cacheable modules 2.55 MiB (javascript) 49 bytes (css/mini-extract)
+  modules by path ../.yarn/__virtual__/ 2.36 MiB 172 modules
+  modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
+  modules by path ./app/javascript/ 114 KiB (javascript) 49 bytes (css/mini-extract)
+    modules by path ./app/javascript/components/ 53.9 KiB 9 modules
+    modules by path ./app/javascript/packs/*.tsx 55.6 KiB 3 modules
+    modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
+    css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+
+WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  js/192-b63cfebd9a83a6087244.js (599 KiB)
+  js/192-b63cfebd9a83a6087244.js.map.gz (710 KiB)
+  js/192-b63cfebd9a83a6087244.js.map.br (515 KiB)
+
+WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  admin (704 KiB)
+      js/runtime-aee7bd544c5d3955dd9d.js
+      js/719-f34241d7c2d17031511d.js
+      js/192-b63cfebd9a83a6087244.js
+      js/905-dcf07c7ad76793afd2b3.js
+      js/165-a84e39f36532b79695dd.js
+      js/704-96835d695da6c934bc93.js
+      css/admin-72e38325.css
+      js/admin-9316c7683c2f095fb43f.js
+  client (628 KiB)
+      js/runtime-aee7bd544c5d3955dd9d.js
+      js/192-b63cfebd9a83a6087244.js
+      js/148-7088267baa9e2e0c2764.js
+      css/client-72e38325.css
+      js/client-bba6d40feae61b296fcb.js
+  server (628 KiB)
+      js/runtime-aee7bd544c5d3955dd9d.js
+      js/192-b63cfebd9a83a6087244.js
+      js/148-7088267baa9e2e0c2764.js
+      js/server-4e59f613aeaa2331d3ff.js
+
+webpack 5.104.1 compiled with 2 warnings in 13687 ms
+
+asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
+./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
+webpack 5.104.1 compiled successfully in 490 ms
+[Shakapacker] Completed webpack build in 15.57s (15.57s)
+
+
+
+>>> Starting puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+
+
+>>> Waiting for ports 3020 + 3030
+
+
+>>> Verifying control (3020) still has "Discover Your Style"
+
+
+>>> Verifying experiment (3030) has text with single and double quotes
+
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+Updated 0 paths from the index
+  ✓  2 integration-tests/twin-servers.spec.ts:68:5 › run-cmd preserves single and double quotes (51.4s)
+
+>>> Stopping containers
+
+
+>>> run: yarn shaka-twin-servers stop-containers
+
+
+=========================
+  Stopping Twin Servers  
+=========================
+
+Stopping containers and removing volumes...
+Containers stopped
+
+
+  2 passed (2.1m)
