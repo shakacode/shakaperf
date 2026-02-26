@@ -2,7 +2,7 @@
   "name": "shaka-perf",
   "version": "0.0.0",
   "private": true,
-  "description": "Performance tools monorepo for React and React on Rails apps",
+  "description": "Performance and visual regression toolset for web applications",
   "workspaces": [
     "packages/*",
     "demo-ecommerce"

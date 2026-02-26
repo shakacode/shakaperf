@@ -1,7 +1,7 @@
 {
   "name": "shaka-twin-servers",
   "version": "0.0.2",
-  "description": "Twin server for performance testing React and React on Rails apps",
+  "description": "Twin server for performance and visual testing for web applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "./dist/cli.js",

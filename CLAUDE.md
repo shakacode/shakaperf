@@ -1,6 +1,6 @@
 # shaka-perf
 
-Frontend performance testing toolkit for React/React-on-Rails apps. Yarn 4 monorepo.
+Frontend performance testing toolkit for web applications. Yarn 4 monorepo.
 
 ## Packages
 
