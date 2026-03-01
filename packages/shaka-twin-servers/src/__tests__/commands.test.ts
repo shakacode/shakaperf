@@ -161,22 +161,24 @@ describe('run-cmd-parallel command', () => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
   });
 
-  it('runs command in both containers', async () => {
+  it('runs command in both containers via GNU parallel', async () => {
     const { spawn } = require('child_process');
     const { runCmdParallel } = require('../commands/run-cmd-parallel');
     const config = createMockConfig(tmpDir);
 
     await runCmdParallel(config, 'echo test');
 
-    // Should call spawn twice (once for each container)
-    const dockerCalls = (spawn as jest.Mock).mock.calls.filter(
-      (call: any[]) => call[0] === 'docker'
+    // Should call spawn with 'parallel' containing both experiment and control commands
+    const parallelCalls = (spawn as jest.Mock).mock.calls.filter(
+      (call: any[]) => call[0] === 'parallel'
     );
-    expect(dockerCalls.length).toBe(2);
+    expect(parallelCalls.length).toBe(1);
 
-    const allArgs = dockerCalls.flatMap((call: any[]) => call[1] as string[]);
-    expect(allArgs).toContain('experiment-server');
-    expect(allArgs).toContain('control-server');
+    const args: string[] = parallelCalls[0][1];
+    const experimentCmd = args.find((a: string) => a.includes('experiment'));
+    const controlCmd = args.find((a: string) => a.includes('control'));
+    expect(experimentCmd).toContain('echo test');
+    expect(controlCmd).toContain('echo test');
   });
 });
 

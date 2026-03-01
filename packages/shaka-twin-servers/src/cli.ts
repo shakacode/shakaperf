@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { loadConfig, resolveConfig, findConfigFile } from './config';
 import { build, type BuildTarget } from './commands/build';
 import { startContainers } from './commands/start-containers';
+import { stopContainers } from './commands/stop-containers';
 import { startServers } from './commands/start-servers';
 import { runOvermindCommand } from './commands/run-overmind-command';
 import { runCmd } from './commands/run-cmd';
@@ -28,6 +29,7 @@ Commands:
   build [--target <control|experiment>] Build Docker images (both by default, or single target)
   get-config <key>                      Get a config value (e.g., dockerfile)
   start-containers                      Start Docker containers
+  stop-containers                       Stop Docker containers and remove volumes
   start-servers                         Start Rails servers via Overmind
   run-cmd <target> <cmd>                Run a command in a container interactively
   run-cmd-parallel <cmd>                Run a command in both containers in parallel
@@ -80,7 +82,7 @@ Examples:
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
+const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'stop-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -137,6 +139,7 @@ async function main(): Promise<void> {
     options: {
       config: { type: 'string', short: 'c' },
       target: { type: 'string', short: 't' },
+      'no-cache': { type: 'boolean', default: false },
       verbose: { type: 'boolean', short: 'v', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', default: false },
@@ -211,7 +214,7 @@ async function main(): Promise<void> {
           }
           target = values.target;
         }
-        await build(resolvedConfig, { ...options, target });
+        await build(resolvedConfig, { ...options, target, noCache: values['no-cache'] });
         break;
       }
       case 'get-config': {
@@ -227,6 +230,9 @@ async function main(): Promise<void> {
       }
       case 'start-containers':
         await startContainers(resolvedConfig, options);
+        break;
+      case 'stop-containers':
+        await stopContainers(resolvedConfig, options);
         break;
       case 'start-servers':
         await startServers(resolvedConfig, options);

@@ -6,12 +6,14 @@ export interface DockerBuildOptions {
   dockerfile: string;
   buildContext: string;
   buildArgs?: Record<string, string>;
+  noCache?: boolean;
 }
 
 export async function dockerBuild(options: DockerBuildOptions): Promise<void> {
   const { imageName, dockerfile, buildContext, buildArgs = {} } = options;
 
   const args = ['build', '-t', imageName, '-f', dockerfile];
+  if (options.noCache) args.push('--no-cache');
 
   for (const [key, value] of Object.entries(buildArgs)) {
     args.push('--build-arg', `${key}=${value}`);
@@ -56,7 +58,7 @@ export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {
 
 export async function dockerComposeDown(config: ResolvedConfig): Promise<void> {
   const opts = buildComposeOptions(config);
-  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--remove-orphans'], {
+  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--volumes', '--remove-orphans'], {
     cwd: opts.cwd,
     env: opts.env,
     silent: true,
@@ -74,7 +76,6 @@ export async function dockerComposePs(config: ResolvedConfig): Promise<void> {
 export interface DockerComposeExecOptions {
   interactive?: boolean;
   stream?: boolean;
-  prefix?: string;
 }
 
 export async function dockerComposeExec(
@@ -83,7 +84,7 @@ export async function dockerComposeExec(
   command: string,
   execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  const { interactive = false, stream = false, prefix } = execOptions;
+  const { interactive = false, stream = false } = execOptions;
 
   const opts = buildComposeOptions(config);
   const args = ['compose', '-f', opts.composeFile, 'exec'];
@@ -92,26 +93,11 @@ export async function dockerComposeExec(
   }
   args.push(containerName, 'bash', '-c', command);
 
-  const result = await exec('docker', args, {
+  return exec('docker', args, {
     cwd: opts.cwd,
     env: opts.env,
     silent: !stream,
   });
-
-  if (prefix) {
-    if (result.stdout) {
-      for (const line of result.stdout.split('\n')) {
-        if (line) console.log(`${prefix} ${line}`);
-      }
-    }
-    if (result.stderr) {
-      for (const line of result.stderr.split('\n')) {
-        if (line) console.error(`${prefix} ${line}`);
-      }
-    }
-  }
-
-  return result;
 }
 
 export async function waitForContainer(

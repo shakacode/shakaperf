@@ -1,5 +1,5 @@
 import type { ResolvedConfig } from '../types';
-import { dockerComposeExec } from '../helpers/docker';
+import { runInParallel } from '../helpers/shell';
 import { colorize } from '../helpers/ui';
 
 export interface RunCmdParallelOptions {
@@ -18,36 +18,11 @@ export async function runCmdParallel(
   command: string,
   options: RunCmdParallelOptions = {}
 ): Promise<void> {
-  const { verbose } = options;
+  console.log(`Running in parallel: ${colorize(command, 'green')} in both containers`);
 
-  if (verbose) {
-    console.log(`Running in parallel: ${command}`);
-  }
-
-  const runInContainer = async (target: 'experiment' | 'control') => {
-    const containerName = target === 'control' ? 'control-server' : 'experiment-server';
-    const prefix = target === 'experiment'
-      ? colorize('[EXPERIMENT]', 'blue')
-      : colorize('[CONTROL]', 'green');
-
-    const result = await dockerComposeExec(
-      config,
-      containerName,
-      command,
-      { interactive: true, prefix }
-    );
-
-    return { target, code: result.code };
-  };
-
-  const results = await Promise.all([
-    runInContainer('experiment'),
-    runInContainer('control'),
-  ]);
-
-  const failures = results.filter(r => r.code !== 0);
-  if (failures.length > 0) {
-    const failedTargets = failures.map(f => f.target).join(', ');
-    throw new Error(`Command failed in: ${failedTargets}`);
-  }
+  const escaped = command.replace(/'/g, "'\\''");
+  await runInParallel(
+    `yarn shaka-twin-servers run-cmd experiment '${escaped}'`,
+    `yarn shaka-twin-servers run-cmd control '${escaped}'`,
+  );
 }

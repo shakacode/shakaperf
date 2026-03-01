@@ -1,4 +1,5 @@
 import { spawn, execSync, SpawnOptions } from 'child_process';
+import * as readline from 'readline';
 
 export interface ExecOptions {
   cwd?: string;
@@ -114,5 +115,43 @@ export function execWithStdin(
       child.stdin.write(options.stdin);
       child.stdin.end();
     }
+  });
+}
+
+/**
+ * Run two commands in parallel via GNU parallel with colored
+ * [EXPERIMENT]/[CONTROL] prefixes and line-buffered output.
+ */
+export async function runInParallel(
+  experimentCmd: string,
+  controlCmd: string,
+  options: ExecOptions = {}
+): Promise<void> {
+  requireCommand('parallel', '`brew install parallel` (Mac) or `sudo apt-get install parallel` (Ubuntu)');
+
+  const result = await exec('parallel', [
+    '--line-buffer',
+    '--tagstring', '{2}',
+    '{1}',
+    ':::',
+    experimentCmd,
+    controlCmd,
+    ':::+',
+    '\x1b[1;34m[EXPERIMENT]\x1b[0m',
+    '\x1b[1;32m[CONTROL]\x1b[0m',
+  ], options);
+
+  if (result.code !== 0) {
+    throw new Error('Parallel execution failed');
+  }
+}
+
+export function confirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(`${question} [Y/n] `, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() !== 'n');
+    });
   });
 }

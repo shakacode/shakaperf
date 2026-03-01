@@ -3401,6 +3401,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@playwright/test@npm:^1.50.0":
+  version: 1.58.2
+  resolution: "@playwright/test@npm:1.58.2"
+  dependencies:
+    playwright: "npm:1.58.2"
+  bin:
+    playwright: cli.js
+  checksum: 10c0/2164c03ad97c3653ff02e8818a71f3b2bbc344ac07924c9d8e31cd57505d6d37596015a41f51396b3ed8de6840f59143eaa9c21bf65515963da20740119811da
+  languageName: node
+  linkType: hard
+
 "@pmmmwh/react-refresh-webpack-plugin@npm:0.6.2":
   version: 0.6.2
   resolution: "@pmmmwh/react-refresh-webpack-plugin@npm:0.6.2"
@@ -10745,7 +10756,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright@npm:^1.40.1":
+"playwright@npm:1.58.2, playwright@npm:^1.40.1":
   version: 1.58.2
   resolution: "playwright@npm:1.58.2"
   dependencies:
@@ -12009,6 +12020,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "shaka-perf@workspace:."
   dependencies:
+    "@playwright/test": "npm:^1.50.0"
     typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft

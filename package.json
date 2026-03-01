@@ -11,7 +11,8 @@
     "build": "yarn workspaces foreach -A --include 'packages/*' run build",
     "typecheck": "yarn workspaces foreach -Ap run typecheck",
     "//postinstall": "Skip git hooks setup when not in a git repo (e.g. Docker builds)",
-    "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true"
+    "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true",
+    "test:integration": "yarn playwright test -c playwright.integration.config.ts"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.50.0",
     "typescript": "^5.3.3"
   },
   "packageManager": "yarn@4.12.0",

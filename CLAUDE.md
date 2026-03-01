@@ -17,12 +17,17 @@ yarn install    # Install dependencies
 yarn build      # Build all packages (tsc)
 ```
 
+## Integration tests
+When messing with docker setup and/or logs, run `integration-tests/run-integration-tests-and-compare-logs.sh`
+If changes in output are meaningful and desired, update `integration-tests/baseline-output.log`
+
 ## Code Conventions
 
 - TypeScript strict mode, no ESLint/Prettier
 - Zod for runtime validation
 - PascalCase for classes/types, camelCase for functions
 - Node.js native `parseArgs` for CLIs
+- In new code don't use docker compose directly, see @packages/shaka-twin-servers/README.md
 
 ## Package Structure
 

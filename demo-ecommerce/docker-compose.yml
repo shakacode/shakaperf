@@ -1,19 +1,11 @@
 # Docker Compose for twin-servers A/B testing of demo-ecommerce
 #
-# Usage:
-#   cd demo-ecommerce
-#   export RAILS_MASTER_KEY=$(cat config/master.key)
-#   export CI_IMAGE_NAME=demo-ecommerce:experiment
-#   export CI_CONTROL_IMAGE_NAME=demo-ecommerce:control
-#   docker compose up
-#
-# The control server will be at http://localhost:3020
-# The experiment server will be at http://localhost:3030
+# See packages/shaka-twin-servers/README.md
 
 # YAML anchor for shared environment variables
 x-server-env: &server-env
   RAILS_ENV: production
-  RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+  SECRET_KEY_BASE: demo-ecommerce-not-a-real-secret-just-for-perf-testing
   RAILS_LOG_TO_STDOUT: "true"
   RAILS_SERVE_STATIC_FILES: "true"
   DISABLE_SSL: "true"

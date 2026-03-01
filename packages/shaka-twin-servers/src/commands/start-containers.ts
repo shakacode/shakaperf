@@ -5,48 +5,13 @@ import {
   dockerComposeUp,
   dockerComposeDown,
   dockerComposePs,
-  dockerComposeExec,
   waitForContainer,
 } from '../helpers/docker';
-import { printBanner, printSuccess, printError, printWarning, colorize } from '../helpers/ui';
+import { printBanner, printSuccess, printError, printWarning } from '../helpers/ui';
+import { runCmdParallel } from './run-cmd-parallel';
 
 export interface StartContainersOptions {
   verbose?: boolean;
-}
-
-async function runSetupCommands(
-  config: ResolvedConfig,
-  serverType: 'control' | 'experiment'
-): Promise<void> {
-  // Skip if no setup commands configured
-  if (config.setupCommands.length === 0) {
-    return;
-  }
-
-  const containerName = `${serverType}-server`;
-  const prefix = serverType === 'experiment'
-    ? colorize('[EXPERIMENT]', 'blue')
-    : colorize('[CONTROL]', 'green');
-
-  console.log('');
-  console.log(`${prefix} Running setup commands...`);
-
-  for (const cmd of config.setupCommands) {
-    console.log(`${prefix}    Started ${cmd.description}...`);
-
-    const result = await dockerComposeExec(config, containerName, cmd.command, { prefix });
-
-    if (result.code !== 0) {
-      throw new Error(
-        `Setup command failed for ${serverType}: ${cmd.description}\n` +
-          `Command: ${cmd.command}\n` +
-          `Error: ${result.stderr || 'Unknown error'}`
-      );
-    }
-    console.log(`${prefix}    Completed ${cmd.description} successfully`);
-  }
-
-  console.log(`${prefix}    Setup complete`);
 }
 
 export async function startContainers(
@@ -74,7 +39,9 @@ export async function startContainers(
     }
   }
 
-  console.log('Ensuring bind-mount directories exist...');
+  console.log('Clearing stale volume contents...');
+  fs.rmSync(config.volumes.control, { recursive: true, force: true });
+  fs.rmSync(config.volumes.experiment, { recursive: true, force: true });
   fs.mkdirSync(config.volumes.control, { recursive: true });
   fs.mkdirSync(config.volumes.experiment, { recursive: true });
   console.log(`   ${config.volumes.control}`);
@@ -112,10 +79,12 @@ export async function startContainers(
     process.exit(1);
   }
 
-  await Promise.all([
-    runSetupCommands(config, 'control'),
-    runSetupCommands(config, 'experiment'),
-  ]);
+  if (config.setupCommands.length > 0) {
+    console.log('');
+    console.log('Running setup commands...');
+    const setupScript = config.setupCommands.map(c => c.command).join(' && ');
+    await runCmdParallel(config, setupScript);
+  }
 
   console.log('');
   printSuccess('Both servers are ready!');
@@ -127,18 +96,14 @@ export async function startContainers(
   console.log(`   Experiment: ${config.volumes.experiment}`);
   console.log('');
   console.log('Access container shells:');
-  console.log('   docker compose exec control-server bash');
-  console.log('   docker compose exec experiment-server bash');
+  console.log('   yarn shaka-twin-servers run-cmd control bash');
+  console.log('   yarn shaka-twin-servers run-cmd experiment bash');
   console.log('');
   console.log('Next steps:');
   console.log('   1. Start the servers:');
-  console.log('      shaka-twin-servers start-servers');
+  console.log('      yarn shaka-twin-servers start-servers');
   console.log('');
   console.log('   2. Stop containers when done:');
-  console.log('      docker compose down');
-  console.log('');
-  console.log('   3. View logs:');
-  console.log('      docker compose logs -f control-server');
-  console.log('      docker compose logs -f experiment-server');
+  console.log('      yarn shaka-twin-servers stop-containers');
   console.log('');
 }
