@@ -1,5 +1,5 @@
-const ENGINE = 'puppet';
-const SCRIPT_PATH = 'puppet';
+const ENGINE = 'playwright';
+const SCRIPT_PATH = 'playwright';
 const URL = 'https://garris.github.io/BackstopJS';
 
 module.exports = {

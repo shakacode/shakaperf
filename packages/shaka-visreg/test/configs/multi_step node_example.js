@@ -55,8 +55,8 @@ const exampleConfig = {
         height: 768
       }
     ],
-    onBeforeScript: 'puppeteer/onBefore.js',
-    onReadyScript: 'puppeteer/onReady.js',
+    onBeforeScript: 'playwright/onBefore.js',
+    onReadyScript: 'playwright/onReady.js',
     scenarios: [
       {
         label: 'Homepage',
@@ -77,7 +77,7 @@ const exampleConfig = {
       ci_report: 'backstop_data/ci_report'
     },
     report: ['browser'],
-    engine: 'puppeteer',
+    engine: 'playwright',
     asyncCaptureLimit: 5,
     asyncCompareLimit: 50,
     debug: false,
