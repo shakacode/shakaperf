@@ -6,17 +6,17 @@ module.exports = (target) => {
     }
 
     window._backstopTools = {
-      hasLogged: function (str) {
+      hasLogged: (str) => {
         return new RegExp(str).test(window._backstopTools._consoleLogger);
       },
-      startConsoleLogger: function () {
+      startConsoleLogger: () => {
         if (typeof window._backstopTools._consoleLogger !== 'string') {
           window._backstopTools._consoleLogger = '';
         }
         const log = window.console.log.bind(console);
-        window.console.log = function () {
-          window._backstopTools._consoleLogger += Array.from(arguments).join('\n');
-          log.apply(this, arguments);
+        window.console.log = (...args) => {
+          window._backstopTools._consoleLogger += Array.from(args).join('\n');
+          log.apply(console, args);
         };
       },
       /**
@@ -27,11 +27,11 @@ module.exports = (target) => {
        * @return {[string]} [array of expanded selectors]
        * @param selectors
        */
-      expandSelectors: function (selectors) {
+      expandSelectors: (selectors) => {
         if (!Array.isArray(selectors)) {
           selectors = selectors.split(',');
         }
-        return selectors.reduce(function (acc, selector) {
+        return selectors.reduce((acc, selector) => {
           if (selector === 'body' || selector === 'viewport') {
             return acc.concat([selector]);
           }
@@ -46,7 +46,7 @@ module.exports = (target) => {
           }
 
           const expandedSelector = [].slice.call(qResult)
-            .map(function (element, expandedIndex) {
+            .map((element, expandedIndex) => {
               if (element.classList.contains('__86d')) {
                 return '';
               }
@@ -64,7 +64,7 @@ module.exports = (target) => {
             });
           // concat arrays of fully-qualified classnames
           return acc.concat(expandedSelector);
-        }, []).filter(function (selector) {
+        }, []).filter((selector) => {
           return selector !== '';
         });
       },
@@ -73,7 +73,7 @@ module.exports = (target) => {
        * @param  {[type]}  selector [a css selector str]
        * @return {Boolean}          [is it visible? true or false]
        */
-      isVisible: function (selector) {
+      isVisible: (selector) => {
         if (selector === 'body' || selector === 'document' || selector === 'viewport') {
           return true;
         } else if (window._backstopTools.exists(selector)) {
@@ -88,7 +88,7 @@ module.exports = (target) => {
        * @param  {[type]} selector [a css selector str]
        * @return {[type]}          [returns count of found matches -- 0 for no matches]
        */
-      exists: function (selector) {
+      exists: (selector) => {
         if (selector === 'body' || selector === 'document' || selector === 'viewport') {
           return 1;
         }

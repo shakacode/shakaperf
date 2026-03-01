@@ -68,7 +68,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
     await injectBackstopTools(page);
 
     if (readyPromise) {
-      await page.evaluate(function (v) { window._readyEvent = v; }, readyEvent);
+      await page.evaluate((v) => { window._readyEvent = v; }, readyEvent);
       await readyPromise;
     }
   } finally {
@@ -93,9 +93,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   // --- REMOVE SELECTORS ---
   if (_.has(scenario, 'removeSelectors')) {
     await Promise.all(
-      scenario.removeSelectors.map(function (sel) {
-        return page.evaluate(function (s) {
-          document.querySelectorAll(s).forEach(function (el) {
+      scenario.removeSelectors.map((sel) => {
+        return page.evaluate((s) => {
+          document.querySelectorAll(s).forEach((el: any) => {
             el.style.cssText = 'display: none !important;';
             el.classList.add('__86d');
           });
@@ -121,9 +121,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
     await Promise.all(
-      scenario.hideSelectors.map(function (sel) {
-        return page.evaluate(function (s) {
-          document.querySelectorAll(s).forEach(function (el) {
+      scenario.hideSelectors.map((sel) => {
+        return page.evaluate((s) => {
+          document.querySelectorAll(s).forEach((el: any) => {
             el.style.visibility = 'hidden';
           });
         }, sel);
@@ -140,7 +140,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
   const selectors = Array.isArray(scenario.selectors) ? scenario.selectors : [scenario.selectors];
 
-  const result = await page.evaluate(function (args) {
+  const result = await page.evaluate((args) => {
     var expand = args.expand;
     var sels = args.sels;
     window._selectorExpansion = expand;
@@ -150,7 +150,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
     } else {
       window._backstopSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc, selector) {
+    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce((acc, selector) => {
       acc[selector] = {
         exists: window._backstopTools.exists(selector),
         isVisible: window._backstopTools.isVisible(selector)
