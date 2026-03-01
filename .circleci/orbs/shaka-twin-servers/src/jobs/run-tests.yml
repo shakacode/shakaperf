@@ -54,6 +54,7 @@ steps:
   - steps: << parameters.setup-steps >>
   - load-images:
       workspace-path: << parameters.workspace-attach-at >>/docker-images
+  - install-gnu-parallel
   - start-containers:
       working-directory: << parameters.working-directory >>
       cli-prefix: << parameters.cli-prefix >>
