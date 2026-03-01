@@ -11,6 +11,8 @@
     "npm": ">=8.0.0"
   },
   "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint \"compare/*.js\" \"compare/src/**/*.js\" \"core/**/*.ts\" \"cli/**/*.ts\" \"capture/**/*.ts\" \"test/**/*.ts\"",
     "format": "prettier-eslint --write \"compare/src/**/*.js\"",
     "init": "tsx ./cli/index.ts init",
