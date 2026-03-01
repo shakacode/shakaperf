@@ -5,8 +5,8 @@ describe('computeConfig_spec', function () {
   const baseConfig = { projectPath: process.cwd(), backstop: process.cwd() };
 
   it('should override engine from config file', function () {
-    const actualConfig = extendConfig({ ...baseConfig }, { engine: 'puppet' });
-    assert.strictEqual(actualConfig.engine, 'puppet');
+    const actualConfig = extendConfig({ ...baseConfig }, { engine: 'playwright' });
+    assert.strictEqual(actualConfig.engine, 'playwright');
   });
 
   it('should override resembleOutputOptions from config file', function () {
