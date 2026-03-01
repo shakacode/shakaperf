@@ -12,6 +12,7 @@
     "typecheck": "yarn workspaces foreach -Ap run typecheck",
     "//postinstall": "Skip git hooks setup when not in a git repo (e.g. Docker builds)",
     "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true",
+    "test": "yarn workspaces foreach -Ap --include 'packages/*' run test",
     "test:integration": "yarn playwright test -c playwright.integration.config.ts"
   },
   "repository": {
