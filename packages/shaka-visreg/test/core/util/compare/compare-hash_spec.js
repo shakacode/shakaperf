@@ -17,10 +17,10 @@ describe('compare-hashes', function () {
     return compareHash(REF_IMG1, REF_IMG1)
       .then(data => assert.deepStrictEqual(data, expectedResult));
   });
-  it('should reject if two images have the same content', function (cb) {
-    compareHash(REF_IMG1, REF_IMG1_OPTIMIZED).catch(() => cb());
+  it('should reject if two images have the same content', function () {
+    return expect(compareHash(REF_IMG1, REF_IMG1_OPTIMIZED)).rejects.toBeDefined();
   });
-  it('should reject if two images exceed the mismatchThreshold', function (cb) {
-    compareHash(REF_IMG1, REF_IMG2).catch(() => cb());
+  it('should reject if two images exceed the mismatchThreshold', function () {
+    return expect(compareHash(REF_IMG1, REF_IMG2)).rejects.toBeDefined();
   });
 });

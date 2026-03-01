@@ -1,12 +1,10 @@
-const mockery = require('mockery');
 const assert = require('assert');
 const path = require('path');
 
 describe('createComparisonBitmaps', function () {
   let createComparisonBitmaps;
-  let mockRunCompareScenario;
-  let mockFs;
   let capturedConfig;
+  let playwrightHandler;
 
   const mockConfig = {
     backstopConfigFileName: path.join(__dirname, 'backstop.json'),
@@ -44,62 +42,50 @@ describe('createComparisonBitmaps', function () {
     engine: 'playwright'
   };
 
-  before(function () {
-    mockery.enable({ warnOnUnregistered: false, warnOnReplace: false, useCleanCache: true });
+  function setupMocks (configJSON) {
+    jest.resetModules();
 
-    // Mock the config file
-    mockery.registerMock(mockConfig.backstopConfigFileName, mockConfigJSON);
+    jest.doMock(mockConfig.backstopConfigFileName, () => configJSON, { virtual: true });
 
-    // Mock fs
-    mockFs = {
-      writeFile: function (filePath, content) {
-        return Promise.resolve();
-      }
+    jest.doMock('../../../core/util/fs', () => ({
+      writeFile: function () { return Promise.resolve(); }
+    }));
+
+    playwrightHandler = function (scenarioView) {
+      capturedConfig = scenarioView.config;
+      return Promise.resolve({
+        testPairs: [{
+          test: '/path/to/test.png',
+          reference: '/path/to/ref.png',
+          selector: 'body'
+        }]
+      });
     };
-    mockery.registerMock('./fs', mockFs);
 
-    // Mock runCompareScenario
-    mockRunCompareScenario = {
-      playwright: function (scenarioView) {
-        capturedConfig = scenarioView.config;
-        return Promise.resolve({
-          testPairs: [{
-            test: '/path/to/test.png',
-            reference: '/path/to/ref.png',
-            selector: 'body'
-          }]
-        });
-      }
-    };
-    mockery.registerMock('./runCompareScenario', mockRunCompareScenario);
+    jest.doMock('../../../core/util/runCompareScenario', () => ({
+      get playwright () { return playwrightHandler; }
+    }));
 
-    // Mock runPlaywright
-    mockery.registerMock('./runPlaywright', {
+    jest.doMock('../../../core/util/runPlaywright', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); }
-    });
+    }));
 
-    // Mock ensureDirectoryPath
-    mockery.registerMock('./ensureDirectoryPath', function () {});
+    jest.doMock('../../../core/util/ensureDirectoryPath', () => function () {});
 
-    // Mock logger
-    mockery.registerMock('./logger', function () {
+    jest.doMock('../../../core/util/logger', () => function () {
       return {
         log: function () {},
         error: function () {}
       };
     });
 
-    createComparisonBitmaps = require('../../../core/util/createComparisonBitmaps');
-  });
+    return require('../../../core/util/createComparisonBitmaps');
+  }
 
-  afterEach(function () {
+  beforeEach(function () {
     capturedConfig = null;
-  });
-
-  after(function () {
-    mockery.deregisterAll();
-    mockery.disable();
+    createComparisonBitmaps = setupMocks(mockConfigJSON);
   });
 
   it('should pass compare config options to scenarios', async function () {
@@ -130,19 +116,13 @@ describe('createComparisonBitmaps', function () {
       ]
     };
 
-    mockery.deregisterMock(mockConfig.backstopConfigFileName);
-    mockery.registerMock(mockConfig.backstopConfigFileName, badConfigJSON);
-
-    // Re-require to get fresh module with new mock
-    mockery.resetCache();
-    const freshModule = require('../../../core/util/createComparisonBitmaps');
+    const freshModule = setupMocks(badConfigJSON);
 
     let errorThrown = false;
     try {
       await freshModule(mockConfig);
     } catch (e) {
       errorThrown = true;
-      // Check that error message mentions the issue
       assert(
         e.message.toLowerCase().includes('referenceurl') ||
         e.message.toLowerCase().includes('reference'),
@@ -151,38 +131,26 @@ describe('createComparisonBitmaps', function () {
     }
 
     assert(errorThrown, 'Should have thrown an error');
-
-    // Restore original mock
-    mockery.deregisterMock(mockConfig.backstopConfigFileName);
-    mockery.registerMock(mockConfig.backstopConfigFileName, mockConfigJSON);
   });
 
   it('should filter scenarios by filter arg', async function () {
-    const configWithFilter = {
-      ...mockConfig,
-      args: { filter: 'Scenario 1' }
-    };
-
     let scenarioCount = 0;
-    mockRunCompareScenario.playwright = function (scenarioView) {
+    playwrightHandler = function (scenarioView) {
       scenarioCount++;
       capturedConfig = scenarioView.config;
       return Promise.resolve({ testPairs: [] });
     };
 
-    mockery.resetCache();
-    const freshModule = require('../../../core/util/createComparisonBitmaps');
-    await freshModule(configWithFilter);
+    const configWithFilter = {
+      ...mockConfig,
+      args: { filter: 'Scenario 1' }
+    };
+
+    await createComparisonBitmaps(configWithFilter);
 
     // With filter 'Scenario 1', only 1 scenario should match (Test Scenario 1)
     // multiplied by 2 viewports = 2 calls
     assert.strictEqual(scenarioCount, 2, 'Should only process filtered scenarios');
-
-    // Restore
-    mockRunCompareScenario.playwright = function (scenarioView) {
-      capturedConfig = scenarioView.config;
-      return Promise.resolve({ testPairs: [] });
-    };
   });
 
   it('should ensure viewport labels exist', async function () {
@@ -197,18 +165,10 @@ describe('createComparisonBitmaps', function () {
       ]
     };
 
-    mockery.deregisterMock(mockConfig.backstopConfigFileName);
-    mockery.registerMock(mockConfig.backstopConfigFileName, configWithUnlabeledViewports);
-
-    mockery.resetCache();
-    const freshModule = require('../../../core/util/createComparisonBitmaps');
+    const freshModule = setupMocks(configWithUnlabeledViewports);
     await freshModule(mockConfig);
 
     // The module should have set label = name for the first viewport
     assert(capturedConfig.viewports[0].label, 'First viewport should have label');
-
-    // Restore
-    mockery.deregisterMock(mockConfig.backstopConfigFileName);
-    mockery.registerMock(mockConfig.backstopConfigFileName, mockConfigJSON);
   });
 });

@@ -13,19 +13,15 @@ describe('compare-resemble', function () {
   it('should resolve if two images have the same content', function () {
     return compareResemble(REF_IMG1, REF_IMG1_OPTIMIZED, 0, {});
   });
-  it('should reject if two images exceed the mismatchThreshold', function (cb) {
-    compareResemble(REF_IMG1, REF_IMG2, 0, {}).then(
-      () => cb(new Error('should have rejected')),
-      () => cb()
-    );
+  it('should reject if two images exceed the mismatchThreshold', function () {
+    return expect(compareResemble(REF_IMG1, REF_IMG2, 0, {})).rejects.toBeDefined();
   });
   it('should use resemble\'s rounded misMatchPercentage value per default', function () {
     return compareResemble(REF_IMG1, REF_IMG3, 0, {});
   });
-  it('should use resemble\'s more precise rawMisMatchPercentage value if specified', function (cb) {
-    compareResemble(REF_IMG1, REF_IMG3, 0, { usePreciseMatching: true }, true).then(
-      () => cb(new Error('should have rejected')),
-      () => cb()
-    );
+  it('should use resemble\'s more precise rawMisMatchPercentage value if specified', function () {
+    return expect(
+      compareResemble(REF_IMG1, REF_IMG3, 0, { usePreciseMatching: true }, true)
+    ).rejects.toBeDefined();
   });
 });
