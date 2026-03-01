@@ -1,0 +1,37 @@
+#!/bin/sh
+
+staged=$(git diff --cached --name-only --diff-filter=d)
+[ -z "$staged" ] && exit 0
+
+# If base tsconfig changed, check everything
+if echo "$staged" | grep -q '^tsconfig\.base\.json$'; then
+  exec yarn workspaces foreach -Ap run typecheck
+fi
+
+args=""
+packages_changed=false
+for pkg in shaka-bundle-size shaka-twin-servers shaka-bench shaka-visreg; do
+  if echo "$staged" | grep -q "^packages/$pkg/"; then
+    args="$args --include $pkg"
+    packages_changed=true
+  fi
+done
+
+# demo-ecommerce depends on the workspace packages, so typecheck it whenever a package changes
+check_demo=false
+if echo "$staged" | grep -q '^demo-ecommerce/' || [ "$packages_changed" = true ]; then
+  check_demo=true
+fi
+
+[ -z "$args" ] && [ "$check_demo" = false ] && exit 0
+
+# Typecheck changed packages first
+if [ -n "$args" ]; then
+  yarn workspaces foreach -Ap $args run typecheck || exit 1
+fi
+
+# Build all packages before checking demo-ecommerce so it can resolve all workspace imports
+if [ "$check_demo" = true ]; then
+  yarn workspaces foreach -Ap --include 'packages/*' run build || exit 1
+  yarn workspace demo-ecommerce run typecheck || exit 1
+fi

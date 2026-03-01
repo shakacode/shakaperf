@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "tsc && cp -a ./src/cli/static ./dist/cli",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "yarn build"
   },
   "keywords": [
