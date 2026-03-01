@@ -18,8 +18,9 @@ function createMockPage(props) {
   return Object.assign({ setViewport: async function () { } }, props);
 }
 
+jest.setTimeout(10000); // Increase timeout for retry tests
+
 describe('retryCompare', function () {
-  this.timeout(10000); // Increase timeout for retry tests
 
   const buf1 = fs.readFileSync(REF_IMG1);
   const buf2 = fs.readFileSync(REF_IMG2);
