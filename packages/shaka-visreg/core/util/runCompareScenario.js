@@ -1,5 +1,3 @@
-const puppeteer = require('puppeteer');
-
 const fs = require('./fs');
 const chalk = require('chalk');
 const ensureDirectoryPath = require('./ensureDirectoryPath');
@@ -55,19 +53,13 @@ async function captureScreenshot (page, selector, selectorMap, viewport, config)
         if (config.useBoundingBoxViewportForSelectors !== false) {
           const bodyHandle = await page.$('body');
           const boundingBox = await bodyHandle.boundingBox();
-          // Use setViewport for Puppeteer, setViewportSize for Playwright
-          const setVP = page.setViewport || page.setViewportSize;
-          await setVP.call(page, {
+          await page.setViewportSize({
             width: Math.max(viewport.width || viewport.viewport.width, Math.ceil(boundingBox.width)),
             height: Math.max(viewport.height || viewport.viewport.height, Math.ceil(boundingBox.height))
           });
         }
 
-        const screenshotOptions = { clip: box };
-        if (page.setViewport) {
-          screenshotOptions.captureBeyondViewport = false;
-        }
-        return await page.screenshot(screenshotOptions);
+        return await page.screenshot({ clip: box });
       }
     }
     return null; // selector not found or not visible
@@ -82,7 +74,7 @@ function writeScenarioLogs (config, logFilePath, logger) {
 }
 
 /**
- * Core comparison logic shared between Puppeteer and Playwright.
+ * Core comparison logic for live compare scenarios.
  */
 async function processCompareView (scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, refPage, testPage, refBrowserOrContext, testBrowserOrContext, logger) {
   const { scenarioDefaults = {} } = config;
@@ -107,11 +99,9 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   const VP_H = viewport.height || viewport.viewport.height;
 
   // Set viewport on both pages
-  const setVPRef = refPage.setViewport || refPage.setViewportSize;
-  const setVPTest = testPage.setViewport || testPage.setViewportSize;
   await Promise.all([
-    setVPRef.call(refPage, { width: VP_W, height: VP_H }),
-    setVPTest.call(testPage, { width: VP_W, height: VP_H })
+    refPage.setViewportSize({ width: VP_W, height: VP_H }),
+    testPage.setViewportSize({ width: VP_W, height: VP_H })
   ]);
 
   const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', TEST_TIMEOUT);
@@ -265,53 +255,6 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
 
   return { testPairs: [testPair] };
 }
-
-// ── Puppeteer entry point ──────────────────────────────────────────
-
-module.exports.puppet = async function runComparePuppet ({ scenario, viewport, config }) {
-  const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
-  const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
-  const logger = createLogger();
-
-  const puppeteerArgs = Object.assign(
-    {},
-    {
-      ignoreHTTPSErrors: true,
-      headless: config.debugWindow ? false : (config?.engineOptions?.headless ?? 'new')
-    },
-    config.engineOptions
-  );
-
-  // Launch two separate browser instances
-  const refBrowser = await puppeteer.launch(puppeteerArgs);
-  const testBrowser = await puppeteer.launch(puppeteerArgs);
-  const refPage = await refBrowser.newPage();
-  const testPage = await testBrowser.newPage();
-
-  let compareConfig;
-  let error;
-
-  try {
-    compareConfig = await processCompareView(
-      scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
-      viewport, config, refPage, testPage, refBrowser, testBrowser, logger
-    );
-  } catch (e) {
-    logger.log('red', 'Error during live compare for "' + scenario.label + '"');
-    logger.log('red', e.toString());
-    error = e;
-  } finally {
-    logger.log('green', 'x Close Browsers');
-    await refBrowser.close();
-    await testBrowser.close();
-  }
-
-  if (error) {
-    compareConfig = await buildErrorCompareConfig(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, error);
-  }
-
-  return Promise.resolve(compareConfig);
-};
 
 // ── Playwright entry point ─────────────────────────────────────────
 
