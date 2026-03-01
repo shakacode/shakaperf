@@ -6443,7 +6443,7 @@ __metadata:
     webpack-cli: "npm:^5.1.4"
     webpack-dev-server: "npm:^4.15.1"
   bin:
-    backstop: ./cli/index.js
+    backstop: ./cli/index.ts
   languageName: unknown
   linkType: soft
 
@@ -16495,7 +16495,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.21.0":
+"tsx@npm:*, tsx@npm:^4.21.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
