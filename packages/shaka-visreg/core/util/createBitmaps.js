@@ -3,7 +3,6 @@ const fs = require('./fs');
 const _ = require('lodash');
 const pMap = require('p-map');
 
-const runPuppet = require('./runPuppet');
 const { createPlaywrightBrowser, runPlaywright, disposePlaywrightBrowser } = require('./runPlaywright');
 
 const ensureDirectoryPath = require('./ensureDirectoryPath');
@@ -129,29 +128,21 @@ function delegateScenarios (config) {
 
   const asyncCaptureLimit = config.asyncCaptureLimit === 0 ? 1 : config.asyncCaptureLimit || CONCURRENCY_DEFAULT;
 
-  if (config.engine.startsWith('puppet')) {
-    return pMap(scenarioViews, runPuppet, { concurrency: asyncCaptureLimit });
-  } else if (config.engine.startsWith('play')) {
-    return new Promise((resolve, reject) => {
-      createPlaywrightBrowser(config).then(browser => {
-        console.log('Browser created');
+  return new Promise((resolve, reject) => {
+    createPlaywrightBrowser(config).then(browser => {
+      console.log('Browser created');
 
-        for (const view of scenarioViews) {
-          view._playwrightBrowser = browser;
-        }
+      for (const view of scenarioViews) {
+        view._playwrightBrowser = browser;
+      }
 
-        pMap(scenarioViews, runPlaywright, { concurrency: asyncCaptureLimit }).then(out => {
-          disposePlaywrightBrowser(browser).then(() => resolve(out));
-        }, e => {
-          disposePlaywrightBrowser(browser).then(() => reject(e));
-        });
-      }, e => reject(e));
-    });
-  } else if (/chrom./i.test(config.engine)) {
-    logger.error('Chromy is no longer supported in version 5+. Please use version 4.x.x for chromy support.');
-  } else {
-    logger.error(`Engine "${(typeof config.engine === 'string' && config.engine) || 'undefined'}" not recognized! If you require PhantomJS or Slimer support please use backstopjs@3.8.8 or earlier.`);
-  }
+      pMap(scenarioViews, runPlaywright, { concurrency: asyncCaptureLimit }).then(out => {
+        disposePlaywrightBrowser(browser).then(() => resolve(out));
+      }, e => {
+        disposePlaywrightBrowser(browser).then(() => reject(e));
+      });
+    }, e => reject(e));
+  });
 }
 
 function writeCompareConfigFile (comparePairsFileName, compareConfig) {
