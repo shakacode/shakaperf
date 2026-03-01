@@ -12,8 +12,8 @@
       "height": 667
     }
   ],
-  "onBeforeScript": "puppet/onBefore.js",
-  "onReadyScript": "puppet/onReady.js",
+  "onBeforeScript": "playwright/onBefore.js",
+  "onReadyScript": "playwright/onReady.js",
   "scenarios": [
     {
       "label": "demo",
@@ -42,7 +42,7 @@
     "ci_report": "backstop_data/ci_report"
   },
   "report": ["CI"],
-  "engine": "puppeteer",
+  "engine": "playwright",
   "engineOptions": {
     "ignoreHTTPSErrors": true,
     "slowMo": 500,
