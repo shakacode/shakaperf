@@ -1,3 +1,6 @@
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
+
 describe('core report', function () {
   const config = {
     report: ['json'],
@@ -15,7 +18,7 @@ describe('core report', function () {
   let report;
   let writeFileStub;
 
-  beforeAll(function () {
+  beforeAll(async function () {
     jest.resetModules();
 
     const reporterClass = { failed: () => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
@@ -26,11 +29,17 @@ describe('core report', function () {
     writeFileStub = jest.fn().mockResolvedValue();
     const fsMock = { ensureDir: () => Promise.resolve(), writeFile: writeFileStub, copy: () => Promise.resolve() };
 
-    jest.doMock('../../../core/util/compare/', () => compareMock);
-    jest.doMock('../../../core/util/logger', () => loggerMock);
-    jest.doMock('../../../core/util/fs', () => fsMock);
+    jest.unstable_mockModule('../../../core/util/compare/index.js', () => ({
+      default: compareMock
+    }));
+    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+      default: loggerMock
+    }));
+    jest.unstable_mockModule('../../../core/util/fs.js', () => ({
+      default: fsMock
+    }));
 
-    report = require('../../../core/command/report');
+    report = await import('../../../core/command/report.js');
   });
 
   it('should generate two json reports and a default browser report when config.report specifies json', function () {

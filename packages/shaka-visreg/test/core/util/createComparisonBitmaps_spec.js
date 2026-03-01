@@ -1,21 +1,14 @@
-const assert = require('assert');
-const path = require('path');
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
+import path from 'node:path';
+import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 
 describe('createComparisonBitmaps', function () {
-  let createComparisonBitmaps;
   let capturedConfig;
   let playwrightHandler;
 
-  const mockConfig = {
-    backstopConfigFileName: path.join(__dirname, 'backstop.json'),
-    tempCompareConfigFileName: '/tmp/test-compare-config.json',
-    defaultMisMatchThreshold: 0.1,
-    defaultRequireSameDimensions: true,
-    compareRetries: 3,
-    compareRetryDelay: 5000,
-    maxNumDiffPixels: 10,
-    args: {}
-  };
+  const fixturesDir = path.join(import.meta.dirname, 'fixtures');
+  const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
 
   const mockConfigJSON = {
     id: 'test-config',
@@ -42,53 +35,69 @@ describe('createComparisonBitmaps', function () {
     engine: 'playwright'
   };
 
-  function setupMocks (configJSON) {
+  const mockConfig = {
+    backstopConfigFileName: configFilePath,
+    tempCompareConfigFileName: '/tmp/test-compare-config.json',
+    defaultMisMatchThreshold: 0.1,
+    defaultRequireSameDimensions: true,
+    compareRetries: 3,
+    compareRetryDelay: 5000,
+    maxNumDiffPixels: 10,
+    args: {}
+  };
+
+  beforeAll(function () {
+    mkdirSync(fixturesDir, { recursive: true });
+    writeFileSync(configFilePath, JSON.stringify(mockConfigJSON));
+  });
+
+  afterEach(function () {
+    capturedConfig = null;
+  });
+
+  afterAll(function () {
+    try { unlinkSync(configFilePath); } catch (e) { /* ignore */ }
+  });
+
+  async function createModule (overrides) {
     jest.resetModules();
 
-    jest.doMock(mockConfig.backstopConfigFileName, () => configJSON, { virtual: true });
-
-    jest.doMock('../../../core/util/fs', () => ({
-      writeFile: function () { return Promise.resolve(); }
-    }));
-
-    playwrightHandler = function (scenarioView) {
-      capturedConfig = scenarioView.config;
-      return Promise.resolve({
-        testPairs: [{
-          test: '/path/to/test.png',
-          reference: '/path/to/ref.png',
-          selector: 'body'
-        }]
-      });
+    const runCompareScenarioMock = (overrides && overrides.runCompareScenario) || {
+      playwright: function (scenarioView) {
+        capturedConfig = scenarioView.config;
+        return Promise.resolve({
+          testPairs: [{
+            test: '/path/to/test.png',
+            reference: '/path/to/ref.png',
+            selector: 'body'
+          }]
+        });
+      }
     };
 
-    jest.doMock('../../../core/util/runCompareScenario', () => ({
-      get playwright () { return playwrightHandler; }
+    jest.unstable_mockModule('../../../core/util/fs.js', () => ({
+      default: { writeFile: function () { return Promise.resolve(); } }
     }));
-
-    jest.doMock('../../../core/util/runPlaywright', () => ({
+    jest.unstable_mockModule('../../../core/util/runCompareScenario.js', () => runCompareScenarioMock);
+    jest.unstable_mockModule('../../../core/util/runPlaywright.js', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); }
     }));
+    jest.unstable_mockModule('../../../core/util/ensureDirectoryPath.js', () => ({
+      default: function () {}
+    }));
+    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+      default: function () {
+        return { log: function () {}, error: function () {} };
+      }
+    }));
 
-    jest.doMock('../../../core/util/ensureDirectoryPath', () => function () {});
-
-    jest.doMock('../../../core/util/logger', () => function () {
-      return {
-        log: function () {},
-        error: function () {}
-      };
-    });
-
-    return require('../../../core/util/createComparisonBitmaps');
+    const mod = await import('../../../core/util/createComparisonBitmaps.js');
+    return mod.default;
   }
 
-  beforeEach(function () {
-    capturedConfig = null;
-    createComparisonBitmaps = setupMocks(mockConfigJSON);
-  });
-
   it('should pass compare config options to scenarios', async function () {
+    const createComparisonBitmaps = await createModule();
     await createComparisonBitmaps(mockConfig);
 
     assert(capturedConfig, 'Should have captured config');
@@ -98,6 +107,7 @@ describe('createComparisonBitmaps', function () {
   });
 
   it('should set isCompare flag', async function () {
+    const createComparisonBitmaps = await createModule();
     await createComparisonBitmaps(mockConfig);
 
     assert(capturedConfig, 'Should have captured config');
@@ -116,30 +126,45 @@ describe('createComparisonBitmaps', function () {
       ]
     };
 
-    const freshModule = setupMocks(badConfigJSON);
+    const badConfigFilePath = path.join(fixturesDir, 'mockComparisonConfig_bad.json');
+    writeFileSync(badConfigFilePath, JSON.stringify(badConfigJSON));
 
-    let errorThrown = false;
     try {
-      await freshModule(mockConfig);
-    } catch (e) {
-      errorThrown = true;
-      assert(
-        e.message.toLowerCase().includes('referenceurl') ||
-        e.message.toLowerCase().includes('reference'),
-        'Error should mention referenceUrl: ' + e.message
-      );
-    }
+      const createComparisonBitmaps = await createModule();
+      const badMockConfig = {
+        ...mockConfig,
+        backstopConfigFileName: badConfigFilePath
+      };
 
-    assert(errorThrown, 'Should have thrown an error');
+      let errorThrown = false;
+      try {
+        await createComparisonBitmaps(badMockConfig);
+      } catch (e) {
+        errorThrown = true;
+        assert(
+          e.message.toLowerCase().includes('referenceurl') ||
+          e.message.toLowerCase().includes('reference'),
+          'Error should mention referenceUrl: ' + e.message
+        );
+      }
+
+      assert(errorThrown, 'Should have thrown an error');
+    } finally {
+      try { unlinkSync(badConfigFilePath); } catch (e) { /* ignore */ }
+    }
   });
 
   it('should filter scenarios by filter arg', async function () {
     let scenarioCount = 0;
-    playwrightHandler = function (scenarioView) {
-      scenarioCount++;
-      capturedConfig = scenarioView.config;
-      return Promise.resolve({ testPairs: [] });
-    };
+    const createComparisonBitmaps = await createModule({
+      runCompareScenario: {
+        playwright: function (scenarioView) {
+          scenarioCount++;
+          capturedConfig = scenarioView.config;
+          return Promise.resolve({ testPairs: [] });
+        }
+      }
+    });
 
     const configWithFilter = {
       ...mockConfig,
@@ -165,10 +190,22 @@ describe('createComparisonBitmaps', function () {
       ]
     };
 
-    const freshModule = setupMocks(configWithUnlabeledViewports);
-    await freshModule(mockConfig);
+    const unlabeledConfigFilePath = path.join(fixturesDir, 'mockComparisonConfig_unlabeled.json');
+    writeFileSync(unlabeledConfigFilePath, JSON.stringify(configWithUnlabeledViewports));
 
-    // The module should have set label = name for the first viewport
-    assert(capturedConfig.viewports[0].label, 'First viewport should have label');
+    try {
+      const createComparisonBitmaps = await createModule();
+      const unlabeledMockConfig = {
+        ...mockConfig,
+        backstopConfigFileName: unlabeledConfigFilePath
+      };
+
+      await createComparisonBitmaps(unlabeledMockConfig);
+
+      // The module should have set label = name for the first viewport
+      assert(capturedConfig.viewports[0].label, 'First viewport should have label');
+    } finally {
+      try { unlinkSync(unlabeledConfigFilePath); } catch (e) { /* ignore */ }
+    }
   });
 });

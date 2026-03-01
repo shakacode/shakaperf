@@ -1,5 +1,5 @@
-const usage = require('../../cli/usage');
-const assert = require('assert');
+import usage from '../../cli/usage.js';
+import assert from 'node:assert';
 
 const expectedUsage = /Welcome to BackstopJS/;
 

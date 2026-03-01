@@ -1,5 +1,5 @@
-const assert = require('assert');
-const { modifyJsonpReportHelper } = require('../../../core/util/remote');
+import assert from 'node:assert';
+import { modifyJsonpReportHelper } from '../../../core/util/remote.js';
 
 const originalJsonpReport = `report({
   "tests": [

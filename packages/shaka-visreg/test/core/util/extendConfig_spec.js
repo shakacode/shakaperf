@@ -1,5 +1,5 @@
-const assert = require('assert');
-const extendConfig = require('../../../core/util/extendConfig');
+import assert from 'node:assert';
+import extendConfig from '../../../core/util/extendConfig.js';
 
 describe('computeConfig_spec', function () {
   const baseConfig = { projectPath: process.cwd(), backstop: process.cwd() };
