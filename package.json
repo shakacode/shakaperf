@@ -10,7 +10,8 @@
   "scripts": {
     "build": "yarn workspaces foreach -A --include 'packages/*' run build",
     "typecheck": "yarn workspaces foreach -Ap run typecheck",
-    "postinstall": "git config core.hooksPath .githooks"
+    "//postinstall": "Skip git hooks setup when not in a git repo (e.g. Docker builds)",
+    "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true"
   },
   "repository": {
     "type": "git",
