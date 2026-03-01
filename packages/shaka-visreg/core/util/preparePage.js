@@ -140,7 +140,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
   const selectors = Array.isArray(scenario.selectors) ? scenario.selectors : [scenario.selectors];
 
-  const result = await page.evaluate(function (expand, sels) {
+  const result = await page.evaluate(function (args) {
+    var expand = args.expand;
+    var sels = args.sels;
     window._selectorExpansion = expand;
     window._backstopSelectors = sels;
     if (expand) {
@@ -159,7 +161,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
       backstopSelectorsExp: window._backstopSelectorsExp,
       backstopSelectorsExpMap: window._backstopSelectorsExpMap
     };
-  }, selectorExpansion, selectors);
+  }, { expand: selectorExpansion, sels: selectors });
 
   return result;
 }
