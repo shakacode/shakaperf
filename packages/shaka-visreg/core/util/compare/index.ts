@@ -5,7 +5,7 @@ const cp = require('child_process');
 
 const Reporter = require('./../Reporter');
 const logger = require('./../logger')('compare');
-const storeFailedDiffStub = require('./store-failed-diff-stub.js');
+const storeFailedDiffStub = require('./store-failed-diff-stub');
 
 const ASYNC_COMPARE_LIMIT = 20;
 

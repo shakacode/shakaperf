@@ -1,7 +1,7 @@
 const path = require('path');
 const _ = require('lodash');
 const fs = require('./fs');
-const injectBackstopTools = require('../../capture/backstopTools.js');
+const injectBackstopTools = require('../../capture/backstopTools');
 const logger = require('./logger')('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
