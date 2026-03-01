@@ -41,7 +41,7 @@ describe('createComparisonBitmaps', function () {
       bitmaps_reference: 'backstop_data/bitmaps_reference',
       bitmaps_test: 'backstop_data/bitmaps_test'
     },
-    engine: 'puppeteer'
+    engine: 'playwright'
   };
 
   before(function () {
@@ -60,16 +60,6 @@ describe('createComparisonBitmaps', function () {
 
     // Mock runCompareScenario
     mockRunCompareScenario = {
-      puppet: function (scenarioView) {
-        capturedConfig = scenarioView.config;
-        return Promise.resolve({
-          testPairs: [{
-            test: '/path/to/test.png',
-            reference: '/path/to/ref.png',
-            selector: 'body'
-          }]
-        });
-      },
       playwright: function (scenarioView) {
         capturedConfig = scenarioView.config;
         return Promise.resolve({
@@ -134,7 +124,7 @@ describe('createComparisonBitmaps', function () {
       id: 'test-config',
       viewports: mockConfigJSON.viewports,
       paths: mockConfigJSON.paths,
-      engine: 'puppeteer',
+      engine: 'playwright',
       scenarios: [
         { label: 'Missing referenceUrl', url: 'http://test.com/page' }
       ]
@@ -174,7 +164,7 @@ describe('createComparisonBitmaps', function () {
     };
 
     let scenarioCount = 0;
-    mockRunCompareScenario.puppet = function (scenarioView) {
+    mockRunCompareScenario.playwright = function (scenarioView) {
       scenarioCount++;
       capturedConfig = scenarioView.config;
       return Promise.resolve({ testPairs: [] });
@@ -189,7 +179,7 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(scenarioCount, 2, 'Should only process filtered scenarios');
 
     // Restore
-    mockRunCompareScenario.puppet = function (scenarioView) {
+    mockRunCompareScenario.playwright = function (scenarioView) {
       capturedConfig = scenarioView.config;
       return Promise.resolve({ testPairs: [] });
     };
@@ -199,7 +189,7 @@ describe('createComparisonBitmaps', function () {
     const configWithUnlabeledViewports = {
       id: 'test-config',
       paths: mockConfigJSON.paths,
-      engine: 'puppeteer',
+      engine: 'playwright',
       scenarios: mockConfigJSON.scenarios,
       viewports: [
         { name: 'phone', width: 320, height: 480 }, // name but no label

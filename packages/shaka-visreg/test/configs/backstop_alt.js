@@ -1,5 +1,5 @@
 module.exports = {
-  id: 'puppet_backstop_features',
+  id: 'playwright_backstop_features',
   viewports: [
     {
       label: 'phone',
@@ -12,8 +12,8 @@ module.exports = {
       height: 768
     }
   ],
-  onBeforeScript: 'puppet/onBefore.js',
-  onReadyScript: 'puppet/onReady.js',
+  onBeforeScript: 'playwright/onBefore.js',
+  onReadyScript: 'playwright/onReady.js',
   scenarios: [
     {
       label: 'Simple',
@@ -28,7 +28,7 @@ module.exports = {
     ci_report: 'backstop_data/ci_report'
   },
   report: ['browser'],
-  engine: 'puppet',
+  engine: 'playwright',
   engineOptions: {
     args: ['--no-sandbox']
   },

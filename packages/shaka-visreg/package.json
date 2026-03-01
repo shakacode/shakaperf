@@ -116,7 +116,6 @@
     "playwright": "^1.40.1",
     "pngjs": "^7.0.0",
     "portfinder": "^1.0.32",
-    "puppeteer": "^22.1.0",
     "super-simple-web-server": "^1.1.4",
     "temp": "^0.9.4"
   }

@@ -70,7 +70,7 @@ const exampleConfig = {
       json_report: 'backstop_data/json_report'
     },
     report: ['browser', 'json'],
-    engine: 'puppeteer',
+    engine: 'playwright',
     asyncCaptureLimit: 5,
     asyncCompareLimit: 50,
     debug: false,

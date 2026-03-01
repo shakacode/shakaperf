@@ -6425,7 +6425,6 @@ __metadata:
     portfinder: "npm:^1.0.32"
     prettier: "npm:^3.1.1"
     prettier-eslint-cli: "npm:^8.0.1"
-    puppeteer: "npm:^22.1.0"
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"
     react-modal: "npm:^3.16.1"

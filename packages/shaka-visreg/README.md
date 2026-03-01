@@ -30,7 +30,7 @@
 - Integrated Docker rendering -- to eliminate cross-platform rendering shenanigans
 - CLI reports
 - Render tests with **Chrome Headless**
-- Simulate user interactions with **Playwright** or **Puppeteer** scripts
+- Simulate user interactions with **Playwright** scripts
 - JUnit reports
 - Plays nice with CI and source control
 - Run globally or locally as a standalone package app or `require('backstopjs')` right into your node app
@@ -187,9 +187,9 @@ Scenario properties, [which may be global](#global-scenario-properties), are des
 | `onReadyScript`          | After the above conditions are met -- use this script to modify UI state prior to screenshots, e.g., hovers, clicks, etc.     |
 | `keyPressSelectors`      | Takes an array of selectors and string values -- simulates multiple sequential keypress interactions.                         |
 | `hoverSelector`          | Move the pointer over the specified DOM element prior to the screenshot.                                                       |
-| `hoverSelectors`         | *Playwright and Puppeteer only* takes an array of selectors -- simulates multiple sequential hover interactions.             |
+| `hoverSelectors`         | Takes an array of selectors -- simulates multiple sequential hover interactions.             |
 | `clickSelector`          | Click the specified DOM element prior to the screenshot.                                                                      |
-| `clickSelectors`         | *Playwright and Puppeteer only* takes an array of selectors -- simulates multiple sequential click interactions.               |
+| `clickSelectors`         | Takes an array of selectors -- simulates multiple sequential click interactions.               |
 | `postInteractionWait`    | Wait for a selector after interacting with hoverSelector or clickSelector (optionally accepts wait time in ms). Ideal for use with a click or hover element transition. Available with default onReadyScript. |
 | `scrollToSelector`       | Scrolls the specified DOM element into view prior to the screenshot (available with default onReadyScript).                  |
 | `selectors`              | Array of selectors to capture. Defaults to document if omitted. Use "viewport" to capture the viewport size. See Targeting elements in the next section for more info... |
@@ -297,7 +297,7 @@ The above would tell BackstopJS to wait for your app to generate an element with
 You can use these properties independent of each other to easily test various click and or hover states in your app.  These are obviously simple scenarios -- if you have more complex needs then this example should serve as a pretty good starting point create your own `onReady` scripts.
 
 > [!NOTE]
-> Playwright and Puppeteer versions optionally take `clickSelectors` & `hoverSelectors` as arrays of selectors...
+> Optionally take `clickSelectors` & `hoverSelectors` as arrays of selectors...
 
 ```js
 clickSelectors: [".my-hamburger-menu",".my-hamburger-item"],
@@ -309,7 +309,7 @@ hoverSelectors: [".my-nav-menu-item",".my-nav-menu-dropdown-item"],
 BackstopJS ships with an `onReady` script that allows user to key press on selectors...
 
 > [!NOTE]
-> Supports both Playwright and Puppeteer and takes arrays of selectors and key press values.
+> Takes arrays of selectors and key press values.
 
 ```json
 scenarios: [
@@ -340,7 +340,7 @@ cookiePath: "backstop_data/engine_scripts/cookies.json",
 > Path is relative to your current working directory.
 
 > [!TIP]
-> If you want an easy way to manually export cookies from your browser then download [this browser extension](https://github.com/ktty1220/export-cookie-for-puppeteer). You can directly use the output cookie files with BackstopJS.
+> If you want an easy way to manually export cookies from your browser, you can directly use cookie JSON files with BackstopJS.
 
 #### Targeting Elements
 
@@ -564,7 +564,7 @@ at the root of your config or in your scenario...
 Inside `filename.js`, structure it like this:
 
 ```js
-// onBefore example (puppeteer engine)
+// onBefore example (playwright engine)
 module.exports = async (page, scenario, vp, isReference) => {
   await require('./loadCookies')(page, scenario);
 
@@ -573,7 +573,7 @@ module.exports = async (page, scenario, vp, isReference) => {
 
 };
 
-// onReady example (puppeteer engine)
+// onReady example (playwright engine)
 module.exports = async (page, scenario, vp) => {
   console.log('SCENARIO > ' + scenario.label);
   await require('./clickAndHoverHelper')(page, scenario);
@@ -607,7 +607,7 @@ By default, the base path is a folder called `engine_scripts` inside your Backst
 | `scenario`      | Currently running scenario config                                                    |
 | `viewport`      | Viewport info                                                                        |
 | `isReference`   | Whether the scenario contains a reference URL property                                |
-| `Engine`        | Static class reference (Puppeteer/Playwright)                                        |
+| `Engine`        | Static class reference (Playwright)                                                  |
 | `config`        | The whole config object                                                              |
 
 <!-- omit from toc -->
@@ -712,21 +712,7 @@ By default, BackstopJS saves generated resources into the `backstop_data` direct
 <!-- omit from toc -->
 ### Changing The Rendering Engine
 
-Both Puppeteer and Playwright are installed by default, though the default configuration is set to Puppeteer.
-
-#### Chrome-Headless (The latest webkit library)
-
-To use chrome headless you can currently use _puppeteer_ (https://github.com/GoogleChrome/puppeteer).
-
-```json
-"engine": "puppeteer"
-```
-
-#### Playwright
-
-To use firefox or webkit, you can currently use _playwright_ (https://github.com/microsoft/playwright).
-
-Be sure to also switch the onBefore and `onReady` scripts to the Playwright defaults.  Playwright supports setting `engineOptions.browser` to `chromium`, `firefox`, or `webkit`.
+Playwright is the rendering engine used by BackstopJS. It supports `chromium`, `firefox`, and `webkit` browsers via `engineOptions.browser`.
 
 The [storageState](https://playwright.dev/docs/api/class-browsercontext#browser-context-storage-state) config property is supported via the `engineOptions` object in backstop config. This sets cookies _and_ localStorage variables in the Playwright engine before tests are run. Very useful taking screenshots of pages that require authentication.
 
@@ -745,9 +731,9 @@ The [storageState](https://playwright.dev/docs/api/class-browsercontext#browser-
 ```
 
 <!-- omit from toc -->
-### Setting Puppeteer And Playwright Option Flags
+### Setting Playwright Option Flags
 
-Backstop sets two defaults for both Puppeteer and Playwright:
+Backstop sets two defaults for Playwright:
 
 ```json
 ignoreHTTPSErrors: true,
@@ -756,20 +742,15 @@ headless: <!!!config.debugWindow>
 
 You can add more settings (or override the defaults) with the `engineOptions` property. (properties are merged). This is where headless mode can also be set to 'new', until "new headless mode" is less hacky and more supported by Playwright.
 
-> [!INFORMATION]
-> Puppeteer now runs in `new` headless mode by default, but can be set to `old` headless by passing `"headless": true` in the configuration file.
-
 ```json
 "engineOptions": {
   "ignoreHTTPSErrors": false,
   "args": ["--no-sandbox", "--disable-setuid-sandbox"],
-  "headless": "new",
   "gotoParameters": { "waitUntil": "networkidle0" },
 }
 ```
 
 More info here:
-  * [Puppeteer on github](https://github.com/GoogleChrome/puppeteer).
   * [Playwright on github](https://github.com/microsoft/playwright).
 
 <!-- omit from toc -->
@@ -825,7 +806,7 @@ To improve security and prevent ownership problems of the generated files it is 
       COMMAND | Command "test" ended with an error after [0.312s]
       COMMAND | Error: Failed to launch chrome!
                 ... Running as root without --no-sandbox is not supported. See https://crbug.com/638180.
-                TROUBLESHOOTING: https://github.com/GoogleChrome/puppeteer/blob/master/docs/troubleshooting.md
+                TROUBLESHOOTING: https://playwright.dev/docs/troubleshooting
     ```
 
     then you need to add this to the root of your config...
@@ -1187,7 +1168,7 @@ You have the option of displaying the Chrome window as tests are running.  This 
 "debugWindow": true
 ```
 
-When `debugWindow` is enabled on macOS, the system may show many firewall popups. This is because Puppeteer's Chromium application is not code-signed. As the exact steps to work around this may change with different macOS versions, see [[problem] Mac OS Firewall popup on every launch of puppeteer #4752](https://github.com/puppeteer/puppeteer/issues/4752) until this is fixed upstream. As of macOS Monterey 12.4, [these steps](https://github.com/puppeteer/puppeteer/issues/4752#issuecomment-1099647133) are the most current to run.
+When `debugWindow` is enabled on macOS, the system may show many firewall popups. This is because Chromium is not code-signed. You may need to allow connections in your firewall settings.
 
 For all engines there is also the `debug` setting.  This enables verbose console output.This will also output your source payload to the terminal so you can make sure to check that the server is sending what you expect. 😉
 

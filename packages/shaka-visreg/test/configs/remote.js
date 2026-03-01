@@ -9,7 +9,7 @@ module.exports = {
       height: 900
     }
   ],
-  onReadyScript: 'puppet/onReady.js',
+  onReadyScript: 'playwright/onReady.js',
   scenarios: [
     {
       label: '{testName}',
@@ -25,7 +25,7 @@ module.exports = {
     ci_report: 'backstop_data/ci_report'
   },
   report: [],
-  engine: 'puppet',
+  engine: 'playwright',
   engineOptions: {
     args: ['--no-sandbox']
   },

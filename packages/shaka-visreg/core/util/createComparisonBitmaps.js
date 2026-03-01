@@ -139,29 +139,21 @@ function delegateCompareScenarios (config) {
 
   const asyncCaptureLimit = config.asyncCaptureLimit === 0 ? 1 : config.asyncCaptureLimit || CONCURRENCY_DEFAULT;
 
-  if (config.engine.startsWith('puppet')) {
-    return pMap(scenarioViews, runCompareScenario.puppet, { concurrency: asyncCaptureLimit });
-  } else if (config.engine.startsWith('play')) {
-    return new Promise(function (resolve, reject) {
-      createPlaywrightBrowser(config).then(function (browser) {
-        logger.log('Browser created');
+  return new Promise(function (resolve, reject) {
+    createPlaywrightBrowser(config).then(function (browser) {
+      logger.log('Browser created');
 
-        for (let i = 0; i < scenarioViews.length; i++) {
-          scenarioViews[i]._playwrightBrowser = browser;
-        }
+      for (let i = 0; i < scenarioViews.length; i++) {
+        scenarioViews[i]._playwrightBrowser = browser;
+      }
 
-        pMap(scenarioViews, runCompareScenario.playwright, { concurrency: asyncCaptureLimit }).then(function (out) {
-          disposePlaywrightBrowser(browser).then(function () { resolve(out); });
-        }, function (e) {
-          disposePlaywrightBrowser(browser).then(function () { reject(e); });
-        });
-      }, function (e) { reject(e); });
-    });
-  } else {
-    const engineStr = (typeof config.engine === 'string' && config.engine) || 'undefined';
-    logger.error('Engine "' + engineStr + '" not recognized!');
-    return Promise.reject(new Error('Engine "' + engineStr + '" not recognized'));
-  }
+      pMap(scenarioViews, runCompareScenario.playwright, { concurrency: asyncCaptureLimit }).then(function (out) {
+        disposePlaywrightBrowser(browser).then(function () { resolve(out); });
+      }, function (e) {
+        disposePlaywrightBrowser(browser).then(function () { reject(e); });
+      });
+    }, function (e) { reject(e); });
+  });
 }
 
 function writeCompareConfigFile (comparePairsFileName, compareConfig) {
