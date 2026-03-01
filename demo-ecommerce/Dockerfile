@@ -12,6 +12,7 @@ RUN apt-get update -qq && \
     libjemalloc2 \
     libvips \
     sqlite3 \
+    parallel \
     libpq-dev \
     libmariadb-dev && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives

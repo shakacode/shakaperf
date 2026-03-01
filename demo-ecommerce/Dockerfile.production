@@ -39,6 +39,7 @@ RUN apt-get update -qq && \
     vim \
     nano \
     libmariadb-dev \
+    parallel \
     net-tools \
     psmisc && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
