@@ -1,4 +1,4 @@
-module.exports = function makeSpaces (length) {
+export default function makeSpaces (length) {
   let i = 0;
   let result = '';
   while (i < length) {
@@ -6,4 +6,4 @@ module.exports = function makeSpaces (length) {
     i++;
   }
   return result;
-};
+}

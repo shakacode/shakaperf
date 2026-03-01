@@ -1,6 +1,6 @@
-const fs = require('fs');
+import fs from 'node:fs';
 
-module.exports = async (browserContext, scenario) => {
+export default async (browserContext, scenario) => {
   let cookies = [];
   const cookiePath = scenario.cookiePath;
 

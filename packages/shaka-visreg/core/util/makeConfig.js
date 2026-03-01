@@ -1,5 +1,8 @@
-const path = require('path');
-const extendConfig = require('./extendConfig');
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import extendConfig from './extendConfig.js';
+
+const require = createRequire(import.meta.url);
 
 const NON_CONFIG_COMMANDS = ['init', 'version', 'stop'];
 
@@ -55,7 +58,7 @@ function makeConfig (command, options) {
 
   config.args = options || {};
 
-  config.backstop = path.join(__dirname, '../..');
+  config.backstop = path.join(import.meta.dirname, '../..');
   config.projectPath = projectPath(config);
   config.perf = {};
 
@@ -64,4 +67,4 @@ function makeConfig (command, options) {
   return extendConfig(config, userConfig);
 }
 
-module.exports = makeConfig;
+export default makeConfig;

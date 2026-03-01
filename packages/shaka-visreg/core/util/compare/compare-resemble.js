@@ -1,6 +1,6 @@
-const resemble = require('@mirzazeyrek/node-resemble-js');
+import resemble from '@mirzazeyrek/node-resemble-js';
 
-module.exports = function (referencePath, testPath, misMatchThreshold, resembleOutputSettings, requireSameDimensions) {
+export default function compareResemble (referencePath, testPath, misMatchThreshold, resembleOutputSettings, requireSameDimensions) {
   return new Promise(function (resolve, reject) {
     const resembleSettings = resembleOutputSettings || {};
     resemble.outputSettings(resembleSettings);
@@ -18,4 +18,4 @@ module.exports = function (referencePath, testPath, misMatchThreshold, resembleO
       reject(data);
     });
   });
-};
+}

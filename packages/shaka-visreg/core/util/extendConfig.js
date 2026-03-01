@@ -1,9 +1,13 @@
-const path = require('path');
-const temp = require('temp');
-const fs = require('fs');
-const hash = require('object-hash');
-const tmpdir = require('os').tmpdir();
-const version = require('../../package.json').version;
+import path from 'node:path';
+import temp from 'temp';
+import fs from 'node:fs';
+import hash from 'object-hash';
+import os from 'node:os';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../../package.json');
+const tmpdir = os.tmpdir();
 
 function extendConfig (config, userConfig) {
   bitmapPaths(config, userConfig);
@@ -110,4 +114,4 @@ function engine (config, userConfig) {
   }
 }
 
-module.exports = extendConfig;
+export default extendConfig;

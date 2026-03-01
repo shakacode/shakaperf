@@ -1,6 +1,8 @@
-const path = require('path');
+import path from 'node:path';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
-module.exports = function (module, bin) {
+export default function findExecutable (module, bin) {
   try {
     const pathToExecutableModulePackageJson = require.resolve(path.join(module, 'package.json'));
     const executableModulePackageJson = require(pathToExecutableModulePackageJson);

@@ -34,4 +34,4 @@ Reporter.prototype.getReport = function () {
   };
 };
 
-module.exports = Reporter;
+export default Reporter;

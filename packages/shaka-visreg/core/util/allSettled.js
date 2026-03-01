@@ -1,4 +1,4 @@
-module.exports = function (promises) {
+export default function allSettled (promises) {
   return Promise.all(promises.map(function (promise) {
     return promise.then(function (value) {
       return { state: 'fulfilled', value };
@@ -6,4 +6,4 @@ module.exports = function (promises) {
       return { state: 'rejected', reason };
     });
   }));
-};
+}

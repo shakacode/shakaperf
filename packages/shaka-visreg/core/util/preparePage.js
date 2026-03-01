@@ -1,8 +1,10 @@
-const path = require('path');
-const _ = require('lodash');
-const fs = require('./fs');
-const injectBackstopTools = require('../../capture/backstopTools.js');
-const logger = require('./logger')('preparePage');
+import path from 'node:path';
+import _ from 'lodash';
+import fs from './fs.js';
+import injectBackstopTools from '../../capture/backstopTools.js';
+import createLogger from './logger.js';
+
+const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
 
@@ -28,7 +30,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (fs.existsSync(beforeScriptPath)) {
-      await require(beforeScriptPath)(page, scenario, viewport, isReference, browserOrContext, config);
+      const beforeMod = await import(beforeScriptPath);
+      const beforeFn = beforeMod.default || beforeMod;
+      await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + beforeScriptPath);
     }
@@ -109,7 +113,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (fs.existsSync(readyScriptPath)) {
-      await require(readyScriptPath)(page, scenario, viewport, isReference, browserOrContext, config);
+      const readyMod = await import(readyScriptPath);
+      const readyFn = readyMod.default || readyMod;
+      await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + readyScriptPath);
     }
@@ -166,5 +172,5 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   return result;
 }
 
-module.exports = preparePage;
-module.exports.translateUrl = translateUrl;
+export default preparePage;
+export { translateUrl };

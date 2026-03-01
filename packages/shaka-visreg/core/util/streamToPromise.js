@@ -1,4 +1,4 @@
-module.exports = function onStreamEnd (stream, result) {
+export default function onStreamEnd (stream, result) {
   return new Promise(function (resolve, reject) {
     if (stream.writable) {
       stream.on('finish', function () {
@@ -20,4 +20,4 @@ module.exports = function onStreamEnd (stream, result) {
       reject(error);
     });
   });
-};
+}

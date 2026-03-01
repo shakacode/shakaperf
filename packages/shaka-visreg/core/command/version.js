@@ -1,10 +1,11 @@
-const version = require('../../package.json').version;
+import { createRequire } from 'node:module';
 
-module.exports = {
-  execute: function (config) {
-    return new Promise((resolve, reject) => {
-      console.log('BackstopJS v' + version);
-      resolve(version);
-    });
-  }
-};
+const _require = createRequire(import.meta.url);
+const { version } = _require('../../package.json');
+
+export function execute (config) {
+  return new Promise((resolve, reject) => {
+    console.log('BackstopJS v' + version);
+    resolve(version);
+  });
+}

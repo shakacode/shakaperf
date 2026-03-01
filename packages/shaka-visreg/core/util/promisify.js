@@ -1,4 +1,4 @@
-module.exports = function promisify (func) {
+export default function promisify (func) {
   return function () {
     const args = (arguments.length === 1 ? [arguments[0]] : Array.apply(null, arguments));
     return new Promise(function (resolve, reject) {
@@ -14,4 +14,4 @@ module.exports = function promisify (func) {
       func.apply(this, args);
     });
   };
-};
+}

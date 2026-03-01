@@ -1,6 +1,6 @@
-const compareHashes = require('./compare-hash');
-const compareResemble = require('./compare-resemble');
-const storeFailedDiff = require('./store-failed-diff.js');
+import compareHashes from './compare-hash.js';
+import compareResemble from './compare-resemble.js';
+import storeFailedDiff from './store-failed-diff.js';
 
 process.on('message', compare);
 

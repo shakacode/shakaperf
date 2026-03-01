@@ -18,9 +18,9 @@
 // - This mode is intended for integrating with external test runners such as qunit -- like in the https://github.com/garris/ember-backstop project.
 //
 
-const assert = require('assert').strict;
-const parseArgs = require('minimist');
-const backstop = require('../../core/runner');
+import assert from 'node:assert/strict';
+import parseArgs from 'minimist';
+import backstop from '../../core/runner.js';
 const URL = 'https://garris.github.io/BackstopJS';
 
 const argsOptions = parseArgs(process.argv.slice(2), {

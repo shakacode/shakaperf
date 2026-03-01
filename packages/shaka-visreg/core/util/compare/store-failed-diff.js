@@ -1,8 +1,8 @@
-const streamToPromise = require('./../streamToPromise');
-const fs = require('fs');
-const path = require('path');
+import streamToPromise from './../streamToPromise.js';
+import fs from 'node:fs';
+import path from 'node:path';
 
-module.exports = function (testPath, data) {
+export default function storeFailedDiff (testPath, data) {
   const failedDiffFilename = getFailedDiffFilename(testPath);
   console.log('   See:', failedDiffFilename);
 
@@ -20,7 +20,7 @@ module.exports = function (testPath, data) {
     fs.writeFileSync(failedDiffFilename, data.getDiffImageAsJPEG(85));
     return Promise.resolve(failedDiffFilename);
   }
-};
+}
 
 function getFailedDiffFilename (testPath) {
   const lastSlash = testPath.lastIndexOf(path.sep);

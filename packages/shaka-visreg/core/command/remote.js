@@ -1,33 +1,35 @@
-const logger = require('../util/logger')('remote');
-const path = require('path');
-const { exec } = require('child_process');
-const getRemotePort = require('../util/getRemotePort');
-const ssws = require.resolve('super-simple-web-server');
+import path from 'node:path';
+import { exec } from 'node:child_process';
+import { createRequire } from 'node:module';
+import createLogger from '../util/logger.js';
+import getRemotePort from '../util/getRemotePort.js';
 
-module.exports = {
-  execute: function (config) {
-    const MIDDLEWARE_PATH = path.resolve(config.backstop, 'remote');
-    const projectPath = path.resolve(config.projectPath);
+const logger = createLogger('remote');
+const _require = createRequire(import.meta.url);
+const ssws = _require.resolve('super-simple-web-server');
 
-    return new Promise(function (resolve, reject) {
-      const port = getRemotePort();
-      const commandStr = `node ${ssws} ${projectPath} ${MIDDLEWARE_PATH} --config=${config.backstopConfigFileName}`;
-      const env = { SSWS_HTTP_PORT: port };
+export function execute (config) {
+  const MIDDLEWARE_PATH = path.resolve(config.backstop, 'remote', 'index.cjs');
+  const projectPath = path.resolve(config.projectPath);
 
-      logger.log(`Starting remote with: ${commandStr} with env ${JSON.stringify(env)}`);
+  return new Promise(function (resolve, reject) {
+    const port = getRemotePort();
+    const commandStr = `node ${ssws} ${projectPath} ${MIDDLEWARE_PATH} --config=${config.backstopConfigFileName}`;
+    const env = { SSWS_HTTP_PORT: port };
 
-      const child = exec(commandStr, { env: { ...env, PATH: process.env.PATH } }, (error) => {
-        if (error) {
-          logger.log('Error running backstop remote:', error);
-        }
-      });
+    logger.log(`Starting remote with: ${commandStr} with env ${JSON.stringify(env)}`);
 
-      child.stdout.on('data', logger.log);
-
-      child.stdout.on('close', data => {
-        logger.log('Backstop remote connection closed.', data);
-        resolve(data);
-      });
+    const child = exec(commandStr, { env: { ...env, PATH: process.env.PATH } }, (error) => {
+      if (error) {
+        logger.log('Error running backstop remote:', error);
+      }
     });
-  }
-};
+
+    child.stdout.on('data', logger.log);
+
+    child.stdout.on('close', data => {
+      logger.log('Backstop remote connection closed.', data);
+      resolve(data);
+    });
+  });
+}

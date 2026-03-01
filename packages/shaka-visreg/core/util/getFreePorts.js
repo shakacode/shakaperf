@@ -1,4 +1,4 @@
-const portfinder = require('portfinder');
+import portfinder from 'portfinder';
 /**
  * Gets the free ports.
  *
@@ -6,7 +6,7 @@ const portfinder = require('portfinder');
  * @param      {number}  requestedPorts  how many ports should we find?
  * @return     {Array}   The free ports.
  */
-module.exports = function getFreePorts (startingPort, requestedPorts) {
+export default function getFreePorts (startingPort, requestedPorts) {
   return new Promise((resolve, reject) => {
     const R = resolve;
     console.log(`searching for ${requestedPorts} available ports.`);
@@ -31,4 +31,4 @@ module.exports = function getFreePorts (startingPort, requestedPorts) {
     }
     findFreePorts(startingPort);
   });
-};
+}

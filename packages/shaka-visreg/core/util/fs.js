@@ -1,6 +1,6 @@
-const fs = require('fs');
-const fsExtra = require('fs-extra');
-const promisify = require('./promisify');
+import fs from 'node:fs';
+import fsExtra from 'fs-extra';
+import promisify from './promisify.js';
 
 const fsPromisified = {
   readdir: promisify(fs.readdir),
@@ -24,4 +24,4 @@ const fsPromisified = {
   }
 };
 
-module.exports = fsPromisified;
+export default fsPromisified;

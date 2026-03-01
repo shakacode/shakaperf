@@ -3,7 +3,7 @@
  *
  * @return     {number}   The remote port.
  */
-module.exports = function getRemotePort () {
+export default function getRemotePort () {
   const remotePort = process.env.BACKSTOP_REMOTE_HTTP_PORT || 3000;
   return remotePort;
-};
+}

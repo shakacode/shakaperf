@@ -1,13 +1,15 @@
-const cloneDeep = require('lodash/cloneDeep');
-const fs = require('./fs');
-const _ = require('lodash');
-const pMap = require('p-map');
+import { createRequire } from 'node:module';
+import cloneDeep from 'lodash/cloneDeep.js';
+import fs from './fs.js';
+import _ from 'lodash';
+import pMap from 'p-map';
+import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright.js';
+import * as runCompareScenario from './runCompareScenario.js';
+import ensureDirectoryPath from './ensureDirectoryPath.js';
+import createLogger from './logger.js';
 
-const { createPlaywrightBrowser, disposePlaywrightBrowser } = require('./runPlaywright');
-const runCompareScenario = require('./runCompareScenario');
-
-const ensureDirectoryPath = require('./ensureDirectoryPath');
-const logger = require('./logger')('liveCompare');
+const _require = createRequire(import.meta.url);
+const logger = createLogger('liveCompare');
 
 const CONCURRENCY_DEFAULT = 10;
 
@@ -31,7 +33,7 @@ function decorateConfigForCompare (config) {
   if (typeof config.args.config === 'object') {
     configJSON = cloneDeep(config.args.config);
   } else {
-    configJSON = cloneDeep(require(config.backstopConfigFileName));
+    configJSON = cloneDeep(_require(config.backstopConfigFileName));
   }
   configJSON.scenarios = configJSON.scenarios || [];
   ensureViewportLabel(configJSON);
@@ -187,7 +189,7 @@ function flatMapTestPairs (rawTestPairs) {
   }, []);
 }
 
-module.exports = function (config) {
+export default function createComparisonBitmaps (config) {
   const promise = delegateCompareScenarios(decorateConfigForCompare(config))
     .then(function (rawTestPairs) {
       const result = {

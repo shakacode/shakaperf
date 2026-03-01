@@ -1,5 +1,5 @@
-const { PNG } = require('pngjs');
-const pixelmatch = require('pixelmatch');
+import { PNG } from 'pngjs';
+import pixelmatch from 'pixelmatch';
 
 function resizePng(png, targetWidth, targetHeight) {
   if (png.width === targetWidth && png.height === targetHeight) {
@@ -63,8 +63,4 @@ function createCompositeImage(pngImages) {
   return composite;
 }
 
-module.exports = {
-  compareBuffers,
-  createCompositeImage,
-  resizePng
-};
+export { compareBuffers, createCompositeImage, resizePng };

@@ -1,1 +1,1 @@
-module.exports = /^win/.test(process.platform);
+export default /^win/.test(process.platform);

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-const parseArgs = require('minimist');
-const usage = require('./usage');
-const version = require('../package.json').version;
-const runner = require('../core/runner');
+import parseArgs from 'minimist';
+import usage from './usage.js';
+import { createRequire } from 'node:module';
+import runner from '../core/runner.js';
+
+const _require = createRequire(import.meta.url);
+const { version } = _require('../package.json');
 
 main();
 

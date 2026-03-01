@@ -1,10 +1,10 @@
-const fs = require('./fs');
-const chalk = require('chalk');
-const ensureDirectoryPath = require('./ensureDirectoryPath');
-const engineTools = require('./engineTools');
-const { compareBuffers } = require('./compare/pixelmatch-inline');
-const retryCompare = require('./retryCompare');
-const preparePage = require('./preparePage');
+import fs from './fs.js';
+import chalk from 'chalk';
+import ensureDirectoryPath from './ensureDirectoryPath.js';
+import * as engineTools from './engineTools.js';
+import { compareBuffers } from './compare/pixelmatch-inline.js';
+import retryCompare from './retryCompare.js';
+import preparePage from './preparePage.js';
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
@@ -258,7 +258,7 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
 
 // ── Playwright entry point ─────────────────────────────────────────
 
-module.exports.playwright = async function runComparePlaywright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
+export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
   const logger = createLogger();

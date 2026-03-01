@@ -1,12 +1,17 @@
-const path = require('path');
-const chalk = require('chalk');
-const _ = require('lodash');
-const cloneDeep = require('lodash/cloneDeep');
+import path from 'node:path';
+import { readFileSync } from 'node:fs';
+import chalk from 'chalk';
+import _ from 'lodash';
+import cloneDeep from 'lodash/cloneDeep.js';
+import { createRequire } from 'node:module';
+import builder from 'junit-report-builder';
+import allSettled from '../util/allSettled.js';
+import fs from '../util/fs.js';
+import createLogger from '../util/logger.js';
+import compare from '../util/compare/index.js';
 
-const allSettled = require('../util/allSettled');
-const fs = require('../util/fs');
-const logger = require('../util/logger')('report');
-const compare = require('../util/compare/');
+const logger = createLogger('report');
+const _require = createRequire(import.meta.url);
 
 function replaceInFile (file, search, replace) {
   return new Promise((resolve, reject) => {
@@ -60,10 +65,10 @@ function archiveReport (config) {
   });
 }
 
-function writeBrowserReport (config, reporter) {
+async function writeBrowserReport (config, reporter) {
   const testConfig = (typeof config.args.config === 'object')
     ? config.args.config
-    : Object.assign({}, require(config.backstopConfigFileName));
+    : Object.assign({}, _require(config.backstopConfigFileName));
 
   let browserReporter = cloneDeep(reporter);
 
@@ -131,7 +136,7 @@ function writeBrowserReport (config, reporter) {
     if (testConfig.dynamicTestId) {
       try {
         console.log('Attempting to open: ', testReportJsonName);
-        const testReportJson = require(testReportJsonName);
+        const testReportJson = JSON.parse(readFileSync(testReportJsonName, 'utf8'));
         const scenarioFileNames = browserReporter.tests.map(test => test.pair.fileName);
         testReportJson.tests = testReportJson.tests.filter(test => !scenarioFileNames.includes(test.pair.fileName));
         browserReporter.tests.map(test => testReportJson.tests.push(test));
@@ -161,13 +166,13 @@ function writeBrowserReport (config, reporter) {
     const promises = [jsonpConfigWrite, jsonConfigWrite];
 
     return allSettled(promises);
-  }).then(function () {
+  }).then(async function () {
     if (config.archiveReport) {
       archiveReport(config);
     }
 
     if (config.openReport && config.report && config.report.indexOf('browser') > -1) {
-      const executeCommand = require('./index');
+      const { default: executeCommand } = await import('./index.js');
       return executeCommand('_openReport', config);
     }
   });
@@ -176,7 +181,6 @@ function writeBrowserReport (config, reporter) {
 function writeJunitReport (config, reporter) {
   logger.log('Writing jUnit Report');
 
-  const builder = require('junit-report-builder');
   const suite = builder.testSuite()
     .name(reporter.testSuite);
 
@@ -211,7 +215,7 @@ function writeJunitReport (config, reporter) {
 function writeJsonReport (config, reporter) {
   const testConfig = (typeof config.args.config === 'object')
     ? config.args.config
-    : Object.assign({}, require(config.backstopConfigFileName));
+    : Object.assign({}, _require(config.backstopConfigFileName));
 
   let jsonReporter = cloneDeep(reporter);
 
@@ -244,7 +248,7 @@ function writeJsonReport (config, reporter) {
     if (testConfig.dynamicTestId) {
       try {
         console.log('Attempting to open: ', jsonReportFileName);
-        const jsonReportJson = require(jsonReportFileName);
+        const jsonReportJson = JSON.parse(readFileSync(jsonReportFileName, 'utf8'));
         const scenarioFileNames = jsonReporter.tests.map(test => test.pair.fileName);
         jsonReportJson.tests = jsonReportJson.tests.filter(test => !scenarioFileNames.includes(test.pair.fileName));
         jsonReporter.tests.map(test => jsonReportJson.tests.push(test));
@@ -263,29 +267,27 @@ function writeJsonReport (config, reporter) {
   });
 }
 
-module.exports = {
-  execute: function (config) {
-    return compare(config).then(function (report) {
-      const failed = report.failed();
-      logger.log('Test completed...');
-      logger.log(chalk.green(report.passed() + ' Passed'));
-      logger.log(chalk[(failed ? 'red' : 'green')](+failed + ' Failed'));
+export function execute (config) {
+  return compare(config).then(function (report) {
+    const failed = report.failed();
+    logger.log('Test completed...');
+    logger.log(chalk.green(report.passed() + ' Passed'));
+    logger.log(chalk[(failed ? 'red' : 'green')](+failed + ' Failed'));
 
-      return writeReport(config, report).then(function (results) {
-        for (let i = 0; i < results.length; i++) {
-          if (results[i].state !== 'fulfilled') {
-            logger.error('Failed writing report with error: ' + results[i].value);
-          }
+    return writeReport(config, report).then(function (results) {
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].state !== 'fulfilled') {
+          logger.error('Failed writing report with error: ' + results[i].value);
         }
+      }
 
-        if (failed) {
-          logger.error('*** Mismatch errors found ***');
-          // logger.log('For a detailed report run `backstop openReport`\n');
-          throw new Error('Mismatch errors found.');
-        }
-      });
-    }, function (e) {
-      logger.error('Comparison failed with error:' + e);
+      if (failed) {
+        logger.error('*** Mismatch errors found ***');
+        // logger.log('For a detailed report run `backstop openReport`\n');
+        throw new Error('Mismatch errors found.');
+      }
     });
-  }
-};
+  }, function (e) {
+    logger.error('Comparison failed with error:' + e);
+  });
+}

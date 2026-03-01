@@ -1,4 +1,4 @@
-const fs = require('./fs');
+import fs from './fs.js';
 
 /**
  * Extract jsonReport from the jsonpReport
@@ -55,7 +55,4 @@ async function modifyJsonpReport ({ reportConfigFilename, approvedFileName }) {
     });
 }
 
-module.exports = {
-  modifyJsonpReport,
-  modifyJsonpReportHelper
-};
+export { modifyJsonpReport, modifyJsonpReportHelper };

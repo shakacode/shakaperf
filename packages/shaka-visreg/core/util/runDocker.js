@@ -1,12 +1,15 @@
-const { spawn } = require('child_process');
-const version = require('../../package').version;
-const fs = require('./fs');
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import fs from './fs.js';
+
+const _require = createRequire(import.meta.url);
+const { version } = _require('../../package.json');
 
 const DEFAULT_DOCKER_COMMAND_TEMPLATE = 'docker run --rm -it --mount type=bind,source="{cwd}",target=/src backstopjs/backstopjs:{version} {backstopCommand} {args}';
 
-module.exports.shouldRunDocker = (config) => config.args.docker;
+export const shouldRunDocker = (config) => config.args.docker;
 
-module.exports.runDocker = async (config, backstopCommand) => {
+export async function runDocker (config, backstopCommand) {
   if (config.args.docker) {
     // 0th element is node, 1st is backstop, 2nd may be command or an option like --config
     const args = process.argv.slice(2);
