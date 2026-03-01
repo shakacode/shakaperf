@@ -219,8 +219,8 @@ One may opt to include any of the above properties at the "global" level, in the
       "height": 768
     }
   ],
-  "onBeforeScript": "playwright/onBefore.js",
-  "onReadyScript": "playwright/onReady.js",
+  "onBeforeScript": "playwright/onBefore.ts",
+  "onReadyScript": "playwright/onReady.ts",
   "scenarioDefaults": {
     "cookiePath": "backstop_data/engine_scripts/cookies.json",
     "url": "https://garris.github.io/BackstopJS/",
@@ -721,8 +721,8 @@ The [storageState](https://playwright.dev/docs/api/class-browsercontext#browser-
 
 ```json
   ...
-  "onBeforeScript": "playwright/onBefore.js",
-  "onReadyScript": "playwright/onReady.js",
+  "onBeforeScript": "playwright/onBefore.ts",
+  "onReadyScript": "playwright/onReady.ts",
   ...
   "engine": "playwright"
   ...
@@ -1073,7 +1073,7 @@ Here's some suggestions if you want to work on the HTML report locally...
   - Start a remote server if you need to work with the approving tests flow
 
     ```
-    cd test/configs/ && node ../../cli/index.js remote
+    cd test/configs/ && tsx ../../cli/index.ts remote
     ```
 
   - Open another shell and run a test with this...
@@ -1148,9 +1148,9 @@ See the next section for running the SMOKE TEST -- Please make sure this is work
 # From test/configs/ directory
 # ---------------
 # simple test
-  ../../cli/index.js test --config=backstop --docker
+  ../../cli/index.ts test --config=backstop --docker
 # longer test covering many features
-  ../../cli/index.js test --config=backstop_features --docker
+  ../../cli/index.ts test --config=backstop_features --docker
 ```
 
 ## Troubleshooting
