@@ -19,7 +19,7 @@
     "approve": "tsx ./cli/index.ts approve",
     "openReport": "tsx ./cli/index.ts openReport",
     "report": "tsx ./cli/index.ts openReport",
-    "unit-test": "mocha --reporter spec --recursive \"test/**/*_spec.js\" && npm run -s success-message || npm run -s fail-message",
+    "unit-test": "mocha --require tsx --reporter spec --recursive \"test/**/*_spec.ts\" && npm run -s success-message || npm run -s fail-message",
     "precommit": "lint-staged",
     "build-compare": "cp ./node_modules/diverged/src/diverged.js ./compare/output/ && cp ./node_modules/diff/dist/diff.js ./compare/output/ && webpack --config ./compare/webpack.config.js && npm run -s lint",
     "dev-compare": "webpack-dev-server --config ./compare/webpack.config.js",

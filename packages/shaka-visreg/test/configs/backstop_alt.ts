@@ -1,20 +1,23 @@
-/* eslint-env browser, node */
-
 module.exports = {
-  id: 'backstop-remote',
+  id: 'playwright_backstop_features',
   viewports: [
     {
-      label: 'webview',
-      width: 1440,
-      height: 900
+      label: 'phone',
+      width: 320,
+      height: 480
+    },
+    {
+      label: 'tablet',
+      width: 1024,
+      height: 768
     }
   ],
-  onReadyScript: 'playwright/onReady.js',
+  onBeforeScript: 'playwright/onBefore.ts',
+  onReadyScript: 'playwright/onReady.ts',
   scenarios: [
     {
-      label: '{testName}',
-      url: '{origin}/backstop/dview/{testId}/{scenarioId}',
-      delay: 500
+      label: 'Simple',
+      url: 'https://garris.github.io/BackstopJS/'
     }
   ],
   paths: {
@@ -24,7 +27,7 @@ module.exports = {
     html_report: 'backstop_data/html_report',
     ci_report: 'backstop_data/ci_report'
   },
-  report: [],
+  report: ['browser'],
   engine: 'playwright',
   engineOptions: {
     args: ['--no-sandbox']

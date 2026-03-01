@@ -55,8 +55,8 @@ const exampleConfig = {
         height: 768
       }
     ],
-    onBeforeScript: 'playwright/onBefore.js',
-    onReadyScript: 'playwright/onReady.js',
+    onBeforeScript: 'playwright/onBefore.ts',
+    onReadyScript: 'playwright/onReady.ts',
     scenarios: [
       {
         label: 'Homepage',

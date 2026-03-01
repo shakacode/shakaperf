@@ -104,8 +104,8 @@
     "browser": "chromium",
     "headless": true
   },
-  "onBeforeScript": "onBefore.js",
-  "onReadyScript": "onReady.js",
+  "onBeforeScript": "onBefore.ts",
+  "onReadyScript": "onReady.ts",
   "asyncCaptureLimit": 4,
   "compareRetries": 5,
   "compareRetryDelay": 2000,

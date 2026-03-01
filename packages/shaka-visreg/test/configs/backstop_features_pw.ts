@@ -1,9 +1,10 @@
 const ENGINE = 'playwright';
+const BROWSER = 'chromium';
 const SCRIPT_PATH = 'playwright';
 const URL = 'https://garris.github.io/BackstopJS';
 
 module.exports = {
-  id: `${ENGINE}_backstop_features`,
+  id: `${ENGINE}_${BROWSER}_backstop_features`,
   viewports: [
     {
       label: 'phone',
@@ -16,8 +17,8 @@ module.exports = {
       height: 768
     }
   ],
-  onBeforeScript: `${SCRIPT_PATH}/onBefore.js`,
-  onReadyScript: `${SCRIPT_PATH}/onReady.js`,
+  onBeforeScript: `${SCRIPT_PATH}/onBefore.ts`,
+  onReadyScript: `${SCRIPT_PATH}/onReady.ts`,
   scenarios: [
     {
       label: 'Simple',
@@ -118,14 +119,14 @@ module.exports = {
     },
     // {
     //   label: 'customReadyScript',
-    //   onReadyScript: `${SCRIPT_PATH}/overrideCSS.js`,
+    //   onReadyScript: `${SCRIPT_PATH}/overrideCSS.ts`,
     //   url: `${URL}/index.html`,
     //   selectors: ['.moneyshot']
     // },
     // {
     //   label: 'redirect',
     //   url: `${URL}/index.html`,
-    //   onReadyScript: `${SCRIPT_PATH}/redirect.js`,
+    //   onReadyScript: `${SCRIPT_PATH}/redirect.ts`,
     //   selectors: ['.moneyshot']
     // },
     {
@@ -253,13 +254,12 @@ module.exports = {
     ci_report: 'backstop_data/ci_report'
   },
   report: ['browser', 'json'],
-  engine: ENGINE,
+  engine: `${ENGINE}`,
   engineOptions: {
-    args: ['--no-sandbox']
+    browser: `${BROWSER}`
   },
   asyncCaptureLimit: 10,
   asyncCompareLimit: 50,
   debug: false,
-  debugWindow: false,
-  scenarioLogsInReports: true
+  debugWindow: false
 };
