@@ -46,11 +46,11 @@ playwright-report/
 .claude/settings.local.json
 
 # BackstopJS data
-demo-ecommerce/backstop_data/bitmaps_reference
-demo-ecommerce/backstop_data/bitmaps_test
-demo-ecommerce/backstop_data/html_report
-demo-ecommerce/backstop_data/engine_scripts/dist
-demo-ecommerce/backstop_data/ci_report/xunit.xml
+**/backstop_data/bitmaps_reference
+**/backstop_data/bitmaps_test
+**/backstop_data/html_report
+**/backstop_data/engine_scripts/dist
+**/backstop_data/ci_report/xunit.xml
 
 packages/shaka-bench/tracerbench-results
 tracerbench-results
