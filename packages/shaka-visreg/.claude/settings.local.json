@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run unit-test)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run *)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(git add core/util/retryCompare.js core/util/runCompareScenario.js)",
+      "Bash(npm run integration-test)",
+      "Bash(npm show pixelmatch versions --json)",
+      "Bash(npm run sanity-test)",
+      "Bash(npm run sanity-test-playwright)",
+      "Bash(npx playwright install chromium)",
+      "Bash(npm run smoke-test-playwright)",
+      "Bash(git add test/core/util/compare/pixelmatch-inline_spec.js)",
+      "Bash(node -e \"const fs = require\\(''fs''\\); const { PNG } = require\\(''pngjs''\\); const buf = fs.readFileSync\\(''test/core/util/compare/refImage-1.png''\\); const png = PNG.sync.read\\(buf\\); console.log\\(''Image dimensions:'', png.width, ''x'', png.height, ''='', png.width * png.height, ''pixels''\\);\")",
+      "Bash(git add test/core/command/liveCompare_spec.js)",
+      "Bash(git add test/core/util/extendConfig_spec.js)",
+      "Bash(git add test/cli/usage_spec.js)",
+      "Bash(node -e \"try { require\\(''proxyquire''\\); console.log\\(''proxyquire available''\\); } catch\\(e\\) { console.log\\(''proxyquire not available''\\); }\")",
+      "Bash(npm test)",
+      "Bash(test -d /Users/ramezweissa/code/shaka/BackstopJS/.github)",
+      "Bash(npx jasmine --filter=\"*\")",
+      "Bash(npx jasmine)",
+      "Bash(npx mocha test/core/util/retryCompare_spec.js test/core/util/extendConfig_spec.js test/core/util/createComparisonBitmaps_spec.js)",
+      "Bash(npx jest test/core/util/preparePage_spec.js)",
+      "Bash(npx jest)",
+      "Bash(npx jest test/)",
+      "Bash(npx mocha --reporter spec --recursive \"test/**/*_spec.js\")",
+      "Bash(npx mocha test/core/util/retryCompare_spec.js --timeout 15000)",
+      "Bash(npx mocha test/ --recursive --timeout 15000)",
+      "Bash(git status -u)",
+      "Bash(npx mocha test/core/ --recursive --timeout 15000)"
+    ]
+  }
+}

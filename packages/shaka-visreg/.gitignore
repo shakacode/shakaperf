@@ -1,0 +1,20 @@
+# BackstopJS-specific ignores
+# (General ignores like node_modules, .DS_Store, *.log, .idea, .vscode are in root .gitignore)
+
+compare/bower_components/**/.*
+compare/config.js
+compare/output/bitmaps_reference/
+compare/output/bitmaps_test/
+compare/output/config\.js
+
+capture/config.json
+
+examples/**/html_report/
+
+**/backstop_data/bitmaps_test/
+**/backstop_data/html_report/
+**/backstop_data/json_report/
+**/backstop_data/reports/
+
+# Tests
+*integrationTestDir
