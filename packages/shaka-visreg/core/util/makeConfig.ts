@@ -54,7 +54,7 @@ function loadProjectConfig (command, options, config) {
 }
 
 function makeConfig (command, options) {
-  const config = {};
+  const config: any = {};
 
   config.args = options || {};
 

@@ -7,7 +7,7 @@ function getFileHash (filename) {
   }
   return new Promise(resolve => {
     const md5sum = crypto.createHash('md5');
-    const stream = fs.ReadStream(filename);
+    const stream = fs.createReadStream(filename);
 
     stream.on('data', d => md5sum.update(d));
     stream.on('end', () => resolve(md5sum.digest('hex')));

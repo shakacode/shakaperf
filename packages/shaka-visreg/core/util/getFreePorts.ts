@@ -13,7 +13,7 @@ export default function getFreePorts (startingPort, requestedPorts) {
     const requestedAmount = requestedPorts;
     const freePorts = [];
 
-    function findFreePorts (startPort, pointer) {
+    function findFreePorts (startPort, pointer?) {
       const PTR = pointer || 1;
       // console.log('freePorts > ', PTR, JSON.stringify(freePorts));
       if (PTR > requestedAmount) {
@@ -23,7 +23,7 @@ export default function getFreePorts (startingPort, requestedPorts) {
       portfinder.basePort = startPort;
       portfinder.getPort(function (err, port) {
         if (err) {
-          reject(new Error(err));
+          reject(new Error(String(err)));
         }
         freePorts[PTR - 1] = port;
         return findFreePorts(port + 1, PTR + 1);

@@ -19,7 +19,7 @@ function main () {
   });
 
   // Catch errors from failing promises
-  process.on('unhandledRejection', function (error) {
+  process.on('unhandledRejection', function (error: any) {
     console.error(error && error.stack);
   });
 

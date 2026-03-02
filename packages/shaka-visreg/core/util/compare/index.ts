@@ -68,7 +68,7 @@ function compareImages (referencePath, testPath, pair, resembleOutputSettings, T
       pair
     });
 
-    worker.on('message', function (data) {
+    worker.on('message', function (data: any) {
       worker.kill();
       Test.status = data.status;
       pair.diff = data.diff;

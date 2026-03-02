@@ -65,7 +65,7 @@ export async function runDocker (config, backstopCommand) {
         }
 
         if (code === 0) {
-          resolve();
+          resolve(undefined);
         } else {
           reject(new Error(`${dockerCommand} returned ${code}`));
         }

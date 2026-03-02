@@ -1,9 +1,25 @@
+// @ts-ignore -- missing @types/node
 import path from 'node:path';
+// @ts-ignore -- missing @types/node
 import { pathToFileURL } from 'node:url';
+// @ts-ignore -- missing @types/lodash
 import _ from 'lodash';
+// @ts-ignore -- missing @types/node
 import { existsSync } from 'node:fs';
 import injectBackstopTools from '../../capture/backstopTools.js';
 import createLogger from './logger.js';
+
+declare var process: any;
+
+declare global {
+  interface Window {
+    _readyEvent: any;
+    _selectorExpansion: any;
+    _backstopSelectors: any;
+    _backstopSelectorsExp: any;
+    _backstopSelectorsExpMap: any;
+  }
+}
 
 const logger = createLogger('preparePage');
 
@@ -31,7 +47,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (existsSync(beforeScriptPath)) {
-      const beforeMod = await import(pathToFileURL(beforeScriptPath));
+      const beforeMod = await import(pathToFileURL(beforeScriptPath).href);
       const beforeFn = beforeMod.default || beforeMod;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
@@ -48,7 +64,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   let onConsole;
 
   if (readyEvent) {
-    readyPromise = new Promise(function (resolve) {
+    readyPromise = new Promise<void>(function (resolve) {
       readyResolve = resolve;
       readyTimeoutTimer = setTimeout(function () {
         logger.error('ReadyEvent not detected within readyTimeout limit. (' + readyTimeout + ' ms) ' + url);
@@ -114,7 +130,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (existsSync(readyScriptPath)) {
-      const readyMod = await import(pathToFileURL(readyScriptPath));
+      const readyMod = await import(pathToFileURL(readyScriptPath).href);
       const readyFn = readyMod.default || readyMod;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {

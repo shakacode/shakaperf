@@ -1,3 +1,9 @@
+declare global {
+  interface Window {
+    _backstopTools: any;
+  }
+}
+
 'use strict';
 export default (target) => {
   return target.evaluate(() => {

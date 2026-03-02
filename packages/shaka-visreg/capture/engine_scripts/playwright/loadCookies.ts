@@ -6,7 +6,7 @@ export default async (browserContext, scenario) => {
 
   // Read Cookies from File, if exists
   if (fs.existsSync(cookiePath)) {
-    cookies = JSON.parse(fs.readFileSync(cookiePath));
+    cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
   }
 
   // Add cookies to browser
