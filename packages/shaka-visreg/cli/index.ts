@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 import parseArgs from 'minimist';
 import usage from './usage.js';
