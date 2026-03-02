@@ -2,6 +2,8 @@ import createComparisonBitmaps from '../util/createComparisonBitmaps.js';
 import { shouldRunDocker, runDocker } from '../util/runDocker.js';
 
 export async function execute (config) {
+  // Imported dynamically to break the circular dependency:
+  // index.js → liveCompare.js → index.js  const { default: executeCommand } = await import('./index.js');
   const { default: executeCommand } = await import('./index.js');
   if (shouldRunDocker(config)) {
     return runDocker(config, 'liveCompare')

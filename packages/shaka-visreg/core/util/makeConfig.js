@@ -2,7 +2,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import extendConfig from './extendConfig.js';
 
-const require = createRequire(import.meta.url);
+const _require = createRequire(import.meta.url);
 
 const NON_CONFIG_COMMANDS = ['init', 'version', 'stop'];
 
@@ -44,9 +44,9 @@ function loadProjectConfig (command, options, config) {
       userConfig = options.config;
     } else if (config.backstopConfigFileName) {
       // Remove from cache config content
-      delete require.cache[require.resolve(config.backstopConfigFileName)];
+      delete _require.cache[_require.resolve(config.backstopConfigFileName)];
       console.log('Loading config: ', config.backstopConfigFileName, '\n');
-      userConfig = require(config.backstopConfigFileName);
+      userConfig = _require(config.backstopConfigFileName);
     }
   }
 
