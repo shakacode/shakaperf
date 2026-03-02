@@ -6839,68 +6839,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"backstopjs@workspace:packages/shaka-visreg":
-  version: 0.0.0-use.local
-  resolution: "backstopjs@workspace:packages/shaka-visreg"
-  dependencies:
-    "@babel/core": "npm:^7.23.6"
-    "@babel/preset-env": "npm:^7.23.6"
-    "@babel/preset-react": "npm:^7.23.3"
-    "@mirzazeyrek/node-resemble-js": "npm:^1.2.1"
-    assert: "npm:^2.1.0"
-    babel-loader: "npm:^9.1.3"
-    backstop-twentytwenty: "npm:^1.1.0"
-    chalk: "npm:^4.1.2"
-    diverged: "npm:^0.1.3"
-    eslint: "npm:^8.56.0"
-    eslint-config-semistandard: "npm:17.0.0"
-    eslint-config-standard: "npm:17.1.0"
-    eslint-plugin-import: "npm:^2.29.1"
-    eslint-plugin-n: "npm:^15.0.0"
-    eslint-plugin-node: "npm:^11.1.0"
-    eslint-plugin-promise: "npm:^6.1.1"
-    eslint-plugin-react: "npm:^7.33.2"
-    eslint-plugin-standard: "npm:^5.0.0"
-    file-loader: "npm:^6.2.0"
-    fs-extra: "npm:^11.2.0"
-    jest: "npm:^30.0.0"
-    jest-junit: "npm:^16.0.0"
-    jump.js: "npm:^1.0.2"
-    junit-report-builder: "npm:^3.1.0"
-    lint-staged: "npm:^15.2.0"
-    lodash: "npm:^4.17.21"
-    minimist: "npm:^1.2.8"
-    object-hash: "npm:3.0.0"
-    opn: "npm:^6.0.0"
-    os: "npm:^0.1.2"
-    p-map: "npm:^4.0.0"
-    path: "npm:^0.12.7"
-    pixelmatch: "npm:^5.3.0"
-    playwright: "npm:^1.40.1"
-    pngjs: "npm:^7.0.0"
-    portfinder: "npm:^1.0.32"
-    prettier: "npm:^3.1.1"
-    prettier-eslint-cli: "npm:^8.0.1"
-    react: "npm:^18.2.0"
-    react-dom: "npm:^18.2.0"
-    react-modal: "npm:^3.16.1"
-    react-redux: "npm:^9.0.4"
-    react-sticky: "npm:^6.0.3"
-    react-toggle-button: "npm:^2.2.0"
-    react-visibility-sensor: "npm:^5.1.1"
-    redux: "npm:^5.0.0"
-    styled-components: "npm:^6.1.2"
-    super-simple-web-server: "npm:^1.1.4"
-    temp: "npm:^0.9.4"
-    url-loader: "npm:^4.1.1"
-    webpack: "npm:^5.89.0"
-    webpack-cli: "npm:^5.1.4"
-    webpack-dev-server: "npm:^4.15.1"
-  bin:
-    backstop: ./cli/index.js
-  languageName: unknown
-  linkType: soft
-
 "balanced-match@npm:^1.0.0":
   version: 1.0.2
   resolution: "balanced-match@npm:1.0.2"
@@ -16081,15 +16019,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-perf@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "shaka-perf@workspace:."
-  dependencies:
-    "@playwright/test": "npm:^1.50.0"
-    typescript: "npm:^5.3.3"
-  languageName: unknown
-  linkType: soft
-
 "shaka-twin-servers@workspace:*, shaka-twin-servers@workspace:packages/shaka-twin-servers":
   version: 0.0.0-use.local
   resolution: "shaka-twin-servers@workspace:packages/shaka-twin-servers"
@@ -16105,6 +16034,68 @@ __metadata:
     zod: "npm:^3.24.0"
   bin:
     shaka-twin-servers: ./dist/cli.js
+  languageName: unknown
+  linkType: soft
+
+"shaka-visreg@workspace:packages/shaka-visreg":
+  version: 0.0.0-use.local
+  resolution: "shaka-visreg@workspace:packages/shaka-visreg"
+  dependencies:
+    "@babel/core": "npm:^7.23.6"
+    "@babel/preset-env": "npm:^7.23.6"
+    "@babel/preset-react": "npm:^7.23.3"
+    "@mirzazeyrek/node-resemble-js": "npm:^1.2.1"
+    assert: "npm:^2.1.0"
+    babel-loader: "npm:^9.1.3"
+    backstop-twentytwenty: "npm:^1.1.0"
+    chalk: "npm:^4.1.2"
+    diverged: "npm:^0.1.3"
+    eslint: "npm:^8.56.0"
+    eslint-config-semistandard: "npm:17.0.0"
+    eslint-config-standard: "npm:17.1.0"
+    eslint-plugin-import: "npm:^2.29.1"
+    eslint-plugin-n: "npm:^15.0.0"
+    eslint-plugin-node: "npm:^11.1.0"
+    eslint-plugin-promise: "npm:^6.1.1"
+    eslint-plugin-react: "npm:^7.33.2"
+    eslint-plugin-standard: "npm:^5.0.0"
+    file-loader: "npm:^6.2.0"
+    fs-extra: "npm:^11.2.0"
+    jest: "npm:^30.0.0"
+    jest-junit: "npm:^16.0.0"
+    jump.js: "npm:^1.0.2"
+    junit-report-builder: "npm:^3.1.0"
+    lint-staged: "npm:^15.2.0"
+    lodash: "npm:^4.17.21"
+    minimist: "npm:^1.2.8"
+    object-hash: "npm:3.0.0"
+    opn: "npm:^6.0.0"
+    os: "npm:^0.1.2"
+    p-map: "npm:^4.0.0"
+    path: "npm:^0.12.7"
+    pixelmatch: "npm:^5.3.0"
+    playwright: "npm:^1.40.1"
+    pngjs: "npm:^7.0.0"
+    portfinder: "npm:^1.0.32"
+    prettier: "npm:^3.1.1"
+    prettier-eslint-cli: "npm:^8.0.1"
+    react: "npm:^18.2.0"
+    react-dom: "npm:^18.2.0"
+    react-modal: "npm:^3.16.1"
+    react-redux: "npm:^9.0.4"
+    react-sticky: "npm:^6.0.3"
+    react-toggle-button: "npm:^2.2.0"
+    react-visibility-sensor: "npm:^5.1.1"
+    redux: "npm:^5.0.0"
+    styled-components: "npm:^6.1.2"
+    super-simple-web-server: "npm:^1.1.4"
+    temp: "npm:^0.9.4"
+    url-loader: "npm:^4.1.1"
+    webpack: "npm:^5.89.0"
+    webpack-cli: "npm:^5.1.4"
+    webpack-dev-server: "npm:^4.15.1"
+  bin:
+    backstop: ./cli/index.js
   languageName: unknown
   linkType: soft
 
@@ -16199,6 +16190,15 @@ __metadata:
   checksum: 10c0/941d7d25cc9f41be031f7ef0ba6d683ab2a0e599ac7713fbd6761087e33ab77968b3551d52becd3f17918db9c3ef9fe05cebb9845b0176ee411648810f37e811
   languageName: node
   linkType: hard
+
+"shakaperf@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "shakaperf@workspace:."
+  dependencies:
+    "@playwright/test": "npm:^1.50.0"
+    typescript: "npm:^5.3.3"
+  languageName: unknown
+  linkType: soft
 
 "shallow-clone@npm:^3.0.0":
   version: 3.0.1
