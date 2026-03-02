@@ -16095,7 +16095,7 @@ __metadata:
     webpack-cli: "npm:^5.1.4"
     webpack-dev-server: "npm:^4.15.1"
   bin:
-    backstop: ./cli/index.js
+    shaka-visreg: ./cli/index.js
   languageName: unknown
   linkType: soft
 
