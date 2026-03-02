@@ -16,7 +16,7 @@
     "reference": "node ./cli/index.js reference",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "yarn jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest",
     "approve": "node ./cli/index.js approve",
     "openReport": "node ./cli/index.js openReport",
     "report": "node ./cli/index.js openReport",

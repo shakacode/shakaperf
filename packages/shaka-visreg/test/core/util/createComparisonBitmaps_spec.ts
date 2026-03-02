@@ -59,7 +59,7 @@ describe('createComparisonBitmaps', function () {
     try { unlinkSync(configFilePath); } catch (e) { /* ignore */ }
   });
 
-  async function createModule (overrides) {
+  async function createModule (overrides?) {
     jest.resetModules();
 
     const runCompareScenarioMock = (overrides && overrides.runCompareScenario) || {

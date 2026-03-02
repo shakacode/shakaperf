@@ -18,6 +18,7 @@ declare global {
     _backstopSelectors: any;
     _backstopSelectorsExp: any;
     _backstopSelectorsExpMap: any;
+    _backstopTools: any;
   }
 }
 
@@ -25,7 +26,7 @@ const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
 
-function translateUrl (url) {
+function translateUrl (url: any) {
   const RE = /^[./]/;
   if (RE.test(url)) {
     return 'file://' + path.join(process.cwd(), url);
@@ -39,7 +40,7 @@ function translateUrl (url) {
  *
  * Shared by runCompareScenario (liveCompare) and runPlaywright.
  */
-async function preparePage (page, url, scenario, viewport, config, isReference, browserOrContext, engineScriptsPath) {
+async function preparePage (page: any, url: any, scenario: any, viewport: any, config: any, isReference: any, browserOrContext: any, engineScriptsPath: any) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
   // --- BEFORE SCRIPT ---
@@ -58,10 +59,10 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   // --- READY EVENT SETUP (before navigation to avoid missing early events) ---
   const readyEvent = scenario.readyEvent || config.readyEvent;
   const readyTimeout = scenario.readyTimeout || config.readyTimeout || 30000;
-  let readyPromise;
-  let readyResolve;
-  let readyTimeoutTimer;
-  let onConsole;
+  let readyPromise: Promise<void> | undefined;
+  let readyResolve: (() => void) | undefined;
+  let readyTimeoutTimer: any;
+  let onConsole: any;
 
   if (readyEvent) {
     readyPromise = new Promise<void>(function (resolve) {
@@ -73,7 +74,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
       }, readyTimeout);
     });
 
-    onConsole = function (msg) {
+    onConsole = function (msg: any) {
       if (new RegExp(readyEvent).test(msg.text())) {
         clearTimeout(readyTimeoutTimer);
         page.removeListener('console', onConsole);
@@ -89,7 +90,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
     await injectBackstopTools(page);
 
     if (readyPromise) {
-      await page.evaluate(function (v) { window._readyEvent = v; }, readyEvent);
+      await page.evaluate(function (v: any) { window._readyEvent = v; }, readyEvent);
       await readyPromise;
     }
   } finally {
@@ -114,9 +115,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   // --- REMOVE SELECTORS ---
   if (_.has(scenario, 'removeSelectors')) {
     await Promise.all(
-      scenario.removeSelectors.map(function (sel) {
-        return page.evaluate(function (s) {
-          document.querySelectorAll(s).forEach(function (el) {
+      scenario.removeSelectors.map(function (sel: any) {
+        return page.evaluate(function (s: any) {
+          document.querySelectorAll(s).forEach(function (el: any) {
             el.style.cssText = 'display: none !important;';
             el.classList.add('__86d');
           });
@@ -144,9 +145,9 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
     await Promise.all(
-      scenario.hideSelectors.map(function (sel) {
-        return page.evaluate(function (s) {
-          document.querySelectorAll(s).forEach(function (el) {
+      scenario.hideSelectors.map(function (sel: any) {
+        return page.evaluate(function (s: any) {
+          document.querySelectorAll(s).forEach(function (el: any) {
             el.style.visibility = 'hidden';
           });
         }, sel);
@@ -163,7 +164,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
   const selectors = Array.isArray(scenario.selectors) ? scenario.selectors : [scenario.selectors];
 
-  const result = await page.evaluate(function (args) {
+  const result = await page.evaluate(function (args: any) {
     var expand = args.expand;
     var sels = args.sels;
     window._selectorExpansion = expand;
@@ -173,7 +174,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
     } else {
       window._backstopSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc, selector) {
+    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: any, selector: any) {
       acc[selector] = {
         exists: window._backstopTools.exists(selector),
         isVisible: window._backstopTools.isVisible(selector)
