@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import _ from 'lodash';
 import { existsSync } from 'node:fs';
 import injectBackstopTools from '../../capture/backstopTools.js';
@@ -30,7 +31,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (existsSync(beforeScriptPath)) {
-      const beforeMod = await import(beforeScriptPath);
+      const beforeMod = await import(pathToFileURL(beforeScriptPath));
       const beforeFn = beforeMod.default || beforeMod;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
@@ -113,7 +114,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (existsSync(readyScriptPath)) {
-      const readyMod = await import(readyScriptPath);
+      const readyMod = await import(pathToFileURL(readyScriptPath));
       const readyFn = readyMod.default || readyMod;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
