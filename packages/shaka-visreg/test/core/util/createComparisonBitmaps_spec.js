@@ -75,8 +75,8 @@ describe('createComparisonBitmaps', function () {
       }
     };
 
-    jest.unstable_mockModule('../../../core/util/fs.js', () => ({
-      default: { writeFile: function () { return Promise.resolve(); } }
+    jest.unstable_mockModule('node:fs/promises', () => ({
+      writeFile: function () { return Promise.resolve(); }
     }));
     jest.unstable_mockModule('../../../core/util/runCompareScenario.js', () => runCompareScenarioMock);
     jest.unstable_mockModule('../../../core/util/runPlaywright.js', () => ({

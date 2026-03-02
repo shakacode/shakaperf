@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import fs from './fs.js';
+import { writeFile, unlink } from 'node:fs/promises';
 import packageJson from '../../package.json' with { type: 'json' };
 
 const { version } = packageJson;
@@ -30,7 +30,7 @@ export async function runDocker (config, backstopCommand) {
         .map(async prop => {
           if (prop === 'config' && typeof config.args[prop] === 'object') {
             // If config is an object, export it to a json file
-            await fs.writeFile(tmpConfigFile, JSON.stringify(config.args[prop]));
+            await writeFile(tmpConfigFile, JSON.stringify(config.args[prop]));
             config.args[prop] = tmpConfigFile;
           }
 
@@ -61,7 +61,7 @@ export async function runDocker (config, backstopCommand) {
       dockerProcess.on('error', err => reject(err));
       dockerProcess.on('exit', async function (code, signal) {
         if (!config.args.debug && config.args.config === tmpConfigFile) {
-          await fs.unlink(tmpConfigFile);
+          await unlink(tmpConfigFile);
         }
 
         if (code === 0) {

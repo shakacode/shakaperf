@@ -1,5 +1,5 @@
 import createBitmaps from '../util/createBitmaps.js';
-import fs from '../util/fs.js';
+import { remove } from 'fs-extra';
 import createLogger from '../util/logger.js';
 import { shouldRunDocker, runDocker } from '../util/runDocker.js';
 import engineErrors from '../util/engineErrors.js';
@@ -15,7 +15,7 @@ export function execute (config) {
     if (config.args.filter || config.args.i) {
       firstStep = Promise.resolve();
     } else {
-      firstStep = fs.remove(config.bitmaps_reference).then(function () {
+      firstStep = remove(config.bitmaps_reference).then(function () {
         logger.success(config.bitmaps_reference + ' was cleaned.');
       });
     }

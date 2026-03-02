@@ -1,5 +1,8 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
+import packageJson from '../../../package.json' with { type: 'json' };
+
+const { version } = packageJson;
 
 describe('runDocker', function () {
   it('should run correct docker command', async function () {
@@ -25,14 +28,6 @@ describe('runDocker', function () {
       jest.unstable_mockModule('node:child_process', () => ({
         spawn: spawnMock
       }));
-      jest.unstable_mockModule('node:module', () => ({
-        createRequire: () => {
-          const req = () => ({ version: 'version.mock' });
-          req.resolve = (id) => id;
-          req.cache = {};
-          return req;
-        }
-      }));
 
       const { runDocker } = await import('../../../core/util/runDocker.js');
 
@@ -49,7 +44,7 @@ describe('runDocker', function () {
 
       assert.strictEqual(
         capturedCommand,
-        'docker run --rm -it --mount type=bind,source="/path/mock",target=/src backstopjs/backstopjs:version.mock test' +
+        `docker run --rm -it --mount type=bind,source="/path/mock",target=/src backstopjs/backstopjs:${version} test` +
         ' "--moby=true" "--config=my_config.json" "--filter=my_filter"');
     } finally {
       process.cwd = originalCwd;
@@ -75,14 +70,6 @@ describe('runDocker', function () {
 
     jest.unstable_mockModule('node:child_process', () => ({
       spawn: spawnMock
-    }));
-    jest.unstable_mockModule('node:module', () => ({
-      createRequire: () => {
-        const req = () => ({ version: '0.0.0' });
-        req.resolve = (id) => id;
-        req.cache = {};
-        return req;
-      }
     }));
 
     const { runDocker } = await import('../../../core/util/runDocker.js');
@@ -120,19 +107,9 @@ describe('runDocker', function () {
     jest.unstable_mockModule('node:child_process', () => ({
       spawn: spawnMock
     }));
-    jest.unstable_mockModule('node:module', () => ({
-      createRequire: () => {
-        const req = () => ({ version: '0.0.0' });
-        req.resolve = (id) => id;
-        req.cache = {};
-        return req;
-      }
-    }));
-    jest.unstable_mockModule('../../../core/util/fs.js', () => ({
-      default: {
-        writeFile: jest.fn().mockResolvedValue(),
-        unlink: jest.fn().mockResolvedValue()
-      }
+    jest.unstable_mockModule('node:fs/promises', () => ({
+      writeFile: jest.fn().mockResolvedValue(),
+      unlink: jest.fn().mockResolvedValue()
     }));
 
     const { runDocker } = await import('../../../core/util/runDocker.js');

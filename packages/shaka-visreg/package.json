@@ -16,7 +16,7 @@
     "format": "prettier-eslint --write \"compare/src/**/*.js\"",
     "init": "node ./cli/index.js init",
     "reference": "node ./cli/index.js reference",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest",
     "approve": "node ./cli/index.js approve",
     "openReport": "node ./cli/index.js openReport",
     "report": "node ./cli/index.js openReport",

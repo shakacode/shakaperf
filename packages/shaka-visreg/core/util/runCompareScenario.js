@@ -1,4 +1,5 @@
-import fs from './fs.js';
+import { writeFile } from 'node:fs/promises';
+import { copy } from 'fs-extra';
 import chalk from 'chalk';
 import ensureDirectoryPath from './ensureDirectoryPath.js';
 import * as engineTools from './engineTools.js';
@@ -68,7 +69,7 @@ async function captureScreenshot (page, selector, selectorMap, viewport, config)
 
 function writeScenarioLogs (config, logFilePath, logger) {
   if (config.scenarioLogsInReports) {
-    return fs.writeFile(logFilePath, JSON.stringify(logger.logged));
+    return writeFile(logFilePath, JSON.stringify(logger.logged));
   }
   return Promise.resolve(true);
 }
@@ -152,14 +153,14 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
       ensureDirectoryPath(testPair.test);
 
       if (refBuffer) {
-        await fs.writeFile(testPair.reference, refBuffer);
+        await writeFile(testPair.reference, refBuffer);
       } else {
-        await fs.copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.reference);
+        await copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.reference);
       }
       if (testBuffer) {
-        await fs.writeFile(testPair.test, testBuffer);
+        await writeFile(testPair.test, testBuffer);
       } else {
-        await fs.copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.test);
+        await copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.test);
       }
 
       compareConfig.testPairs.push(testPair);
@@ -175,8 +176,8 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
       ensureDirectoryPath(testPair.reference);
       ensureDirectoryPath(testPair.test);
       await Promise.all([
-        fs.writeFile(testPair.reference, refBuffer),
-        fs.writeFile(testPair.test, testBuffer)
+        writeFile(testPair.reference, refBuffer),
+        writeFile(testPair.test, testBuffer)
       ]);
       compareConfig.testPairs.push(testPair);
       continue;
@@ -206,15 +207,15 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
     ensureDirectoryPath(testPair.reference);
     ensureDirectoryPath(testPair.test);
     await Promise.all([
-      fs.writeFile(testPair.reference, retryResult.refBuffer),
-      fs.writeFile(testPair.test, retryResult.testBuffer)
+      writeFile(testPair.reference, retryResult.refBuffer),
+      writeFile(testPair.test, retryResult.testBuffer)
     ]);
 
     // Save composite diff image if failed
     if (!retryResult.pass && retryResult.compositeBuffer) {
       const diffPath = testPair.test.replace(/\.png$/, '_composite_diff.png');
       ensureDirectoryPath(diffPath);
-      await fs.writeFile(diffPath, retryResult.compositeBuffer);
+      await writeFile(diffPath, retryResult.compositeBuffer);
     }
 
     if (retryResult.pass) {
@@ -249,9 +250,9 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
 
   const filePath = testPair.test;
   ensureDirectoryPath(filePath);
-  await fs.copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
+  await copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
   ensureDirectoryPath(testPair.reference);
-  await fs.copy(config.env.backstop + ERROR_SELECTOR_PATH, testPair.reference);
+  await copy(config.env.backstop + ERROR_SELECTOR_PATH, testPair.reference);
 
   return { testPairs: [testPair] };
 }

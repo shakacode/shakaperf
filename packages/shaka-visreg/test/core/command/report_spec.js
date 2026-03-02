@@ -27,7 +27,6 @@ describe('core report', function () {
       return { log: jest.fn(), error: jest.fn() };
     };
     writeFileStub = jest.fn().mockResolvedValue();
-    const fsMock = { ensureDir: () => Promise.resolve(), writeFile: writeFileStub, copy: () => Promise.resolve() };
 
     jest.unstable_mockModule('../../../core/util/compare/index.js', () => ({
       default: compareMock
@@ -35,8 +34,13 @@ describe('core report', function () {
     jest.unstable_mockModule('../../../core/util/logger.js', () => ({
       default: loggerMock
     }));
-    jest.unstable_mockModule('../../../core/util/fs.js', () => ({
-      default: fsMock
+    jest.unstable_mockModule('node:fs/promises', () => ({
+      readFile: jest.fn().mockResolvedValue('{}'),
+      writeFile: writeFileStub
+    }));
+    jest.unstable_mockModule('fs-extra', () => ({
+      copy: jest.fn().mockResolvedValue(),
+      ensureDir: jest.fn().mockResolvedValue()
     }));
 
     report = await import('../../../core/command/report.js');

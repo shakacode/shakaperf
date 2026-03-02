@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import cloneDeep from 'lodash/cloneDeep.js';
-import fs from './fs.js';
+import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright.js';
@@ -161,7 +161,7 @@ function delegateCompareScenarios (config) {
 function writeCompareConfigFile (comparePairsFileName, compareConfig) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
-  return fs.writeFile(comparePairsFileName, compareConfigJSON);
+  return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
 function flatMapTestPairs (rawTestPairs) {

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import _ from 'lodash';
-import fs from './fs.js';
+import { existsSync } from 'node:fs';
 import injectBackstopTools from '../../capture/backstopTools.js';
 import createLogger from './logger.js';
 
@@ -29,7 +29,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   const onBeforeScript = scenario.onBeforeScript || config.onBeforeScript;
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
-    if (fs.existsSync(beforeScriptPath)) {
+    if (existsSync(beforeScriptPath)) {
       const beforeMod = await import(beforeScriptPath);
       const beforeFn = beforeMod.default || beforeMod;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
@@ -112,7 +112,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   const onReadyScript = scenario.onReadyScript || config.onReadyScript;
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
-    if (fs.existsSync(readyScriptPath)) {
+    if (existsSync(readyScriptPath)) {
       const readyMod = await import(readyScriptPath);
       const readyFn = readyMod.default || readyMod;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
