@@ -1,7 +1,7 @@
 import executeCommand from './command/index.js';
 import makeConfig from './util/makeConfig.js';
 
-export default function (command, options) {
+export default function (command, options?) {
   const config = makeConfig(command, options);
   return executeCommand(command, config);
 }

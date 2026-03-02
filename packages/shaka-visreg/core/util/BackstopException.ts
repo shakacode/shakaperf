@@ -1,4 +1,9 @@
 export default class BackstopException {
+  msg: any;
+  scenario: any;
+  viewport: any;
+  originalError: any;
+
   constructor (msg, scenario, viewport, originalError) {
     this.msg = msg;
     this.scenario = scenario;

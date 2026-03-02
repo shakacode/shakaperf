@@ -10,7 +10,7 @@ function resizePng(png, targetWidth, targetHeight) {
   return resized;
 }
 
-function compareBuffers(buf1, buf2, options) {
+function compareBuffers(buf1, buf2, options?) {
   options = options || {};
   const img1 = PNG.sync.read(buf1);
   const img2 = PNG.sync.read(buf2);

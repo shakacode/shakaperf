@@ -64,7 +64,7 @@ module.exports = function (app) {
       .replace(/{scenarioId}/, req.params.scenarioId);
     config.scenarios[0] = s;
 
-    const result = {
+    const result: any = {
       label: s.label,
       surl: s.url,
       testId: req.params.testId,
@@ -132,7 +132,7 @@ module.exports = function (app) {
   app.post('/test', async (req, res) => {
     const backstop = await backstopPromise;
     try {
-      await backstop('test');
+      await backstop('test', {});
       res.send('OK');
     } catch (err) {
       console.log(err);
@@ -143,7 +143,7 @@ module.exports = function (app) {
   app.get('/stop', async (req, res) => {
     const backstop = await backstopPromise;
     try {
-      await backstop('stop');
+      await backstop('stop', {});
       res.send('OK');
     } catch (err) {
       console.log(err);
@@ -154,7 +154,7 @@ module.exports = function (app) {
   app.get('/version', async (req, res) => {
     const backstop = await backstopPromise;
     try {
-      const version = await backstop('version');
+      const version = await backstop('version', {});
       res.send('BackstopJS ' + version);
     } catch (err) {
       console.log(err);

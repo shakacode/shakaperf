@@ -31,7 +31,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (existsSync(beforeScriptPath)) {
-      const beforeMod = await import(pathToFileURL(beforeScriptPath));
+      const beforeMod = await import(pathToFileURL(beforeScriptPath).href);
       const beforeFn = beforeMod.default || beforeMod;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
@@ -53,7 +53,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
       readyTimeoutTimer = setTimeout(function () {
         logger.error('ReadyEvent not detected within readyTimeout limit. (' + readyTimeout + ' ms) ' + url);
         page.removeListener('console', onConsole);
-        resolve();
+        resolve(undefined);
       }, readyTimeout);
     });
 
@@ -114,7 +114,7 @@ async function preparePage (page, url, scenario, viewport, config, isReference, 
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (existsSync(readyScriptPath)) {
-      const readyMod = await import(pathToFileURL(readyScriptPath));
+      const readyMod = await import(pathToFileURL(readyScriptPath).href);
       const readyFn = readyMod.default || readyMod;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {

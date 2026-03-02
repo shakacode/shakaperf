@@ -20,7 +20,7 @@ function main () {
 
   // Catch errors from failing promises
   process.on('unhandledRejection', function (error) {
-    console.error(error && error.stack);
+    console.error(error && (error as any).stack);
   });
 
   if (argsOptions.h || argsOptions.help) {

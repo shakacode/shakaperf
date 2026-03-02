@@ -197,7 +197,7 @@ async function processScenarioView (scenario, variantOrScenarioLabelSafe, scenar
   if (error) {
     const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, `${scenario.selectors.join('__')}`);
     const filePath = config.isReference ? testPair.reference : testPair.test;
-    testPair.engineErrorMsg = error.message;
+    (testPair as any).engineErrorMsg = error.message;
 
     compareConfig = {
       testPairs: [testPair]
@@ -261,7 +261,7 @@ async function delegateSelectors (
     const next = function () {
       if (captureJobs.length === 0) {
         if (errors.length === 0) {
-          resolve();
+          resolve(undefined);
         } else {
           reject(errors);
         }

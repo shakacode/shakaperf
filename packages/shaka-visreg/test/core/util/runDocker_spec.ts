@@ -14,10 +14,10 @@ describe('runDocker', function () {
       jest.resetModules();
 
       let capturedCommand;
-      const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+      const spawnMock = jest.fn<any>().mockImplementation(function (dockerCommand) {
         capturedCommand = dockerCommand;
         return {
-          on: jest.fn().mockImplementation(function (event, cb) {
+          on: jest.fn<any>().mockImplementation(function (event, cb) {
             if (event === 'exit') {
               setImmediate(() => cb(0));
             }
@@ -29,7 +29,8 @@ describe('runDocker', function () {
         spawn: spawnMock
       }));
 
-      const { runDocker } = await import('../../../core/util/runDocker.js');
+      const mod = await import('../../../core/util/runDocker.js');
+      const runDocker = mod.runDocker as any;
 
       const config = {
         args: {
@@ -57,10 +58,10 @@ describe('runDocker', function () {
     jest.resetModules();
 
     let capturedCommand;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+    const spawnMock = jest.fn<any>().mockImplementation(function (dockerCommand) {
       capturedCommand = dockerCommand;
       return {
-        on: jest.fn().mockImplementation(function (event, cb) {
+        on: jest.fn<any>().mockImplementation(function (event, cb) {
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
@@ -72,7 +73,8 @@ describe('runDocker', function () {
       spawn: spawnMock
     }));
 
-    const { runDocker } = await import('../../../core/util/runDocker.js');
+    const mod = await import('../../../core/util/runDocker.js');
+    const runDocker = mod.runDocker as any;
 
     const config = {
       args: {
@@ -93,10 +95,10 @@ describe('runDocker', function () {
     jest.resetModules();
 
     let capturedCommand;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+    const spawnMock = jest.fn<any>().mockImplementation(function (dockerCommand) {
       capturedCommand = dockerCommand;
       return {
-        on: jest.fn().mockImplementation(function (event, cb) {
+        on: jest.fn<any>().mockImplementation(function (event, cb) {
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
@@ -108,11 +110,12 @@ describe('runDocker', function () {
       spawn: spawnMock
     }));
     jest.unstable_mockModule('node:fs/promises', () => ({
-      writeFile: jest.fn().mockResolvedValue(),
-      unlink: jest.fn().mockResolvedValue()
+      writeFile: jest.fn<any>().mockResolvedValue(undefined),
+      unlink: jest.fn<any>().mockResolvedValue(undefined)
     }));
 
-    const { runDocker } = await import('../../../core/util/runDocker.js');
+    const mod = await import('../../../core/util/runDocker.js');
+    const runDocker = mod.runDocker as any;
 
     const config = {
       args: {

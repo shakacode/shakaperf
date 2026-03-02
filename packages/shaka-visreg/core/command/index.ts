@@ -82,7 +82,7 @@ const commands = commandNames
         // Do the catch separately or the main runner
         // won't be able to catch it a second time
         promise.catch(function (error) {
-          const perf = (new Date() - config.perf[command.name].started) / 1000;
+          const perf = (new Date().getTime() - config.perf[command.name].started) / 1000;
           logger.error('Command "' + command.name + '" ended with an error after [' + perf + 's]');
           logger.error(error);
         });
@@ -91,7 +91,7 @@ const commands = commandNames
           if (/openReport/.test(command.name)) {
             return;
           }
-          const perf = (new Date() - config.perf[command.name].started) / 1000;
+          const perf = (new Date().getTime() - config.perf[command.name].started) / 1000;
           logger.success('Command "' + command.name + '" successfully executed in [' + perf + 's]');
           return result;
         });

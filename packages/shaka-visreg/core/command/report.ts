@@ -195,7 +195,7 @@ function writeJunitReport (config, reporter) {
       builder.writeTo(destination);
       logger.success('jUnit report written to: ' + destination);
 
-      resolve();
+      resolve(undefined);
     } catch (e) {
       return reject(e);
     }

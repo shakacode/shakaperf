@@ -23,12 +23,12 @@ export default function getFreePorts (startingPort, requestedPorts) {
       portfinder.basePort = startPort;
       portfinder.getPort(function (err, port) {
         if (err) {
-          reject(new Error(err));
+          reject(new Error(String(err)));
         }
         freePorts[PTR - 1] = port;
         return findFreePorts(port + 1, PTR + 1);
       });
     }
-    findFreePorts(startingPort);
+    findFreePorts(startingPort, 1);
   });
 }

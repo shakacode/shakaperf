@@ -16,7 +16,7 @@ export function execute () {
       });
     }).on('error', (error) => {
       // ECONNRESET is expected if the stop command worked correctly
-      if (error.code === 'ECONNRESET') {
+      if ((error as any).code === 'ECONNRESET') {
         logger.log('Stopping backstop remote: success');
         return process.exit(0);
       }

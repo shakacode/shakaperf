@@ -24,7 +24,7 @@ const HEADERS_STUB = {};
 export default async function (page, scenario) {
   page.route(IMAGE_URL_RE, route => {
     route.fulfill({
-      body: IMAGE_DATA_BUFFER,
+      body: IMAGE_DATA_BUFFER as any,
       headers: HEADERS_STUB,
       status: 200
     });

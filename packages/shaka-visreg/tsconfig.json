@@ -13,6 +13,8 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "allowJs": true,
     "moduleDetection": "force",
