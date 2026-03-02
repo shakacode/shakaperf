@@ -2,8 +2,36 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": ".",
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "moduleDetection": "force",
+    "lib": ["ES2020", "DOM"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist"]
+  "include": [
+    "global.d.ts",
+    "src/**/*",
+    "cli/**/*",
+    "core/**/*",
+    "capture/**/*.ts",
+    "remote/**/*",
+    "test/**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "compare",
+    "examples",
+    "old_splash_page_v2.0"
+  ]
 }
