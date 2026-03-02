@@ -1,13 +1,14 @@
 import assert from 'node:assert';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import packageJson from '../../../package.json' with { type: 'json' };
 
 process.chdir(import.meta.dirname);
 
 import makeConfig from '../../../core/util/makeConfig.js';
 
 const _require = createRequire(import.meta.url);
-const { version } = _require('../../../package.json');
+const { version } = packageJson;
 const configFile = _require('./backstop');
 
 // root of backstop dir, not related to cwd

@@ -1,9 +1,8 @@
 import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
 import fs from './fs.js';
+import packageJson from '../../package.json' with { type: 'json' };
 
-const _require = createRequire(import.meta.url);
-const { version } = _require('../../package.json');
+const { version } = packageJson;
 
 const DEFAULT_DOCKER_COMMAND_TEMPLATE = 'docker run --rm -it --mount type=bind,source="{cwd}",target=/src backstopjs/backstopjs:{version} {backstopCommand} {args}';
 

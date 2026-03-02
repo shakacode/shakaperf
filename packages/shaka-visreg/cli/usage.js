@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module';
 import makeSpaces from '../core/util/makeSpaces.js';
+import packageJson from '../package.json' with { type: 'json' };
 
-const _require = createRequire(import.meta.url);
-const { version } = _require('../package.json');
+const { version } = packageJson;
 
 const commandsDescription = {
   test: 'Create test screenshots and compare against the set you previously approved/referenced.',

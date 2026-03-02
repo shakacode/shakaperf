@@ -3,10 +3,9 @@ import temp from 'temp';
 import fs from 'node:fs';
 import hash from 'object-hash';
 import os from 'node:os';
-import { createRequire } from 'node:module';
+import packageJson from '../../package.json' with { type: 'json' };
 
-const require = createRequire(import.meta.url);
-const { version } = require('../../package.json');
+const { version } = packageJson;
 const tmpdir = os.tmpdir();
 
 function extendConfig (config, userConfig) {

@@ -2,11 +2,10 @@
 
 import parseArgs from 'minimist';
 import usage from './usage.js';
-import { createRequire } from 'node:module';
 import runner from '../core/runner.js';
+import packageJson from '../package.json' with { type: 'json' };
 
-const _require = createRequire(import.meta.url);
-const { version } = _require('../package.json');
+const { version } = packageJson;
 
 main();
 

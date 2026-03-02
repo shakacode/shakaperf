@@ -1,11 +1,11 @@
 import path from 'node:path';
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export default function findExecutable (module, bin) {
   try {
-    const pathToExecutableModulePackageJson = require.resolve(path.join(module, 'package.json'));
-    const executableModulePackageJson = require(pathToExecutableModulePackageJson);
+    const pathToExecutableModulePackageJson = fileURLToPath(import.meta.resolve(path.join(module, 'package.json')));
+    const executableModulePackageJson = JSON.parse(readFileSync(pathToExecutableModulePackageJson, 'utf8'));
     const relativePathToExecutableBinary = executableModulePackageJson.bin[bin] || executableModulePackageJson.bin;
     const pathToExecutableModule = pathToExecutableModulePackageJson.replace('package.json', '');
     return path.join(pathToExecutableModule, relativePathToExecutableBinary);

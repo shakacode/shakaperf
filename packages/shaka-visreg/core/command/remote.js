@@ -1,12 +1,11 @@
 import path from 'node:path';
 import { exec } from 'node:child_process';
-import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import createLogger from '../util/logger.js';
 import getRemotePort from '../util/getRemotePort.js';
 
 const logger = createLogger('remote');
-const _require = createRequire(import.meta.url);
-const ssws = _require.resolve('super-simple-web-server');
+const ssws = fileURLToPath(import.meta.resolve('super-simple-web-server'));
 
 export function execute (config) {
   const MIDDLEWARE_PATH = path.resolve(config.backstop, 'remote', 'index.cjs');

@@ -1,7 +1,6 @@
-import { createRequire } from 'node:module';
+import packageJson from '../../package.json' with { type: 'json' };
 
-const _require = createRequire(import.meta.url);
-const { version } = _require('../../package.json');
+const { version } = packageJson;
 
 export function execute (config) {
   return new Promise((resolve, reject) => {
