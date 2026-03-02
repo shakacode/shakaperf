@@ -28,6 +28,6 @@ export async function execute (config) {
         return copy(path.join(src, file), path.join(config.bitmaps_reference, file));
       }
     }
-    return true;
+    return;
   });
 }

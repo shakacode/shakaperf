@@ -1,6 +1,6 @@
 import resemble from '@mirzazeyrek/node-resemble-js';
 
-export default function compareResemble (referencePath, testPath, misMatchThreshold, resembleOutputSettings, requireSameDimensions) {
+export default function compareResemble (referencePath, testPath, misMatchThreshold, resembleOutputSettings, requireSameDimensions?) {
   return new Promise(function (resolve, reject) {
     const resembleSettings = resembleOutputSettings || {};
     resemble.outputSettings(resembleSettings);

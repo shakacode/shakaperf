@@ -22,11 +22,11 @@ describe('core report', function () {
     jest.resetModules();
 
     const reporterClass = { failed: () => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
-    const compareMock = jest.fn().mockResolvedValue(reporterClass);
+    const compareMock = jest.fn<any>().mockResolvedValue(reporterClass);
     const loggerMock = () => {
       return { log: jest.fn(), error: jest.fn() };
     };
-    writeFileStub = jest.fn().mockResolvedValue();
+    writeFileStub = jest.fn<any>().mockResolvedValue(undefined);
 
     jest.unstable_mockModule('../../../core/util/compare/index.js', () => ({
       default: compareMock
@@ -35,12 +35,12 @@ describe('core report', function () {
       default: loggerMock
     }));
     jest.unstable_mockModule('node:fs/promises', () => ({
-      readFile: jest.fn().mockResolvedValue('{}'),
+      readFile: jest.fn<any>().mockResolvedValue('{}'),
       writeFile: writeFileStub
     }));
     jest.unstable_mockModule('fs-extra', () => ({
-      copy: jest.fn().mockResolvedValue(),
-      ensureDir: jest.fn().mockResolvedValue()
+      copy: jest.fn<any>().mockResolvedValue(undefined),
+      ensureDir: jest.fn<any>().mockResolvedValue(undefined)
     }));
 
     report = await import('../../../core/command/report.js');

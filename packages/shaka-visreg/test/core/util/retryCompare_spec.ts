@@ -15,7 +15,7 @@ import retryCompare from '../../../core/util/retryCompare.js';
 const mockPreparePage = async function () { };
 
 // Mock page with no-op setViewport (needed for viewport reset in retry loop)
-function createMockPage(props) {
+function createMockPage(props?) {
   return Object.assign({ setViewport: async function () { } }, props);
 }
 

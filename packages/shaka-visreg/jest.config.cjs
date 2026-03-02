@@ -15,9 +15,10 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       useESM: true,
-      // Disable type-checking diagnostics — this is a lenient TS migration.
-      // Type errors in tests are expected and will be fixed incrementally.
-      diagnostics: false,
+      diagnostics: {
+        // Suppress ts-jest warning about hybrid module kind with NodeNext
+        ignoreDiagnostics: [151002],
+      },
     }],
   },
 };
