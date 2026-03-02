@@ -1,5 +1,5 @@
 {
-  "name": "shaka-perf",
+  "name": "shakaperf",
   "version": "0.0.0",
   "private": true,
   "description": "Performance and visual regression toolset for web applications",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/shakacode/shaka-perf.git"
+    "url": "https://github.com/shakacode/shakaperf.git"
   },
   "license": "MIT",
   "devDependencies": {

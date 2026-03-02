@@ -3,7 +3,7 @@
   "version": "6.3.25",
   "description": "BackstopJS: Catch CSS curveballs.",
   "type": "module",
-  "homepage": "https://github.com/garris/BackstopJS#readme",
+  "homepage": "https://github.com/shakacode/shakaperf#readme",
   "bin": {
     "backstop": "./cli/index.js"
   },
