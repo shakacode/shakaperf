@@ -17,8 +17,8 @@ module.exports = {
       height: 768
     }
   ],
-  onBeforeScript: `${SCRIPT_PATH}/onBefore.js`,
-  onReadyScript: `${SCRIPT_PATH}/onReady.js`,
+  onBeforeScript: `${SCRIPT_PATH}/onBefore.ts`,
+  onReadyScript: `${SCRIPT_PATH}/onReady.ts`,
   scenarios: [
     {
       label: 'Simple',
