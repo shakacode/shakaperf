@@ -1,9 +1,45 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": ".",
+    "declaration": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+
+    /* Lenient settings — tighten these incrementally */
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["dist"]
+  "include": [
+    "core/**/*.ts",
+    "cli/**/*.ts",
+    "capture/**/*.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "compare",
+    "examples",
+    "test",
+    "old_splash_page_v2.0"
+  ]
 }
