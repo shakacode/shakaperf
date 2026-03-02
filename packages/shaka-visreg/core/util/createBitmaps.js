@@ -1,12 +1,14 @@
-const cloneDeep = require('lodash/cloneDeep');
-const fs = require('./fs');
-const _ = require('lodash');
-const pMap = require('p-map');
+import { createRequire } from 'node:module';
+import cloneDeep from 'lodash/cloneDeep.js';
+import { writeFile } from 'node:fs/promises';
+import _ from 'lodash';
+import pMap from 'p-map';
+import { createPlaywrightBrowser, runPlaywright, disposePlaywrightBrowser } from './runPlaywright.js';
+import ensureDirectoryPath from './ensureDirectoryPath.js';
+import createLogger from './logger.js';
 
-const { createPlaywrightBrowser, runPlaywright, disposePlaywrightBrowser } = require('./runPlaywright');
-
-const ensureDirectoryPath = require('./ensureDirectoryPath');
-const logger = require('./logger')('createBitmaps');
+const _require = createRequire(import.meta.url);
+const logger = createLogger('createBitmaps');
 
 const CONCURRENCY_DEFAULT = 10;
 
@@ -31,7 +33,7 @@ function decorateConfigForCapture (config, isReference) {
   if (typeof config.args.config === 'object') {
     configJSON = config.args.config;
   } else {
-    configJSON = Object.assign({}, require(config.backstopConfigFileName));
+    configJSON = Object.assign({}, _require(config.backstopConfigFileName));
   }
   configJSON.scenarios = configJSON.scenarios || [];
   ensureViewportLabel(configJSON);
@@ -148,7 +150,7 @@ function delegateScenarios (config) {
 function writeCompareConfigFile (comparePairsFileName, compareConfig) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
-  return fs.writeFile(comparePairsFileName, compareConfigJSON);
+  return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
 function flatMapTestPairs (rawTestPairs) {
@@ -179,7 +181,7 @@ function flatMapTestPairs (rawTestPairs) {
   }, []);
 }
 
-module.exports = function (config, isReference) {
+export default function createBitmaps (config, isReference) {
   const promise = delegateScenarios(decorateConfigForCapture(config, isReference))
     .then(rawTestPairs => {
       const result = {

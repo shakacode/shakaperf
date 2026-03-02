@@ -1,5 +1,5 @@
 'use strict';
-module.exports = (target) => {
+export default (target) => {
   return target.evaluate(() => {
     if (window._backstopTools) {
       return false;

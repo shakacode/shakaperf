@@ -1,5 +1,7 @@
-const version = require('../package.json').version;
-const makeSpaces = require('../core/util/makeSpaces');
+import makeSpaces from '../core/util/makeSpaces.js';
+import packageJson from '../package.json' with { type: 'json' };
+
+const { version } = packageJson;
 
 const commandsDescription = {
   test: 'Create test screenshots and compare against the set you previously approved/referenced.',
@@ -51,4 +53,4 @@ Options:\n\
 ' + makeDescription(optionsDescription) + '\n\
 \n';
 
-module.exports = usage;
+export default usage;

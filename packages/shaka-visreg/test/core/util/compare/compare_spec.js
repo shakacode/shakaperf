@@ -1,19 +1,25 @@
+import { jest } from '@jest/globals';
+
 describe('compare', function () {
   let compare;
   let compareHashes;
   let compareResemble;
   const error = new Error();
 
-  beforeAll(function () {
+  beforeAll(async function () {
     jest.resetModules();
 
     compareHashes = jest.fn();
     compareResemble = jest.fn();
 
-    jest.doMock('../../../../core/util/compare/compare-hash', () => compareHashes);
-    jest.doMock('../../../../core/util/compare/compare-resemble', () => compareResemble);
+    jest.unstable_mockModule('../../../../core/util/compare/compare-hash.js', () => ({
+      default: compareHashes
+    }));
+    jest.unstable_mockModule('../../../../core/util/compare/compare-resemble.js', () => ({
+      default: compareResemble
+    }));
 
-    compare = require('../../../../core/util/compare/compare');
+    compare = (await import('../../../../core/util/compare/compare.js')).default;
   });
 
   afterEach(() => {

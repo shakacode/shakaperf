@@ -1,11 +1,12 @@
-const path = require('path');
-const map = require('p-map');
-const fs = require('fs');
-const cp = require('child_process');
+import path from 'node:path';
+import map from 'p-map';
+import fs from 'node:fs';
+import cp from 'node:child_process';
+import Reporter from './../Reporter.js';
+import createLogger from './../logger.js';
+import storeFailedDiffStub from './store-failed-diff-stub.js';
 
-const Reporter = require('./../Reporter');
-const logger = require('./../logger')('compare');
-const storeFailedDiffStub = require('./store-failed-diff-stub.js');
+const logger = createLogger('compare');
 
 const ASYNC_COMPARE_LIMIT = 20;
 
@@ -59,7 +60,7 @@ function comparePair (pair, report, config, compareConfig) {
 
 function compareImages (referencePath, testPath, pair, resembleOutputSettings, Test) {
   return new Promise(function (resolve, reject) {
-    const worker = cp.fork(require.resolve('./compare'));
+    const worker = cp.fork(path.join(import.meta.dirname, 'compare.js'));
     worker.send({
       referencePath,
       testPath,
@@ -84,8 +85,8 @@ function compareImages (referencePath, testPath, pair, resembleOutputSettings, T
   });
 }
 
-module.exports = function (config) {
-  const compareConfig = require(config.tempCompareConfigFileName).compareConfig;
+export default function compare (config) {
+  const compareConfig = JSON.parse(fs.readFileSync(config.tempCompareConfigFileName, 'utf8')).compareConfig;
 
   const report = new Reporter(config.ciReport.testSuiteName);
   const asyncCompareLimit = config.asyncCompareLimit || ASYNC_COMPARE_LIMIT;
@@ -96,4 +97,4 @@ module.exports = function (config) {
       () => report,
       e => logger.error('The comparison failed with error: ' + e)
     );
-};
+}

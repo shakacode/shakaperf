@@ -4,8 +4,9 @@
  *
  * Use this in an onReady script E.G.
   ```
-  module.exports = async function(page, scenario) {
-    await require('./overrideCSS')(page, scenario);
+  export default async function(page, scenario) {
+    const { default: overrideCSS } = await import('./overrideCSS.js');
+    await overrideCSS(page, scenario);
   }
   ```
  *
@@ -17,7 +18,7 @@ const BACKSTOP_TEST_CSS_OVERRIDE = `
   }
 `;
 
-module.exports = async (page, scenario) => {
+export default async (page, scenario) => {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: BACKSTOP_TEST_CSS_OVERRIDE

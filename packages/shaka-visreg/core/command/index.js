@@ -1,6 +1,17 @@
-const path = require('path');
-const _ = require('lodash');
-const logger = require('../util/logger')('COMMAND');
+import _ from 'lodash';
+import createLogger from '../util/logger.js';
+import * as init from './init.js';
+import * as remote from './remote.js';
+import * as openReport from './openReport.js';
+import * as reference from './reference.js';
+import * as report from './report.js';
+import * as test from './test.js';
+import * as liveCompare from './liveCompare.js';
+import * as approve from './approve.js';
+import * as version from './version.js';
+import * as stop from './stop.js';
+
+const logger = createLogger('COMMAND');
 
 /*
  * Each file included in this folder (except `index.js`) is a command and must export the following object
@@ -10,6 +21,8 @@ const logger = require('../util/logger')('COMMAND');
  *
  * The execute function should not have much logic
  */
+
+const commandModules = { init, remote, openReport, reference, report, test, liveCompare, approve, version, stop };
 
 /* Each and every command defined, including commands used in before/after */
 const commandNames = [
@@ -48,7 +61,7 @@ const commands = commandNames
   .map(function requireCommand (commandName) {
     return {
       name: commandName,
-      commandDefinition: require(path.join(__dirname, commandName))
+      commandDefinition: commandModules[commandName]
     };
   })
   .map(function definitionToExecution (command) {
@@ -111,4 +124,4 @@ function execute (commandName, config) {
   return commands[commandName](config);
 }
 
-module.exports = execute;
+export default execute;

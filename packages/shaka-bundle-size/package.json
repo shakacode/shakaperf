@@ -26,10 +26,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shakacode/shaka-perf.git",
+    "url": "https://github.com/shakacode/shakaperf.git",
     "directory": "packages/shaka-bundle-size"
   },
-  "homepage": "https://github.com/shakacode/shaka-perf#readme",
+  "homepage": "https://github.com/shakacode/shakaperf#readme",
   "publishConfig": {
     "access": "public"
   },

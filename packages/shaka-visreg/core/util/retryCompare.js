@@ -1,7 +1,9 @@
-const { PNG } = require('pngjs');
-const { compareBuffers, createCompositeImage } = require('./compare/pixelmatch-inline');
-const defaultPreparePage = require('./preparePage');
-const logger = require('./logger')('retryCompare');
+import { PNG } from 'pngjs';
+import { compareBuffers, createCompositeImage } from './compare/pixelmatch-inline.js';
+import defaultPreparePage from './preparePage.js';
+import createLogger from './logger.js';
+
+const logger = createLogger('retryCompare');
 
 function tryMatchAgainstAll (newScreenshot, existingScreenshots, maxNumDiffPixels, pixelmatchThreshold) {
   let leastDiffPixels = Infinity;
@@ -25,7 +27,7 @@ function tryMatchAgainstAll (newScreenshot, existingScreenshots, maxNumDiffPixel
   return { pass: false, bestIndex, bestResult, leastDiffPixels };
 }
 
-module.exports = async function retryCompare (options) {
+export default async function retryCompare (options) {
   const {
     captureScreenshot,
     refPage, testPage,

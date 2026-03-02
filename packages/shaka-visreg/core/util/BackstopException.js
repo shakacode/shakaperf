@@ -1,4 +1,4 @@
-module.exports = class BackstopException {
+export default class BackstopException {
   constructor (msg, scenario, viewport, originalError) {
     this.msg = msg;
     this.scenario = scenario;
@@ -12,4 +12,4 @@ module.exports = class BackstopException {
       this.viewport.label + ': ' +
       this.originalError.toString();
   }
-};
+}

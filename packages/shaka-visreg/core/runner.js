@@ -1,10 +1,10 @@
-const executeCommand = require('./command/');
-const makeConfig = require('./util/makeConfig');
+import executeCommand from './command/index.js';
+import makeConfig from './util/makeConfig.js';
 
-module.exports = function (command, options) {
+export default function (command, options) {
   const config = makeConfig(command, options);
   return executeCommand(command, config);
-};
+}
 
 /* ***
 // Sample of the config object that is created on `backstop init` by makeConfig()

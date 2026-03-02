@@ -1,14 +1,15 @@
-const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
-const { PNG } = require('pngjs');
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import { PNG } from 'pngjs';
 
-const REF_IMG1 = path.join(__dirname, 'compare/refImage-1.png');
-const REF_IMG2 = path.join(__dirname, 'compare/refImage-2.png');
+const REF_IMG1 = path.join(import.meta.dirname, 'compare/refImage-1.png');
+const REF_IMG2 = path.join(import.meta.dirname, 'compare/refImage-2.png');
 
 // retryCompare is called AFTER an initial mismatch is detected
 // It attempts to re-capture screenshots and find a matching pair
-const retryCompare = require('../../../core/util/retryCompare');
+import retryCompare from '../../../core/util/retryCompare.js';
 
 // Mock preparePage — no-op, avoids real browser navigation in unit tests
 const mockPreparePage = async function () { };

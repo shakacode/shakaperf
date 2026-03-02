@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const fs = require('fs');
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 
 function getFileHash (filename) {
   if (!filename) {
@@ -14,7 +14,7 @@ function getFileHash (filename) {
   });
 }
 
-module.exports = function (refImage, testImage) {
+export default function compareHashes (refImage, testImage) {
   return Promise.all([getFileHash(refImage), getFileHash(testImage)])
     .then(hashes => {
       if (hashes[0] !== hashes[1]) {
@@ -26,4 +26,4 @@ module.exports = function (refImage, testImage) {
         misMatchPercentage: '0.00'
       };
     });
-};
+}

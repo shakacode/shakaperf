@@ -1,4 +1,4 @@
-const fs = require('./fs');
+import { readFile, writeFile } from 'node:fs/promises';
 
 /**
  * Extract jsonReport from the jsonpReport
@@ -44,18 +44,13 @@ function modifyJsonpReportHelper (originalJsonpReport, approvedFileName) {
  * @return {Promise}
  */
 async function modifyJsonpReport ({ reportConfigFilename, approvedFileName }) {
-  return fs
-    .readFile(reportConfigFilename, 'utf8')
-    .then(content => {
-      const jsonpReport = modifyJsonpReportHelper(content[0], approvedFileName);
-      return fs.writeFile(reportConfigFilename, jsonpReport);
-    })
-    .catch(err => {
-      throw new Error(`Failed to modify the report. ${err.message}.`);
-    });
+  try {
+    const content = await readFile(reportConfigFilename, 'utf8');
+    const jsonpReport = modifyJsonpReportHelper(content, approvedFileName);
+    await writeFile(reportConfigFilename, jsonpReport);
+  } catch (err) {
+    throw new Error(`Failed to modify the report. ${err.message}.`);
+  }
 }
 
-module.exports = {
-  modifyJsonpReport,
-  modifyJsonpReportHelper
-};
+export { modifyJsonpReport, modifyJsonpReportHelper };

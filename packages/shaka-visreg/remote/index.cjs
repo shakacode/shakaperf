@@ -11,8 +11,11 @@ const _config = require(argsOptions.config);
 
 const path = require('path');
 const express = require('express');
-const backstop = require('../core/runner');
-const { modifyJsonpReport } = require('../core/util/remote');
+
+// runner.js and remote.js are ESM, so load them via dynamic import().
+// The promises resolve well before any HTTP request arrives.
+const backstopPromise = import('../core/runner.js').then(m => m.default);
+const remoteUtilPromise = import('../core/util/remote.js');
 
 const booleanizeArg = incrementalFlag => [true, 'true'].includes(incrementalFlag);
 
@@ -33,7 +36,8 @@ module.exports = function (app) {
     next();
   });
 
-  app.post(['/dtest/:testId/:scenarioId', '/dref/:testId/:scenarioId'], (req, res) => {
+  app.post(['/dtest/:testId/:scenarioId', '/dref/:testId/:scenarioId'], async (req, res) => {
+    const backstop = await backstopPromise;
     app._backstop.testCtr++;
 
     if (!(req.params.testId in app._backstop.tests)) {
@@ -97,6 +101,8 @@ module.exports = function (app) {
   });
 
   app.post('/approve', async (req, res) => {
+    const backstop = await backstopPromise;
+    const { modifyJsonpReport } = await remoteUtilPromise;
     const filter = req.query.filter || '';
     const config = JSON.parse(JSON.stringify(_config));
     console.log(`backstop approve --filter=${filter}`);
@@ -124,6 +130,7 @@ module.exports = function (app) {
   });
 
   app.post('/test', async (req, res) => {
+    const backstop = await backstopPromise;
     try {
       await backstop('test');
       res.send('OK');
@@ -134,6 +141,7 @@ module.exports = function (app) {
   });
 
   app.get('/stop', async (req, res) => {
+    const backstop = await backstopPromise;
     try {
       await backstop('stop');
       res.send('OK');
@@ -144,6 +152,7 @@ module.exports = function (app) {
   });
 
   app.get('/version', async (req, res) => {
+    const backstop = await backstopPromise;
     try {
       const version = await backstop('version');
       res.send('BackstopJS ' + version);

@@ -1,6 +1,6 @@
-const chalk = require('chalk');
-const _ = require('lodash');
-const makeSpaces = require('./makeSpaces');
+import chalk from 'chalk';
+import _ from 'lodash';
+import makeSpaces from './makeSpaces.js';
 
 function identity (string) { return string; }
 
@@ -64,7 +64,7 @@ function message (type, subject, string) {
   console.log(typeToTitleColor[type](subject + ' ') + '| ' + paddedString(longestTitle, typeToColor[type](string)));
 }
 
-module.exports = function (subject) {
+export default function createLogger (subject) {
   return {
     error: message.bind(null, 'error', subject),
     warn: message.bind(null, 'warn', subject),
@@ -73,4 +73,4 @@ module.exports = function (subject) {
     debug: message.bind(null, 'debug', subject),
     success: message.bind(null, 'success', subject)
   };
-};
+}

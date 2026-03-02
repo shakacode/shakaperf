@@ -1,14 +1,14 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 // BASE64_PNG_STUB is 1x1 white pixel
 const BASE64_PNG_STUB = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=';
 
 // Utility to ensure `backstop approve` finds a diff image
 // call when no reference image exists.
-module.exports = function (testPath) {
+export default function storeFailedDiffStub (testPath) {
   fs.writeFileSync(getFailedDiffFilename(testPath), BASE64_PNG_STUB, 'base64');
-};
+}
 
 function getFailedDiffFilename (testPath) {
   const lastSlash = testPath.lastIndexOf(path.sep);

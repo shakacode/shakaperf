@@ -1,19 +1,24 @@
-const assert = require('assert');
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
 
 describe('cli', function () {
-  let runnerMock;
-
   beforeEach(function () {
     jest.resetModules();
+  });
+
+  afterEach(function () {
+    delete process.exitCode;
   });
 
   it('should call the runner without custom options correctly', async function () {
     process.argv = ['node', 'backstop', 'test'];
     const promiseMock = Promise.resolve();
-    runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.doMock('../../core/runner', () => runnerMock);
+    const runnerMock = jest.fn().mockReturnValue(promiseMock);
+    jest.unstable_mockModule('../../core/runner.js', () => ({
+      default: runnerMock
+    }));
 
-    require('../../cli/index');
+    await import('../../cli/index.js');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
@@ -23,10 +28,12 @@ describe('cli', function () {
   it('should exit with code 1 if runner fails', async function () {
     process.argv = ['node', 'backstop', 'test'];
     const promiseMock = Promise.reject(new Error('errorMock'));
-    runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.doMock('../../core/runner', () => runnerMock);
+    const runnerMock = jest.fn().mockReturnValue(promiseMock);
+    jest.unstable_mockModule('../../core/runner.js', () => ({
+      default: runnerMock
+    }));
 
-    require('../../cli/index');
+    await import('../../cli/index.js');
 
     try {
       await promiseMock;

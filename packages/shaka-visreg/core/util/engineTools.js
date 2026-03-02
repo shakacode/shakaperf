@@ -154,7 +154,7 @@ function generateTestPair (config, scenario, viewport, variantOrScenarioLabelSaf
   };
 }
 
-module.exports = {
+export {
   generateTestPair,
   getMisMatchThreshHold,
   getRequireSameDimensions,

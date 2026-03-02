@@ -1,57 +1,78 @@
-const assert = require('assert');
-const EventEmitter = require('events');
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
+import packageJson from '../../../package.json' with { type: 'json' };
+
+const { version } = packageJson;
 
 describe('runDocker', function () {
-  let spawnMock;
-  let spawnProcess;
-
-  beforeEach(function () {
-    jest.resetModules();
-    spawnProcess = new EventEmitter();
-    spawnMock = jest.fn().mockReturnValue(spawnProcess);
-  });
-
   it('should run correct docker command', async function () {
     const originalCwd = process.cwd;
     process.cwd = () => '/path/mock';
     process.argv = ['test'];
 
-    jest.doMock('child_process', () => ({ spawn: spawnMock }));
-    jest.doMock('../../../package', () => ({ version: 'version.mock' }));
+    try {
+      jest.resetModules();
 
-    const { runDocker } = require('../../../core/util/runDocker');
+      let capturedCommand;
+      const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+        capturedCommand = dockerCommand;
+        return {
+          on: jest.fn().mockImplementation(function (event, cb) {
+            if (event === 'exit') {
+              setImmediate(() => cb(0));
+            }
+          })
+        };
+      });
 
-    const config = {
-      args: {
-        docker: true,
-        config: 'my_config.json',
-        filter: 'my_filter'
-      }
-    };
+      jest.unstable_mockModule('node:child_process', () => ({
+        spawn: spawnMock
+      }));
 
-    const promise = runDocker(config, 'test');
-    // Allow async operations inside runDocker to complete before spawn is called
-    await new Promise(resolve => setImmediate(resolve));
+      const { runDocker } = await import('../../../core/util/runDocker.js');
 
-    expect(spawnMock).toHaveBeenCalledTimes(1);
-    assert.strictEqual(
-      spawnMock.mock.calls[0][0],
-      'docker run --rm -it --mount type=bind,source="/path/mock",target=/src backstopjs/backstopjs:version.mock test' +
-      ' "--moby=true" "--config=my_config.json" "--filter=my_filter"');
+      const config = {
+        args: {
+          docker: true,
+          config: 'my_config.json',
+          filter: 'my_filter'
+        }
+      };
 
-    // Resolve the promise by emitting exit
-    spawnProcess.emit('exit', 0);
-    await promise;
+      const promise = runDocker(config, 'test');
+      await promise;
 
-    process.cwd = originalCwd;
+      assert.strictEqual(
+        capturedCommand,
+        `docker run --rm -it --mount type=bind,source="/path/mock",target=/src backstopjs/backstopjs:${version} test` +
+        ' "--moby=true" "--config=my_config.json" "--filter=my_filter"');
+    } finally {
+      process.cwd = originalCwd;
+    }
   });
 
   it('should not pass undefined args to docker', async function () {
     process.argv = ['test'];
 
-    jest.doMock('child_process', () => ({ spawn: spawnMock }));
+    jest.resetModules();
 
-    const { runDocker } = require('../../../core/util/runDocker');
+    let capturedCommand;
+    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+      capturedCommand = dockerCommand;
+      return {
+        on: jest.fn().mockImplementation(function (event, cb) {
+          if (event === 'exit') {
+            setImmediate(() => cb(0));
+          }
+        })
+      };
+    });
+
+    jest.unstable_mockModule('node:child_process', () => ({
+      spawn: spawnMock
+    }));
+
+    const { runDocker } = await import('../../../core/util/runDocker.js');
 
     const config = {
       args: {
@@ -61,25 +82,37 @@ describe('runDocker', function () {
     };
 
     const promise = runDocker(config, 'test');
-    await new Promise(resolve => setImmediate(resolve));
-
-    expect(spawnMock).toHaveBeenCalledTimes(1);
-    assert(!spawnMock.mock.calls[0][0].includes('--filter'));
-
-    spawnProcess.emit('exit', 0);
     await promise;
+
+    assert(!capturedCommand.includes('--filter'));
   });
 
   it('should create tmp config file if config arg is an object', async function () {
     process.argv = ['test'];
 
-    jest.doMock('../../../core/util/fs', () => ({
+    jest.resetModules();
+
+    let capturedCommand;
+    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+      capturedCommand = dockerCommand;
+      return {
+        on: jest.fn().mockImplementation(function (event, cb) {
+          if (event === 'exit') {
+            setImmediate(() => cb(0));
+          }
+        })
+      };
+    });
+
+    jest.unstable_mockModule('node:child_process', () => ({
+      spawn: spawnMock
+    }));
+    jest.unstable_mockModule('node:fs/promises', () => ({
       writeFile: jest.fn().mockResolvedValue(),
       unlink: jest.fn().mockResolvedValue()
     }));
-    jest.doMock('child_process', () => ({ spawn: spawnMock }));
 
-    const { runDocker } = require('../../../core/util/runDocker');
+    const { runDocker } = await import('../../../core/util/runDocker.js');
 
     const config = {
       args: {
@@ -91,12 +124,8 @@ describe('runDocker', function () {
     };
 
     const promise = runDocker(config, 'test');
-    await new Promise(resolve => setImmediate(resolve));
-
-    expect(spawnMock).toHaveBeenCalledTimes(1);
-    assert(spawnMock.mock.calls[0][0].includes('--config=backstop.config-for-docker.json'));
-
-    spawnProcess.emit('exit', 0);
     await promise;
+
+    assert(capturedCommand.includes('--config=backstop.config-for-docker.json'));
   });
 });

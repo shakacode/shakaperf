@@ -1,10 +1,9 @@
-const playwright = require('playwright');
-
-const fs = require('./fs');
-const chalk = require('chalk');
-const ensureDirectoryPath = require('./ensureDirectoryPath');
-const engineTools = require('./engineTools');
-const preparePage = require('./preparePage');
+import playwright from 'playwright';
+import { copy } from 'fs-extra';
+import chalk from 'chalk';
+import ensureDirectoryPath from './ensureDirectoryPath.js';
+import * as engineTools from './engineTools.js';
+import preparePage from './preparePage.js';
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
@@ -28,7 +27,7 @@ const VIEWPORT_SELECTOR = 'viewport';
  * @param {Object} config
  * @returns {import('playwright').Browser}
  */
-module.exports.createPlaywrightBrowser = async function (config) {
+export async function createPlaywrightBrowser (config) {
   console.log('Creating Browser');
 
   // Copy and destructure engineOptions for headless mode sanitization
@@ -102,7 +101,7 @@ module.exports.createPlaywrightBrowser = async function (config) {
   return await playwright[browserChoice].launch(playwrightArgs);
 };
 
-module.exports.runPlaywright = function ({ scenario, viewport, config, _playwrightBrowser: browser }) {
+export function runPlaywright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
 
@@ -115,7 +114,7 @@ module.exports.runPlaywright = function ({ scenario, viewport, config, _playwrig
   return processScenarioView(scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, browser);
 };
 
-module.exports.disposePlaywrightBrowser = async function (browser) {
+export async function disposePlaywrightBrowser (browser) {
   console.log('Disposing Browser');
   await browser.close();
 };
@@ -203,7 +202,7 @@ async function processScenarioView (scenario, variantOrScenarioLabelSafe, scenar
     compareConfig = {
       testPairs: [testPair]
     };
-    await fs.copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
+    await copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
   }
 
   return Promise.resolve(compareConfig);
@@ -300,7 +299,7 @@ async function captureScreenshot (page, browserContext, selector, selectorMap, c
       });
     } catch (e) {
       console.log(chalk.red('Error capturing..'), e);
-      return fs.copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
+      return copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
     }
   } else {
     // OTHER-SELECTOR screenshot
@@ -326,11 +325,11 @@ async function captureScreenshot (page, browserContext, selector, selectorMap, c
           await type.screenshot(params);
         } else {
           console.log(chalk.yellow(`Element not visible for capturing: ${s}`));
-          return fs.copy(config.env.backstop + HIDDEN_SELECTOR_PATH, path);
+          return copy(config.env.backstop + HIDDEN_SELECTOR_PATH, path);
         }
       } else {
         console.log(chalk.magenta(`Element not found for capturing: ${s}`));
-        return fs.copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, path);
+        return copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, path);
       }
     };
 
@@ -343,7 +342,7 @@ async function captureScreenshot (page, browserContext, selector, selectorMap, c
           await selectorShot(selector, filePath);
         } catch (e) {
           console.log(chalk.red(`Error capturing Element ${selector}`), e);
-          return fs.copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
+          return copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
         }
       }
     };

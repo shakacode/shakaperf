@@ -1,5 +1,5 @@
 // Go get a hook to BackstopJS
-const backstop = require('../../core/runner');
+import backstop from '../../core/runner.js';
 
 // Run BackstopJS with docker
 // NOTE: passing either config file name or actual config object is supported.

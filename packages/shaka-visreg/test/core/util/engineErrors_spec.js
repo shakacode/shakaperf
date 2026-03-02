@@ -1,10 +1,11 @@
-const engineErrors = require('../../../core/util/engineErrors');
-const assert = require('assert');
+import engineErrors from '../../../core/util/engineErrors.js';
+import assert from 'node:assert';
+import path from 'node:path';
 
 describe('core/util/engineErrors', function () {
   it('should resolve if no engineErrors errors found', function () {
     const config = {
-      tempCompareConfigFileName: '../../test/core/util/fixtures/engineErrorsSuccess.json'
+      tempCompareConfigFileName: path.join(import.meta.dirname, 'fixtures/engineErrorsSuccess.json')
     };
     return engineErrors(config).then(function (args) {
       assert.strictEqual(args, undefined);
@@ -13,7 +14,7 @@ describe('core/util/engineErrors', function () {
 
   it('should reject if engineErros found', function () {
     const config = {
-      tempCompareConfigFileName: '../../test/core/util/fixtures/engineErrorsFail.json'
+      tempCompareConfigFileName: path.join(import.meta.dirname, 'fixtures/engineErrorsFail.json')
     };
     return engineErrors(config).catch(function (args) {
       assert.strictEqual(args.engineErrorMsg, 'Engine error fail');

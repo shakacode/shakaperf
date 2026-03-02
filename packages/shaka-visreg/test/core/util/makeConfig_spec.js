@@ -1,5 +1,5 @@
-const assert = require('assert');
-const makeConfig = require('../../../core/util/makeConfig');
+import assert from 'node:assert';
+import makeConfig from '../../../core/util/makeConfig.js';
 
 describe('make config', function () {
   it('should pass the filter arg correctly', function () {

@@ -1,4 +1,5 @@
-const assert = require('assert');
+import { jest } from '@jest/globals';
+import assert from 'node:assert';
 
 describe('liveCompare command', function () {
   let liveCompare;
@@ -7,27 +8,30 @@ describe('liveCompare command', function () {
   let runDockerStub;
   let shouldRunDockerStub;
 
-  function setupMocks (options = {}) {
+  async function setupMocks (options = {}) {
     jest.resetModules();
 
     createComparisonBitmapsStub = jest.fn().mockResolvedValue();
-    jest.doMock('../../../core/util/createComparisonBitmaps', () => createComparisonBitmapsStub);
-
     shouldRunDockerStub = jest.fn().mockReturnValue(options.dockerMode || false);
     runDockerStub = jest.fn().mockResolvedValue();
-    jest.doMock('../../../core/util/runDocker', () => ({
+    executeCommandStub = jest.fn().mockResolvedValue();
+
+    jest.unstable_mockModule('../../../core/util/createComparisonBitmaps.js', () => ({
+      default: createComparisonBitmapsStub
+    }));
+    jest.unstable_mockModule('../../../core/util/runDocker.js', () => ({
       shouldRunDocker: shouldRunDockerStub,
       runDocker: runDockerStub
     }));
+    jest.unstable_mockModule('../../../core/command/index.js', () => ({
+      default: executeCommandStub
+    }));
 
-    executeCommandStub = jest.fn().mockResolvedValue();
-    jest.doMock('../../../core/command/index', () => executeCommandStub);
-
-    liveCompare = require('../../../core/command/liveCompare');
+    liveCompare = await import('../../../core/command/liveCompare.js');
   }
 
-  beforeEach(function () {
-    setupMocks();
+  beforeEach(async function () {
+    await setupMocks();
   });
 
   it('should call createComparisonBitmaps with config', async function () {
@@ -55,7 +59,7 @@ describe('liveCompare command', function () {
   });
 
   it('should run docker when docker mode is enabled', async function () {
-    setupMocks({ dockerMode: true });
+    await setupMocks({ dockerMode: true });
 
     const config = {
       args: { docker: true },
@@ -70,7 +74,7 @@ describe('liveCompare command', function () {
   });
 
   it('should open report after docker when openReport is enabled', async function () {
-    setupMocks({ dockerMode: true });
+    await setupMocks({ dockerMode: true });
 
     const config = {
       args: { docker: true },

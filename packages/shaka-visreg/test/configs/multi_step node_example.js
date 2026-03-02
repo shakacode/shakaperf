@@ -1,4 +1,4 @@
-const backstop = require('../../core/runner');
+import backstop from '../../core/runner.js';
 
 console.log('Running a multi-step Backstop test. vvv');
 
