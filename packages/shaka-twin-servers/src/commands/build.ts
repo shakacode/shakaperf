@@ -28,8 +28,7 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   const buildDir = isControl
     ? path.resolve(config.controlDir, path.relative(config.projectDir, config.dockerBuildDir))
     : config.dockerBuildDir;
-  const projectName = path.basename(config.projectDir);
-  const dockerfilePath = path.join(projectName, config.dockerfile);
+  const dockerfilePath = config.dockerfile;
 
   const args = ['build', '--progress=plain', '-t', imageName, '-f', dockerfilePath];
   if (noCache) args.push('--no-cache');
@@ -55,8 +54,7 @@ async function buildServer(serverType: 'control' | 'experiment', config: Resolve
   if (options.verbose) {
     const isControl = serverType === 'control';
     const imageName = isControl ? config.images.control : config.images.experiment;
-    const projectName = path.basename(config.projectDir);
-    const dockerfilePath = path.join(projectName, config.dockerfile);
+    const dockerfilePath = config.dockerfile;
     console.log(`  Image: ${imageName}`);
     console.log(`  Dockerfile: ${dockerfilePath}`);
     console.log(`  Git SHA: ${getGitSha(cwd)}`);
