@@ -17,7 +17,7 @@ import { forwardPorts } from './commands/forward-ports';
 import type { Command, ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 
-const VERSION = '0.0.5';
+const VERSION = '0.0.6';
 
 const HELP = `
 shaka-twin-servers - Twin server management for A/B performance testing
