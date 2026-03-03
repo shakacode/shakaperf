@@ -25,7 +25,9 @@ export interface BuildOptions {
 function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedConfig, noCache?: boolean): { cmd: string; cwd: string } {
   const isControl = serverType === 'control';
   const imageName = isControl ? config.images.control : config.images.experiment;
-  const buildDir = isControl ? path.dirname(config.controlDir) : config.dockerBuildDir;
+  const buildDir = isControl
+    ? path.resolve(config.controlDir, path.relative(config.projectDir, config.dockerBuildDir))
+    : config.dockerBuildDir;
   const projectName = path.basename(config.projectDir);
   const dockerfilePath = path.join(projectName, config.dockerfile);
 
@@ -95,7 +97,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
 
   // Only check controlDir if building control image
   if (buildingControl && !fs.existsSync(config.controlDir)) {
-    const cloneTarget = path.dirname(config.controlDir);
+    const cloneTarget = config.controlDir;
     const remoteUrl = getGitRemoteUrl(config.dockerBuildDir);
     const defaultBranch = getDefaultBranch(config.dockerBuildDir);
 
@@ -160,7 +162,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     console.log(`  - ${config.images.experiment} (current branch: ${getGitBranch(config.dockerBuildDir)})`);
   }
   if (buildingControl) {
-    console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(path.dirname(config.controlDir))})`);
+    console.log(`  - ${config.images.control} (baseline branch: ${getGitBranch(config.controlDir)})`);
   }
   console.log('');
   console.log('Bind-mount directories:');
