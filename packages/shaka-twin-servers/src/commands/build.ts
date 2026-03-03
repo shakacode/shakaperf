@@ -28,7 +28,7 @@ function buildDockerCmd(serverType: 'control' | 'experiment', config: ResolvedCo
   const buildDir = isControl
     ? path.resolve(config.controlDir, path.relative(config.projectDir, config.dockerBuildDir))
     : config.dockerBuildDir;
-  const dockerfilePath = config.dockerfile;
+  const dockerfilePath = path.join(path.relative(config.dockerBuildDir, config.projectDir), config.dockerfile);
 
   const args = ['build', '--progress=plain', '-t', imageName, '-f', dockerfilePath];
   if (noCache) args.push('--no-cache');
