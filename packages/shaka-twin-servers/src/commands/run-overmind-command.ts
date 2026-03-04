@@ -44,7 +44,7 @@ export async function runOvermindCommand(
   // 2. Captures its PID to the temp file
   // 3. Outputs the PID
   // 4. Waits for completion
-  const wrappedCommand = `${command} & echo $! > ${pidPath}; cat ${pidPath}; wait`;
+  const wrappedCommand = `echo $$ > ${pidPath}; echo "$$ ${command}"; ${command} & wait`;
 
   console.log(`Running ${colorize(command, 'green')} in ${containerName}`);
 

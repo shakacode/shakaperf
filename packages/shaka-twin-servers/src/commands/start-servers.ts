@@ -60,7 +60,7 @@ export async function startServers(
         await dockerComposeExec(
           config,
           server,
-          "cat /tmp/overmind-pid.* 2>/dev/null | xargs -i bash -c 'echo Killing PID: {} && kill {} || true'; rm -f /tmp/overmind-pid.*"
+          "cat /tmp/overmind-pid.* | xargs -i bash -c 'echo Interrupting session {} && kill $(ps -s {} -o pid=) || true'"
         );
       }
     };
