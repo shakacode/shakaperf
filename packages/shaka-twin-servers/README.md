@@ -27,16 +27,10 @@ yarn shaka-twin-servers start-servers
 
 Docker volumes are bind-mounted to host directories, so you can sync changes without rebuilding images:
 
-```bash
-# Stop servers (Ctrl+C on Overmind), then:
-yarn shaka-twin-servers sync-changes experiment
-
-# Rebuild JS in experiment container. E.G., for RORP, run:
-yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
-
-# Restart servers
-yarn shaka-twin-servers start-servers
-```
+* Stop servers (Ctrl+C on Overmind)
+* `yarn shaka-twin-servers sync-changes experiment`
+* `yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"`
+* `yarn shaka-twin-servers start-servers`
 
 ### Stop Everything (shut down docker containers)
 
