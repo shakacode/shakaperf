@@ -20,7 +20,7 @@ export async function startContainers(
 ): Promise<void> {
   const { verbose } = options;
 
-  printBanner('Starting Twin Servers Locally');
+  printBanner('Starting Twin Containers Locally');
 
   console.log('Using images:');
   console.log(`  - Experiment: ${config.images.experiment}`);
@@ -39,6 +39,9 @@ export async function startContainers(
     }
   }
 
+  console.log('Stopping any existing twin servers...');
+  await dockerComposeDown(config);
+
   console.log('Clearing stale volume contents...');
   fs.rmSync(config.volumes.control, { recursive: true, force: true });
   fs.rmSync(config.volumes.experiment, { recursive: true, force: true });
@@ -47,9 +50,6 @@ export async function startContainers(
   console.log(`   ${config.volumes.control}`);
   console.log(`   ${config.volumes.experiment}`);
   console.log('');
-
-  console.log('Stopping any existing twin servers...');
-  await dockerComposeDown(config);
 
   console.log('Starting twin servers...');
   await dockerComposeUp(config);

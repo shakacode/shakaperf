@@ -79,7 +79,7 @@ x-server-env: &server-env
 
 services:
   control-server:
-    image: ${CI_CONTROL_IMAGE_NAME}
+    image: ${CONTROL_IMAGE_NAME}
     ports:
       - "3020:3000"
     environment:
@@ -90,7 +90,7 @@ services:
     command: sleep infinity
 
   experiment-server:
-    image: ${CI_IMAGE_NAME}
+    image: ${EXPERIMENT_IMAGE_NAME}
     ports:
       - "3030:3000"
     environment:
@@ -116,7 +116,7 @@ volumes:
 ```
 
 Key points:
-- `CI_IMAGE_NAME` and `CI_CONTROL_IMAGE_NAME` are set automatically by shaka-twin-servers
+- `EXPERIMENT_IMAGE_NAME` and `CONTROL_IMAGE_NAME` are set automatically by shaka-twin-servers
 - `command: sleep infinity` keeps containers alive — Overmind manages server processes
 - `PERF_EXPERIMENT` distinguishes control from experiment at runtime
 - Bind-mount volumes let you sync code changes without rebuilding images

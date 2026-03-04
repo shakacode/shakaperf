@@ -38,8 +38,8 @@ function buildComposeOptions(config: ResolvedConfig) {
     cwd: config.projectDir,
     env: {
       ...process.env,
-      CI_IMAGE_NAME: config.images.experiment,
-      CI_CONTROL_IMAGE_NAME: config.images.control,
+      EXPERIMENT_IMAGE_NAME: config.images.experiment,
+      CONTROL_IMAGE_NAME: config.images.control,
       USER: process.env.USER || getUsername(),
     },
   };
@@ -84,6 +84,8 @@ export async function dockerComposeExec(
   command: string,
   execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
+  console.log('dockerComposeExec', containerName, command);
+
   const { interactive = false, stream = false } = execOptions;
 
   const opts = buildComposeOptions(config);
