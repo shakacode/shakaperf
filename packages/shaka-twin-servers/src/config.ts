@@ -36,10 +36,18 @@ export async function loadConfig(configPath: string): Promise<TwinServersConfig>
     let configModule;
 
     if (ext === '.ts') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { tsImport } = require('tsx/esm/api');
-      const tsModule = await tsImport(absolutePath, __filename);
-      configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { tsImport } = require('tsx/esm/api');
+        const tsModule = await tsImport(absolutePath, __filename);
+        configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
+      } catch {
+        // Fallback to CJS API (e.g. Node 18 CommonJS context)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const tsx = require('tsx/cjs/api');
+        const tsModule = tsx.require(absolutePath, __filename);
+        configModule = tsModule.default ?? tsModule;
+      }
     } else {
       configModule = await import(absolutePath);
     }

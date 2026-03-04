@@ -39,7 +39,7 @@ export async function startContainers(
     }
   }
 
-  console.log('Stopping any existing twin servers...');
+  console.log('Stopping any existing twin containers...');
   await dockerComposeDown(config);
 
   console.log('Clearing stale volume contents...');
