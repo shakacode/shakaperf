@@ -15,7 +15,7 @@ export async function execute (config) {
   const files = await readdir(src);
   console.log('The following files will be promoted to reference...');
 
-  return map(files, (file) => {
+  return map(files, async (file) => {
     if (FAILED_DIFF_RE.test(file)) {
       file = file.replace(FAILED_DIFF_RE, '');
 
@@ -25,9 +25,8 @@ export async function execute (config) {
       }
       if (imageFilter.test(file)) {
         console.log('> ', file);
-        return copy(path.join(src, file), path.join(config.bitmaps_reference, file));
+        await copy(path.join(src, file), path.join(config.bitmaps_reference, file));
       }
     }
-    return;
   });
 }

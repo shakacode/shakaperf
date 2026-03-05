@@ -20,6 +20,8 @@ export default function storeFailedDiff (testPath, data) {
     fs.writeFileSync(failedDiffFilename, data.getDiffImageAsJPEG(85));
     return Promise.resolve(failedDiffFilename);
   }
+
+  return Promise.resolve(failedDiffFilename);
 }
 
 function getFailedDiffFilename (testPath) {

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 function ensureDirectoryPath (filePath) {
   const dirname = path.dirname(filePath);
   if (fs.existsSync(dirname)) {
-    return true;
+    return;
   }
   ensureDirectoryPath(dirname);
   fs.mkdirSync(dirname);

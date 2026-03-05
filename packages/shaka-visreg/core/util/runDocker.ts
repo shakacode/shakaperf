@@ -74,4 +74,6 @@ export async function runDocker (config, backstopCommand) {
       });
     });
   }
+
+  return Promise.resolve();
 };
