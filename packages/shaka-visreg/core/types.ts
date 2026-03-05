@@ -1,5 +1,7 @@
 import type { Page as PlaywrightPage, BrowserContext, Browser } from 'playwright';
 
+export type { PlaywrightPage, BrowserContext, Browser };
+
 // ── Viewport ────────────────────────────────────────────────────────
 export interface Viewport {
   label: string;
@@ -92,7 +94,7 @@ export interface EngineOptions {
   ignoreDefaultArgs?: string[];
   args?: string[];
   ignoreHTTPSErrors?: boolean;
-  storageState?: any;
+  storageState?: string | Record<string, unknown>;
   gotoParameters?: {
     waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
     timeout?: number;
@@ -181,10 +183,10 @@ export interface BackstopConfig {
 
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
 export interface RuntimeConfig {
-  args: any;
+  args: Record<string, unknown>;
   backstop: string;
   projectPath: string;
-  perf: Record<string, any>;
+  perf: Record<string, number>;
 
   backstopConfigFileName: string;
   bitmaps_reference: string;
@@ -230,6 +232,15 @@ export interface RuntimeConfig {
   isReference?: boolean;
 }
 
+// ── Diff Result (from resemble.js comparison) ───────────────────────
+export interface DiffResult {
+  misMatchPercentage: number;
+  rawMisMatchPercentage?: number;
+  isSameDimensions: boolean;
+  dimensionDifference?: { width: number; height: number };
+  [key: string]: unknown;
+}
+
 // ── Test Pair ───────────────────────────────────────────────────────
 export interface TestPair {
   reference: string;
@@ -245,13 +256,13 @@ export interface TestPair {
   referenceUrl?: string;
   expect: number;
   viewportLabel: string;
-  diff?: any;
+  diff?: DiffResult;
   diffImage?: string;
   error?: string;
   engineErrorMsg?: string;
   status?: string;
-  scenario?: any;
-  viewport?: any;
+  scenario?: Scenario;
+  viewport?: Viewport;
   msg?: string;
 }
 
@@ -280,5 +291,5 @@ export type PlaywrightScriptFn = (
   viewport: Viewport,
   isReference: boolean,
   browserContext: BrowserContext,
-  config?: any
+  config?: RuntimeConfig
 ) => Promise<void>;
