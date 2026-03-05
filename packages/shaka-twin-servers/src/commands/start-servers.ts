@@ -31,6 +31,7 @@ export async function startServers(
     const child = spawn('overmind', [
       'start',
       '-f', config.procfile,
+      '-d', config.projectDir,
     ], {
       cwd: config.projectDir,
       stdio: 'inherit',
