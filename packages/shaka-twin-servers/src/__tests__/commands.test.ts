@@ -232,6 +232,197 @@ describe('copy-changes-to-ssh command', () => {
   });
 });
 
+describe('build command', () => {
+  const tmpDir = path.join(__dirname, 'tmp-build');
+
+  // Save originals so we can restore after mocking process.exit
+  const originalExit = process.exit;
+
+  beforeEach(() => {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    jest.clearAllMocks();
+    jest.resetModules();
+    process.exit = jest.fn() as any;
+  });
+
+  afterEach(() => {
+    process.exit = originalExit;
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+  });
+
+  function setupBuildMocks(overrides: { remoteUrl?: string; defaultBranch?: string; confirmAnswer?: boolean; cloneExitCode?: number } = {}) {
+    const { remoteUrl = 'git@github.com:test/repo.git', defaultBranch = 'main', confirmAnswer = true, cloneExitCode = 0 } = overrides;
+
+    // Mock git helpers
+    jest.doMock('../helpers/git', () => ({
+      getGitRemoteUrl: jest.fn(() => remoteUrl),
+      getDefaultBranch: jest.fn(() => defaultBranch),
+      getChangedFiles: jest.fn(() => []),
+      getGitRootDirectory: jest.fn(() => '/project'),
+    }));
+
+    // Mock docker helpers
+    jest.doMock('../helpers/docker', () => ({
+      getGitSha: jest.fn(() => 'abc1234'),
+      getGitBranch: jest.fn(() => 'main'),
+      getUserId: jest.fn(() => '1000'),
+      getGroupId: jest.fn(() => '1000'),
+      getUsername: jest.fn(() => 'testuser'),
+    }));
+
+    // Mock shell helpers
+    const mockExec = jest.fn().mockResolvedValue({ stdout: '', stderr: '', code: cloneExitCode });
+    const mockConfirm = jest.fn().mockResolvedValue(confirmAnswer);
+    jest.doMock('../helpers/shell', () => ({
+      exec: mockExec,
+      confirm: mockConfirm,
+      requireCommand: jest.fn(),
+      commandExists: jest.fn(() => true),
+      runInParallel: jest.fn().mockResolvedValue(undefined),
+      execSync_: jest.fn(() => ''),
+    }));
+
+    // Mock ui helpers
+    jest.doMock('../helpers/ui', () => ({
+      printBanner: jest.fn(),
+      printSuccess: jest.fn(),
+      printError: jest.fn(),
+      printInfo: jest.fn(),
+    }));
+
+    return { mockExec, mockConfirm };
+  }
+
+  it('clones control repo without --single-branch when controlDir is missing', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    // Remove controlDir so the clone path is triggered
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'control' });
+
+    // confirm should have been called
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+
+    // Find the git clone call
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls.length).toBe(1);
+
+    const cloneArgs: string[] = cloneCalls[0][1];
+    expect(cloneArgs).toContain('--branch');
+    expect(cloneArgs).toContain('main');
+    expect(cloneArgs).not.toContain('--single-branch');
+    expect(cloneArgs).toContain('git@github.com:test/repo.git');
+    expect(cloneArgs).toContain(config.controlDir);
+  });
+
+  it('uses the correct default branch in clone command', async () => {
+    const { mockExec } = setupBuildMocks({ defaultBranch: 'develop' });
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'control' });
+
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls[0][1]).toContain('develop');
+  });
+
+  it('exits when user declines to clone', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks({ confirmAnswer: false });
+    // Make process.exit throw to stop execution (simulates real exit behavior)
+    (process.exit as unknown as jest.Mock).mockImplementation((code?: number) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
+
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+
+    // git clone should NOT have been called
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls.length).toBe(0);
+  });
+
+  it('exits when clone fails', async () => {
+    setupBuildMocks({ cloneExitCode: 1 });
+    (process.exit as unknown as jest.Mock).mockImplementation((code?: number) => {
+      throw new Error(`process.exit(${code})`);
+    });
+    const { build } = require('../commands/build');
+    const { printError } = require('../helpers/ui');
+
+    const config = createMockConfig(tmpDir);
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
+
+    expect(printError).toHaveBeenCalledWith('Clone failed');
+  });
+
+  it('exits when no remote URL is available', async () => {
+    setupBuildMocks({ remoteUrl: '' });
+    const { build } = require('../commands/build');
+    const { printError } = require('../helpers/ui');
+
+    const config = createMockConfig(tmpDir);
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'control' });
+
+    expect(printError).toHaveBeenCalledWith(`Control directory not found: ${config.controlDir}`);
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('skips cloning when controlDir already exists', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    // controlDir already exists from createMockConfig
+
+    await build(config, { target: 'control' });
+
+    // confirm should NOT have been called (no clone needed)
+    expect(mockConfirm).not.toHaveBeenCalled();
+
+    // No git clone call
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls.length).toBe(0);
+  });
+
+  it('skips control clone check when building only experiment', async () => {
+    const { mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    // Remove controlDir — but since we're building experiment only, it shouldn't matter
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'experiment' });
+
+    expect(mockConfirm).not.toHaveBeenCalled();
+  });
+});
+
 describe('get-config command', () => {
   const tmpDir = path.join(__dirname, 'tmp-get-config');
 
