@@ -1,10 +1,13 @@
 import compareResemble from '../../../../core/util/compare/compare-resemble.js';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REF_IMG1 = path.join(import.meta.dirname, 'refImage-1.png');
-const REF_IMG1_OPTIMIZED = path.join(import.meta.dirname, 'refImage-1-optimized.png');
-const REF_IMG2 = path.join(import.meta.dirname, 'refImage-2.png');
-const REF_IMG3 = path.join(import.meta.dirname, 'refImage-3.png');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const REF_IMG1 = path.join(__dirname, 'refImage-1.png');
+const REF_IMG1_OPTIMIZED = path.join(__dirname, 'refImage-1-optimized.png');
+const REF_IMG2 = path.join(__dirname, 'refImage-2.png');
+const REF_IMG3 = path.join(__dirname, 'refImage-3.png');
 
 describe('compare-resemble', function () {
   it('should resolve if the same image is compared', function () {

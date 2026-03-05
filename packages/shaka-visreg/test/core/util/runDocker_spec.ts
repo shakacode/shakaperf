@@ -1,7 +1,9 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
-import packageJson from '../../../package.json' with { type: 'json' };
+import { createRequire } from 'node:module';
 
+const _require = createRequire(import.meta.url);
+const packageJson = _require('../../../package.json');
 const { version } = packageJson;
 
 describe('runDocker', function () {

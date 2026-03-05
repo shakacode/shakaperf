@@ -1,11 +1,14 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { compareBuffers, createCompositeImage, resizePng } from '../../../../core/util/compare/pixelmatch-inline.js';
 import { PNG } from 'pngjs';
 
-const REF_IMG1 = path.join(import.meta.dirname, 'refImage-1.png');
-const REF_IMG2 = path.join(import.meta.dirname, 'refImage-2.png');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const REF_IMG1 = path.join(__dirname, 'refImage-1.png');
+const REF_IMG2 = path.join(__dirname, 'refImage-2.png');
 
 describe('pixelmatch-inline', function () {
   describe('compareBuffers', function () {
