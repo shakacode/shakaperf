@@ -1,3 +1,5 @@
+import { TestPair } from "../types.js";
+
 /**
  * @description Retrieves the mismatch threshold based on the given scenario and configuration.
  *
@@ -88,7 +90,7 @@ function getScenarioExpect (scenario) {
   return expect;
 }
 
-function generateTestPair (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector): import('../types.js').TestPair {
+function generateTestPair (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector): TestPair {
   const cleanedSelectorName = getSelectorName(selector);
   const fileName = getFilename(
     config._fileNameTemplate,
