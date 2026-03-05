@@ -13,7 +13,7 @@ declare global {
     _selectorExpansion: boolean;
     _backstopSelectors: string[];
     _backstopSelectorsExp: string[];
-    _backstopSelectorsExpMap: Record<string, { exists: number; isVisible: boolean }>;
+    _backstopSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
     _backstopTools: BackstopTools;
   }
 }
@@ -170,7 +170,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     } else {
       window._backstopSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean }>, selector: string) {
+    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
       acc[selector] = {
         exists: window._backstopTools.exists(selector),
         isVisible: window._backstopTools.isVisible(selector)
