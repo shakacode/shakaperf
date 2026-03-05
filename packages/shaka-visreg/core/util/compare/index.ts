@@ -30,7 +30,7 @@ function comparePair (pair: TestPair, report: any, config: RuntimeConfig, compar
 
   // TEST RUN ERROR/EXCEPTION
   if (!referencePath || !testPath) {
-    const MSG = `${pair.msg}: ${pair.error}. See scenario – ${pair.scenario.label} (${pair.viewport.label})`;
+    const MSG = `${pair.msg}: ${pair.error}. See scenario – ${pair.scenario!.label} (${pair.viewport!.label})`;
     Test.status = 'fail';
     logger.error(MSG);
     pair.error = MSG;

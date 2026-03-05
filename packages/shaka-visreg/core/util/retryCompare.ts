@@ -96,7 +96,7 @@ export default async function retryCompare (options: any) {
         preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath),
         preparePage(refPage, scenario.referenceUrl, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath)
       ]);
-    } catch (e) {
+    } catch (e: any) {
       logger.log(`preparePage failed on retry ${retry + 1}: ${e.message}. Skipping to next retry...`);
       continue;
     }
@@ -109,15 +109,15 @@ export default async function retryCompare (options: any) {
       const testMatch = tryMatchAgainstAll(newTestBuffer, refScreenshots, maxNumDiffPixels, pixelmatchThreshold);
       if (testMatch.pass) {
         logger.log(`Match found on retry ${retry + 1} (test vs reference[${testMatch.matchIndex}])`);
-        return { pass: true, refBuffer: refScreenshots[testMatch.matchIndex], testBuffer: newTestBuffer };
+        return { pass: true, refBuffer: refScreenshots[testMatch.matchIndex!], testBuffer: newTestBuffer };
       }
 
       // Track closest match
-      if (testMatch.leastDiffPixels < overallLeastDiff) {
-        overallLeastDiff = testMatch.leastDiffPixels;
-        overallBestRef = refScreenshots[testMatch.bestIndex];
+      if (testMatch.leastDiffPixels! < overallLeastDiff) {
+        overallLeastDiff = testMatch.leastDiffPixels!;
+        overallBestRef = refScreenshots[testMatch.bestIndex!];
         overallBestTest = newTestBuffer;
-        overallBestDiffPng = testMatch.bestResult.diffPng;
+        overallBestDiffPng = testMatch.bestResult!.diffPng;
       }
     }
 
@@ -129,15 +129,15 @@ export default async function retryCompare (options: any) {
       const refMatch = tryMatchAgainstAll(newRefBuffer, testScreenshots, maxNumDiffPixels, pixelmatchThreshold);
       if (refMatch.pass) {
         logger.log(`Match found on retry ${retry + 1} (reference vs test[${refMatch.matchIndex}])`);
-        return { pass: true, refBuffer: newRefBuffer, testBuffer: testScreenshots[refMatch.matchIndex] };
+        return { pass: true, refBuffer: newRefBuffer, testBuffer: testScreenshots[refMatch.matchIndex!] };
       }
 
       // Track closest match
-      if (refMatch.leastDiffPixels < overallLeastDiff) {
-        overallLeastDiff = refMatch.leastDiffPixels;
+      if (refMatch.leastDiffPixels! < overallLeastDiff) {
+        overallLeastDiff = refMatch.leastDiffPixels!;
         overallBestRef = newRefBuffer;
-        overallBestTest = testScreenshots[refMatch.bestIndex];
-        overallBestDiffPng = refMatch.bestResult.diffPng;
+        overallBestTest = testScreenshots[refMatch.bestIndex!];
+        overallBestDiffPng = refMatch.bestResult!.diffPng;
       }
     }
   }

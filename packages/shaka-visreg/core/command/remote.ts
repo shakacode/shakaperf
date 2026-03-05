@@ -26,9 +26,9 @@ export function execute (config: RuntimeConfig) {
       }
     });
 
-    child.stdout.on('data', logger.log);
+    child.stdout!.on('data', logger.log);
 
-    child.stdout.on('close', (data: unknown) => {
+    child.stdout!.on('close', (data: unknown) => {
       logger.log('Backstop remote connection closed. ' + data);
       resolve(data);
     });

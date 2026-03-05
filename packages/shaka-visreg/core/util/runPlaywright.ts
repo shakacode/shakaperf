@@ -139,8 +139,8 @@ async function processScenarioView (scenario: Scenario, variantOrScenarioLabelSa
   const engineScriptsPath = config.env.engine_scripts || config.env.engine_scripts_default;
   const isReference = config.isReference;
 
-  const VP_W = viewport.width || viewport.viewport.width;
-  const VP_H = viewport.height || viewport.viewport.height;
+  const VP_W = viewport.width || viewport.viewport!.width;
+  const VP_H = viewport.height || viewport.viewport!.height;
 
   const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors ? engineOptions.ignoreHTTPSErrors : true;
   const storageState = engineOptions.storageState ? engineOptions.storageState : {};
@@ -163,12 +163,12 @@ async function processScenarioView (scenario: Scenario, variantOrScenarioLabelSa
   });
 
   let result;
-  let error;
+  let error: Error | undefined;
 
   try {
     const url = (isReference && scenario.referenceUrl) ? scenario.referenceUrl : scenario.url;
     result = await preparePage(page, url, scenario, viewport, config, isReference, browserContext, engineScriptsPath);
-  } catch (e) {
+  } catch (e: any) {
     console.log(chalk.red(`Playwright encountered an error while running scenario "${scenario.label}"`));
     console.log(chalk.red(e));
     error = e;
@@ -185,10 +185,10 @@ async function processScenarioView (scenario: Scenario, variantOrScenarioLabelSa
         variantOrScenarioLabelSafe,
         scenarioLabelSafe,
         config,
-        result.backstopSelectorsExp,
-        result.backstopSelectorsExpMap
+        result!.backstopSelectorsExp,
+        result!.backstopSelectorsExpMap
       );
-    } catch (e) {
+    } catch (e: any) {
       error = e;
     }
   } else {
@@ -196,7 +196,7 @@ async function processScenarioView (scenario: Scenario, variantOrScenarioLabelSa
   }
 
   if (error) {
-    const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, `${scenario.selectors.join('__')}`);
+    const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, `${(scenario.selectors || []).join('__')}`);
     const filePath = config.isReference ? testPair.reference : testPair.test;
     testPair.engineErrorMsg = error.message;
 
@@ -253,7 +253,7 @@ async function delegateSelectors (
     captureJobs.push(function () { return captureScreenshot(page, browserContext, captureViewport, selectorMap, config, [], viewport); });
   }
   if (captureList.length) {
-    captureJobs.push(function () { return captureScreenshot(page, browserContext, null, selectorMap, config, captureList, viewport); });
+    captureJobs.push(function () { return captureScreenshot(page, browserContext, false, selectorMap, config, captureList, viewport); });
   }
 
   return new Promise(function (resolve, reject) {
@@ -268,7 +268,7 @@ async function delegateSelectors (
         }
         return;
       }
-      job = captureJobs.shift();
+      job = captureJobs.shift()!;
       job().catch(function (e: any) {
         console.log(e);
         errors.push(e);
@@ -312,11 +312,11 @@ async function captureScreenshot (page: PlaywrightPage, _browserContext: Browser
           // Resize the viewport to screenshot elements outside of the viewport
           if (config.useBoundingBoxViewportForSelectors !== false) {
             const bodyHandle = await page.$('body');
-            const boundingBox = await bodyHandle.boundingBox();
+            const boundingBox = await bodyHandle!.boundingBox();
 
             await page.setViewportSize({
-              width: Math.max(viewport.width, Math.ceil(boundingBox.width)),
-              height: Math.max(viewport.height, Math.ceil(boundingBox.height))
+              width: Math.max(viewport.width, Math.ceil(boundingBox!.width)),
+              height: Math.max(viewport.height, Math.ceil(boundingBox!.height))
             });
           }
 

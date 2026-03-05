@@ -22,7 +22,7 @@ function ensureViewportLabel (config: any) {
   if (typeof config.viewports === 'object') {
     config.viewports.forEach(function (viewport: Viewport) {
       if (!viewport.label) {
-        viewport.label = viewport.name;
+        viewport.label = viewport.name || '';
       }
     });
   }
@@ -103,7 +103,7 @@ function delegateScenarios (config: any) {
     scenarios.push(scenario);
 
     if (!config.isReference && _.has(scenario, 'variants')) {
-      scenario.variants.forEach(function (variant: Variant) {
+      scenario.variants!.forEach(function (variant: Variant) {
         // var variantLabelSafe = makeSafe(variant.label);
         variant._parent = scenario;
         scenarios.push(scenario);

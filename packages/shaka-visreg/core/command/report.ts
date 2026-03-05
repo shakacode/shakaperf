@@ -39,7 +39,7 @@ function writeReport (config: RuntimeConfig, reporter: Reporter) {
 }
 
 function archiveReport (config: RuntimeConfig) {
-  let archivePath = path.join(config.archivePath, config.screenshotDateTime);
+  let archivePath = path.join(config.archivePath, config.screenshotDateTime!);
 
   function toAbsolute (p: string) {
     return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
