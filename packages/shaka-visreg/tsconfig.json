@@ -16,7 +16,7 @@
     /* Lenient settings — tighten these incrementally */
     "strict": false,
     "noImplicitAny": false,
-    "noImplicitThis": false,
+    "noImplicitThis": true,
     "strictNullChecks": false,
     "strictFunctionTypes": false,
     "strictBindCallApply": false,

@@ -18,8 +18,7 @@ const DOCUMENT_SELECTOR = 'document';
 const NOCLIP_SELECTOR = 'body:noclip';
 const VIEWPORT_SELECTOR = 'viewport';
 
-function loggerAction (action, color, message) {
-  const rest = Array.prototype.slice.call(arguments, 3);
+function loggerAction (this: { logged: string[][] }, action: string, color: string, message: string, ...rest: unknown[]) {
   this.logged.push([action, color, message.toString(), JSON.stringify(rest)]);
   console[action](chalk[color](message), ...rest);
 }
