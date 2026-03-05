@@ -1,6 +1,8 @@
+import { createRequire } from 'node:module';
 import makeSpaces from '../core/util/makeSpaces.js';
-import packageJson from '../package.json' with { type: 'json' };
 
+const _require = createRequire(import.meta.url);
+const packageJson = _require('../package.json');
 const { version } = packageJson;
 
 const commandsDescription = {
