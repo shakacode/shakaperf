@@ -3245,7 +3245,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jest/globals@npm:30.2.0":
+"@jest/globals@npm:30.2.0, @jest/globals@npm:^30.0.0":
   version: 30.2.0
   resolution: "@jest/globals@npm:30.2.0"
   dependencies:
@@ -5176,6 +5176,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/fs-extra@npm:^11.0.0":
+  version: 11.0.4
+  resolution: "@types/fs-extra@npm:11.0.4"
+  dependencies:
+    "@types/jsonfile": "npm:*"
+    "@types/node": "npm:*"
+  checksum: 10c0/9e34f9b24ea464f3c0b18c3f8a82aefc36dc524cc720fc2b886e5465abc66486ff4e439ea3fb2c0acebf91f6d3f74e514f9983b1f02d4243706bdbb7511796ad
+  languageName: node
+  linkType: hard
+
 "@types/fs-extra@npm:^9.0.11":
   version: 9.0.13
   resolution: "@types/fs-extra@npm:9.0.13"
@@ -5242,7 +5252,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/jest@npm:^29.5.0":
+"@types/jest@npm:^29.5.0, @types/jest@npm:^29.5.11":
   version: 29.5.14
   resolution: "@types/jest@npm:29.5.14"
   dependencies:
@@ -5272,6 +5282,22 @@ __metadata:
   dependencies:
     json5: "npm:*"
   checksum: 10c0/12e5340f017a1069a7ccd8b40222920dd842b769ac6f8573c6eaea48cdb51fa88ef6efe5e720c1e5b4a7ab1e6e43ff8d6fcd003af16aa1e185387192fd380f43
+  languageName: node
+  linkType: hard
+
+"@types/jsonfile@npm:*":
+  version: 6.1.4
+  resolution: "@types/jsonfile@npm:6.1.4"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/b12d068b021e4078f6ac4441353965769be87acf15326173e2aea9f3bf8ead41bd0ad29421df5bbeb0123ec3fc02eb0a734481d52903704a1454a1845896b9eb
+  languageName: node
+  linkType: hard
+
+"@types/junit-report-builder@npm:^3.0.0":
+  version: 3.0.2
+  resolution: "@types/junit-report-builder@npm:3.0.2"
+  checksum: 10c0/3848c5247a57597695c86ab7a80cf64ba0bfcbc39e067e9e2e051eea80608a95261de065298aaaaee795b137b076f5ab3acb4e3ba003ee637a9dfd9715f86456
   languageName: node
   linkType: hard
 
@@ -5312,10 +5338,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/lodash@npm:^4.17.0":
+  version: 4.17.24
+  resolution: "@types/lodash@npm:4.17.24"
+  checksum: 10c0/b72f60d4daacdad1fa643edb3faba204c02a01eb1ac00a83ff73496a6d236fc55e459c06106e8ced42277dba932d087d8fc090f8de4ef590d3f91e6d6f7ce85a
+  languageName: node
+  linkType: hard
+
 "@types/mime@npm:^1":
   version: 1.3.5
   resolution: "@types/mime@npm:1.3.5"
   checksum: 10c0/c2ee31cd9b993804df33a694d5aa3fa536511a49f2e06eeab0b484fef59b4483777dbb9e42a4198a0809ffbf698081fdbca1e5c2218b82b91603dfab10a10fbc
+  languageName: node
+  linkType: hard
+
+"@types/minimist@npm:^1.2.0":
+  version: 1.2.5
+  resolution: "@types/minimist@npm:1.2.5"
+  checksum: 10c0/3f791258d8e99a1d7d0ca2bda1ca6ea5a94e5e7b8fc6cde84dd79b0552da6fb68ade750f0e17718f6587783c24254bbca0357648dd59dc3812c150305cabdc46
   languageName: node
   linkType: hard
 
@@ -5362,10 +5402,44 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^22.0.0":
+  version: 22.19.13
+  resolution: "@types/node@npm:22.19.13"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/ad8a0b6a69dd8ef663701573eca94ef6d20ce093f54f05bed823c826374eb1ea8b06e6f2c5d7f6cfc203b82dfd60293296bf80ea987ddb77775840bc2ef9f803
+  languageName: node
+  linkType: hard
+
+"@types/object-hash@npm:^3.0.0":
+  version: 3.0.6
+  resolution: "@types/object-hash@npm:3.0.6"
+  checksum: 10c0/a5450cafdbc33c840be2c36fb1ace96cce7aa580177cf68dbdbda80f18938207692d74c76403321c99f43460ac31981c4af7fe8b49eca1570f8e9a4c01eaf33d
+  languageName: node
+  linkType: hard
+
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.2
   resolution: "@types/parse-json@npm:4.0.2"
   checksum: 10c0/b1b863ac34a2c2172fbe0807a1ec4d5cb684e48d422d15ec95980b81475fac4fdb3768a8b13eef39130203a7c04340fc167bae057c7ebcafd7dec9fe6c36aeb1
+  languageName: node
+  linkType: hard
+
+"@types/pixelmatch@npm:^5.2.0":
+  version: 5.2.6
+  resolution: "@types/pixelmatch@npm:5.2.6"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/1045bde53809b7d555e70fb6a490472879fa8d322bc39cb3f15985b877e9fc5ccf0c0b7d97da936b52d76305aa8d2d6657c03b220af3196d17520cfaa2ecbaa1
+  languageName: node
+  linkType: hard
+
+"@types/pngjs@npm:^6.0.0":
+  version: 6.0.5
+  resolution: "@types/pngjs@npm:6.0.5"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/11979d0690e774046d3a1e8cfc613a6b53a613909d81c93831cf253800e93ba1a2d47950979b523aebd4fc023351b644d7f4aa2dfcc027c70816a2968420e7da
   languageName: node
   linkType: hard
 
@@ -5504,6 +5578,15 @@ __metadata:
   version: 1.0.12
   resolution: "@types/tapable@npm:1.0.12"
   checksum: 10c0/d6a080f5839b323eb96dd5b65a6c3161c1297d8c2433eb52437912d1c3df54e38fce12ce7a57650f6453d96942298bd0935436e2501d09e407b7f41634483131
+  languageName: node
+  linkType: hard
+
+"@types/temp@npm:^0.9.0":
+  version: 0.9.4
+  resolution: "@types/temp@npm:0.9.4"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/901fc8e7815b4bcdc47d1ed4273f13f2e3353ef57b33a81ee325e975989fbb32264f398a190b337360192b27b130eeceedfebd06a4eb195965affd3ff45698b7
   languageName: node
   linkType: hard
 
@@ -16044,7 +16127,18 @@ __metadata:
     "@babel/core": "npm:^7.23.6"
     "@babel/preset-env": "npm:^7.23.6"
     "@babel/preset-react": "npm:^7.23.3"
+    "@jest/globals": "npm:^30.0.0"
     "@mirzazeyrek/node-resemble-js": "npm:^1.2.1"
+    "@types/fs-extra": "npm:^11.0.0"
+    "@types/jest": "npm:^29.5.11"
+    "@types/junit-report-builder": "npm:^3.0.0"
+    "@types/lodash": "npm:^4.17.0"
+    "@types/minimist": "npm:^1.2.0"
+    "@types/node": "npm:^22.0.0"
+    "@types/object-hash": "npm:^3.0.0"
+    "@types/pixelmatch": "npm:^5.2.0"
+    "@types/pngjs": "npm:^6.0.0"
+    "@types/temp": "npm:^0.9.0"
     assert: "npm:^2.1.0"
     babel-loader: "npm:^9.1.3"
     backstop-twentytwenty: "npm:^1.1.0"
@@ -16090,12 +16184,15 @@ __metadata:
     styled-components: "npm:^6.1.2"
     super-simple-web-server: "npm:^1.1.4"
     temp: "npm:^0.9.4"
+    ts-jest: "npm:^29.2.0"
+    tsx: "npm:^4.7.0"
+    typescript: "npm:^5.9.0"
     url-loader: "npm:^4.1.1"
     webpack: "npm:^5.89.0"
     webpack-cli: "npm:^5.1.4"
     webpack-dev-server: "npm:^4.15.1"
   bin:
-    shaka-visreg: ./cli/index.js
+    shaka-visreg: ./dist/cli/index.js
   languageName: unknown
   linkType: soft
 
@@ -17196,7 +17293,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-jest@npm:^29.1.0":
+"ts-jest@npm:^29.1.0, ts-jest@npm:^29.2.0":
   version: 29.4.6
   resolution: "ts-jest@npm:29.4.6"
   dependencies:
@@ -17262,7 +17359,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.21.0":
+"tsx@npm:^4.21.0, tsx@npm:^4.7.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
@@ -17401,7 +17498,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.3.3, typescript@npm:^5.9.3":
+"typescript@npm:^5.3.3, typescript@npm:^5.9.0, typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -17411,7 +17508,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.3.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.3.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.0#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:

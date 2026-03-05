@@ -1,6 +1,9 @@
 # BackstopJS-specific ignores
 # (General ignores like node_modules, .DS_Store, *.log, .idea, .vscode are in root .gitignore)
 
+# TypeScript build output
+dist/
+
 compare/bower_components/**/.*
 compare/config.js
 compare/output/bitmaps_reference/
