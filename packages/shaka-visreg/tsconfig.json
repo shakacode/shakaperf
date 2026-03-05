@@ -23,7 +23,7 @@
     "strictPropertyInitialization": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "allowUnreachableCode": true,
+    "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": false
