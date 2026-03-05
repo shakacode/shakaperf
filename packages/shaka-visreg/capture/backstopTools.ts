@@ -23,9 +23,9 @@ export default (target: PlaywrightPage) => {
           window._backstopTools._consoleLogger = '';
         }
         const log = window.console.log.bind(console);
-        window.console.log = function () {
-          window._backstopTools._consoleLogger += Array.from(arguments).join('\n');
-          log.apply(this, arguments);
+        window.console.log = function (...args: unknown[]) {
+          window._backstopTools._consoleLogger += args.join('\n');
+          log(...args);
         };
       },
       /**

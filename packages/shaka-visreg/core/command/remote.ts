@@ -21,14 +21,14 @@ export function execute (config) {
 
     const child = exec(commandStr, { env: { ...env, PATH: process.env.PATH } }, (error) => {
       if (error) {
-        logger.log('Error running backstop remote:', error);
+        logger.log('Error running backstop remote: ' + error);
       }
     });
 
     child.stdout.on('data', logger.log);
 
     child.stdout.on('close', data => {
-      logger.log('Backstop remote connection closed.', data);
+      logger.log('Backstop remote connection closed. ' + data);
       resolve(data);
     });
   });

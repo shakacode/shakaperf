@@ -257,27 +257,29 @@ function writeJsonReport (config, reporter) {
   });
 }
 
-export function execute (config) {
-  return compare(config).then(function (report) {
-    const failed = report.failed();
-    logger.log('Test completed...');
-    logger.log(chalk.green(report.passed() + ' Passed'));
-    logger.log(chalk[(failed ? 'red' : 'green')](+failed + ' Failed'));
-
-    return writeReport(config, report).then(function (results) {
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].state !== 'fulfilled') {
-          logger.error('Failed writing report with error: ' + results[i].value);
-        }
-      }
-
-      if (failed) {
-        logger.error('*** Mismatch errors found ***');
-        // logger.log('For a detailed report run `backstop openReport`\n');
-        throw new Error('Mismatch errors found.');
-      }
-    });
-  }, function (e) {
+export async function execute (config) {
+  let report;
+  try {
+    report = await compare(config);
+  } catch (e) {
     logger.error('Comparison failed with error:' + e);
-  });
+    return;
+  }
+
+  const failed = report.failed();
+  logger.log('Test completed...');
+  logger.log(chalk.green(report.passed() + ' Passed'));
+  logger.log(chalk[(failed ? 'red' : 'green')](+failed + ' Failed'));
+
+  const results = await writeReport(config, report);
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].state !== 'fulfilled') {
+      logger.error('Failed writing report with error: ' + results[i].value);
+    }
+  }
+
+  if (failed) {
+    logger.error('*** Mismatch errors found ***');
+    throw new Error('Mismatch errors found.');
+  }
 }

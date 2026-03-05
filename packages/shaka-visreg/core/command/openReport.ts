@@ -12,7 +12,7 @@ export function execute (config) {
   const remoteReportUrl = `http://127.0.0.1:${port}/${config.compareReportURL}?remote`;
   return new Promise(function (resolve, reject) {
     // would prefer to ping a http://127.0.0.1:${port}/remote with {backstopRemote:ok} response
-    logger.log('Attempting to ping ', remoteReportUrl);
+    logger.log('Attempting to ping ' + remoteReportUrl);
     http.get(remoteReportUrl, (resp) => {
       let data = '';
       resp.on('data', (chunk) => { data += chunk; });
@@ -26,7 +26,7 @@ export function execute (config) {
         }
       });
     }).on('error', (err) => {
-      logger.log('Remote not found. Opening ' + config.compareReportURL, 'Error: ' + err.message);
+      logger.log('Remote not found. Opening ' + config.compareReportURL + ' Error: ' + err.message);
       resolve(open(path.resolve(config.compareReportURL), { wait: false }));
     });
   });
