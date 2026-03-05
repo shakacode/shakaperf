@@ -285,7 +285,7 @@ async function delegateSelectors (
   }).then(_ => compareConfig);
 }
 
-async function captureScreenshot (page, browserContext, selector, selectorMap, config, selectors, viewport) {
+async function captureScreenshot (page, _browserContext, selector, selectorMap, config, selectors, viewport) {
   let filePath;
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
   if (selector) {

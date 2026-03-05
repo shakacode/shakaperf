@@ -61,7 +61,7 @@ export async function runDocker (config, backstopCommand) {
     return new Promise((resolve, reject) => {
       const dockerProcess = spawn(dockerCommand, { stdio: 'inherit', shell: true });
       dockerProcess.on('error', err => reject(err));
-      dockerProcess.on('exit', async function (code, signal) {
+      dockerProcess.on('exit', async function (code, _signal) {
         if (!config.args.debug && config.args.config === tmpConfigFile) {
           await unlink(tmpConfigFile);
         }

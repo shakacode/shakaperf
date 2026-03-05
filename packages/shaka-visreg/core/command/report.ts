@@ -81,12 +81,12 @@ async function writeBrowserReport (config, reporter) {
         pair.referenceLog = path.relative(report, referenceLog);
         pair.testLog = path.relative(report, testLog);
 
-        const referencePromise = readFile(referenceLog).catch(function (e) {
+        const referencePromise = readFile(referenceLog).catch(function (_e) {
           logger.log(`Ignoring error reading reference log: ${referenceLog}`);
           delete pair.referenceLog;
           // remove non-existing log paths
         });
-        const testPromise = readFile(testLog).catch(function (e) {
+        const testPromise = readFile(testLog).catch(function (_e) {
           logger.log(`Ignoring error reading test log: ${testLog}`);
           delete pair.testLog;
           // remove non-existing log paths

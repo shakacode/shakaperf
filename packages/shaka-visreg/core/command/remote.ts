@@ -12,7 +12,7 @@ export function execute (config) {
   const MIDDLEWARE_PATH = path.resolve(config.backstop, 'remote', 'index.cjs');
   const projectPath = path.resolve(config.projectPath);
 
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve, _reject) {
     const port = getRemotePort();
     const commandStr = `node ${ssws} ${projectPath} ${MIDDLEWARE_PATH} --config=${config.backstopConfigFileName}`;
     const env = { SSWS_HTTP_PORT: String(port) };
