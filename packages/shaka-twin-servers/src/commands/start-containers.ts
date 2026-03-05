@@ -89,7 +89,7 @@ export async function startContainers(
   console.log('');
   printSuccess('Both servers are ready!');
   console.log('');
-  printBanner('Twin Servers containers Started');
+  printBanner('Twin Containers Started');
   console.log('');
   console.log('Edit project code inside containers:');
   console.log(`   Control:    ${config.volumes.control}`);

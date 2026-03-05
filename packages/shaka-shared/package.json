@@ -9,13 +9,18 @@
   ],
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "yarn build"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/shakacode/shakaperf.git",
     "directory": "packages/shaka-shared"
+  },
+  "homepage": "https://github.com/shakacode/shakaperf#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "tsx": "^4.21.0"

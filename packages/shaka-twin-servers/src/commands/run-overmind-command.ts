@@ -16,10 +16,9 @@ export type ServerTarget = 'control' | 'experiment';
  *   control-rails: shaka-twin-servers run-overmind-command control "bundle exec puma ..."
  *
  * The command:
- * 1. Generates a unique temp PID file path
- * 2. Runs the command in background, captures PID
- * 3. Outputs the PID (for Overmind to track)
- * 4. Waits for the process to complete
+ * 1. Generates a unique temp file path
+ * 2. Saves the shell's session ID to the temp file (for session-wide cleanup later)
+ * 3. Runs the command in the foreground
  */
 export async function runOvermindCommand(
   config: ResolvedConfig,
