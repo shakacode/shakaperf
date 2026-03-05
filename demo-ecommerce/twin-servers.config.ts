@@ -9,7 +9,6 @@ export default defineConfig({
     RUBY_VERSION: '3.3.7',
     NODE_VERSION: '24.13.0',
   },
-  composeFile: 'docker-compose.yml',
   procfile: 'Procfile',
   images: {
     control: 'demo-ecommerce:control',

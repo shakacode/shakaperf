@@ -34,7 +34,6 @@ export default defineConfig({
     NODE_VERSION: '24.13.0',
   },
 
-  composeFile: 'twin-servers/docker-compose.yml',
   procfile: 'twin-servers/Procfile',
 
   images: {
@@ -58,6 +57,11 @@ export default defineConfig({
 
 ## 2. Prepare your Dockerfile
 
+Twin-servers need to run in production mode locally, so if you don't have a production local build, you will need one. It should be as close as possible to the actual production, except for prod-only APIs and the DB. You may need to add `ENV TWIN_SERVERS=true` env var to your `twin-servers/Dockerfile` to disable things that break locally.
+
+Then extend your dev-only checks to also check the variable, e.g:
+`return if Rails.env.test? || Rails.env.development? || ENV['TWIN_SERVERS'] == 'true'`
+
 Your production Dockerfile needs one change for twin-servers — remove CMD/ENTRYPOINT. Twin-servers manages the server lifecycle through docker-compose (`command: sleep infinity`) and Overmind, so the containers stay alive while servers can be started/stopped independently.
 
 ```dockerfile
@@ -68,9 +72,20 @@ EXPOSE 3000
 # so servers can be started/stopped without restarting containers.
 ```
 
-## 3. Create a docker-compose.yml
+## 3. Custom Docker Compose (optional)
 
-It's best to use the default docker-compose config below. If your setup is complex and needs to depend on other dockerized services, you can extend it — but keep it minimal.
+A default [`docker-compose.yml`](./templates/docker-compose.yml) is bundled with the package. Most projects don't need a custom one. To get a custom copy you can edit, run:
+```bash
+yarn shaka-twin-servers customize-docker-compose
+```
+
+Key points about the default:
+- `EXPERIMENT_IMAGE_NAME`, `CONTROL_IMAGE_NAME`, `CONTROL_VOLUME_DIR`, and `EXPERIMENT_VOLUME_DIR` are set automatically by shaka-twin-servers
+- `command: sleep infinity` keeps containers alive — Overmind manages server processes
+- `PERF_EXPERIMENT` distinguishes control from experiment at runtime
+- Bind-mount volumes let you sync code changes without rebuilding images
+
+If your setup needs to depend on other dockerized services, you can create a custom compose file. But keep it minimal.
 
 **Keep your docker-compose.yml simple!** If anything can be moved to the Dockerfile, do it. Reasons:
 * **Isolation.** The two instances of the app run side by side in parallel, so we don't want to share any resources between them.
@@ -94,50 +109,6 @@ setupCommands: [
 ```
 
 If a service already has a Dockerized setup in the project's dev instructions (e.g. separate docker container for  Elasticsearch), reuse it as a pair of -control and -experiment separate Docker Compose services. However, extending docker-compose is not recommended; do it only if it will simplify things and reduce the diff.
-
-### template `twin-servers/docker-compose.yml`
-```yaml
-services:
-  control-server:
-    image: ${CONTROL_IMAGE_NAME}
-    ports:
-      - "3020:3000"
-    environment:
-      PERF_EXPERIMENT: "false"
-    volumes:
-      - my_app_control:/home/${USER}/app
-    command: sleep infinity
-
-  experiment-server:
-    image: ${EXPERIMENT_IMAGE_NAME}
-    ports:
-      - "3030:3000"
-    environment:
-      PERF_EXPERIMENT: "true"
-    volumes:
-      - my_app_experiment:/home/${USER}/app
-    command: sleep infinity
-
-volumes:
-  my_app_control:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${CONTROL_VOLUME_DIR}
-  my_app_experiment:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${EXPERIMENT_VOLUME_DIR}
-```
-
-Key points:
-- `EXPERIMENT_IMAGE_NAME`, `CONTROL_IMAGE_NAME`, `CONTROL_VOLUME_DIR`, and `EXPERIMENT_VOLUME_DIR` are set automatically by shaka-twin-servers
-- `command: sleep infinity` keeps containers alive — Overmind manages server processes
-- `PERF_EXPERIMENT` distinguishes control from experiment at runtime
-- Bind-mount volumes let you sync code changes without rebuilding images
 
 ## 4. Create a Procfile
 
@@ -183,13 +154,6 @@ These notes are for AI assistants helping with twin-servers setup. They capture 
    ```
 
 5. **Don't change the project's `.node-version` or any other project files.** Dockerization should not require changes to the project itself beyond the `twin-servers/` directory. The Docker container can use the project's Node version via `dockerBuildArgs.NODE_VERSION` — don't modify `.node-version`, `engines.node`, or `package.json` in the project.
-
-### Rails / app-level pitfalls
-
-Twin-servers need to run in production mode locally, so if you don't have a production local build, you will need one. It should be as close as possible to production, except for prod-only APIs and the DB. You may need to add `ENV TWIN_SERVERS=true` env var to your `twin-servers/Dockerfile` to disable things that break locally.
-
-Then extend your dev-only checks to also check the variable, e.g:
-`return if Rails.env.test? || Rails.env.development? || ENV['TWIN_SERVERS'] == 'true'`
 
 1. **Disable `force_ssl`.** Rails forces SSL in production, but twin-servers runs locally over HTTP:
    ```ruby

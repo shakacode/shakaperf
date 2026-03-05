@@ -117,6 +117,7 @@ yarn shaka-twin-servers forward-ports <port> <host>
 
 ```bash
 yarn shaka-twin-servers get-config <key>               # Print a resolved config value
+yarn shaka-twin-servers customize-docker-compose        # Copy bundled docker-compose.yml for customization
 yarn shaka-twin-servers say "Build complete"            # Text-to-speech notification
 ```
 

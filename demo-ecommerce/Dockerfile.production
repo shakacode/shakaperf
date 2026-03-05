@@ -55,7 +55,11 @@ ENV RAILS_ENV="production" \
     NODE_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH=${BUNDLE_PATH} \
-    BUNDLE_WITHOUT="development test"
+    BUNDLE_WITHOUT="development test" \
+    SECRET_KEY_BASE="demo-ecommerce-not-a-real-secret-just-for-perf-testing" \
+    RAILS_LOG_TO_STDOUT="true" \
+    RAILS_SERVE_STATIC_FILES="true" \
+    DISABLE_SSL="true"
 
 # Mac/Linux GID compatibility: Delete any existing group with the same GID
 RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true

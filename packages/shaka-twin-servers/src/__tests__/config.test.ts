@@ -12,7 +12,6 @@ describe('defineConfig', () => {
       dockerBuildDir: '/build',
       dockerfile: 'Dockerfile',
       dockerBuildArgs: {},
-      composeFile: 'docker-compose.yml',
       procfile: 'Procfile',
       images: { control: 'img:ctrl', experiment: 'img:exp' },
       volumes: { control: '/vol/ctrl', experiment: '/vol/exp' },
@@ -86,7 +85,6 @@ describe('resolveConfig', () => {
       dockerBuildDir,
       dockerfile: 'Dockerfile',
       dockerBuildArgs: { KEY: 'val' },
-      composeFile: 'docker-compose.yml',
       procfile: 'Procfile.twin',
       images: { control: 'img:ctrl', experiment: 'img:exp' },
       volumes: { control: '/tmp/ctrl_vol', experiment: '/tmp/exp_vol' },
@@ -103,8 +101,14 @@ describe('resolveConfig', () => {
     expect(resolved.images.experiment).toBe('img:exp');
   });
 
-  it('resolves composeFile relative to projectDir', () => {
+  it('uses bundled default compose file when composeFile not specified', () => {
     const resolved = resolveConfig(makeConfig(), tmpDir);
+    expect(resolved.composeFile).toMatch(/templates[/\\]docker-compose\.yml$/);
+    expect(fs.existsSync(resolved.composeFile)).toBe(true);
+  });
+
+  it('resolves explicit composeFile relative to projectDir', () => {
+    const resolved = resolveConfig(makeConfig({ composeFile: 'docker-compose.yml' }), tmpDir);
     expect(resolved.composeFile).toBe(path.resolve(projectDir, 'docker-compose.yml'));
   });
 

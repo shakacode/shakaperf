@@ -20,7 +20,10 @@ export default async function globalSetup() {
   );
 
   // Commit any uncommitted changes in the copy so git checkout . works in afterEach
-  execSync('git add -A && git commit --allow-empty -m "integration test snapshot"', {
+  // --no-verify: skip pre-commit hooks (they run typecheck via Yarn PnP, which
+  // fails because the global cache paths in .pnp.cjs are relative and don't
+  // resolve correctly in the temp directory — yarn install hasn't run yet)
+  execSync('git add -A && git commit --no-verify --allow-empty -m "integration test snapshot"', {
     cwd: EXPERIMENT_CLONE_PATH,
     stdio: 'inherit',
   });

@@ -5,6 +5,8 @@ import { TwinServersConfigSchema, type TwinServersConfig, type ResolvedConfig } 
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
+const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', 'templates', 'docker-compose.yml');
+
 export function defineConfig(config: TwinServersConfig): TwinServersConfig {
   return config;
 }
@@ -105,7 +107,9 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     dockerBuildDir,
     dockerfile: validConfig.dockerfile,
     dockerBuildArgs: validConfig.dockerBuildArgs,
-    composeFile: path.resolve(projectDir, validConfig.composeFile),
+    composeFile: validConfig.composeFile
+      ? path.resolve(projectDir, validConfig.composeFile)
+      : DEFAULT_COMPOSE_FILE,
     procfile: path.resolve(projectDir, validConfig.procfile),
     images: validConfig.images,
     volumes: {

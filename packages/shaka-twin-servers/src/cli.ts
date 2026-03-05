@@ -14,6 +14,7 @@ import { syncChanges } from './commands/sync-changes';
 import { say } from './commands/say';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
+import { customizeDockerCompose } from './commands/customize-docker-compose';
 import type { Command, ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 
@@ -38,6 +39,7 @@ Commands:
   say <message>                         Speak a message using text-to-speech (macOS/Linux)
   copy-changes-to-ssh <port> <host> [target]  Copy local git changes to SSH (target: control|experiment|all)
   forward-ports <port> <host> [ctrl-port] [exp-port]  Forward CI ports (default: 3020, 3030)
+  customize-docker-compose                   Copy bundled docker-compose.yml for customization
 
   <target> is either "control" or "experiment"
 
@@ -82,7 +84,7 @@ Examples:
   shaka-twin-servers build -c path/to/twin-servers.config.ts
 `;
 
-const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'stop-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports'];
+const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'stop-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports', 'customize-docker-compose'];
 
 function showHelp(): void {
   console.log(HELP);
@@ -286,6 +288,9 @@ async function main(): Promise<void> {
         await forwardPorts(resolvedConfig, sshTarget, { ...options, controlPort, experimentPort });
         break;
       }
+      case 'customize-docker-compose':
+        await customizeDockerCompose(resolvedConfig, configPath);
+        break;
     }
   } catch (error) {
     console.error(colorize(`Error: ${(error as Error).message}`, 'red'));
