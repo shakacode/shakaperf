@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
+import { loadConfigFile } from 'shaka-shared';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 
@@ -252,46 +253,7 @@ export function resolveConfig(config: unknown): ResolvedConfig {
 
 /** Supports .ts (via tsx/tsImport) and .js files. */
 export async function loadConfig(configPath: string): Promise<BundleSizeConfig> {
-  const absolutePath = path.resolve(configPath);
-
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Config file not found: ${absolutePath}`);
-  }
-
-  const ext = path.extname(absolutePath);
-
-  if (ext !== '.js' && ext !== '.ts') {
-    throw new Error(`Unsupported config file extension: ${ext}. Use .js or .ts`);
-  }
-
-  try {
-    let configModule;
-
-    if (ext === '.ts') {
-      // Use tsx's tsImport for TypeScript files
-      // tsImport returns { default: { default: actualConfig } } for ESM default exports
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { tsImport } = require('tsx/esm/api');
-      const tsModule = await tsImport(absolutePath, __filename);
-      // Unwrap the double-nested default export
-      configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
-    } else {
-      configModule = await import(absolutePath);
-    }
-
-    const config = configModule.default || configModule;
-
-    if (!config || typeof config !== 'object') {
-      throw new Error(`Config file must export a configuration object`);
-    }
-
-    return config as BundleSizeConfig;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to load config from ${absolutePath}: ${error.message}`);
-    }
-    throw error;
-  }
+  return loadConfigFile(configPath) as Promise<BundleSizeConfig>;
 }
 
 /** Only supports .js files (TypeScript requires async import). */

@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Production Dockerfile for demo-ecommerce with twin-servers A/B testing support
-# Build from monorepo root: docker build -f demo-ecommerce/Dockerfile.production -t demo-ecommerce .
+# Build from monorepo root: docker build -f demo-ecommerce/twin-servers/Dockerfile -t demo-ecommerce .
 
 ARG RUBY_VERSION=3.3.7
 ARG NON_ROOT_USER=rails
@@ -60,7 +60,7 @@ ENV RAILS_ENV="production" \
     SECRET_KEY_BASE="demo-ecommerce-not-a-real-secret-just-for-perf-testing" \
     RAILS_LOG_TO_STDOUT="true" \
     RAILS_SERVE_STATIC_FILES="true" \
-    DISABLE_SSL="true"
+    TWIN_SERVERS="true"
 
 # Mac/Linux GID compatibility: Delete any existing group with the same GID
 RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true

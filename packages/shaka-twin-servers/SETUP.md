@@ -8,6 +8,13 @@ This guide walks you through adding `shaka-twin-servers` to a project that alrea
 - [Overmind](https://github.com/DarthSim/overmind) (process manager for the Procfile)
 - [GNU parallel](https://www.gnu.org/software/parallel/) (`brew install parallel` / `apt install parallel`)
 
+## 0. Take a look at the demo
+- [`demo-ecommerce/twin-servers.config.ts`](../../demo-ecommerce/twin-servers.config.ts)
+- [`demo-ecommerce/twin-servers/Dockerfile`](../../demo-ecommerce/twin-servers/Dockerfile)
+- [`demo-ecommerce/twin-servers/Dockerfile.dockerignore`](../../demo-ecommerce/twin-servers/Dockerfile.dockerignore)
+- [`demo-ecommerce/twin-servers/Procfile`](../../demo-ecommerce/twin-servers/Procfile)
+
+
 ## 1. Create the config file
 
 Create `twin-servers.config.ts` in your project root:
@@ -72,6 +79,33 @@ EXPOSE 3000
 ```
 
 ### Dockerfile tips
+
+**Create a non-root user with matching UID/GID.** Twin-servers uses bind-mount volumes, so the container user must match the host user. Define build args and create the user early in your Dockerfile:
+```dockerfile
+ARG NON_ROOT_USER=rails
+ARG UID=1000
+ARG GID=1000
+
+FROM ruby:${RUBY_VERSION}-bullseye AS base
+
+# Re-declare ARGs after FROM (they don't persist across stages)
+ARG NON_ROOT_USER
+ARG UID
+ARG GID
+```
+
+Then create the user and workspace:
+```dockerfile
+# Mac/Linux GID compatibility: delete any existing group with the same GID
+RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true
+
+# Create non-root user and workspace with matching UID/GID from host
+RUN groupadd --gid $GID ${NON_ROOT_USER} && \
+    useradd ${NON_ROOT_USER} --uid $UID --gid $GID --create-home --shell /bin/bash
+RUN mkdir -p $APP_PATH && chown -R ${NON_ROOT_USER}:${NON_ROOT_USER} /home/${NON_ROOT_USER}
+RUN chown ${NON_ROOT_USER}:${NON_ROOT_USER} /var/run/postgresql
+WORKDIR $APP_PATH
+```
 
 **Put all paths under the non-root user's home.** Use `/home/${NON_ROOT_USER}/app`, `/home/${NON_ROOT_USER}/bundle`, `/home/${NON_ROOT_USER}/node` — NOT `/app`, `/usr/local/bundle`, etc. Twin-servers uses bind-mount volumes, so the container user's UID/GID must match the host user. Placing everything under the user's home directory avoids permission conflicts.
 
