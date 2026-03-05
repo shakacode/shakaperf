@@ -10,7 +10,7 @@ export default function findExecutable (module: string, bin: string) {
     const relativePathToExecutableBinary = executableModulePackageJson.bin[bin] || executableModulePackageJson.bin;
     const pathToExecutableModule = pathToExecutableModulePackageJson.replace('package.json', '');
     return path.join(pathToExecutableModule, relativePathToExecutableBinary);
-  } catch (e) {
+  } catch (e: any) {
     throw new Error('Couldn\'t find executable for module "' + module + '" and bin "' + bin + '"\n' + e.message);
   }
 };

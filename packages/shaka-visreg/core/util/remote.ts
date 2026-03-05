@@ -48,7 +48,7 @@ async function modifyJsonpReport ({ reportConfigFilename, approvedFileName }: { 
     const content = await readFile(reportConfigFilename, 'utf8');
     const jsonpReport = modifyJsonpReportHelper(content, approvedFileName);
     await writeFile(reportConfigFilename, jsonpReport);
-  } catch (err) {
+  } catch (err: any) {
     throw new Error(`Failed to modify the report. ${err.message}.`);
   }
 }

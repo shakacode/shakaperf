@@ -13,14 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
 
-    /* Lenient settings — tighten these incrementally */
-    "strict": false,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "allowUnreachableCode": false,
