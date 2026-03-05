@@ -1,24 +1,20 @@
-// @ts-ignore -- missing @types/node
 import path from 'node:path';
-// @ts-ignore -- missing @types/node
 import { pathToFileURL } from 'node:url';
-// @ts-ignore -- missing @types/lodash
 import _ from 'lodash';
-// @ts-ignore -- missing @types/node
 import { existsSync } from 'node:fs';
 import injectBackstopTools from '../../capture/backstopTools.js';
 import createLogger from './logger.js';
-
-declare var process: any;
+import type { PlaywrightPage, Scenario, Viewport, BackstopConfig, BrowserContext, BackstopTools } from '../types.js';
+import type { ConsoleMessage } from 'playwright';
 
 declare global {
   interface Window {
-    _readyEvent: any;
-    _selectorExpansion: any;
-    _backstopSelectors: any;
-    _backstopSelectorsExp: any;
-    _backstopSelectorsExpMap: any;
-    _backstopTools: any;
+    _readyEvent: string;
+    _selectorExpansion: boolean;
+    _backstopSelectors: string[];
+    _backstopSelectorsExp: string[];
+    _backstopSelectorsExpMap: Record<string, { exists: number; isVisible: boolean }>;
+    _backstopTools: BackstopTools;
   }
 }
 
@@ -26,7 +22,7 @@ const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
 
-function translateUrl (url: any) {
+function translateUrl (url: string) {
   const RE = /^[./]/;
   if (RE.test(url)) {
     return 'file://' + path.join(process.cwd(), url);
@@ -40,7 +36,7 @@ function translateUrl (url: any) {
  *
  * Shared by runCompareScenario (liveCompare) and runPlaywright.
  */
-async function preparePage (page: any, url: any, scenario: any, viewport: any, config: any, isReference: any, browserOrContext: any, engineScriptsPath: any) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: BackstopConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
   // --- BEFORE SCRIPT ---
@@ -61,8 +57,8 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
   const readyTimeout = scenario.readyTimeout || config.readyTimeout || 30000;
   let readyPromise: Promise<void> | undefined;
   let readyResolve: (() => void) | undefined;
-  let readyTimeoutTimer: any;
-  let onConsole: any;
+  let readyTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
+  let onConsole: ((msg: ConsoleMessage) => void) | undefined;
 
   if (readyEvent) {
     readyPromise = new Promise<void>(function (resolve) {
@@ -74,7 +70,7 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
       }, readyTimeout);
     });
 
-    onConsole = function (msg: any) {
+    onConsole = function (msg: ConsoleMessage) {
       if (new RegExp(readyEvent).test(msg.text())) {
         clearTimeout(readyTimeoutTimer);
         page.removeListener('console', onConsole);
@@ -90,7 +86,7 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
     await injectBackstopTools(page);
 
     if (readyPromise) {
-      await page.evaluate(function (v: any) { window._readyEvent = v; }, readyEvent);
+      await page.evaluate(function (v: string) { window._readyEvent = v; }, readyEvent);
       await readyPromise;
     }
   } finally {
@@ -115,10 +111,10 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
   // --- REMOVE SELECTORS ---
   if (_.has(scenario, 'removeSelectors')) {
     await Promise.all(
-      scenario.removeSelectors.map(function (sel: any) {
-        return page.evaluate(function (s: any) {
-          document.querySelectorAll(s).forEach(function (el: any) {
-            el.style.cssText = 'display: none !important;';
+      scenario.removeSelectors.map(function (sel: string) {
+        return page.evaluate(function (s: string) {
+          document.querySelectorAll(s).forEach(function (el: Element) {
+            (el as HTMLElement).style.cssText = 'display: none !important;';
             el.classList.add('__86d');
           });
         }, sel);
@@ -145,10 +141,10 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
     await Promise.all(
-      scenario.hideSelectors.map(function (sel: any) {
-        return page.evaluate(function (s: any) {
-          document.querySelectorAll(s).forEach(function (el: any) {
-            el.style.visibility = 'hidden';
+      scenario.hideSelectors.map(function (sel: string) {
+        return page.evaluate(function (s: string) {
+          document.querySelectorAll(s).forEach(function (el: Element) {
+            (el as HTMLElement).style.visibility = 'hidden';
           });
         }, sel);
       })
@@ -164,7 +160,7 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
   const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
   const selectors = Array.isArray(scenario.selectors) ? scenario.selectors : [scenario.selectors];
 
-  const result = await page.evaluate(function (args: any) {
+  const result = await page.evaluate(function (args: { expand: boolean; sels: string[] }) {
     var expand = args.expand;
     var sels = args.sels;
     window._selectorExpansion = expand;
@@ -174,7 +170,7 @@ async function preparePage (page: any, url: any, scenario: any, viewport: any, c
     } else {
       window._backstopSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: any, selector: any) {
+    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean }>, selector: string) {
       acc[selector] = {
         exists: window._backstopTools.exists(selector),
         isVisible: window._backstopTools.isVisible(selector)
