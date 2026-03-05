@@ -22,7 +22,9 @@
     "visreg:reference": "yarn visreg:build && backstop reference",
     "visreg:test": "yarn visreg:build && backstop test",
     "visreg:test:retry": "backstop-retry-failed-scenarios --command 'yarn visreg:test' --retry 7",
-    "visreg:open": "backstop openReport"
+    "visreg:open": "backstop openReport",
+    "shaka-visreg:test": "yarn visreg:build && shaka-visreg liveCompare",
+    "shaka-visreg:open": "shaka-visreg openReport"
   },
   "dependencies": {
     "@babel/helper-plugin-utils": "^7.28.6",
@@ -85,6 +87,7 @@
     "shaka-bench": "workspace:*",
     "shaka-bundle-size": "workspace:*",
     "shaka-twin-servers": "workspace:*",
+    "shaka-visreg": "workspace:*",
     "typescript": "^5.9.3",
     "webpack-dev-server": "^5.2.2"
   }
