@@ -11,7 +11,7 @@ describe('cli', function () {
   });
 
   it('should call the runner without custom options correctly', async function () {
-    process.argv = ['node', 'backstop', 'test'];
+    process.argv = ['node', 'shaka-visreg', 'liveCompare'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.unstable_mockModule('../../core/runner.js', () => ({
@@ -22,11 +22,11 @@ describe('cli', function () {
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
-    expect(runnerMock).toHaveBeenCalledWith('test', expect.anything());
+    expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.anything());
   });
 
   it('should exit with code 1 if runner fails', async function () {
-    process.argv = ['node', 'backstop', 'test'];
+    process.argv = ['node', 'shaka-visreg', 'liveCompare'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.unstable_mockModule('../../core/runner.js', () => ({

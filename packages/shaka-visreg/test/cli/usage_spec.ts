@@ -1,7 +1,7 @@
 import usage from '../../cli/usage.js';
 import assert from 'node:assert';
 
-const expectedUsage = /Welcome to BackstopJS/;
+const expectedUsage = /Welcome to shaka-visreg/;
 
 describe('the cli usage', function () {
   it('should print usage hints correctly', function () {
@@ -22,9 +22,16 @@ describe('the cli usage', function () {
   });
 
   it('should include all standard commands', function () {
-    const standardCommands = ['test', 'approve', 'reference', 'init', 'remote', 'openReport', 'liveCompare'];
+    const standardCommands = ['openReport', 'liveCompare'];
     standardCommands.forEach(function (cmd) {
       assert(new RegExp(cmd).test(usage), 'Usage should include ' + cmd + ' command');
+    });
+  });
+
+  it('should not include removed commands', function () {
+    const removedCommands = ['remote', 'init', 'approve', 'reference'];
+    removedCommands.forEach(function (cmd) {
+      assert(!new RegExp('\\b' + cmd + '\\b').test(usage), 'Usage should not include removed ' + cmd + ' command');
     });
   });
 });
