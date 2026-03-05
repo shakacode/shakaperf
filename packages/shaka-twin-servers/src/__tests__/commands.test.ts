@@ -296,7 +296,7 @@ describe('build command', () => {
     return { mockExec, mockConfirm };
   }
 
-  it('clones control repo without --single-branch when controlDir is missing', async () => {
+  it('clones control repo when controlDir is missing', async () => {
     const { mockExec, mockConfirm } = setupBuildMocks();
     const { build } = require('../commands/build');
 
@@ -316,26 +316,7 @@ describe('build command', () => {
     expect(cloneCalls.length).toBe(1);
 
     const cloneArgs: string[] = cloneCalls[0][1];
-    expect(cloneArgs).toContain('--branch');
-    expect(cloneArgs).toContain('main');
-    expect(cloneArgs).not.toContain('--single-branch');
-    expect(cloneArgs).toContain('git@github.com:test/repo.git');
-    expect(cloneArgs).toContain(config.controlDir);
-  });
-
-  it('uses the correct default branch in clone command', async () => {
-    const { mockExec } = setupBuildMocks({ defaultBranch: 'develop' });
-    const { build } = require('../commands/build');
-
-    const config = createMockConfig(tmpDir);
-    fs.rmSync(config.controlDir, { recursive: true });
-
-    await build(config, { target: 'control' });
-
-    const cloneCalls = mockExec.mock.calls.filter(
-      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
-    );
-    expect(cloneCalls[0][1]).toContain('develop');
+    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', config.controlDir]);
   });
 
   it('exits when user declines to clone', async () => {
@@ -378,16 +359,18 @@ describe('build command', () => {
 
   it('exits when no remote URL is available', async () => {
     setupBuildMocks({ remoteUrl: '' });
+    (process.exit as unknown as jest.Mock).mockImplementation((code?: number) => {
+      throw new Error(`process.exit(${code})`);
+    });
     const { build } = require('../commands/build');
     const { printError } = require('../helpers/ui');
 
     const config = createMockConfig(tmpDir);
     fs.rmSync(config.controlDir, { recursive: true });
 
-    await build(config, { target: 'control' });
+    await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
 
     expect(printError).toHaveBeenCalledWith(`Control directory not found: ${config.controlDir}`);
-    expect(process.exit).toHaveBeenCalledWith(1);
   });
 
   it('skips cloning when controlDir already exists', async () => {

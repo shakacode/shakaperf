@@ -111,7 +111,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     printInfo(`Control directory not found: ${config.controlDir}`);
     console.log('');
     console.log('To build the control image, we need a checkout of the baseline branch.');
-    console.log(`  git clone --branch ${defaultBranch} ${remoteUrl} ${cloneTarget}`);
+    console.log(`  git clone ${remoteUrl} ${cloneTarget}`);
     console.log('');
 
     const yes = await confirm('Clone now?');
@@ -121,8 +121,8 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
     }
 
     console.log('');
-    console.log(`Cloning ${remoteUrl} (branch: ${defaultBranch}) to ${cloneTarget}...`);
-    const result = await exec('git', ['clone', '--branch', defaultBranch, remoteUrl, cloneTarget]);
+    console.log(`Cloning ${remoteUrl} to ${cloneTarget}...`);
+    const result = await exec('git', ['clone', remoteUrl, cloneTarget]);
     if (result.code !== 0) {
       printError('Clone failed');
       process.exit(1);
