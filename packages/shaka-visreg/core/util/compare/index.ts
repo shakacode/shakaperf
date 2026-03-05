@@ -70,7 +70,7 @@ function compareImages (referencePath, testPath, pair, resembleOutputSettings, T
       pair
     });
 
-    worker.on('message', function (data: any) {
+    worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
       worker.kill();
       Test.status = data.status;
       pair.diff = data.diff;
