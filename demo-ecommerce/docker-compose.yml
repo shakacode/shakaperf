@@ -53,10 +53,10 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ~/demo_ecommerce_control_docker_volume
+      device: ${CONTROL_VOLUME_DIR}
   demo_ecommerce_experiment:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ~/demo_ecommerce_experiment_docker_volume
+      device: ${EXPERIMENT_VOLUME_DIR}

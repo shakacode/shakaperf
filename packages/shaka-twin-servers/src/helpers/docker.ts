@@ -41,6 +41,8 @@ function buildComposeOptions(config: ResolvedConfig) {
       ...process.env,
       EXPERIMENT_IMAGE_NAME: config.images.experiment,
       CONTROL_IMAGE_NAME: config.images.control,
+      CONTROL_VOLUME_DIR: config.volumes.control,
+      EXPERIMENT_VOLUME_DIR: config.volumes.experiment,
       USER: process.env.USER || getUsername(),
     },
   };
