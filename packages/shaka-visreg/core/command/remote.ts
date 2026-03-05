@@ -3,12 +3,13 @@ import { exec } from 'node:child_process';
 import { createRequire } from 'node:module';
 import createLogger from '../util/logger.js';
 import getRemotePort from '../util/getRemotePort.js';
+import type { RuntimeConfig } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const logger = createLogger('remote');
 const ssws = _require.resolve('super-simple-web-server');
 
-export function execute (config) {
+export function execute (config: RuntimeConfig) {
   const MIDDLEWARE_PATH = path.resolve(config.backstop, 'remote', 'index.cjs');
   const projectPath = path.resolve(config.projectPath);
 
@@ -19,7 +20,7 @@ export function execute (config) {
 
     logger.log(`Starting remote with: ${commandStr} with env ${JSON.stringify(env)}`);
 
-    const child = exec(commandStr, { env: { ...env, PATH: process.env.PATH } }, (error) => {
+    const child = exec(commandStr, { env: { ...env, PATH: process.env.PATH } }, (error: any) => {
       if (error) {
         logger.log('Error running backstop remote: ' + error);
       }
@@ -27,7 +28,7 @@ export function execute (config) {
 
     child.stdout.on('data', logger.log);
 
-    child.stdout.on('close', data => {
+    child.stdout.on('close', (data: unknown) => {
       logger.log('Backstop remote connection closed. ' + data);
       resolve(data);
     });

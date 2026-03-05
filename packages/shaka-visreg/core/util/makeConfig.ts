@@ -13,7 +13,7 @@ function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();
 }
 
-function loadProjectConfig (command: string, options, config: Partial<RuntimeConfig>) {
+function loadProjectConfig (command: string, options: Record<string, any> | undefined, config: Partial<RuntimeConfig>) {
   // TEST REPORT FILE NAME
   const customTestReportFileName = options && (options.testReportFileName || null);
   if (customTestReportFileName) {
@@ -56,7 +56,7 @@ function loadProjectConfig (command: string, options, config: Partial<RuntimeCon
   return userConfig;
 }
 
-function makeConfig (command: string, options?) {
+function makeConfig (command: string, options?: Record<string, any>) {
   const config: Partial<RuntimeConfig> = {};
 
   config.args = options || {};

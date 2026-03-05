@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import ensureDirectoryPath from './ensureDirectoryPath.js';
 import * as engineTools from './engineTools.js';
 import preparePage from './preparePage.js';
+import type { Scenario, Viewport, PlaywrightPage, BrowserContext, Browser, TestPair } from '../types.js';
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
@@ -27,7 +28,7 @@ const VIEWPORT_SELECTOR = 'viewport';
  * @param {Object} config
  * @returns {import('playwright').Browser}
  */
-export async function createPlaywrightBrowser (config) {
+export async function createPlaywrightBrowser (config: any) {
   console.log('Creating Browser');
 
   // Copy and destructure engineOptions for headless mode sanitization
@@ -48,7 +49,7 @@ export async function createPlaywrightBrowser (config) {
   }
 
   // Error when using unknown `browserChoice`
-  if (!playwright[browserChoice]) {
+  if (!(playwright as any)[browserChoice]) {
     console.error(chalk.red(`Unsupported Playwright browser "${browserChoice}"`));
     return;
   }
@@ -98,10 +99,10 @@ export async function createPlaywrightBrowser (config) {
         : typeof headless === 'boolean' ? headless : typeof headless === 'string' ? headless === 'new' ? true : headless : true
     }
   );
-  return await playwright[browserChoice].launch(playwrightArgs);
+  return await (playwright as any)[browserChoice].launch(playwrightArgs);
 };
 
-export function runPlaywright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
+export function runPlaywright ({ scenario, viewport, config, _playwrightBrowser: browser }: { scenario: Scenario; viewport: Viewport; config: any; _playwrightBrowser: Browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
 
@@ -114,12 +115,12 @@ export function runPlaywright ({ scenario, viewport, config, _playwrightBrowser:
   return processScenarioView(scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, browser);
 };
 
-export async function disposePlaywrightBrowser (browser) {
+export async function disposePlaywrightBrowser (browser: Browser) {
   console.log('Disposing Browser');
   await browser.close();
 };
 
-async function processScenarioView (scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, browser) {
+async function processScenarioView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: any, browser: Browser) {
   const { engineOptions, scenarioDefaults = {} } = config;
 
   scenario = {
@@ -154,7 +155,7 @@ async function processScenarioView (scenario, variantOrScenarioLabelSafe, scenar
   }
 
   // --- set up console output logging ---
-  page.on('console', msg => {
+  page.on('console', (msg: any) => {
     for (let i = 0; i < msg.args().length; ++i) {
       const line = msg.args()[i];
       console.log(`Browser Console Log ${i}: ${line}`);
@@ -210,23 +211,23 @@ async function processScenarioView (scenario, variantOrScenarioLabelSafe, scenar
 
 // TODO: Should be in engineTools
 async function delegateSelectors (
-  page,
-  browserContext,
-  scenario,
-  viewport,
-  variantOrScenarioLabelSafe,
-  scenarioLabelSafe,
-  config,
-  selectors,
-  selectorMap
+  page: PlaywrightPage,
+  browserContext: BrowserContext,
+  scenario: Scenario,
+  viewport: Viewport,
+  variantOrScenarioLabelSafe: string,
+  scenarioLabelSafe: string,
+  config: any,
+  selectors: string[],
+  selectorMap: Record<string, any>
 ) {
-  const compareConfig = { testPairs: [] };
-  let captureDocument = false;
-  let captureViewport = false;
-  const captureList = [];
-  const captureJobs = [];
+  const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
+  let captureDocument: string | false = false;
+  let captureViewport: string | false = false;
+  const captureList: string[] = [];
+  const captureJobs: (() => Promise<any>)[] = [];
 
-  selectors.forEach(function (selector, selectorIndex) {
+  selectors.forEach(function (selector: string, selectorIndex: number) {
     const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector);
     const filePath = config.isReference ? testPair.reference : testPair.test;
 
@@ -257,7 +258,7 @@ async function delegateSelectors (
 
   return new Promise(function (resolve, reject) {
     let job = null;
-    const errors = [];
+    const errors: any[] = [];
     const next = function () {
       if (captureJobs.length === 0) {
         if (errors.length === 0) {
@@ -268,7 +269,7 @@ async function delegateSelectors (
         return;
       }
       job = captureJobs.shift();
-      job().catch(function (e) {
+      job().catch(function (e: any) {
         console.log(e);
         errors.push(e);
       }).then(function () {
@@ -285,7 +286,7 @@ async function delegateSelectors (
   }).then(_ => compareConfig);
 }
 
-async function captureScreenshot (page, _browserContext, selector, selectorMap, config, selectors, viewport) {
+async function captureScreenshot (page: PlaywrightPage, _browserContext: BrowserContext, selector: string | false, selectorMap: Record<string, any>, config: any, selectors: string[], viewport: Viewport) {
   let filePath;
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
   if (selector) {
@@ -303,7 +304,7 @@ async function captureScreenshot (page, _browserContext, selector, selectorMap, 
     }
   } else {
     // OTHER-SELECTOR screenshot
-    const selectorShot = async (s, path) => {
+    const selectorShot = async (s: string, path: string) => {
       const el = await page.$(s);
       if (el) {
         const box = await el.boundingBox();

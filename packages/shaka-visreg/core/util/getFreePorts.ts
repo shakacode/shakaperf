@@ -6,14 +6,14 @@ import portfinder from 'portfinder';
  * @param      {number}  requestedPorts  how many ports should we find?
  * @return     {Array}   The free ports.
  */
-export default function getFreePorts (startingPort, requestedPorts) {
+export default function getFreePorts (startingPort: number, requestedPorts: number) {
   return new Promise((resolve, reject) => {
     const R = resolve;
     console.log(`searching for ${requestedPorts} available ports.`);
     const requestedAmount = requestedPorts;
-    const freePorts = [];
+    const freePorts: number[] = [];
 
-    function findFreePorts (startPort, pointer?) {
+    function findFreePorts (startPort: number, pointer?: number) {
       const PTR = pointer || 1;
       // console.log('freePorts > ', PTR, JSON.stringify(freePorts));
       if (PTR > requestedAmount) {
@@ -21,7 +21,7 @@ export default function getFreePorts (startingPort, requestedPorts) {
         return;
       }
       portfinder.basePort = startPort;
-      portfinder.getPort(function (err, port) {
+      portfinder.getPort(function (err: Error | null, port: number) {
         if (err) {
           reject(new Error(String(err)));
         }

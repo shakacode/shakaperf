@@ -9,7 +9,7 @@ export function execute () {
   const stopUrl = `http://127.0.0.1:${port}/stop`;
   return new Promise((_resolve, reject) => {
     logger.log('Attempting to ping ' + stopUrl);
-    http.get(stopUrl, (resp) => {
+    http.get(stopUrl, (resp: any) => {
       resp.on('end', () => {
         logger.log('Stopping backstop remote: success');
         process.exit(0);

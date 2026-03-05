@@ -3,10 +3,11 @@ import { remove } from 'fs-extra';
 import createLogger from '../util/logger.js';
 import { shouldRunDocker, runDocker } from '../util/runDocker.js';
 import engineErrors from '../util/engineErrors.js';
+import type { RuntimeConfig } from '../types.js';
 
 const logger = createLogger('clean');
 
-export function execute (config) {
+export function execute (config: RuntimeConfig) {
   if (shouldRunDocker(config)) {
     return runDocker(config, 'reference');
   } else {

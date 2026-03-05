@@ -6,20 +6,21 @@ import pMap from 'p-map';
 import { createPlaywrightBrowser, runPlaywright, disposePlaywrightBrowser } from './runPlaywright.js';
 import ensureDirectoryPath from './ensureDirectoryPath.js';
 import createLogger from './logger.js';
+import type { RuntimeConfig, Scenario, Viewport, Variant } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const logger = createLogger('createBitmaps');
 
 const CONCURRENCY_DEFAULT = 10;
 
-function regexTest (string, search) {
+function regexTest (string: string, search: string) {
   const re = new RegExp(search);
   return re.test(string);
 }
 
-function ensureViewportLabel (config) {
+function ensureViewportLabel (config: any) {
   if (typeof config.viewports === 'object') {
-    config.viewports.forEach(function (viewport) {
+    config.viewports.forEach(function (viewport: Viewport) {
       if (!viewport.label) {
         viewport.label = viewport.name;
       }
@@ -27,7 +28,7 @@ function ensureViewportLabel (config) {
   }
 }
 
-function decorateConfigForCapture (config, isReference) {
+function decorateConfigForCapture (config: RuntimeConfig, isReference: boolean) {
   let configJSON;
 
   if (typeof config.args.config === 'object') {
@@ -40,7 +41,7 @@ function decorateConfigForCapture (config, isReference) {
 
   const totalScenarioCount = configJSON.scenarios.length;
 
-  function pad (number) {
+  function pad (number: number) {
     let r = String(number);
     if (r.length === 1) {
       r = '0' + r;
@@ -66,9 +67,9 @@ function decorateConfigForCapture (config, isReference) {
   configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
   if (config.args.filter) {
-    const scenarios = [];
-    config.args.filter.split(',').forEach(function (filteredTest) {
-      configJSON.scenarios.forEach(function (scenario) {
+    const scenarios: Scenario[] = [];
+    (config.args.filter as string).split(',').forEach(function (filteredTest: string) {
+      configJSON.scenarios.forEach(function (scenario: Scenario) {
         if (regexTest(scenario.label, filteredTest)) {
           scenarios.push(scenario);
         }
@@ -81,18 +82,18 @@ function decorateConfigForCapture (config, isReference) {
   return configJSON;
 }
 
-function saveViewportIndexes (viewport, index) {
+function saveViewportIndexes (viewport: Viewport, index: number) {
   return Object.assign({}, viewport, { vIndex: index });
 }
 
-function delegateScenarios (config) {
-  const scenarios = [];
-  const scenarioViews = [];
+function delegateScenarios (config: any) {
+  const scenarios: Scenario[] = [];
+  const scenarioViews: any[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
 
   // casper.each(scenarios, function (casper, scenario, i) {
-  config.scenarios.forEach(function (scenario, i) {
+  config.scenarios.forEach(function (scenario: Scenario, i: number) {
     // var scenarioLabelSafe = makeSafe(scenario.label);
     scenario.sIndex = i;
     scenario.selectors = scenario.selectors || [];
@@ -102,7 +103,7 @@ function delegateScenarios (config) {
     scenarios.push(scenario);
 
     if (!config.isReference && _.has(scenario, 'variants')) {
-      scenario.variants.forEach(function (variant) {
+      scenario.variants.forEach(function (variant: Variant) {
         // var variantLabelSafe = makeSafe(variant.label);
         variant._parent = scenario;
         scenarios.push(scenario);
@@ -111,14 +112,14 @@ function delegateScenarios (config) {
   });
 
   let scenarioViewId = 0;
-  scenarios.forEach(function (scenario) {
+  scenarios.forEach(function (scenario: Scenario) {
     let desiredViewportsForScenario = config.viewports;
 
     if (scenario.viewports && scenario.viewports.length > 0) {
       desiredViewportsForScenario = scenario.viewports;
     }
 
-    desiredViewportsForScenario.forEach(function (viewport) {
+    desiredViewportsForScenario.forEach(function (viewport: Viewport) {
       scenarioViews.push({
         scenario,
         viewport,
@@ -138,23 +139,23 @@ function delegateScenarios (config) {
         view._playwrightBrowser = browser;
       }
 
-      pMap(scenarioViews, runPlaywright, { concurrency: asyncCaptureLimit }).then(out => {
+      pMap(scenarioViews, runPlaywright, { concurrency: asyncCaptureLimit }).then((out: any) => {
         disposePlaywrightBrowser(browser).then(() => resolve(out));
-      }, e => {
+      }, (e: any) => {
         disposePlaywrightBrowser(browser).then(() => reject(e));
       });
-    }, e => reject(e));
+    }, (e: any) => reject(e));
   });
 }
 
-function writeCompareConfigFile (comparePairsFileName, compareConfig) {
+function writeCompareConfigFile (comparePairsFileName: string, compareConfig: any) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
   return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
-function flatMapTestPairs (rawTestPairs) {
-  return rawTestPairs.reduce((acc, result) => {
+function flatMapTestPairs (rawTestPairs: any[]) {
+  return rawTestPairs.reduce((acc: any[], result: any) => {
     let testPairs = result.testPairs;
     if (!testPairs) {
       testPairs = {
@@ -181,12 +182,12 @@ function flatMapTestPairs (rawTestPairs) {
   }, []);
 }
 
-export default function createBitmaps (config, isReference) {
+export default function createBitmaps (config: RuntimeConfig, isReference: boolean) {
   const promise = delegateScenarios(decorateConfigForCapture(config, isReference))
     .then(rawTestPairs => {
       const result = {
         compareConfig: {
-          testPairs: flatMapTestPairs(rawTestPairs)
+          testPairs: flatMapTestPairs(rawTestPairs as any[])
         }
       };
       return writeCompareConfigFile(config.tempCompareConfigFileName, result);

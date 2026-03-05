@@ -6,13 +6,14 @@ import cp from 'node:child_process';
 import Reporter from './../Reporter.js';
 import createLogger from './../logger.js';
 import storeFailedDiffStub from './store-failed-diff-stub.js';
+import type { RuntimeConfig, TestPair, CompareConfig, ResembleOutputOptions } from '../../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('compare');
 
 const ASYNC_COMPARE_LIMIT = 20;
 
-function comparePair (pair, report, config, compareConfig) {
+function comparePair (pair: TestPair, report: any, config: RuntimeConfig, compareConfig: CompareConfig) {
   const Test = report.addTest(pair);
 
   const referencePath = pair.reference ? path.resolve(config.projectPath, pair.reference) : '';
@@ -55,7 +56,7 @@ function comparePair (pair, report, config, compareConfig) {
   }
 
   if (pair.expect) {
-    const scenarioCount = compareConfig.testPairs.filter(p => p.label === pair.label && p.viewportLabel === pair.viewportLabel).length;
+    const scenarioCount = compareConfig.testPairs.filter((p: TestPair) => p.label === pair.label && p.viewportLabel === pair.viewportLabel).length;
     if (scenarioCount !== pair.expect) {
       Test.status = 'fail';
       const error = `Expect ${pair.expect} images for scenario "${pair.label} (${pair.viewportLabel})", but actually ${scenarioCount} images be found.`;
@@ -69,7 +70,7 @@ function comparePair (pair, report, config, compareConfig) {
   return compareImages(referencePath, testPath, pair, resembleOutputSettings, Test);
 }
 
-function compareImages (referencePath, testPath, pair, resembleOutputSettings, Test) {
+function compareImages (referencePath: string, testPath: string, pair: TestPair, resembleOutputSettings: ResembleOutputOptions | undefined, Test: any) {
   return new Promise(function (resolve, _reject) {
     const worker = cp.fork(path.join(__dirname, 'compare.js'));
     worker.send({
@@ -82,7 +83,7 @@ function compareImages (referencePath, testPath, pair, resembleOutputSettings, T
     worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
       worker.kill();
       Test.status = data.status;
-      pair.diff = data.diff;
+      pair.diff = { ...data.diff, isSameDimensions: data.isSameDimensions ?? true };
 
       if (data.status === 'fail') {
         pair.diffImage = data.diffImage;
@@ -96,16 +97,16 @@ function compareImages (referencePath, testPath, pair, resembleOutputSettings, T
   });
 }
 
-export default function compare (config) {
+export default function compare (config: RuntimeConfig) {
   const compareConfig = JSON.parse(fs.readFileSync(config.tempCompareConfigFileName, 'utf8')).compareConfig;
 
   const report = new Reporter(config.ciReport.testSuiteName);
   const asyncCompareLimit = config.asyncCompareLimit || ASYNC_COMPARE_LIMIT;
   report.id = config.id;
 
-  return map(compareConfig.testPairs, pair => comparePair(pair, report, config, compareConfig), { concurrency: asyncCompareLimit })
+  return map(compareConfig.testPairs, (pair: TestPair) => comparePair(pair, report, config, compareConfig), { concurrency: asyncCompareLimit })
     .then(
       () => report,
-      e => logger.error('The comparison failed with error: ' + e)
+      (e: any) => logger.error('The comparison failed with error: ' + e)
     );
 }

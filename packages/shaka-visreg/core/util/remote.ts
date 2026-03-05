@@ -6,7 +6,7 @@ import { readFile, writeFile } from 'node:fs/promises';
  * @param {String} jsonpReport - jsonpReport `report(${jsonReport});`
  * @return {Object} an object of jsonReport
  */
-function extractReport (jsonpReport) {
+function extractReport (jsonpReport: string) {
   const jsonReport = jsonpReport.substring(7, jsonpReport.length - 2);
   return JSON.parse(jsonReport);
 }
@@ -18,9 +18,9 @@ function extractReport (jsonpReport) {
  * @param {String} approvedFileName - the name of the screenshot that is approved
  * @return {String} jsonpReport - modified jsonpReport
  */
-function modifyJsonpReportHelper (originalJsonpReport, approvedFileName) {
+function modifyJsonpReportHelper (originalJsonpReport: string, approvedFileName: string) {
   const report = extractReport(originalJsonpReport);
-  report.tests.forEach(test => {
+  report.tests.forEach((test: any) => {
     if (test.pair.fileName === approvedFileName) {
       test.status = 'pass';
       delete test.pair.diffImage;
@@ -43,7 +43,7 @@ function modifyJsonpReportHelper (originalJsonpReport, approvedFileName) {
  * @param {String} params.approvedFileName - the name of the screenshot that is approved
  * @return {Promise}
  */
-async function modifyJsonpReport ({ reportConfigFilename, approvedFileName }) {
+async function modifyJsonpReport ({ reportConfigFilename, approvedFileName }: { reportConfigFilename: string; approvedFileName: string }) {
   try {
     const content = await readFile(reportConfigFilename, 'utf8');
     const jsonpReport = modifyJsonpReportHelper(content, approvedFileName);

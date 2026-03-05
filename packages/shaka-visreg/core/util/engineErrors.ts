@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
+import type { RuntimeConfig, TestPair } from '../types.js';
 
-export default function engineErrors (config) {
+export default function engineErrors (config: RuntimeConfig) {
   const compareConfig = JSON.parse(readFileSync(config.tempCompareConfigFileName, 'utf8')).compareConfig;
-  const error = compareConfig.testPairs.find(testPair => {
+  const error = compareConfig.testPairs.find((testPair: TestPair) => {
     return !!testPair.engineErrorMsg;
   });
 

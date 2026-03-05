@@ -10,6 +10,7 @@ import * as liveCompare from './liveCompare.js';
 import * as approve from './approve.js';
 import * as version from './version.js';
 import * as stop from './stop.js';
+import type { RuntimeConfig } from '../types.js';
 
 const logger = createLogger('COMMAND');
 
@@ -22,7 +23,7 @@ const logger = createLogger('COMMAND');
  * The execute function should not have much logic
  */
 
-const commandModules = { init, remote, openReport, reference, report, test, liveCompare, approve, version, stop };
+const commandModules: Record<string, { execute: (config: RuntimeConfig) => any }> = { init, remote, openReport, reference, report, test, liveCompare, approve, version, stop };
 
 /* Each and every command defined, including commands used in before/after */
 const commandNames = [
@@ -51,24 +52,29 @@ const exposedCommandNames = [
   'stop'
 ];
 
+interface CommandEntry {
+  name: string;
+  execute: (config: RuntimeConfig) => Promise<unknown>;
+}
+
 /* Used to convert an array of objects {name, execute} to a unique object {[name]: execute} */
-function toObjectReducer (object, command) {
+function toObjectReducer (object: Record<string, (config: RuntimeConfig) => Promise<unknown>>, command: CommandEntry) {
   object[command.name] = command.execute;
   return object;
 }
 
 const commands = commandNames
-  .map(function requireCommand (commandName) {
+  .map(function requireCommand (commandName: string) {
     return {
       name: commandName,
       commandDefinition: commandModules[commandName]
     };
   })
-  .map(function definitionToExecution (command) {
+  .map(function definitionToExecution (command: { name: string; commandDefinition: { execute: (config: RuntimeConfig) => any } }) {
     return {
       name: command.name,
-      execute: function execute (config) {
-        config.perf[command.name] = { started: new Date() };
+      execute: function execute (config: RuntimeConfig) {
+        config.perf[command.name] = Date.now();
         logger.info('Executing core for "' + command.name + '"');
 
         let promise = command.commandDefinition.execute(config);
@@ -81,38 +87,38 @@ const commands = commandNames
 
         // Do the catch separately or the main runner
         // won't be able to catch it a second time
-        promise.catch(function (error) {
-          const perf = (new Date().getTime() - config.perf[command.name].started.getTime()) / 1000;
+        promise.catch(function (error: unknown) {
+          const perf = (Date.now() - config.perf[command.name]) / 1000;
           logger.error('Command "' + command.name + '" ended with an error after [' + perf + 's]');
           logger.error(error);
         });
 
-        return promise.then(function (result) {
+        return promise.then(function (result: unknown) {
           if (/openReport/.test(command.name)) {
-            return;
+            return result;
           }
-          const perf = (new Date().getTime() - config.perf[command.name].started.getTime()) / 1000;
+          const perf = (Date.now() - config.perf[command.name]) / 1000;
           logger.success('Command "' + command.name + '" successfully executed in [' + perf + 's]');
           return result;
         });
       }
     };
   })
-  .reduce(toObjectReducer, {});
+  .reduce(toObjectReducer, {} as Record<string, (config: RuntimeConfig) => Promise<unknown>>);
 
 const exposedCommands = exposedCommandNames
-  .filter(function commandIsDefined (commandName) {
+  .filter(function commandIsDefined (commandName: string) {
     return _.has(commands, commandName);
   })
-  .map(function (commandName) {
+  .map(function (commandName: string) {
     return {
       name: commandName,
       execute: commands[commandName]
     };
   })
-  .reduce(toObjectReducer, {});
+  .reduce(toObjectReducer, {} as Record<string, (config: RuntimeConfig) => Promise<unknown>>);
 
-function execute (commandName, config) {
+function execute (commandName: string, config: RuntimeConfig) {
   if (!_.has(exposedCommands, commandName)) {
     if (commandName.charAt(0) === '_' && _.has(commands, commandName.substring(1))) {
       commandName = commandName.substring(1);

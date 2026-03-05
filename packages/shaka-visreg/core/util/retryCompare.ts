@@ -5,7 +5,7 @@ import createLogger from './logger.js';
 
 const logger = createLogger('retryCompare');
 
-function tryMatchAgainstAll (newScreenshot, existingScreenshots, maxNumDiffPixels, pixelmatchThreshold) {
+function tryMatchAgainstAll (newScreenshot: Buffer, existingScreenshots: Buffer[], maxNumDiffPixels: number, pixelmatchThreshold: number) {
   let leastDiffPixels = Infinity;
   let bestResult = null;
   let bestIndex = -1;
@@ -27,7 +27,7 @@ function tryMatchAgainstAll (newScreenshot, existingScreenshots, maxNumDiffPixel
   return { pass: false, bestIndex, bestResult, leastDiffPixels };
 }
 
-export default async function retryCompare (options) {
+export default async function retryCompare (options: any) {
   const {
     captureScreenshot,
     refPage, testPage,
