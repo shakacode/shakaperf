@@ -8550,6 +8550,7 @@ __metadata:
     shaka-bench: "workspace:*"
     shaka-bundle-size: "workspace:*"
     shaka-twin-servers: "workspace:*"
+    shaka-visreg: "workspace:*"
     shakapacker: "npm:9.5.0"
     style-loader: "npm:4.0.0"
     terser-webpack-plugin: "npm:^5.3.16"
@@ -16120,7 +16121,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"shaka-visreg@workspace:packages/shaka-visreg":
+"shaka-visreg@workspace:*, shaka-visreg@workspace:packages/shaka-visreg":
   version: 0.0.0-use.local
   resolution: "shaka-visreg@workspace:packages/shaka-visreg"
   dependencies:
