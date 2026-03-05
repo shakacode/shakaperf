@@ -26,7 +26,7 @@
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
     "core/**/*.ts",
