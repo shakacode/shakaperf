@@ -1,10 +1,12 @@
-export default class BackstopException {
-  msg: any;
-  scenario: any;
-  viewport: any;
-  originalError: any;
+import type { Scenario, Viewport } from '../types.js';
 
-  constructor (msg, scenario, viewport, originalError) {
+export default class BackstopException {
+  msg: string;
+  scenario: Scenario;
+  viewport: Viewport;
+  originalError: Error;
+
+  constructor (msg: string, scenario: Scenario, viewport: Viewport, originalError: Error) {
     this.msg = msg;
     this.scenario = scenario;
     this.viewport = viewport;
