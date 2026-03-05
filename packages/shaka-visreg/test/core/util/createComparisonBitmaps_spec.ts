@@ -1,13 +1,16 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('createComparisonBitmaps', function () {
   let capturedConfig;
   let playwrightHandler;
 
-  const fixturesDir = path.join(import.meta.dirname, 'fixtures');
+  const fixturesDir = path.join(__dirname, 'fixtures');
   const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
 
   const mockConfigJSON = {
