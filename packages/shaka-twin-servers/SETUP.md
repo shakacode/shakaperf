@@ -72,6 +72,51 @@ EXPOSE 3000
 # so servers can be started/stopped without restarting containers.
 ```
 
+### Dockerfile tips
+
+**Put all paths under the non-root user's home.** Use `/home/${NON_ROOT_USER}/app`, `/home/${NON_ROOT_USER}/bundle`, `/home/${NON_ROOT_USER}/node` — NOT `/app`, `/usr/local/bundle`, etc. Twin-servers uses bind-mount volumes, so the container user's UID/GID must match the host user. Placing everything under the user's home directory avoids permission conflicts.
+
+**Use `COPY --chown` for all file copies in the build stage.** This ensures the non-root user owns everything without needing extra `chown` commands.
+
+**Keep writable directories.** Ensure `log`, `tmp/pids`, `tmp/cache`, and `storage` directories exist with correct ownership in the production stage:
+```dockerfile
+RUN mkdir -p log tmp/pids tmp/cache storage && \
+    chown -R ${NON_ROOT_USER}:${NON_ROOT_USER} log tmp storage
+```
+
+**Don't change the project's `.node-version` or any other project files.** Dockerization should not require changes to the project itself beyond the `twin-servers/` directory. The Docker container can use the project's Node version via `dockerBuildArgs.NODE_VERSION` — don't modify `.node-version`, `engines.node`, or `package.json` in the project.
+
+**Move environment variables into the Dockerfile, not docker-compose.** Env vars like `SECRET_KEY_BASE`, `MEMCACHEDCLOUD_SERVERS`, `TWIN_SERVERS`, API keys (set to skip/placeholder values), and database config should be `ENV` directives in the Dockerfile. This keeps docker-compose minimal and ensures the values are baked into the image. Only use docker-compose `environment:` for values that differ between control and experiment (like `PERF_EXPERIMENT` and `ELASTICSEARCH_URL`).
+
+**Make `database.yml` username configurable.** The container runs as a non-root user, but the production database config may hardcode a different username:
+```yaml
+username: <%= ENV.fetch('DB_USERNAME', 'original_username') %>
+```
+Then set `ENV DB_USERNAME=${NON_ROOT_USER}` in the Dockerfile.
+
+### App tips
+
+**Disable `force_ssl`.** Rails forces SSL in production, but twin-servers runs locally over HTTP:
+```ruby
+config.force_ssl = ENV['TWIN_SERVERS'] != 'true'
+```
+
+**Guard side effects during seeding.** Seeding in production mode triggers things like sending real emails via external APIs (e.g. CampaignMonitor). Guard these:
+```ruby
+return if Rails.env.test? || Rails.env.development? || ENV['TWIN_SERVERS'] == 'true'
+```
+
+**Include all infrastructure setup commands.** Users might want to do something interesting with the database or similar stuff, so perform DB seeding at Container start, so the devs can see how they can extend it. E.G.:
+```ts
+setupCommands: [
+  // ... start infrastructure services first ...
+  { command: 'bin/setup-db', description: 'Running database setup' },
+  { command: 'bin/rails db:seed', description: 'Seeding database' },
+],
+```
+
+** Keep it DRY ** Try to reuse existing setup scripts from dev instructions where possible.
+
 ## 3. Custom Docker Compose (optional)
 
 A default [`docker-compose.yml`](./templates/docker-compose.yml) is bundled with the package. Most projects don't need a custom one. To get a custom copy you can edit, run:
@@ -130,57 +175,3 @@ composeFile: 'twin-servers/docker-compose.yml',
 procfile: 'twin-servers/Procfile',
 ```
 
----
-
-## AI notes
-
-These notes are for AI assistants helping with twin-servers setup. They capture common pitfalls encountered during real setups.
-
-### Dockerfile pitfalls
-
-1. **Override `NODE_ENV` during `yarn install`.** The Dockerfile should set `NODE_ENV=production` (these are production perf tests), but that makes `yarn install` skip devDependencies. DevDeps like `vite` and `tsx` are needed for building assets. Override it inline:
-   ```dockerfile
-   RUN NODE_ENV=development yarn install --frozen-lockfile
-   ```
-
-2. **Put all paths under the non-root user's home.** Use `/home/${NON_ROOT_USER}/app`, `/home/${NON_ROOT_USER}/bundle`, `/home/${NON_ROOT_USER}/node` — NOT `/app`, `/usr/local/bundle`, etc. Twin-servers uses bind-mount volumes, so the container user's UID/GID must match the host user. Placing everything under the user's home directory avoids permission conflicts.
-
-3. **Use `COPY --chown` for all file copies in the build stage.** This ensures the non-root user owns everything without needing extra `chown` commands.
-
-4. **Keep writable directories.** Ensure `log`, `tmp/pids`, `tmp/cache`, and `storage` directories exist with correct ownership in the production stage:
-   ```dockerfile
-   RUN mkdir -p log tmp/pids tmp/cache storage && \
-       chown -R ${NON_ROOT_USER}:${NON_ROOT_USER} log tmp storage
-   ```
-
-5. **Don't change the project's `.node-version` or any other project files.** Dockerization should not require changes to the project itself beyond the `twin-servers/` directory. The Docker container can use the project's Node version via `dockerBuildArgs.NODE_VERSION` — don't modify `.node-version`, `engines.node`, or `package.json` in the project.
-
-1. **Disable `force_ssl`.** Rails forces SSL in production, but twin-servers runs locally over HTTP:
-   ```ruby
-   config.force_ssl = ENV['TWIN_SERVERS'] != 'true'
-   ```
-
-2. **Guard side effects during seeding.** Seeding in production mode triggers things like sending real emails via external APIs (e.g. CampaignMonitor). Guard these:
-   ```ruby
-   return if Rails.env.test? || Rails.env.development? || ENV['TWIN_SERVERS'] == 'true'
-   ```
-
-3. **Include all infrastructure setup commands.** Don't forget to include database seeding, search index creation, and any other setup the app needs. Try to reuse existing setup scripts from dev instructions where possible. For a Rails app with Elasticsearch:
-   ```ts
-   setupCommands: [
-     // ... start infrastructure services first ...
-     { command: 'bin/setup-db', description: 'Running database setup' },
-     { command: 'bin/rails db:seed', description: 'Seeding database' },
-     { command: 'bin/rails elasticsearch:create_indexes', description: 'Creating Elasticsearch indexes' },
-     { command: 'bin/rails elasticsearch:import_all', description: 'Importing Elasticsearch data' },
-   ],
-   ```
-
-4. **Move environment variables into the Dockerfile, not docker-compose.** Env vars like `SECRET_KEY_BASE`, `MEMCACHEDCLOUD_SERVERS`, `TWIN_SERVERS`, API keys (set to skip/placeholder values), and database config should be `ENV` directives in the Dockerfile. This keeps docker-compose minimal and ensures the values are baked into the image. Only use docker-compose `environment:` for values that differ between control and experiment (like `PERF_EXPERIMENT` and `ELASTICSEARCH_URL`).
-
-
-5. **Make `database.yml` username configurable.** The container runs as a non-root user (e.g. `rails`), but the production database config may hardcode a different username:
-   ```yaml
-   username: <%= ENV.fetch('DB_USERNAME', 'original_username') %>
-   ```
-   Then set `ENV DB_USERNAME=${NON_ROOT_USER}` in the Dockerfile.
