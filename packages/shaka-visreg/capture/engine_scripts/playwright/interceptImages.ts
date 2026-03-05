@@ -15,9 +15,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const IMAGE_URL_RE = /\.gif|\.jpg|\.png/i;
-const IMAGE_STUB_URL = path.resolve(import.meta.dirname, '../../imageStub.jpg');
+const IMAGE_STUB_URL = path.resolve(__dirname, '../../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};
 

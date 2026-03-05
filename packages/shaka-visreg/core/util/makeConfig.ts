@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import extendConfig from './extendConfig.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 
 const NON_CONFIG_COMMANDS = ['init', 'version', 'stop'];
@@ -58,7 +60,7 @@ function makeConfig (command, options?) {
 
   config.args = options || {};
 
-  config.backstop = path.join(import.meta.dirname, '../..');
+  config.backstop = path.join(__dirname, '../..');
   config.projectPath = projectPath(config);
   config.perf = {};
 
