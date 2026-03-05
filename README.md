@@ -3,6 +3,8 @@
 Do you want to improve `Lighthose` & `Web Vitals` without breaking your site?
 `shaka-perf` will measure the impact of your PRs on performance and detect visual changes.
 
+<img width="539" height="672" alt="image" src="https://github.com/user-attachments/assets/fd7b111c-d734-4bb6-95d8-e7e80e580173" />
+
 In order to use it, you need to create a Docker image with a production-local server and some Playwright tests. `shaka-perf` will magically transform it to:
 * Statistically significant performance AB tests
 * Visual Regression tests (screenshot comparison of main vs feature branches on multiple screen sizes)
