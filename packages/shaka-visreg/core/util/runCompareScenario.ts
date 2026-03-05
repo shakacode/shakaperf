@@ -25,7 +25,7 @@ function loggerAction (action, color, message) {
 }
 
 function createLogger () {
-  const logger: any = { logged: [] };
+  const logger: { logged: string[][]; error?: typeof loggerAction; warn?: typeof loggerAction; log?: typeof loggerAction; info?: typeof loggerAction } = { logged: [] };
   Object.assign(logger, {
     error: loggerAction.bind(logger, 'error'),
     warn: loggerAction.bind(logger, 'warn'),
@@ -246,7 +246,7 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
   config._configId = config.id || engineTools.genHash(config.backstopConfigFileName);
 
   const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, (scenario.selectors || ['document']).join('__'));
-  (testPair as any).engineErrorMsg = error.message;
+  testPair.engineErrorMsg = error.message;
 
   const filePath = testPair.test;
   ensureDirectoryPath(filePath);
