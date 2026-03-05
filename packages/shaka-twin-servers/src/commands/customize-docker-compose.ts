@@ -4,7 +4,8 @@ import type { ResolvedConfig } from '../types';
 import { confirm } from '../helpers/shell';
 import { colorize } from '../helpers/ui';
 
-const TEMPLATE_PATH = path.resolve(__dirname, '..', 'templates', 'docker-compose.yml');
+// At runtime __dirname is dist/commands/, so go up two levels to package root
+const TEMPLATE_PATH = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
 
 function addComposeFileToConfig(configPath: string, relativeComposePath: string): boolean {
   const content = fs.readFileSync(configPath, 'utf8');
@@ -36,7 +37,7 @@ export async function customizeDockerCompose(config: ResolvedConfig, configPath:
   console.log(colorize('Warning: Customizing docker-compose.yml is not recommended.', 'yellow'));
   console.log('');
   console.log('The bundled default works for most projects. Custom compose files:');
-  console.log('  - Break isolation between control and experiment (shared services)');
+  console.log('  - Can break isolation between control and experiment (shared services)');
   console.log('  - Mix concerns that belong in the Dockerfile (env vars, setup steps)');
   console.log('  - Can cause false performance regressions that are hard to pinpoint');
   console.log('');
