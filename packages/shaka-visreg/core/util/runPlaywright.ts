@@ -22,6 +22,9 @@ export async function createPlaywrightBrowser (config: any) {
     return;
   }
 
+  // If headless is a string (e.g. 'new'), suppress Playwright's built-in --headless flag
+  // via ignoreDefaultArgs and pass the custom --headless=<value> flag instead.
+  // This allows forward-compatible headless modes that Playwright doesn't natively support yet.
   if (typeof headless !== 'undefined' && typeof headless !== 'boolean') {
     sanitizedEngineOptions = {
       ...sanitizedEngineOptions,
