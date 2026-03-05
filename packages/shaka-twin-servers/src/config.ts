@@ -41,8 +41,10 @@ export async function loadConfig(configPath: string): Promise<TwinServersConfig>
         const { tsImport } = require('tsx/esm/api');
         const tsModule = await tsImport(absolutePath, __filename);
         configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
-      } catch {
+      } catch (esmError) {
         // Fallback to CJS API (e.g. Node 18 CommonJS context)
+        console.log(`tsx ESM import failed, falling back to CJS API...`);
+        console.log(esmError instanceof Error ? esmError.stack : esmError);
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const tsx = require('tsx/cjs/api');
         const tsModule = tsx.require(absolutePath, __filename);

@@ -1,4 +1,5 @@
 import { exec, execSync_ } from './shell';
+import { colorize } from './ui';
 import type { ResolvedConfig } from '../types';
 
 export interface DockerBuildOptions {
@@ -84,7 +85,7 @@ export async function dockerComposeExec(
   command: string,
   execOptions: DockerComposeExecOptions = {}
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-  console.log('dockerComposeExec', containerName, command);
+  console.log(` [${colorize(containerName.toUpperCase(), 'green')}]  > docker exec : ${command}`);
 
   const { interactive = false, stream = false } = execOptions;
 

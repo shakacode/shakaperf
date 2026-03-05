@@ -51,7 +51,7 @@ export async function startContainers(
   console.log(`   ${config.volumes.experiment}`);
   console.log('');
 
-  console.log('Starting twin servers...');
+  console.log('Starting twin containers...');
   await dockerComposeUp(config);
 
   console.log('Waiting for containers to start...');
