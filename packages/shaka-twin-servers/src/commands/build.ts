@@ -95,7 +95,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
 
   // Only check controlDir if building control image
   if (buildingControl && !fs.existsSync(config.controlDir)) {
-    const cloneTarget = config.controlDir;
+    const cloneTarget = path.resolve(config.controlDir, path.relative(config.projectDir, config.dockerBuildDir));
     const remoteUrl = getGitRemoteUrl(config.dockerBuildDir);
     const defaultBranch = getDefaultBranch(config.dockerBuildDir);
 

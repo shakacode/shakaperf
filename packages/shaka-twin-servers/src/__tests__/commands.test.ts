@@ -33,13 +33,13 @@ jest.mock('child_process', () => ({
 }));
 
 function createMockConfig(tmpDir: string): ResolvedConfig {
-  const projectDir = path.join(tmpDir, 'project');
-  const controlDir = path.join(tmpDir, 'control');
-  const dockerBuildDir = path.join(tmpDir, 'build');
+  // Monorepo-like layout: projectDir is a subdirectory of dockerBuildDir
+  const dockerBuildDir = path.join(tmpDir, 'repo');
+  const projectDir = path.join(tmpDir, 'repo', 'app');
+  const controlDir = path.join(tmpDir, 'control-repo', 'app');
 
   fs.mkdirSync(projectDir, { recursive: true });
   fs.mkdirSync(controlDir, { recursive: true });
-  fs.mkdirSync(dockerBuildDir, { recursive: true });
 
   return {
     projectDir,
@@ -296,7 +296,7 @@ describe('build command', () => {
     return { mockExec, mockConfirm };
   }
 
-  it('clones control repo when controlDir is missing', async () => {
+  it('clones into the repo root, not controlDir subdirectory', async () => {
     const { mockExec, mockConfirm } = setupBuildMocks();
     const { build } = require('../commands/build');
 
@@ -306,17 +306,17 @@ describe('build command', () => {
 
     await build(config, { target: 'control' });
 
-    // confirm should have been called
     expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
 
-    // Find the git clone call
     const cloneCalls = mockExec.mock.calls.filter(
       (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
     );
     expect(cloneCalls.length).toBe(1);
 
     const cloneArgs: string[] = cloneCalls[0][1];
-    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', config.controlDir]);
+    // Should clone into control-repo root, not control-repo/app
+    const expectedCloneTarget = path.join(tmpDir, 'control-repo');
+    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', expectedCloneTarget]);
   });
 
   it('exits when user declines to clone', async () => {
@@ -425,7 +425,7 @@ describe('get-config command', () => {
 
   it('returns controlDir value from config', () => {
     const config = createMockConfig(tmpDir);
-    expect(config.controlDir).toBe(path.join(tmpDir, 'control'));
+    expect(config.controlDir).toBe(path.join(tmpDir, 'control-repo', 'app'));
   });
 
   it('returns volumes object from config', () => {
