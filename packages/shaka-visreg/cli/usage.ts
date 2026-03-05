@@ -6,21 +6,15 @@ const packageJson = _require('../package.json');
 const { version } = packageJson;
 
 const commandsDescription = {
-  test: 'Create test screenshots and compare against the set you previously approved/referenced.',
   liveCompare: 'Open reference and test URLs simultaneously, compare side-by-side with retry logic.',
-  approve: 'Promotes all test bitmaps from last test run to reference bitmaps.',
-  reference: 'Creates new reference screenshots. Deletes all existing reference files.',
-  init: 'Generate BackstopJS boilerplate files in your CWD. NOTE: Overwrites existing config files!',
-  remote: 'Launch BackstopJS remote service.',
   openReport: 'View the last test report in your browser.'
 };
 
 const optionsDescription = {
   '--config': 'Path to config file name',
-  '--filter': 'A RegEx string used to filter by scenario labels when running "test", "reference", or "approve" commands',
+  '--filter': 'A RegEx string used to filter scenarios by label',
   '-h, --help': 'Display usage',
-  '-v, --version': 'Display version',
-  '-i': 'Prevent deletion of non-matching reference files when running "reference" command (newer matching reference files are still overwritten)'
+  '-v, --version': 'Display version'
 };
 
 function makeDescription (descriptions) {
@@ -46,7 +40,7 @@ function spacesBetweenCommandAndDescription (commandName) {
 }
 
 const usage = '\
-Welcome to BackstopJS ' + version + ' CLI\n\
+Welcome to shaka-visreg ' + version + ' CLI\n\
 \n\
 Commands:\n\
 ' + makeDescription(commandsDescription) + '\n\
