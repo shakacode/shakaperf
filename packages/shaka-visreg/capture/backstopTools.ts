@@ -1,11 +1,14 @@
+import type { BackstopTools } from '../core/types.js';
+import type { PlaywrightPage } from '../core/types.js';
+
 declare global {
   interface Window {
-    _backstopTools: any;
+    _backstopTools: BackstopTools;
   }
 }
 
 'use strict';
-export default (target) => {
+export default (target: PlaywrightPage) => {
   return target.evaluate(() => {
     if (window._backstopTools) {
       return false;

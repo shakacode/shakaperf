@@ -141,6 +141,8 @@ export interface BackstopConfig {
 
   onBeforeScript?: string;
   onReadyScript?: string;
+  readyEvent?: string;
+  readyTimeout?: number;
 
   engine?: 'playwright' | null;
   engineOptions?: EngineOptions;
@@ -282,6 +284,16 @@ export interface BackstopCookie {
   httpOnly?: boolean;
   secure?: boolean;
   sameSite?: 'Strict' | 'Lax' | 'None';
+}
+
+// ── Backstop Tools (injected into browser window) ──────────────────
+export interface BackstopTools {
+  expandSelectors: (selectors: string[] | string) => string[];
+  exists: (selector: string) => number;
+  isVisible: (selector: string) => boolean;
+  hasLogged: (str: string) => boolean;
+  startConsoleLogger: () => void;
+  _consoleLogger?: string;
 }
 
 // ── Playwright Script Function ──────────────────────────────────────
