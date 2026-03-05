@@ -20,7 +20,7 @@ describe('runDocker', function () {
       const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
         capturedCommand = dockerCommand;
         return {
-          on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
+          on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
             if (event === 'exit') {
               setImmediate(() => cb(0));
             }
@@ -63,7 +63,7 @@ describe('runDocker', function () {
     const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
       capturedCommand = dockerCommand;
       return {
-        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
+        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
@@ -99,7 +99,7 @@ describe('runDocker', function () {
     const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
       capturedCommand = dockerCommand;
       return {
-        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
+        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
