@@ -11,7 +11,7 @@ describe('computeConfig_spec', function () {
 
   it('should override resembleOutputOptions from config file', function () {
     const actualConfig = extendConfig({ ...baseConfig }, { resembleOutputOptions: { transparency: 0.3 } });
-    assert.strictEqual(actualConfig.resembleOutputOptions.transparency, 0.3);
+    assert.strictEqual(actualConfig.resembleOutputOptions!.transparency, 0.3);
   });
 
   describe('liveCompare config options', function () {

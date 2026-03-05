@@ -29,10 +29,10 @@ function loadProjectConfig (command: string, options: Record<string, any> | unde
     if (path.isAbsolute(customConfigPath)) {
       config.backstopConfigFileName = customConfigPath;
     } else {
-      config.backstopConfigFileName = path.join(config.projectPath, customConfigPath);
+      config.backstopConfigFileName = path.join(config.projectPath!, customConfigPath);
     }
   } else {
-    config.backstopConfigFileName = path.join(config.projectPath, 'backstop.json');
+    config.backstopConfigFileName = path.join(config.projectPath!, 'backstop.json');
   }
 
   let userConfig = {};

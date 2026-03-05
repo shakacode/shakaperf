@@ -27,5 +27,5 @@ function compare (data: { referencePath: string; testPath: string; resembleOutpu
 }
 
 function sendMessage (data: TestPair) {
-  process.send(data);
+  process.send!(data);
 }

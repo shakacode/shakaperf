@@ -6,7 +6,7 @@ export default async (browserContext: BrowserContext, scenario: Scenario) => {
   const cookiePath = scenario.cookiePath;
 
   // Read Cookies from File, if exists
-  if (fs.existsSync(cookiePath)) {
+  if (cookiePath && fs.existsSync(cookiePath)) {
     cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
   }
 

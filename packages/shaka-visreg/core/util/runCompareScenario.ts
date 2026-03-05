@@ -53,10 +53,10 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
       if (box) {
         if (config.useBoundingBoxViewportForSelectors !== false) {
           const bodyHandle = await page.$('body');
-          const boundingBox = await bodyHandle.boundingBox();
+          const boundingBox = await bodyHandle!.boundingBox();
           await page.setViewportSize({
-            width: Math.max(viewport.width || viewport.viewport.width, Math.ceil(boundingBox.width)),
-            height: Math.max(viewport.height || viewport.viewport.height, Math.ceil(boundingBox.height))
+            width: Math.max(viewport.width || viewport.viewport!.width, Math.ceil(boundingBox!.width)),
+            height: Math.max(viewport.height || viewport.viewport!.height, Math.ceil(boundingBox!.height))
           });
         }
 
@@ -96,8 +96,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   config._configId = config.id || engineTools.genHash(config.backstopConfigFileName);
 
   const engineScriptsPath = config.env.engine_scripts || config.env.engine_scripts_default;
-  const VP_W = viewport.width || viewport.viewport.width;
-  const VP_H = viewport.height || viewport.viewport.height;
+  const VP_W = viewport.width || viewport.viewport!.width;
+  const VP_H = viewport.height || viewport.viewport!.height;
 
   // Set viewport on both pages
   await Promise.all([
@@ -113,7 +113,7 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
 
   // Prepare both pages in parallel
   const [refResult, testResult] = await Promise.all([
-    preparePage(refPage, scenario.referenceUrl, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath),
+    preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath),
     preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath)
   ]);
 
@@ -275,19 +275,19 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
   const testPage = await testContext.newPage();
 
   let compareConfig;
-  let error;
+  let error: Error | undefined;
 
   try {
     compareConfig = await processCompareView(
       scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
       viewport, config, refPage, testPage, refContext, testContext, logger
     );
-  } catch (e) {
-    logger.log('red', 'Error during live compare for "' + scenario.label + '"');
-    logger.log('red', e.toString());
+  } catch (e: any) {
+    logger.log!('red', 'Error during live compare for "' + scenario.label + '"');
+    logger.log!('red', e.toString());
     error = e;
   } finally {
-    logger.log('green', 'x Close Browser Contexts');
+    logger.log!('green', 'x Close Browser Contexts');
     await refContext.close();
     await testContext.close();
   }
