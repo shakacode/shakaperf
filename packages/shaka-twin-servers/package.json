@@ -1,6 +1,6 @@
 {
   "name": "shaka-twin-servers",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Twin server for performance and visual testing for web applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -12,7 +12,7 @@ export const TwinServersConfigSchema = z.object({
   controlDir: z.string().min(1, 'controlDir is required'),
   dockerBuildDir: z.string().min(1, 'dockerBuildDir is required'),
   dockerfile: z.string().min(1, 'dockerfile is required'),
-  dockerBuildArgs: z.record(z.string(), z.string()),
+  dockerBuildArgs: z.record(z.string(), z.string()).default({}),
   composeFile: z.string().min(1).optional(),
   procfile: z.string().min(1, 'procfile is required'),
   images: z.object({
