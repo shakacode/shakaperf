@@ -101,7 +101,7 @@ async function writeBrowserReport (config, reporter) {
         delete pair.referenceLog;
         delete pair.testLog;
       });
-      return Promise.resolve([] as any[]);
+      return Promise.resolve([] as void[]);
     }
   }).then(function () {
     logger.log('Resources copied');

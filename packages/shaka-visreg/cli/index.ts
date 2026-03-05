@@ -21,7 +21,7 @@ function main () {
   });
 
   // Catch errors from failing promises
-  process.on('unhandledRejection', function (error: any) {
+  process.on('unhandledRejection', function (error: Error | undefined) {
     console.error(error && error.stack);
   });
 

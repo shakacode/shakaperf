@@ -2,17 +2,18 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import extendConfig from './extendConfig.js';
+import type { RuntimeConfig } from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 
 const NON_CONFIG_COMMANDS = ['init', 'version', 'stop'];
 
-function projectPath (config) {
+function projectPath (config: Partial<RuntimeConfig>) {
   return process.cwd();
 }
 
-function loadProjectConfig (command, options, config) {
+function loadProjectConfig (command: string, options: Record<string, unknown>, config: Partial<RuntimeConfig>) {
   // TEST REPORT FILE NAME
   const customTestReportFileName = options && (options.testReportFileName || null);
   if (customTestReportFileName) {
@@ -55,8 +56,8 @@ function loadProjectConfig (command, options, config) {
   return userConfig;
 }
 
-function makeConfig (command, options?) {
-  const config: any = {};
+function makeConfig (command: string, options?: Record<string, unknown>) {
+  const config: Partial<RuntimeConfig> = {};
 
   config.args = options || {};
 
