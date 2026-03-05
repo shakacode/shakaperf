@@ -122,7 +122,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
 
     console.log('');
     console.log(`Cloning ${remoteUrl} (branch: ${defaultBranch}) to ${cloneTarget}...`);
-    const result = await exec('git', ['clone', '--branch', defaultBranch, '--single-branch', remoteUrl, cloneTarget]);
+    const result = await exec('git', ['clone', '--branch', defaultBranch, remoteUrl, cloneTarget]);
     if (result.code !== 0) {
       printError('Clone failed');
       process.exit(1);
