@@ -1,13 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { TwinServersConfigSchema, type TwinServersConfig, type ResolvedConfig } from './types';
+import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', 'templates', 'docker-compose.yml');
 
-export function defineConfig(config: TwinServersConfig): TwinServersConfig {
+export function defineConfig(config: TwinServersConfigInput): TwinServersConfigInput {
   return config;
 }
 

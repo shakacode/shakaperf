@@ -30,6 +30,7 @@ export const TwinServersConfigSchema = z.object({
 // Derive types from schemas
 export type SetupCommand = z.infer<typeof SetupCommandSchema>;
 export type TwinServersConfig = z.infer<typeof TwinServersConfigSchema>;
+export type TwinServersConfigInput = z.input<typeof TwinServersConfigSchema>;
 
 // ResolvedConfig has setupCommands and composeFile as required (non-optional)
 export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeFile'> & {

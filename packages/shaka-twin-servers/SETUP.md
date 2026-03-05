@@ -30,8 +30,7 @@ export default defineConfig({
 
   // Build arguments passed to docker build
   dockerBuildArgs: {
-    RUBY_VERSION: '3.3.7',
-    NODE_VERSION: '24.13.0',
+    // Optional
   },
 
   procfile: 'twin-servers/Procfile',

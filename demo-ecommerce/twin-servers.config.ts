@@ -5,10 +5,6 @@ export default defineConfig({
   controlDir: process.env.CONTROL_REPO_DIR || '../../shaka-perf-control/demo-ecommerce',
   dockerBuildDir: '..',
   dockerfile: 'Dockerfile.production',
-  dockerBuildArgs: {
-    RUBY_VERSION: '3.3.7',
-    NODE_VERSION: '24.13.0',
-  },
   procfile: 'Procfile',
   images: {
     control: 'demo-ecommerce:control',
