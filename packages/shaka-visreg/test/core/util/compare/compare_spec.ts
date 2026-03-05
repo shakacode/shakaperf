@@ -19,7 +19,7 @@ describe('compare', function () {
       default: compareResemble
     }));
 
-    compare = (await import('../../../../core/util/compare/compare.js') as any).default;
+    compare = (await import('../../../../core/util/compare/compare.js') as { default?: Function }).default;
   });
 
   afterEach(() => {
