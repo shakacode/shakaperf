@@ -392,6 +392,29 @@ describe('build command', () => {
     expect(cloneCalls.length).toBe(0);
   });
 
+  it('clones directly into controlDir for non-monorepo (projectDir === dockerBuildDir)', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    // Non-monorepo: projectDir and dockerBuildDir are the same
+    config.projectDir = config.dockerBuildDir;
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'control' });
+
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls.length).toBe(1);
+
+    const cloneArgs: string[] = cloneCalls[0][1];
+    // When projectDir === dockerBuildDir, cloneTarget should be controlDir itself
+    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', config.controlDir]);
+  });
+
   it('skips control clone check when building only experiment', async () => {
     const { mockConfirm } = setupBuildMocks();
     const { build } = require('../commands/build');
