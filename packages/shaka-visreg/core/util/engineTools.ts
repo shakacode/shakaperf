@@ -88,7 +88,7 @@ function getScenarioExpect (scenario) {
   return expect;
 }
 
-function generateTestPair (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector) {
+function generateTestPair (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector): import('../types.js').TestPair {
   const cleanedSelectorName = getSelectorName(selector);
   const fileName = getFilename(
     config._fileNameTemplate,

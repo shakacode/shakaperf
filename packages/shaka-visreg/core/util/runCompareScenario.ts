@@ -25,7 +25,7 @@ function loggerAction (action, color, message) {
 }
 
 function createLogger () {
-  const logger: { logged: string[][]; error?: typeof loggerAction; warn?: typeof loggerAction; log?: typeof loggerAction; info?: typeof loggerAction } = { logged: [] };
+  const logger: { logged: string[][]; error?: (color: string, message: string, ...rest: unknown[]) => void; warn?: (color: string, message: string, ...rest: unknown[]) => void; log?: (color: string, message: string, ...rest: unknown[]) => void; info?: (color: string, message: string, ...rest: unknown[]) => void } = { logged: [] };
   Object.assign(logger, {
     error: loggerAction.bind(logger, 'error'),
     warn: loggerAction.bind(logger, 'warn'),
