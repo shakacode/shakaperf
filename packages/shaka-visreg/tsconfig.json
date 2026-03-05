@@ -31,8 +31,6 @@
     "dist",
     "node_modules",
     "compare",
-    "examples",
-    "test",
-    "old_splash_page_v2.0"
+    "test"
   ]
 }

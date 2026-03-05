@@ -13,7 +13,7 @@ main();
 
 function main () {
   const argsOptions = parseArgs(process.argv.slice(2), {
-    boolean: ['h', 'help', 'v', 'version', 'i', 'docker'],
+    boolean: ['h', 'help', 'v', 'version', 'docker'],
     string: ['config'],
     default: {
       config: 'backstop.json'
@@ -31,7 +31,7 @@ function main () {
   }
 
   if (argsOptions.v || argsOptions.version) {
-    console.log('BackstopJS v' + version);
+    console.log('shaka-visreg v' + version);
     return;
   }
 
@@ -40,7 +40,7 @@ function main () {
   if (!commandName) {
     console.log(usage);
   } else {
-    console.log('BackstopJS v' + version);
+    console.log('shaka-visreg v' + version);
     runner(commandName, argsOptions).catch(function () {
       process.exitCode = 1;
     });

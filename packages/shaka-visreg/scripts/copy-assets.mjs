@@ -7,7 +7,6 @@ const assets = [
   ['capture/engine_scripts/imageStub.jpg', 'dist/capture/engine_scripts/imageStub.jpg'],
   ['capture/engine_scripts/cookies.json', 'dist/capture/engine_scripts/cookies.json'],
   ['compare/output', 'dist/compare/output'],
-  ['remote', 'dist/remote'],
 ];
 
 for (const [src, dest] of assets) {
