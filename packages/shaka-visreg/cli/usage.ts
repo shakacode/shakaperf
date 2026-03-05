@@ -6,6 +6,7 @@ const packageJson = _require('../package.json');
 const { version } = packageJson;
 
 const commandsDescription = {
+  init: 'Generate boilerplate config files in your CWD.',
   liveCompare: 'Open reference and test URLs simultaneously, compare side-by-side with retry logic.',
   openReport: 'View the last test report in your browser.'
 };

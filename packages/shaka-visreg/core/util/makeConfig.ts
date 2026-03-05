@@ -7,7 +7,7 @@ import type { RuntimeConfig } from '../types.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 
-const NON_CONFIG_COMMANDS = ['version'];
+const NON_CONFIG_COMMANDS = ['init', 'version'];
 
 function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();
