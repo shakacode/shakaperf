@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import assert from 'node:assert';
 
 describe('core report', function () {
   const config = {

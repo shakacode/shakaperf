@@ -70,7 +70,7 @@ function comparePair (pair, report, config, compareConfig) {
 }
 
 function compareImages (referencePath, testPath, pair, resembleOutputSettings, Test) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve, _reject) {
     const worker = cp.fork(path.join(__dirname, 'compare.js'));
     worker.send({
       referencePath,

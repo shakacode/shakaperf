@@ -1,6 +1,6 @@
 import clickAndHoverHelper from './clickAndHoverHelper.js';
 
-export default async (page, scenario, viewport, isReference, browserContext) => {
+export default async (page, scenario, _viewport, _isReference, _browserContext) => {
   console.log('SCENARIO > ' + scenario.label);
   await clickAndHoverHelper(page, scenario);
 

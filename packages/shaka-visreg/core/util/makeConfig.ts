@@ -9,7 +9,7 @@ const _require = createRequire(import.meta.url);
 
 const NON_CONFIG_COMMANDS = ['init', 'version'];
 
-function projectPath (config: Partial<RuntimeConfig>) {
+function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();
 }
 

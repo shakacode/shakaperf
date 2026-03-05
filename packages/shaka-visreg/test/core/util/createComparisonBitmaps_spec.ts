@@ -8,7 +8,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('createComparisonBitmaps', function () {
   let capturedConfig;
-  let playwrightHandler;
 
   const fixturesDir = path.join(__dirname, 'fixtures');
   const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
@@ -59,7 +58,7 @@ describe('createComparisonBitmaps', function () {
   });
 
   afterAll(function () {
-    try { unlinkSync(configFilePath); } catch (e) { /* ignore */ }
+    try { unlinkSync(configFilePath); } catch (_e) { /* ignore */ }
   });
 
   async function createModule (overrides?) {
@@ -153,7 +152,7 @@ describe('createComparisonBitmaps', function () {
 
       assert(errorThrown, 'Should have thrown an error');
     } finally {
-      try { unlinkSync(badConfigFilePath); } catch (e) { /* ignore */ }
+      try { unlinkSync(badConfigFilePath); } catch (_e) { /* ignore */ }
     }
   });
 
@@ -208,7 +207,7 @@ describe('createComparisonBitmaps', function () {
       // The module should have set label = name for the first viewport
       assert(capturedConfig.viewports[0].label, 'First viewport should have label');
     } finally {
-      try { unlinkSync(unlabeledConfigFilePath); } catch (e) { /* ignore */ }
+      try { unlinkSync(unlabeledConfigFilePath); } catch (_e) { /* ignore */ }
     }
   });
 });

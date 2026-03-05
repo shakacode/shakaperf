@@ -39,7 +39,7 @@ describe('compare', function () {
 
   it.skip('should resolve if compare-hashes fail, but compare-resemble succeeds', function () {
     compareHashes.mockReturnValue(Promise.reject(error));
-    compareResemble.mockImplementation((img1, img2, threshold, opts) => {
+    compareResemble.mockImplementation((img1, img2, _threshold, _opts) => {
       if (img1 === 'img1.png' && img2 === 'img2.png') return Promise.resolve();
       return Promise.reject(error);
     });

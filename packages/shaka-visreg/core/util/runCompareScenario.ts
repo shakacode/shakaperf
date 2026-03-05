@@ -37,7 +37,7 @@ function createLogger () {
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page, selector, selectorMap, viewport, config) {
+async function captureScreenshot (page, selector, _selectorMap, viewport, config) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {

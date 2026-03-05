@@ -10,7 +10,7 @@ const BACKSTOP_REPORT_SIGNATURE_RE = /BackstopJS Report/i;
 export function execute (config) {
   const port = getRemotePort();
   const remoteReportUrl = `http://127.0.0.1:${port}/${config.compareReportURL}?remote`;
-  return new Promise(function (resolve, reject) {
+  return new Promise(function (resolve, _reject) {
     // would prefer to ping a http://127.0.0.1:${port}/remote with {backstopRemote:ok} response
     logger.log('Attempting to ping ' + remoteReportUrl);
     http.get(remoteReportUrl, (resp) => {

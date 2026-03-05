@@ -76,7 +76,7 @@ describe('retryCompare', function () {
 
   it('should pass when retry captures matching test screenshot', async function () {
     // Simulate: initial test was different, retry captures matching image
-    const captureScreenshot = async (page) => {
+    const captureScreenshot = async (_page) => {
       // New test capture matches original reference
       return buf1;
     };
@@ -104,7 +104,7 @@ describe('retryCompare', function () {
   it('should pass when retry captures matching reference screenshot', async function () {
     // Simulate: new reference capture matches existing test screenshots
     let callCount = 0;
-    const captureScreenshot = async (page) => {
+    const captureScreenshot = async (_page) => {
       callCount++;
       // First call (test page) returns different image
       // Second call (ref page) returns image matching initial test

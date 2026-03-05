@@ -22,7 +22,7 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": false,
     "noUnusedLocals": true,
-    "noUnusedParameters": false,
+    "noUnusedParameters": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "noImplicitReturns": true,
