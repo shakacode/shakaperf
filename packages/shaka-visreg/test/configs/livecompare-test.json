@@ -63,7 +63,7 @@
       "label": "Admin Dashboard - Cookie Login",
       "url": "http://localhost:3030/admin",
       "referenceUrl": "http://localhost:3020/admin",
-      "cookiePath": "backstop_data/engine_scripts/admin-auth-cookie.json",
+      "cookiePath": "/Users/ramezweissa/code/shaka/shaka-bundle-size/demo-ecommerce/backstop_data/engine_scripts/admin-auth-cookie.json",
       "onReadyScript": "onReadyAdminWithCookie.js",
       "delay": 50,
       "misMatchThreshold": 0.1

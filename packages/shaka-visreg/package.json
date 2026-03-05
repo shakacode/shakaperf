@@ -4,7 +4,7 @@
   "description": "Shaka-visreg: Catch CSS curveballs.",
   "type": "module",
   "homepage": "https://github.com/shakacode/shakaperf#readme",
-  "bin": "./cli/index.js",
+  "bin": "./dist/cli/index.js",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
@@ -14,7 +14,7 @@
     "format": "prettier-eslint --write \"compare/src/**/*.js\"",
     "init": "node ./cli/index.js init",
     "reference": "node ./cli/index.js reference",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest",
     "approve": "node ./cli/index.js approve",
@@ -60,7 +60,8 @@
   },
   "author": "https://github.com/garris/BackstopJS/graphs/contributors",
   "license": "MIT",
-  "main": "core/runner.js",
+  "main": "./dist/core/runner.js",
+  "types": "./dist/core/runner.d.ts",
   "devDependencies": {
     "@babel/core": "^7.23.6",
     "@babel/preset-env": "^7.23.6",

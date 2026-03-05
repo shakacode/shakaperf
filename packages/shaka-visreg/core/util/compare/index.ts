@@ -18,6 +18,15 @@ function comparePair (pair, report, config, compareConfig) {
   const referencePath = pair.reference ? path.resolve(config.projectPath, pair.reference) : '';
   const testPath = pair.test ? path.resolve(config.projectPath, pair.test) : '';
 
+  // ENGINE SCRIPT ERROR
+  if (pair.engineErrorMsg) {
+    const MSG = `Engine error: ${pair.engineErrorMsg}. See scenario – ${pair.label} (${pair.viewportLabel})`;
+    Test.status = 'fail';
+    logger.error(MSG);
+    pair.error = MSG;
+    return Promise.resolve(pair);
+  }
+
   // TEST RUN ERROR/EXCEPTION
   if (!referencePath || !testPath) {
     const MSG = `${pair.msg}: ${pair.error}. See scenario – ${pair.scenario.label} (${pair.viewport.label})`;
