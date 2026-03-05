@@ -33,13 +33,13 @@ jest.mock('child_process', () => ({
 }));
 
 function createMockConfig(tmpDir: string): ResolvedConfig {
-  const projectDir = path.join(tmpDir, 'project');
-  const controlDir = path.join(tmpDir, 'control');
-  const dockerBuildDir = path.join(tmpDir, 'build');
+  // Monorepo-like layout: projectDir is a subdirectory of dockerBuildDir
+  const dockerBuildDir = path.join(tmpDir, 'repo');
+  const projectDir = path.join(tmpDir, 'repo', 'app');
+  const controlDir = path.join(tmpDir, 'control-repo', 'app');
 
   fs.mkdirSync(projectDir, { recursive: true });
   fs.mkdirSync(controlDir, { recursive: true });
-  fs.mkdirSync(dockerBuildDir, { recursive: true });
 
   return {
     projectDir,
@@ -296,7 +296,7 @@ describe('build command', () => {
     return { mockExec, mockConfirm };
   }
 
-  it('clones control repo without --single-branch when controlDir is missing', async () => {
+  it('clones into the repo root, not controlDir subdirectory', async () => {
     const { mockExec, mockConfirm } = setupBuildMocks();
     const { build } = require('../commands/build');
 
@@ -306,36 +306,17 @@ describe('build command', () => {
 
     await build(config, { target: 'control' });
 
-    // confirm should have been called
     expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
 
-    // Find the git clone call
     const cloneCalls = mockExec.mock.calls.filter(
       (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
     );
     expect(cloneCalls.length).toBe(1);
 
     const cloneArgs: string[] = cloneCalls[0][1];
-    expect(cloneArgs).toContain('--branch');
-    expect(cloneArgs).toContain('main');
-    expect(cloneArgs).not.toContain('--single-branch');
-    expect(cloneArgs).toContain('git@github.com:test/repo.git');
-    expect(cloneArgs).toContain(config.controlDir);
-  });
-
-  it('uses the correct default branch in clone command', async () => {
-    const { mockExec } = setupBuildMocks({ defaultBranch: 'develop' });
-    const { build } = require('../commands/build');
-
-    const config = createMockConfig(tmpDir);
-    fs.rmSync(config.controlDir, { recursive: true });
-
-    await build(config, { target: 'control' });
-
-    const cloneCalls = mockExec.mock.calls.filter(
-      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
-    );
-    expect(cloneCalls[0][1]).toContain('develop');
+    // Should clone into control-repo root, not control-repo/app
+    const expectedCloneTarget = path.join(tmpDir, 'control-repo');
+    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', expectedCloneTarget]);
   });
 
   it('exits when user declines to clone', async () => {
@@ -378,16 +359,18 @@ describe('build command', () => {
 
   it('exits when no remote URL is available', async () => {
     setupBuildMocks({ remoteUrl: '' });
+    (process.exit as unknown as jest.Mock).mockImplementation((code?: number) => {
+      throw new Error(`process.exit(${code})`);
+    });
     const { build } = require('../commands/build');
     const { printError } = require('../helpers/ui');
 
     const config = createMockConfig(tmpDir);
     fs.rmSync(config.controlDir, { recursive: true });
 
-    await build(config, { target: 'control' });
+    await expect(build(config, { target: 'control' })).rejects.toThrow('process.exit(1)');
 
     expect(printError).toHaveBeenCalledWith(`Control directory not found: ${config.controlDir}`);
-    expect(process.exit).toHaveBeenCalledWith(1);
   });
 
   it('skips cloning when controlDir already exists', async () => {
@@ -407,6 +390,29 @@ describe('build command', () => {
       (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
     );
     expect(cloneCalls.length).toBe(0);
+  });
+
+  it('clones directly into controlDir for non-monorepo (projectDir === dockerBuildDir)', async () => {
+    const { mockExec, mockConfirm } = setupBuildMocks();
+    const { build } = require('../commands/build');
+
+    const config = createMockConfig(tmpDir);
+    // Non-monorepo: projectDir and dockerBuildDir are the same
+    config.projectDir = config.dockerBuildDir;
+    fs.rmSync(config.controlDir, { recursive: true });
+
+    await build(config, { target: 'control' });
+
+    expect(mockConfirm).toHaveBeenCalledWith('Clone now?');
+
+    const cloneCalls = mockExec.mock.calls.filter(
+      (call: any[]) => call[0] === 'git' && call[1]?.[0] === 'clone'
+    );
+    expect(cloneCalls.length).toBe(1);
+
+    const cloneArgs: string[] = cloneCalls[0][1];
+    // When projectDir === dockerBuildDir, cloneTarget should be controlDir itself
+    expect(cloneArgs).toEqual(['clone', 'git@github.com:test/repo.git', config.controlDir]);
   });
 
   it('skips control clone check when building only experiment', async () => {
@@ -442,7 +448,7 @@ describe('get-config command', () => {
 
   it('returns controlDir value from config', () => {
     const config = createMockConfig(tmpDir);
-    expect(config.controlDir).toBe(path.join(tmpDir, 'control'));
+    expect(config.controlDir).toBe(path.join(tmpDir, 'control-repo', 'app'));
   });
 
   it('returns volumes object from config', () => {
