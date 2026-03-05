@@ -7,27 +7,28 @@ import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywrig
 import * as runCompareScenario from './runCompareScenario.js';
 import ensureDirectoryPath from './ensureDirectoryPath.js';
 import createLogger from './logger.js';
+import type { RuntimeConfig, Scenario, Viewport, Variant } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const logger = createLogger('liveCompare');
 
 const CONCURRENCY_DEFAULT = 10;
 
-function regexTest (string, search) {
+function regexTest (string: string, search: string) {
   const re = new RegExp(search);
   return re.test(string);
 }
 
-function ensureViewportLabel (config) {
+function ensureViewportLabel (config: any) {
   if (!Array.isArray(config.viewports)) return;
-  config.viewports.forEach(function (viewport, index) {
+  config.viewports.forEach(function (viewport: Viewport, index: number) {
     if (!viewport.label) {
       viewport.label = viewport.name || ('viewport_' + index);
     }
   });
 }
 
-function decorateConfigForCompare (config) {
+function decorateConfigForCompare (config: RuntimeConfig) {
   let configJSON;
 
   if (typeof config.args.config === 'object') {
@@ -40,7 +41,7 @@ function decorateConfigForCompare (config) {
 
   const totalScenarioCount = configJSON.scenarios.length;
 
-  function pad (number) {
+  function pad (number: number) {
     let r = String(number);
     if (r.length === 1) {
       r = '0' + r;
@@ -73,9 +74,9 @@ function decorateConfigForCompare (config) {
   configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
 
   if (config.args.filter) {
-    const scenarios = [];
-    config.args.filter.split(',').forEach(function (filteredTest) {
-      configJSON.scenarios.forEach(function (scenario) {
+    const scenarios: Scenario[] = [];
+    (config.args.filter as string).split(',').forEach(function (filteredTest: string) {
+      configJSON.scenarios.forEach(function (scenario: Scenario) {
         if (regexTest(scenario.label, filteredTest)) {
           scenarios.push(scenario);
         }
@@ -85,9 +86,9 @@ function decorateConfigForCompare (config) {
   }
 
   // Validate that all scenarios have referenceUrl
-  const missingReferenceUrl = configJSON.scenarios.filter(function (s) { return !s.referenceUrl; });
+  const missingReferenceUrl = configJSON.scenarios.filter(function (s: Scenario) { return !s.referenceUrl; });
   if (missingReferenceUrl.length > 0) {
-    const labels = missingReferenceUrl.map(function (s) { return '"' + s.label + '"'; }).join(', ');
+    const labels = missingReferenceUrl.map(function (s: Scenario) { return '"' + s.label + '"'; }).join(', ');
     throw new Error('liveCompare requires referenceUrl for all scenarios. Missing on: ' + labels);
   }
 
@@ -95,17 +96,17 @@ function decorateConfigForCompare (config) {
   return configJSON;
 }
 
-function saveViewportIndexes (viewport, index) {
+function saveViewportIndexes (viewport: Viewport, index: number) {
   return Object.assign({}, viewport, { vIndex: index });
 }
 
-function delegateCompareScenarios (config) {
-  const scenarios = [];
-  const scenarioViews = [];
+function delegateCompareScenarios (config: any) {
+  const scenarios: Scenario[] = [];
+  const scenarioViews: any[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
 
-  config.scenarios.forEach(function (scenario, i) {
+  config.scenarios.forEach(function (scenario: Scenario, i: number) {
     scenario.sIndex = i;
     scenario.selectors = scenario.selectors || [];
     if (scenario.viewports) {
@@ -114,22 +115,22 @@ function delegateCompareScenarios (config) {
     scenarios.push(scenario);
 
     if (_.has(scenario, 'variants')) {
-      scenario.variants.forEach(function (variant) {
+      scenario.variants.forEach(function (variant: Variant) {
         variant._parent = scenario;
-        scenarios.push(variant);
+        scenarios.push(variant as unknown as Scenario);
       });
     }
   });
 
   let scenarioViewId = 0;
-  scenarios.forEach(function (scenario) {
+  scenarios.forEach(function (scenario: Scenario) {
     let desiredViewportsForScenario = config.viewports;
 
     if (scenario.viewports && scenario.viewports.length > 0) {
       desiredViewportsForScenario = scenario.viewports;
     }
 
-    desiredViewportsForScenario.forEach(function (viewport) {
+    desiredViewportsForScenario.forEach(function (viewport: Viewport) {
       scenarioViews.push({
         scenario,
         viewport,
@@ -149,23 +150,23 @@ function delegateCompareScenarios (config) {
         scenarioViews[i]._playwrightBrowser = browser;
       }
 
-      pMap(scenarioViews, runCompareScenario.playwright, { concurrency: asyncCaptureLimit }).then(function (out) {
+      pMap(scenarioViews, runCompareScenario.playwright, { concurrency: asyncCaptureLimit }).then(function (out: any) {
         disposePlaywrightBrowser(browser).then(function () { resolve(out); });
-      }, function (e) {
+      }, function (e: any) {
         disposePlaywrightBrowser(browser).then(function () { reject(e); });
       });
-    }, function (e) { reject(e); });
+    }, function (e: any) { reject(e); });
   });
 }
 
-function writeCompareConfigFile (comparePairsFileName, compareConfig) {
+function writeCompareConfigFile (comparePairsFileName: string, compareConfig: any) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
   return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
-function flatMapTestPairs (rawTestPairs) {
-  return rawTestPairs.reduce(function (acc, result) {
+function flatMapTestPairs (rawTestPairs: any[]) {
+  return rawTestPairs.reduce(function (acc: any[], result: any) {
     let testPairs = result.testPairs;
     if (!testPairs) {
       testPairs = {
@@ -189,12 +190,12 @@ function flatMapTestPairs (rawTestPairs) {
   }, []);
 }
 
-export default function createComparisonBitmaps (config) {
+export default function createComparisonBitmaps (config: RuntimeConfig) {
   const promise = delegateCompareScenarios(decorateConfigForCompare(config))
     .then(function (rawTestPairs) {
       const result = {
         compareConfig: {
-          testPairs: flatMapTestPairs(rawTestPairs)
+          testPairs: flatMapTestPairs(rawTestPairs as any[])
         }
       };
       return writeCompareConfigFile(config.tempCompareConfigFileName, result);

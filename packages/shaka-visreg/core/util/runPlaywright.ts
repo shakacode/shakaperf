@@ -17,6 +17,7 @@ export async function createPlaywrightBrowser (config: any) {
     console.warn(chalk.yellow(`The headless mode, "${headless}", may not be supported by Playwright.`));
   }
 
+  // Error when using unknown `browserChoice`
   if (!(playwright as any)[browserChoice]) {
     console.error(chalk.red(`Unsupported Playwright browser "${browserChoice}"`));
     return;
@@ -42,7 +43,7 @@ export async function createPlaywrightBrowser (config: any) {
         : typeof headless === 'boolean' ? headless : typeof headless === 'string' ? headless === 'new' ? true : headless : true
     }
   );
-  return await playwright[browserChoice].launch(playwrightArgs);
+  return await (playwright as any)[browserChoice].launch(playwrightArgs);
 };
 
 export async function disposePlaywrightBrowser (browser: Browser) {

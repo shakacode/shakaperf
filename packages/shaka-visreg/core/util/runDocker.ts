@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { writeFile, unlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import type { RuntimeConfig } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const packageJson = _require('../../package.json');
@@ -8,16 +9,16 @@ const { version } = packageJson;
 
 const DEFAULT_DOCKER_COMMAND_TEMPLATE = 'docker run --rm -it --mount type=bind,source="{cwd}",target=/src backstopjs/backstopjs:{version} {backstopCommand} {args}';
 
-export const shouldRunDocker = (config) => config.args.docker;
+export const shouldRunDocker = (config: RuntimeConfig) => config.args.docker;
 
-export async function runDocker (config, backstopCommand) {
+export async function runDocker (config: RuntimeConfig, backstopCommand: string) {
   if (config.args.docker) {
     // 0th element is node, 1st is backstop, 2nd may be command or an option like --config
     const args = process.argv.slice(2);
     args.splice(args.indexOf(backstopCommand), 1);
 
     const passAlongArgs = args
-      .map(arg => `"${arg}"`) // in case of spaces in a command
+      .map((arg: string) => `"${arg}"`) // in case of spaces in a command
       .join(' ')
       .replace(/--docker/, '--moby');
 
@@ -29,7 +30,7 @@ export async function runDocker (config, backstopCommand) {
     if (config.args && !config.args._) {
       const argPromises = Object.keys(config.args)
         .filter(prop => config.args[prop])
-        .map(async prop => {
+        .map(async (prop: string) => {
           if (prop === 'config' && typeof config.args[prop] === 'object') {
             // If config is an object, export it to a json file
             await writeFile(tmpConfigFile, JSON.stringify(config.args[prop]));
@@ -39,7 +40,7 @@ export async function runDocker (config, backstopCommand) {
           return `"--${prop}=${config.args[prop]}"`;
         });
 
-      configArgs = await Promise.all(argPromises).then((str) => {
+      configArgs = await Promise.all(argPromises).then((str: string[]) => {
         return str.join(' ').replace(/--docker/, '--moby');
       });
     }
@@ -60,8 +61,8 @@ export async function runDocker (config, backstopCommand) {
 
     return new Promise((resolve, reject) => {
       const dockerProcess = spawn(dockerCommand, { stdio: 'inherit', shell: true });
-      dockerProcess.on('error', err => reject(err));
-      dockerProcess.on('exit', async function (code, _signal) {
+      dockerProcess.on('error', (err: Error) => reject(err));
+      dockerProcess.on('exit', async function (code: number | null, _signal: string | null) {
         if (!config.args.debug && config.args.config === tmpConfigFile) {
           await unlink(tmpConfigFile);
         }

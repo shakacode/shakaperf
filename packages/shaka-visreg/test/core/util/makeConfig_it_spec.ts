@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+// RuntimeConfig no longer needed after switching to Record<string, any>
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
@@ -17,7 +18,7 @@ const configFile = _require('./backstop');
 // root of backstop dir, not related to cwd
 const backstopDir = path.resolve(__dirname, '../../..');
 
-const expectedConfig = {
+const expectedConfig: Record<string, any> = {
   args: {},
   asyncCompareLimit: undefined,
   backstop: backstopDir,

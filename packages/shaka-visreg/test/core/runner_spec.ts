@@ -2,18 +2,18 @@ import { jest } from '@jest/globals';
 import assert from 'node:assert';
 
 describe('the runner', function () {
-  let runner;
+  let runner: any;
 
   beforeAll(async function () {
     jest.resetModules();
 
     jest.unstable_mockModule('../../core/util/makeConfig.js', () => ({
-      default: function (command, args) {
+      default: function (command: any, args: any) {
         return { command, args };
       }
     }));
     jest.unstable_mockModule('../../core/command/index.js', () => ({
-      default: function (command, config) {
+      default: function (command: any, config: any) {
         return Promise.resolve({ command, config });
       }
     }));

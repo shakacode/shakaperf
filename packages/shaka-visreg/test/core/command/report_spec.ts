@@ -14,13 +14,13 @@ describe('core report', function () {
     }
   };
 
-  let report;
-  let writeFileStub;
+  let report: any;
+  let writeFileStub: any;
 
   beforeAll(async function () {
     jest.resetModules();
 
-    const reporterClass = { failed: () => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
+    const reporterClass = { failed: (): undefined => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
     const compareMock = jest.fn<() => Promise<typeof reporterClass>>().mockResolvedValue(reporterClass);
     const loggerMock = () => {
       return { log: jest.fn(), error: jest.fn() };

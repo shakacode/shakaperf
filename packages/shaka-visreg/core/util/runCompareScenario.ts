@@ -6,6 +6,7 @@ import * as engineTools from './engineTools.js';
 import { compareBuffers } from './compare/pixelmatch-inline.js';
 import retryCompare from './retryCompare.js';
 import preparePage from './preparePage.js';
+import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair } from '../types.js';
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
@@ -20,7 +21,7 @@ const VIEWPORT_SELECTOR = 'viewport';
 
 function loggerAction (this: { logged: string[][] }, action: string, color: string, message: string, ...rest: unknown[]) {
   this.logged.push([action, color, message.toString(), JSON.stringify(rest)]);
-  console[action](chalk[color](message), ...rest);
+  (console as any)[action]((chalk as any)[color](message), ...rest);
 }
 
 function createLogger () {
@@ -37,7 +38,7 @@ function createLogger () {
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page, selector, _selectorMap, viewport, config) {
+async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: any, viewport: Viewport, config: any) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {
@@ -66,7 +67,7 @@ async function captureScreenshot (page, selector, _selectorMap, viewport, config
   }
 }
 
-function writeScenarioLogs (config, logFilePath, logger) {
+function writeScenarioLogs (config: any, logFilePath: string, logger: any) {
   if (config.scenarioLogsInReports) {
     return writeFile(logFilePath, JSON.stringify(logger.logged));
   }
@@ -76,7 +77,7 @@ function writeScenarioLogs (config, logFilePath, logger) {
 /**
  * Core comparison logic for live compare scenarios.
  */
-async function processCompareView (scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, refPage, testPage, refBrowserOrContext, testBrowserOrContext, logger) {
+async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: any, refPage: PlaywrightPage, testPage: PlaywrightPage, refBrowserOrContext: BrowserContext, testBrowserOrContext: BrowserContext, logger: any) {
   const { scenarioDefaults = {} } = config;
   scenario = { ...scenarioDefaults, ...scenario };
 
@@ -121,7 +122,7 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   const testSelectorMap = testResult.backstopSelectorsExpMap;
   const refSelectorMap = refResult.backstopSelectorsExpMap;
 
-  const compareConfig = { testPairs: [] };
+  const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const maxNumDiffPixels = scenario.maxNumDiffPixels != null
     ? scenario.maxNumDiffPixels
     : (config.maxNumDiffPixels != null ? config.maxNumDiffPixels : 0);
@@ -237,7 +238,7 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   return compareConfig;
 }
 
-async function buildErrorCompareConfig (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, error) {
+async function buildErrorCompareConfig (config: any, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, error: Error) {
   config._bitmapsTestPath = config.paths.bitmaps_test || DEFAULT_BITMAPS_TEST_DIR;
   config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
@@ -258,7 +259,7 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
 
 // ── Playwright entry point ─────────────────────────────────────────
 
-export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
+export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }: { scenario: Scenario; viewport: Viewport; config: any; _playwrightBrowser: Browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
   const logger = createLogger();

@@ -45,7 +45,7 @@ function main () {
       process.exitCode = 1;
     });
 
-    process.on('uncaughtException', function (err) {
+    process.on('uncaughtException', function (err: Error) {
       console.log('Uncaught exception:', err.message, err.stack);
       throw err;
     });

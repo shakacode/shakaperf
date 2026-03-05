@@ -3,11 +3,12 @@ import assert from 'node:assert';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import type { RuntimeConfig } from '../../../core/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('createComparisonBitmaps', function () {
-  let capturedConfig;
+  let capturedConfig: any;
 
   const fixturesDir = path.join(__dirname, 'fixtures');
   const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
@@ -46,7 +47,7 @@ describe('createComparisonBitmaps', function () {
     compareRetryDelay: 5000,
     maxNumDiffPixels: 10,
     args: {}
-  };
+  } as unknown as RuntimeConfig;
 
   beforeAll(function () {
     mkdirSync(fixturesDir, { recursive: true });
@@ -61,11 +62,11 @@ describe('createComparisonBitmaps', function () {
     try { unlinkSync(configFilePath); } catch (_e) { /* ignore */ }
   });
 
-  async function createModule (overrides?) {
+  async function createModule (overrides?: any) {
     jest.resetModules();
 
     const runCompareScenarioMock = (overrides && overrides.runCompareScenario) || {
-      playwright: function (scenarioView) {
+      playwright: function (scenarioView: any) {
         capturedConfig = scenarioView.config;
         return Promise.resolve({
           testPairs: [{
@@ -141,7 +142,7 @@ describe('createComparisonBitmaps', function () {
       let errorThrown = false;
       try {
         await createComparisonBitmaps(badMockConfig);
-      } catch (e) {
+      } catch (e: any) {
         errorThrown = true;
         assert(
           e.message.toLowerCase().includes('referenceurl') ||
@@ -160,7 +161,7 @@ describe('createComparisonBitmaps', function () {
     let scenarioCount = 0;
     const createComparisonBitmaps = await createModule({
       runCompareScenario: {
-        playwright: function (scenarioView) {
+        playwright: function (scenarioView: any) {
           scenarioCount++;
           capturedConfig = scenarioView.config;
           return Promise.resolve({ testPairs: [] });

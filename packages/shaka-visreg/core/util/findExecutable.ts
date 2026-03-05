@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
-export default function findExecutable (module, bin) {
+export default function findExecutable (module: string, bin: string) {
   const _require = createRequire(import.meta.url);
   try {
     const pathToExecutableModulePackageJson = _require.resolve(path.join(module, 'package.json'));

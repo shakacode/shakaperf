@@ -24,8 +24,11 @@ const IMAGE_STUB_URL = path.resolve(__dirname, '../../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};
 
-export default async function (page, _scenario) {
-  page.route(IMAGE_URL_RE, route => {
+import type { PlaywrightPage, Scenario } from '../../../core/types.js';
+import type { Route } from 'playwright';
+
+export default async function (page: PlaywrightPage, _scenario: Scenario) {
+  page.route(IMAGE_URL_RE, (route: Route) => {
     route.fulfill({
       body: IMAGE_DATA_BUFFER,
       headers: HEADERS_STUB,

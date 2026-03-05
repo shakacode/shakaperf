@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 
-function ensureDirectoryPath (filePath) {
+function ensureDirectoryPath (filePath: string) {
   const dirname = path.dirname(filePath);
   if (fs.existsSync(dirname)) {
     return;
@@ -10,6 +10,6 @@ function ensureDirectoryPath (filePath) {
   fs.mkdirSync(dirname);
 }
 
-export default function (path) {
+export default function (path: string) {
   return ensureDirectoryPath(path);
 }

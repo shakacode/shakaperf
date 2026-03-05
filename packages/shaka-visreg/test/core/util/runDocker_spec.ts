@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
 import { createRequire } from 'node:module';
+import type { RuntimeConfig } from '../../../core/types.js';
 
 const _require = createRequire(import.meta.url);
 const packageJson = _require('../../../package.json');
@@ -15,8 +16,8 @@ describe('runDocker', function () {
     try {
       jest.resetModules();
 
-      let capturedCommand;
-      const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+      let capturedCommand: string | undefined;
+      const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
         capturedCommand = dockerCommand;
         return {
           on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
@@ -41,7 +42,7 @@ describe('runDocker', function () {
         }
       };
 
-      const promise = runDocker(config, 'test');
+      const promise = runDocker(config as any as RuntimeConfig, 'test');
       await promise;
 
       assert.strictEqual(
@@ -58,8 +59,8 @@ describe('runDocker', function () {
 
     jest.resetModules();
 
-    let capturedCommand;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+    let capturedCommand: string | undefined;
+    const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
       capturedCommand = dockerCommand;
       return {
         on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
@@ -79,14 +80,14 @@ describe('runDocker', function () {
     const config = {
       args: {
         docker: true,
-        filter: undefined
+        filter: undefined as string | undefined
       }
     };
 
-    const promise = runDocker(config, 'test');
+    const promise = runDocker(config as any as RuntimeConfig, 'test');
     await promise;
 
-    assert(!capturedCommand.includes('--filter'));
+    assert(!capturedCommand!.includes('--filter'));
   });
 
   it('should create tmp config file if config arg is an object', async function () {
@@ -94,8 +95,8 @@ describe('runDocker', function () {
 
     jest.resetModules();
 
-    let capturedCommand;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand) {
+    let capturedCommand: any;
+    const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
       capturedCommand = dockerCommand;
       return {
         on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event, cb) {
@@ -125,7 +126,7 @@ describe('runDocker', function () {
       }
     };
 
-    const promise = runDocker(config, 'test');
+    const promise = runDocker(config as any, 'test');
     await promise;
 
     assert(capturedCommand.includes('--config=backstop.config-for-docker.json'));

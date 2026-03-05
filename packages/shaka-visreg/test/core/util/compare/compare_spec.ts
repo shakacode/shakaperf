@@ -1,9 +1,9 @@
 import { jest } from '@jest/globals';
 
 describe('compare', function () {
-  let compare;
-  let compareHashes;
-  let compareResemble;
+  let compare: any;
+  let compareHashes: any;
+  let compareResemble: any;
   const error = new Error();
 
   beforeAll(async function () {
@@ -28,7 +28,7 @@ describe('compare', function () {
   });
 
   it.skip('should resolve if compare-hashes succeed', function () {
-    compareHashes.mockImplementation((img1, img2) => {
+    compareHashes.mockImplementation((img1: any, img2: any) => {
       if (img1 === 'img1.png' && img2 === 'img2.png') return Promise.resolve();
       return Promise.reject(error);
     });
@@ -39,7 +39,7 @@ describe('compare', function () {
 
   it.skip('should resolve if compare-hashes fail, but compare-resemble succeeds', function () {
     compareHashes.mockReturnValue(Promise.reject(error));
-    compareResemble.mockImplementation((img1, img2, _threshold, _opts) => {
+    compareResemble.mockImplementation((img1: any, img2: any) => {
       if (img1 === 'img1.png' && img2 === 'img2.png') return Promise.resolve();
       return Promise.reject(error);
     });
