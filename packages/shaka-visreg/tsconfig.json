@@ -24,7 +24,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "allowUnreachableCode": true,
-    "allowUnusedLabels": true,
+    "allowUnusedLabels": false,
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": false
   },
