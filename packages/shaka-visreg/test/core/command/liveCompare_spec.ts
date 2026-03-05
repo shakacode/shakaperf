@@ -8,13 +8,13 @@ describe('liveCompare command', function () {
   let runDockerStub;
   let shouldRunDockerStub;
 
-  async function setupMocks (options: any = {}) {
+  async function setupMocks (options: { dockerMode?: boolean } = {}) {
     jest.resetModules();
 
-    createComparisonBitmapsStub = jest.fn<any>().mockResolvedValue(undefined);
+    createComparisonBitmapsStub = jest.fn().mockResolvedValue(undefined);
     shouldRunDockerStub = jest.fn().mockReturnValue(options.dockerMode || false);
-    runDockerStub = jest.fn<any>().mockResolvedValue(undefined);
-    executeCommandStub = jest.fn<any>().mockResolvedValue(undefined);
+    runDockerStub = jest.fn().mockResolvedValue(undefined);
+    executeCommandStub = jest.fn().mockResolvedValue(undefined);
 
     jest.unstable_mockModule('../../../core/util/createComparisonBitmaps.js', () => ({
       default: createComparisonBitmapsStub
