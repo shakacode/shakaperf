@@ -52,6 +52,8 @@ playwright-report/
 **/backstop_data/engine_scripts/dist
 **/backstop_data/ci_report/xunit.xml
 
+**/src/shared/
+
 packages/shaka-bench/tracerbench-results
 tracerbench-results
 shaka-twin-servers-orb.yml

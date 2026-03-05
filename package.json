@@ -8,7 +8,7 @@
     "demo-ecommerce"
   ],
   "scripts": {
-    "build": "yarn workspaces foreach -At --include 'packages/*' run build",
+    "build": "yarn workspaces foreach -Ap --include 'packages/*' run build",
     "typecheck": "yarn workspaces foreach -Ap run typecheck",
     "//postinstall": "Skip git hooks setup when not in a git repo (e.g. Docker builds)",
     "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true",
@@ -22,6 +22,7 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.50.0",
+    "@types/node": "^20.0.0",
     "typescript": "^5.3.3"
   },
   "packageManager": "yarn@4.12.0",

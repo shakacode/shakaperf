@@ -16009,7 +16009,6 @@ __metadata:
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
-    shaka-shared: "workspace:*"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
@@ -16017,16 +16016,6 @@ __metadata:
     zod: "npm:^3.24.0"
   bin:
     shaka-bundle-size: ./dist/cli.js
-  languageName: unknown
-  linkType: soft
-
-"shaka-shared@workspace:*, shaka-shared@workspace:packages/shaka-shared":
-  version: 0.0.0-use.local
-  resolution: "shaka-shared@workspace:packages/shaka-shared"
-  dependencies:
-    "@types/node": "npm:^20.0.0"
-    tsx: "npm:^4.21.0"
-    typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft
 
@@ -16039,7 +16028,6 @@ __metadata:
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
-    shaka-shared: "workspace:*"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
@@ -16208,6 +16196,7 @@ __metadata:
   resolution: "shakaperf@workspace:."
   dependencies:
     "@playwright/test": "npm:^1.50.0"
+    "@types/node": "npm:^20.0.0"
     typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft
