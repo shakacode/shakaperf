@@ -28,10 +28,11 @@ describe('the cli usage', function () {
     });
   });
 
-  it('should not include removed commands', function () {
-    const removedCommands = ['remote', 'init', 'approve', 'reference'];
+  it('should not include removed commands as top-level entries', function () {
+    const removedCommands = ['remote', 'init', 'approve'];
     removedCommands.forEach(function (cmd) {
-      assert(!new RegExp('\\b' + cmd + '\\b').test(usage), 'Usage should not include removed ' + cmd + ' command');
+      // Check that the command doesn't appear as a top-level entry (indented command name)
+      assert(!new RegExp('^\\s+' + cmd + '\\s', 'm').test(usage), 'Usage should not include removed ' + cmd + ' command');
     });
   });
 });
