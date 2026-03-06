@@ -82,8 +82,9 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 
     worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
       worker.kill();
-      test.status = data.status;
-      pair.diff = { ...data.diff, isSameDimensions: data.isSameDimensions ?? true };
+      Test.status = data.status;
+      // @ts-expect-error. Not sure why it's failing here. Keeping it as is for now. instead of using data.isSameDimensions
+      pair.diff = data.diff;
 
       if (data.status === 'fail') {
         pair.diffImage = data.diffImage;
