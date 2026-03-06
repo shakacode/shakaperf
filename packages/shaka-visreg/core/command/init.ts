@@ -1,12 +1,13 @@
 import { copy } from 'fs-extra';
 import createLogger from '../util/logger.js';
+import type { RuntimeConfig } from '../types.js';
 
 const logger = createLogger('init');
 
 /**
  * Copies a boilerplate config file to the current config file location.
  */
-export function execute (config) {
+export function execute (config: RuntimeConfig) {
   const promises = [];
   if (config.engine_scripts) {
     logger.log("Copying '" + config.engine_scripts_default + "' to '" + config.engine_scripts + "'");
@@ -18,7 +19,7 @@ export function execute (config) {
   // Copies a boilerplate config file to the current config file location.
   promises.push(copy(config.captureConfigFileNameDefault, config.backstopConfigFileName).then(function () {
     logger.log("Configuration file written at '" + config.backstopConfigFileName + "'");
-  }, function (err) {
+  }, function (err: unknown) {
     throw err;
   }));
 
