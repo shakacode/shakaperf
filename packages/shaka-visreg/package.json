@@ -29,7 +29,7 @@
       "types": "./dist/core/runner.d.ts",
       "default": "./dist/core/runner.js"
     },
-    "./types": {
+    "./core/types": {
       "types": "./dist/core/types.d.ts",
       "default": "./dist/core/types.js"
     }

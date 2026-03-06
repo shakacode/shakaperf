@@ -1,4 +1,7 @@
-import { cpSync } from 'node:fs';
+import { cpSync, rmSync } from 'node:fs';
+
+// Clean stale compiled files from playwright template directory before copying source .ts files
+rmSync('dist/capture/engine_scripts/playwright', { recursive: true, force: true });
 
 const assets = [
   ['package.json', 'dist/package.json'],
