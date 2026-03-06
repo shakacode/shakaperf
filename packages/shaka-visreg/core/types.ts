@@ -234,6 +234,27 @@ export interface RuntimeConfig {
   isReference?: boolean;
 }
 
+// ── Decorated Compare Config (internal, used during liveCompare) ─────
+export interface DecoratedCompareConfig extends BackstopConfig {
+  _bitmapsTestPath: string;
+  _bitmapsReferencePath: string;
+  _fileNameTemplate: string;
+  _outputFileFormatSuffix: string;
+  _configId: string;
+  screenshotDateTime: string;
+  env: RuntimeConfig;
+  isReference: boolean;
+  isCompare: boolean;
+  paths: BackstopPaths;
+  defaultMisMatchThreshold: number;
+  backstopConfigFileName: string;
+  defaultRequireSameDimensions?: boolean;
+  compareRetries: number;
+  compareRetryDelay: number;
+  maxNumDiffPixels: number;
+  useBoundingBoxViewportForSelectors?: boolean;
+}
+
 // ── Diff Result (from resemble.js comparison) ───────────────────────
 export interface DiffResult {
   misMatchPercentage: number;
@@ -246,9 +267,9 @@ export interface DiffResult {
 // ── Test Pair ───────────────────────────────────────────────────────
 export interface TestPair {
   reference: string;
-  referenceLog: string;
+  referenceLog?: string;
   test: string;
-  testLog: string;
+  testLog?: string;
   selector: string;
   fileName: string;
   label: string;

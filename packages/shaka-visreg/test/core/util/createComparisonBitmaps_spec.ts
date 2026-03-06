@@ -8,7 +8,8 @@ import type { RuntimeConfig } from '../../../core/types.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('createComparisonBitmaps', function () {
-  let capturedConfig: any;
+  // Captured from mock — shape determined at runtime by the mocked module
+  let capturedConfig: Record<string, unknown> | null;
 
   const fixturesDir = path.join(__dirname, 'fixtures');
   const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
@@ -62,12 +63,12 @@ describe('createComparisonBitmaps', function () {
     try { unlinkSync(configFilePath); } catch (_e) { /* ignore */ }
   });
 
-  async function createModule (overrides?: any) {
+  async function createModule (overrides?: Record<string, unknown>) {
     jest.resetModules();
 
     const runCompareScenarioMock = (overrides && overrides.runCompareScenario) || {
-      playwright: function (scenarioView: any) {
-        capturedConfig = scenarioView.config;
+      playwright: function (scenarioView: Record<string, unknown>) {
+        capturedConfig = scenarioView.config as Record<string, unknown>;
         return Promise.resolve({
           testPairs: [{
             test: '/path/to/test.png',
@@ -142,8 +143,9 @@ describe('createComparisonBitmaps', function () {
       let errorThrown = false;
       try {
         await createComparisonBitmaps(badMockConfig);
-      } catch (e: any) {
+      } catch (e: unknown) {
         errorThrown = true;
+        assert(e instanceof Error);
         assert(
           e.message.toLowerCase().includes('referenceurl') ||
           e.message.toLowerCase().includes('reference'),
@@ -161,9 +163,9 @@ describe('createComparisonBitmaps', function () {
     let scenarioCount = 0;
     const createComparisonBitmaps = await createModule({
       runCompareScenario: {
-        playwright: function (scenarioView: any) {
+        playwright: function (scenarioView: Record<string, unknown>) {
           scenarioCount++;
-          capturedConfig = scenarioView.config;
+          capturedConfig = scenarioView.config as Record<string, unknown>;
           return Promise.resolve({ testPairs: [] });
         }
       }
@@ -206,7 +208,7 @@ describe('createComparisonBitmaps', function () {
       await createComparisonBitmaps(unlabeledMockConfig);
 
       // The module should have set label = name for the first viewport
-      assert(capturedConfig.viewports[0].label, 'First viewport should have label');
+      assert((capturedConfig!.viewports as Array<{ label?: string }>)[0].label, 'First viewport should have label');
     } finally {
       try { unlinkSync(unlabeledConfigFilePath); } catch (_e) { /* ignore */ }
     }

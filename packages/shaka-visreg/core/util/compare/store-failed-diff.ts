@@ -2,7 +2,12 @@ import streamToPromise from './../streamToPromise.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export default function storeFailedDiff (testPath: string, data: any) {
+interface ResembleDiffData {
+  getDiffImage: () => { pack: () => NodeJS.ReadableStream };
+  getDiffImageAsJPEG: (quality: number) => Buffer;
+}
+
+export default function storeFailedDiff (testPath: string, data: ResembleDiffData) {
   const failedDiffFilename = getFailedDiffFilename(testPath);
   console.log('   See:', failedDiffFilename);
 

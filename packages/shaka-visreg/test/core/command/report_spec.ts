@@ -14,8 +14,9 @@ describe('core report', function () {
     }
   };
 
-  let report: any;
-  let writeFileStub: any;
+  // Dynamically imported mocked module — use Record type since actual shape depends on mocks
+  let report: { execute: (config: Record<string, unknown>) => Promise<void> };
+  let writeFileStub: jest.Mock;
 
   beforeAll(async function () {
     jest.resetModules();
@@ -42,7 +43,7 @@ describe('core report', function () {
       ensureDir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
     }));
 
-    report = await import('../../../core/command/report.js');
+    report = await import('../../../core/command/report.js') as unknown as typeof report;
   });
 
   it('should generate two json reports and a default browser report when config.report specifies json', function () {

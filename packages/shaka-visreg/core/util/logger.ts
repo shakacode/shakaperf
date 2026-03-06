@@ -24,16 +24,8 @@ const typeToTitleColor = {
 
 let longestTitle = 5;
 
-function paddedString (length: number, string: any) {
+function paddedString (length: number, string: string) {
   const padding = makeSpaces(length + 3);
-
-  if (string instanceof Error) {
-    string = string.stack;
-  }
-
-  if (typeof string !== 'string') {
-    return string;
-  }
 
   const lines = string.split('\n');
   const paddedLines = lines
@@ -46,7 +38,7 @@ function paddedString (length: number, string: any) {
   return paddedLines.join('\n');
 }
 
-function message (type: string, subject: string, string: any) {
+function message (type: string, subject: string, string: string) {
   if (!_.has(typeToColor, type)) {
     type = 'info';
     console.log(typeToColor.warn('Type ' + type + ' is not defined as logging type'));

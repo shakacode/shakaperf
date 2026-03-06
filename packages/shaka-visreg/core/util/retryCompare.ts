@@ -2,8 +2,30 @@ import { PNG } from 'pngjs';
 import { compareBuffers, createCompositeImage } from './compare/pixelmatch-inline.js';
 import defaultPreparePage from './preparePage.js';
 import createLogger from './logger.js';
+import type { PlaywrightPage, Scenario, Viewport, BrowserContext, DecoratedCompareConfig } from '../types.js';
 
 const logger = createLogger('retryCompare');
+
+type CaptureScreenshotFn = (page: PlaywrightPage, selector: string, selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig) => Promise<Buffer | null>;
+type PreparePageFn = (...args: unknown[]) => Promise<unknown>;
+
+export interface RetryCompareOptions {
+  captureScreenshot: CaptureScreenshotFn;
+  refPage: PlaywrightPage;
+  testPage: PlaywrightPage;
+  selector: string;
+  selectorMap: Record<string, { filePath?: string }>;
+  viewport: Viewport;
+  config: DecoratedCompareConfig;
+  scenario: Scenario;
+  initialRefBuffer: Buffer;
+  initialTestBuffer: Buffer;
+  refBrowserOrContext: BrowserContext;
+  testBrowserOrContext: BrowserContext;
+  engineScriptsPath: string;
+  preparePage?: PreparePageFn;
+  pixelmatchThreshold?: number;
+}
 
 function tryMatchAgainstAll (newScreenshot: Buffer, existingScreenshots: Buffer[], maxNumDiffPixels: number, pixelmatchThreshold: number) {
   let leastDiffPixels = Infinity;
@@ -27,7 +49,7 @@ function tryMatchAgainstAll (newScreenshot: Buffer, existingScreenshots: Buffer[
   return { pass: false, bestIndex, bestResult, leastDiffPixels };
 }
 
-export default async function retryCompare (options: any) {
+export default async function retryCompare (options: RetryCompareOptions) {
   const {
     captureScreenshot,
     refPage, testPage,
@@ -35,10 +57,11 @@ export default async function retryCompare (options: any) {
     initialRefBuffer, initialTestBuffer,
     refBrowserOrContext, testBrowserOrContext, engineScriptsPath,
     preparePage: preparePageOverride,
-    pixelmatchThreshold
+    pixelmatchThreshold: pixelmatchThresholdOpt
   } = options;
 
   const preparePage = preparePageOverride || defaultPreparePage;
+  const pixelmatchThreshold = pixelmatchThresholdOpt ?? 0.1;
 
   const maxRetries = scenario.compareRetries != null
     ? scenario.compareRetries
@@ -78,13 +101,11 @@ export default async function retryCompare (options: any) {
     // captureScreenshot may expand the viewport for element bounding boxes,
     // and page.goto() does NOT reset it — causing dimension mismatches and
     // false diff pixels from transparent padding in compareBuffers.
-    const VP_W = viewport.width || viewport.viewport.width;
-    const VP_H = viewport.height || viewport.viewport.height;
-    const setVPRef = refPage.setViewport || refPage.setViewportSize;
-    const setVPTest = testPage.setViewport || testPage.setViewportSize;
+    const VP_W = viewport.width || viewport.viewport!.width;
+    const VP_H = viewport.height || viewport.viewport!.height;
     await Promise.all([
-      setVPRef.call(refPage, { width: VP_W, height: VP_H }),
-      setVPTest.call(testPage, { width: VP_W, height: VP_H })
+      refPage.setViewportSize({ width: VP_W, height: VP_H }),
+      testPage.setViewportSize({ width: VP_W, height: VP_H })
     ]);
 
     // Re-navigate and re-prepare both pages before re-capturing.
@@ -94,10 +115,10 @@ export default async function retryCompare (options: any) {
     try {
       await Promise.all([
         preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath),
-        preparePage(refPage, scenario.referenceUrl, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath)
+        preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath)
       ]);
-    } catch (e: any) {
-      logger.log(`preparePage failed on retry ${retry + 1}: ${e.message}. Skipping to next retry...`);
+    } catch (e: unknown) {
+      logger.log(`preparePage failed on retry ${retry + 1}: ${e instanceof Error ? e.message : String(e)}. Skipping to next retry...`);
       continue;
     }
 

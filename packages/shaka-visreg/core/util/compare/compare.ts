@@ -1,7 +1,12 @@
 import compareHashes from './compare-hash.js';
 import compareResemble from './compare-resemble.js';
 import storeFailedDiff from './store-failed-diff.js';
-import type { TestPair, ResembleOutputOptions } from '../../types.js';
+import type { TestPair, ResembleOutputOptions, DiffResult } from '../../types.js';
+
+interface ResembleDiffData extends DiffResult {
+  getDiffImage: () => { pack: () => NodeJS.ReadableStream };
+  getDiffImageAsJPEG: (quality: number) => Buffer;
+}
 
 process.on('message', compare);
 
@@ -10,16 +15,17 @@ function compare (data: { referencePath: string; testPath: string; resembleOutpu
   const promise = compareHashes(referencePath, testPath)
     .catch(() => compareResemble(referencePath, testPath, pair.misMatchThreshold, resembleOutputSettings, pair.requireSameDimensions));
   promise
-    .then(function (data: any) {
-      pair.diff = data;
+    .then(function (result: unknown) {
+      pair.diff = result as DiffResult;
       pair.status = 'pass';
       return sendMessage(pair);
     })
-    .catch(function (data: any) {
-      pair.diff = data;
+    .catch(function (result: unknown) {
+      const diffData = result as ResembleDiffData;
+      pair.diff = diffData;
       pair.status = 'fail';
 
-      return storeFailedDiff(testPath, data).then(function (compare: unknown) {
+      return storeFailedDiff(testPath, diffData).then(function (compare: unknown) {
         pair.diffImage = compare as string;
         return sendMessage(pair);
       });

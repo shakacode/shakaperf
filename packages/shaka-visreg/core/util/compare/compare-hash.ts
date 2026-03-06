@@ -9,7 +9,7 @@ function getFileHash (filename: string) {
     const md5sum = crypto.createHash('md5');
     const stream = fs.createReadStream(filename);
 
-    stream.on('data', (d: any) => md5sum.update(d));
+    stream.on('data', (d: string | Buffer) => md5sum.update(d));
     stream.on('end', () => resolve(md5sum.digest('hex')));
   });
 }

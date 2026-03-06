@@ -12,6 +12,7 @@ import createLogger from '../util/logger.js';
 import compare from '../util/compare/index.js';
 import type { RuntimeConfig } from '../types.js';
 import type Reporter from '../util/Reporter.js';
+import type { Test } from '../util/Reporter.js';
 
 const logger = createLogger('report');
 const _require = createRequire(import.meta.url);
@@ -72,12 +73,12 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   return copy(config.comparePath, toAbsolute(config.html_report)).then(function () {
     // Slurp in logs
-    const promises: Promise<any>[] = [];
+    const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
-      _.forEach(browserReporter.tests, (test: any) => {
+      _.forEach(browserReporter.tests, (test: Test) => {
         const pair = test.pair;
-        const referenceLog = toAbsolute(pair.referenceLog);
-        const testLog = toAbsolute(pair.testLog);
+        const referenceLog = toAbsolute(pair.referenceLog!);
+        const testLog = toAbsolute(pair.testLog!);
 
         const report = toAbsolute(config.html_report);
         pair.referenceLog = path.relative(report, referenceLog);
@@ -98,7 +99,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       return Promise.all(promises);
     } else {
       // don't pass log paths to client
-      _.forEach(browserReporter.tests, (test: any) => {
+      _.forEach(browserReporter.tests, (test: Test) => {
         const pair = test.pair;
         delete pair.referenceLog;
         delete pair.testLog;
@@ -109,7 +110,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     logger.log('Resources copied');
 
     // Fixing URLs in the configuration
-    _.forEach(browserReporter.tests, (test: any) => {
+    _.forEach(browserReporter.tests, (test: Test) => {
       const report = toAbsolute(config.html_report);
       const pair = test.pair;
       pair.reference = path.relative(report, toAbsolute(pair.reference));
@@ -129,9 +130,9 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       try {
         console.log('Attempting to open: ', testReportJsonName);
         const testReportJson = JSON.parse(readFileSync(testReportJsonName, 'utf8'));
-        const scenarioFileNames = browserReporter.tests.map((test: any) => test.pair.fileName);
-        testReportJson.tests = testReportJson.tests.filter((test: any) => !scenarioFileNames.includes(test.pair.fileName));
-        browserReporter.tests.map((test: any) => testReportJson.tests.push(test));
+        const scenarioFileNames = browserReporter.tests.map((test: Test) => test.pair.fileName);
+        testReportJson.tests = testReportJson.tests.filter((test: Test) => !scenarioFileNames.includes(test.pair.fileName));
+        browserReporter.tests.map((test: Test) => testReportJson.tests.push(test));
         browserReporter = testReportJson;
       } catch (err) {
         console.log('Creating new report.');
@@ -177,7 +178,7 @@ function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
   const suite = builder.testSuite()
     .name(reporter.testSuite);
 
-  _.forEach(reporter.tests, (test: any) => {
+  _.forEach(reporter.tests, (test: Test) => {
     const testCase = suite.testCase()
       .className(test.pair.selector)
       .name(' ›› ' + test.pair.label);
@@ -222,12 +223,12 @@ function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
 
     // Fixing URLs in the configuration
     const report = toAbsolute(config.json_report);
-    _.forEach(jsonReporter.tests, (test: any) => {
+    _.forEach(jsonReporter.tests, (test: Test) => {
       const pair = test.pair;
       pair.reference = path.relative(report, toAbsolute(pair.reference));
       pair.test = path.relative(report, toAbsolute(pair.test));
-      pair.referenceLog = path.relative(report, toAbsolute(pair.referenceLog));
-      pair.testLog = path.relative(report, toAbsolute(pair.testLog));
+      pair.referenceLog = path.relative(report, toAbsolute(pair.referenceLog!));
+      pair.testLog = path.relative(report, toAbsolute(pair.testLog!));
 
       if (pair.diffImage) {
         pair.diffImage = path.relative(report, toAbsolute(pair.diffImage));
@@ -242,9 +243,9 @@ function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
       try {
         console.log('Attempting to open: ', jsonReportFileName);
         const jsonReportJson = JSON.parse(readFileSync(jsonReportFileName, 'utf8'));
-        const scenarioFileNames = jsonReporter.tests.map((test: any) => test.pair.fileName);
-        jsonReportJson.tests = jsonReportJson.tests.filter((test: any) => !scenarioFileNames.includes(test.pair.fileName));
-        jsonReporter.tests.map((test: any) => jsonReportJson.tests.push(test));
+        const scenarioFileNames = jsonReporter.tests.map((test: Test) => test.pair.fileName);
+        jsonReportJson.tests = jsonReportJson.tests.filter((test: Test) => !scenarioFileNames.includes(test.pair.fileName));
+        jsonReporter.tests.map((test: Test) => jsonReportJson.tests.push(test));
         jsonReporter = jsonReportJson;
       } catch (err) {
         console.log('Creating new report.');
@@ -276,7 +277,7 @@ export async function execute (config: RuntimeConfig) {
   const results = await writeReport(config, report);
   for (let i = 0; i < results.length; i++) {
     if (results[i].state !== 'fulfilled') {
-      logger.error('Failed writing report with error: ' + (results[i] as any).value);
+      logger.error('Failed writing report with error: ' + (results[i] as { state: string; reason?: unknown }).reason);
     }
   }
 

@@ -12,7 +12,7 @@ export default function compareResemble (referencePath: string, testPath: string
       comparison.ignoreAntialiasing();
     }
 
-    comparison.onComplete((data: any) => {
+    comparison.onComplete((data: { rawMisMatchPercentage: number; misMatchPercentage: number; isSameDimensions: boolean }) => {
       const misMatchPercentage = resembleSettings.usePreciseMatching ? data.rawMisMatchPercentage : data.misMatchPercentage;
       if ((requireSameDimensions === false || data.isSameDimensions === true) && misMatchPercentage <= misMatchThreshold) {
         return resolve(data);

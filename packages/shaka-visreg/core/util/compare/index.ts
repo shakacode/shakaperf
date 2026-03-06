@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import map from 'p-map';
 import fs from 'node:fs';
 import cp from 'node:child_process';
-import Reporter from './../Reporter.js';
+import Reporter, { Test } from './../Reporter.js';
 import createLogger from './../logger.js';
 import storeFailedDiffStub from './store-failed-diff-stub.js';
 import type { RuntimeConfig, TestPair, CompareConfig, ResembleOutputOptions } from '../../types.js';
@@ -13,7 +13,7 @@ const logger = createLogger('compare');
 
 const ASYNC_COMPARE_LIMIT = 20;
 
-function comparePair (pair: TestPair, report: any, config: RuntimeConfig, compareConfig: CompareConfig) {
+function comparePair (pair: TestPair, report: Reporter, config: RuntimeConfig, compareConfig: CompareConfig) {
   const Test = report.addTest(pair);
 
   const referencePath = pair.reference ? path.resolve(config.projectPath, pair.reference) : '';
@@ -70,7 +70,7 @@ function comparePair (pair: TestPair, report: any, config: RuntimeConfig, compar
   return compareImages(referencePath, testPath, pair, resembleOutputSettings, Test);
 }
 
-function compareImages (referencePath: string, testPath: string, pair: TestPair, resembleOutputSettings: ResembleOutputOptions | undefined, Test: any) {
+function compareImages (referencePath: string, testPath: string, pair: TestPair, resembleOutputSettings: ResembleOutputOptions | undefined, test: Test) {
   return new Promise(function (resolve, _reject) {
     const worker = cp.fork(path.join(__dirname, 'compare.js'));
     worker.send({
@@ -82,7 +82,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 
     worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
       worker.kill();
-      Test.status = data.status;
+      test.status = data.status;
       pair.diff = { ...data.diff, isSameDimensions: data.isSameDimensions ?? true };
 
       if (data.status === 'fail') {
@@ -107,6 +107,6 @@ export default function compare (config: RuntimeConfig) {
   return map(compareConfig.testPairs, (pair: TestPair) => comparePair(pair, report, config, compareConfig), { concurrency: asyncCompareLimit })
     .then(
       () => report,
-      (e: any) => logger.error('The comparison failed with error: ' + e)
+      (e: unknown) => logger.error('The comparison failed with error: ' + e)
     );
 }

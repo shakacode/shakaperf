@@ -1,8 +1,10 @@
-class Test {
-  pair: unknown;
+import type { TestPair } from '../types.js';
+
+export class Test {
+  pair: TestPair;
   status: string;
 
-  constructor (pair: unknown) {
+  constructor (pair: TestPair) {
     this.pair = pair;
     this.status = 'running';
   }
@@ -22,7 +24,7 @@ class Reporter {
     this.tests = [];
   }
 
-  addTest (pair: unknown) {
+  addTest (pair: TestPair) {
     const t = new Test(pair);
     this.tests.push(t);
     return t;

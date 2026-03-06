@@ -15,9 +15,9 @@ export function execute (config: RuntimeConfig) {
   return new Promise(function (resolve, _reject) {
     // would prefer to ping a http://127.0.0.1:${port}/remote with {backstopRemote:ok} response
     logger.log('Attempting to ping ' + remoteReportUrl);
-    http.get(remoteReportUrl, (resp: any) => {
+    http.get(remoteReportUrl, (resp: http.IncomingMessage) => {
       let data = '';
-      resp.on('data', (chunk: any) => { data += chunk; });
+      resp.on('data', (chunk: string | Buffer) => { data += chunk; });
       resp.on('end', () => {
         if (BACKSTOP_REPORT_SIGNATURE_RE.test(data)) {
           logger.log('Remote found. Opening ' + remoteReportUrl);
@@ -27,7 +27,7 @@ export function execute (config: RuntimeConfig) {
           resolve(open(config.compareReportURL, { wait: false }));
         }
       });
-    }).on('error', (err: any) => {
+    }).on('error', (err: Error) => {
       logger.log('Remote not found. Opening ' + config.compareReportURL + ' Error: ' + err.message);
       resolve(open(path.resolve(config.compareReportURL), { wait: false }));
     });

@@ -75,7 +75,7 @@ const commands = commandNames
         promise.catch(function (error: unknown) {
           const perf = (Date.now() - config.perf[command.name]) / 1000;
           logger.error('Command "' + command.name + '" ended with an error after [' + perf + 's]');
-          logger.error(error);
+          logger.error(String(error));
         });
 
         return promise.then(function (result: unknown) {

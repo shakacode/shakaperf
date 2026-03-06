@@ -17,10 +17,12 @@ describe('runDocker', function () {
       jest.resetModules();
 
       let capturedCommand: string | undefined;
-      const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
-        capturedCommand = dockerCommand;
+      const spawnMock = jest.fn().mockImplementation(function (...args: unknown[]) {
+        capturedCommand = args[0] as string;
         return {
-          on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
+          on: jest.fn().mockImplementation(function (...onArgs: unknown[]) {
+            const event = onArgs[0] as string;
+            const cb = onArgs[1] as (...cbArgs: unknown[]) => void;
             if (event === 'exit') {
               setImmediate(() => cb(0));
             }
@@ -42,7 +44,7 @@ describe('runDocker', function () {
         }
       };
 
-      const promise = runDocker(config as any as RuntimeConfig, 'test');
+      const promise = runDocker(config as unknown as RuntimeConfig, 'test');
       await promise;
 
       assert.strictEqual(
@@ -60,10 +62,12 @@ describe('runDocker', function () {
     jest.resetModules();
 
     let capturedCommand: string | undefined;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
-      capturedCommand = dockerCommand;
+    const spawnMock = jest.fn().mockImplementation(function (...args: unknown[]) {
+      capturedCommand = args[0] as string;
       return {
-        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
+        on: jest.fn().mockImplementation(function (...onArgs: unknown[]) {
+            const event = onArgs[0] as string;
+            const cb = onArgs[1] as (...cbArgs: unknown[]) => void;
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
@@ -84,7 +88,7 @@ describe('runDocker', function () {
       }
     };
 
-    const promise = runDocker(config as any as RuntimeConfig, 'test');
+    const promise = runDocker(config as unknown as RuntimeConfig, 'test');
     await promise;
 
     assert(!capturedCommand!.includes('--filter'));
@@ -95,11 +99,13 @@ describe('runDocker', function () {
 
     jest.resetModules();
 
-    let capturedCommand: any;
-    const spawnMock = jest.fn().mockImplementation(function (dockerCommand: any) {
-      capturedCommand = dockerCommand;
+    let capturedCommand: string | undefined;
+    const spawnMock = jest.fn().mockImplementation(function (...args: unknown[]) {
+      capturedCommand = args[0] as string;
       return {
-        on: jest.fn<(event: string, cb: (...args: unknown[]) => void) => void>().mockImplementation(function (event: any, cb: any) {
+        on: jest.fn().mockImplementation(function (...onArgs: unknown[]) {
+            const event = onArgs[0] as string;
+            const cb = onArgs[1] as (...cbArgs: unknown[]) => void;
           if (event === 'exit') {
             setImmediate(() => cb(0));
           }
@@ -126,9 +132,9 @@ describe('runDocker', function () {
       }
     };
 
-    const promise = runDocker(config as any, 'test');
+    const promise = runDocker(config as unknown as RuntimeConfig, 'test');
     await promise;
 
-    assert(capturedCommand.includes('--config=backstop.config-for-docker.json'));
+    assert(capturedCommand!.includes('--config=backstop.config-for-docker.json'));
   });
 });

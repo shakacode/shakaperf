@@ -1,6 +1,6 @@
 import type { Stream } from 'node:stream';
 
-export default function onStreamEnd (stream: Stream & { writable?: boolean; readable?: boolean }, result: any) {
+export default function onStreamEnd (stream: Stream & { writable?: boolean; readable?: boolean }, result: unknown) {
   return new Promise(function (resolve, reject) {
     if (stream.writable) {
       stream.on('finish', function () {

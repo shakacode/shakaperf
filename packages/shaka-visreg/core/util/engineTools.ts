@@ -1,4 +1,4 @@
-import type { TestPair, Scenario, Viewport } from "../types.js";
+import type { TestPair, Scenario, Viewport, RuntimeConfig, EngineOptions, DecoratedCompareConfig } from "../types.js";
 
 /**
  * @description Retrieves the mismatch threshold based on the given scenario and configuration.
@@ -7,7 +7,7 @@ import type { TestPair, Scenario, Viewport } from "../types.js";
  * @param {Object} config - The configuration object, which includes misMatchThreshold and defaultMisMatchThreshold properties.
  * @returns {number} The mismatch threshold value.
  */
-function getMisMatchThreshHold (scenario: any, config: any) {
+function getMisMatchThreshHold (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { misMatchThreshold?: number }) {
   return scenario?.misMatchThreshold ?? config?.misMatchThreshold ?? config?.defaultMisMatchThreshold ?? 0.1;
 }
 
@@ -21,15 +21,15 @@ function glueStringsWithSlash (stringA: string, stringB: string) {
   return stringA.replace(/\/$/, '') + '/' + stringB.replace(/^\//, '');
 }
 
-function genHash (str: any) {
+function genHash (str: unknown) {
   let hash = 0;
   let i;
   let chr;
   let len;
-  if (!str) return hash;
-  str = str.toString();
-  for (i = 0, len = str.length; i < len; i++) {
-    chr = str.charCodeAt(i);
+  if (!str) return String(hash);
+  const s = String(str);
+  for (i = 0, len = s.length; i < len; i++) {
+    chr = s.charCodeAt(i);
     hash = ((hash << 5) - hash) + chr;
     hash |= 0; // Convert to 32bit integer
   }
@@ -44,7 +44,7 @@ function genHash (str: any) {
  * @param {Object} config - The configuration object, which includes requireSameDimensions and defaultMisMatchThreshold properties.
  * @returns {boolean} True if the same dimensions are required, otherwise false.
  */
-function getRequireSameDimensions (scenario: any, config: any) {
+function getRequireSameDimensions (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { requireSameDimensions?: boolean }) {
   return scenario?.requireSameDimensions ?? config?.requireSameDimensions ?? config?.defaultRequireSameDimensions ?? true;
 }
 
@@ -74,14 +74,14 @@ function getFilename (fileNameTemplate: string, outputFileFormatSuffix: string, 
   return fileName;
 }
 
-function getEngineOption (config: any, optionName: string, fallBack: any) {
+function getEngineOption<T> (config: { engineOptions?: EngineOptions }, optionName: string, fallBack: T): T {
   if (typeof config.engineOptions === 'object' && config.engineOptions[optionName]) {
-    return config.engineOptions[optionName];
+    return config.engineOptions[optionName] as T;
   }
   return fallBack;
 }
 
-function getScenarioExpect (scenario: any) {
+function getScenarioExpect (scenario: Scenario & { expect?: number }) {
   let expect = 0;
   if (scenario.selectorExpansion && scenario.selectors && scenario.selectors.length && scenario.expect) {
     expect = scenario.expect;
@@ -90,7 +90,7 @@ function getScenarioExpect (scenario: any) {
   return expect;
 }
 
-function generateTestPair (config: any, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, selectorIndex: number, selector: string): TestPair {
+function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, selectorIndex: number, selector: string): TestPair {
   const cleanedSelectorName = getSelectorName(selector);
   const fileName = getFilename(
     config._fileNameTemplate,

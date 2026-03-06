@@ -2,11 +2,12 @@ import { jest } from '@jest/globals';
 import assert from 'node:assert';
 
 describe('liveCompare command', function () {
-  let liveCompare: any;
-  let createComparisonBitmapsStub: any;
-  let executeCommandStub: any;
-  let runDockerStub: any;
-  let shouldRunDockerStub: any;
+  // Dynamically imported mocked modules — types determined at runtime
+  let liveCompare: { execute: (config: Record<string, unknown>) => Promise<void> };
+  let createComparisonBitmapsStub: jest.Mock<() => Promise<void>>;
+  let executeCommandStub: jest.Mock;
+  let runDockerStub: jest.Mock;
+  let shouldRunDockerStub: jest.Mock;
 
   async function setupMocks (options: { dockerMode?: boolean } = {}) {
     jest.resetModules();
@@ -27,7 +28,7 @@ describe('liveCompare command', function () {
       default: executeCommandStub
     }));
 
-    liveCompare = await import('../../../core/command/liveCompare.js');
+    liveCompare = await import('../../../core/command/liveCompare.js') as unknown as typeof liveCompare;
   }
 
   beforeEach(async function () {
@@ -36,8 +37,8 @@ describe('liveCompare command', function () {
 
   it('should call createComparisonBitmaps with config', async function () {
     const config = {
-      scenarios: [] as any[],
-      viewports: [] as any[],
+      scenarios: [],
+      viewports: [],
       compareRetries: 3,
       compareRetryDelay: 5000,
       maxNumDiffPixels: 10
@@ -50,7 +51,7 @@ describe('liveCompare command', function () {
   });
 
   it('should call _report command after createComparisonBitmaps succeeds', async function () {
-    const config = { scenarios: [] as any[], viewports: [] as any[] };
+    const config = { scenarios: [], viewports: [] };
 
     await liveCompare.execute(config);
 
@@ -91,12 +92,13 @@ describe('liveCompare command', function () {
     const testError = new Error('Test error from createComparisonBitmaps');
     createComparisonBitmapsStub.mockRejectedValue(testError);
 
-    const config = { scenarios: [] as any[], viewports: [] as any[] };
+    const config = { scenarios: [], viewports: [] };
 
     try {
       await liveCompare.execute(config);
       assert.fail('Should have thrown an error');
-    } catch (e: any) {
+    } catch (e: unknown) {
+      assert(e instanceof Error);
       assert.strictEqual(e.message, 'Test error from createComparisonBitmaps');
     }
   });
