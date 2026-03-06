@@ -70,7 +70,7 @@ function comparePair (pair: TestPair, report: Reporter, config: RuntimeConfig, c
   return compareImages(referencePath, testPath, pair, resembleOutputSettings, Test);
 }
 
-function compareImages (referencePath: string, testPath: string, pair: TestPair, resembleOutputSettings: ResembleOutputOptions | undefined, test: Test) {
+function compareImages (referencePath: string, testPath: string, pair: TestPair, resembleOutputSettings: ResembleOutputOptions | undefined, testInstance: Test) {
   return new Promise(function (resolve, _reject) {
     const worker = cp.fork(path.join(__dirname, 'compare.js'));
     worker.send({
@@ -82,7 +82,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 
     worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
       worker.kill();
-      Test.status = data.status;
+      testInstance.status = data.status;
       // @ts-expect-error. Not sure why it's failing here. Keeping it as is for now. instead of using data.isSameDimensions
       pair.diff = data.diff;
 
