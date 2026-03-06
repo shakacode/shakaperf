@@ -1,9 +1,19 @@
-import clickAndHoverHelper from './clickAndHoverHelper.js';
-import type { PlaywrightPage, Scenario, Viewport, BrowserContext } from '../../../core/types.js';
+import type { Page, BrowserContext } from 'playwright-core';
+import type { Scenario, Viewport } from 'shaka-visreg/types';
+import clickAndHoverHelper from './clickAndHoverHelper';
 
-export default async (page: PlaywrightPage, scenario: Scenario, _viewport: Viewport, _isReference: boolean, _browserContext: BrowserContext) => {
+async function onReady(
+  page: Page,
+  scenario: Scenario,
+  _viewport: Viewport,
+  _isReference: boolean,
+  _browserContext: BrowserContext
+): Promise<void> {
   console.log('SCENARIO > ' + scenario.label);
   await clickAndHoverHelper(page, scenario);
 
   // add more ready handlers here...
-};
+}
+
+export default onReady;
+module.exports = onReady;

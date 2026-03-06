@@ -1,6 +1,16 @@
-import loadCookies from './loadCookies.js';
-import type { PlaywrightPage, Scenario, Viewport, BrowserContext } from '../../../core/types.js';
+import type { Page, BrowserContext } from 'playwright-core';
+import type { Scenario, Viewport } from 'shaka-visreg/types';
+import loadCookies from './loadCookies';
 
-export default async (_page: PlaywrightPage, scenario: Scenario, _viewport: Viewport, _isReference: boolean, browserContext: BrowserContext) => {
+async function onBefore(
+  _page: Page,
+  scenario: Scenario,
+  _viewport: Viewport,
+  _isReference: boolean,
+  browserContext: BrowserContext
+): Promise<void> {
   await loadCookies(browserContext, scenario);
-};
+}
+
+export default onBefore;
+module.exports = onBefore;
