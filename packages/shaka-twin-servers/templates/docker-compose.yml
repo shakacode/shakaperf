@@ -1,0 +1,34 @@
+services:
+  control-server:
+    image: ${CONTROL_IMAGE_NAME}
+    ports:
+      - "3020:3000"
+    environment:
+      PERF_EXPERIMENT: "false"
+    volumes:
+      - control_volume:/home/${USER}/app
+    command: sleep infinity
+
+  experiment-server:
+    image: ${EXPERIMENT_IMAGE_NAME}
+    ports:
+      - "3030:3000"
+    environment:
+      PERF_EXPERIMENT: "true"
+    volumes:
+      - experiment_volume:/home/${USER}/app
+    command: sleep infinity
+
+volumes:
+  control_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${CONTROL_VOLUME_DIR}
+  experiment_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${EXPERIMENT_VOLUME_DIR}

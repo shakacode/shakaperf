@@ -1,5 +1,5 @@
 export { defineConfig, loadConfig, resolveConfig, findConfigFile } from './config';
-export type { TwinServersConfig, ResolvedConfig, CliOptions, Command, SetupCommand } from './types';
+export type { TwinServersConfig, TwinServersConfigInput, ResolvedConfig, CliOptions, Command, SetupCommand } from './types';
 export { build } from './commands/build';
 export { startContainers } from './commands/start-containers';
 export { startServers } from './commands/start-servers';

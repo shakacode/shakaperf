@@ -206,7 +206,7 @@ describe('run-overmind-command', () => {
     );
     expect(dockerCall).toBeTruthy();
     // The wrapped command should contain PID redirection
-    const bashCmd = dockerCall[1].find((arg: string) => arg.includes('echo $!'));
+    const bashCmd = dockerCall[1].find((arg: string) => arg.includes('echo $$'));
     expect(bashCmd).toBeTruthy();
     expect(bashCmd).toContain('bundle exec puma');
     expect(bashCmd).toContain('/tmp/overmind-pid.');

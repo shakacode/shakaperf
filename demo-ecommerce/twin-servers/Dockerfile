@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Production Dockerfile for demo-ecommerce with twin-servers A/B testing support
-# Build from monorepo root: docker build -f demo-ecommerce/Dockerfile.production -t demo-ecommerce .
+# Build from monorepo root: docker build -f demo-ecommerce/twin-servers/Dockerfile -t demo-ecommerce .
 
 ARG RUBY_VERSION=3.3.7
 ARG NON_ROOT_USER=rails
@@ -21,7 +21,8 @@ ARG BUNDLE_PATH
 ARG NODE_PATH
 ARG APP_PATH
 
-ARG NODE_VERSION=24.13.0
+ENV RUBY_VERSION=3.3.7
+ENV NODE_VERSION=24.13.0
 
 # Install base packages
 RUN apt-get update -qq && \
@@ -55,7 +56,11 @@ ENV RAILS_ENV="production" \
     NODE_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH=${BUNDLE_PATH} \
-    BUNDLE_WITHOUT="development test"
+    BUNDLE_WITHOUT="development test" \
+    SECRET_KEY_BASE="demo-ecommerce-not-a-real-secret-just-for-perf-testing" \
+    RAILS_LOG_TO_STDOUT="true" \
+    RAILS_SERVE_STATIC_FILES="true" \
+    TWIN_SERVERS="true"
 
 # Mac/Linux GID compatibility: Delete any existing group with the same GID
 RUN getent group $GID | cut -d: -f1 | xargs -r groupdel || true

@@ -1,11 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { TwinServersConfigSchema, type TwinServersConfig, type ResolvedConfig } from './types';
+import { loadConfigFile } from './shared/load-config-file';
+import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
-export function defineConfig(config: TwinServersConfig): TwinServersConfig {
+const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', 'templates', 'docker-compose.yml');
+
+export function defineConfig(config: TwinServersConfigInput): TwinServersConfigInput {
   return config;
 }
 
@@ -20,43 +23,7 @@ export function findConfigFile(cwd: string = process.cwd()): string | null {
 }
 
 export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
-  const absolutePath = path.resolve(configPath);
-
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Config file not found: ${absolutePath}`);
-  }
-
-  const ext = path.extname(absolutePath);
-
-  if (ext !== '.js' && ext !== '.ts') {
-    throw new Error(`Unsupported config file extension: ${ext}. Use .js or .ts`);
-  }
-
-  try {
-    let configModule;
-
-    if (ext === '.ts') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { tsImport } = require('tsx/esm/api');
-      const tsModule = await tsImport(absolutePath, __filename);
-      configModule = tsModule.default?.default ?? tsModule.default ?? tsModule;
-    } else {
-      configModule = await import(absolutePath);
-    }
-
-    const config = configModule.default || configModule;
-
-    if (!config || typeof config !== 'object') {
-      throw new Error(`Config file must export a configuration object`);
-    }
-
-    return config as TwinServersConfig;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to load config from ${absolutePath}: ${error.message}`);
-    }
-    throw error;
-  }
+  return loadConfigFile(configPath) as Promise<TwinServersConfig>;
 }
 
 function expandTilde(filePath: string): string {
@@ -95,7 +62,9 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     dockerBuildDir,
     dockerfile: validConfig.dockerfile,
     dockerBuildArgs: validConfig.dockerBuildArgs,
-    composeFile: path.resolve(projectDir, validConfig.composeFile),
+    composeFile: validConfig.composeFile
+      ? path.resolve(projectDir, validConfig.composeFile)
+      : DEFAULT_COMPOSE_FILE,
     procfile: path.resolve(projectDir, validConfig.procfile),
     images: validConfig.images,
     volumes: {

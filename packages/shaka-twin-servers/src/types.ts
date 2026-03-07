@@ -12,8 +12,8 @@ export const TwinServersConfigSchema = z.object({
   controlDir: z.string().min(1, 'controlDir is required'),
   dockerBuildDir: z.string().min(1, 'dockerBuildDir is required'),
   dockerfile: z.string().min(1, 'dockerfile is required'),
-  dockerBuildArgs: z.record(z.string(), z.string()),
-  composeFile: z.string().min(1, 'composeFile is required'),
+  dockerBuildArgs: z.record(z.string(), z.string()).default({}),
+  composeFile: z.string().min(1).optional(),
   procfile: z.string().min(1, 'procfile is required'),
   images: z.object({
     control: z.string().min(1, 'images.control is required'),
@@ -30,11 +30,14 @@ export const TwinServersConfigSchema = z.object({
 // Derive types from schemas
 export type SetupCommand = z.infer<typeof SetupCommandSchema>;
 export type TwinServersConfig = z.infer<typeof TwinServersConfigSchema>;
+export type TwinServersConfigInput = z.input<typeof TwinServersConfigSchema>;
 
-// ResolvedConfig has setupCommands as required (non-optional)
-export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands'> & {
+// ResolvedConfig has setupCommands and composeFile as required (non-optional)
+export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeFile'> & {
   /** Setup commands to run (empty array if none provided) */
   setupCommands: SetupCommand[];
+  /** Resolved compose file path (defaults to bundled template) */
+  composeFile: string;
 };
 
 export interface CliOptions {
@@ -44,4 +47,4 @@ export interface CliOptions {
   version: boolean;
 }
 
-export type Command = 'build' | 'get-config' | 'start-containers' | 'stop-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports';
+export type Command = 'build' | 'get-config' | 'start-containers' | 'stop-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports' | 'customize-docker-compose';

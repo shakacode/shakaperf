@@ -14324,6 +14324,7 @@ __metadata:
   resolution: "shakaperf@workspace:."
   dependencies:
     "@playwright/test": "npm:^1.50.0"
+    "@types/node": "npm:^20.0.0"
     typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft

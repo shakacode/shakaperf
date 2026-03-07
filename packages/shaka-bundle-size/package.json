@@ -10,8 +10,8 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
+    "build": "cp -r ../../shared src/shared && tsc",
+    "typecheck": "cp -r ../../shared src/shared && tsc --noEmit",
     "test": "jest",
     "prepublishOnly": "yarn build"
   },

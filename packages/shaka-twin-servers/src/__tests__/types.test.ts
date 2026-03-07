@@ -47,7 +47,6 @@ describe('TwinServersConfigSchema', () => {
     dockerBuildDir: '/build',
     dockerfile: 'Dockerfile',
     dockerBuildArgs: { KEY: 'value' },
-    composeFile: 'docker-compose.yml',
     procfile: 'Procfile.twin',
     images: {
       control: 'myapp:control',
@@ -106,7 +105,20 @@ describe('TwinServersConfigSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty composeFile', () => {
+  it('accepts missing composeFile (uses default)', () => {
+    const result = TwinServersConfigSchema.safeParse(validConfig);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts explicit composeFile', () => {
+    const result = TwinServersConfigSchema.safeParse({
+      ...validConfig,
+      composeFile: 'docker-compose.yml',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty composeFile string', () => {
     const result = TwinServersConfigSchema.safeParse({
       ...validConfig,
       composeFile: '',
