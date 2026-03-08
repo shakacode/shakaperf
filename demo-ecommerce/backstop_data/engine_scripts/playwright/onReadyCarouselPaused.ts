@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
 import overrideCSS from './overrideCSS';
 import { waitUntilPageSettled } from './onReady';
 

@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
 import { waitUntilPageSettled } from './onReady';
 
 async function onReadyAdminWithCookie(

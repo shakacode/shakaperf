@@ -13,7 +13,7 @@
  */
 
 import type { Page } from 'playwright-core';
-import type { Scenario } from '../types';
+import type { Scenario } from 'shaka-visreg/core/types';
 
 const BACKSTOP_TEST_CSS_OVERRIDE = `
   html {
