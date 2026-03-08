@@ -1,5 +1,5 @@
 import type { Page, BrowserContext } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
 import loadCookies from './loadCookies';
 
 async function onBefore(

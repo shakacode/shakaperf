@@ -1,6 +1,6 @@
 import fs from 'fs';
 import type { BrowserContext } from 'playwright-core';
-import type { Scenario, BackstopCookie } from '../types';
+import type { Scenario, BackstopCookie } from 'shaka-visreg/core/types';
 
 export default async function loadCookies(browserContext: BrowserContext, scenario: Scenario): Promise<void> {
   let cookies: BackstopCookie[] = [];

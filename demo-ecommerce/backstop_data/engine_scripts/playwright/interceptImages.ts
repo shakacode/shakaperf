@@ -16,7 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { Page } from 'playwright-core';
-import type { Scenario } from '../types';
+import type { Scenario } from 'shaka-visreg/core/types';
 
 const IMAGE_URL_RE = /\.gif|\.jpg|\.png/i;
 const IMAGE_STUB_URL = path.resolve(__dirname, '../../imageStub.jpg');
