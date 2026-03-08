@@ -169,7 +169,6 @@ export interface BackstopConfig {
   debugWindow?: boolean;
 
   dynamicTestId?: string;
-  dockerCommandTemplate?: string;
 
   ci?: {
     format?: string;
@@ -222,7 +221,6 @@ export interface RuntimeConfig {
   resembleOutputOptions?: ResembleOutputOptions;
   asyncCompareLimit?: number;
   backstopVersion: string;
-  dockerCommandTemplate?: string;
   scenarioLogsInReports?: boolean;
   testReportFileName?: string;
 

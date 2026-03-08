@@ -53,7 +53,6 @@ const expectedConfig: Record<string, any> = {
   maxNumDiffPixels: 0,
   resembleOutputOptions: undefined,
   scenarioLogsInReports: undefined,
-  dockerCommandTemplate: undefined,
   archivePath: path.resolve('backstop_data/reports'),
   archiveReport: false
 };

@@ -13,7 +13,7 @@ main();
 
 function main () {
   const argsOptions = parseArgs(process.argv.slice(2), {
-    boolean: ['h', 'help', 'v', 'version', 'docker'],
+    boolean: ['h', 'help', 'v', 'version'],
     string: ['config'],
     default: {
       config: 'backstop.json'

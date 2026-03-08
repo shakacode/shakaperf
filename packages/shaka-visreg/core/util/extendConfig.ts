@@ -28,7 +28,6 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: BackstopConfi
   config.resembleOutputOptions = userConfig.resembleOutputOptions;
   config.asyncCompareLimit = userConfig.asyncCompareLimit;
   config.backstopVersion = version;
-  config.dockerCommandTemplate = userConfig.dockerCommandTemplate;
   config.scenarioLogsInReports = userConfig.scenarioLogsInReports;
 
   // liveCompare command options

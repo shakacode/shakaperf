@@ -6,23 +6,15 @@ describe('liveCompare command', function () {
   let liveCompare: { execute: (config: Record<string, unknown>) => Promise<void> };
   let createComparisonBitmapsStub: jest.Mock<() => Promise<void>>;
   let executeCommandStub: jest.Mock;
-  let runDockerStub: jest.Mock;
-  let shouldRunDockerStub: jest.Mock;
 
-  async function setupMocks (options: { dockerMode?: boolean } = {}) {
+  async function setupMocks () {
     jest.resetModules();
 
     createComparisonBitmapsStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    shouldRunDockerStub = jest.fn().mockReturnValue(options.dockerMode || false);
-    runDockerStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
     executeCommandStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
     jest.unstable_mockModule('../../../core/util/createComparisonBitmaps.js', () => ({
       default: createComparisonBitmapsStub
-    }));
-    jest.unstable_mockModule('../../../core/util/runDocker.js', () => ({
-      shouldRunDocker: shouldRunDockerStub,
-      runDocker: runDockerStub
     }));
     jest.unstable_mockModule('../../../core/command/index.js', () => ({
       default: executeCommandStub
@@ -57,35 +49,6 @@ describe('liveCompare command', function () {
 
     expect(executeCommandStub).toHaveBeenCalledTimes(1);
     expect(executeCommandStub).toHaveBeenCalledWith('_report', config);
-  });
-
-  it('should run docker when docker mode is enabled', async function () {
-    await setupMocks({ dockerMode: true });
-
-    const config = {
-      args: { docker: true },
-      openReport: false
-    };
-
-    await liveCompare.execute(config);
-
-    expect(runDockerStub).toHaveBeenCalledTimes(1);
-    expect(runDockerStub).toHaveBeenCalledWith(config, 'liveCompare');
-    expect(createComparisonBitmapsStub).not.toHaveBeenCalled();
-  });
-
-  it('should open report after docker when openReport is enabled', async function () {
-    await setupMocks({ dockerMode: true });
-
-    const config = {
-      args: { docker: true },
-      openReport: true,
-      report: ['browser']
-    };
-
-    await liveCompare.execute(config);
-
-    expect(executeCommandStub).toHaveBeenCalledWith('_openReport', config);
   });
 
   it('should propagate errors from createComparisonBitmaps', async function () {
