@@ -29,4 +29,3 @@ async function onReadyCarouselStubImages(
 }
 
 export default onReadyCarouselStubImages;
-module.exports = onReadyCarouselStubImages;

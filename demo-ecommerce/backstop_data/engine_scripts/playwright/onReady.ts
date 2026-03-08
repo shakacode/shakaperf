@@ -176,5 +176,3 @@ async function onReady(
 }
 
 export default onReady;
-module.exports = onReady;
-module.exports.waitUntilPageSettled = waitUntilPageSettled;
