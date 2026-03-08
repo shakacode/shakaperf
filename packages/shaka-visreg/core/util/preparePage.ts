@@ -22,6 +22,17 @@ const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
 
+/**
+ * Dynamically import a script file, supporting both .ts (via tsx) and .js.
+ */
+async function importScript(scriptPath: string): Promise<Record<string, unknown>> {
+  if (scriptPath.endsWith('.ts')) {
+    const { tsImport } = await import('tsx/esm/api');
+    return tsImport(scriptPath, import.meta.url) as Promise<Record<string, unknown>>;
+  }
+  return import(pathToFileURL(scriptPath).href);
+}
+
 function translateUrl (url: string) {
   const RE = /^[./]/;
   if (RE.test(url)) {
@@ -44,8 +55,8 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (existsSync(beforeScriptPath)) {
-      const beforeMod = await import(pathToFileURL(beforeScriptPath).href);
-      const beforeFn = beforeMod.default || beforeMod;
+      const beforeMod = await importScript(beforeScriptPath);
+      const beforeFn = (beforeMod.default || beforeMod) as (...args: unknown[]) => Promise<void>;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + beforeScriptPath);
@@ -127,8 +138,8 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (existsSync(readyScriptPath)) {
-      const readyMod = await import(pathToFileURL(readyScriptPath).href);
-      const readyFn = readyMod.default || readyMod;
+      const readyMod = await importScript(readyScriptPath);
+      const readyFn = (readyMod.default || readyMod) as (...args: unknown[]) => Promise<void>;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + readyScriptPath);
