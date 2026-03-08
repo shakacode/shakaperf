@@ -16,16 +16,16 @@ export default (target: PlaywrightPage) => {
 
     window._backstopTools = {
       hasLogged: function (str) {
-        return new RegExp(str).test(window._backstopTools._consoleLogger);
+        return new RegExp(str).test(window._backstopTools._consoleLogger || '');
       },
       startConsoleLogger: function () {
         if (typeof window._backstopTools._consoleLogger !== 'string') {
           window._backstopTools._consoleLogger = '';
         }
         const log = window.console.log.bind(console);
-        window.console.log = function () {
-          window._backstopTools._consoleLogger += Array.from(arguments).join('\n');
-          log.apply(this, arguments);
+        window.console.log = function (...args: unknown[]) {
+          window._backstopTools._consoleLogger += args.join('\n');
+          log(...args);
         };
       },
       /**
@@ -40,7 +40,7 @@ export default (target: PlaywrightPage) => {
         if (!Array.isArray(selectors)) {
           selectors = selectors.split(',');
         }
-        return selectors.reduce(function (acc, selector) {
+        return selectors.reduce(function (acc: string[], selector: string) {
           if (selector === 'body' || selector === 'viewport') {
             return acc.concat([selector]);
           }
@@ -54,8 +54,8 @@ export default (target: PlaywrightPage) => {
             return acc.concat(selector);
           }
 
-          const expandedSelector = [].slice.call(qResult)
-            .map(function (element, expandedIndex) {
+          const expandedSelector = ([] as Element[]).slice.call(qResult)
+            .map(function (element: Element, expandedIndex: number) {
               if (element.classList.contains('__86d')) {
                 return '';
               }
@@ -73,7 +73,7 @@ export default (target: PlaywrightPage) => {
             });
           // concat arrays of fully-qualified classnames
           return acc.concat(expandedSelector);
-        }, []).filter(function (selector) {
+        }, [] as string[]).filter(function (selector: string) {
           return selector !== '';
         });
       },
@@ -86,7 +86,7 @@ export default (target: PlaywrightPage) => {
         if (selector === 'body' || selector === 'document' || selector === 'viewport') {
           return true;
         } else if (window._backstopTools.exists(selector)) {
-          const element = document.querySelector(selector);
+          const element = document.querySelector(selector)!;
           const style = window.getComputedStyle(element);
           return (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
         }

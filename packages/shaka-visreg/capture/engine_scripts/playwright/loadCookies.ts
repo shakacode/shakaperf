@@ -1,11 +1,12 @@
 import fs from 'node:fs';
+import type { BrowserContext, Scenario, BackstopCookie } from '../../../core/types.js';
 
-export default async (browserContext, scenario) => {
-  let cookies = [];
+export default async (browserContext: BrowserContext, scenario: Scenario) => {
+  let cookies: BackstopCookie[] = [];
   const cookiePath = scenario.cookiePath;
 
   // Read Cookies from File, if exists
-  if (fs.existsSync(cookiePath)) {
+  if (cookiePath && fs.existsSync(cookiePath)) {
     cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
   }
 

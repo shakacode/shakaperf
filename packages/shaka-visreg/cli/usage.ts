@@ -18,9 +18,9 @@ const optionsDescription = {
   '-v, --version': 'Display version'
 };
 
-function makeDescription (descriptions) {
+function makeDescription (descriptions: Record<string, string>) {
   return Object.keys(descriptions)
-    .map(function (commandName) {
+    .map(function (commandName: string) {
       return makeSpaces(4) + commandName + spacesBetweenCommandAndDescription(commandName) + descriptions[commandName];
     })
     .join('\n');
@@ -29,14 +29,14 @@ function makeDescription (descriptions) {
 // Number of spaces to echo before writing description
 const leftPaddingOfDescription = Object.keys(commandsDescription)
   .concat(Object.keys(optionsDescription))
-  .map(function (string) {
+  .map(function (string: string) {
     return string.length;
   })
-  .reduce(function maxReducer (max, length) {
+  .reduce(function maxReducer (max: number, length: number) {
     return Math.max(max, length);
   }, 0);
 
-function spacesBetweenCommandAndDescription (commandName) {
+function spacesBetweenCommandAndDescription (commandName: string) {
   return makeSpaces(2 + leftPaddingOfDescription - commandName.length);
 }
 

@@ -1,7 +1,7 @@
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
-function resizePng(png, targetWidth, targetHeight) {
+function resizePng(png: PNG, targetWidth: number, targetHeight: number) {
   if (png.width === targetWidth && png.height === targetHeight) {
     return png;
   }
@@ -10,7 +10,7 @@ function resizePng(png, targetWidth, targetHeight) {
   return resized;
 }
 
-function compareBuffers(buf1, buf2, options?) {
+function compareBuffers(buf1: Buffer, buf2: Buffer, options?: { threshold?: number }) {
   options = options || {};
   const img1 = PNG.sync.read(buf1);
   const img2 = PNG.sync.read(buf2);
@@ -46,10 +46,10 @@ function compareBuffers(buf1, buf2, options?) {
   };
 }
 
-function createCompositeImage(pngImages) {
+function createCompositeImage(pngImages: PNG[]) {
   // pngImages: array of PNG objects to place side-by-side
-  const totalWidth = pngImages.reduce(function (sum, img) { return sum + img.width; }, 0);
-  const maxHeight = pngImages.reduce(function (max, img) { return Math.max(max, img.height); }, 0);
+  const totalWidth = pngImages.reduce(function (sum: number, img: PNG) { return sum + img.width; }, 0);
+  const maxHeight = pngImages.reduce(function (max: number, img: PNG) { return Math.max(max, img.height); }, 0);
 
   const composite = new PNG({ width: totalWidth, height: maxHeight });
 

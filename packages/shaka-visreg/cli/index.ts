@@ -13,7 +13,7 @@ main();
 
 function main () {
   const argsOptions = parseArgs(process.argv.slice(2), {
-    boolean: ['h', 'help', 'v', 'version', 'docker'],
+    boolean: ['h', 'help', 'v', 'version'],
     string: ['config'],
     default: {
       config: 'backstop.json'
@@ -45,7 +45,7 @@ function main () {
       process.exitCode = 1;
     });
 
-    process.on('uncaughtException', function (err) {
+    process.on('uncaughtException', function (err: Error) {
       console.log('Uncaught exception:', err.message, err.stack);
       throw err;
     });

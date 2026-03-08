@@ -1,9 +1,10 @@
 import { jest } from '@jest/globals';
 
 describe('compare', function () {
-  let compare;
-  let compareHashes;
-  let compareResemble;
+  // Dynamically imported mocked modules — types determined at runtime
+  let compare: (img1: string, img2: string, threshold: number, opts: Record<string, unknown>) => Promise<unknown>;
+  let compareHashes: jest.Mock;
+  let compareResemble: jest.Mock;
   const error = new Error();
 
   beforeAll(async function () {
@@ -19,7 +20,8 @@ describe('compare', function () {
       default: compareResemble
     }));
 
-    compare = (await import('../../../../core/util/compare/compare.js') as { default?: Function }).default;
+    const mod = await import('../../../../core/util/compare/compare.js') as unknown as { default: typeof compare };
+    compare = mod.default;
   });
 
   afterEach(() => {
@@ -28,7 +30,8 @@ describe('compare', function () {
   });
 
   it.skip('should resolve if compare-hashes succeed', function () {
-    compareHashes.mockImplementation((img1, img2) => {
+    compareHashes.mockImplementation((...args: unknown[]) => {
+      const [img1, img2] = args as [string, string];
       if (img1 === 'img1.png' && img2 === 'img2.png') return Promise.resolve();
       return Promise.reject(error);
     });
@@ -39,7 +42,8 @@ describe('compare', function () {
 
   it.skip('should resolve if compare-hashes fail, but compare-resemble succeeds', function () {
     compareHashes.mockReturnValue(Promise.reject(error));
-    compareResemble.mockImplementation((img1, img2, threshold, opts) => {
+    compareResemble.mockImplementation((...args: unknown[]) => {
+      const [img1, img2] = args as [string, string];
       if (img1 === 'img1.png' && img2 === 'img2.png') return Promise.resolve();
       return Promise.reject(error);
     });

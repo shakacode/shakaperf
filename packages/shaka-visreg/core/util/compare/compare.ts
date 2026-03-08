@@ -1,30 +1,37 @@
 import compareHashes from './compare-hash.js';
 import compareResemble from './compare-resemble.js';
 import storeFailedDiff from './store-failed-diff.js';
+import type { TestPair, ResembleOutputOptions, DiffResult } from '../../types.js';
+
+interface ResembleDiffData extends DiffResult {
+  getDiffImage: () => { pack: () => NodeJS.ReadableStream };
+  getDiffImageAsJPEG: (quality: number) => Buffer;
+}
 
 process.on('message', compare);
 
-function compare (data) {
+function compare (data: { referencePath: string; testPath: string; resembleOutputSettings: ResembleOutputOptions; pair: TestPair }) {
   const { referencePath, testPath, resembleOutputSettings, pair } = data;
   const promise = compareHashes(referencePath, testPath)
     .catch(() => compareResemble(referencePath, testPath, pair.misMatchThreshold, resembleOutputSettings, pair.requireSameDimensions));
   promise
-    .then(function (data) {
-      pair.diff = data;
+    .then(function (result: unknown) {
+      pair.diff = result as DiffResult;
       pair.status = 'pass';
       return sendMessage(pair);
     })
-    .catch(function (data) {
-      pair.diff = data;
+    .catch(function (result: unknown) {
+      const diffData = result as ResembleDiffData;
+      pair.diff = diffData;
       pair.status = 'fail';
 
-      return storeFailedDiff(testPath, data).then(function (compare) {
-        pair.diffImage = compare;
+      return storeFailedDiff(testPath, diffData).then(function (compare: unknown) {
+        pair.diffImage = compare as string;
         return sendMessage(pair);
       });
     });
 }
 
-function sendMessage (data) {
-  process.send(data);
+function sendMessage (data: TestPair) {
+  process.send!(data);
 }

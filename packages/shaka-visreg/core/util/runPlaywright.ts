@@ -1,8 +1,10 @@
 import playwright from 'playwright';
 import chalk from 'chalk';
-import type { Browser } from '../types.js';
+import type { Browser, DecoratedCompareConfig } from '../types.js';
 
-export async function createPlaywrightBrowser (config: any) {
+type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
+
+export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
   console.log('Creating Browser');
 
   let { engineOptions: sanitizedEngineOptions } = JSON.parse(JSON.stringify(config));
@@ -17,7 +19,8 @@ export async function createPlaywrightBrowser (config: any) {
     console.warn(chalk.yellow(`The headless mode, "${headless}", may not be supported by Playwright.`));
   }
 
-  if (!(playwright as any)[browserChoice]) {
+  // Error when using unknown `browserChoice`
+  if (!(playwright[browserChoice as PlaywrightBrowserType])) {
     console.error(chalk.red(`Unsupported Playwright browser "${browserChoice}"`));
     return;
   }
@@ -42,7 +45,7 @@ export async function createPlaywrightBrowser (config: any) {
         : typeof headless === 'boolean' ? headless : typeof headless === 'string' ? headless === 'new' ? true : headless : true
     }
   );
-  return await playwright[browserChoice].launch(playwrightArgs);
+  return await playwright[browserChoice as PlaywrightBrowserType].launch(playwrightArgs);
 };
 
 export async function disposePlaywrightBrowser (browser: Browser) {

@@ -6,6 +6,16 @@ import * as engineTools from './engineTools.js';
 import { compareBuffers } from './compare/pixelmatch-inline.js';
 import retryCompare from './retryCompare.js';
 import preparePage from './preparePage.js';
+import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair, DecoratedCompareConfig } from '../types.js';
+
+type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
+interface CompareLogger {
+  logged: string[][];
+  error: (color: string, message: string, ...rest: unknown[]) => void;
+  warn: (color: string, message: string, ...rest: unknown[]) => void;
+  log: (color: string, message: string, ...rest: unknown[]) => void;
+  info: (color: string, message: string, ...rest: unknown[]) => void;
+}
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
@@ -18,27 +28,28 @@ const DOCUMENT_SELECTOR = 'document';
 const NOCLIP_SELECTOR = 'body:noclip';
 const VIEWPORT_SELECTOR = 'viewport';
 
-function loggerAction (action, color, message) {
-  const rest = Array.prototype.slice.call(arguments, 3);
+function loggerAction (this: { logged: string[][] }, action: string, color: string, message: string, ...rest: unknown[]) {
   this.logged.push([action, color, message.toString(), JSON.stringify(rest)]);
-  console[action](chalk[color](message), ...rest);
+  console[action as ConsoleMethod]((chalk as unknown as Record<string, (s: string) => string>)[color](message), ...rest);
 }
 
-function createLogger () {
-  const logger: { logged: string[][]; error?: (color: string, message: string, ...rest: unknown[]) => void; warn?: (color: string, message: string, ...rest: unknown[]) => void; log?: (color: string, message: string, ...rest: unknown[]) => void; info?: (color: string, message: string, ...rest: unknown[]) => void } = { logged: [] };
-  Object.assign(logger, {
-    error: loggerAction.bind(logger, 'error'),
-    warn: loggerAction.bind(logger, 'warn'),
-    log: loggerAction.bind(logger, 'log'),
-    info: loggerAction.bind(logger, 'info')
-  });
+function createLogger (): CompareLogger {
+  const logged: string[][] = [];
+  const base = { logged };
+  const logger: CompareLogger = {
+    logged,
+    error: loggerAction.bind(base, 'error'),
+    warn: loggerAction.bind(base, 'warn'),
+    log: loggerAction.bind(base, 'log'),
+    info: loggerAction.bind(base, 'info')
+  };
   return logger;
 }
 
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page, selector, selectorMap, viewport, config) {
+async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {
@@ -53,10 +64,10 @@ async function captureScreenshot (page, selector, selectorMap, viewport, config)
       if (box) {
         if (config.useBoundingBoxViewportForSelectors !== false) {
           const bodyHandle = await page.$('body');
-          const boundingBox = await bodyHandle.boundingBox();
+          const boundingBox = await bodyHandle!.boundingBox();
           await page.setViewportSize({
-            width: Math.max(viewport.width || viewport.viewport.width, Math.ceil(boundingBox.width)),
-            height: Math.max(viewport.height || viewport.viewport.height, Math.ceil(boundingBox.height))
+            width: Math.max(viewport.width || viewport.viewport!.width, Math.ceil(boundingBox!.width)),
+            height: Math.max(viewport.height || viewport.viewport!.height, Math.ceil(boundingBox!.height))
           });
         }
 
@@ -67,7 +78,7 @@ async function captureScreenshot (page, selector, selectorMap, viewport, config)
   }
 }
 
-function writeScenarioLogs (config, logFilePath, logger) {
+function writeScenarioLogs (config: DecoratedCompareConfig, logFilePath: string, logger: CompareLogger) {
   if (config.scenarioLogsInReports) {
     return writeFile(logFilePath, JSON.stringify(logger.logged));
   }
@@ -77,7 +88,7 @@ function writeScenarioLogs (config, logFilePath, logger) {
 /**
  * Core comparison logic for live compare scenarios.
  */
-async function processCompareView (scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, viewport, config, refPage, testPage, refBrowserOrContext, testBrowserOrContext, logger) {
+async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, refPage: PlaywrightPage, testPage: PlaywrightPage, refBrowserOrContext: BrowserContext, testBrowserOrContext: BrowserContext, logger: CompareLogger) {
   const { scenarioDefaults = {} } = config;
   scenario = { ...scenarioDefaults, ...scenario };
 
@@ -96,8 +107,8 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   config._configId = config.id || engineTools.genHash(config.backstopConfigFileName);
 
   const engineScriptsPath = config.env.engine_scripts || config.env.engine_scripts_default;
-  const VP_W = viewport.width || viewport.viewport.width;
-  const VP_H = viewport.height || viewport.viewport.height;
+  const VP_W = viewport.width || viewport.viewport!.width;
+  const VP_H = viewport.height || viewport.viewport!.height;
 
   // Set viewport on both pages
   await Promise.all([
@@ -113,7 +124,7 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
 
   // Prepare both pages in parallel
   const [refResult, testResult] = await Promise.all([
-    preparePage(refPage, scenario.referenceUrl, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath),
+    preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath),
     preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath)
   ]);
 
@@ -122,7 +133,7 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   const testSelectorMap = testResult.backstopSelectorsExpMap;
   const refSelectorMap = refResult.backstopSelectorsExpMap;
 
-  const compareConfig = { testPairs: [] };
+  const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const maxNumDiffPixels = scenario.maxNumDiffPixels != null
     ? scenario.maxNumDiffPixels
     : (config.maxNumDiffPixels != null ? config.maxNumDiffPixels : 0);
@@ -231,14 +242,14 @@ async function processCompareView (scenario, variantOrScenarioLabelSafe, scenari
   if (selectors.length > 0) {
     const firstSelector = selectors[0];
     const logTestPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, firstSelector);
-    await writeScenarioLogs(config, logTestPair.testLog, logger);
-    await writeScenarioLogs(config, logTestPair.referenceLog, logger);
+    await writeScenarioLogs(config, logTestPair.testLog!, logger);
+    await writeScenarioLogs(config, logTestPair.referenceLog!, logger);
   }
 
   return compareConfig;
 }
 
-async function buildErrorCompareConfig (config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, error) {
+async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, error: Error) {
   config._bitmapsTestPath = config.paths.bitmaps_test || DEFAULT_BITMAPS_TEST_DIR;
   config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
@@ -259,14 +270,15 @@ async function buildErrorCompareConfig (config, scenario, viewport, variantOrSce
 
 // ── Playwright entry point ─────────────────────────────────────────
 
-export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }) {
+export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }: { scenario: Scenario; viewport: Viewport; config: DecoratedCompareConfig; _playwrightBrowser: Browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
   const logger = createLogger();
 
   const { engineOptions = {} } = config;
   const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
-  const storageState = engineOptions.storageState || {};
+  // storageState shape comes from user config — cast to satisfy Playwright's newContext
+  const storageState = (engineOptions.storageState || undefined) as string | undefined;
 
   // Create two separate browser contexts
   const refContext = await browser.newContext({ ignoreHTTPSErrors, storageState });
@@ -275,17 +287,17 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
   const testPage = await testContext.newPage();
 
   let compareConfig;
-  let error;
+  let error: Error | undefined;
 
   try {
     compareConfig = await processCompareView(
       scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
       viewport, config, refPage, testPage, refContext, testContext, logger
     );
-  } catch (e) {
+  } catch (e: unknown) {
     logger.log('red', 'Error during live compare for "' + scenario.label + '"');
-    logger.log('red', e.toString());
-    error = e;
+    logger.log('red', String(e));
+    error = e instanceof Error ? e : new Error(String(e));
   } finally {
     logger.log('green', 'x Close Browser Contexts');
     await refContext.close();

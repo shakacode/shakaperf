@@ -65,7 +65,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
       readyResolve = resolve;
       readyTimeoutTimer = setTimeout(function () {
         logger.error('ReadyEvent not detected within readyTimeout limit. (' + readyTimeout + ' ms) ' + url);
-        page.removeListener('console', onConsole);
+        page.removeListener('console', onConsole!);
         resolve();
       }, readyTimeout);
     });
@@ -73,8 +73,8 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     onConsole = function (msg: ConsoleMessage) {
       if (new RegExp(readyEvent).test(msg.text())) {
         clearTimeout(readyTimeoutTimer);
-        page.removeListener('console', onConsole);
-        readyResolve();
+        page.removeListener('console', onConsole!);
+        readyResolve!();
       }
     };
     page.on('console', onConsole);
@@ -86,7 +86,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     await injectBackstopTools(page);
 
     if (readyPromise) {
-      await page.evaluate(function (v: string) { window._readyEvent = v; }, readyEvent);
+      await page.evaluate(function (v: string) { window._readyEvent = v; }, readyEvent!);
       await readyPromise;
     }
   } finally {
@@ -104,14 +104,14 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   }
 
   // --- DELAY ---
-  if (scenario.delay > 0) {
+  if (scenario.delay && scenario.delay > 0) {
     await new Promise(function (resolve) { setTimeout(resolve, scenario.delay); });
   }
 
   // --- REMOVE SELECTORS ---
   if (_.has(scenario, 'removeSelectors')) {
     await Promise.all(
-      scenario.removeSelectors.map(function (sel: string) {
+      scenario.removeSelectors!.map(function (sel: string) {
         return page.evaluate(function (s: string) {
           document.querySelectorAll(s).forEach(function (el: Element) {
             (el as HTMLElement).style.cssText = 'display: none !important;';
@@ -141,7 +141,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
     await Promise.all(
-      scenario.hideSelectors.map(function (sel: string) {
+      scenario.hideSelectors!.map(function (sel: string) {
         return page.evaluate(function (s: string) {
           document.querySelectorAll(s).forEach(function (el: Element) {
             (el as HTMLElement).style.visibility = 'hidden';
@@ -152,13 +152,13 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   }
 
   // --- HANDLE NO-SELECTORS ---
-  if (!_.has(scenario, 'selectors') || !scenario.selectors.length) {
+  if (!_.has(scenario, 'selectors') || !scenario.selectors!.length) {
     scenario.selectors = [DOCUMENT_SELECTOR];
   }
 
   // --- EXPAND SELECTORS ---
   const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
-  const selectors = Array.isArray(scenario.selectors) ? scenario.selectors : [scenario.selectors];
+  const selectors: string[] = scenario.selectors!;
 
   const result = await page.evaluate(function (args: { expand: boolean; sels: string[] }) {
     var expand = args.expand;

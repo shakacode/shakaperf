@@ -12,14 +12,16 @@ const REF_IMG2 = path.join(__dirname, 'compare/refImage-2.png');
 
 // retryCompare is called AFTER an initial mismatch is detected
 // It attempts to re-capture screenshots and find a matching pair
-import retryCompare from '../../../core/util/retryCompare.js';
+import retryCompareOriginal from '../../../core/util/retryCompare.js';
+// Test mocks don't implement full Playwright interfaces — loosen the input type
+const retryCompare = retryCompareOriginal as unknown as (options: Record<string, unknown>) => ReturnType<typeof retryCompareOriginal>;
 
 // Mock preparePage — no-op, avoids real browser navigation in unit tests
 const mockPreparePage = async function () { };
 
 // Mock page with no-op setViewport (needed for viewport reset in retry loop)
-function createMockPage(props?) {
-  return Object.assign({ setViewport: async function () { } }, props);
+function createMockPage(props?: Record<string, unknown>) {
+  return Object.assign({ setViewport: async function () { }, setViewportSize: async function () { } }, props);
 }
 
 jest.setTimeout(10000); // Increase timeout for retry tests
@@ -76,7 +78,7 @@ describe('retryCompare', function () {
 
   it('should pass when retry captures matching test screenshot', async function () {
     // Simulate: initial test was different, retry captures matching image
-    const captureScreenshot = async (page) => {
+    const captureScreenshot = async (_page: unknown) => {
       // New test capture matches original reference
       return buf1;
     };
@@ -104,7 +106,7 @@ describe('retryCompare', function () {
   it('should pass when retry captures matching reference screenshot', async function () {
     // Simulate: new reference capture matches existing test screenshots
     let callCount = 0;
-    const captureScreenshot = async (page) => {
+    const captureScreenshot = async (_page: unknown) => {
       callCount++;
       // First call (test page) returns different image
       // Second call (ref page) returns image matching initial test
@@ -238,9 +240,7 @@ describe('retryCompare', function () {
   });
 
   it('should handle null captureScreenshot results gracefully', async function () {
-    let callCount = 0;
-    const captureScreenshot = async () => {
-      callCount++;
+    const captureScreenshot = async (): Promise<Buffer | null> => {
       return null; // Simulates selector not found
     };
 
@@ -301,8 +301,8 @@ describe('retryCompare', function () {
   });
 
   it('should call preparePage before each capture on every retry', async function () {
-    const preparePageCalls = [];
-    const mockPreparePageTracking = async function (page, url) {
+    const preparePageCalls: Array<{ page: unknown; url: unknown }> = [];
+    const mockPreparePageTracking = async function (page: unknown, url: unknown) {
       preparePageCalls.push({ page, url });
     };
 
@@ -349,7 +349,7 @@ describe('retryCompare', function () {
   });
 
   it('should re-navigate before capture, not after', async function () {
-    const callOrder = [];
+    const callOrder: string[] = [];
 
     const mockPreparePageOrder = async function () {
       callOrder.push('preparePage');
@@ -397,10 +397,11 @@ describe('retryCompare', function () {
   });
 
   it('should reset viewport before each retry', async function () {
-    const viewportCalls = [];
-    const mockPage = (id) => ({
+    const viewportCalls: Array<{ id: string; width?: number; height?: number }> = [];
+    const mockPage = (id: string) => ({
       id,
-      setViewport: async function (vp) { viewportCalls.push({ id, ...vp }); }
+      setViewport: async function (vp: { width: number; height: number }) { viewportCalls.push({ id, ...vp }); },
+      setViewportSize: async function (vp: { width: number; height: number }) { viewportCalls.push({ id, ...vp }); }
     });
 
     let callCount = 0;

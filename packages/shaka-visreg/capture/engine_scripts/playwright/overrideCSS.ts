@@ -18,7 +18,9 @@ const BACKSTOP_TEST_CSS_OVERRIDE = `
   }
 `;
 
-export default async (page, scenario) => {
+import type { PlaywrightPage, Scenario } from '../../../core/types.js';
+
+export default async (page: PlaywrightPage, scenario: Scenario) => {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: BACKSTOP_TEST_CSS_OVERRIDE

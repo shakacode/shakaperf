@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import assert from 'node:assert';
 
 describe('core report', function () {
   const config = {
@@ -15,13 +14,14 @@ describe('core report', function () {
     }
   };
 
-  let report;
-  let writeFileStub;
+  // Dynamically imported mocked module — use Record type since actual shape depends on mocks
+  let report: { execute: (config: Record<string, unknown>) => Promise<void> };
+  let writeFileStub: jest.Mock;
 
   beforeAll(async function () {
     jest.resetModules();
 
-    const reporterClass = { failed: () => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
+    const reporterClass = { failed: (): undefined => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
     const compareMock = jest.fn<() => Promise<typeof reporterClass>>().mockResolvedValue(reporterClass);
     const loggerMock = () => {
       return { log: jest.fn(), error: jest.fn() };
@@ -43,7 +43,7 @@ describe('core report', function () {
       ensureDir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
     }));
 
-    report = await import('../../../core/command/report.js');
+    report = await import('../../../core/command/report.js') as unknown as typeof report;
   });
 
   it('should generate two json reports and a default browser report when config.report specifies json', function () {

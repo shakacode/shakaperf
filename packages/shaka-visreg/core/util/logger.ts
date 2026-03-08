@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import _ from 'lodash';
 import makeSpaces from './makeSpaces.js';
 
-function identity (string) { return string; }
+function identity (string: string) { return string; }
 
 const typeToColor = {
   error: identity,
@@ -24,21 +24,13 @@ const typeToTitleColor = {
 
 let longestTitle = 5;
 
-function paddedString (length, string) {
+function paddedString (length: number, string: string) {
   const padding = makeSpaces(length + 3);
-
-  if (string instanceof Error) {
-    string = string.stack;
-  }
-
-  if (typeof string !== 'string') {
-    return string;
-  }
 
   const lines = string.split('\n');
   const paddedLines = lines
     .slice(1)
-    .map(function addPadding (string) {
+    .map(function addPadding (string: string) {
       return padding + string;
     });
   paddedLines.unshift(lines[0]);
@@ -46,7 +38,7 @@ function paddedString (length, string) {
   return paddedLines.join('\n');
 }
 
-function message (type, subject, string) {
+function message (type: string, subject: string, string: string) {
   if (!_.has(typeToColor, type)) {
     type = 'info';
     console.log(typeToColor.warn('Type ' + type + ' is not defined as logging type'));
@@ -61,10 +53,11 @@ function message (type, subject, string) {
     longestTitle = subject.length;
   }
 
-  console.log(typeToTitleColor[type](subject + ' ') + '| ' + paddedString(longestTitle, typeToColor[type](string)));
+  const colorKey = type as keyof typeof typeToColor;
+  console.log(typeToTitleColor[colorKey](subject + ' ') + '| ' + paddedString(longestTitle, typeToColor[colorKey](string)));
 }
 
-export default function createLogger (subject) {
+export default function createLogger (subject: string) {
   return {
     error: message.bind(null, 'error', subject),
     warn: message.bind(null, 'warn', subject),

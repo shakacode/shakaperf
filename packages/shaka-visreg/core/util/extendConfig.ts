@@ -4,13 +4,14 @@ import fs from 'node:fs';
 import hash from 'object-hash';
 import os from 'node:os';
 import { createRequire } from 'node:module';
+import type { RuntimeConfig, BackstopConfig } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const packageJson = _require('../../package.json');
 const { version } = packageJson;
 const tmpdir = os.tmpdir();
 
-function extendConfig (config, userConfig) {
+function extendConfig (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
   bitmapPaths(config, userConfig);
   ci(config, userConfig);
   htmlReport(config, userConfig);
@@ -27,7 +28,6 @@ function extendConfig (config, userConfig) {
   config.resembleOutputOptions = userConfig.resembleOutputOptions;
   config.asyncCompareLimit = userConfig.asyncCompareLimit;
   config.backstopVersion = version;
-  config.dockerCommandTemplate = userConfig.dockerCommandTemplate;
   config.scenarioLogsInReports = userConfig.scenarioLogsInReports;
 
   // liveCompare command options
@@ -38,17 +38,17 @@ function extendConfig (config, userConfig) {
   return config;
 }
 
-function bitmapPaths (config, userConfig) {
-  config.bitmaps_reference = path.join(config.projectPath, 'backstop_data', 'bitmaps_reference');
-  config.bitmaps_test = path.join(config.projectPath, 'backstop_data', 'bitmaps_test');
+function bitmapPaths (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+  config.bitmaps_reference = path.join(config.projectPath!, 'backstop_data', 'bitmaps_reference');
+  config.bitmaps_test = path.join(config.projectPath!, 'backstop_data', 'bitmaps_test');
   if (userConfig.paths) {
     config.bitmaps_reference = userConfig.paths.bitmaps_reference || config.bitmaps_reference;
     config.bitmaps_test = userConfig.paths.bitmaps_test || config.bitmaps_test;
   }
 }
 
-function ci (config, userConfig) {
-  config.ci_report = path.join(config.projectPath, 'backstop_data', 'ci_report');
+function ci (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+  config.ci_report = path.join(config.projectPath!, 'backstop_data', 'ci_report');
   if (userConfig.paths) {
     config.ci_report = userConfig.paths.ci_report || config.ci_report;
   }
@@ -67,10 +67,10 @@ function ci (config, userConfig) {
   }
 }
 
-function htmlReport (config, userConfig) {
-  config.html_report = path.join(config.projectPath, 'backstop_data', 'html_report');
+function htmlReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+  config.html_report = path.join(config.projectPath!, 'backstop_data', 'html_report');
   config.openReport = userConfig.openReport === undefined ? true : userConfig.openReport;
-  config.archivePath = path.join(config.projectPath, 'backstop_data', 'reports');
+  config.archivePath = path.join(config.projectPath!, 'backstop_data', 'reports');
   config.archiveReport = userConfig.archiveReport === undefined ? false : userConfig.archiveReport;
 
   if (userConfig.paths) {
@@ -78,37 +78,37 @@ function htmlReport (config, userConfig) {
     config.archivePath = userConfig.paths.reports_archive || config.archivePath;
   }
 
-  config.compareConfigFileName = path.join(config.html_report, 'config.js');
-  config.compareReportURL = path.join(config.html_report, 'index.html');
+  config.compareConfigFileName = path.join(config.html_report!, 'config.js');
+  config.compareReportURL = path.join(config.html_report!, 'index.html');
 }
 
-function jsonReport (config, userConfig) {
-  config.json_report = path.join(config.projectPath, 'backstop_data', 'json_report');
+function jsonReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+  config.json_report = path.join(config.projectPath!, 'backstop_data', 'json_report');
   if (userConfig.paths) {
     config.json_report = userConfig.paths.json_report || config.json_report;
   }
 
-  config.compareJsonFileName = path.join(config.json_report, 'jsonReport.json');
+  config.compareJsonFileName = path.join(config.json_report!, 'jsonReport.json');
 }
 
-function comparePaths (config) {
-  config.comparePath = path.join(config.backstop, 'compare/output');
+function comparePaths (config: Partial<RuntimeConfig>) {
+  config.comparePath = path.join(config.backstop!, 'compare/output');
   config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
 }
 
-function captureConfigPaths (config) {
+function captureConfigPaths (config: Partial<RuntimeConfig>) {
   const captureDir = path.join(tmpdir, 'capture');
   if (!fs.existsSync(captureDir)) {
     fs.mkdirSync(captureDir);
   }
   const configHash = hash(config);
   config.captureConfigFileName = path.join(tmpdir, 'capture', configHash + '.json');
-  config.captureConfigFileNameDefault = path.join(config.backstop, 'capture', 'config.default.json');
+  config.captureConfigFileNameDefault = path.join(config.backstop!, 'capture', 'config.default.json');
 }
 
-function engine (config, userConfig) {
-  config.engine_scripts = path.join(config.projectPath, 'backstop_data', 'engine_scripts');
-  config.engine_scripts_default = path.join(config.backstop, 'capture', 'engine_scripts');
+function engine (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+  config.engine_scripts = path.join(config.projectPath!, 'backstop_data', 'engine_scripts');
+  config.engine_scripts_default = path.join(config.backstop!, 'capture', 'engine_scripts');
 
   if (userConfig.paths) {
     config.engine_scripts = userConfig.paths.engine_scripts || config.engine_scripts;
