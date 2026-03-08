@@ -37,4 +37,3 @@ async function onReadyElectronicsFilter(
 }
 
 export default onReadyElectronicsFilter;
-module.exports = onReadyElectronicsFilter;

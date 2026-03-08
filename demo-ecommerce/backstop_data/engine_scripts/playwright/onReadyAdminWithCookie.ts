@@ -26,4 +26,3 @@ async function onReadyAdminWithCookie(
 }
 
 export default onReadyAdminWithCookie;
-module.exports = onReadyAdminWithCookie;

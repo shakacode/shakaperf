@@ -35,4 +35,3 @@ async function onReadyAdminWithInteraction(
 }
 
 export default onReadyAdminWithInteraction;
-module.exports = onReadyAdminWithInteraction;

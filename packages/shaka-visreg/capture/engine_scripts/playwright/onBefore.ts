@@ -13,4 +13,3 @@ async function onBefore(
 }
 
 export default onBefore;
-module.exports = onBefore;

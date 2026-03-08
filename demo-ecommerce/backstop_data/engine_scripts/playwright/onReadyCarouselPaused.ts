@@ -28,4 +28,3 @@ async function onReadyCarouselPaused(
 }
 
 export default onReadyCarouselPaused;
-module.exports = onReadyCarouselPaused;
