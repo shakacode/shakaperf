@@ -12,7 +12,10 @@ export default async function clickAndHoverHelper(page: Page, scenario: Scenario
     const selectors = ([] as KeypressSelector[]).concat(keyPressSelector);
     for (const keyPressSelectorItem of selectors) {
       await page.waitForSelector(keyPressSelectorItem.selector);
-      await page.fill(keyPressSelectorItem.selector, keyPressSelectorItem.keyPress);
+      const keys = Array.isArray(keyPressSelectorItem.keyPress) ? keyPressSelectorItem.keyPress : [keyPressSelectorItem.keyPress];
+      for (const key of keys) {
+        await page.fill(keyPressSelectorItem.selector, key);
+      }
     }
   }
 

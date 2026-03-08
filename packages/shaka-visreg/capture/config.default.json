@@ -16,10 +16,10 @@
   "onReadyScript": "playwright/onReady.ts",
   "scenarios": [
     {
-      "label": "BackstopJS Homepage",
+      "label": "ShakaCode Homepage",
       "cookiePath": "backstop_data/engine_scripts/cookies.json",
-      "url": "https://garris.github.io/BackstopJS/",
-      "referenceUrl": "",
+      "url": "https://shakacode.com/",
+      "referenceUrl": "https://shakacode.com/",
       "readyEvent": "",
       "readySelector": "",
       "delay": 0,
@@ -31,7 +31,7 @@
       "selectors": [],
       "selectorExpansion": true,
       "expect": 0,
-      "misMatchThreshold" : 0.1,
+      "misMatchThreshold": 0.1,
       "requireSameDimensions": true
     }
   ],
@@ -43,8 +43,8 @@
     "ci_report": "backstop_data/ci_report"
   },
   "report": ["browser"],
-  "engine": "playwright",
   "engineOptions": {
+    "browser": "chromium",
     "args": ["--no-sandbox"]
   },
   "asyncCaptureLimit": 5,
