@@ -1,11 +1,11 @@
-// Go get a hook to BackstopJS
-import backstop from '../../core/runner.js';
+// Go get a hook to shaka-visreg
+import runner from '../../core/runner.js';
 
-// Run BackstopJS with docker
+// Run shaka-visreg with docker
 // NOTE: passing either config file name or actual config object is supported.
-backstop('reference', {
+runner('reference', {
   docker: false,
-  config: 'backstop',
+  config: 'visreg',
   filter: undefined,
   i: false
 }).then(
