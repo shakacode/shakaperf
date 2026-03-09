@@ -1,7 +1,7 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
-import overrideCSS from './overrideCSS';
-import { waitUntilPageSettled } from './onReady';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
+import overrideCSS from './overrideCSS.ts';
+import { waitUntilPageSettled } from './onReady.ts';
 
 const CAROUSEL_PAUSE_CSS = `
   [data-cy="marketing-carousel-track"] {
@@ -28,4 +28,3 @@ async function onReadyCarouselPaused(
 }
 
 export default onReadyCarouselPaused;
-module.exports = onReadyCarouselPaused;

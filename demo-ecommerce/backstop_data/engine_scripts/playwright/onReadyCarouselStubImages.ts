@@ -1,8 +1,8 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
-import interceptImages from './interceptImages';
-import overrideCSS from './overrideCSS';
-import { waitUntilPageSettled } from './onReady';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
+import interceptImages from './interceptImages.ts';
+import overrideCSS from './overrideCSS.ts';
+import { waitUntilPageSettled } from './onReady.ts';
 
 const CAROUSEL_PAUSE_CSS = `
   [data-cy="marketing-carousel-track"] {
@@ -29,4 +29,3 @@ async function onReadyCarouselStubImages(
 }
 
 export default onReadyCarouselStubImages;
-module.exports = onReadyCarouselStubImages;

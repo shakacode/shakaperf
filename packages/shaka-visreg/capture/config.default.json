@@ -12,14 +12,14 @@
       "height": 768
     }
   ],
-  "onBeforeScript": "playwright/onBefore.js",
-  "onReadyScript": "playwright/onReady.js",
+  "onBeforeScript": "playwright/onBefore.ts",
+  "onReadyScript": "playwright/onReady.ts",
   "scenarios": [
     {
-      "label": "BackstopJS Homepage",
+      "label": "ShakaCode Homepage",
       "cookiePath": "backstop_data/engine_scripts/cookies.json",
-      "url": "https://garris.github.io/BackstopJS/",
-      "referenceUrl": "",
+      "url": "https://shakacode.com/",
+      "referenceUrl": "https://shakacode.com/",
       "readyEvent": "",
       "readySelector": "",
       "delay": 0,
@@ -31,7 +31,7 @@
       "selectors": [],
       "selectorExpansion": true,
       "expect": 0,
-      "misMatchThreshold" : 0.1,
+      "misMatchThreshold": 0.1,
       "requireSameDimensions": true
     }
   ],
@@ -42,12 +42,19 @@
     "html_report": "backstop_data/html_report",
     "ci_report": "backstop_data/ci_report"
   },
-  "report": ["browser"],
-  "engine": "playwright",
+  "report": [
+    "browser"
+  ],
   "engineOptions": {
-    "args": ["--no-sandbox"]
+    "browser": "chromium",
+    "args": [
+      "--no-sandbox"
+    ]
   },
   "asyncCaptureLimit": 5,
+  "compareRetries": 5,
+  "compareRetryDelay": 1000,
+  "maxNumDiffPixels": 50,
   "asyncCompareLimit": 50,
   "debug": false,
   "debugWindow": false

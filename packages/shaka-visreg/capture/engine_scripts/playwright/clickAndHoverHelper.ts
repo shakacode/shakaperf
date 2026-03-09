@@ -1,48 +1,56 @@
-import type { PlaywrightPage, Scenario, KeypressSelector } from '../../../core/types.js';
+import type { Page } from 'playwright-core';
+import type { Scenario, KeypressSelector } from 'shaka-visreg/core/types';
 
-export default async (page: PlaywrightPage, scenario: Scenario) => {
+export default async function clickAndHoverHelper(page: Page, scenario: Scenario): Promise<void> {
   const hoverSelector = scenario.hoverSelectors || scenario.hoverSelector;
   const clickSelector = scenario.clickSelectors || scenario.clickSelector;
   const keyPressSelector = scenario.keyPressSelectors || scenario.keyPressSelector;
   const scrollToSelector = scenario.scrollToSelector;
-  const postInteractionWait = scenario.postInteractionWait; // selector [str] | ms [int]
+  const postInteractionWait = scenario.postInteractionWait;
 
   if (keyPressSelector) {
-    for (const keyPressSelectorItem of ([] as KeypressSelector[]).concat(keyPressSelector)) {
+    const selectors = ([] as KeypressSelector[]).concat(keyPressSelector);
+    for (const keyPressSelectorItem of selectors) {
       await page.waitForSelector(keyPressSelectorItem.selector);
       const keys = Array.isArray(keyPressSelectorItem.keyPress) ? keyPressSelectorItem.keyPress : [keyPressSelectorItem.keyPress];
       for (const key of keys) {
-        await page.type(keyPressSelectorItem.selector, key);
+        await page.fill(keyPressSelectorItem.selector, key);
       }
     }
   }
 
   if (hoverSelector) {
-    for (const hoverSelectorIndex of ([] as string[]).concat(hoverSelector)) {
+    const selectors = ([] as string[]).concat(hoverSelector);
+    for (const hoverSelectorIndex of selectors) {
       await page.waitForSelector(hoverSelectorIndex);
       await page.hover(hoverSelectorIndex);
     }
   }
 
   if (clickSelector) {
-    for (const clickSelectorIndex of ([] as string[]).concat(clickSelector)) {
+    const selectors = ([] as string[]).concat(clickSelector);
+    for (const clickSelectorIndex of selectors) {
       await page.waitForSelector(clickSelectorIndex);
       await page.click(clickSelectorIndex);
     }
   }
 
   if (postInteractionWait) {
-    if (parseInt(String(postInteractionWait)) > 0) {
-      await page.waitForTimeout(Number(postInteractionWait));
-    } else {
-      await page.waitForSelector(String(postInteractionWait));
+    const waitValue = typeof postInteractionWait === 'string'
+      ? parseInt(postInteractionWait, 10)
+      : postInteractionWait;
+
+    if (waitValue > 0) {
+      await page.waitForTimeout(waitValue);
+    } else if (typeof postInteractionWait === 'string') {
+      await page.waitForSelector(postInteractionWait);
     }
   }
 
   if (scrollToSelector) {
     await page.waitForSelector(scrollToSelector);
-    await page.evaluate((scrollToSelector: string) => {
-      document.querySelector(scrollToSelector)!.scrollIntoView();
+    await page.evaluate((selector: string) => {
+      document.querySelector(selector)?.scrollIntoView();
     }, scrollToSelector);
   }
-};
+}

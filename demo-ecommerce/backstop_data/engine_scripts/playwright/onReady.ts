@@ -1,6 +1,6 @@
 import type { Page, BrowserContext } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
-import clickAndHoverHelper from './clickAndHoverHelper';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
+import clickAndHoverHelper from './clickAndHoverHelper.ts';
 
 const PAGE_SETTLE_CHECKING_INTERVAL_MS = 700;
 const PAGE_SETTLE_TIMEOUT_MS = 30000;
@@ -176,5 +176,3 @@ async function onReady(
 }
 
 export default onReady;
-module.exports = onReady;
-module.exports.waitUntilPageSettled = waitUntilPageSettled;
