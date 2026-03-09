@@ -9,6 +9,7 @@ const assets = [
   ['capture/config.default.json', 'dist/capture/config.default.json'],
   ['capture/engine_scripts/imageStub.jpg', 'dist/capture/engine_scripts/imageStub.jpg'],
   ['capture/engine_scripts/cookies.json', 'dist/capture/engine_scripts/cookies.json'],
+  ['capture/engine_scripts/tsconfig.json', 'dist/capture/engine_scripts/tsconfig.json'],
   ['capture/engine_scripts/playwright', 'dist/capture/engine_scripts/playwright'],
   ['compare/output', 'dist/compare/output'],
 ];
