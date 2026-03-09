@@ -187,42 +187,6 @@ workflows:
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
             - twin-servers/download-control-commit-sha
 
-      - twin-servers/run-tests: &visual-regression-job
-          name: scheduled-visual-regression
-          requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          post-steps:
-            - install-playwright
-            - run:
-                name: Run visual regression -- generate reference images
-                command: |
-                  cd demo-ecommerce
-                  yarn visreg:reference
-            - run:
-                name: Run visual regression -- test
-                command: |
-                  cd demo-ecommerce
-                  yarn visreg:test:retry
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/html_report
-                destination: visreg-report
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_reference
-                destination: bitmaps_reference
-            - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_test
-                destination: bitmaps_test
-            - store_test_results:
-                path: demo-ecommerce/backstop_data/ci_report
-
       - twin-servers/run-tests: &shaka-visreg-job
           name: scheduled-shaka-visreg
           requires:
@@ -241,18 +205,18 @@ workflows:
                 name: Run shaka-visreg liveCompare
                 command: |
                   cd demo-ecommerce
-                  yarn shaka-visreg:test
+                  yarn visreg:test
             - store_artifacts:
-                path: demo-ecommerce/backstop_data/html_report
+                path: demo-ecommerce/visreg_data/html_report
                 destination: shaka-visreg-report
             - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_test
+                path: demo-ecommerce/visreg_data/bitmaps_test
                 destination: bitmaps_test
             - store_artifacts:
-                path: demo-ecommerce/backstop_data/bitmaps_reference
+                path: demo-ecommerce/visreg_data/bitmaps_reference
                 destination: bitmaps_reference
             - store_test_results:
-                path: demo-ecommerce/backstop_data/ci_report
+                path: demo-ecommerce/visreg_data/ci_report
 
       - twin-servers/run-tests: &perf-tests-job
           name: scheduled-perf-tests
@@ -287,7 +251,6 @@ workflows:
                   echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
           requires:
-            - scheduled-visual-regression
             - scheduled-shaka-visreg
             - scheduled-perf-tests
 
@@ -320,13 +283,6 @@ workflows:
           setup-steps:
             - enable-corepack
             - setup-yarn-and-build-packages
-          filters:
-            branches:
-              ignore: main
-
-      - twin-servers/run-tests:
-          <<: *visual-regression-job
-          name: visual-regression
           filters:
             branches:
               ignore: main
