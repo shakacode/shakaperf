@@ -4,6 +4,6 @@
  * @return     {number}   The remote port.
  */
 export default function getRemotePort () {
-  const remotePort = process.env.BACKSTOP_REMOTE_HTTP_PORT || 3000;
+  const remotePort = process.env.VISREG_REMOTE_HTTP_PORT || process.env.BACKSTOP_REMOTE_HTTP_PORT || 3000;
   return remotePort;
 }

@@ -11,6 +11,11 @@ compare/output/config\.js
 
 capture/config.json
 
+**/visreg_data/bitmaps_test/
+**/visreg_data/html_report/
+**/visreg_data/json_report/
+**/visreg_data/reports/
+# Legacy backstop_data paths (for backward compatibility)
 **/backstop_data/bitmaps_test/
 **/backstop_data/html_report/
 **/backstop_data/json_report/
