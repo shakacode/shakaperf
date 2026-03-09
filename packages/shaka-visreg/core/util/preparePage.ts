@@ -2,19 +2,19 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import _ from 'lodash';
 import { existsSync } from 'node:fs';
-import injectBackstopTools from '../../capture/backstopTools.js';
+import injectVisregTools from '../../capture/visregTools.js';
 import createLogger from './logger.js';
-import type { PlaywrightPage, Scenario, Viewport, BackstopConfig, BrowserContext, BackstopTools } from '../types.js';
+import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types.js';
 import type { ConsoleMessage } from 'playwright';
 
 declare global {
   interface Window {
     _readyEvent: string;
     _selectorExpansion: boolean;
-    _backstopSelectors: string[];
-    _backstopSelectorsExp: string[];
-    _backstopSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
-    _backstopTools: BackstopTools;
+    _visregSelectors: string[];
+    _visregSelectorsExp: string[];
+    _visregSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
+    _visregTools: VisregTools;
   }
 }
 
@@ -53,7 +53,7 @@ function translateUrl (url: string) {
  *
  * Shared by runCompareScenario (liveCompare) and runPlaywright.
  */
-async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: BackstopConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
   // --- BEFORE SCRIPT ---
@@ -107,7 +107,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   // --- OPEN URL + WAIT FOR READY EVENT ---
   try {
     await page.goto(translateUrl(url), gotoParameters);
-    await injectBackstopTools(page);
+    await injectVisregTools(page);
 
     if (readyPromise) {
       await page.evaluate(function (v: string) { window._readyEvent = v; }, readyEvent!);
@@ -159,7 +159,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   }
 
   // reinstall tools in case onReadyScript has loaded a new URL.
-  await injectBackstopTools(page);
+  await injectVisregTools(page);
 
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
@@ -187,22 +187,22 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     var expand = args.expand;
     var sels = args.sels;
     window._selectorExpansion = expand;
-    window._backstopSelectors = sels;
+    window._visregSelectors = sels;
     if (expand) {
-      window._backstopSelectorsExp = window._backstopTools.expandSelectors(sels);
+      window._visregSelectorsExp = window._visregTools.expandSelectors(sels);
     } else {
-      window._backstopSelectorsExp = sels;
+      window._visregSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
+    window._visregSelectorsExpMap = window._visregSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
       acc[selector] = {
-        exists: window._backstopTools.exists(selector),
-        isVisible: window._backstopTools.isVisible(selector)
+        exists: window._visregTools.exists(selector),
+        isVisible: window._visregTools.isVisible(selector)
       };
       return acc;
     }, {});
     return {
-      backstopSelectorsExp: window._backstopSelectorsExp,
-      backstopSelectorsExpMap: window._backstopSelectorsExpMap
+      visregSelectorsExp: window._visregSelectorsExp,
+      visregSelectorsExpMap: window._visregSelectorsExpMap
     };
   }, { expand: selectorExpansion, sels: selectors });
 
