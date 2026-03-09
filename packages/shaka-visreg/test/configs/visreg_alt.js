@@ -1,5 +1,5 @@
 module.exports = {
-  id: 'playwright_backstop_features',
+  id: 'playwright_visreg_features',
   viewports: [
     {
       label: 'phone',
@@ -21,11 +21,11 @@ module.exports = {
     }
   ],
   paths: {
-    bitmaps_reference: 'backstop_data/bitmaps_reference',
-    bitmaps_test: 'backstop_data/bitmaps_test',
-    engine_scripts: 'backstop_data/engine_scripts',
-    html_report: 'backstop_data/html_report',
-    ci_report: 'backstop_data/ci_report'
+    bitmaps_reference: 'visreg_data/bitmaps_reference',
+    bitmaps_test: 'visreg_data/bitmaps_test',
+    engine_scripts: 'visreg_data/engine_scripts',
+    html_report: 'visreg_data/html_report',
+    ci_report: 'visreg_data/ci_report'
   },
   report: ['browser'],
   engine: 'playwright',

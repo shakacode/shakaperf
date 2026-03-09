@@ -9,7 +9,7 @@ const SPINNER_SELECTOR = '';
 
 /**
  * Wait until the page has settled - DOM mutations stopped, network idle, fonts loaded, images rendered.
- * Adapted from helper.ts waitUntilPageSettled for BackstopJS context.
+ * Adapted from helper.ts waitUntilPageSettled for visual regression context.
  */
 export async function waitUntilPageSettled(page: Page): Promise<void> {
   const url = page.url();

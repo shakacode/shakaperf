@@ -62,7 +62,7 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 shaka-visreg init
 
 # Compare screenshots between a reference URL and test URL side-by-side
-shaka-visreg liveCompare --config backstop.json
+shaka-visreg liveCompare --config visreg.json
 
 # Open the most recent test report in your browser
 shaka-visreg openReport
@@ -82,7 +82,7 @@ Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 ### CLI Options
 
 ```
---config <path>     Config file path (default: backstop.json)
+--config <path>     Config file path (default: visreg.json)
 --filter <regex>    Filter scenarios by label
 -h, --help          Display usage
 -v, --version       Display version
@@ -100,7 +100,7 @@ shaka-visreg init
 
 ## Configuration
 
-By default, shaka-visreg looks for `backstop.json` in your current working directory. Use `--config=<path>` to specify a different config file.
+By default, shaka-visreg looks for `visreg.json` in your current working directory. Use `--config=<path>` to specify a different config file.
 
 ### Required Properties
 
@@ -141,11 +141,11 @@ Pass a `--filter=<scenarioLabelRegex>` argument to just run scenarios matching y
     }
   ],
   "paths": {
-    "bitmaps_reference": "backstop_data/bitmaps_reference",
-    "bitmaps_test": "backstop_data/bitmaps_test",
-    "engine_scripts": "backstop_data/engine_scripts",
-    "html_report": "backstop_data/html_report",
-    "ci_report": "backstop_data/ci_report"
+    "bitmaps_reference": "visreg_data/bitmaps_reference",
+    "bitmaps_test": "visreg_data/bitmaps_test",
+    "engine_scripts": "visreg_data/engine_scripts",
+    "html_report": "visreg_data/html_report",
+    "ci_report": "visreg_data/ci_report"
   },
   "engine": "playwright",
   "engineOptions": {
@@ -167,11 +167,11 @@ You may use a JavaScript config file to allow comments in your config. Be sure t
 
 ```js
 module.exports = {
-  /* same object as backstop.json */
+  /* same object as visreg.json */
 }
 ```
 
-Then run: `shaka-visreg liveCompare --config="backstop.js"`
+Then run: `shaka-visreg liveCompare --config="visreg.js"`
 
 ### Scenario Properties
 
@@ -213,7 +213,7 @@ You can include any of the above properties at the "global" level in the `scenar
 ```json
 {
   "scenarioDefaults": {
-    "cookiePath": "backstop_data/engine_scripts/cookies.json",
+    "cookiePath": "visreg_data/engine_scripts/cookies.json",
     "readySelector": "",
     "delay": 0,
     "misMatchThreshold": 0.1,
@@ -228,19 +228,19 @@ You can include any of the above properties at the "global" level in the `scenar
 
 ### Setting The Bitmap And Script Directory Paths
 
-By default, shaka-visreg saves generated resources into the `backstop_data` directory in parallel with your `backstop.json` config file. The location of the various resource types are configurable so they can easily be moved inside or outside your source control or file sharing environment.
+By default, shaka-visreg saves generated resources into the `visreg_data` directory in parallel with your `visreg.json` config file. The location of the various resource types are configurable so they can easily be moved inside or outside your source control or file sharing environment.
 
 > [!TIP]
 > These file paths are relative to your current working directory.
 
 ```json
 "paths": {
-  "bitmaps_reference": "backstop_data/bitmaps_reference",
-  "bitmaps_test": "backstop_data/bitmaps_test",
-  "engine_scripts": "backstop_data/engine_scripts",
-  "html_report": "backstop_data/html_report",
-  "json_report": "backstop_data/json_report",
-  "ci_report": "backstop_data/ci_report"
+  "bitmaps_reference": "visreg_data/bitmaps_reference",
+  "bitmaps_test": "visreg_data/bitmaps_test",
+  "engine_scripts": "visreg_data/engine_scripts",
+  "html_report": "visreg_data/html_report",
+  "json_report": "visreg_data/json_report",
+  "ci_report": "visreg_data/ci_report"
 }
 ```
 
@@ -301,7 +301,7 @@ The built-in `onReady` script allows key press on selectors:
 The built-in `onBefore` script makes it easy to import cookie files:
 
 ```json
-"cookiePath": "backstop_data/engine_scripts/cookies.json"
+"cookiePath": "visreg_data/engine_scripts/cookies.json"
 ```
 
 > [!NOTE]
@@ -422,7 +422,7 @@ These settings work in conjunction — e.g. with a non-zero `misMatchThreshold` 
 Simulate user actions (click, scroll, hover, wait, etc.) or set up state (cookies) by running your own scripts. Place scripts in your engine scripts directory:
 
 ```
-./backstop_data/engine_scripts
+./visreg_data/engine_scripts
 ```
 
 Reference them at the config root or per-scenario:
@@ -483,7 +483,7 @@ By default, the base path is a folder called `engine_scripts` inside your instal
 
 ```json
 "paths": {
-  "engine_scripts": "backstop_data/engine_scripts"
+  "engine_scripts": "visreg_data/engine_scripts"
 }
 ```
 
@@ -548,7 +548,7 @@ Customize the JUnit report with:
 
 ```json
 "paths": {
-  "ci_report": "backstop_data/ci_report"
+  "ci_report": "visreg_data/ci_report"
 },
 "ci": {
   "format": "junit",
@@ -624,7 +624,7 @@ This will also output your source payload to the terminal so you can verify the 
 For most projects, keeping reference files in source control is useful, but saving test screenshots is overkill. Add these to your `.gitignore`:
 
 ```
-backstop_data/html_report/
+visreg_data/html_report/
 bitmaps_test/
 ```
 
@@ -634,12 +634,12 @@ bitmaps_test/
 import runner from 'shaka-visreg'
 
 // Basic usage
-await runner('liveCompare', { config: 'backstop.json' })
+await runner('liveCompare', { config: 'visreg.json' })
 
 // With filter
 await runner('liveCompare', {
   filter: 'someScenarioLabelAsRegExString',
-  config: 'backstop.json',
+  config: 'visreg.json',
 })
 
 // With inline config object

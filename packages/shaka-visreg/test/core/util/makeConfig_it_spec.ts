@@ -2,7 +2,6 @@ import assert from 'node:assert';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-// RuntimeConfig no longer needed after switching to Record<string, any>
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
@@ -13,39 +12,39 @@ process.chdir(__dirname);
 import makeConfig from '../../../core/util/makeConfig.js';
 
 const { version } = packageJson;
-const configFile = _require('./backstop');
+const configFile = _require('./visreg');
 
-// root of backstop dir, not related to cwd
-const backstopDir = path.resolve(__dirname, '../../..');
+// root of visreg package dir, not related to cwd
+const visregDir = path.resolve(__dirname, '../../..');
 
 const expectedConfig: Record<string, any> = {
   args: {},
   asyncCompareLimit: undefined,
-  backstop: backstopDir,
-  backstopVersion: version,
-  bitmaps_reference: path.resolve('backstop_data/bitmaps_reference'),
-  bitmaps_test: path.resolve('backstop_data/bitmaps_test'),
-  ci_report: path.resolve('backstop_data/ci_report'),
-  html_report: path.resolve('backstop_data/html_report'),
+  visregRoot: visregDir,
+  visregVersion: version,
+  bitmaps_reference: path.resolve('visreg_data/bitmaps_reference'),
+  bitmaps_test: path.resolve('visreg_data/bitmaps_test'),
+  ci_report: path.resolve('visreg_data/ci_report'),
+  html_report: path.resolve('visreg_data/html_report'),
   openReport: true,
-  comparePath: path.resolve(backstopDir, 'compare/output'),
+  comparePath: path.resolve(visregDir, 'compare/output'),
   captureConfigFileNameDefault: path.resolve(
-    backstopDir,
+    visregDir,
     'capture/config.default.json'
   ),
   engine: null,
-  engine_scripts: path.resolve('backstop_data/engine_scripts'),
-  engine_scripts_default: path.resolve(backstopDir, 'capture/engine_scripts'),
+  engine_scripts: path.resolve('visreg_data/engine_scripts'),
+  engine_scripts_default: path.resolve(visregDir, 'capture/engine_scripts'),
   perf: {},
   id: configFile.id,
   report: ['browser'],
   ciReport: {
     format: 'junit',
     testReportFileName: 'xunit',
-    testSuiteName: 'BackstopJS'
+    testSuiteName: 'shaka-visreg'
   },
-  compareConfigFileName: path.resolve('backstop_data/html_report/config.js'),
-  compareReportURL: path.resolve('backstop_data/html_report/index.html'),
+  compareConfigFileName: path.resolve('visreg_data/html_report/config.js'),
+  compareReportURL: path.resolve('visreg_data/html_report/index.html'),
   defaultMisMatchThreshold: 0.1,
   debug: false,
   compareRetries: 0,
@@ -53,7 +52,7 @@ const expectedConfig: Record<string, any> = {
   maxNumDiffPixels: 0,
   resembleOutputOptions: undefined,
   scenarioLogsInReports: undefined,
-  archivePath: path.resolve('backstop_data/reports'),
+  archivePath: path.resolve('visreg_data/reports'),
   archiveReport: false
 };
 
@@ -64,8 +63,8 @@ describe('make config it', function () {
     assert(actualConfig.tempCompareConfigFileName);
     delete actualConfig.tempCompareConfigFileName;
 
-    assert(actualConfig.backstopConfigFileName);
-    delete actualConfig.backstopConfigFileName;
+    assert(actualConfig.configFileName);
+    delete actualConfig.configFileName;
 
     assert(actualConfig.projectPath);
     delete actualConfig.projectPath;

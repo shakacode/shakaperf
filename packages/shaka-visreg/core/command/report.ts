@@ -61,7 +61,7 @@ function archiveReport (config: RuntimeConfig) {
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
   const testConfig = (typeof config.args.config === 'object')
     ? config.args.config
-    : Object.assign({}, _require(config.backstopConfigFileName));
+    : Object.assign({}, _require(config.configFileName));
 
   let browserReporter = cloneDeep(reporter);
 
@@ -209,7 +209,7 @@ function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
 function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
   const testConfig = (typeof config.args.config === 'object')
     ? config.args.config
-    : Object.assign({}, _require(config.backstopConfigFileName));
+    : Object.assign({}, _require(config.configFileName));
 
   let jsonReporter = cloneDeep(reporter);
 

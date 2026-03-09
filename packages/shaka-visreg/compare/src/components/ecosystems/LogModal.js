@@ -124,8 +124,8 @@ class LogModal extends React.Component {
     }).catch(err => {
       const errorLines = [['', '', `error fetching logs: ${err.message}`]];
       if (location.protocol.startsWith('file')) {
-        errorLines.push(['', '', 'This feature requires Backstop Remote running in a seprate terminal window.']);
-        errorLines.push(['', '', 'e.g. `backstop remote --config=<your config>`']);
+        errorLines.push(['', '', 'This feature requires a remote server running in a separate terminal window.']);
+        errorLines.push(['', '', 'Please see the docs for setup instructions.']);
         errorLines.push(['', '', 'Please see the docs for more info.']);
       }
       this.setState({ logLines: errorLines });

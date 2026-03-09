@@ -19,8 +19,8 @@ function parseLocalStorage (localStorageItem) {
     data = JSON.parse(localStorageItem);
   } catch (error) {
     console.error(error);
-    console.warn('BackstopJS LocalStorage settings appear to be corrupted. Let me fix that for you.');
-    localStorage.removeItem('backstopjs');
+    console.warn('shaka-visreg LocalStorage settings appear to be corrupted. Let me fix that for you.');
+    localStorage.removeItem('shaka-visreg');
     data = false;
   }
   return data;
@@ -30,7 +30,7 @@ function parseLocalStorage (localStorageItem) {
  * Retrieves the state from local storage, if available.
  * @returns {object|boolean} The persisted state object or false if not available.
  */
-const localState = localStorage.getItem('backstopjs');
+const localState = localStorage.getItem('shaka-visreg');
 const persistedState = localState
   ? parseLocalStorage(localState)
   : false;
@@ -89,7 +89,7 @@ store.subscribe(function () {
   const localStateItems = JSON.stringify({
     layoutSettings
   });
-  localStorage.setItem('backstopjs', localStateItems);
+  localStorage.setItem('shaka-visreg', localStateItems);
 });
 
 export default store;

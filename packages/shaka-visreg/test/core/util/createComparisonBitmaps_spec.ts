@@ -33,14 +33,14 @@ describe('createComparisonBitmaps', function () {
       }
     ],
     paths: {
-      bitmaps_reference: 'backstop_data/bitmaps_reference',
-      bitmaps_test: 'backstop_data/bitmaps_test'
+      bitmaps_reference: 'visreg_data/bitmaps_reference',
+      bitmaps_test: 'visreg_data/bitmaps_test'
     },
     engine: 'playwright'
   };
 
   const mockConfig = {
-    backstopConfigFileName: configFilePath,
+    configFileName: configFilePath,
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
     defaultMisMatchThreshold: 0.1,
     defaultRequireSameDimensions: true,
@@ -137,7 +137,7 @@ describe('createComparisonBitmaps', function () {
       const createComparisonBitmaps = await createModule();
       const badMockConfig = {
         ...mockConfig,
-        backstopConfigFileName: badConfigFilePath
+        configFileName: badConfigFilePath
       };
 
       let errorThrown = false;
@@ -202,7 +202,7 @@ describe('createComparisonBitmaps', function () {
       const createComparisonBitmaps = await createModule();
       const unlabeledMockConfig = {
         ...mockConfig,
-        backstopConfigFileName: unlabeledConfigFilePath
+        configFileName: unlabeledConfigFilePath
       };
 
       await createComparisonBitmaps(unlabeledMockConfig);

@@ -20,36 +20,36 @@ function loadProjectConfig (command: string, options: Record<string, any> | unde
     config.testReportFileName = options.testReportFileName || null;
   }
 
-  let customConfigPath = options && (options.backstopConfigFilePath || options.configPath);
+  let customConfigPath = options && (options.configFilePath || options.configPath);
   if (options && typeof options.config === 'string' && !customConfigPath) {
     customConfigPath = options.config;
   }
 
   if (customConfigPath) {
     if (path.isAbsolute(customConfigPath)) {
-      config.backstopConfigFileName = customConfigPath;
+      config.configFileName = customConfigPath;
     } else {
-      config.backstopConfigFileName = path.join(config.projectPath!, customConfigPath);
+      config.configFileName = path.join(config.projectPath!, customConfigPath);
     }
   } else {
-    config.backstopConfigFileName = path.join(config.projectPath!, 'backstop.json');
+    config.configFileName = path.join(config.projectPath!, 'visreg.json');
   }
 
   let userConfig = {};
   const CMD_REQUIRES_CONFIG = !NON_CONFIG_COMMANDS.includes(command);
   if (CMD_REQUIRES_CONFIG) {
-    // This flow is confusing -- is checking for !config.backstopConfigFileName more reliable?
+    // This flow is confusing -- is checking for !config.configFileName more reliable?
     if (options && typeof options.config === 'object' && options.config.scenarios) {
       console.log('Object-literal config detected.');
       if (options.config.debug) {
         console.log(JSON.stringify(options.config, null, 2));
       }
       userConfig = options.config;
-    } else if (config.backstopConfigFileName) {
+    } else if (config.configFileName) {
       // Remove from cache config content
-      delete _require.cache[_require.resolve(config.backstopConfigFileName)];
-      console.log('Loading config: ', config.backstopConfigFileName, '\n');
-      userConfig = _require(config.backstopConfigFileName);
+      delete _require.cache[_require.resolve(config.configFileName)];
+      console.log('Loading config: ', config.configFileName, '\n');
+      userConfig = _require(config.configFileName);
     }
   }
 
@@ -61,7 +61,7 @@ function makeConfig (command: string, options?: Record<string, any>) {
 
   config.args = options || {};
 
-  config.backstop = path.join(__dirname, '../..');
+  config.visregRoot = path.join(__dirname, '../..');
   config.projectPath = projectPath(config);
   config.perf = {};
 

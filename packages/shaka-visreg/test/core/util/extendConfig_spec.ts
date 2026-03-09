@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import extendConfig from '../../../core/util/extendConfig.js';
 
 describe('computeConfig_spec', function () {
-  const baseConfig = { projectPath: process.cwd(), backstop: process.cwd() };
+  const baseConfig = { projectPath: process.cwd(), visregRoot: process.cwd() };
 
   it('should override engine from config file', function () {
     const actualConfig = extendConfig({ ...baseConfig }, { engine: 'playwright' });
