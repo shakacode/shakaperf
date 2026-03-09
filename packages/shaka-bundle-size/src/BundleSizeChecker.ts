@@ -158,7 +158,7 @@ export class BundleSizeChecker {
     const actualSizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
 
     if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
-      this.reporter.error(`No baseline found at ${this.baselineFile}. Run with  --download-main-branch-stats to create one.`);
+      this.reporter.error(`No baseline found at ${this.baselineFile}. Run 'shaka-bundle-size download-main-branch-stats' to create one.`);
       return {
         passed: false,
         regressions: [],
