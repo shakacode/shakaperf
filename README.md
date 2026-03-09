@@ -2,10 +2,12 @@
 ## The easiest way to test Frontend Performance
 Do you want to improve `Lighthose` & `Web Vitals` without breaking your site?
 `shaka-perf` will measure the impact of your PRs on performance and detect visual changes.
+It also auto-detects SEO and accessibility issues, and it's extremely easy to setup.
+This is the only benchmarking toolset your web site needs.
 
 <img width="539" height="672" alt="image" src="https://github.com/user-attachments/assets/fd7b111c-d734-4bb6-95d8-e7e80e580173" />
 
-In order to use it, you need to create a Docker image with a production-local server and some Playwright tests. `shaka-perf` will magically transform it to:
+In order to use `shaka-perf`, you need to create a Docker image with a production-local server and some Playwright tests. `shaka-perf` will magically transform it to:
 * Statistically significant performance AB tests
 * Visual Regression tests (screenshot comparison of main vs feature branches on multiple screen sizes)
 * Comprehensive bundle-size regression check

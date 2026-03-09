@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'dotenv/config';
-import { parseArgs } from 'node:util';
+import { Command } from 'commander';
 import { loadConfig, resolveConfig, findConfigFile } from './config';
 import { build, type BuildTarget } from './commands/build';
 import { startContainers } from './commands/start-containers';
@@ -15,84 +15,10 @@ import { say } from './commands/say';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
-import type { Command, ResolvedConfig } from './types';
+import type { ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 
 const VERSION = '0.0.6';
-
-const HELP = `
-shaka-twin-servers - Twin server management for A/B performance testing
-
-Usage:
-  shaka-twin-servers <command> [options]
-
-Commands:
-  build [--target <control|experiment>] Build Docker images (both by default, or single target)
-  get-config <key>                      Get a config value (e.g., dockerfile)
-  start-containers                      Start Docker containers
-  stop-containers                       Stop Docker containers and remove volumes
-  start-servers                         Start Rails servers via Overmind
-  run-cmd <target> <cmd>                Run a command in a container interactively
-  run-cmd-parallel <cmd>                Run a command in both containers in parallel
-  run-overmind-command <target> <cmd>   Run a command in a container with PID tracking (for Procfile)
-  sync-changes <target>                 Sync git changes to control or experiment volume
-  say <message>                         Speak a message using text-to-speech (macOS/Linux)
-  copy-changes-to-ssh <port> <host> [target]  Copy local git changes to SSH (target: control|experiment|all)
-  forward-ports <port> <host> [ctrl-port] [exp-port]  Forward CI ports (default: 3020, 3030)
-  customize-docker-compose                   Copy bundled docker-compose.yml for customization
-
-  <target> is either "control" or "experiment"
-
-Options:
-  -c, --config <file>    Config file path (.js or .ts)
-                         Default: twin-servers.config.ts in current directory
-  -t, --target <target>  Build target (control or experiment) - for build command only
-  -v, --verbose          Verbose output
-  -h, --help             Show this help message
-      --version          Show version
-
-Examples:
-  # Auto-discovers twin-servers.config.ts in current directory
-  shaka-twin-servers build
-  shaka-twin-servers build --target experiment  # Build only experiment image
-  shaka-twin-servers build --target control     # Build only control image
-  shaka-twin-servers start-containers
-  shaka-twin-servers start-servers
-
-  # Sync changes to experiment volume
-  shaka-twin-servers sync-changes experiment
-
-  # Run command in container interactively
-  shaka-twin-servers run-cmd experiment "bundle exec rails console"
-
-  # Run command in both containers in parallel
-  shaka-twin-servers run-cmd-parallel "bundle exec rake db:migrate"
-
-  # Run command in container with PID tracking (used in Procfile)
-  shaka-twin-servers run-overmind-command control "bundle exec puma -b tcp://0.0.0.0:3000"
-
-  # Copy local git changes to CI via SSH (for debugging)
-  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22              # all targets
-  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22 experiment   # experiment only
-
-  # Forward CI twin server ports to localhost
-  shaka-twin-servers forward-ports 54782 18.210.27.22                    # default ports 3020, 3030
-  shaka-twin-servers forward-ports 54782 18.210.27.22 3000 3001          # custom ports
-  shaka-twin-servers forward-ports 54782 18.210.27.22 3010:3020 3030     # local:remote mapping
-
-  # Specify config explicitly
-  shaka-twin-servers build -c path/to/twin-servers.config.ts
-`;
-
-const VALID_COMMANDS: Command[] = ['build', 'get-config', 'start-containers', 'stop-containers', 'start-servers', 'run-cmd', 'run-cmd-parallel', 'run-overmind-command', 'sync-changes', 'say', 'copy-changes-to-ssh', 'forward-ports', 'customize-docker-compose'];
-
-function showHelp(): void {
-  console.log(HELP);
-}
-
-function showVersion(): void {
-  console.log(`shaka-twin-servers v${VERSION}`);
-}
 
 function requireTarget(target: string | undefined, usage: string): asserts target is 'control' | 'experiment' {
   if (!target || (target !== 'control' && target !== 'experiment')) {
@@ -102,86 +28,10 @@ function requireTarget(target: string | undefined, usage: string): asserts targe
   }
 }
 
-function requireCommand(cmd: string | undefined, usage: string): asserts cmd is string {
-  if (!cmd) {
-    console.error(colorize('Error: Command required', 'red'));
-    console.error(`Usage: ${usage}`);
-    process.exit(2);
-  }
-}
+async function getResolvedConfig(program: Command): Promise<{ resolvedConfig: ResolvedConfig; configPath: string }> {
+  const globalOpts = program.opts();
 
-interface SshTarget {
-  host: string;
-  port: string;
-}
-
-function parseSshArgs(positionals: string[], commandName: string): SshTarget {
-  const usage = `shaka-twin-servers ${commandName} <port> <host>`;
-
-  const port = positionals[1];
-  const host = positionals[2];
-
-  if (!port || !host) {
-    console.error(colorize('Error: SSH port and host are required', 'red'));
-    console.error(`Usage: ${usage}`);
-    console.error('');
-    console.error('To get the correct arguments:');
-    console.error('1. Go to your CircleCI job');
-    console.error('2. Click "Rerun job with SSH"');
-    console.error('3. Copy the SSH command from the job logs');
-    console.error('4. Extract the port and host from: ssh -p <PORT> <HOST>');
-    process.exit(2);
-  }
-
-  return { port, host };
-}
-
-async function main(): Promise<void> {
-  const { values, positionals } = parseArgs({
-    options: {
-      config: { type: 'string', short: 'c' },
-      target: { type: 'string', short: 't' },
-      'no-cache': { type: 'boolean', default: false },
-      verbose: { type: 'boolean', short: 'v', default: false },
-      help: { type: 'boolean', short: 'h', default: false },
-      version: { type: 'boolean', default: false },
-    },
-    allowPositionals: true,
-    strict: true,
-  });
-
-  if (values.help) {
-    showHelp();
-    process.exit(0);
-  }
-
-  if (values.version) {
-    showVersion();
-    process.exit(0);
-  }
-
-  const command = positionals[0] as Command | undefined;
-
-  if (!command) {
-    console.error(colorize('Error: No command specified', 'red'));
-    console.error('Run with --help for usage information');
-    process.exit(2);
-  }
-
-  if (!VALID_COMMANDS.includes(command)) {
-    console.error(colorize(`Error: Unknown command '${command}'`, 'red'));
-    console.error(`Valid commands: ${VALID_COMMANDS.join(', ')}`);
-    process.exit(2);
-  }
-
-  // Handle commands that don't require config
-  if (command === 'say') {
-    const message = positionals.slice(1).join(' ');
-    await say(message);
-    process.exit(0);
-  }
-
-  let configPath = values.config;
+  let configPath = globalOpts.config;
   if (!configPath) {
     configPath = findConfigFile() ?? undefined;
     if (!configPath) {
@@ -189,116 +39,193 @@ async function main(): Promise<void> {
       console.error('Create a twin-servers.config.ts file or specify one with --config');
       process.exit(2);
     }
-    if (values.verbose) {
+    if (globalOpts.verbose) {
       console.log(`Using config: ${configPath}`);
     }
   }
 
-  let resolvedConfig;
   try {
     const userConfig = await loadConfig(configPath);
-    resolvedConfig = resolveConfig(userConfig);
+    const resolvedConfig = resolveConfig(userConfig);
+    return { resolvedConfig, configPath };
   } catch (error) {
     console.error(colorize(`Error loading config: ${(error as Error).message}`, 'red'));
     process.exit(2);
   }
-
-  try {
-    const options = { verbose: values.verbose };
-
-    switch (command) {
-      case 'build': {
-        let target: BuildTarget | undefined;
-        if (values.target) {
-          if (values.target !== 'control' && values.target !== 'experiment') {
-            console.error(colorize('Error: --target must be "control" or "experiment"', 'red'));
-            process.exit(2);
-          }
-          target = values.target;
-        }
-        await build(resolvedConfig, { ...options, target, noCache: values['no-cache'] });
-        break;
-      }
-      case 'get-config': {
-        const key = positionals[1];
-        if (!key || !(key in resolvedConfig)) {
-          console.error(colorize(`Error: ${key ? `Unknown config key '${key}'`: "Config key required"}`, 'red'));
-          console.error(`Available keys: ${Object.keys(resolvedConfig).join(', ')}`);
-          process.exit(2);
-        }
-        const value = resolvedConfig[key as keyof ResolvedConfig];
-        console.log(value);
-        break;
-      }
-      case 'start-containers':
-        await startContainers(resolvedConfig, options);
-        break;
-      case 'stop-containers':
-        await stopContainers(resolvedConfig, options);
-        break;
-      case 'start-servers':
-        await startServers(resolvedConfig, options);
-        break;
-      case 'run-cmd': {
-        const target = positionals[1];
-        const cmd = positionals.slice(2).join(' ') || undefined;
-        const usage = 'shaka-twin-servers run-cmd <control|experiment> <command>';
-        requireTarget(target, usage);
-        requireCommand(cmd, usage);
-        await runCmd(resolvedConfig, target, cmd, options);
-        break;
-      }
-      case 'run-cmd-parallel': {
-        const cmd = positionals.slice(1).join(' ') || undefined;
-        const usage = 'shaka-twin-servers run-cmd-parallel <command>';
-        requireCommand(cmd, usage);
-        await runCmdParallel(resolvedConfig, cmd, options);
-        break;
-      }
-      case 'run-overmind-command': {
-        const target = positionals[1];
-        const cmd = positionals.slice(2).join(' ') || undefined;
-        const usage = 'shaka-twin-servers run-overmind-command <control|experiment> <command>';
-        requireTarget(target, usage);
-        requireCommand(cmd, usage);
-        await runOvermindCommand(resolvedConfig, target, cmd, options);
-        break;
-      }
-      case 'sync-changes': {
-        const target = positionals[1];
-        const usage = 'shaka-twin-servers sync-changes <control|experiment>';
-        requireTarget(target, usage);
-        await syncChanges(resolvedConfig, target, options);
-        break;
-      }
-      case 'copy-changes-to-ssh': {
-        const sshTarget = parseSshArgs(positionals, 'copy-changes-to-ssh');
-        const copyTarget = positionals[3] as 'control' | 'experiment' | 'all' | undefined;
-        if (copyTarget && copyTarget !== 'control' && copyTarget !== 'experiment' && copyTarget !== 'all') {
-          console.error(colorize('Error: Target must be "control", "experiment", or "all"', 'red'));
-          process.exit(2);
-        }
-        await copyChangesToSsh(resolvedConfig, sshTarget, { ...options, target: copyTarget });
-        break;
-      }
-      case 'forward-ports': {
-        const sshTarget = parseSshArgs(positionals, 'forward-ports');
-        const controlPort = positionals[3] || '3020';
-        const experimentPort = positionals[4] || '3030';
-        await forwardPorts(resolvedConfig, sshTarget, { ...options, controlPort, experimentPort });
-        break;
-      }
-      case 'customize-docker-compose':
-        await customizeDockerCompose(resolvedConfig, configPath);
-        break;
-    }
-  } catch (error) {
-    console.error(colorize(`Error: ${(error as Error).message}`, 'red'));
-    process.exit(1);
-  }
 }
 
-main().catch((error) => {
-  console.error(colorize(`Unexpected error: ${error.message}`, 'red'));
-  process.exit(2);
-});
+function wrapAction(fn: (...args: any[]) => Promise<void>): (...args: any[]) => Promise<void> {
+  return async (...args: any[]) => {
+    try {
+      await fn(...args);
+    } catch (error) {
+      console.error(colorize(`Error: ${(error as Error).message}`, 'red'));
+      process.exit(1);
+    }
+  };
+}
+
+const program = new Command();
+
+program
+  .name('shaka-twin-servers')
+  .description('Twin server management for A/B performance testing')
+  .version(`shaka-twin-servers v${VERSION}`, '--version', 'Show version')
+  .option('-c, --config <file>', 'Config file path (.js or .ts)')
+  .option('-v, --verbose', 'Verbose output', false);
+
+program
+  .command('build')
+  .description('Build Docker images (both by default, or single target)')
+  .option('-t, --target <target>', 'Build target (control or experiment)')
+  .option('--no-cache', 'Disable Docker layer cache')
+  .action(wrapAction(async (opts) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const globalOpts = program.opts();
+    let target: BuildTarget | undefined;
+    if (opts.target) {
+      if (opts.target !== 'control' && opts.target !== 'experiment') {
+        console.error(colorize('Error: --target must be "control" or "experiment"', 'red'));
+        process.exit(2);
+      }
+      target = opts.target;
+    }
+    await build(resolvedConfig, { verbose: globalOpts.verbose, target, noCache: !opts.cache });
+  }));
+
+program
+  .command('get-config')
+  .description('Get a config value (e.g., dockerfile)')
+  .argument('<key>', 'Config key to print')
+  .action(wrapAction(async (key) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    if (!(key in resolvedConfig)) {
+      console.error(colorize(`Error: Unknown config key '${key}'`, 'red'));
+      console.error(`Available keys: ${Object.keys(resolvedConfig).join(', ')}`);
+      process.exit(2);
+    }
+    const value = resolvedConfig[key as keyof ResolvedConfig];
+    console.log(value);
+  }));
+
+program
+  .command('start-containers')
+  .description('Start Docker containers')
+  .action(wrapAction(async () => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    await startContainers(resolvedConfig, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('stop-containers')
+  .description('Stop Docker containers and remove volumes')
+  .action(wrapAction(async () => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    await stopContainers(resolvedConfig, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('start-servers')
+  .description('Start Rails servers via Overmind')
+  .action(wrapAction(async () => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    await startServers(resolvedConfig, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('run-cmd')
+  .description('Run a command in a container interactively')
+  .argument('<target>', 'control or experiment')
+  .argument('[cmd...]', 'Command to run')
+  .action(wrapAction(async (target, cmdParts) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const usage = 'shaka-twin-servers run-cmd <control|experiment> <command>';
+    requireTarget(target, usage);
+    const cmd = cmdParts.length > 0 ? cmdParts.join(' ') : undefined;
+    if (!cmd) {
+      console.error(colorize('Error: Command required', 'red'));
+      console.error(`Usage: ${usage}`);
+      process.exit(2);
+    }
+    await runCmd(resolvedConfig, target, cmd, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('run-cmd-parallel')
+  .description('Run a command in both containers in parallel')
+  .argument('<cmd...>', 'Command to run')
+  .action(wrapAction(async (cmdParts) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const cmd = cmdParts.join(' ');
+    await runCmdParallel(resolvedConfig, cmd, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('run-overmind-command')
+  .description('Run a command in a container with PID tracking (for Procfile)')
+  .argument('<target>', 'control or experiment')
+  .argument('<cmd...>', 'Command to run')
+  .action(wrapAction(async (target, cmdParts) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const usage = 'shaka-twin-servers run-overmind-command <control|experiment> <command>';
+    requireTarget(target, usage);
+    const cmd = cmdParts.join(' ');
+    await runOvermindCommand(resolvedConfig, target, cmd, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('sync-changes')
+  .description('Sync git changes to control or experiment volume')
+  .argument('<target>', 'control or experiment')
+  .action(wrapAction(async (target) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const usage = 'shaka-twin-servers sync-changes <control|experiment>';
+    requireTarget(target, usage);
+    await syncChanges(resolvedConfig, target, { verbose: program.opts().verbose });
+  }));
+
+program
+  .command('say')
+  .description('Speak a message using text-to-speech (macOS/Linux)')
+  .argument('<message...>', 'Message to speak')
+  .action(wrapAction(async (messageParts) => {
+    const message = messageParts.join(' ');
+    await say(message);
+  }));
+
+program
+  .command('copy-changes-to-ssh')
+  .description('Copy local git changes to SSH (for CI debugging)')
+  .argument('<port>', 'SSH port')
+  .argument('<host>', 'SSH host')
+  .argument('[target]', 'control, experiment, or all')
+  .action(wrapAction(async (port, host, copyTarget) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    if (copyTarget && copyTarget !== 'control' && copyTarget !== 'experiment' && copyTarget !== 'all') {
+      console.error(colorize('Error: Target must be "control", "experiment", or "all"', 'red'));
+      process.exit(2);
+    }
+    await copyChangesToSsh(resolvedConfig, { port, host }, { verbose: program.opts().verbose, target: copyTarget });
+  }));
+
+program
+  .command('forward-ports')
+  .description('Forward CI ports to localhost')
+  .argument('<port>', 'SSH port')
+  .argument('<host>', 'SSH host')
+  .argument('[controlPort]', 'Control port (default: 3020)', '3020')
+  .argument('[experimentPort]', 'Experiment port (default: 3030)', '3030')
+  .action(wrapAction(async (port, host, controlPort, experimentPort) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    await forwardPorts(resolvedConfig, { port, host }, { verbose: program.opts().verbose, controlPort, experimentPort });
+  }));
+
+program
+  .command('customize-docker-compose')
+  .description('Copy bundled docker-compose.yml for customization')
+  .action(wrapAction(async () => {
+    const { resolvedConfig, configPath } = await getResolvedConfig(program);
+    await customizeDockerCompose(resolvedConfig, configPath);
+  }));
+
+program.parse();

@@ -26,7 +26,7 @@ If changes in output are meaningful and desired, update `integration-tests/basel
 - TypeScript strict mode, no ESLint/Prettier
 - Zod for runtime validation
 - PascalCase for classes/types, camelCase for functions
-- Node.js native `parseArgs` for CLIs
+- Commander.js for CLIs
 - In new code don't use docker compose directly, see @packages/shaka-twin-servers/README.md
 
 ## Package Structure
