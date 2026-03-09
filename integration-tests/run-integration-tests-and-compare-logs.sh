@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Runs integration tests and saves output for comparison against the baseline.
+# Runs integration tests and updates the baseline log in-place.
+# After running, use `git diff` to review changes to the baseline.
 #
 # Usage:
 #   ./integration-tests/run-integration-tests-and-compare-logs.sh
 #
-# After running, compare the output against the baseline:
-#   diff integration-tests/baseline-output.log /tmp/integration-test-output.log
-#
 # The output is automatically normalized to replace run-variable values
 # (timestamps, timings, home directory paths, docker ages) with stubs.
 #
-# When comparing, IGNORE differences in:
+# When reviewing the git diff, IGNORE differences in:
 #   - Webpack hashes (e.g. -fa6c2b68881f0c7d1717)
 #   - Git SHAs
 #   - Ordering of [CONTROL] vs [EXPERIMENT] lines (parallel execution)
@@ -27,7 +25,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-OUTPUT="/tmp/integration-test-output.log"
+BASELINE="$SCRIPT_DIR/baseline-output.log"
 
 # Replace values that change between runs with stable stubs.
 # Uses POSIX BRE and > tmp + mv for macOS/Linux portability.
@@ -54,13 +52,11 @@ cd "$REPO_ROOT"
 
 echo "=== Running integration tests ==="
 # Strip ANSI codes so the output is readable in plain text
-yarn test:integration 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee "$OUTPUT"
+yarn test:integration 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee "$BASELINE"
 
 # Normalize variable values in the saved output (not in the terminal output)
-normalize_log "$OUTPUT"
+normalize_log "$BASELINE"
 
 echo ""
-echo "Normalized output saved to: $OUTPUT"
-echo "Baseline is at:  $SCRIPT_DIR/baseline-output.log"
-echo ""
-echo "Compare with:    diff integration-tests/baseline-output.log $OUTPUT"
+echo "Baseline updated: $BASELINE"
+echo "Review changes:   git diff integration-tests/baseline-output.log"
