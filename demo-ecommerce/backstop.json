@@ -27,8 +27,8 @@
       "delay": 50,
       "misMatchThreshold": 0.01,
       "selectors": [
-        ".css-30akml",
-        ".css-8qb8m4",
+        "[data-cy='hero-section']",
+        "[data-cy='features-section']",
         "document"
       ]
     },
