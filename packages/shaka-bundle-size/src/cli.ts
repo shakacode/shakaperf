@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import 'dotenv/config';
-import { parseArgs } from 'node:util';
+import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -22,108 +22,56 @@ import { getPackageRunCommand } from './helpers/packageManager';
 
 const VERSION = '0.0.11';
 
-const HELP = `
-shaka-bundle-size - Bundle size checking for webpack builds
+const program = new Command();
 
-Usage:
-  shaka-bundle-size [command] [options]
-
-Commands:
-  --download-main-branch-stats  Download baseline from main branch (finds merge-base)
-  --compare                     Generate current stats and compare against baseline
-  --upload-main-branch-stats    Generate and upload baseline for current commit
-  --acknowledge-failure         Acknowledge bundle-size failure for current branch
-
-Options:
-  -c, --config <file>    Config file path (.js or .ts)
-                         Default: bundle-size.config.ts in current directory
-      --commit <sha>     Specific commit SHA (for download or upload)
-      --branch <name>    Branch name to acknowledge (only for --acknowledge-failure)
-      --no-html-diffs    Skip HTML diff generation
-  -v, --verbose          Verbose output
-  -q, --quiet            Quiet output (errors only)
-  -h, --help             Show this help message
-      --version          Show version
-
-Examples:
-  # Auto-discovers bundle-size.config.ts in current directory
-  shaka-bundle-size --download-main-branch-stats
-  shaka-bundle-size --compare
-
-  # Specify config explicitly
-  shaka-bundle-size -c admin.bundle-size.config.ts --compare
-
-  # Download from specific commit
-  shaka-bundle-size --download-main-branch-stats --commit abc1234
-
-  # Main branch: upload new baseline after merge
-  shaka-bundle-size --upload-main-branch-stats
-
-  # Upload baseline for specific commit
-  shaka-bundle-size --upload-main-branch-stats --commit abc1234
-
-Exit codes:
-  0  Success / Check passed
-  1  Check failed (regressions detected)
-  2  Configuration or runtime error
-`;
-
-interface CliOptions {
-  config?: string;
-  downloadMainBranchStats: boolean;
-  compare: boolean;
-  uploadMainBranchStats: boolean;
-  acknowledgeFailure: boolean;
-  commit?: string;
-  branch?: string;
-  noHtmlDiffs: boolean;
-  verbose: boolean;
-  quiet: boolean;
-  help: boolean;
-  version: boolean;
+interface LoadedConfig {
+  resolvedConfig: ReturnType<typeof resolveConfig>;
+  configPath: string;
 }
 
-function parseCliArgs(): CliOptions {
-  const { values } = parseArgs({
-    options: {
-      config: { type: 'string', short: 'c' },
-      'download-main-branch-stats': { type: 'boolean', default: false },
-      compare: { type: 'boolean', default: false },
-      'upload-main-branch-stats': { type: 'boolean', default: false },
-      'acknowledge-failure': { type: 'boolean', default: false },
-      commit: { type: 'string' },
-      branch: { type: 'string' },
-      'no-html-diffs': { type: 'boolean', default: false },
-      verbose: { type: 'boolean', short: 'v', default: false },
-      quiet: { type: 'boolean', short: 'q', default: false },
-      help: { type: 'boolean', short: 'h', default: false },
-      version: { type: 'boolean', default: false },
-    },
-    strict: true,
+async function getResolvedConfig(): Promise<LoadedConfig> {
+  const globalOpts = program.opts();
+
+  let configPath = globalOpts.config;
+  if (!configPath) {
+    configPath = findConfigFile() ?? undefined;
+    if (!configPath) {
+      console.error(colorize.red('Error: No config file found'));
+      console.error('Create a bundle-size.config.ts file or specify one with --config');
+      process.exit(2);
+    }
+    if (globalOpts.verbose) {
+      console.log(`Using config: ${configPath}`);
+    }
+  }
+
+  try {
+    const userConfig = await loadConfig(configPath);
+    const resolvedConfig = resolveConfig(userConfig);
+    return { resolvedConfig, configPath };
+  } catch (error) {
+    console.error(colorize.red(`Error loading config: ${(error as Error).message}`));
+    process.exit(2);
+  }
+}
+
+function createReporter(): Reporter {
+  const globalOpts = program.opts();
+  const verbosity = globalOpts.quiet ? 'quiet' : globalOpts.verbose ? 'verbose' : 'normal';
+  return new Reporter({ verbosity });
+}
+
+function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>): BaselineStorage {
+  return new BaselineStorage({
+    s3Bucket: resolvedConfig.storage.s3Bucket,
+    s3Prefix: resolvedConfig.storage.s3Prefix,
+    awsRegion: resolvedConfig.storage.awsRegion,
+    s3Endpoint: resolvedConfig.storage.s3Endpoint,
+    awsAccessKeyId: resolvedConfig.storage.awsAccessKeyId,
+    awsSecretAccessKey: resolvedConfig.storage.awsSecretAccessKey,
+    baselineDir: resolvedConfig.baselineDir,
+    mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
   });
-
-  return {
-    config: values.config as string | undefined,
-    downloadMainBranchStats: values['download-main-branch-stats'] as boolean,
-    compare: values.compare as boolean,
-    uploadMainBranchStats: values['upload-main-branch-stats'] as boolean,
-    acknowledgeFailure: values['acknowledge-failure'] as boolean,
-    commit: values.commit as string | undefined,
-    branch: values.branch as string | undefined,
-    noHtmlDiffs: values['no-html-diffs'] as boolean,
-    verbose: values.verbose as boolean,
-    quiet: values.quiet as boolean,
-    help: values.help as boolean,
-    version: values.version as boolean,
-  };
-}
-
-function showHelp(): void {
-  console.log(HELP);
-}
-
-function showVersion(): void {
-  console.log(`shaka-bundle-size v${VERSION}`);
 }
 
 function getCiMetadata(storage: BaselineStorage): { branchName: string; currentCommit: string; masterCommit: string } {
@@ -144,7 +92,7 @@ function getCiMetadata(storage: BaselineStorage): { branchName: string; currentC
 
 function printCompareFailureGuidance(configPath: string): void {
   const packageManagerCmd = getPackageRunCommand();
-  const acknowledgeCmd = `${packageManagerCmd} shaka-bundle-size -c ${configPath} --acknowledge-failure`;
+  const acknowledgeCmd = `${packageManagerCmd} shaka-bundle-size -c ${configPath} acknowledge-failure`;
 
   // Printed as stderr so it's visible even in "quiet" mode logs.
   console.error('');
@@ -160,66 +108,65 @@ function printCompareFailureGuidance(configPath: string): void {
   console.error('');
 }
 
-async function main(): Promise<void> {
-  const args = parseCliArgs();
+program
+  .name('shaka-bundle-size')
+  .description('Bundle size checking for webpack builds')
+  .version(`shaka-bundle-size v${VERSION}`, '--version', 'Show version')
+  .option('-c, --config <file>', 'Config file path (.js or .ts)')
+  .option('-v, --verbose', 'Verbose output', false)
+  .option('-q, --quiet', 'Quiet output (errors only)', false)
+  .addHelpText('after', `
+Command options:
+  download-main-branch-stats:
+      --commit <sha>     Specific commit SHA
+  upload-main-branch-stats:
+      --commit <sha>     Specific commit SHA
+  acknowledge-failure:
+      --branch <name>    Branch name to acknowledge
+  compare:
+      --no-html-diffs    Skip HTML diff generation
 
-  if (args.help) {
-    showHelp();
-    process.exit(0);
-  }
+Examples:
+  # Auto-discovers bundle-size.config.ts in current directory
+  shaka-bundle-size download-main-branch-stats
+  shaka-bundle-size compare
 
-  if (args.version) {
-    showVersion();
-    process.exit(0);
-  }
+  # Specify config explicitly
+  shaka-bundle-size -c admin.bundle-size.config.ts compare
 
-  let configPath = args.config;
-  if (!configPath) {
-    configPath = findConfigFile() ?? undefined;
-    if (!configPath) {
-      console.error(colorize.red('Error: No config file found'));
-      console.error('Create a bundle-size.config.ts file or specify one with --config');
-      process.exit(2);
-    }
-    if (args.verbose) {
-      console.log(`Using config: ${configPath}`);
-    }
-  }
+  # Download from specific commit
+  shaka-bundle-size download-main-branch-stats --commit abc1234
 
-  let resolvedConfig;
-  try {
-    const userConfig = await loadConfig(configPath);
-    resolvedConfig = resolveConfig(userConfig);
-  } catch (error) {
-    console.error(colorize.red(`Error loading config: ${(error as Error).message}`));
-    process.exit(2);
-  }
+  # Main branch: upload new baseline after merge
+  shaka-bundle-size upload-main-branch-stats
 
-  const verbosity = args.quiet ? 'quiet' : args.verbose ? 'verbose' : 'normal';
-  const reporter = new Reporter({ verbosity });
+  # Upload baseline for specific commit
+  shaka-bundle-size upload-main-branch-stats --commit abc1234
 
-  const storage = new BaselineStorage({
-    s3Bucket: resolvedConfig.storage.s3Bucket,
-    s3Prefix: resolvedConfig.storage.s3Prefix,
-    awsRegion: resolvedConfig.storage.awsRegion,
-    s3Endpoint: resolvedConfig.storage.s3Endpoint,
-    awsAccessKeyId: resolvedConfig.storage.awsAccessKeyId,
-    awsSecretAccessKey: resolvedConfig.storage.awsSecretAccessKey,
-    baselineDir: resolvedConfig.baselineDir,
-    mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
-  });
+Exit codes:
+  0  Success / Check passed
+  1  Check failed (regressions detected)
+  2  Configuration or runtime error`);
 
-  if (args.downloadMainBranchStats) {
+program
+  .command('download-main-branch-stats')
+  .description('Download baseline from main branch (finds merge-base)')
+  .option('--commit <sha>', 'Specific commit SHA')
+  .action(async (opts) => {
     try {
+      const { resolvedConfig } = await getResolvedConfig();
+      const reporter = createReporter();
+      const storage = createStorage(resolvedConfig);
+
       reporter.info('Downloading main branch baseline from S3...');
-      const commit = args.commit
-        ? await storage.downloadForCommit(args.commit)
+      const commit = opts.commit
+        ? await storage.downloadForCommit(opts.commit)
         : await storage.download();
 
       if (commit) {
         reporter.success(`Found baseline for commit ${commit.substring(0, 7)}`);
       } else {
-        reporter.error(`No baseline found${args.commit ? ` for commit ${args.commit}` : ` in last ${resolvedConfig.storage.mainCommitsToCheck} main commits`}`);
+        reporter.error(`No baseline found${opts.commit ? ` for commit ${opts.commit}` : ` in last ${resolvedConfig.storage.mainCommitsToCheck} main commits`}`);
         process.exit(2);
       }
       process.exit(0);
@@ -227,12 +174,19 @@ async function main(): Promise<void> {
       console.error(colorize.red(`Error downloading baseline: ${(error as Error).message}`));
       process.exit(2);
     }
-  }
+  });
 
-  const checker = new BundleSizeChecker(resolvedConfig, reporter);
-
-  if (args.uploadMainBranchStats) {
+program
+  .command('upload-main-branch-stats')
+  .description('Generate and upload baseline for current commit')
+  .option('--commit <sha>', 'Specific commit SHA')
+  .action(async (opts) => {
     try {
+      const { resolvedConfig } = await getResolvedConfig();
+      const reporter = createReporter();
+      const storage = createStorage(resolvedConfig);
+      const checker = new BundleSizeChecker(resolvedConfig, reporter);
+
       // Generate extended stats first (needed for source maps)
       if (resolvedConfig.generateSourceMaps) {
         const bundlesDir = path.dirname(resolvedConfig.statsFile);
@@ -252,8 +206,8 @@ async function main(): Promise<void> {
       checker.updateBaseline();
       reporter.success('Generated current stats.');
 
-      const commit = args.commit
-        ? await storage.uploadForCommit(args.commit)
+      const commit = opts.commit
+        ? await storage.uploadForCommit(opts.commit)
         : await storage.upload();
       reporter.success(`Uploaded baseline to S3 for commit ${commit.substring(0, 7)}`);
       process.exit(0);
@@ -261,16 +215,24 @@ async function main(): Promise<void> {
       console.error(colorize.red(`Error uploading baseline: ${(error as Error).message}`));
       process.exit(2);
     }
-  }
+  });
 
-  if (args.acknowledgeFailure) {
-    if (!resolvedConfig.acknowledgedBranchesFilePath) {
-      console.error(colorize.red('Error: acknowledgedBranchesFilePath must be set in config to use --acknowledge-failure'));
-      process.exit(2);
-    }
+program
+  .command('acknowledge-failure')
+  .description('Acknowledge bundle-size failure for current branch')
+  .option('--branch <name>', 'Branch name to acknowledge')
+  .action(async (opts) => {
     try {
-      writeAcknowledgedBranchFile(resolvedConfig.acknowledgedBranchesFilePath, args.branch);
-      const branch = args.branch ?? getCurrentBranch();
+      const { resolvedConfig } = await getResolvedConfig();
+      const reporter = createReporter();
+
+      if (!resolvedConfig.acknowledgedBranchesFilePath) {
+        console.error(colorize.red('Error: acknowledgedBranchesFilePath must be set in config to use acknowledge-failure'));
+        process.exit(2);
+      }
+
+      writeAcknowledgedBranchFile(resolvedConfig.acknowledgedBranchesFilePath, opts.branch);
+      const branch = opts.branch ?? getCurrentBranch();
       reporter.success(`Acknowledged bundle-size failure for branch: ${branch}`);
       reporter.info(`File updated: ${resolvedConfig.acknowledgedBranchesFilePath}`);
       process.exit(0);
@@ -278,13 +240,22 @@ async function main(): Promise<void> {
       console.error(colorize.red(`Error: ${(error as Error).message}`));
       process.exit(2);
     }
-  }
+  });
 
-  if (args.compare || (!args.downloadMainBranchStats && !args.uploadMainBranchStats && !args.acknowledgeFailure)) {
+program
+  .command('compare', { isDefault: true })
+  .description('Generate current stats and compare against baseline')
+  .option('--no-html-diffs', 'Skip HTML diff generation')
+  .action(async (opts) => {
     try {
+      const { resolvedConfig, configPath } = await getResolvedConfig();
+      const reporter = createReporter();
+      const storage = createStorage(resolvedConfig);
+      const checker = new BundleSizeChecker(resolvedConfig, reporter);
+
       const result = checker.check();
 
-      if (!args.noHtmlDiffs && resolvedConfig.htmlDiffs.enabled) {
+      if (opts.htmlDiffs && resolvedConfig.htmlDiffs.enabled) {
         const bundlesDir = path.dirname(resolvedConfig.statsFile);
         const extendedStatsGenerator = new ExtendedStatsGenerator({
           bundlesDir,
@@ -328,10 +299,6 @@ async function main(): Promise<void> {
       console.error(colorize.red(`Error running check: ${(error as Error).message}`));
       process.exit(2);
     }
-  }
-}
+  });
 
-main().catch((error) => {
-  console.error(colorize.red(`Unexpected error: ${error.message}`));
-  process.exit(2);
-});
+program.parse();

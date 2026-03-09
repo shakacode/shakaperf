@@ -40,11 +40,3 @@ export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeF
   composeFile: string;
 };
 
-export interface CliOptions {
-  config?: string;
-  verbose: boolean;
-  help: boolean;
-  version: boolean;
-}
-
-export type Command = 'build' | 'get-config' | 'start-containers' | 'stop-containers' | 'start-servers' | 'run-overmind-command' | 'run-cmd' | 'run-cmd-parallel' | 'sync-changes' | 'say' | 'copy-changes-to-ssh' | 'forward-ports' | 'customize-docker-compose';

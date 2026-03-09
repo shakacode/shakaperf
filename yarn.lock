@@ -5145,13 +5145,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/minimist@npm:^1.2.0":
-  version: 1.2.5
-  resolution: "@types/minimist@npm:1.2.5"
-  checksum: 10c0/3f791258d8e99a1d7d0ca2bda1ca6ea5a94e5e7b8fc6cde84dd79b0552da6fb68ade750f0e17718f6587783c24254bbca0357648dd59dc3812c150305cabdc46
-  languageName: node
-  linkType: hard
-
 "@types/ms@npm:*":
   version: 2.1.0
   resolution: "@types/ms@npm:2.1.0"
@@ -11590,7 +11583,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimist@npm:^1.2.5, minimist@npm:^1.2.6, minimist@npm:^1.2.8":
+"minimist@npm:^1.2.5, minimist@npm:^1.2.6":
   version: 1.2.8
   resolution: "minimist@npm:1.2.8"
   checksum: 10c0/19d3fcdca050087b84c2029841a093691a91259a47def2f18222f41e7645a0b7c44ef4b40e88a1e58a40c84d2ef0ee6047c55594d298146d0eb3f6b737c20ce6
@@ -13860,6 +13853,7 @@ __metadata:
     "@aws-sdk/client-s3": "npm:^3.0.0"
     "@types/jest": "npm:^29.5.0"
     "@types/node": "npm:^20.0.0"
+    commander: "npm:^13.1.0"
     diff2html: "npm:^3.4.48"
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
@@ -13880,6 +13874,7 @@ __metadata:
   dependencies:
     "@types/jest": "npm:^29.5.0"
     "@types/node": "npm:^20.0.0"
+    commander: "npm:^13.1.0"
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
@@ -13905,7 +13900,6 @@ __metadata:
     "@types/jest": "npm:^29.5.11"
     "@types/junit-report-builder": "npm:^3.0.0"
     "@types/lodash": "npm:^4.17.0"
-    "@types/minimist": "npm:^1.2.0"
     "@types/node": "npm:^22.0.0"
     "@types/object-hash": "npm:^3.0.0"
     "@types/pixelmatch": "npm:^5.2.0"
@@ -13915,6 +13909,7 @@ __metadata:
     babel-loader: "npm:^9.1.3"
     backstop-twentytwenty: "npm:^1.1.0"
     chalk: "npm:^4.1.2"
+    commander: "npm:^13.1.0"
     diverged: "npm:^0.1.3"
     file-loader: "npm:^6.2.0"
     fs-extra: "npm:^11.2.0"
@@ -13923,7 +13918,6 @@ __metadata:
     jump.js: "npm:^1.0.2"
     junit-report-builder: "npm:^3.1.0"
     lodash: "npm:^4.17.21"
-    minimist: "npm:^1.2.8"
     object-hash: "npm:3.0.0"
     opn: "npm:^6.0.0"
     os: "npm:^0.1.2"

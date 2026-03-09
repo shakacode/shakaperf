@@ -1,3 +1,4 @@
+import path from 'path';
 import { exec, execSync_ } from './shell';
 import { colorize } from './ui';
 import type { ResolvedConfig } from '../types';
@@ -36,6 +37,7 @@ export function dockerImageExists(imageName: string): boolean {
 function buildComposeOptions(config: ResolvedConfig) {
   return {
     composeFile: config.composeFile,
+    projectName: path.basename(config.projectDir),
     cwd: config.projectDir,
     env: {
       ...process.env,
@@ -50,7 +52,7 @@ function buildComposeOptions(config: ResolvedConfig) {
 
 export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {
   const opts = buildComposeOptions(config);
-  const result = await exec('docker', ['compose', '-f', opts.composeFile, 'up', '-d'], {
+  const result = await exec('docker', ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'up', '-d'], {
     cwd: opts.cwd,
     env: opts.env,
   });
@@ -61,7 +63,7 @@ export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {
 
 export async function dockerComposeDown(config: ResolvedConfig): Promise<void> {
   const opts = buildComposeOptions(config);
-  await exec('docker', ['compose', '-f', opts.composeFile, 'down', '--volumes', '--remove-orphans'], {
+  await exec('docker', ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'down', '--volumes', '--remove-orphans'], {
     cwd: opts.cwd,
     env: opts.env,
     silent: true,
@@ -70,7 +72,7 @@ export async function dockerComposeDown(config: ResolvedConfig): Promise<void> {
 
 export async function dockerComposePs(config: ResolvedConfig): Promise<void> {
   const opts = buildComposeOptions(config);
-  await exec('docker', ['compose', '-f', opts.composeFile, 'ps'], {
+  await exec('docker', ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'ps'], {
     cwd: opts.cwd,
     env: opts.env,
   });
@@ -92,7 +94,7 @@ export async function dockerComposeExec(
   const { interactive = false, stream = false } = execOptions;
 
   const opts = buildComposeOptions(config);
-  const args = ['compose', '-f', opts.composeFile, 'exec'];
+  const args = ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'exec'];
   if (!interactive) {
     args.push('-T');
   }

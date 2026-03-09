@@ -1,7 +1,8 @@
 
 >>> Copying current directory as experiment repo
 
-[roman-kuksin/fix-issues-during-ecbyo-setup f945920] integration test snapshot
+[roman-kuksin/migrate-to-commander 92a6b72] integration test snapshot
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
 >>> Cloning control repo (branch: main)
 
@@ -17,7 +18,6 @@ done.
 ➤ YN0060: │ react is listed by your project with version 18.3.1 (pcf441f), which doesn't satisfy what react-motion (via react-toggle-button) and other dependencies request (but they have non-overlapping ranges!).
 ➤ YN0002: │ shaka-bench@workspace:packages/shaka-bench doesn't provide devtools-protocol (pce8fde), requested by chrome-debugging-client.
 ➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
-➤ YN0086: │ Some peer dependencies are incorrectly met by dependencies; run yarn explain peer-requirements for details.
 ➤ YN0000: └ Completed
 ➤ YN0000: ┌ Fetch step
 ➤ YN0000: └ Completed in <TIMING>
@@ -27,15 +27,15 @@ done.
 ➤ YN0007: │ node-expat@npm:2.4.1 must be built because it never has been before or the last one failed
 ➤ YN0007: │ puppeteer@npm:22.15.0 must be built because it never has been before or the last one failed
 ➤ YN0007: │ esbuild@npm:0.27.2 must be built because it never has been before or the last one failed
-➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
 ➤ YN0007: │ unrs-resolver@npm:1.11.1 must be built because it never has been before or the last one failed
-➤ YN0007: │ core-js@npm:3.48.0 must be built because it never has been before or the last one failed
+➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
 ➤ YN0000: │ [Warning] The runtime detected new information in a PnP file; reloading the API instance (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/.pnp.cjs)
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: · Done with warnings in <TIMING>
 
 >>> Building packages in temp clone
 
+Assets copied to dist/
 Done in <TIMING>
 
 >>> run: yarn shaka-twin-servers build
@@ -55,7 +55,7 @@ Building both Docker images in parallel...
 Docker image(s) built successfully!
 
 Images created:
-  - demo-ecommerce:experiment (current branch: roman-kuksin/fix-issues-during-ecbyo-setup)
+  - demo-ecommerce:experiment (current branch: roman-kuksin/migrate-to-commander)
   - demo-ecommerce:control (baseline branch: main)
 
 Bind-mount directories:
@@ -86,31 +86,31 @@ Clearing stale volume contents...
    /home/<USER>/demo_ecommerce_control_docker_volume
    /home/<USER>/demo_ecommerce_experiment_docker_volume
 
-Starting twin servers...
+Starting twin containers...
 Waiting for containers to start...
 Checking container status...
-NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS                            PORTS
-demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME> (health: starting)   0.0.0.0:3020->3000/tcp
-demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME> (health: starting)   0.0.0.0:3030->3000/tcp
+NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS         PORTS
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
 
 Waiting for containers to be ready...
-dockerComposeExec control-server echo ready
+ [CONTROL-SERVER]  > docker exec : echo ready
    control-server is ready
-dockerComposeExec experiment-server echo ready
+ [EXPERIMENT-SERVER]  > docker exec : echo ready
    experiment-server is ready
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	dockerComposeExec experiment-server bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	dockerComposeExec control-server bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
@@ -121,9 +121,9 @@ Running in parallel: bin/rails db:prepare && bin/rails db:seed in both container
 Both servers are ready!
 
 
-===================================
-  Twin Containers Started
-===================================
+===========================
+  Twin Containers Started  
+===========================
 
 
 Edit project code inside containers:
@@ -155,13 +155,13 @@ Next steps:
 >>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
-dockerComposeExec control-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
-dockerComposeExec experiment-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> Waiting for ports 3020 + 3030
@@ -206,9 +206,9 @@ Files synced to: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
 Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	Running bundle exec rake assets:precompile in experiment-server
-[EXPERIMENT]	dockerComposeExec experiment-server bundle exec rake assets:precompile
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bundle exec rake assets:precompile
 [CONTROL]	Running bundle exec rake assets:precompile in control-server
-[CONTROL]	dockerComposeExec control-server bundle exec rake assets:precompile
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bundle exec rake assets:precompile
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
@@ -303,13 +303,13 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 >>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
-dockerComposeExec control-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
-dockerComposeExec experiment-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> Waiting for ports 3020 + 3030
@@ -343,25 +343,25 @@ Clearing stale volume contents...
    /home/<USER>/demo_ecommerce_control_docker_volume
    /home/<USER>/demo_ecommerce_experiment_docker_volume
 
-Starting twin servers...
+Starting twin containers...
 Waiting for containers to start...
 Checking container status...
-NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS                            PORTS
-demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME> (health: starting)   0.0.0.0:3020->3000/tcp
-demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME> (health: starting)   0.0.0.0:3030->3000/tcp
+NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS         PORTS
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
 
 Waiting for containers to be ready...
-dockerComposeExec control-server echo ready
+ [CONTROL-SERVER]  > docker exec : echo ready
    control-server is ready
-dockerComposeExec experiment-server echo ready
+ [EXPERIMENT-SERVER]  > docker exec : echo ready
    experiment-server is ready
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	dockerComposeExec control-server bin/rails db:prepare && bin/rails db:seed
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	dockerComposeExec experiment-server bin/rails db:prepare && bin/rails db:seed
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
@@ -378,9 +378,9 @@ Running in parallel: bin/rails db:prepare && bin/rails db:seed in both container
 Both servers are ready!
 
 
-===================================
-  Twin Containers Started
-===================================
+===========================
+  Twin Containers Started  
+===========================
 
 
 Edit project code inside containers:
@@ -421,13 +421,13 @@ Next steps:
 >>> run: yarn shaka-twin-servers run-cmd experiment "sed -i 's/Discover Your Style/It'\''s a \"quoted\" world/' app/javascript/components/pages/HomePage.tsx"
 
 Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
-dockerComposeExec experiment-server sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
+ [EXPERIMENT-SERVER]  > docker exec : sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
 
 
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 
 Running bundle exec rake assets:precompile in experiment-server
-dockerComposeExec experiment-server bundle exec rake assets:precompile
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec rake assets:precompile
 I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 using yarn@4.12.0 to manage dependencies and scripts in package.json
@@ -518,13 +518,13 @@ webpack 5.104.1 compiled successfully in <TIMING> ms
 >>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
-dockerComposeExec control-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
-dockerComposeExec experiment-server bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
 
 >>> Waiting for ports 3020 + 3030
