@@ -75,7 +75,7 @@ class ApproveButton extends React.Component {
         approveStatus: 'FAILED',
         errorMsg: `${err.message}. 🧐
 Looks like the "approve" operation failed.
-Please check that backstopRemote is running.
+Please check that the remote server is running.
       `
       });
       alert(this.state.errorMsg);
