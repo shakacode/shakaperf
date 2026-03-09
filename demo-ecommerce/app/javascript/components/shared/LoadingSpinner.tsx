@@ -1,9 +1,10 @@
 import React from 'react';
 import { CircularProgress, Box } from '@mui/material';
 
-const LoadingSpinner: React.FC = () => {
+const LoadingSpinner = React.forwardRef<HTMLDivElement>((_, ref) => {
   return (
     <Box
+      ref={ref}
       display="flex"
       justifyContent="center"
       alignItems="center"
@@ -12,6 +13,6 @@ const LoadingSpinner: React.FC = () => {
       <CircularProgress />
     </Box>
   );
-};
+});
 
 export default LoadingSpinner;
