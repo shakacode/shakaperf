@@ -114,7 +114,39 @@ program
   .version(`shaka-bundle-size v${VERSION}`, '--version', 'Show version')
   .option('-c, --config <file>', 'Config file path (.js or .ts)')
   .option('-v, --verbose', 'Verbose output', false)
-  .option('-q, --quiet', 'Quiet output (errors only)', false);
+  .option('-q, --quiet', 'Quiet output (errors only)', false)
+  .addHelpText('after', `
+Command options:
+  download-main-branch-stats:
+      --commit <sha>     Specific commit SHA
+  upload-main-branch-stats:
+      --commit <sha>     Specific commit SHA
+  acknowledge-failure:
+      --branch <name>    Branch name to acknowledge
+  compare:
+      --no-html-diffs    Skip HTML diff generation
+
+Examples:
+  # Auto-discovers bundle-size.config.ts in current directory
+  shaka-bundle-size download-main-branch-stats
+  shaka-bundle-size compare
+
+  # Specify config explicitly
+  shaka-bundle-size -c admin.bundle-size.config.ts compare
+
+  # Download from specific commit
+  shaka-bundle-size download-main-branch-stats --commit abc1234
+
+  # Main branch: upload new baseline after merge
+  shaka-bundle-size upload-main-branch-stats
+
+  # Upload baseline for specific commit
+  shaka-bundle-size upload-main-branch-stats --commit abc1234
+
+Exit codes:
+  0  Success / Check passed
+  1  Check failed (regressions detected)
+  2  Configuration or runtime error`);
 
 program
   .command('download-main-branch-stats')

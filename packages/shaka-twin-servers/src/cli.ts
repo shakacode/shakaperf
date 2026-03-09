@@ -72,7 +72,47 @@ program
   .description('Twin server management for A/B performance testing')
   .version(`shaka-twin-servers v${VERSION}`, '--version', 'Show version')
   .option('-c, --config <file>', 'Config file path (.js or .ts)')
-  .option('-v, --verbose', 'Verbose output', false);
+  .option('-v, --verbose', 'Verbose output', false)
+  .addHelpText('after', `
+Command options:
+  build:
+      -t, --target <target>  Build target (control or experiment)
+          --no-cache         Disable Docker layer cache
+
+<target> is either "control" or "experiment"
+
+Examples:
+  # Auto-discovers twin-servers.config.ts in current directory
+  shaka-twin-servers build
+  shaka-twin-servers build --target experiment  # Build only experiment image
+  shaka-twin-servers build --target control     # Build only control image
+  shaka-twin-servers start-containers
+  shaka-twin-servers start-servers
+
+  # Sync changes to experiment volume
+  shaka-twin-servers sync-changes experiment
+
+  # Run command in container interactively
+  shaka-twin-servers run-cmd experiment "bundle exec rails console"
+
+  # Run command in both containers in parallel
+  shaka-twin-servers run-cmd-parallel "bundle exec rake db:migrate"
+
+  # Run command in container with PID tracking (used in Procfile)
+  shaka-twin-servers run-overmind-command control "bundle exec puma -b tcp://0.0.0.0:3000"
+
+  # Copy local git changes to CI via SSH (for debugging)
+  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22              # all targets
+  shaka-twin-servers copy-changes-to-ssh 54782 18.210.27.22 experiment   # experiment only
+
+  # Forward CI twin server ports to localhost
+  shaka-twin-servers forward-ports 54782 18.210.27.22                    # default ports 3020, 3030
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3000 3001          # custom ports
+  shaka-twin-servers forward-ports 54782 18.210.27.22 3010:3020 3030     # local:remote mapping
+
+  # Specify config explicitly
+  shaka-twin-servers build -c path/to/twin-servers.config.ts
+`);
 
 program
   .command('build')
@@ -96,11 +136,11 @@ program
 program
   .command('get-config')
   .description('Get a config value (e.g., dockerfile)')
-  .argument('<key>', 'Config key to print')
+  .argument('[key]', 'Config key to print')
   .action(wrapAction(async (key) => {
     const { resolvedConfig } = await getResolvedConfig(program);
-    if (!(key in resolvedConfig)) {
-      console.error(colorize(`Error: Unknown config key '${key}'`, 'red'));
+    if (!key || !(key in resolvedConfig)) {
+      console.error(colorize(`Error: ${key ? `Unknown config key '${key}'` : 'Config key required'}`, 'red'));
       console.error(`Available keys: ${Object.keys(resolvedConfig).join(', ')}`);
       process.exit(2);
     }
@@ -193,12 +233,20 @@ program
     await say(message);
   }));
 
+const SSH_HINT = `
+To get the correct arguments:
+1. Go to your CircleCI job
+2. Click "Rerun job with SSH"
+3. Copy the SSH command from the job logs
+4. Extract the port and host from: ssh -p <PORT> <HOST>`;
+
 program
   .command('copy-changes-to-ssh')
   .description('Copy local git changes to SSH (for CI debugging)')
   .argument('<port>', 'SSH port')
   .argument('<host>', 'SSH host')
   .argument('[target]', 'control, experiment, or all')
+  .addHelpText('after', SSH_HINT)
   .action(wrapAction(async (port, host, copyTarget) => {
     const { resolvedConfig } = await getResolvedConfig(program);
     if (copyTarget && copyTarget !== 'control' && copyTarget !== 'experiment' && copyTarget !== 'all') {
@@ -215,6 +263,7 @@ program
   .argument('<host>', 'SSH host')
   .argument('[controlPort]', 'Control port (default: 3020)', '3020')
   .argument('[experimentPort]', 'Experiment port (default: 3030)', '3030')
+  .addHelpText('after', SSH_HINT)
   .action(wrapAction(async (port, host, controlPort, experimentPort) => {
     const { resolvedConfig } = await getResolvedConfig(program);
     await forwardPorts(resolvedConfig, { port, host }, { verbose: program.opts().verbose, controlPort, experimentPort });
