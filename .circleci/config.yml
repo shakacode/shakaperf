@@ -187,8 +187,8 @@ workflows:
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
             - twin-servers/download-control-commit-sha
 
-      - twin-servers/run-tests: &shaka-visreg-job
-          name: scheduled-shaka-visreg
+      - twin-servers/run-tests: &shaka-visual-regression-job
+          name: scheduled-shaka-visual-regression
           requires:
             - twin-servers/build-experiment
             - twin-servers/build-control
@@ -251,7 +251,7 @@ workflows:
                   echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
           requires:
-            - scheduled-shaka-visreg
+            - scheduled-shaka-visual-regression
             - scheduled-perf-tests
 
       # Approval path: if tests fail, approve to update control commit SHA anyway
@@ -288,8 +288,8 @@ workflows:
               ignore: main
 
       - twin-servers/run-tests:
-          <<: *shaka-visreg-job
-          name: shaka-visreg
+          <<: *shaka-visual-regression-job
+          name: shaka-visual-regression
           filters:
             branches:
               ignore: main
