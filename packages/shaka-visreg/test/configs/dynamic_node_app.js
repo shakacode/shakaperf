@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // EXAMPLE COMMAND
-// ~/Development/BackstopJS/test/configs
+// ~/Development/shaka-visreg/test/configs
 // $ node dynamic_node_app --dynamicTestId=6 --testLabel="dynamic test" --scenarioLabel="one" --url=https://garris.github.io/BackstopJS?cookie --command=test
 
 //  THIS IS A DEMO OF DYNAMIC SCENARIO MODE
@@ -15,12 +15,12 @@
 // - Subsequent `test` runs using a unique dynamicTestId value will create new dynamic scenarios where scenarioLabel and URL values that were approved
 //   on previous runs will compared against the current unique test run.
 //
-// - This mode is intended for integrating with external test runners such as qunit -- like in the https://github.com/garris/ember-backstop project.
+// - This mode is intended for integrating with external test runners such as qunit.
 //
 
 import assert from 'node:assert/strict';
 import parseArgs from 'minimist';
-import backstop from '../../core/runner.js';
+import runner from '../../core/runner.js';
 const URL = 'https://garris.github.io/BackstopJS';
 
 const argsOptions = parseArgs(process.argv.slice(2), {
@@ -42,7 +42,7 @@ assert.ok(argsOptions.dynamicTestId, 'Hold on there: dynamicTestId must represen
 const exampleConfig = {
   i: true, // incremental flag -- suppresses cleaning reference directory during reference command
   config: {
-    dynamicTestId: argsOptions.dynamicTestId, // when truthy backstop will assume one dynamic scenario which is appended to test report belonging to dynamicTestId
+    dynamicTestId: argsOptions.dynamicTestId, // when truthy visreg will assume one dynamic scenario which is appended to test report belonging to dynamicTestId
     id: argsOptions.testLabel,
     viewports: [
       {
@@ -63,11 +63,11 @@ const exampleConfig = {
       }
     ],
     paths: {
-      bitmaps_reference: 'backstop_data/bitmaps_reference',
-      bitmaps_test: 'backstop_data/bitmaps_test',
-      engine_scripts: 'backstop_data/engine_scripts',
-      html_report: 'backstop_data/html_report',
-      json_report: 'backstop_data/json_report'
+      bitmaps_reference: 'visreg_data/bitmaps_reference',
+      bitmaps_test: 'visreg_data/bitmaps_test',
+      engine_scripts: 'visreg_data/engine_scripts',
+      html_report: 'visreg_data/html_report',
+      json_report: 'visreg_data/json_report'
     },
     report: ['browser', 'json'],
     engine: 'playwright',
@@ -79,15 +79,15 @@ const exampleConfig = {
 };
 
 function approve () {
-  backstop('approve', exampleConfig);
+  runner('approve', exampleConfig);
 }
 
 function open () {
-  backstop('openReport', exampleConfig);
+  runner('openReport', exampleConfig);
 }
 
 function main () {
-  backstop('test', exampleConfig).then(
+  runner('test', exampleConfig).then(
     () => {
       console.log('No changes found.');
     },

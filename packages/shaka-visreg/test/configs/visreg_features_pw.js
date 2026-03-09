@@ -1,9 +1,10 @@
 const ENGINE = 'playwright';
+const BROWSER = 'chromium';
 const SCRIPT_PATH = 'playwright';
 const URL = 'https://garris.github.io/BackstopJS';
 
 module.exports = {
-  id: `${ENGINE}_backstop_features`,
+  id: `${ENGINE}_${BROWSER}_visreg_features`,
   viewports: [
     {
       label: 'phone',
@@ -112,7 +113,7 @@ module.exports = {
     },
     {
       label: 'cookies',
-      cookiePath: 'backstop_data/cookies.json',
+      cookiePath: 'visreg_data/cookies.json',
       url: `${URL}/index.html?cookie`,
       selectors: ['.moneyshot']
     },
@@ -226,7 +227,7 @@ module.exports = {
       keyPressSelectors: [
         {
           selector: 'input[placeholder="Email"]',
-          keyPress: 'marcdacz@backstopjs.com'
+          keyPress: 'marcdacz@example.com'
         },
         {
           selector: 'input[placeholder="Password"]',
@@ -246,20 +247,19 @@ module.exports = {
     }
   ],
   paths: {
-    bitmaps_reference: 'backstop_data/bitmaps_reference',
-    bitmaps_test: 'backstop_data/bitmaps_test',
-    engine_scripts: 'backstop_data/engine_scripts',
-    html_report: 'backstop_data/html_report',
-    ci_report: 'backstop_data/ci_report'
+    bitmaps_reference: 'visreg_data/bitmaps_reference',
+    bitmaps_test: 'visreg_data/bitmaps_test',
+    engine_scripts: 'visreg_data/engine_scripts',
+    html_report: 'visreg_data/html_report',
+    ci_report: 'visreg_data/ci_report'
   },
   report: ['browser', 'json'],
-  engine: ENGINE,
+  engine: `${ENGINE}`,
   engineOptions: {
-    args: ['--no-sandbox']
+    browser: `${BROWSER}`
   },
   asyncCaptureLimit: 10,
   asyncCompareLimit: 50,
   debug: false,
-  debugWindow: false,
-  scenarioLogsInReports: true
+  debugWindow: false
 };

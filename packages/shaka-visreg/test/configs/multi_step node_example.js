@@ -1,21 +1,21 @@
-import backstop from '../../core/runner.js';
+import runner from '../../core/runner.js';
 
-console.log('Running a multi-step Backstop test. vvv');
+console.log('Running a multi-step shaka-visreg test. vvv');
 
-// this will run `backstop test` with default config file (./backstop.json in current directory)
-backstop('test')
+// this will run `visreg test` with default config file (./visreg.json in current directory)
+runner('test')
   .catch(approveChanges)
   .then(() => {
-    // this invocation is equivalent to running `backstop test --config=backstop_features --filter=click`
-    return backstop('test', {
+    // this invocation is equivalent to running `visreg test --config=visreg_features --filter=click`
+    return runner('test', {
       filter: 'click',
-      config: 'backstop_features'
+      config: 'visreg_features'
     });
   })
   .catch(approveChanges)
   .then(() => {
-    // this invocation is equivalent to running `backstop test --filter=Delayed` on exampleConfig.
-    return backstop('test', exampleConfig);
+    // this invocation is equivalent to running `visreg test --filter=Delayed` on exampleConfig.
+    return runner('test', exampleConfig);
   })
   .catch(approveChanges);
 
@@ -24,12 +24,12 @@ backstop('test')
  */
 function approveChanges () {
   console.log('Looks like there were some changes detected since last run.');
-  backstop('approve', {
+  runner('approve', {
     config: {
       id: 'explicity_defined',
       paths: {
-        bitmaps_reference: 'backstop_data/bitmaps_reference',
-        bitmaps_test: 'backstop_data/bitmaps_test'
+        bitmaps_reference: 'visreg_data/bitmaps_reference',
+        bitmaps_test: 'visreg_data/bitmaps_test'
       }
     }
   });
@@ -60,21 +60,21 @@ const exampleConfig = {
     scenarios: [
       {
         label: 'Homepage',
-        cookiePath: 'backstop_data/engine_scripts/cookies.json',
+        cookiePath: 'visreg_data/engine_scripts/cookies.json',
         url: 'https://garris.github.io/BackstopJS/?delay'
       },
       {
         label: 'Homepage Delayed',
-        cookiePath: 'backstop_data/engine_scripts/cookies.json',
+        cookiePath: 'visreg_data/engine_scripts/cookies.json',
         url: 'https://garris.github.io/BackstopJS/?delay'
       }
     ],
     paths: {
-      bitmaps_reference: 'backstop_data/bitmaps_reference',
-      bitmaps_test: 'backstop_data/bitmaps_test',
-      engine_scripts: 'backstop_data/engine_scripts',
-      html_report: 'backstop_data/html_report',
-      ci_report: 'backstop_data/ci_report'
+      bitmaps_reference: 'visreg_data/bitmaps_reference',
+      bitmaps_test: 'visreg_data/bitmaps_test',
+      engine_scripts: 'visreg_data/engine_scripts',
+      html_report: 'visreg_data/html_report',
+      ci_report: 'visreg_data/ci_report'
     },
     report: ['browser'],
     engine: 'playwright',

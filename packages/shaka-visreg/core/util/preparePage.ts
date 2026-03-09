@@ -2,25 +2,42 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import _ from 'lodash';
 import { existsSync } from 'node:fs';
-import injectBackstopTools from '../../capture/backstopTools.js';
+import injectVisregTools from '../../capture/visregTools.js';
 import createLogger from './logger.js';
-import type { PlaywrightPage, Scenario, Viewport, BackstopConfig, BrowserContext, BackstopTools } from '../types.js';
+import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types.js';
 import type { ConsoleMessage } from 'playwright';
 
 declare global {
   interface Window {
     _readyEvent: string;
     _selectorExpansion: boolean;
-    _backstopSelectors: string[];
-    _backstopSelectorsExp: string[];
-    _backstopSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
-    _backstopTools: BackstopTools;
+    _visregSelectors: string[];
+    _visregSelectorsExp: string[];
+    _visregSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
+    _visregTools: VisregTools;
   }
 }
 
 const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
+
+/**
+ * Dynamically import a script file, supporting .js, .mjs, and .ts (via tsx).
+ * Resolves through default export wrapping (tsx can double-wrap: { default: { default: fn } }).
+ */
+async function importScript(scriptPath: string): Promise<unknown> {
+  let mod;
+  if (scriptPath.endsWith('.ts')) {
+    const { tsImport } = await import('tsx/esm/api');
+    const tsModule = await tsImport(scriptPath, import.meta.url);
+    mod = tsModule.default?.default ?? tsModule.default ?? tsModule;
+  } else {
+    const jsModule = await import(pathToFileURL(scriptPath).href);
+    mod = jsModule.default ?? jsModule;
+  }
+  return mod;
+}
 
 function translateUrl (url: string) {
   const RE = /^[./]/;
@@ -36,7 +53,7 @@ function translateUrl (url: string) {
  *
  * Shared by runCompareScenario (liveCompare) and runPlaywright.
  */
-async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: BackstopConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
   // --- BEFORE SCRIPT ---
@@ -44,8 +61,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   if (onBeforeScript) {
     const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
     if (existsSync(beforeScriptPath)) {
-      const beforeMod = await import(pathToFileURL(beforeScriptPath).href);
-      const beforeFn = beforeMod.default || beforeMod;
+      const beforeFn = await importScript(beforeScriptPath) as (...args: unknown[]) => Promise<void>;
       await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + beforeScriptPath);
@@ -80,10 +96,18 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     page.on('console', onConsole);
   }
 
+  // Define __name as a no-op in the page context. tsx/esbuild injects __name() calls
+  // when transpiling .ts engine scripts at runtime, and those calls end up inside
+  // page.evaluate callbacks where __name doesn't exist in the browser.
+  // Using addInitScript so it persists across navigations.
+  await page.addInitScript(function () {
+    (window as unknown as Record<string, unknown>).__name = function (fn: unknown) { return fn; };
+  });
+
   // --- OPEN URL + WAIT FOR READY EVENT ---
   try {
     await page.goto(translateUrl(url), gotoParameters);
-    await injectBackstopTools(page);
+    await injectVisregTools(page);
 
     if (readyPromise) {
       await page.evaluate(function (v: string) { window._readyEvent = v; }, readyEvent!);
@@ -127,8 +151,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   if (onReadyScript) {
     const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
     if (existsSync(readyScriptPath)) {
-      const readyMod = await import(pathToFileURL(readyScriptPath).href);
-      const readyFn = readyMod.default || readyMod;
+      const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
       await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
     } else {
       logger.warn('WARNING: script not found: ' + readyScriptPath);
@@ -136,7 +159,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   }
 
   // reinstall tools in case onReadyScript has loaded a new URL.
-  await injectBackstopTools(page);
+  await injectVisregTools(page);
 
   // --- HIDE SELECTORS ---
   if (_.has(scenario, 'hideSelectors')) {
@@ -164,22 +187,22 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     var expand = args.expand;
     var sels = args.sels;
     window._selectorExpansion = expand;
-    window._backstopSelectors = sels;
+    window._visregSelectors = sels;
     if (expand) {
-      window._backstopSelectorsExp = window._backstopTools.expandSelectors(sels);
+      window._visregSelectorsExp = window._visregTools.expandSelectors(sels);
     } else {
-      window._backstopSelectorsExp = sels;
+      window._visregSelectorsExp = sels;
     }
-    window._backstopSelectorsExpMap = window._backstopSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
+    window._visregSelectorsExpMap = window._visregSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
       acc[selector] = {
-        exists: window._backstopTools.exists(selector),
-        isVisible: window._backstopTools.isVisible(selector)
+        exists: window._visregTools.exists(selector),
+        isVisible: window._visregTools.isVisible(selector)
       };
       return acc;
     }, {});
     return {
-      backstopSelectorsExp: window._backstopSelectorsExp,
-      backstopSelectorsExpMap: window._backstopSelectorsExpMap
+      visregSelectorsExp: window._visregSelectorsExp,
+      visregSelectorsExpMap: window._visregSelectorsExpMap
     };
   }, { expand: selectorExpansion, sels: selectors });
 

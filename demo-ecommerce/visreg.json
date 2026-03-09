@@ -17,8 +17,8 @@
       "height": 800
     }
   ],
-  "onBeforeScript": "onBefore.js",
-  "onReadyScript": "onReady.js",
+  "onBeforeScript": "playwright/onBefore.ts",
+  "onReadyScript": "playwright/onReady.ts",
   "scenarios": [
     {
       "label": "Homepage",
@@ -27,8 +27,8 @@
       "delay": 50,
       "misMatchThreshold": 0.01,
       "selectors": [
-        ".css-30akml",
-        ".css-8qb8m4",
+        "[data-cy='hero-section']",
+        "[data-cy='features-section']",
         "document"
       ]
     },
@@ -43,7 +43,7 @@
       "label": "Products - Electronics Filter",
       "url": "http://localhost:3030/products",
       "referenceUrl": "http://localhost:3020/products",
-      "onReadyScript": "onReadyElectronicsFilter.js",
+      "onReadyScript": "playwright/onReadyElectronicsFilter.ts",
       "delay": 50,
       "misMatchThreshold": 0.1
     },
@@ -65,8 +65,8 @@
       "label": "Admin Dashboard - Cookie Login",
       "url": "http://localhost:3030/admin",
       "referenceUrl": "http://localhost:3020/admin",
-      "cookiePath": "backstop_data/engine_scripts/admin-auth-cookie.json",
-      "onReadyScript": "onReadyAdminWithCookie.js",
+      "cookiePath": "visreg_data/engine_scripts/admin-auth-cookie.json",
+      "onReadyScript": "playwright/onReadyAdminWithCookie.ts",
       "delay": 50,
       "misMatchThreshold": 0.1
     },
@@ -74,7 +74,7 @@
       "label": "Admin Orders - Form Login Interaction",
       "url": "http://localhost:3030/admin/orders",
       "referenceUrl": "http://localhost:3020/admin/orders",
-      "onReadyScript": "onReadyAdminWithInteraction.js",
+      "onReadyScript": "playwright/onReadyAdminWithInteraction.ts",
       "delay": 50,
       "misMatchThreshold": 0.1
     },
@@ -82,7 +82,7 @@
       "label": "Carousel Demo - Pause With Override CSS",
       "url": "http://localhost:3030/carousel-demo",
       "referenceUrl": "http://localhost:3020/carousel-demo",
-      "onReadyScript": "onReadyCarouselPaused.js",
+      "onReadyScript": "playwright/onReadyCarouselPaused.ts",
       "delay": 50,
       "misMatchThreshold": 0.1
     },
@@ -90,30 +90,33 @@
       "label": "Carousel Demo - Stub Slider Images",
       "url": "http://localhost:3030/carousel-demo",
       "referenceUrl": "http://localhost:3020/carousel-demo",
-      "onReadyScript": "onReadyCarouselStubImages.js",
+      "onReadyScript": "playwright/onReadyCarouselStubImages.ts",
       "delay": 50,
       "misMatchThreshold": 0.1
     }
   ],
   "paths": {
-    "bitmaps_reference": "backstop_data/bitmaps_reference",
-    "bitmaps_test": "backstop_data/bitmaps_test",
-    "engine_scripts": "backstop_data/engine_scripts/dist/playwright",
-    "html_report": "backstop_data/html_report",
-    "ci_report": "backstop_data/ci_report"
+    "bitmaps_reference": "visreg_data/bitmaps_reference",
+    "bitmaps_test": "visreg_data/bitmaps_test",
+    "engine_scripts": "visreg_data/engine_scripts",
+    "html_report": "visreg_data/html_report",
+    "ci_report": "visreg_data/ci_report"
   },
   "report": [
     "browser",
     "CI"
   ],
-  "engine": "playwright",
   "engineOptions": {
-    "browser": "chromium"
+    "browser": "chromium",
+    "args": [
+      "--no-sandbox"
+    ]
   },
-  "asyncCaptureLimit": 4,
-  "compareRetries": 3,
-  "compareRetryDelay": 2000,
+  "asyncCaptureLimit": 5,
+  "compareRetries": 5,
+  "compareRetryDelay": 1000,
   "maxNumDiffPixels": 50,
+  "asyncCompareLimit": 50,
   "debug": false,
   "debugWindow": false
 }

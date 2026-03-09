@@ -1,12 +1,13 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": ".",
+    "module": "ES2020",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "declaration": false,
     "declarationMap": false,
     "lib": ["ES2020", "DOM"]
   },
-  "include": ["types.ts", "playwright/**/*.ts"],
-  "exclude": ["dist"]
+  "include": ["playwright/**/*.ts"]
 }

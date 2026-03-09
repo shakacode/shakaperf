@@ -19,7 +19,7 @@ program
   .name('shaka-visreg')
   .description('Shaka-visreg: Catch CSS curveballs.')
   .version('v' + version, '--version', 'Display version')
-  .option('--config <path>', 'Path to config file name', 'backstop.json')
+  .option('--config <path>', 'Path to config file name', 'visreg.json')
   .option('--filter <regex>', 'A RegEx string used to filter scenarios by label');
 
 function runCommand(commandName: string) {

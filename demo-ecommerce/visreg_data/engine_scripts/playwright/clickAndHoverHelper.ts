@@ -1,5 +1,5 @@
 import type { Page } from 'playwright-core';
-import type { Scenario, KeypressSelector } from '../types';
+import type { Scenario, KeypressSelector } from 'shaka-visreg/core/types';
 
 export default async function clickAndHoverHelper(page: Page, scenario: Scenario): Promise<void> {
   const hoverSelector = scenario.hoverSelectors || scenario.hoverSelector;
@@ -12,7 +12,10 @@ export default async function clickAndHoverHelper(page: Page, scenario: Scenario
     const selectors = ([] as KeypressSelector[]).concat(keyPressSelector);
     for (const keyPressSelectorItem of selectors) {
       await page.waitForSelector(keyPressSelectorItem.selector);
-      await page.fill(keyPressSelectorItem.selector, keyPressSelectorItem.keyPress);
+      const keys = Array.isArray(keyPressSelectorItem.keyPress) ? keyPressSelectorItem.keyPress : [keyPressSelectorItem.keyPress];
+      for (const key of keys) {
+        await page.fill(keyPressSelectorItem.selector, key);
+      }
     }
   }
 

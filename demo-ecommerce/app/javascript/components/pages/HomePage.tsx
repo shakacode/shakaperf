@@ -14,6 +14,7 @@ const HomePage: React.FC = () => {
     <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Hero Section */}
       <Box
+        data-cy="hero-section"
         sx={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
@@ -57,6 +58,7 @@ const HomePage: React.FC = () => {
       <Container maxWidth="lg">
         {/* Features Section */}
         <Box
+          data-cy="features-section"
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },

@@ -4,27 +4,28 @@
  *
  * Use this in an onReady script E.G.
   ```
-  export default async function(page, scenario) {
-    const { default: overrideCSS } = await import('./overrideCSS.js');
+  import overrideCSS from './overrideCSS';
+
+  export default async function onReady(page, scenario) {
     await overrideCSS(page, scenario);
   }
   ```
- *
  */
 
-const BACKSTOP_TEST_CSS_OVERRIDE = `
+import type { Page } from 'playwright-core';
+import type { Scenario } from 'shaka-visreg/core/types';
+
+const VISREG_TEST_CSS_OVERRIDE = `
   html {
     background-image: none;
   }
 `;
 
-import type { PlaywrightPage, Scenario } from '../../../core/types.js';
-
-export default async (page: PlaywrightPage, scenario: Scenario) => {
+export default async function overrideCSS(page: Page, scenario: Scenario): Promise<void> {
   // inject arbitrary css to override styles
   await page.addStyleTag({
-    content: BACKSTOP_TEST_CSS_OVERRIDE
+    content: VISREG_TEST_CSS_OVERRIDE
   });
 
-  console.log('BACKSTOP_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
-};
+  console.log('VISREG_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
+}

@@ -27,15 +27,15 @@ class ErrorMessages extends React.Component {
   }
 
   render () {
-    const backstopError = this.props.info.error;
+    const visregError = this.props.info.error;
     const engineError = this.props.info.engineErrorMsg;
-    const display = !!engineError || !!backstopError;
+    const display = !!engineError || !!visregError;
 
     return (
       <DetailsPanel display={display}>
         <ErrorMsg display={engineError}>ENGINE ERROR: {engineError}</ErrorMsg>
-        <ErrorMsg display={backstopError}>
-          BACKSTOP ERROR: {backstopError}
+        <ErrorMsg display={visregError}>
+          VISREG ERROR: {visregError}
         </ErrorMsg>
       </DetailsPanel>
     );

@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
-import { waitUntilPageSettled } from './onReady';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
+import { waitUntilPageSettled } from './onReady.ts';
 
 async function onReadyAdminWithInteraction(
   page: Page,
@@ -35,4 +35,3 @@ async function onReadyAdminWithInteraction(
 }
 
 export default onReadyAdminWithInteraction;
-module.exports = onReadyAdminWithInteraction;

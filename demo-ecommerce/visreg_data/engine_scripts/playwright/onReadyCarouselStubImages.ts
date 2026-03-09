@@ -1,7 +1,8 @@
 import type { BrowserContext, Page } from 'playwright-core';
-import type { Scenario, Viewport } from '../types';
-import overrideCSS from './overrideCSS';
-import { waitUntilPageSettled } from './onReady';
+import type { Scenario, Viewport } from 'shaka-visreg/core/types';
+import interceptImages from './interceptImages.ts';
+import overrideCSS from './overrideCSS.ts';
+import { waitUntilPageSettled } from './onReady.ts';
 
 const CAROUSEL_PAUSE_CSS = `
   [data-cy="marketing-carousel-track"] {
@@ -10,7 +11,7 @@ const CAROUSEL_PAUSE_CSS = `
   }
 `;
 
-async function onReadyCarouselPaused(
+async function onReadyCarouselStubImages(
   page: Page,
   scenario: Scenario,
   _viewport: Viewport,
@@ -19,13 +20,12 @@ async function onReadyCarouselPaused(
 ): Promise<void> {
   console.log('SCENARIO > ' + scenario.label);
 
+  await interceptImages(page, scenario);
+  await page.goto(scenario.url);
   await page.waitForSelector('[data-cy="marketing-carousel-track"]', { state: 'visible' });
-
   await overrideCSS(page, scenario);
   await page.addStyleTag({ content: CAROUSEL_PAUSE_CSS });
-
   await waitUntilPageSettled(page);
 }
 
-export default onReadyCarouselPaused;
-module.exports = onReadyCarouselPaused;
+export default onReadyCarouselStubImages;

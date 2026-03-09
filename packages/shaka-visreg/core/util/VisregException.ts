@@ -1,6 +1,6 @@
 import type { Scenario, Viewport } from '../types.js';
 
-export default class BackstopException {
+export default class VisregException {
   msg: string;
   scenario: Scenario;
   viewport: Viewport;
@@ -14,7 +14,7 @@ export default class BackstopException {
   }
 
   toString () {
-    return 'BackstopException: ' +
+    return 'VisregException: ' +
       this.scenario.label + ' on ' +
       this.viewport.label + ': ' +
       this.originalError.toString();

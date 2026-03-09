@@ -9,10 +9,10 @@ module.exports = {
         directory: path.resolve(__dirname, 'output'),
         serveIndex: true
       }, {
-        directory: path.join(__dirname, '../test/configs/backstop_data/html_report'),
+        directory: path.join(__dirname, '../test/configs/visreg_data/html_report'),
         publicPath: '/'
       }, {
-        directory: path.join(__dirname, '../test/configs/backstop_data'),
+        directory: path.join(__dirname, '../test/configs/visreg_data'),
         publicPath: '/'
       }
     ],

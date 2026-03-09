@@ -1,17 +1,18 @@
-import fs from 'node:fs';
-import type { BrowserContext, Scenario, BackstopCookie } from '../../../core/types.js';
+import fs from 'fs';
+import type { BrowserContext } from 'playwright-core';
+import type { Scenario, VisregCookie } from 'shaka-visreg/core/types';
 
-export default async (browserContext: BrowserContext, scenario: Scenario) => {
-  let cookies: BackstopCookie[] = [];
+export default async function loadCookies(browserContext: BrowserContext, scenario: Scenario): Promise<void> {
+  let cookies: VisregCookie[] = [];
   const cookiePath = scenario.cookiePath;
 
   // Read Cookies from File, if exists
   if (cookiePath && fs.existsSync(cookiePath)) {
-    cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf8'));
+    cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf-8'));
   }
 
   // Add cookies to browser
-  browserContext.addCookies(cookies);
+  await browserContext.addCookies(cookies);
 
   console.log('Cookie state restored with:', JSON.stringify(cookies, null, 2));
-};
+}

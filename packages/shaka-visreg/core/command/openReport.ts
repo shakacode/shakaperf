@@ -7,19 +7,19 @@ import getRemotePort from '../util/getRemotePort.js';
 import type { RuntimeConfig } from '../types.js';
 
 const logger = createLogger('openReport');
-const BACKSTOP_REPORT_SIGNATURE_RE = /BackstopJS Report/i;
+const REPORT_SIGNATURE_RE = /BackstopJS Report|shaka-visreg Report/i;
 
 export function execute (config: RuntimeConfig) {
   const port = getRemotePort();
   const remoteReportUrl = `http://127.0.0.1:${port}/${config.compareReportURL}?remote`;
   return new Promise(function (resolve, _reject) {
-    // would prefer to ping a http://127.0.0.1:${port}/remote with {backstopRemote:ok} response
+    // would prefer to ping a http://127.0.0.1:${port}/remote with {visregRemote:ok} response
     logger.log('Attempting to ping ' + remoteReportUrl);
     http.get(remoteReportUrl, (resp: http.IncomingMessage) => {
       let data = '';
       resp.on('data', (chunk: string | Buffer) => { data += chunk; });
       resp.on('end', () => {
-        if (BACKSTOP_REPORT_SIGNATURE_RE.test(data)) {
+        if (REPORT_SIGNATURE_RE.test(data)) {
           logger.log('Remote found. Opening ' + remoteReportUrl);
           resolve(open(remoteReportUrl, { wait: false }));
         } else {
