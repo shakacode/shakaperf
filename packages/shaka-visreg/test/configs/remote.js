@@ -1,7 +1,7 @@
 /* eslint-env browser, node */
 
 module.exports = {
-  id: 'backstop-remote',
+  id: 'visreg-remote',
   viewports: [
     {
       label: 'webview',
@@ -18,11 +18,11 @@ module.exports = {
     }
   ],
   paths: {
-    bitmaps_reference: 'backstop_data/bitmaps_reference',
-    bitmaps_test: 'backstop_data/bitmaps_test',
-    engine_scripts: 'backstop_data/engine_scripts',
-    html_report: 'backstop_data/html_report',
-    ci_report: 'backstop_data/ci_report'
+    bitmaps_reference: 'visreg_data/bitmaps_reference',
+    bitmaps_test: 'visreg_data/bitmaps_test',
+    engine_scripts: 'visreg_data/engine_scripts',
+    html_report: 'visreg_data/html_report',
+    ci_report: 'visreg_data/ci_report'
   },
   report: [],
   engine: 'playwright',
