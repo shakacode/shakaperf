@@ -17,8 +17,8 @@
       "height": 800
     }
   ],
-  "onBeforeScript": "onBefore.js",
-  "onReadyScript": "onReady.js",
+  "onBeforeScript": "playwright/onBefore.ts",
+  "onReadyScript": "playwright/onReady.ts",
   "scenarios": [
     {
       "label": "Homepage",
@@ -98,7 +98,7 @@
   "paths": {
     "bitmaps_reference": "backstop_data/bitmaps_reference",
     "bitmaps_test": "backstop_data/bitmaps_test",
-    "engine_scripts": "backstop_data/engine_scripts/dist/playwright",
+    "engine_scripts": "backstop_data/engine_scripts",
     "html_report": "backstop_data/html_report",
     "ci_report": "backstop_data/ci_report"
   },
@@ -106,14 +106,17 @@
     "browser",
     "CI"
   ],
-  "engine": "playwright",
   "engineOptions": {
-    "browser": "chromium"
+    "browser": "chromium",
+    "args": [
+      "--no-sandbox"
+    ]
   },
-  "asyncCaptureLimit": 4,
-  "compareRetries": 3,
-  "compareRetryDelay": 2000,
+  "asyncCaptureLimit": 5,
+  "compareRetries": 5,
+  "compareRetryDelay": 1000,
   "maxNumDiffPixels": 50,
+  "asyncCompareLimit": 50,
   "debug": false,
   "debugWindow": false
 }

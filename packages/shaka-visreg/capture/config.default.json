@@ -42,12 +42,19 @@
     "html_report": "backstop_data/html_report",
     "ci_report": "backstop_data/ci_report"
   },
-  "report": ["browser"],
+  "report": [
+    "browser"
+  ],
   "engineOptions": {
     "browser": "chromium",
-    "args": ["--no-sandbox"]
+    "args": [
+      "--no-sandbox"
+    ]
   },
   "asyncCaptureLimit": 5,
+  "compareRetries": 5,
+  "compareRetryDelay": 1000,
+  "maxNumDiffPixels": 50,
   "asyncCompareLimit": 50,
   "debug": false,
   "debugWindow": false
