@@ -1,6 +1,6 @@
 import type { Page, BrowserContext } from 'playwright-core';
 import type { Scenario, Viewport } from 'shaka-visreg/core/types';
-import { waitUntilPageSettled } from './onReady';
+import { waitUntilPageSettled } from './onReady.ts';
 
 /**
  * Custom onReady script for Products page with Electronics filter selected.

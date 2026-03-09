@@ -9,5 +9,5 @@
     "declarationMap": false,
     "lib": ["ES2020", "DOM"]
   },
-  "include": ["types.ts", "playwright/**/*.ts"]
+  "include": ["playwright/**/*.ts"]
 }
