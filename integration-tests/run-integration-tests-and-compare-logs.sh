@@ -45,6 +45,7 @@ normalize_log() {
     -e 's/[0-9]* seconds ago/<DOCKER_AGE>/g' \
     -e 's/About a minute ago/<DOCKER_AGE>/g' \
     -e 's/Up [0-9]* seconds/Up <DOCKER_UPTIME>/g' \
+    -e 's/\x1b\[[0-9;]*m//g' \
     "$file" > "$file.tmp" && mv "$file.tmp" "$file"
 }
 
@@ -52,7 +53,7 @@ cd "$REPO_ROOT"
 
 echo "=== Running integration tests ==="
 # Strip ANSI codes so the output is readable in plain text
-yarn test:integration 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee "$BASELINE"
+yarn test:integration 2>&1 | tee "$BASELINE"
 
 # Normalize variable values in the saved output (not in the terminal output)
 normalize_log "$BASELINE"
