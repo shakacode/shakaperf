@@ -3,6 +3,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "declaration": false,
     "declarationMap": false,
     "lib": ["ES2020", "DOM"]
