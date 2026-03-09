@@ -4,14 +4,14 @@ import fs from 'node:fs';
 import hash from 'object-hash';
 import os from 'node:os';
 import { createRequire } from 'node:module';
-import type { RuntimeConfig, BackstopConfig } from '../types.js';
+import type { RuntimeConfig, VisregConfig } from '../types.js';
 
 const _require = createRequire(import.meta.url);
 const packageJson = _require('../../package.json');
 const { version } = packageJson;
 const tmpdir = os.tmpdir();
 
-function extendConfig (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
+function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   bitmapPaths(config, userConfig);
   ci(config, userConfig);
   htmlReport(config, userConfig);
@@ -27,7 +27,7 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: BackstopConfi
   config.debug = userConfig.debug || false;
   config.resembleOutputOptions = userConfig.resembleOutputOptions;
   config.asyncCompareLimit = userConfig.asyncCompareLimit;
-  config.backstopVersion = version;
+  config.visregVersion = version;
   config.scenarioLogsInReports = userConfig.scenarioLogsInReports;
 
   // liveCompare command options
@@ -38,24 +38,24 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: BackstopConfi
   return config;
 }
 
-function bitmapPaths (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
-  config.bitmaps_reference = path.join(config.projectPath!, 'backstop_data', 'bitmaps_reference');
-  config.bitmaps_test = path.join(config.projectPath!, 'backstop_data', 'bitmaps_test');
+function bitmapPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  config.bitmaps_reference = path.join(config.projectPath!, 'visreg_data', 'bitmaps_reference');
+  config.bitmaps_test = path.join(config.projectPath!, 'visreg_data', 'bitmaps_test');
   if (userConfig.paths) {
     config.bitmaps_reference = userConfig.paths.bitmaps_reference || config.bitmaps_reference;
     config.bitmaps_test = userConfig.paths.bitmaps_test || config.bitmaps_test;
   }
 }
 
-function ci (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
-  config.ci_report = path.join(config.projectPath!, 'backstop_data', 'ci_report');
+function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  config.ci_report = path.join(config.projectPath!, 'visreg_data', 'ci_report');
   if (userConfig.paths) {
     config.ci_report = userConfig.paths.ci_report || config.ci_report;
   }
   config.ciReport = {
     format: 'junit',
     testReportFileName: 'xunit',
-    testSuiteName: 'BackstopJS'
+    testSuiteName: 'shaka-visreg'
   };
 
   if (userConfig.ci) {
@@ -67,10 +67,10 @@ function ci (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record
   }
 }
 
-function htmlReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
-  config.html_report = path.join(config.projectPath!, 'backstop_data', 'html_report');
+function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  config.html_report = path.join(config.projectPath!, 'visreg_data', 'html_report');
   config.openReport = userConfig.openReport === undefined ? true : userConfig.openReport;
-  config.archivePath = path.join(config.projectPath!, 'backstop_data', 'reports');
+  config.archivePath = path.join(config.projectPath!, 'visreg_data', 'reports');
   config.archiveReport = userConfig.archiveReport === undefined ? false : userConfig.archiveReport;
 
   if (userConfig.paths) {
@@ -82,8 +82,8 @@ function htmlReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig 
   config.compareReportURL = path.join(config.html_report!, 'index.html');
 }
 
-function jsonReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
-  config.json_report = path.join(config.projectPath!, 'backstop_data', 'json_report');
+function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  config.json_report = path.join(config.projectPath!, 'visreg_data', 'json_report');
   if (userConfig.paths) {
     config.json_report = userConfig.paths.json_report || config.json_report;
   }
@@ -92,7 +92,7 @@ function jsonReport (config: Partial<RuntimeConfig>, userConfig: BackstopConfig 
 }
 
 function comparePaths (config: Partial<RuntimeConfig>) {
-  config.comparePath = path.join(config.backstop!, 'compare/output');
+  config.comparePath = path.join(config.visregRoot!, 'compare/output');
   config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
 }
 
@@ -103,12 +103,12 @@ function captureConfigPaths (config: Partial<RuntimeConfig>) {
   }
   const configHash = hash(config);
   config.captureConfigFileName = path.join(tmpdir, 'capture', configHash + '.json');
-  config.captureConfigFileNameDefault = path.join(config.backstop!, 'capture', 'config.default.json');
+  config.captureConfigFileNameDefault = path.join(config.visregRoot!, 'capture', 'config.default.json');
 }
 
-function engine (config: Partial<RuntimeConfig>, userConfig: BackstopConfig | Record<string, any>) {
-  config.engine_scripts = path.join(config.projectPath!, 'backstop_data', 'engine_scripts');
-  config.engine_scripts_default = path.join(config.backstop!, 'capture', 'engine_scripts');
+function engine (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  config.engine_scripts = path.join(config.projectPath!, 'visreg_data', 'engine_scripts');
+  config.engine_scripts_default = path.join(config.visregRoot!, 'capture', 'engine_scripts');
 
   if (userConfig.paths) {
     config.engine_scripts = userConfig.paths.engine_scripts || config.engine_scripts;

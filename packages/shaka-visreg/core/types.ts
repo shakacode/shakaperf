@@ -120,7 +120,7 @@ export interface CIReport {
 }
 
 // ── Paths ───────────────────────────────────────────────────────────
-export interface BackstopPaths {
+export interface VisregPaths {
   bitmaps_reference?: string;
   bitmaps_test?: string;
   engine_scripts?: string;
@@ -131,13 +131,13 @@ export interface BackstopPaths {
   tempCompareConfigFileName?: string;
 }
 
-// ── User Config (backstop.json) ─────────────────────────────────────
-export interface BackstopConfig {
+// ── User Config (visreg.json) ─────────────────────────────────────
+export interface VisregConfig {
   id?: string;
   viewports: Viewport[];
   scenarios: Scenario[];
   scenarioDefaults?: Partial<Scenario>;
-  paths?: BackstopPaths;
+  paths?: VisregPaths;
 
   onBeforeScript?: string;
   onReadyScript?: string;
@@ -185,11 +185,11 @@ export interface BackstopConfig {
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
 export interface RuntimeConfig {
   args: Record<string, unknown>;
-  backstop: string;
+  visregRoot: string;
   projectPath: string;
   perf: Record<string, number>;
 
-  backstopConfigFileName: string;
+  configFileName: string;
   bitmaps_reference: string;
   bitmaps_test: string;
   ci_report: string;
@@ -220,7 +220,7 @@ export interface RuntimeConfig {
   debug: boolean;
   resembleOutputOptions?: ResembleOutputOptions;
   asyncCompareLimit?: number;
-  backstopVersion: string;
+  visregVersion: string;
   scenarioLogsInReports?: boolean;
   testReportFileName?: string;
 
@@ -233,7 +233,7 @@ export interface RuntimeConfig {
 }
 
 // ── Decorated Compare Config (internal, used during liveCompare) ─────
-export interface DecoratedCompareConfig extends BackstopConfig {
+export interface DecoratedCompareConfig extends VisregConfig {
   _bitmapsTestPath: string;
   _bitmapsReferencePath: string;
   _fileNameTemplate: string;
@@ -243,9 +243,9 @@ export interface DecoratedCompareConfig extends BackstopConfig {
   env: RuntimeConfig;
   isReference: boolean;
   isCompare: boolean;
-  paths: BackstopPaths;
+  paths: VisregPaths;
   defaultMisMatchThreshold: number;
-  backstopConfigFileName: string;
+  configFileName: string;
   defaultRequireSameDimensions?: boolean;
   compareRetries: number;
   compareRetryDelay: number;
@@ -293,7 +293,7 @@ export interface CompareConfig {
 }
 
 // ── Cookie ──────────────────────────────────────────────────────────
-export interface BackstopCookie {
+export interface VisregCookie {
   name: string;
   value: string;
   domain?: string;
@@ -305,8 +305,8 @@ export interface BackstopCookie {
   sameSite?: 'Strict' | 'Lax' | 'None';
 }
 
-// ── Backstop Tools (injected into browser window) ──────────────────
-export interface BackstopTools {
+// ── Visreg Tools (injected into browser window) ──────────────────
+export interface VisregTools {
   expandSelectors: (selectors: string[] | string) => string[];
   exists: (selector: string) => number;
   isVisible: (selector: string) => boolean;

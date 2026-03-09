@@ -13,12 +13,12 @@ export function execute (config: RuntimeConfig) {
     logger.log("Copying '" + config.engine_scripts_default + "' to '" + config.engine_scripts + "'");
     promises.push(copy(config.engine_scripts_default, config.engine_scripts));
   } else {
-    logger.error('ERROR: Can\'t generate a scripts directory. No \'engine_scripts\' path property was found in backstop.json.');
+    logger.error('ERROR: Can\'t generate a scripts directory. No \'engine_scripts\' path property was found in visreg.json.');
   }
 
   // Copies a boilerplate config file to the current config file location.
-  promises.push(copy(config.captureConfigFileNameDefault, config.backstopConfigFileName).then(function () {
-    logger.log("Configuration file written at '" + config.backstopConfigFileName + "'");
+  promises.push(copy(config.captureConfigFileNameDefault, config.configFileName).then(function () {
+    logger.log("Configuration file written at '" + config.configFileName + "'");
   }, function (err: unknown) {
     throw err;
   }));

@@ -16,7 +16,7 @@ function main () {
     boolean: ['h', 'help', 'v', 'version'],
     string: ['config'],
     default: {
-      config: 'backstop.json'
+      config: 'visreg.json'
     }
   });
 

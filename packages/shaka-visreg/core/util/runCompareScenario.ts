@@ -104,7 +104,7 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
-  config._configId = config.id || engineTools.genHash(config.backstopConfigFileName);
+  config._configId = config.id || engineTools.genHash(config.configFileName);
 
   const engineScriptsPath = config.env.engine_scripts || config.env.engine_scripts_default;
   const VP_W = viewport.width || viewport.viewport!.width;
@@ -166,12 +166,12 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
       if (refBuffer) {
         await writeFile(testPair.reference, refBuffer);
       } else {
-        await copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.reference);
+        await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.reference);
       }
       if (testBuffer) {
         await writeFile(testPair.test, testBuffer);
       } else {
-        await copy(config.env.backstop + SELECTOR_NOT_FOUND_PATH, testPair.test);
+        await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.test);
       }
 
       compareConfig.testPairs.push(testPair);
@@ -254,16 +254,16 @@ async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario
   config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
-  config._configId = config.id || engineTools.genHash(config.backstopConfigFileName);
+  config._configId = config.id || engineTools.genHash(config.configFileName);
 
   const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, (scenario.selectors || ['document']).join('__'));
   testPair.engineErrorMsg = error.message;
 
   const filePath = testPair.test;
   ensureDirectoryPath(filePath);
-  await copy(config.env.backstop + ERROR_SELECTOR_PATH, filePath);
+  await copy(config.env.visregRoot + ERROR_SELECTOR_PATH, filePath);
   ensureDirectoryPath(testPair.reference);
-  await copy(config.env.backstop + ERROR_SELECTOR_PATH, testPair.reference);
+  await copy(config.env.visregRoot + ERROR_SELECTOR_PATH, testPair.reference);
 
   return { testPairs: [testPair] };
 }

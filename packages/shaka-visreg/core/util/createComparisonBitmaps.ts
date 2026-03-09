@@ -50,7 +50,7 @@ function decorateConfigForCompare (config: RuntimeConfig) {
   if (typeof config.args.config === 'object') {
     configJSON = cloneDeep(config.args.config);
   } else {
-    configJSON = cloneDeep(_require(config.backstopConfigFileName));
+    configJSON = cloneDeep(_require(config.configFileName));
   }
   configJSON.scenarios = configJSON.scenarios || [];
   ensureViewportLabel(configJSON);
@@ -72,7 +72,7 @@ function decorateConfigForCompare (config: RuntimeConfig) {
   config.screenshotDateTime = screenshotDateTime;
 
   if (configJSON.dynamicTestId) {
-    console.log('dynamicTestId \'' + configJSON.dynamicTestId + '\' found. BackstopJS will run in dynamic-test mode.');
+    console.log('dynamicTestId \'' + configJSON.dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
   }
 
   configJSON.env = cloneDeep(config);
@@ -81,7 +81,7 @@ function decorateConfigForCompare (config: RuntimeConfig) {
   configJSON.paths = configJSON.paths || {};
   configJSON.paths.tempCompareConfigFileName = config.tempCompareConfigFileName;
   configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
-  configJSON.backstopConfigFileName = config.backstopConfigFileName;
+  configJSON.configFileName = config.configFileName;
   configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
   // Pass through compare-specific config
