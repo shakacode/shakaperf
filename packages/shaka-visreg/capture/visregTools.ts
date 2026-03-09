@@ -1,30 +1,30 @@
-import type { BackstopTools } from '../core/types.js';
+import type { VisregTools } from '../core/types.js';
 import type { PlaywrightPage } from '../core/types.js';
 
 declare global {
   interface Window {
-    _backstopTools: BackstopTools;
+    _visregTools: VisregTools;
   }
 }
 
 'use strict';
 export default (target: PlaywrightPage) => {
   return target.evaluate(() => {
-    if (window._backstopTools) {
+    if (window._visregTools) {
       return false;
     }
 
-    window._backstopTools = {
+    window._visregTools = {
       hasLogged: function (str) {
-        return new RegExp(str).test(window._backstopTools._consoleLogger || '');
+        return new RegExp(str).test(window._visregTools._consoleLogger || '');
       },
       startConsoleLogger: function () {
-        if (typeof window._backstopTools._consoleLogger !== 'string') {
-          window._backstopTools._consoleLogger = '';
+        if (typeof window._visregTools._consoleLogger !== 'string') {
+          window._visregTools._consoleLogger = '';
         }
         const log = window.console.log.bind(console);
         window.console.log = function (...args: unknown[]) {
-          window._backstopTools._consoleLogger += args.join('\n');
+          window._visregTools._consoleLogger += args.join('\n');
           log(...args);
         };
       },
@@ -85,7 +85,7 @@ export default (target: PlaywrightPage) => {
       isVisible: function (selector) {
         if (selector === 'body' || selector === 'document' || selector === 'viewport') {
           return true;
-        } else if (window._backstopTools.exists(selector)) {
+        } else if (window._visregTools.exists(selector)) {
           const element = document.querySelector(selector)!;
           const style = window.getComputedStyle(element);
           return (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
@@ -105,8 +105,8 @@ export default (target: PlaywrightPage) => {
       }
     };
 
-    window._backstopTools.startConsoleLogger();
-    console.info('BackstopTools have been installed.');
+    window._visregTools.startConsoleLogger();
+    console.info('VisregTools have been installed.');
     return true;
   });
 };

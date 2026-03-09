@@ -129,9 +129,9 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   ]);
 
   // Use selectors from test page (the main subject), fall back to reference
-  const selectors = testResult.backstopSelectorsExp;
-  const testSelectorMap = testResult.backstopSelectorsExpMap;
-  const refSelectorMap = refResult.backstopSelectorsExpMap;
+  const selectors = testResult.visregSelectorsExp;
+  const testSelectorMap = testResult.visregSelectorsExpMap;
+  const refSelectorMap = refResult.visregSelectorsExpMap;
 
   const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const maxNumDiffPixels = scenario.maxNumDiffPixels != null
