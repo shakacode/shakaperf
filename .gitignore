@@ -45,12 +45,12 @@ playwright-report/
 # Local Claude settings
 .claude/settings.local.json
 
-# BackstopJS data
-**/backstop_data/bitmaps_reference
-**/backstop_data/bitmaps_test
-**/backstop_data/html_report
-**/backstop_data/engine_scripts/dist
-**/backstop_data/ci_report/xunit.xml
+# Visual Regression data
+**/visreg_data/bitmaps_reference
+**/visreg_data/bitmaps_test
+**/visreg_data/html_report
+**/visreg_data/engine_scripts/dist
+**/visreg_data/ci_report/xunit.xml
 
 **/src/shared/
 
