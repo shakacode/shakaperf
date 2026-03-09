@@ -23,7 +23,7 @@
     "visreg:test": "yarn visreg:build && backstop test",
     "visreg:test:retry": "backstop-retry-failed-scenarios --command 'yarn visreg:test' --retry 7",
     "visreg:open": "backstop openReport",
-    "shaka-visreg:test": "yarn visreg:build && shaka-visreg liveCompare",
+    "shaka-visreg:test": "shaka-visreg liveCompare",
     "shaka-visreg:open": "shaka-visreg openReport"
   },
   "dependencies": {
