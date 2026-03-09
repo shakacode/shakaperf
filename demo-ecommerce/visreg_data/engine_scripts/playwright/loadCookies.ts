@@ -1,9 +1,9 @@
 import fs from 'fs';
 import type { BrowserContext } from 'playwright-core';
-import type { Scenario, BackstopCookie } from 'shaka-visreg/core/types';
+import type { Scenario, VisregCookie } from 'shaka-visreg/core/types';
 
 export default async function loadCookies(browserContext: BrowserContext, scenario: Scenario): Promise<void> {
-  let cookies: BackstopCookie[] = [];
+  let cookies: VisregCookie[] = [];
   const cookiePath = scenario.cookiePath;
 
   // Read Cookies from File, if exists
