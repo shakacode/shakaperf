@@ -24,7 +24,7 @@ program
 
 function runCommand(commandName: string) {
   const opts = program.opts();
-  // Build a minimist-compatible args object for the core runner
+  // Build args object for the core runner
   const argsOptions: Record<string, unknown> = {
     _: [commandName],
     config: opts.config,
