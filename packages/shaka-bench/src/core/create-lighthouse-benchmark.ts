@@ -9,15 +9,50 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
+import { loadConfigFile } from '../shared/load-config-file';
 
 export interface Marker {
   start: string;
   label: string;
 }
 
+export interface LighthouseConfig {
+  formFactor?: string;
+  screenEmulation?: { mobile?: boolean; width?: number; height?: number; deviceScaleFactor?: number };
+  throttling?: { rttMs?: number; throughputKbps?: number; requestLatencyMs?: number; downloadThroughputKbps?: number; uploadThroughputKbps?: number; cpuSlowdownMultiplier?: number } | false;
+  logLevel?: string;
+  output?: string;
+  onlyCategories?: string[];
+}
+
+export function defineConfig(config: LighthouseConfig): LighthouseConfig {
+  return config;
+}
+
+export const DEFAULT_LH_CONFIG: LighthouseConfig = {
+  formFactor: 'mobile',
+  screenEmulation: {
+    mobile: true,
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 3,
+  },
+  throttling: {
+    rttMs: 300,
+    throughputKbps: 700,
+    requestLatencyMs: 1125,
+    downloadThroughputKbps: 700,
+    uploadThroughputKbps: 700,
+    cpuSlowdownMultiplier: 20,
+  },
+  logLevel: 'error',
+  output: 'html',
+  onlyCategories: ['performance'],
+};
+
 export interface LighthouseBenchmarkOptions {
-  lhPresets?: string;
   tbResultsFolder?: string;
+  lhConfigPath?: string;
 }
 
 export interface PhaseSample {
@@ -403,35 +438,16 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     await this.killBrowser();
   }
 
-  async getMobileSettings({
-    width,
-    height
-  }: {
-    width: number;
-    height: number;
-  }): Promise<any> {
+  async getMobileSettings(): Promise<any> {
     const defaultMobileSettings = (await eval("import('lighthouse')"))
       .defaultConfig.settings;
     return {
       ...defaultMobileSettings,
-      formFactor: 'mobile',
-      logLevel: 'error',
-      screenEmulation: {
-        mobile: true,
-        deviceScaleFactor: 3,
-        width,
-        height
-      },
+      ...DEFAULT_LH_CONFIG,
       throttling: {
-        rttMs: 300,
-        throughputKbps: 700,
-        requestLatencyMs: 1125,
-        downloadThroughputKbps: 700,
-        uploadThroughputKbps: 700,
-        cpuSlowdownMultiplier: process.env.CI ? 6 : 20
+        ...DEFAULT_LH_CONFIG.throttling as object,
+        cpuSlowdownMultiplier: process.env.CI ? 6 : 20,
       },
-      output: 'html',
-      onlyCategories: ['performance'],
       port: this.chrome!.port
     };
   }
@@ -441,97 +457,50 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     _isTrial: boolean,
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
-    const defaultDesktopSettings = (await eval("import('lighthouse')"))
-      .desktopConfig.settings;
-    const lhPresets: { [key: string]: any } = {
-      accessibility: {
-        ...defaultDesktopSettings,
-        formFactor: 'desktop',
-        screenEmulation: {
-          mobile: false,
-          width: 1920,
-          height: 8000,
-          deviceScaleFactor: 1
-        },
-        throttling: false,
-        logLevel: 'error',
-        output: 'html',
-        onlyCategories: ['accessibility'],
-        port: this.chrome!.port
-      },
-      mobile: await this.getMobileSettings({ width: 390, height: 844 }),
-      landscapeMobile: await this.getMobileSettings({
-        width: 844,
-        height: 390
-      }),
-      desktop: {
-        ...defaultDesktopSettings,
-        formFactor: 'desktop',
-        screenEmulation: {
-          mobile: false,
-          width: 1920,
-          height: 1080,
-          deviceScaleFactor: 1
-        },
-        logLevel: 'error',
-        output: 'html',
-        onlyCategories: ['performance'],
-        port: this.chrome!.port
-      }
-    };
+    let lhSettings = await this.getMobileSettings();
 
-    const presetsToRun = (
-      this.options.lhPresets ?? 'mobile'
-    ).split(',');
+    if (this.options.lhConfigPath) {
+      const userConfig = await loadConfigFile(this.options.lhConfigPath);
+      lhSettings = { ...lhSettings, ...userConfig, port: this.chrome!.port };
+    }
 
-    let phases: PhaseSample[] = [];
-
-    for (const preset of presetsToRun) {
-      const lhSettings = lhPresets[preset];
-      if (!lhSettings) {
-        throw new Error(`Unknown LH preset ${preset}`);
-      }
-
-      let lastError: Error | null = null;
-      const maxRetries = 3;
-      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-        try {
-          phases = [
-            ...phases,
-            ...(await runLighthouse(
-              presetsToRun.length === 1 ? '' : preset + '-',
-              this.url,
-              lhSettings,
-              this.options.tbResultsFolder ?? './tracerbench-results'
-            ))
-          ];
-          break;
-        } catch (error) {
-          lastError = error as Error;
-          if (attempt <= maxRetries) {
-            console.log(chalk.red(lastError.message), lastError.stack);
-            console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
-            await this.killBrowser();
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-            await this.setupBrowser();
-            lhSettings.port = this.chrome!.port;
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-          } else {
-            throw new Error(
-              `Failed after ${maxRetries + 1} attempts. Last error: ${
-                lastError?.message
-              }`
-            );
-          }
+    let lastError: Error | null = null;
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const phases = await runLighthouse(
+          '',
+          this.url,
+          lhSettings,
+          this.options.tbResultsFolder ?? './tracerbench-results'
+        );
+        return {
+          metadata: {},
+          duration: 0,
+          phases
+        };
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt <= maxRetries) {
+          console.log(chalk.red(lastError.message), lastError.stack);
+          console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
+          await this.killBrowser();
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          await this.setupBrowser();
+          lhSettings.port = this.chrome!.port;
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        } else {
+          throw new Error(
+            `Failed after ${maxRetries + 1} attempts. Last error: ${
+              lastError?.message
+            }`
+          );
         }
       }
     }
 
-    return {
-      metadata: {},
-      duration: 0,
-      phases
-    };
+    // unreachable, but satisfies TypeScript
+    throw new Error('Unexpected: retry loop exited without result');
   }
 }
 

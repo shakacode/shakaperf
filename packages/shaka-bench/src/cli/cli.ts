@@ -5,6 +5,7 @@ import { getDefaultValue } from "./command-config/default-flag-args";
 import { runCompare } from "./commands/compare";
 import { runAnalyze } from "./commands/compare/analyze";
 import { runReport } from "./commands/compare/report";
+import { runInit } from "./commands/init";
 
 function parseIntArg(value: string): number {
   const parsed = parseInt(value, 10);
@@ -55,13 +56,13 @@ program
     parseIntArg,
     getDefaultValue("sampleTimeout")
   )
+  .option("--config <path>", "Path to a JS/TS Lighthouse config file")
   .option("--report", "Generate an HTML report after compare", false)
   .option(
     "--regressionThresholdStat <stat>",
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
     getDefaultValue("regressionThresholdStat")
   )
-  .option("--lhPresets <preset>", "LightHouse presets", "mobile")
   .action(async (opts: Record<string, unknown>) => {
     await runCompare(opts);
   });
@@ -107,6 +108,13 @@ program
   .option("--plotTitle <title>", "Title of the report HTML file")
   .action(async (opts: Record<string, unknown>) => {
     await runReport(opts as any);
+  });
+
+program
+  .command("init")
+  .description("Generate a default Lighthouse config file")
+  .action(async () => {
+    await runInit();
   });
 
 program.parse();

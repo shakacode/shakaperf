@@ -10,7 +10,7 @@
     "tb-schema.json"
   ],
   "scripts": {
-    "build": "tsc && cp -a ./src/cli/static ./dist/cli",
+    "build": "cp -r ../../shared src/shared && tsc && cp -a ./src/cli/static ./dist/cli",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "yarn build"
   },

@@ -34,7 +34,7 @@ export interface ICompareFlags {
   sampleTimeout: number;
   report?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
-  lhPresets?: string;
+  config?: string;
 }
 
 export async function runCompare(flags: Record<string, any>): Promise<string> {
@@ -51,9 +51,11 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
 
   mkdirpSync(compareFlags.tbResultsFolder!);
 
-  const lhPresets = compareFlags.lhPresets;
   const tbResultsFolder = compareFlags.tbResultsFolder;
-  const options: Partial<LighthouseBenchmarkOptions> = { lhPresets, tbResultsFolder };
+  const options: Partial<LighthouseBenchmarkOptions> = {
+    tbResultsFolder,
+    lhConfigPath: compareFlags.config,
+  };
 
   const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
     "control",
