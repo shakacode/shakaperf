@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { DEFAULT_LH_CONFIG } from '../../core/create-lighthouse-benchmark';
+import { DEFAULT_LH_CONFIG } from '../../core/lighthouse-config';
 
 const CONFIG_FILENAME = 'bench.config.ts';
 
