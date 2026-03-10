@@ -228,7 +228,7 @@ export interface RuntimeConfig {
   compareRetryDelay: number;
   maxNumDiffPixels: number;
 
-  screenshotDateTime?: string;
+  _runBaseDir: string;
   isReference?: boolean;
 }
 
@@ -239,7 +239,6 @@ export interface DecoratedCompareConfig extends VisregConfig {
   _fileNameTemplate: string;
   _outputFileFormatSuffix: string;
   _configId: string;
-  screenshotDateTime: string;
   env: RuntimeConfig;
   isReference: boolean;
   isCompare: boolean;

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../shared/ProductCard';
 import LoadingSpinner from '../shared/LoadingSpinner';
+import LazySection from '../shared/LazySection';
 
 const HomePage: React.FC = () => {
   const { products, loading, error } = useProducts();
@@ -31,7 +32,7 @@ const HomePage: React.FC = () => {
             >
               Discover Your Style
             </Typography>
-            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }}>
+            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }} style={{ marginBottom: "150px" }}>
               Shop the latest trends with free shipping on orders over $50
             </Typography>
             <Button
@@ -92,44 +93,46 @@ const HomePage: React.FC = () => {
           ))}
         </Box>
 
-        {/* Featured Products */}
-        <Box sx={{ mb: 6 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h4" component="h2" fontWeight={700}>
-              Featured Products
-            </Typography>
-            <Button
-              component={Link}
-              to="/products"
-              endIcon={<ArrowForward />}
-              sx={{ color: '#667eea' }}
-            >
-              View All
-            </Button>
-          </Box>
-
-          {loading && <LoadingSpinner />}
-
-          {error && (
-            <Typography color="error" sx={{ textAlign: 'center', py: 4 }}>
-              {error}
-            </Typography>
-          )}
-
-          {!loading && !error && (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
-                gap: 3,
-              }}
-            >
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+        {/* Lazy-loaded: Featured Products */}
+        <LazySection>
+          <Box sx={{ mb: 6 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h4" component="h2" fontWeight={700}>
+                Featured Products
+              </Typography>
+              <Button
+                component={Link}
+                to="/products"
+                endIcon={<ArrowForward />}
+                sx={{ color: '#667eea' }}
+              >
+                View All
+              </Button>
             </Box>
-          )}
-        </Box>
+
+            {loading && <LoadingSpinner />}
+
+            {error && (
+              <Typography color="error" sx={{ textAlign: 'center', py: 4 }}>
+                {error}
+              </Typography>
+            )}
+
+            {!loading && !error && (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                  gap: 3,
+                }}
+              >
+                {featuredProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </Box>
+            )}
+          </Box>
+        </LazySection>
       </Container>
     </Box>
   );

@@ -57,20 +57,6 @@ function decorateConfigForCompare (config: RuntimeConfig) {
 
   const totalScenarioCount = configJSON.scenarios.length;
 
-  function pad (number: number) {
-    let r = String(number);
-    if (r.length === 1) {
-      r = '0' + r;
-    }
-    return r;
-  }
-
-  const screenshotNow = new Date();
-  let screenshotDateTime = screenshotNow.getFullYear() + pad(screenshotNow.getMonth() + 1) + pad(screenshotNow.getDate()) + '-' + pad(screenshotNow.getHours()) + pad(screenshotNow.getMinutes()) + pad(screenshotNow.getSeconds());
-  screenshotDateTime = configJSON.dynamicTestId ? configJSON.dynamicTestId : screenshotDateTime;
-  configJSON.screenshotDateTime = screenshotDateTime;
-  config.screenshotDateTime = screenshotDateTime;
-
   if (configJSON.dynamicTestId) {
     console.log('dynamicTestId \'' + configJSON.dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
   }

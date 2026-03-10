@@ -17,12 +17,6 @@ import type { Test } from '../util/Reporter.js';
 const logger = createLogger('report');
 const _require = createRequire(import.meta.url);
 
-async function replaceInFile (file: string, search: string | RegExp, replace: string) {
-  const data = await readFile(file, 'utf8');
-  const result = data.replace(search, replace);
-  await writeFile(file, result, 'utf8');
-}
-
 function writeReport (config: RuntimeConfig, reporter: Reporter) {
   const promises = [];
 
@@ -40,22 +34,13 @@ function writeReport (config: RuntimeConfig, reporter: Reporter) {
 }
 
 function archiveReport (config: RuntimeConfig) {
-  let archivePath = path.join(config.archivePath, config.screenshotDateTime!);
-
   function toAbsolute (p: string) {
     return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
   }
 
-  archivePath = toAbsolute(archivePath);
+  const archivePath = toAbsolute(config.archivePath);
 
-  return copy(toAbsolute(config.html_report), archivePath).then(function () {
-    const file = path.join(archivePath, path.basename(config.compareConfigFileName));
-    // replace the "..\\" with "..\\..\\" in the config.js files
-    // on windows double escape in order to work properly
-    const search = path.sep.replace(/\\/g, '\\\\\\\\');
-    const replace = path.sep.replace(/\\/g, '\\\\');
-    return replaceInFile(file, new RegExp(`"..${search}`, 'g'), `"..${replace}..${replace}`);
-  });
+  return copy(toAbsolute(config.html_report), archivePath);
 }
 
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
@@ -122,7 +107,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     });
 
     const reportConfigFilename = toAbsolute(config.compareConfigFileName);
-    const testReportJsonName = toAbsolute(config.bitmaps_test + '/' + config.screenshotDateTime + '/report.json');
+    const testReportJsonName = toAbsolute(config.bitmaps_test + '/report.json');
 
     // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
     // This scenario with all viewport variants will be appended to any existing report.

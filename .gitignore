@@ -56,4 +56,13 @@ playwright-report/
 
 packages/shaka-bench/tracerbench-results
 tracerbench-results
+
+# Bench results: track screenshots and summaries, not raw HTML/JSON or generated diffs
+integration-tests/bench-results/*.html
+integration-tests/bench-results/screenshot-diffs/
+integration-tests/bench-results/*performance_profile.json
+
+# Visreg results: track everything, not generated diffs
+integration-tests/visreg-results/screenshot-diffs/
+
 shaka-twin-servers-orb.yml

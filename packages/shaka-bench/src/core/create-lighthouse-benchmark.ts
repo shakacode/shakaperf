@@ -17,6 +17,7 @@ export interface Marker {
 
 export interface LighthouseBenchmarkOptions {
   lhPresets?: string;
+  tbResultsFolder?: string;
 }
 
 export interface PhaseSample {
@@ -203,7 +204,8 @@ const allowedConsoleErrors: string[] = process.env
 async function runLighthouse(
   prefix: string,
   url: string,
-  lhSettings: any
+  lhSettings: any,
+  tbResultsFolder: string
 ): Promise<PhaseSample[]> {
   const lighthouse = (await eval("import('lighthouse')")).default;
 
@@ -232,7 +234,7 @@ async function runLighthouse(
   const path = parsedUrl.pathname;
   const query = parsedUrl.search;
 
-  const namePrefix = `tracerbench-results/${prefix}${host.replace(
+  const namePrefix = `${tbResultsFolder}/${prefix}${host.replace(
     ':',
     '_'
   )}_${path.replace(/\//g, '_')}_${query
@@ -293,29 +295,29 @@ async function runLighthouse(
       unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
     }));
 
-    const popmenuHydrationDuration = extractPerformanceDuration(
+    const hydrationDuration = extractPerformanceDuration(
       runnerResult,
-      'popmenu-hydration-start',
-      'popmenu-hydration-end'
+      'hydration-start',
+      'hydration-end'
     );
-    if (popmenuHydrationDuration != null) {
+    if (hydrationDuration != null) {
       results.push({
         phase: prefix + 'hydration',
-        duration: popmenuHydrationDuration * 1000,
+        duration: hydrationDuration * 1000,
         sign: 1,
         start: 0,
         unit: 'ms'
       });
     }
 
-    const popmenuHydrationStart = extractPerformanceMarkerTime(
+    const hydrationStart = extractPerformanceMarkerTime(
       runnerResult,
-      'popmenu-hydration-start'
+      'hydration-start'
     );
-    if (popmenuHydrationStart != null) {
+    if (hydrationStart != null) {
       results.push({
         phase: prefix + 'hydration-start',
-        duration: popmenuHydrationStart * 1000,
+        duration: hydrationStart * 1000,
         sign: 1,
         start: 0,
         unit: 'ms'
@@ -499,7 +501,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
             ...(await runLighthouse(
               presetsToRun.length === 1 ? '' : preset + '-',
               this.url,
-              lhSettings
+              lhSettings,
+              this.options.tbResultsFolder ?? './tracerbench-results'
             ))
           ];
           break;

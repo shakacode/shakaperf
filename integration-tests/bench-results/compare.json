@@ -1,0 +1,836 @@
+[
+  {
+    "group": "control",
+    "set": "control",
+    "samples": [
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1811353.0999999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811353.0999999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5559706.2,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 631000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 3.965575058680173,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 7087.999999999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 428999.99991059303,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 763500.000089407,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.2294921875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 62,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1821544.6,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1821544.6,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5656089.199999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 708000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 6.6890089438130325,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 11443,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 481500.00013411045,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 913499.9998658895,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.2333984375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 60,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1811341.9,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811341.9,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5589683.799999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 667000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 6.6890089438130325,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 7184,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 456000.00008940697,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 778499.9998658895,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.2353515625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1809588.6999999997,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809588.6999999997,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5555177.4,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 634000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 6.6890089438130325,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 7000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 428999.99991059303,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 751500.0001341105,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.2333984375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 62,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1809186.4000000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809186.4000000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5577372.800000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 655000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 6.6890089438130325,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 5153,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 445500.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 700500.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.2373046875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      }
+    ],
+    "meta": {}
+  },
+  {
+    "group": "experiment",
+    "set": "experiment",
+    "samples": [
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1811006.7,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811006.7,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5557013.399999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 865000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 8.81286183767211,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 7101,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 480000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 693000.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.2353515625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1821204.9000000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1821204.9000000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5698409.800000002,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 1138000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 8.81286183767211,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 10856,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 483000.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 967500,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.4921875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 53,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1812355.5000000002,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1812355.5000000002,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5564710.999999999,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 861000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 8.81286183767211,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 7866,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 445500.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 798000.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.494140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1814423.8,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1814423.8,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5595847.600000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 868000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 11.492890995260662,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 5771,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 472500,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 753000.0000447035,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.259765625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 55.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "first-contentful-paint",
+            "duration": 1810741.4,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1810741.4,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "largest-contentful-paint",
+            "duration": 5565482.800000001,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "total-blocking-time",
+            "duration": 881000,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "cumulative-layout-shift",
+            "duration": 8.81286183767211,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "server-response-time",
+            "duration": 5333,
+            "start": 0,
+            "addToChart": true,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration",
+            "duration": 446999.9999552965,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 718500.000089407,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.650390625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "total-score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          }
+        ]
+      }
+    ],
+    "meta": {}
+  }
+]

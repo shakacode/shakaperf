@@ -55,7 +55,7 @@ program
     parseIntArg,
     getDefaultValue("sampleTimeout")
   )
-  .option("--report", "Generate a PDF report after compare", false)
+  .option("--report", "Generate an HTML report after compare", false)
   .option(
     "--regressionThresholdStat <stat>",
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
@@ -97,14 +97,14 @@ program
 program
   .command("report")
   .description(
-    'Generates report files (PDF/HTML) from the "tracerbench compare" command output'
+    'Generates an HTML report from the "tracerbench compare" command output'
   )
   .option(
     "--tbResultsFolder <path>",
     "The output folder path for all tracerbench results",
     getDefaultValue("tbResultsFolder")
   )
-  .option("--plotTitle <title>", "Title of the report pdf/html files")
+  .option("--plotTitle <title>", "Title of the report HTML file")
   .action(async (opts: Record<string, unknown>) => {
     await runReport(opts as any);
   });

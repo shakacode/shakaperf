@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="33" failures="3" errors="3" skipped="0">
+  <testsuite name="shaka-visreg" tests="33" failures="3" errors="3" skipped="0">
+    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage"/>
+    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+    <testcase classname="document" name=" ›› Homepage">
+      <failure message="Design deviation ›› Homepage (document) component"/>
+      <error message="Design deviation ›› Homepage (document) component"/>
+    </testcase>
+    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage"/>
+    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+    <testcase classname="document" name=" ›› Homepage"/>
+    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage">
+      <failure message="Design deviation ›› Homepage ([data-cy='hero-section']) component"/>
+      <error message="Design deviation ›› Homepage ([data-cy='hero-section']) component"/>
+    </testcase>
+    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+    <testcase classname="document" name=" ›› Homepage">
+      <failure message="Design deviation ›› Homepage (document) component"/>
+      <error message="Design deviation ›› Homepage (document) component"/>
+    </testcase>
+    <testcase classname="document" name=" ›› Products List"/>
+    <testcase classname="document" name=" ›› Products List"/>
+    <testcase classname="document" name=" ›› Products List"/>
+    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
+    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
+    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
+    <testcase classname="document" name=" ›› Product Detail"/>
+    <testcase classname="document" name=" ›› Product Detail"/>
+    <testcase classname="document" name=" ›› Product Detail"/>
+    <testcase classname="document" name=" ›› Cart"/>
+    <testcase classname="document" name=" ›› Cart"/>
+    <testcase classname="document" name=" ›› Cart"/>
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+  </testsuite>
+</testsuites>

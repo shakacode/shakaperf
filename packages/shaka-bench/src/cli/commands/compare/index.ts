@@ -52,7 +52,8 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
   mkdirpSync(compareFlags.tbResultsFolder!);
 
   const lhPresets = compareFlags.lhPresets;
-  const options: Partial<LighthouseBenchmarkOptions> = { lhPresets };
+  const tbResultsFolder = compareFlags.tbResultsFolder;
+  const options: Partial<LighthouseBenchmarkOptions> = { lhPresets, tbResultsFolder };
 
   const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
     "control",

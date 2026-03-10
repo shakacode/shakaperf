@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import hash from 'object-hash';
 import os from 'node:os';
 import { createRequire } from 'node:module';
+import { getGitRunId } from './gitRunId.js';
 import type { RuntimeConfig, VisregConfig } from '../types.js';
 
 const _require = createRequire(import.meta.url);
@@ -12,6 +13,9 @@ const { version } = packageJson;
 const tmpdir = os.tmpdir();
 
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  const runId = userConfig.dynamicTestId || getGitRunId();
+  config._runBaseDir = path.join(config.projectPath!, 'visreg_data', runId);
+
   bitmapPaths(config, userConfig);
   ci(config, userConfig);
   htmlReport(config, userConfig);
@@ -39,8 +43,9 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
 }
 
 function bitmapPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.bitmaps_reference = path.join(config.projectPath!, 'visreg_data', 'bitmaps_reference');
-  config.bitmaps_test = path.join(config.projectPath!, 'visreg_data', 'bitmaps_test');
+  const baseDir = config._runBaseDir!;
+  config.bitmaps_reference = path.join(baseDir, 'bitmaps_reference');
+  config.bitmaps_test = path.join(baseDir, 'bitmaps_test');
   if (userConfig.paths) {
     config.bitmaps_reference = userConfig.paths.bitmaps_reference || config.bitmaps_reference;
     config.bitmaps_test = userConfig.paths.bitmaps_test || config.bitmaps_test;
@@ -48,7 +53,7 @@ function bitmapPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig |
 }
 
 function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.ci_report = path.join(config.projectPath!, 'visreg_data', 'ci_report');
+  config.ci_report = path.join(config._runBaseDir!, 'ci_report');
   if (userConfig.paths) {
     config.ci_report = userConfig.paths.ci_report || config.ci_report;
   }
@@ -68,9 +73,10 @@ function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<s
 }
 
 function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.html_report = path.join(config.projectPath!, 'visreg_data', 'html_report');
+  const baseDir = config._runBaseDir!;
+  config.html_report = path.join(baseDir, 'html_report');
   config.openReport = userConfig.openReport === undefined ? true : userConfig.openReport;
-  config.archivePath = path.join(config.projectPath!, 'visreg_data', 'reports');
+  config.archivePath = path.join(baseDir, 'reports');
   config.archiveReport = userConfig.archiveReport === undefined ? false : userConfig.archiveReport;
 
   if (userConfig.paths) {
@@ -83,7 +89,7 @@ function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | 
 }
 
 function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.json_report = path.join(config.projectPath!, 'visreg_data', 'json_report');
+  config.json_report = path.join(config._runBaseDir!, 'json_report');
   if (userConfig.paths) {
     config.json_report = userConfig.paths.json_report || config.json_report;
   }
