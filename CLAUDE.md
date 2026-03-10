@@ -17,11 +17,6 @@ yarn install    # Install dependencies
 yarn build      # Build all packages (tsc)
 ```
 
-## Integration tests
-When messing with docker setup and/or logs, run `integration-tests/run-integration-tests-and-compare-logs.sh`
-This updates the baseline log in-place. Review changes with `git diff integration-tests/baseline-output.log`
-If there are regressions in the logs, check up with the user and address them.
-
 ## Code Conventions
 
 - TypeScript strict mode, no ESLint/Prettier

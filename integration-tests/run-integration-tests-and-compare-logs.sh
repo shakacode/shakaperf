@@ -58,6 +58,4 @@ yarn test:integration 2>&1 | tee "$BASELINE"
 # Normalize variable values in the saved output (not in the terminal output)
 normalize_log "$BASELINE"
 
-echo ""
-echo "Baseline updated: $BASELINE"
-echo "Review changes:   git diff integration-tests/baseline-output.log"
+claude "/check-integration-tests-integrity"

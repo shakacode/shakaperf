@@ -8,6 +8,8 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
 2. Collect results from all agents and compile into the output format at the bottom.
 
+3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff report in the browser. If they agree, open it with `open <path>` via Bash. If they decline, just print the path to the HTML report.
+
 ## Files
 
 ### compare.json
@@ -84,9 +86,6 @@ All timing values, hashes, sizes, sparklines, p-values, and line ordering betwee
 #### [filename]
 Status: OK | ISSUES FOUND
 [Brief details if issues found]
-
-### Please review screenshot diffs:
-[Path to the generated diff]
 
 ### Potential Issues (if any)
 1. [file: what changed and why it matters]
