@@ -4,7 +4,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png",
         "selector": "[data-cy='hero-section']",
         "fileName": "demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png",
         "label": "Homepage",
@@ -28,7 +28,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png",
         "selector": "[data-cy='features-section']",
         "fileName": "demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png",
         "label": "Homepage",
@@ -52,7 +52,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_2_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_2_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_2_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Homepage_2_document_0_phone.png",
         "label": "Homepage",
@@ -66,20 +66,20 @@ report({
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
-            "height": 162
+            "height": -162
           },
           "rawMisMatchPercentage": 0.2213942307692308,
           "misMatchPercentage": "0.22",
-          "analysisTime": 86
+          "analysisTime": 63
         },
-        "diffImage": "../bitmaps_test/20260310-123320/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
+        "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
       "status": "fail"
     },
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png",
         "selector": "[data-cy='hero-section']",
         "fileName": "demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png",
         "label": "Homepage",
@@ -103,7 +103,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png",
         "selector": "[data-cy='features-section']",
         "fileName": "demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png",
         "label": "Homepage",
@@ -127,7 +127,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_2_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_2_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_2_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Homepage_2_document_1_tablet.png",
         "label": "Homepage",
@@ -151,7 +151,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png",
         "selector": "[data-cy='hero-section']",
         "fileName": "demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png",
         "label": "Homepage",
@@ -169,16 +169,16 @@ report({
           },
           "rawMisMatchPercentage": 4.992173005565863,
           "misMatchPercentage": "4.99",
-          "analysisTime": 86
+          "analysisTime": 58
         },
-        "diffImage": "../bitmaps_test/20260310-123320/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
+        "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
       "status": "fail"
     },
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png",
         "selector": "[data-cy='features-section']",
         "fileName": "demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png",
         "label": "Homepage",
@@ -202,7 +202,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Homepage_2_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Homepage_2_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Homepage_2_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Homepage_2_document_2_desktop.png",
         "label": "Homepage",
@@ -220,16 +220,16 @@ report({
           },
           "rawMisMatchPercentage": 22.084054709141274,
           "misMatchPercentage": "22.08",
-          "analysisTime": 84
+          "analysisTime": 75
         },
-        "diffImage": "../bitmaps_test/20260310-123320/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
+        "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
       "status": "fail"
     },
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_List_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_List_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_List_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_List_0_document_0_phone.png",
         "label": "Products List",
@@ -253,7 +253,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_List_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_List_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_List_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_List_0_document_1_tablet.png",
         "label": "Products List",
@@ -277,7 +277,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_List_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_List_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_List_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_List_0_document_2_desktop.png",
         "label": "Products List",
@@ -301,7 +301,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png",
         "label": "Products - Electronics Filter",
@@ -325,7 +325,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png",
         "label": "Products - Electronics Filter",
@@ -349,7 +349,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png",
         "label": "Products - Electronics Filter",
@@ -373,7 +373,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Product_Detail_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Product_Detail_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Product_Detail_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Product_Detail_0_document_0_phone.png",
         "label": "Product Detail",
@@ -397,7 +397,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Product_Detail_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Product_Detail_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Product_Detail_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Product_Detail_0_document_1_tablet.png",
         "label": "Product Detail",
@@ -421,7 +421,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Product_Detail_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Product_Detail_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Product_Detail_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Product_Detail_0_document_2_desktop.png",
         "label": "Product Detail",
@@ -445,7 +445,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Cart_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Cart_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Cart_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Cart_0_document_0_phone.png",
         "label": "Cart",
@@ -469,7 +469,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Cart_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Cart_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Cart_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Cart_0_document_1_tablet.png",
         "label": "Cart",
@@ -493,7 +493,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Cart_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Cart_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Cart_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Cart_0_document_2_desktop.png",
         "label": "Cart",
@@ -517,7 +517,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png",
         "label": "Admin Dashboard - Cookie Login",
@@ -541,7 +541,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png",
         "label": "Admin Dashboard - Cookie Login",
@@ -565,7 +565,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png",
         "label": "Admin Dashboard - Cookie Login",
@@ -589,7 +589,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png",
         "label": "Admin Orders - Form Login Interaction",
@@ -613,7 +613,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png",
         "label": "Admin Orders - Form Login Interaction",
@@ -637,7 +637,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png",
         "label": "Admin Orders - Form Login Interaction",
@@ -661,7 +661,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png",
         "label": "Carousel Demo - Pause With Override CSS",
@@ -685,7 +685,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png",
         "label": "Carousel Demo - Pause With Override CSS",
@@ -709,7 +709,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png",
         "label": "Carousel Demo - Pause With Override CSS",
@@ -733,7 +733,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png",
         "label": "Carousel Demo - Stub Slider Images",
@@ -757,7 +757,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png",
         "label": "Carousel Demo - Stub Slider Images",
@@ -781,7 +781,7 @@ report({
     {
       "pair": {
         "reference": "../bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png",
-        "test": "../bitmaps_test/20260310-123320/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png",
+        "test": "../bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png",
         "selector": "document",
         "fileName": "demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png",
         "label": "Carousel Demo - Stub Slider Images",

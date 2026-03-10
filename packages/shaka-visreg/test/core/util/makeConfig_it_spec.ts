@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { getGitRunId } from '../../../core/util/gitRunId.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
@@ -16,16 +17,18 @@ const configFile = _require('./visreg');
 
 // root of visreg package dir, not related to cwd
 const visregDir = path.resolve(__dirname, '../../..');
+const runId = getGitRunId();
+const runBase = path.resolve('visreg_data', runId);
 
 const expectedConfig: Record<string, any> = {
   args: {},
   asyncCompareLimit: undefined,
   visregRoot: visregDir,
   visregVersion: version,
-  bitmaps_reference: path.resolve('visreg_data/bitmaps_reference'),
-  bitmaps_test: path.resolve('visreg_data/bitmaps_test'),
-  ci_report: path.resolve('visreg_data/ci_report'),
-  html_report: path.resolve('visreg_data/html_report'),
+  bitmaps_reference: path.join(runBase, 'bitmaps_reference'),
+  bitmaps_test: path.join(runBase, 'bitmaps_test'),
+  ci_report: path.join(runBase, 'ci_report'),
+  html_report: path.join(runBase, 'html_report'),
   openReport: true,
   comparePath: path.resolve(visregDir, 'compare/output'),
   captureConfigFileNameDefault: path.resolve(
@@ -43,8 +46,8 @@ const expectedConfig: Record<string, any> = {
     testReportFileName: 'xunit',
     testSuiteName: 'shaka-visreg'
   },
-  compareConfigFileName: path.resolve('visreg_data/html_report/config.js'),
-  compareReportURL: path.resolve('visreg_data/html_report/index.html'),
+  compareConfigFileName: path.join(runBase, 'html_report/config.js'),
+  compareReportURL: path.join(runBase, 'html_report/index.html'),
   defaultMisMatchThreshold: 0.1,
   debug: false,
   compareRetries: 0,
@@ -52,7 +55,7 @@ const expectedConfig: Record<string, any> = {
   maxNumDiffPixels: 0,
   resembleOutputOptions: undefined,
   scenarioLogsInReports: undefined,
-  archivePath: path.resolve('visreg_data/reports'),
+  archivePath: path.join(runBase, 'reports'),
   archiveReport: false
 };
 
@@ -77,6 +80,9 @@ describe('make config it', function () {
 
     assert(actualConfig.compareJsonFileName);
     delete actualConfig.compareJsonFileName;
+
+    assert(actualConfig._runBaseDir);
+    delete actualConfig._runBaseDir;
 
     assert.deepStrictEqual(actualConfig, expectedConfig);
   });

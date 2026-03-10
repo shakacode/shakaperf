@@ -1,7 +1,7 @@
 Performance Profile Summary
 ============================
 
-Total events: 13977
+Total events: 13252
 
 Thread names:
   Chrome_ChildIOThread
@@ -12,47 +12,49 @@ Thread names:
   CrBrowserMain
   CrGpuMain
   CrRendererMain
+  MemoryInfra
   PerfettoTrace
   ThreadPoolForegroundWorker
+  ThreadPoolServiceThread
   VizCompositorThread
   swapper
 
 Categories:
-  __metadata: 33
+  __metadata: 36
   benchmark,loading: 1
-  blink,devtools.timeline: 428
+  blink,devtools.timeline: 429
   blink,loading: 1
-  blink.animations,devtools.timeline,benchmark,rail: 12
+  blink.animations,devtools.timeline,benchmark,rail: 14
   blink.user_timing: 10
   blink.user_timing,rail: 5
-  cc,benchmark,disabled-by-default-devtools.timeline.frame: 3212
-  cc,disabled-by-default-devtools.timeline: 130
-  devtools.timeline: 1999
-  devtools.timeline,disabled-by-default-v8.gc: 59
+  cc,benchmark,disabled-by-default-devtools.timeline.frame: 2404
+  cc,disabled-by-default-devtools.timeline: 126
+  devtools.timeline: 2026
+  devtools.timeline,disabled-by-default-v8.gc: 56
   devtools.timeline,v8: 1
   disabled-by-default-devtools.screenshot: 25
-  disabled-by-default-devtools.timeline: 5169
-  disabled-by-default-devtools.timeline.frame: 602
-  disabled-by-default-devtools.timeline.invalidationTracking: 909
+  disabled-by-default-devtools.timeline: 5255
+  disabled-by-default-devtools.timeline.frame: 604
+  disabled-by-default-devtools.timeline.invalidationTracking: 919
   loading: 301
   loading,interactions: 4
   loading,rail,devtools.timeline: 7
-  v8: 160
+  v8: 112
   v8,devtools.timeline: 7
   v8,devtools.timeline,disabled-by-default-v8.compile: 50
-  v8.execute: 852
+  v8.execute: 859
 
 Event names:
   AcceptCHFrameObserver.copy: 1
   ActivateLayerTree: 143
   Activation: 296
-  Animation: 12
-  AnimationFrame: 570
-  AnimationFrame::Presentation: 142
-  AnimationFrame::Render: 286
-  AnimationFrame::Script::Compile: 2
-  AnimationFrame::Script::Execute: 6
-  AnimationFrame::StyleAndLayout: 286
+  Animation: 14
+  AnimationFrame: 576
+  AnimationFrame::Presentation: 144
+  AnimationFrame::Render: 288
+  AnimationFrame::Script::Compile: 4
+  AnimationFrame::Script::Execute: 8
+  AnimationFrame::StyleAndLayout: 288
   ArrayBufferSweeper Finished: 1
   BackForwardCacheBufferLimitTracker::DidRemoveFrameOrWorkerFromBackForwardCache: 1
   BackgroundProcessor::MaybeStartProcessingResponse: 6
@@ -60,12 +62,12 @@ Event names:
   BackgroundProcessor::OnFinishStreaming: 6
   BackgroundProcessor::RunScriptStreamingTask: 6
   BackgroundProcessor::TryStartStreamingTask: 6
-  BeginCommitCompositorFrame: 143
-  BeginFrame: 143
-  BeginImplFrameToSendBeginMainFrame: 578
-  BeginMainThreadFrame: 143
+  BeginCommitCompositorFrame: 144
+  BeginFrame: 144
+  BeginImplFrameToSendBeginMainFrame: 306
+  BeginMainThreadFrame: 144
   ClearWeaknessProcessor start: 3
-  Commit: 446
+  Commit: 448
   CommitLoad: 1
   commitNavigationEnd: 1
   CommitSentToFirstSubresourceLoadStart: 2
@@ -95,11 +97,10 @@ Event names:
   domLoading: 1
   DOMStats: 4
   DrawFrame: 24
-  DroppedFrame: 1
-  EndActivateToSubmitCompositorFrame: 342
+  EndActivateToSubmitCompositorFrame: 296
   EndCommitToActivation: 296
   EvaluateScript: 10
-  EventDispatch: 24
+  EventDispatch: 26
   FetchLaterLoaderFactories::BindFactory: 1
   fetchStart: 1
   firstContentfulPaint: 1
@@ -109,7 +110,7 @@ Event names:
   FrameCommittedInBrowser: 1
   FrameLoader: 2
   FrameStartedLoading: 2
-  FunctionCall: 34
+  FunctionCall: 38
   GlobalFirstContentfulPaint: 1
   HitTest: 6
   HTMLDocumentParser::DocumentElementAvailable: 1
@@ -123,8 +124,8 @@ Event names:
   largestContentfulPaint::Candidate: 2
   LargestTextPaint::Candidate: 2
   layerId: 8
-  Layerize: 143
-  Layout: 4
+  Layerize: 144
+  Layout: 3
   LayoutInvalidationTracking: 95
   LayoutShift: 1
   loadEventEnd: 1
@@ -152,29 +153,29 @@ Event names:
   PageLoadMetrics.NavigationToDOMContentLoadedEventFired: 1
   PageLoadMetrics.NavigationToFirstContentfulPaint: 2
   PageLoadMetrics.NavigationToMainFrameOnLoad: 1
-  Paint: 282
+  Paint: 283
   PaintImage: 1
   PaintTimingVisualizer::LayoutObjectPainted: 13
   PaintTimingVisualizer::Viewport: 1
-  Parallel scavenge started: 17
+  Parallel scavenge started: 15
   ParseAuthorStyleSheet: 2
   ParseHTML: 3
   ParseMetaViewport: 1
-  PipelineReporter: 578
+  PipelineReporter: 306
   PrefetchMatchResolver::FindPrefetch: 22
   PrefetchMatchResolver::UnblockForNoCandidates: 6
   PrefetchURLLoaderInterceptor::GetPrefetch: 6
   PrefetchURLLoaderInterceptor::MaybeCreateLoader: 6
   PrefetchURLLoaderInterceptor::OnGetPrefetchComplete: 2
   PreloadRenderBlockingStatusChange: 2
-  PrePaint: 143
+  PrePaint: 144
   process_name: 4
   process_uptime_seconds: 4
-  RasterTask: 130
-  ReceiveCompositorFrameToStartDraw: 106
-  RequestMainThreadFrame: 143
+  RasterTask: 126
+  ReceiveCompositorFrameToStartDraw: 62
+  RequestMainThreadFrame: 144
   ResourceFinish: 11
-  ResourceReceivedData: 14
+  ResourceReceivedData: 17
   ResourceReceiveResponse: 11
   ResourceRequest::TrustedParams.copy: 1
   ResourceRequestSender::OnReceivedResponse: 10
@@ -183,25 +184,25 @@ Event names:
   ResourceWillSendRequest: 1
   responseEnd: 1
   RunMicrotasks: 21
-  RunTask: 4059
-  ScheduleStyleRecalculation: 141
+  RunTask: 4129
+  ScheduleStyleRecalculation: 142
   Screenshot: 25
   SearchPrefetchURLLoaderInterceptor::MaybeCreateLoader: 1
-  SendBeginMainFrameToCommit: 296
-  SetLayerTreeId: 143
+  SendBeginMainFrameToCommit: 298
+  SetLayerTreeId: 144
   SharedDictionaryAccessObserver.copy: 1
-  StartDrawToSwapStart: 106
-  StyleRecalcInvalidationTracking: 306
-  StyleResolver::ResolveStyle: 508
-  SubmitCompositorFrameToPresentationCompositorFrame: 106
-  SubmitToReceiveCompositorFrame: 106
-  SwapEndToPresentationCompositorFrame: 106
-  thread_name: 25
+  StartDrawToSwapStart: 62
+  StyleRecalcInvalidationTracking: 310
+  StyleResolver::ResolveStyle: 514
+  SubmitCompositorFrameToPresentationCompositorFrame: 62
+  SubmitToReceiveCompositorFrame: 62
+  SwapEndToPresentationCompositorFrame: 62
+  thread_name: 28
   ThrottlingURLLoader::~ThrottlingURLLoader: 11
-  ThrottlingURLLoader::OnReceiveResponse: 39
+  ThrottlingURLLoader::OnReceiveResponse: 43
   ThrottlingURLLoader::Start: 33
   ThrottlingURLLoader::StartNow: 33
-  ThrottlingURLLoader::ThrottlingURLLoader: 27
+  ThrottlingURLLoader::ThrottlingURLLoader: 23
   TimerFire: 4
   TimerInstall: 6
   TimerRemove: 2
@@ -210,17 +211,17 @@ Event names:
   UkmPageLoadTimingUpdate: 3
   unloadEventEnd: 1
   unloadEventStart: 1
-  UpdateCounters: 38
-  UpdateLayer: 470
-  UpdateLayoutTree: 141
+  UpdateCounters: 42
+  UpdateLayer: 477
+  UpdateLayoutTree: 142
   URLLoaderNetworkServiceObserver.copy: 1
-  V8.BytecodeBudgetInterrupt: 520
+  V8.BytecodeBudgetInterrupt: 528
   V8.BytecodeBudgetInterruptWithStackCheck: 46
-  v8.callFunction: 34
+  v8.callFunction: 38
   v8.compile: 7
-  V8.DeoptimizeCode: 56
+  V8.DeoptimizeCode: 4
   V8.DeserializeContext: 3
-  V8.GC_BACKGROUND_SAFEPOINT: 1
+  V8.GC_BACKGROUND_UNPARK: 1
   V8.GC_BACKGROUND_YOUNG_ARRAY_BUFFER_SWEEP: 1
   V8.GC_HEAP_EPILOGUE: 1
   V8.GC_HEAP_EPILOGUE_SAFEPOINT: 1
@@ -232,12 +233,12 @@ Event names:
   V8.GC_HEAP_PROLOGUE_SAFEPOINT: 1
   V8.GC_MINOR_MS_BACKGROUND_SWEEPING: 1
   V8.GC_SCAVENGER: 1
-  V8.GC_SCAVENGER_BACKGROUND_SCAVENGE_PARALLEL: 7
+  V8.GC_SCAVENGER_BACKGROUND_SCAVENGE_PARALLEL: 5
   V8.GC_SCAVENGER_FREE_REMEMBERED_SET: 1
   V8.GC_SCAVENGER_RESIZE_NEW_SPACE: 1
   V8.GC_SCAVENGER_SCAVENGE: 1
   V8.GC_SCAVENGER_SCAVENGE_FINALIZE: 1
-  V8.GC_SCAVENGER_SCAVENGE_PARALLEL: 1
+  V8.GC_SCAVENGER_SCAVENGE_PARALLEL: 2
   V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE: 1
   V8.GC_SCAVENGER_SCAVENGE_RESTORE_AND_QUARANTINE_PINNED: 1
   V8.GC_SCAVENGER_SCAVENGE_ROOTS: 1
@@ -249,51 +250,51 @@ Event names:
   V8.GC_TIME_TO_SAFEPOINT: 1
   V8.GCPhantomHandleProcessingCallback: 1
   V8.GCScavenger: 1
-  V8.HandleInterrupts: 133
+  V8.HandleInterrupts: 134
   v8.newInstance: 34
   v8.parseOnBackground: 6
   v8.parseOnBackgroundParsing: 10
   v8.parseOnBackgroundWaiting: 4
   v8.produceCache: 7
   v8.run: 7
-  V8.StackGuard: 132
+  V8.StackGuard: 130
   viewport: 1
 
 Phase types:
-  b: 2045
+  b: 1646
   B: 5
   D: 2
-  e: 2043
-  f: 222
-  I: 2119
-  M: 33
-  n: 150
+  e: 1644
+  f: 223
+  I: 2153
+  M: 36
+  n: 154
   N: 6
   O: 2
   R: 22
-  s: 222
-  X: 7106
+  s: 223
+  X: 7136
 
 Navigation timeline (ms from navigationStart):
          0.0  navigationStart
-         0.4  fetchStart
-         7.7  responseEnd
-         9.3  unloadEventStart
-         9.3  unloadEventEnd
-         9.8  commitNavigationEnd
-        10.1  domLoading
-        16.0  domInteractive
-        49.1  hydration-start
-        49.3  domContentLoadedEventStart
-        49.3  domContentLoadedEventEnd
-        49.4  domComplete
-        49.4  loadEventStart
-        49.4  loadEventEnd
-        83.2  hydration-end
-        88.2  firstContentfulPaint
-        88.2  firstPaint
-        88.2  largestContentfulPaint::Candidate
-       112.8  largestContentfulPaint::Candidate
+         0.5  fetchStart
+         7.0  responseEnd
+         8.5  unloadEventStart
+         8.5  unloadEventEnd
+         8.8  commitNavigationEnd
+         9.0  domLoading
+        13.9  domInteractive
+        46.7  hydration-start
+        46.8  domContentLoadedEventStart
+        46.9  domContentLoadedEventEnd
+        47.0  domComplete
+        47.0  loadEventStart
+        47.0  loadEventEnd
+        76.4  hydration-end
+        81.5  firstContentfulPaint
+        81.5  firstPaint
+        81.5  largestContentfulPaint::Candidate
+       115.4  largestContentfulPaint::Candidate
 
 Layout shifts: 1
   #1  score=0.0669  cumulative=0.0000  had_recent_input=true
@@ -301,13 +302,13 @@ Layout shifts: 1
 Long tasks (>50ms): 0
 
 Timeline heatmap (10 buckets):
-    0- 10%  ████████████████████████████████████████   4472 events ( 32.1%)
-   10- 20%  ███████████                                1184 events (  8.5%)
-   20- 30%  █████████████                              1431 events ( 10.3%)
-   30- 40%  █████████                                   978 events (  7.0%)
-   40- 50%  █████████                                  1008 events (  7.2%)
-   50- 60%  █████████                                  1006 events (  7.2%)
-   60- 70%  █████████                                   996 events (  7.1%)
-   70- 80%  █████████                                   969 events (  6.9%)
-   80- 90%  █████████                                   973 events (  7.0%)
-   90-100%  ████████                                    927 events (  6.6%)
+    0- 10%  ████████████████████████████████████████   4494 events ( 34.0%)
+   10- 20%  ██████████                                 1070 events (  8.1%)
+   20- 30%  ███████████                                1189 events (  9.0%)
+   30- 40%  ████████                                    916 events (  6.9%)
+   40- 50%  ████████                                    953 events (  7.2%)
+   50- 60%  ████████                                    943 events (  7.1%)
+   60- 70%  ████████                                    954 events (  7.2%)
+   70- 80%  ████████                                    911 events (  6.9%)
+   80- 90%  ████████                                    872 events (  6.6%)
+   90-100%  ████████                                    914 events (  6.9%)

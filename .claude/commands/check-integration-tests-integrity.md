@@ -68,7 +68,7 @@ git diff -- integration-tests/bench-results/localhost_3020____performance_profil
 ### visreg
 
 ```bash
-git diff -- integration-tests/visreg-results
+git diff -- integration-tests/visreg-results ':(exclude)*.png'
 ```
 
 Unlike perf-tests, visreg results are way more deterministic.

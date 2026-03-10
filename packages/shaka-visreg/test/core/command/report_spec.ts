@@ -8,7 +8,6 @@ describe('core report', function () {
     compareConfigFileName: '/compareConfig',
     html_report: '/html_report',
     bitmaps_test: '/bitmaps_test',
-    screenshotDateTime: 'screenshotDateTime',
     args: {
       config: {}
     }
@@ -51,7 +50,7 @@ describe('core report', function () {
       expect(writeFileStub).toHaveBeenCalledTimes(3);
       expect(writeFileStub).toHaveBeenCalledWith('/compareJson', expect.anything());
       expect(writeFileStub).toHaveBeenCalledWith('/compareConfig', expect.anything());
-      expect(writeFileStub).toHaveBeenCalledWith('/bitmaps_test/screenshotDateTime/report.json', expect.anything());
+      expect(writeFileStub).toHaveBeenCalledWith('/bitmaps_test/report.json', expect.anything());
     });
   });
 });
