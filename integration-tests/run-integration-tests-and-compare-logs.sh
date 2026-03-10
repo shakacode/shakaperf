@@ -57,5 +57,3 @@ yarn test:integration 2>&1 | tee "$BASELINE"
 
 # Normalize variable values in the saved output (not in the terminal output)
 normalize_log "$BASELINE"
-
-claude "/check-integration-tests-integrity"

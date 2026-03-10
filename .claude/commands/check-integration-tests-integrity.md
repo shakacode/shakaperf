@@ -53,16 +53,16 @@ git diff -- integration-tests/bench-results/localhost_3020____network_activity.t
 KB values, download counts, and asset hashes are noise. Only flag: resources appearing/disappearing, or 10x size changes.
 
 
-### Experiment server performance_profile.json
+### Experiment server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3030____performance_profile.json
+git diff -- integration-tests/bench-results/localhost_3030____performance_profile.summary.txt
 ```
 
-### Control server performance_profile.json
+### Control server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3020____performance_profile.json
+git diff -- integration-tests/bench-results/localhost_3020____performance_profile.summary.txt
 ```
 
 ### baseline-output.log
