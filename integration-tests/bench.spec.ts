@@ -58,6 +58,6 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
   for (const profile of fs.readdirSync(BENCH_RESULTS_DIR).filter(f => f.endsWith('performance_profile.json'))) {
     const inputPath = path.join(BENCH_RESULTS_DIR, profile);
     const outputPath = inputPath.replace('.json', '.summary.txt');
-    run(`yarn node integration-tests/summarize-performance-profile.mjs "${inputPath}" "${outputPath}"`);
+    run(`yarn node ${path.join(ORIGINAL_REPO, 'integration-tests/summarize-performance-profile.mjs')} "${inputPath}" "${outputPath}"`);
   }
 });
