@@ -61,4 +61,8 @@ tracerbench-results
 integration-tests/bench-results/*.html
 integration-tests/bench-results/screenshot-diffs/
 integration-tests/bench-results/*performance_profile.json
+
+# Visreg results: track everything, not generated diffs
+integration-tests/visreg-results/screenshot-diffs/
+
 shaka-twin-servers-orb.yml

@@ -65,6 +65,14 @@ git diff -- integration-tests/bench-results/localhost_3030____performance_profil
 git diff -- integration-tests/bench-results/localhost_3020____performance_profile.summary.txt
 ```
 
+### visreg
+
+```bash
+git diff -- integration-tests/visreg-results
+```
+
+Unlike perf-tests, visreg results are way more deterministic.
+
 ### baseline-output.log
 
 ```bash

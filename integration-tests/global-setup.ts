@@ -38,18 +38,20 @@ export default async function globalSetup() {
 
   
   // Replace <LazySection> with <div> in experiment so bench tests measure
-  // the perf impact of lazy-loading vs eager rendering
+  // the perf impact of lazy-loading vs eager rendering.
+  // Also adjust hero padding so visreg tests detect a visual change.
   const homePagePath = path.join(
     EXPERIMENT_CLONE_PATH,
     'demo-ecommerce/app/javascript/components/pages/HomePage.tsx',
   );
-  loud('Replacing <LazySection> with <div> in experiment HomePage');
+  loud('Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage');
   const homePageContent = fs.readFileSync(homePagePath, 'utf-8');
   fs.writeFileSync(
     homePagePath,
     homePageContent
       .replace(/<LazySection>/g, '<div>')
-      .replace(/<\/LazySection>/g, '</div>'),
+      .replace(/<\/LazySection>/g, '</div>')
+      .replace(/py: \{ xs: 6, md: 10 \}/, 'py: { xs: 6, md: 14 }'),
   );
 
   execSync('git add -A && git commit --no-verify --allow-empty -m "integration test snapshot"', {

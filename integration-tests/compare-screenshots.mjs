@@ -4,8 +4,9 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const resultsDir = 'integration-tests/bench-results';
-const oldDir = '/tmp/bench-screenshots-old';
+const resultsDir = process.argv[2] || 'integration-tests/bench-results';
+const dirName = path.basename(resultsDir);
+const oldDir = `/tmp/${dirName}-screenshots-old`;
 const diffDir = path.join(resultsDir, 'screenshot-diffs');
 
 // Extract previous screenshots from git (committed or staged)
@@ -14,8 +15,8 @@ fs.mkdirSync(oldDir, { recursive: true });
 fs.rmSync(diffDir, { recursive: true, force: true });
 fs.mkdirSync(diffDir, { recursive: true });
 
-const tracked = execSync('git ls-files -- "integration-tests/bench-results/*.screenshot.png"', { encoding: 'utf-8' }).trim().split('\n').filter(Boolean);
-const committed = execSync('git ls-tree --name-only -r HEAD -- integration-tests/bench-results/', { encoding: 'utf-8' }).trim().split('\n').filter(f => f.endsWith('.screenshot.png'));
+const tracked = execSync(`git ls-files -- "${resultsDir}/*.screenshot.png"`, { encoding: 'utf-8' }).trim().split('\n').filter(Boolean);
+const committed = execSync(`git ls-tree --name-only -r HEAD -- ${resultsDir}/`, { encoding: 'utf-8' }).trim().split('\n').filter(f => f.endsWith('.screenshot.png'));
 const allOldPaths = [...new Set([...tracked, ...committed])];
 for (const f of allOldPaths) {
   try {
