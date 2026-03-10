@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import loadable from '@loadable/component';
 import { Box } from '@mui/material';
@@ -30,6 +30,10 @@ const CarouselDemoPage = loadable(() => import('./pages/CarouselDemoPage'), {
 });
 
 const App: React.FC = () => {
+  useEffect(() => {
+    performance.mark('hydration-end');
+  }, []);
+
   return (
     <ThemeProvider>
       <CartProvider>
