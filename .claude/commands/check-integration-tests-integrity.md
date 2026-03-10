@@ -8,7 +8,7 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
 2. Collect results from all agents and compile into the output format at the bottom.
 
-3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff report in the browser. If they agree, open it with `open <path>` via Bash. If they decline, just print the path to the HTML report.
+3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff reports in the browser. If they agree, open both (bench and visreg) with `open <path>` via Bash. If they decline, just print the paths to the HTML reports.
 
 ## Files
 
@@ -28,13 +28,21 @@ git diff -- integration-tests/bench-results/report.json
 
 Numeric values (p-values, deltas, CIs, percentiles, sparklines) are noise. Only flag: `isSignificant` flipping for any phase, `areResultsSignificant` or `isBelowRegressionThreshold` changing, missing phases, sample counts != 5.
 
-### HTML screenshots
+### Bench HTML screenshots
 
 ```bash
-yarn node integration-tests/compare-screenshots.mjs
+yarn node integration-tests/compare-screenshots.mjs integration-tests/bench-results
 ```
 
 There will always be pixelmatch changes, that's OK. Ask devs to take a look at the report and make a decision.
+
+### Visreg HTML report screenshot
+
+```bash
+yarn node integration-tests/compare-screenshots.mjs integration-tests/visreg-results
+```
+
+Unlike bench screenshots, visreg report screenshots should be nearly identical between runs. Flag any pixel differences — they likely indicate a real change in report content or layout.
 
 ### Experiment server network_activity.txt
 

@@ -4,7 +4,11 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const resultsDir = process.argv[2] || 'integration-tests/bench-results';
+const resultsDir = process.argv[2];
+if (!resultsDir) {
+  console.error('Usage: compare-screenshots.mjs <results-dir>');
+  process.exit(1);
+}
 const dirName = path.basename(resultsDir);
 const oldDir = `/tmp/${dirName}-screenshots-old`;
 const diffDir = path.join(resultsDir, 'screenshot-diffs');
