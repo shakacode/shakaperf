@@ -41,7 +41,7 @@ export function extractMarkers(
   const results: PhaseSample[] = [];
 
   for (const marker of markers) {
-    if (marker.end) {
+    if (marker.start) {
       const duration = extractPerformanceDuration(
         result,
         marker.start,
@@ -57,7 +57,7 @@ export function extractMarkers(
         });
       }
     } else {
-      const time = extractPerformanceMarkerTime(result, marker.start);
+      const time = extractPerformanceMarkerTime(result, marker.end);
       if (time != null) {
         results.push({
           phase: prefix + marker.label,

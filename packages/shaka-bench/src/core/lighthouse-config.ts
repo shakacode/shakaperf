@@ -1,12 +1,12 @@
 export interface Marker {
-  start: string;
-  end?: string;
+  start?: string;
+  end: string;
   label: string;
 }
 
 export const DEFAULT_MARKERS: Marker[] = [
   { label: 'hydration', start: 'hydration-start', end: 'hydration-end' },
-  { label: 'hydration-start', start: 'hydration-start' },
+  { label: 'hydration-start', end: 'hydration-start' },
 ];
 
 export interface LighthouseConfig {
