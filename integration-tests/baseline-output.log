@@ -1,13 +1,31 @@
 
 >>> Copying current directory as experiment repo
 
-[roman-kuksin/migrate-to-commander 92a6b72] integration test snapshot
- 3 files changed, 5 insertions(+), 5 deletions(-)
+[roman-kuksin/refactor-tracerbench-stats-to-separate-files 1366717] integration test snapshot
+ 27 files changed, 214982 insertions(+), 1255 deletions(-)
+ create mode 100644 .claude/commands/check-integration-tests-integrity.md
+ rewrite integration-tests/base-test.ts (75%)
+ rewrite integration-tests/baseline-output.log (99%)
+ create mode 100644 integration-tests/bench-results/artifact-1.screenshot.png
+ create mode 100644 integration-tests/bench-results/compare.json
+ create mode 100644 integration-tests/bench-results/localhost_3020____lighthouse_report.screenshot.png
+ create mode 100644 integration-tests/bench-results/localhost_3020____network_activity.txt
+ create mode 100644 integration-tests/bench-results/localhost_3020____performance_profile.json
+ create mode 100644 integration-tests/bench-results/localhost_3030____lighthouse_report.screenshot.png
+ create mode 100644 integration-tests/bench-results/localhost_3030____network_activity.txt
+ create mode 100644 integration-tests/bench-results/localhost_3030____performance_profile.json
+ create mode 100644 integration-tests/bench-results/report.json
+ create mode 100644 integration-tests/bench.spec.ts
+ create mode 100644 integration-tests/compare-screenshots.js
+ delete mode 100644 packages/shaka-bench/src/cli/compare/print-to-pdf.ts
 
->>> Cloning control repo (branch: main)
+>>> Copying experiment repo as control
 
-Cloning into '/tmp/temp-shaka-perf-repos-for-tests/shaka-perf-control'...
-done.
+
+>>> Replacing <LazySection> with <div> in experiment HomePage
+
+[roman-kuksin/refactor-tracerbench-stats-to-separate-files e6fddb1] integration test snapshot
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 >>> Installing dependencies in temp clone
 
@@ -16,7 +34,6 @@ done.
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: ┌ Post-resolution validation
 ➤ YN0060: │ react is listed by your project with version 18.3.1 (pcf441f), which doesn't satisfy what react-motion (via react-toggle-button) and other dependencies request (but they have non-overlapping ranges!).
-➤ YN0002: │ shaka-bench@workspace:packages/shaka-bench doesn't provide devtools-protocol (pce8fde), requested by chrome-debugging-client.
 ➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
 ➤ YN0000: └ Completed
 ➤ YN0000: ┌ Fetch step
@@ -24,8 +41,6 @@ done.
 ➤ YN0000: ┌ Link step
 ➤ YN0000: │ ESM support for PnP uses the experimental loader API and is therefore experimental
 ➤ YN0008: │ shakaperf@workspace:. must be rebuilt because its dependency tree changed
-➤ YN0007: │ node-expat@npm:2.4.1 must be built because it never has been before or the last one failed
-➤ YN0007: │ puppeteer@npm:22.15.0 must be built because it never has been before or the last one failed
 ➤ YN0007: │ esbuild@npm:0.27.2 must be built because it never has been before or the last one failed
 ➤ YN0007: │ unrs-resolver@npm:1.11.1 must be built because it never has been before or the last one failed
 ➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
@@ -55,8 +70,8 @@ Building both Docker images in parallel...
 Docker image(s) built successfully!
 
 Images created:
-  - demo-ecommerce:experiment (current branch: roman-kuksin/migrate-to-commander)
-  - demo-ecommerce:control (baseline branch: main)
+  - demo-ecommerce:experiment (current branch: roman-kuksin/refactor-tracerbench-stats-to-separate-files)
+  - demo-ecommerce:control (baseline branch: roman-kuksin/refactor-tracerbench-stats-to-separate-files)
 
 Bind-mount directories:
   - Control: /home/<USER>/demo_ecommerce_control_docker_volume
@@ -67,7 +82,7 @@ Next steps:
 
 
 
-Running 2 tests using 1 worker
+Running 3 tests using 1 worker
 
 
 >>> run: yarn shaka-twin-servers start-containers
@@ -111,12 +126,851 @@ Running in parallel: bin/rails db:prepare && bin/rails db:seed in both container
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
+
+Both servers are ready!
+
+
+===========================
+  Twin Containers Started  
+===========================
+
+
+Edit project code inside containers:
+   Control:    /home/<USER>/demo_ecommerce_control_docker_volume
+   Experiment: /home/<USER>/demo_ecommerce_experiment_docker_volume
+
+Access container shells:
+   yarn shaka-twin-servers run-cmd control bash
+   yarn shaka-twin-servers run-cmd experiment bash
+
+Next steps:
+   1. Start the servers:
+      yarn shaka-twin-servers start-servers
+
+   2. Stop containers when done:
+      yarn shaka-twin-servers stop-containers
+
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: run shaka-bench compare on twin servers
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Starting puma in both containers
+
+
+>>> run: yarn shaka-twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
+ [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+
+
+>>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+
+
+>>> Waiting for ports 3020 + 3030
+
+
+>>> Running shaka-bench compare
+
+
+>>> run: yarn shaka-bench compare --controlURL http://localhost:3020 --experimentURL http://localhost:3030 --numberOfMeasurements 5 --report --tbResultsFolder /home/<USER>/shaka-perf/integration-tests/bench-results
+
+        control:  0
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+Measurements Error: console.error: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:3020/favicon.ico TESTED PAGE: http://localhost:3020
+     experiment:  0    01m:21s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+Measurements Error: console.error: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:3030/favicon.ico TESTED PAGE: http://localhost:3030
+        control:  1    01m:07s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+     experiment:  1    00m:57s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+        control:  2    00m:50s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+     experiment:  2    00m:43s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+        control:  3    00m:36s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+     experiment:  3    00m:30s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+     experiment:  4    00m:24s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+        control:  4    00m:18s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+        control:  5    00m:12s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020
+     experiment:  5    00m:06s remaining
+Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030
+Total downloads size increased by 481.37 KB
+diff --git a/home/<USER>/shaka-perf/integration-tests/bench-results/localhost_3020____network_activity.txt b/home/<USER>/shaka-perf/integration-tests/bench-results/localhost_3030____network_activity.txt
+index a665316..962e5d7 100644
+--- a/home/<USER>/shaka-perf/integration-tests/bench-results/localhost_3020____network_activity.txt
++++ b/home/<USER>/shaka-perf/integration-tests/bench-results/localhost_3030____network_activity.txt
+@@ -16,9 +16,17 @@
+ ⤷ 140.12 KB. Downloaded 6 times
+ /packs/js/719-f34241d7c2d17031511d.js
+ ⤷ 2.77 KB. Downloaded 6 times
+-/packs/js/client-b1bc9ab60175df333710.js
++/packs/js/client-13b5b25fe496cae87f54.js
+ ⤷ 2.70 KB. Downloaded 6 times
+-/packs/js/pages-HomePage-bd886ec65621d70d67cb.chunk.js
+-⤷ 3.56 KB. Downloaded 6 times
+-/packs/js/runtime-e2afbd704305390fd5bc.js
++/packs/js/pages-HomePage-6d28a7f1a84bfe0275c2.chunk.js
++⤷ 3.38 KB. Downloaded 6 times
++/packs/js/runtime-32ffe9bc5cd90d6f7b49.js
+ ⤷ 1.83 KB. Downloaded 6 times
++https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop
++⤷ 23.85 KB. Downloaded 6 times
++https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop
++⤷ 24.59 KB. Downloaded 6 times
++https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop
++⤷ 20.80 KB. Downloaded 6 times
++https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop
++⤷ 11.16 KB. Downloaded 6 times
+
+    SUCCESS     5 measurements took 01m:12s
+
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ Initial Render : duration                                             │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 0ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 0ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 0ms                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 0ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 0ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 0ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 0ms                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 0ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ 0ms to 0ms                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.9168                       │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ ▁                            │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▁                            │
+└────────────────────────────────────────┴──────────────────────────────┘
+
+
+┌───────────────────────────────────────────────────────────────────────┐
+│ Sub Phase of Duration : first-contentful-paint                        │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 1809ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 1825ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 1812ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 1812ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 1820ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 1809ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 1822ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 1810ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 1810ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 1815ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 1819ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 0ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -15ms to 6ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 1                            │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▄▄▁▁▁▁▁▄                    │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ █▄▁▄▁▁▄▁▁                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : speed-index                                   │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 1809ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 1825ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 1812ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 1812ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 1820ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 1809ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 1822ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 1809ms                 │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 1810ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 1810ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 1815ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 1819ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 0ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -15ms to 6ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 1                            │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▄▄▁▁▁▁▁▄                    │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ █▄▁▄▁▁▄▁▁                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : largest-contentful-paint                      │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 5595ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 5649ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 5596ms                 │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 5597ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 5599ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 5645ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 5647ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 5568ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 5659ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 5569ms                 │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 5572ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 5572ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 5625ms                 │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 5645ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ -25ms                        │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -77ms to 28ms                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.4034                       │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ ▁▁▁█▁▁▁▁▅▁                   │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▄█▁▁▁▁▄▁▁▄                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : total-blocking-time                           │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 667ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 729ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 669ms                  │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 671ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 676ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 687ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 712ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 878ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 1059ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 879ms                  │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 880ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 926ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 938ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 1011ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 239ms                        │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ 191ms to 330ms               │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ true                         │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.01219                      │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▂▁▁▁▁▁▁▁                    │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▁▁▁▁██▁▁▄                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : cumulative-layout-shift                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 4ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 7ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 4ms                    │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 4ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 4ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 4ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 6ms                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 9ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 9ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 9ms                    │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 9ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 9ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 9ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 9ms                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 5ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ 2ms to 5ms                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ true                         │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.01219                      │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▁▁▁▁▁▂▁▁▁▁                  │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▁▁▁▁▁▁▁▁▁▁█                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : server-response-time                          │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 6ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 11ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 6ms                    │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 6ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 6ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 7ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 9ms                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 6ms                     │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 11ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 6ms                    │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 6ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 7ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 8ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 10ms                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 0ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -4ms to 2ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.5309                       │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▄▄▁▁▁▁▁▁▁▄                  │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▁█▁▄▁▄▁▁▁▁▄                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : hydration                                     │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 453ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 501ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 456ms                  │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 461ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 476ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 497ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 499ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 452ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 513ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 453ms                  │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 456ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 456ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 501ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 508ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ -2ms                         │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -45ms to 37ms                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.9168                       │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▁█▁▁█▁▁▁██▁▁                │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▄█▁▁▁▁▁▁▁▁▄▁▄                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : hydration-start                               │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 731ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 950ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 732ms                  │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 735ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 737ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 747ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 869ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 737ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 899ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 737ms                  │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 737ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 771ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 776ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 849ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 6ms                          │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -179ms to 45ms               │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ false                        │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.4034                       │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▃▁▁▁▁▁▁▁▁▁▃                 │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ █▁█▁▁▁▁▁▄▁▁▁                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : downloads                                     │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 164ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 164ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 164ms                  │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 164ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 164ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 164ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 164ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 244ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 245ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 244ms                  │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 244ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 244ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 244ms                  │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 245ms                  │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ 80ms                         │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ 80ms to 80ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ true                         │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.01219                      │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ █▁▁▁▁▁▁▁▁                    │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▁▁▁▁▁▁▁▁█                    │
+├────────────────────────────────────────┴──────────────────────────────┤
+│ Sub Phase of Duration : total-score                                   │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ Control: 5                   │
+│ Sample Counts:                         ├──────────────────────────────┤
+│                                        │ Experiment: 5                │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 60ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 62ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 60ms                   │
+│                                        ├──────────────────────────────┤
+│ Control Seven Figure Summary:          │ 25th: 60ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 61ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 61ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 62ms                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│                                        │ MIN: 54ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ MAX: 56ms                    │
+│                                        ├──────────────────────────────┤
+│                                        │ 10th: 54ms                   │
+│                                        ├──────────────────────────────┤
+│ Experiment Seven Figure Summary:       │ 25th: 55ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 50th: 55ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 75th: 56ms                   │
+│                                        ├──────────────────────────────┤
+│                                        │ 90th: 56ms                   │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Hodges–Lehmann estimated delta:        │ -6ms                         │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ 95% confident the delta is between:    │ -7ms to -5ms                 │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Is Significant:                        │ true                         │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ P-Value:                               │ 0.01219                      │
+├────────────────────────────────────────┴──────────────────────────────┤
+│                                                                       │
+├────────────────────────────────────────┬──────────────────────────────┤
+│ Control Sparkline                      │ ▁▁▁▁▁▁██▄                    │
+├────────────────────────────────────────┼──────────────────────────────┤
+│ Experiment Sparkline                   │ ▄██▁▁▁▁▁▁                    │
+└────────────────────────────────────────┴──────────────────────────────┘
+
+    WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
+
+
+    ! ALERT     Regression found exceeding the set regression threshold of 50 ms
+
+
+    Benchmark Results Summary    
+
+duration phase no difference [0ms to 0ms]
+first-contentful-paint phase no difference [-15ms to 6ms]
+speed-index phase no difference [-15ms to 6ms]
+largest-contentful-paint phase no difference [-77ms to 28ms]
+total-blocking-time phase estimated regression +239ms [+191ms to +330ms] OR +35.36% [+28.25% to +48.82%] p=0.01219
+cumulative-layout-shift phase estimated regression +5/100 [+2/100 to +5/100] OR +122.23% [+53.56% to +122.23%] p=0.01219
+server-response-time phase no difference [-4ms to 2ms]
+hydration phase no difference [-45ms to 37ms]
+hydration-start phase no difference [-179ms to 45ms]
+downloads phase estimated regression +80KB [+80KB to +80KB] OR +48.86% [+48.71% to +48.9%] p=0.01219
+total-score phase estimated regression -6/100 [-7/100 to -5/100] OR -9.84% [-11.48% to -8.2%] p=0.01219
+
+
+
+    Benchmark Reports    
+
+
+JSON: /home/<USER>/shaka-perf/integration-tests/bench-results/compare.json
+
+HTML: /home/<USER>/shaka-perf/integration-tests/bench-results/artifact-1.html
+
+
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+Updated 531 paths from the index
+  ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-bench compare on twin servers (<TIMING>m)
+
+>>> run: yarn shaka-twin-servers start-containers
+
+
+====================================
+  Starting Twin Containers Locally  
+====================================
+
+Using images:
+  - Experiment: demo-ecommerce:experiment
+  - Control: demo-ecommerce:control
+
+Stopping any existing twin containers...
+Clearing stale volume contents...
+   /home/<USER>/demo_ecommerce_control_docker_volume
+   /home/<USER>/demo_ecommerce_experiment_docker_volume
+
+Starting twin containers...
+Waiting for containers to start...
+Checking container status...
+NAME                                 IMAGE                       COMMAND            SERVICE             CREATED         STATUS         PORTS
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
+
+Waiting for containers to be ready...
+ [CONTROL-SERVER]  > docker exec : echo ready
+   control-server is ready
+ [EXPERIMENT-SERVER]  > docker exec : echo ready
+   experiment-server is ready
+
+Running setup commands...
+Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
 
 Both servers are ready!
 
@@ -237,23 +1091,23 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
 [EXPERIMENT]	[React on Rails] Creating both client and server bundles.
 [EXPERIMENT]	assets by status 806 KiB [cached] 16 assets
-[EXPERIMENT]	assets by path . 52.5 KiB
-[EXPERIMENT]	  assets by path js/*.js 13.1 KiB
-[EXPERIMENT]	    asset js/pages-HomePage-fa6c2b68881f0c7d1717.chunk.js 9.32 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
-[EXPERIMENT]	    asset js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
+[EXPERIMENT]	assets by path . 52.6 KiB
+[EXPERIMENT]	  assets by path js/*.js 13.2 KiB
+[EXPERIMENT]	    asset js/pages-HomePage-3d77e576ecdb29651f2f.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
+[EXPERIMENT]	    asset js/runtime-9a0b1ba1d4a8cf3ba395.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
 [EXPERIMENT]	  assets by path *.json 39.4 KiB
 [EXPERIMENT]	    asset app-loadable-stats.json 23 KiB [emitted] [compared for emit] 2 related assets
 [EXPERIMENT]	    asset manifest.json 16.4 KiB [emitted] 2 related assets
 [EXPERIMENT]	Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
-[EXPERIMENT]	Entrypoint client [big] 628 KiB (3.02 MiB) = js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-bba6d40feae61b296fcb.js 8.63 KiB 5 auxiliary assets
-[EXPERIMENT]	Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-50cf61f61faf7f3b737b.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-4e59f613aeaa2331d3ff.js 8.63 KiB 4 auxiliary assets
+[EXPERIMENT]	Entrypoint client [big] 629 KiB (3.02 MiB) = js/runtime-9a0b1ba1d4a8cf3ba395.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-13b5b25fe496cae87f54.js 8.76 KiB 5 auxiliary assets
+[EXPERIMENT]	Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-9a0b1ba1d4a8cf3ba395.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-d9a39f50bd5b334f5cb0.js 8.73 KiB 4 auxiliary assets
 [EXPERIMENT]	orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11518 modules
 [EXPERIMENT]	runtime modules 9.12 KiB 13 modules
 [EXPERIMENT]	cacheable modules 2.55 MiB (javascript) 49 bytes (css/mini-extract)
 [EXPERIMENT]	  modules by path ../.yarn/__virtual__/ 2.36 MiB 172 modules
 [EXPERIMENT]	  modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
 [EXPERIMENT]	  modules by path ./app/javascript/ 114 KiB (javascript) 49 bytes (css/mini-extract)
-[EXPERIMENT]	    modules by path ./app/javascript/components/ 53.9 KiB 9 modules
+[EXPERIMENT]	    modules by path ./app/javascript/components/ 54.1 KiB 9 modules
 [EXPERIMENT]	    modules by path ./app/javascript/packs/*.tsx 55.6 KiB 3 modules
 [EXPERIMENT]	    modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
 [EXPERIMENT]	    css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
@@ -268,7 +1122,7 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
 [EXPERIMENT]	Entrypoints:
 [EXPERIMENT]	  admin (704 KiB)
-[EXPERIMENT]	      js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]	      js/runtime-9a0b1ba1d4a8cf3ba395.js
 [EXPERIMENT]	      js/719-f34241d7c2d17031511d.js
 [EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
 [EXPERIMENT]	      js/905-dcf07c7ad76793afd2b3.js
@@ -276,17 +1130,17 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	      js/704-96835d695da6c934bc93.js
 [EXPERIMENT]	      css/admin-72e38325.css
 [EXPERIMENT]	      js/admin-ccef6ceeb8074cc18895.js
-[EXPERIMENT]	  client (628 KiB)
-[EXPERIMENT]	      js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]	  client (629 KiB)
+[EXPERIMENT]	      js/runtime-9a0b1ba1d4a8cf3ba395.js
 [EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
 [EXPERIMENT]	      js/148-7088267baa9e2e0c2764.js
 [EXPERIMENT]	      css/client-72e38325.css
-[EXPERIMENT]	      js/client-bba6d40feae61b296fcb.js
+[EXPERIMENT]	      js/client-13b5b25fe496cae87f54.js
 [EXPERIMENT]	  server (628 KiB)
-[EXPERIMENT]	      js/runtime-50cf61f61faf7f3b737b.js
+[EXPERIMENT]	      js/runtime-9a0b1ba1d4a8cf3ba395.js
 [EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
 [EXPERIMENT]	      js/148-7088267baa9e2e0c2764.js
-[EXPERIMENT]	      js/server-4e59f613aeaa2331d3ff.js
+[EXPERIMENT]	      js/server-d9a39f50bd5b334f5cb0.js
 [EXPERIMENT]	
 [EXPERIMENT]	webpack 5.104.1 compiled with 2 warnings in <TIMING> ms
 [EXPERIMENT]	
@@ -325,7 +1179,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 Updated 1 path from the index
 Updated 0 paths from the index
-  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge (<TIMING>s)
+  ✓  2 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge (<TIMING>s)
 
 >>> run: yarn shaka-twin-servers start-containers
 
@@ -372,8 +1226,8 @@ Running in parallel: bin/rails db:prepare && bin/rails db:seed in both container
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
 
 Both servers are ready!
 
@@ -452,23 +1306,23 @@ I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Webpack config in: 
 Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
 [React on Rails] Creating both client and server bundles.
 assets by status 806 KiB [cached] 16 assets
-assets by path . 52.5 KiB
-  assets by path js/*.js 13.1 KiB
-    asset js/pages-HomePage-7f44d89f176add203d06.chunk.js 9.32 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
-    asset js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
+assets by path . 52.6 KiB
+  assets by path js/*.js 13.2 KiB
+    asset js/pages-HomePage-e0adda6a86cd3b87086f.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
+    asset js/runtime-fadc5a28936f72d11743.js 3.8 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
   assets by path *.json 39.4 KiB
     asset app-loadable-stats.json 23 KiB [emitted] [compared for emit] 2 related assets
     asset manifest.json 16.4 KiB [emitted] 2 related assets
 Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
-Entrypoint client [big] 628 KiB (3.02 MiB) = js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-bba6d40feae61b296fcb.js 8.63 KiB 5 auxiliary assets
-Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-aee7bd544c5d3955dd9d.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-4e59f613aeaa2331d3ff.js 8.63 KiB 4 auxiliary assets
+Entrypoint client [big] 629 KiB (3.02 MiB) = js/runtime-fadc5a28936f72d11743.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-13b5b25fe496cae87f54.js 8.76 KiB 5 auxiliary assets
+Entrypoint server [big] 628 KiB (3.02 MiB) = js/runtime-fadc5a28936f72d11743.js 3.8 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-d9a39f50bd5b334f5cb0.js 8.73 KiB 4 auxiliary assets
 orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11518 modules
 runtime modules 9.12 KiB 13 modules
 cacheable modules 2.55 MiB (javascript) 49 bytes (css/mini-extract)
   modules by path ../.yarn/__virtual__/ 2.36 MiB 172 modules
   modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
   modules by path ./app/javascript/ 114 KiB (javascript) 49 bytes (css/mini-extract)
-    modules by path ./app/javascript/components/ 53.9 KiB 9 modules
+    modules by path ./app/javascript/components/ 54.1 KiB 9 modules
     modules by path ./app/javascript/packs/*.tsx 55.6 KiB 3 modules
     modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
     css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
@@ -483,7 +1337,7 @@ Assets:
 WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
 Entrypoints:
   admin (704 KiB)
-      js/runtime-aee7bd544c5d3955dd9d.js
+      js/runtime-fadc5a28936f72d11743.js
       js/719-f34241d7c2d17031511d.js
       js/192-b63cfebd9a83a6087244.js
       js/905-dcf07c7ad76793afd2b3.js
@@ -491,17 +1345,17 @@ Entrypoints:
       js/704-96835d695da6c934bc93.js
       css/admin-72e38325.css
       js/admin-ccef6ceeb8074cc18895.js
-  client (628 KiB)
-      js/runtime-aee7bd544c5d3955dd9d.js
+  client (629 KiB)
+      js/runtime-fadc5a28936f72d11743.js
       js/192-b63cfebd9a83a6087244.js
       js/148-7088267baa9e2e0c2764.js
       css/client-72e38325.css
-      js/client-bba6d40feae61b296fcb.js
+      js/client-13b5b25fe496cae87f54.js
   server (628 KiB)
-      js/runtime-aee7bd544c5d3955dd9d.js
+      js/runtime-fadc5a28936f72d11743.js
       js/192-b63cfebd9a83a6087244.js
       js/148-7088267baa9e2e0c2764.js
-      js/server-4e59f613aeaa2331d3ff.js
+      js/server-d9a39f50bd5b334f5cb0.js
 
 webpack 5.104.1 compiled with 2 warnings in <TIMING> ms
 
@@ -540,7 +1394,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 Updated 0 paths from the index
 Updated 0 paths from the index
-  ✓  2 integration-tests/twin-servers.spec.ts:68:5 › run-cmd preserves single and double quotes (<TIMING>s)
+  ✓  3 integration-tests/twin-servers.spec.ts:68:5 › run-cmd preserves single and double quotes (<TIMING>s)
 
 >>> Stopping containers
 
@@ -556,4 +1410,4 @@ Stopping containers and removing volumes...
 Containers stopped
 
 
-  2 passed (<TIMING>m)
+  3 passed (<TIMING>m)

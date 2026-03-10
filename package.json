@@ -23,6 +23,9 @@
   "devDependencies": {
     "@playwright/test": "^1.50.0",
     "@types/node": "^20.0.0",
+    "@types/pngjs": "^6.0.5",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.3.3"
   },
   "packageManager": "yarn@4.12.0",

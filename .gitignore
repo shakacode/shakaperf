@@ -56,4 +56,8 @@ playwright-report/
 
 packages/shaka-bench/tracerbench-results
 tracerbench-results
+
+# Bench results: track screenshots, not raw HTML or generated diffs
+integration-tests/bench-results/*.html
+integration-tests/bench-results/screenshot-diffs/
 shaka-twin-servers-orb.yml
