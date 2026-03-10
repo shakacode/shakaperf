@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "chalk": "^4.1.1",
-    "chrome-debugging-client": "2.0.0",
     "chrome-launcher": "^0.15.1",
     "cli-table3": "^0.6.0",
     "commander": "^13.1.0",
@@ -47,7 +46,6 @@
     "json5": "^2.2.0",
     "jstat": "^1.9.5",
     "lighthouse": "12.3.0",
-    "listr": "^0.14.3",
     "race-cancellation": "^0.4.1",
     "tslib": "^2.2.0"
   },
@@ -59,7 +57,6 @@
     "@types/fs-extra": "^9.0.11",
     "@types/html-minifier-terser": "^7.0.0",
     "@types/json5": "^2.2.0",
-    "@types/listr": "^0.14.4",
     "typescript": "^5.3.3"
   }
 }

@@ -13,7 +13,6 @@ import {
   ParsedTitleConfigs,
 } from "../../compare/generate-stats";
 import parseCompareResult from "../../compare/parse-compare-result";
-import printToPDF from "../../compare/print-to-pdf";
 import { chalkScheme, logHeading } from "../../helpers/utils";
 import {
   PHASE_CHART_JS_TEMPLATE_RAW,
@@ -84,11 +83,7 @@ function determineOutputFileNamePrefix(outputFolder: string): string {
       outputFolder,
       `${ARTIFACT_FILE_NAME}-${count}.html`
     );
-    const candidatePDF = join(
-      outputFolder,
-      `${ARTIFACT_FILE_NAME}-${count}.pdf`
-    );
-    if (!existsSync(candidateHTML) && !existsSync(candidatePDF)) {
+    if (!existsSync(candidateHTML)) {
       break;
     }
     count += 1;
@@ -124,13 +119,13 @@ function createConsumableHTML(
   });
 }
 
-async function printPDF(
+async function generateHTML(
   controlData: ITracerBenchTraceResult,
   experimentData: ITracerBenchTraceResult,
   tbResultsFolder: string,
   parsedConfig: ITBConfig,
   reportPlotTitle?: string
-): Promise<{ absOutputPath: string; absPathToHTML: string }> {
+): Promise<string> {
   const outputFileName = determineOutputFileNamePrefix(tbResultsFolder);
   const renderedHTML = createConsumableHTML(
     controlData,
@@ -152,28 +147,17 @@ async function printPDF(
 
   writeFileSync(absPathToHTML, minifiedHTML);
 
-  const absOutputPath = resolve(
-    join(tbResultsFolder + `/${outputFileName}.pdf`)
-  );
-
-  await printToPDF(`file://${absPathToHTML}`, absOutputPath);
-
-  return {
-    absOutputPath,
-    absPathToHTML,
-  };
+  return absPathToHTML;
 }
 
 function logReportPaths(
   tbResultsFolder: string,
-  absOutputPath: string,
   absPathToHTML: string
 ): void {
   const chalkBlueBold = chalkScheme.tbBranding.blue.underline.bold;
 
   logHeading("Benchmark Reports");
   console.log(`\nJSON: ${chalkBlueBold(`${tbResultsFolder}/compare.json`)}`);
-  console.log(`\nPDF: ${chalkBlueBold(absOutputPath)}`);
   console.log(`\nHTML: ${chalkBlueBold(absPathToHTML)}\n`);
 }
 
@@ -185,7 +169,7 @@ export async function runReport(options: IReportFlags): Promise<void> {
   const inputFilePath = join(tbResultsFolder, "compare.json");
   const { controlData, experimentData } = parseCompareResult(inputFilePath);
 
-  const { absOutputPath, absPathToHTML } = await printPDF(
+  const absPathToHTML = await generateHTML(
     controlData,
     experimentData,
     tbResultsFolder,
@@ -193,5 +177,5 @@ export async function runReport(options: IReportFlags): Promise<void> {
     options.plotTitle
   );
 
-  logReportPaths(tbResultsFolder, absOutputPath, absPathToHTML);
+  logReportPaths(tbResultsFolder, absPathToHTML);
 }
