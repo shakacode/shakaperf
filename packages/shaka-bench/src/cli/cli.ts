@@ -27,6 +27,7 @@ program
   .description(
     "Compare the performance delta between an experiment and control"
   )
+  .requiredOption("--testFile <path>", "Path to the test file containing abTest() calls")
   .option("--hideAnalysis", "Hide the analysis output in terminal", false)
   .option(
     "-n, --numberOfMeasurements <n>",

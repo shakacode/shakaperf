@@ -11982,7 +11982,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playwright-core@npm:1.58.2, playwright-core@npm:^1.52.0":
+"playwright-core@npm:1.58.2, playwright-core@npm:^1.50.0, playwright-core@npm:^1.52.0":
   version: 1.58.2
   resolution: "playwright-core@npm:1.58.2"
   bin:
@@ -13382,8 +13382,10 @@ __metadata:
     json5: "npm:^2.2.0"
     jstat: "npm:^1.9.5"
     lighthouse: "npm:12.3.0"
+    playwright-core: "npm:^1.50.0"
     race-cancellation: "npm:^0.4.1"
     tslib: "npm:^2.2.0"
+    tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
   bin:
     shaka-bench: ./dist/cli/cli.js

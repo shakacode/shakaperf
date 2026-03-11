@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { launch, LaunchedChrome } from 'chrome-launcher';
+import { chromium, BrowserContext, Page } from 'playwright-core';
 import type { RaceCancellation } from 'race-cancellation';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -7,15 +8,17 @@ import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
 import { loadConfigFile } from '../shared/load-config-file';
-import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
+import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
+import type { AbTestDefinition } from './ab-test-registry';
 
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
 
   constructor(
-    private url: string,
+    private baseUrl: string,
+    private testDef: AbTestDefinition,
     private options: Partial<LighthouseBenchmarkOptions>
   ) {}
 
@@ -76,16 +79,17 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       lhSettings = { ...lhSettings, ...userConfig, port: this.chrome!.port };
     }
 
+    const fullUrl = this.baseUrl + this.testDef.startingPath;
+    const markers = this.testDef.options.markers ?? this.options.markers;
+
     let lastError: Error | null = null;
     const maxRetries = 3;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {
-        const phases = await runLighthouse(
-          '',
-          this.url,
+        const phases = await this.runLighthouseWithPlaywright(
+          fullUrl,
           lhSettings,
-          this.options.tbResultsFolder ?? './tracerbench-results',
-          this.options.markers
+          markers
         );
         return {
           metadata: {},
@@ -115,17 +119,67 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     // unreachable, but satisfies TypeScript
     throw new Error('Unexpected: retry loop exited without result');
   }
+
+  private async runLighthouseWithPlaywright(
+    url: string,
+    lhSettings: any,
+    markers: LighthouseBenchmarkOptions['markers']
+  ): Promise<PhaseSample[]> {
+    const port = this.chrome!.port;
+    const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
+
+    try {
+      const context = browser.contexts()[0];
+
+      // Start Lighthouse — it navigates the page itself
+      const lighthousePromise = runLighthouse(
+        '',
+        url,
+        lhSettings,
+        this.options.tbResultsFolder ?? './tracerbench-results',
+        markers
+      );
+
+      // Wait for the page to appear at the target URL, then run the Playwright test
+      const page = await this.waitForPage(context, url);
+      const playwrightPromise = this.testDef.testFn({ page });
+
+      const [phases] = await Promise.all([lighthousePromise, playwrightPromise]);
+
+      return phases;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private async waitForPage(context: BrowserContext, url: string): Promise<Page> {
+    const targetOrigin = new URL(url).origin;
+    const timeout = 30_000;
+    const start = Date.now();
+
+    while (Date.now() - start < timeout) {
+      for (const page of context.pages()) {
+        if (page.url().startsWith(targetOrigin)) {
+          await page.waitForLoadState('domcontentloaded');
+          return page;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    throw new Error(`Timed out waiting for page at ${targetOrigin}`);
+  }
 }
 
 export default function createLighthouseBenchmark(
   group: string,
-  url: string,
+  baseUrl: string,
+  testDef: AbTestDefinition,
   options: Partial<LighthouseBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
   return {
     group,
     async setup(_raceCancellation) {
-      const sampler = new LighthouseSampler(url, options);
+      const sampler = new LighthouseSampler(baseUrl, testDef, options);
       await sampler.setupBrowser();
       return sampler;
     }
