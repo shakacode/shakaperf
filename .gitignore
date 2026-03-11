@@ -64,5 +64,6 @@ integration-tests/bench-results/*performance_profile.json
 
 # Visreg results: track everything, not generated diffs
 integration-tests/visreg-results/screenshot-diffs/
+integration-tests/visreg-results/screenshot-diff-report.html
 
 shaka-twin-servers-orb.yml
