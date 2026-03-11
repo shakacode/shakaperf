@@ -15,6 +15,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
+import { Reporter } from './Reporter';
+import type { IReporter } from './types';
 
 export interface BaselineStorageConfig {
   /** S3 bucket name */
@@ -33,6 +35,8 @@ export interface BaselineStorageConfig {
   baselineDir: string;
   /** Number of main branch commits to search for baseline */
   mainCommitsToCheck: number;
+  /** Reporter for logging operations */
+  reporter?: IReporter;
 }
 
 export class BaselineStorage {
@@ -42,11 +46,13 @@ export class BaselineStorage {
   private baselineDir: string;
   private mainCommitsToCheck: number;
   private mainBranch: string;
+  private reporter: IReporter;
   constructor(config: BaselineStorageConfig) {
     this.bucket = config.s3Bucket;
     this.prefix = config.s3Prefix.endsWith('/') ? config.s3Prefix : `${config.s3Prefix}/`;
     this.baselineDir = config.baselineDir;
     this.mainCommitsToCheck = config.mainCommitsToCheck;
+    this.reporter = config.reporter || new Reporter();
     // Auto-detect main branch
     this.mainBranch = this.detectMainBranch();
     const endpoint = config.s3Endpoint || process.env.S3_ENDPOINT;
@@ -75,7 +81,9 @@ export class BaselineStorage {
 
       // origin/HEAD format is "origin/main" or "origin/master"
       if (result && result.startsWith('origin/')) {
-        return result.substring(7); // Remove "origin/" prefix
+        const branch = result.substring(7); // Remove "origin/" prefix
+        this.reporter.info(`Detected main branch: ${branch}`);
+        return branch;
       }
     } catch (error) {
       throw new Error(
@@ -87,8 +95,11 @@ export class BaselineStorage {
   }
 
   getGitMergeBase(): string {
+    this.reporter.info(`Fetching origin/${this.mainBranch}...`);
     execSync(`git fetch origin ${this.mainBranch}`, { stdio: 'pipe' });
-    return execSync(`git merge-base origin/${this.mainBranch} HEAD`, { encoding: 'utf8' }).trim();
+    const mergeBase = execSync(`git merge-base origin/${this.mainBranch} HEAD`, { encoding: 'utf8' }).trim();
+    this.reporter.info(`Merge base: ${mergeBase.substring(0, 7)}`);
+    return mergeBase;
   }
 
   getRecentMainCommits(mergeBase: string): string[] {
@@ -96,7 +107,9 @@ export class BaselineStorage {
       `git log -${this.mainCommitsToCheck} --first-parent --pretty=format:"%H" ${mergeBase}`,
       { encoding: 'utf8' }
     );
-    return output.split('\n').filter(Boolean);
+    const commits = output.split('\n').filter(Boolean);
+    this.reporter.info(`Found ${commits.length} recent main branch commits to check`);
+    return commits;
   }
 
   getCurrentCommit(): string {
@@ -130,7 +143,9 @@ export class BaselineStorage {
     const mergeBase = this.getGitMergeBase();
     const commits = this.getRecentMainCommits(mergeBase);
 
+    this.reporter.info(`Searching for baseline in S3 (s3://${this.bucket}/${this.prefix})...`);
     for (const commit of commits) {
+      this.reporter.info(`Checking commit ${commit.substring(0, 7)}...`);
       if (await this.baselineExistsForCommit(commit)) {
         await this.downloadFromS3(commit);
         return commit;
@@ -141,6 +156,7 @@ export class BaselineStorage {
   }
 
   async downloadForCommit(commitSha: string): Promise<string | null> {
+    this.reporter.info(`Checking for baseline at commit ${commitSha.substring(0, 7)} in s3://${this.bucket}/${this.prefix}...`);
     if (await this.baselineExistsForCommit(commitSha)) {
       await this.downloadFromS3(commitSha);
       return commitSha;
@@ -154,6 +170,8 @@ export class BaselineStorage {
     }
 
     const commit = this.getCurrentCommit();
+    this.reporter.info(`Current commit: ${commit.substring(0, 7)}`);
+    this.reporter.info(`Uploading baseline from ${this.baselineDir}`);
     await this.uploadToS3(commit);
     return commit;
   }
@@ -164,12 +182,15 @@ export class BaselineStorage {
       throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
     }
 
+    this.reporter.info(`Uploading baseline from ${this.baselineDir} for commit ${commitSha.substring(0, 7)}`);
     await this.uploadToS3(commitSha);
     return commitSha;
   }
 
   private async downloadFromS3(commit: string): Promise<void> {
     const prefix = this.getS3KeyForCommit(commit);
+
+    this.reporter.info(`Downloading from s3://${this.bucket}/${prefix}`);
 
     const listResponse = await this.s3Client.send(
       new ListObjectsV2Command({
@@ -181,6 +202,8 @@ export class BaselineStorage {
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
       throw new Error(`No files found for commit ${commit}`);
     }
+
+    this.reporter.info(`Found ${listResponse.Contents.length} file(s) in S3`);
 
     // Clear and recreate local baselineDir
     if (fs.existsSync(this.baselineDir)) {
@@ -217,6 +240,8 @@ export class BaselineStorage {
         await pipeline(getResponse.Body as Readable, writeStream);
       }
     }
+
+    this.reporter.success(`Downloaded ${listResponse.Contents.length} file(s) to ${this.baselineDir}`);
   }
 
   private async uploadToS3(commit: string): Promise<void> {
@@ -227,6 +252,8 @@ export class BaselineStorage {
 
     // Upload all files from baselineDir
     const files = this.getAllFiles(this.baselineDir);
+
+    this.reporter.info(`Uploading ${files.length} file(s) to s3://${this.bucket}/${prefix}`);
 
     for (const filePath of files) {
       const relativePath = path.relative(this.baselineDir, filePath);
@@ -243,6 +270,8 @@ export class BaselineStorage {
         })
       );
     }
+
+    this.reporter.success(`Uploaded ${files.length} file(s) to s3://${this.bucket}/${prefix}`);
   }
 
   private async deleteS3Prefix(prefix: string): Promise<void> {
@@ -265,6 +294,7 @@ export class BaselineStorage {
     }
 
     if (objectsToDelete.length > 0) {
+      this.reporter.info(`Deleting ${objectsToDelete.length} existing object(s) at s3://${this.bucket}/${prefix}`);
       await this.s3Client.send(
         new DeleteObjectsCommand({
           Bucket: this.bucket,
