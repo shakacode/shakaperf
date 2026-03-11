@@ -11,8 +11,8 @@
     "templates"
   ],
   "scripts": {
-    "build": "cp -r ../../shared src/shared && tsc",
-    "typecheck": "cp -r ../../shared src/shared && tsc --noEmit",
+    "build": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc",
+    "typecheck": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc --noEmit",
     "test": "jest",
     "prepublishOnly": "yarn build"
   },
