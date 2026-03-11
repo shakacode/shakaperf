@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { launch, LaunchedChrome } from 'chrome-launcher';
+import { defaultConfig } from 'lighthouse';
 import { chromium, BrowserContext, Page } from 'playwright-core';
 import type { RaceCancellation } from 'race-cancellation';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -55,8 +56,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   }
 
   async getMobileSettings(): Promise<any> {
-    const defaultMobileSettings = (await eval("import('lighthouse')"))
-      .defaultConfig.settings;
+    const defaultMobileSettings = defaultConfig?.settings;
     return {
       ...defaultMobileSettings,
       ...DEFAULT_LH_CONFIG,

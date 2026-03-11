@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import type { LighthouseResult } from 'lighthouse';
+import lighthouse, { type RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
@@ -21,8 +21,6 @@ export async function runLighthouse(
   resultsFolder: string,
   markers: Marker[] = DEFAULT_MARKERS
 ): Promise<PhaseSample[]> {
-  const lighthouse = (await eval("import('lighthouse')")).default;
-
   // 5 minutes
   const timeoutMs = 300000;
 
@@ -33,10 +31,10 @@ export async function runLighthouse(
     }, timeoutMs);
   });
 
-  const runnerResult: LighthouseResult = await Promise.race([
+  const runnerResult = await Promise.race([
     lighthouse(url, lhSettings),
     timeoutPromise
-  ]);
+  ]) as RunnerResult;
 
   if (timeout) {
     clearTimeout(timeout);
@@ -55,7 +53,7 @@ export async function runLighthouse(
     .replace(/\?/g, '_')
     .replace(/=/g, '_')}`;
 
-  writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
+  writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);
   if (runnerResult.artifacts?.traces?.defaultPass) {
     const profilePath = `${namePrefix}_performance_profile.json`;
     writeFileSync(
@@ -103,7 +101,7 @@ export async function runLighthouse(
     ].map((phase) => ({
       phase: prefix + phase,
       duration:
-        runnerResult.lhr.audits[phase].numericValue *
+        runnerResult.lhr.audits[phase].numericValue! *
         (phase === 'cumulative-layout-shift' ? 100 : 1000),
       start: 0,
       addToChart: true,
@@ -123,7 +121,7 @@ export async function runLighthouse(
 
     results.push({
       phase: prefix + 'total-score',
-      duration: runnerResult.lhr.categories.performance.score * 100,
+      duration: runnerResult.lhr.categories.performance.score! * 100,
       sign: -1,
       start: 0,
       unit: '/100'
@@ -142,7 +140,7 @@ export async function runLighthouse(
     });
     results.unshift({
       phase: prefix + 'accessibility',
-      duration: runnerResult.lhr.categories.accessibility.score * 100,
+      duration: runnerResult.lhr.categories.accessibility.score! * 100,
       sign: -1,
       start: 0,
       unit: '/100'

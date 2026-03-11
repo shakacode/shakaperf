@@ -1,4 +1,4 @@
-import type { LighthouseResult } from 'lighthouse';
+import type { RunnerResult } from 'lighthouse';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 
@@ -9,7 +9,7 @@ import type { Marker, PhaseSample } from './lighthouse-config';
 const LIGHTHOUSE_SLOWDOWN_MULTIPLYER = 15;
 
 function extractPerformanceMarkerTime(
-  result: LighthouseResult,
+  result: RunnerResult,
   markerName: string
 ): number | null {
   const traceEvents = result.artifacts.traces.defaultPass.traceEvents;
@@ -17,11 +17,11 @@ function extractPerformanceMarkerTime(
   if (!event) {
     return null;
   }
-  return event.args.data.startTime * LIGHTHOUSE_SLOWDOWN_MULTIPLYER;
+  return event.args.data!.startTime! * LIGHTHOUSE_SLOWDOWN_MULTIPLYER;
 }
 
 function extractPerformanceDuration(
-  result: LighthouseResult,
+  result: RunnerResult,
   startMarker: string,
   endMarker: string
 ): number | null {
@@ -34,7 +34,7 @@ function extractPerformanceDuration(
 }
 
 export function extractMarkers(
-  result: LighthouseResult,
+  result: RunnerResult,
   markers: Marker[],
   prefix: string
 ): PhaseSample[] {

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { execSync } from 'child_process';
-import type { LighthouseResult } from 'lighthouse';
+import type { RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 
 interface DownloadsSizesKB {
@@ -80,7 +80,7 @@ export function compareNetworkActivity(): void {
 }
 
 export const updateDownloadedSizes = (
-  lighthouseResult: LighthouseResult,
+  lighthouseResult: RunnerResult,
   namePrefix: string,
   url: string
 ): number => {
