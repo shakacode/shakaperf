@@ -129,6 +129,30 @@ jobs:
             cd demo-ecommerce
             yarn bundle-size:upload
 
+  bundle-size-twin-servers:
+    machine:
+      image: ubuntu-2204:2023.10.1
+    resource_class: medium
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/workspace
+      - twin-servers/setup-node
+      - enable-corepack
+      - setup-yarn-and-build-packages
+      - twin-servers/load-images:
+          workspace-path: /tmp/workspace/docker-images
+      - twin-servers/start-containers:
+          working-directory: demo-ecommerce
+          cli-prefix: yarn
+      - run:
+          name: Compare bundle sizes (twin servers)
+          working_directory: demo-ecommerce
+          command: yarn shaka-twin-servers compare-twin-servers
+      - store_artifacts:
+          path: demo-ecommerce/bundle-size-diffs
+          destination: bundle-size-diffs
+
 workflows:
   build-and-check:
     when:
@@ -240,6 +264,12 @@ workflows:
                   cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
 
+      - bundle-size-twin-servers: &bundle-size-twin-servers-job
+          name: scheduled-bundle-size-twin-servers
+          requires:
+            - twin-servers/build-experiment
+            - twin-servers/build-control
+
       # Update control commit SHA (only runs when all tests pass)
       - twin-servers/update-control-commit-sha: &update-control-sha-job
           pre-steps:
@@ -253,6 +283,7 @@ workflows:
           requires:
             - scheduled-shaka-visual-regression
             - scheduled-perf-tests
+            - scheduled-bundle-size-twin-servers
 
       # Approval path: if tests fail, approve to update control commit SHA anyway
       - approve-baseline-update:
@@ -297,6 +328,13 @@ workflows:
       - twin-servers/run-tests:
           <<: *perf-tests-job
           name: perf-tests
+          filters:
+            branches:
+              ignore: main
+
+      - bundle-size-twin-servers:
+          <<: *bundle-size-twin-servers-job
+          name: bundle-size-twin-servers
           filters:
             branches:
               ignore: main
