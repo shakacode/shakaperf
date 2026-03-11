@@ -13,3 +13,7 @@ export { runReport } from "./commands/compare/report";
 
 // API backwards compat exports
 export { IReportFlags };
+
+// Test definition API
+export { abTest } from "../core/ab-test-registry";
+export type { AbTestDefinition, AbTestOptions } from "../core/ab-test-registry";

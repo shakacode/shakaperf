@@ -10,7 +10,7 @@
     "tb-schema.json"
   ],
   "scripts": {
-    "build": "tsc && cp -a ./src/cli/static ./dist/cli",
+    "build": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc && cp -a ./src/cli/static ./dist/cli",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "yarn build"
   },
@@ -46,8 +46,10 @@
     "json5": "^2.2.0",
     "jstat": "^1.9.5",
     "lighthouse": "12.3.0",
+    "playwright-core": "^1.50.0",
     "race-cancellation": "^0.4.1",
-    "tslib": "^2.2.0"
+    "tslib": "^2.2.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/d3-array": "~2.12.1",

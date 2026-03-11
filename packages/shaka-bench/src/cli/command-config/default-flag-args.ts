@@ -3,7 +3,7 @@ import { ITBConfig } from "./tb-config";
 export const defaultFlagArgs: ITBConfig = {
   plotTitle: "TracerBench",
   numberOfMeasurements: 20,
-  tbResultsFolder: "./tracerbench-results",
+  resultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
   sampleTimeout: 30,
   regressionThresholdStat: "estimator",

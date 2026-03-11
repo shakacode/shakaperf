@@ -15,7 +15,7 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 ### compare.json
 
 ```bash
-git diff -- integration-tests/bench-results/compare.json
+git diff -- integration-tests/snapshots/bench-results/compare.json
 ```
 
 All numeric timing values are random noise. Only flag: missing/added phases or groups, changed sample count (expect 5), order-of-magnitude jumps in values, or structural JSON changes.
@@ -23,7 +23,7 @@ All numeric timing values are random noise. Only flag: missing/added phases or g
 ### report.json
 
 ```bash
-git diff -- integration-tests/bench-results/report.json
+git diff -- integration-tests/snapshots/bench-results/report.json
 ```
 
 Numeric values (p-values, deltas, CIs, percentiles, sparklines) are noise. Only flag: `isSignificant` flipping for any phase, `areResultsSignificant` or `isBelowRegressionThreshold` changing, missing phases, sample counts != 5.
@@ -31,7 +31,7 @@ Numeric values (p-values, deltas, CIs, percentiles, sparklines) are noise. Only 
 ### Bench HTML screenshots
 
 ```bash
-yarn node integration-tests/compare-screenshots.mjs integration-tests/bench-results
+yarn node integration-tests/compare-screenshots.mjs integration-tests/snapshots/bench-results
 ```
 
 There will always be pixelmatch changes, that's OK. Ask devs to take a look at the report and make a decision.
@@ -39,7 +39,7 @@ There will always be pixelmatch changes, that's OK. Ask devs to take a look at t
 ### Visreg HTML report screenshot
 
 ```bash
-yarn node integration-tests/compare-screenshots.mjs integration-tests/visreg-results
+yarn node integration-tests/compare-screenshots.mjs integration-tests/snapshots/visreg-results
 ```
 
 Unlike bench screenshots, visreg report screenshots should be nearly identical between runs. Flag any pixel differences — they likely indicate a real change in report content or layout.
@@ -47,7 +47,7 @@ Unlike bench screenshots, visreg report screenshots should be nearly identical b
 ### Experiment server network_activity.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3030____network_activity.txt
+git diff -- integration-tests/snapshots/bench-results/localhost_3030____network_activity.txt
 ```
 
 KB values, download counts, and asset hashes are noise. Only flag: resources appearing/disappearing, or 10x size changes.
@@ -55,7 +55,7 @@ KB values, download counts, and asset hashes are noise. Only flag: resources app
 ### Control server network_activity.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3020____network_activity.txt
+git diff -- integration-tests/snapshots/bench-results/localhost_3020____network_activity.txt
 ```
 
 KB values, download counts, and asset hashes are noise. Only flag: resources appearing/disappearing, or 10x size changes.
@@ -64,19 +64,19 @@ KB values, download counts, and asset hashes are noise. Only flag: resources app
 ### Experiment server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3030____performance_profile.summary.txt
+git diff -- integration-tests/snapshots/bench-results/localhost_3030____performance_profile.summary.txt
 ```
 
 ### Control server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/bench-results/localhost_3020____performance_profile.summary.txt
+git diff -- integration-tests/snapshots/bench-results/localhost_3020____performance_profile.summary.txt
 ```
 
 ### visreg
 
 ```bash
-git diff -- integration-tests/visreg-results ':(exclude)*.png'
+git diff -- integration-tests/snapshots/visreg-results ':(exclude)*.png'
 ```
 
 Unlike perf-tests, visreg results are way more deterministic.
@@ -84,7 +84,7 @@ Unlike perf-tests, visreg results are way more deterministic.
 ### baseline-output.log
 
 ```bash
-git diff -- integration-tests/baseline-output.log
+git diff -- integration-tests/snapshots/baseline-output.log
 ```
 
 All timing values, hashes, sizes, sparklines, p-values, and line ordering between `[CONTROL]`/`[EXPERIMENT]` are noise. Only flag: `>>>` steps added/removed, new `Error:`/`FAIL` messages, test count changes, `Is Significant` flipping, or missing `SUCCESS`/docker steps.

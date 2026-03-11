@@ -3,13 +3,12 @@ export interface ITBConfig {
   plotTitle?: string;
   numberOfMeasurements?: number;
   report?: string;
-  tbResultsFolder?: string;
+  resultsFolder?: string;
   controlURL?: string;
   experimentURL?: string;
   regressionThreshold?: number;
   sampleTimeout?: number;
   regressionThresholdStat?: RegressionThresholdStat;
-  lhPresets?: string;
   config?: string;
   [key: string]: any;
 }

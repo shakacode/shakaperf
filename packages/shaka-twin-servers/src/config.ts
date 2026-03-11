@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadConfigFile } from './shared/load-config-file';
+import { findConfigFile as sharedFindConfigFile } from './shared/find-config-file';
 import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
@@ -12,14 +13,8 @@ export function defineConfig(config: TwinServersConfigInput): TwinServersConfigI
   return config;
 }
 
-export function findConfigFile(cwd: string = process.cwd()): string | null {
-  for (const filename of CONFIG_FILENAMES) {
-    const configPath = path.join(cwd, filename);
-    if (fs.existsSync(configPath)) {
-      return configPath;
-    }
-  }
-  return null;
+export function findConfigFile(cwd?: string): string | null {
+  return sharedFindConfigFile(CONFIG_FILENAMES, cwd);
 }
 
 export async function loadConfig(configPath: string): Promise<TwinServersConfig> {

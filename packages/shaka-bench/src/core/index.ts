@@ -1,13 +1,13 @@
-export {
-  compareNetworkActivity,
-  default as createLighthouseBenchmark,
-} from './create-lighthouse-benchmark';
+export { compareNetworkActivity, clearDownloadsSizes } from './network-activity';
+export { default as createLighthouseBenchmark } from './create-lighthouse-benchmark';
 export type {
   Marker,
   NavigationSample,
   PhaseSample,
   LighthouseBenchmarkOptions,
-} from './create-lighthouse-benchmark';
+  LighthouseConfig,
+} from './lighthouse-config';
+export { defineConfig, DEFAULT_LH_CONFIG, DEFAULT_MARKERS } from './lighthouse-config';
 export { default as gc } from './util/gc';
 export { default as run } from './run';
 export type {
@@ -17,3 +17,6 @@ export type {
   SampleProgressCallback,
   RunOptions,
 } from './run';
+export { abTest, getRegisteredTests, clearRegistry } from './ab-test-registry';
+export type { AbTestDefinition, AbTestOptions } from './ab-test-registry';
+export { summarizePerformanceProfile } from './summarize-performance-profile';

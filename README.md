@@ -40,6 +40,17 @@ graph TD
     G --> H
 ```
 
+## Why choose `shaka-perf`?
+1. **One test to rule them all**. Write a Playwright test once — get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
+2. [partially ready, WIP] **Real statistics**. Mann-Whitney U test, Hodges-Lehmann estimator, Auto-calibrated statistical thresholds based on the number of metrics tested. We know the difference between noise and a real regression — even on noisy CI environments.                                
+3. **True A/B isolation**. Control and experiment run simultaneously in separate Docker containers from separate git branches. No "run before, run after, hope nothing changed" — actual side-by-side comparison.
+4. **~2 hours to full setup**. Write a Dockerfile, a short config, some Playwright tests, done. Works both locally and on CI.
+5. [WIP] **CI-native at scale**. Designed for parallel measurement collection across CI nodes and processes. 
+6. [WIP] **Auto-bisect regressions**. Point it at a commit range, it finds exactly which commit caused the regression. No manual binary search.
+8. [WIP] **Actually convenient Accessibility testing**. Doesn't just dump violations — maintains a structured allow-list baseline. CI fails only on new issues onl;y.
+
+## TODO: host a demo with all the performance artifacts (Combine with RSC demo by Abanoub)
+
 ## Packages
 
 | Package                                            | Description                                                        |

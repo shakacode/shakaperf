@@ -7,7 +7,7 @@ import {
 } from './helpers';
 
 // Store bench results in the REAL repo so they persist and can be committed
-const BENCH_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'bench-results');
+const BENCH_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
 
 test('run shaka-bench compare on twin servers', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
@@ -28,14 +28,24 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
   run(
     [
       'yarn shaka-bench compare',
-      '--controlURL http://localhost:3020',
-      '--experimentURL http://localhost:3030',
+      '--testFile ./ab-tests/shop-now.bench.ts',
       '--numberOfMeasurements 5',
       '--report',
-      `--tbResultsFolder ${BENCH_RESULTS_DIR}`,
+      `--resultsFolder ${BENCH_RESULTS_DIR}`,
     ].join(' '),
     { timeout: 15 * 60 * 1000 },
   );
+
+  // Results land in a per-test subdirectory; move them up for snapshot compatibility
+  const testSubdir = fs.readdirSync(BENCH_RESULTS_DIR, { withFileTypes: true })
+    .find(d => d.isDirectory());
+  if (testSubdir) {
+    const subPath = path.join(BENCH_RESULTS_DIR, testSubdir.name);
+    for (const file of fs.readdirSync(subPath)) {
+      fs.renameSync(path.join(subPath, file), path.join(BENCH_RESULTS_DIR, file));
+    }
+    fs.rmdirSync(subPath);
+  }
 
   // Pretty-print JSON results for readable diffs
   for (const file of ['compare.json', 'report.json', 'localhost_3020____performance_profile.json']) {
@@ -54,10 +64,4 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
     await page.screenshot({ path: screenshotPath, fullPage: true });
   }
 
-  // Generate performance profile summaries for diffable output
-  for (const profile of fs.readdirSync(BENCH_RESULTS_DIR).filter(f => f.endsWith('performance_profile.json'))) {
-    const inputPath = path.join(BENCH_RESULTS_DIR, profile);
-    const outputPath = inputPath.replace('.json', '.summary.txt');
-    run(`yarn node ${path.join(ORIGINAL_REPO, 'integration-tests/summarize-performance-profile.mjs')} "${inputPath}" "${outputPath}"`);
-  }
 });

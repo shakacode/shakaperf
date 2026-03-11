@@ -37,5 +37,10 @@ export async function loadConfigFile(configPath: string): Promise<Record<string,
 
   const config = configModule.default || configModule;
 
+  if (!config || typeof config !== 'object') {
+    throw new Error(`Config file must export a configuration object: ${absolutePath}`);
+  }
+
   return config as Record<string, unknown>;
 }
+

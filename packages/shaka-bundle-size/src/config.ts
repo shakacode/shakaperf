@@ -2,19 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
 import { loadConfigFile } from './shared/load-config-file';
+import { findConfigFile as sharedFindConfigFile } from './shared/find-config-file';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 
 const CONFIG_FILENAMES = ['bundle-size.config.ts', 'bundle-size.config.js'];
 
-export function findConfigFile(cwd: string = process.cwd()): string | null {
-  for (const filename of CONFIG_FILENAMES) {
-    const configPath = path.join(cwd, filename);
-    if (fs.existsSync(configPath)) {
-      return configPath;
-    }
-  }
-  return null;
+export function findConfigFile(cwd?: string): string | null {
+  return sharedFindConfigFile(CONFIG_FILENAMES, cwd);
 }
 
 export const RESOLVING_BUNDLE_SIZE_ISSUES_DOC_URL =
