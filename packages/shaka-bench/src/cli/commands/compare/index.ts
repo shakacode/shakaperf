@@ -5,6 +5,7 @@ import * as path from "node:path";
 
 import {
   Benchmark,
+  clearDownloadsSizes,
   compareNetworkActivity,
   createLighthouseBenchmark,
   clearRegistry,
@@ -93,17 +94,27 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
   for (const testDef of tests) {
     console.log(`\nRunning test: ${testDef.name}`);
 
+    const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const testResultsFolder = `${resultsFolder}/${slug}`;
+    mkdirpSync(testResultsFolder);
+    clearDownloadsSizes();
+
+    const testOptions: Partial<LighthouseBenchmarkOptions> = {
+      ...options,
+      resultsFolder: testResultsFolder,
+    };
+
     const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
       "control",
       compareFlags.controlURL!,
       testDef,
-      options
+      testOptions
     );
     const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
       "experiment",
       compareFlags.experimentURL!,
       testDef,
-      options
+      testOptions
     );
 
     const sampleTimeout = compareFlags.sampleTimeout;
@@ -152,7 +163,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
       );
       process.exit(2);
     }
-    const resultJSONPath = `${compareFlags.resultsFolder}/compare.json`;
+    const resultJSONPath = `${testResultsFolder}/compare.json`;
     compareNetworkActivity();
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
@@ -177,7 +188,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     // if we want to run the CompareReport without calling a separate command
     if (compareFlags.report) {
       await runReport({
-        resultsFolder: compareFlags.resultsFolder!,
+        resultsFolder: testResultsFolder,
       });
     }
   }

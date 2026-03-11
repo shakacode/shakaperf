@@ -1,4 +1,4 @@
-export { compareNetworkActivity } from './network-activity';
+export { compareNetworkActivity, clearDownloadsSizes } from './network-activity';
 export { default as createLighthouseBenchmark } from './create-lighthouse-benchmark';
 export type {
   Marker,

@@ -11,6 +11,12 @@ const downloadsSizes: {
   [name: string]: DownloadsSizesKB;
 } = {};
 
+export function clearDownloadsSizes(): void {
+  for (const key of Object.keys(downloadsSizes)) {
+    delete downloadsSizes[key];
+  }
+}
+
 const saveDownloadsSizes = (
   downloadsSizes: DownloadsSizesKB,
   path: string

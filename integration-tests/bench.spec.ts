@@ -36,6 +36,17 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
     { timeout: 15 * 60 * 1000 },
   );
 
+  // Results land in a per-test subdirectory; move them up for snapshot compatibility
+  const testSubdir = fs.readdirSync(BENCH_RESULTS_DIR, { withFileTypes: true })
+    .find(d => d.isDirectory());
+  if (testSubdir) {
+    const subPath = path.join(BENCH_RESULTS_DIR, testSubdir.name);
+    for (const file of fs.readdirSync(subPath)) {
+      fs.renameSync(path.join(subPath, file), path.join(BENCH_RESULTS_DIR, file));
+    }
+    fs.rmdirSync(subPath);
+  }
+
   // Pretty-print JSON results for readable diffs
   for (const file of ['compare.json', 'report.json', 'localhost_3020____performance_profile.json']) {
     const filePath = path.join(BENCH_RESULTS_DIR, file);

@@ -8,10 +8,10 @@ import { extractMarkers } from './extract-markers';
 import { updateDownloadedSizes } from './network-activity';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
-// Read console errors whitelist from environement variable.
+// Read console errors whitelist from environment variable.
 const allowedConsoleErrors: string[] = process.env
-  .TRACERBENCH_ALLOWED_CONSOLE_ERRORS
-  ? process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS.split(',')
+  .SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS
+  ? process.env.SHAKA_BENCH_ALLOWED_CONSOLE_ERRORS.split(',')
   : [];
 
 export async function runLighthouse(
@@ -40,7 +40,6 @@ export async function runLighthouse(
     clearTimeout(timeout);
   }
 
-  runnerResult.lhr.categories;
   const parsedUrl = new URL(url);
   const host = parsedUrl.host;
   const path = parsedUrl.pathname;
@@ -67,7 +66,7 @@ export async function runLighthouse(
 
   if (runnerResult.lhr.runtimeError) {
     throw new Error(
-      `Tracerbench encountered runtime error when running ${url}: ${JSON.stringify(
+      `Lighthouse encountered runtime error when running ${url}: ${JSON.stringify(
         runnerResult.lhr.runtimeError,
         null,
         2
@@ -104,7 +103,6 @@ export async function runLighthouse(
         runnerResult.lhr.audits[phase].numericValue! *
         (phase === 'cumulative-layout-shift' ? 100 : 1000),
       start: 0,
-      addToChart: true,
       sign: 1,
       unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
     }));
