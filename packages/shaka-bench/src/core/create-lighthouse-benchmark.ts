@@ -10,6 +10,7 @@ import { Benchmark, BenchmarkSampler } from './run';
 import { loadConfigFile } from '../shared/load-config-file';
 import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
+import { injectINPObserver, collectINP } from './inp';
 import type { AbTestDefinition } from './ab-test-registry';
 
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
@@ -142,9 +143,14 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);
-      const playwrightPromise = this.testDef.testFn({ page });
+      await injectINPObserver(page);
+      const playwrightPromise = this.testDef.testFn({ page }).then(() => collectINP(page));
 
-      const [phases] = await Promise.all([lighthousePromise, playwrightPromise]);
+      const [phases, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
+
+      if (inp != null && inp > 0) {
+        phases.push({ phase: 'interaction-to-next-paint', duration: inp * 1000, start: 0, sign: 1, unit: 'ms' });
+      }
 
       return phases;
     } finally {
