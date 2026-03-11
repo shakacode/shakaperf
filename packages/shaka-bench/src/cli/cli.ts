@@ -40,10 +40,11 @@ program
     "The output folder path for all tracerbench results",
     getDefaultValue("tbResultsFolder")
   )
-  .option("--controlURL <url>", "Control URL to visit for compare command")
+  .option("--controlURL <url>", "Control URL to visit for compare command", "http://localhost:3020")
   .option(
     "--experimentURL <url>",
-    "Experiment URL to visit for compare command"
+    "Experiment URL to visit for compare command",
+    "http://localhost:3030"
   )
   .option(
     "--regressionThreshold <ms>",
