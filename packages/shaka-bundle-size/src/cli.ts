@@ -40,9 +40,6 @@ async function getResolvedConfig(): Promise<LoadedConfig> {
       console.error('Create a bundle-size.config.ts file or specify one with --config');
       process.exit(2);
     }
-    if (globalOpts.verbose) {
-      console.log(`Using config: ${configPath}`);
-    }
   }
 
   try {
@@ -55,13 +52,13 @@ async function getResolvedConfig(): Promise<LoadedConfig> {
   }
 }
 
-function createReporter(): Reporter {
-  const globalOpts = program.opts();
-  const verbosity = globalOpts.quiet ? 'quiet' : globalOpts.verbose ? 'verbose' : 'normal';
-  return new Reporter({ verbosity });
+function createReporter(configPath: string): Reporter {
+  const reporter = new Reporter();
+  reporter.info(`Using config: ${configPath}`);
+  return reporter;
 }
 
-function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>): BaselineStorage {
+function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>, reporter: Reporter): BaselineStorage {
   return new BaselineStorage({
     s3Bucket: resolvedConfig.storage.s3Bucket,
     s3Prefix: resolvedConfig.storage.s3Prefix,
@@ -71,6 +68,7 @@ function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>): Baseli
     awsSecretAccessKey: resolvedConfig.storage.awsSecretAccessKey,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
+    reporter,
   });
 }
 
@@ -94,7 +92,6 @@ function printCompareFailureGuidance(configPath: string): void {
   const packageManagerCmd = getPackageRunCommand();
   const acknowledgeCmd = `${packageManagerCmd} shaka-bundle-size -c ${configPath} acknowledge-failure`;
 
-  // Printed as stderr so it's visible even in "quiet" mode logs.
   console.error('');
   console.error('To get insights into why the bundle size changed, see Artifacts for this CI job');
   console.error('');
@@ -113,8 +110,6 @@ program
   .description('Bundle size checking for webpack builds')
   .version(`shaka-bundle-size v${VERSION}`, '--version', 'Show version')
   .option('-c, --config <file>', 'Config file path (.js or .ts)')
-  .option('-v, --verbose', 'Verbose output', false)
-  .option('-q, --quiet', 'Quiet output (errors only)', false)
   .addHelpText('after', `
 Command options:
   download-main-branch-stats:
@@ -154,9 +149,9 @@ program
   .option('--commit <sha>', 'Specific commit SHA')
   .action(async (opts) => {
     try {
-      const { resolvedConfig } = await getResolvedConfig();
-      const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
+      const { resolvedConfig, configPath } = await getResolvedConfig();
+      const reporter = createReporter(configPath);
+      const storage = createStorage(resolvedConfig, reporter);
 
       reporter.info('Downloading main branch baseline from S3...');
       const commit = opts.commit
@@ -182,9 +177,9 @@ program
   .option('--commit <sha>', 'Specific commit SHA')
   .action(async (opts) => {
     try {
-      const { resolvedConfig } = await getResolvedConfig();
-      const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
+      const { resolvedConfig, configPath } = await getResolvedConfig();
+      const reporter = createReporter(configPath);
+      const storage = createStorage(resolvedConfig, reporter);
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
 
       // Generate extended stats first (needed for source maps)
@@ -223,8 +218,8 @@ program
   .option('--branch <name>', 'Branch name to acknowledge')
   .action(async (opts) => {
     try {
-      const { resolvedConfig } = await getResolvedConfig();
-      const reporter = createReporter();
+      const { resolvedConfig, configPath } = await getResolvedConfig();
+      const reporter = createReporter(configPath);
 
       if (!resolvedConfig.acknowledgedBranchesFilePath) {
         console.error(colorize.red('Error: acknowledgedBranchesFilePath must be set in config to use acknowledge-failure'));
@@ -249,8 +244,8 @@ program
   .action(async (opts) => {
     try {
       const { resolvedConfig, configPath } = await getResolvedConfig();
-      const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
+      const reporter = createReporter(configPath);
+      const storage = createStorage(resolvedConfig, reporter);
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
 
       const result = checker.check();

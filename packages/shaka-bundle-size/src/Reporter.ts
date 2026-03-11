@@ -1,11 +1,10 @@
 /**
- * Provides colored console output with configurable verbosity levels.
+ * Provides colored console output.
  * Can be extended or replaced for custom output formats.
  */
 
 import { colorize, ColorName, ANSI } from './helpers/colors';
 import type {
-  VerbosityLevel,
   CheckResult,
   IReporter,
   ReporterOptions,
@@ -20,12 +19,10 @@ import type {
 export { ANSI, colorize };
 
 export class Reporter implements IReporter {
-  protected verbosity: VerbosityLevel;
   protected useColors: boolean;
   protected output: NodeJS.WriteStream;
 
   constructor(options: ReporterOptions = {}) {
-    this.verbosity = options.verbosity || 'normal';
     this.useColors = options.colors !== false;
     this.output = options.output || process.stdout;
   }
@@ -40,12 +37,10 @@ export class Reporter implements IReporter {
   }
 
   info(message: string): void {
-    if (this.verbosity === 'quiet') return;
     this.writeLine(message);
   }
 
   success(message: string): void {
-    if (this.verbosity === 'quiet') return;
     this.writeLine(this.color(message, 'green'));
   }
 
@@ -58,16 +53,10 @@ export class Reporter implements IReporter {
   }
 
   header(title: string): void {
-    if (this.verbosity === 'quiet') return;
     this.writeLine('');
     this.writeLine('='.repeat(80));
     this.writeLine(this.color(title, 'blue'));
     this.writeLine('='.repeat(80));
-  }
-
-  verbose(message: string): void {
-    if (this.verbosity !== 'verbose') return;
-    this.writeLine(this.color(message, 'dim'));
   }
 
   reportSizeIncrease({ componentName, sizeDiffKb, actualSizeKb, expectedSizeKb }: SizeIncreaseParams): void {
@@ -243,16 +232,11 @@ export class Reporter implements IReporter {
  * Useful for testing or when only the result data is needed.
  */
 export class SilentReporter extends Reporter {
-  constructor() {
-    super({ verbosity: 'quiet' });
-  }
-
   writeLine(): void {}
   info(): void {}
   success(): void {}
   warning(): void {}
   error(): void {}
   header(): void {}
-  verbose(): void {}
   summary(): void {}
 }
