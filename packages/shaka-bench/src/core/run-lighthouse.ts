@@ -6,6 +6,7 @@ import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
 import { extractMarkers } from './extract-markers';
 import { updateDownloadedSizes } from './network-activity';
+import { summarizePerformanceProfile } from './summarize-performance-profile';
 
 // Read console errors whitelist from environement variable.
 const allowedConsoleErrors: string[] = process.env
@@ -56,10 +57,12 @@ export async function runLighthouse(
 
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
   if (runnerResult.artifacts?.traces?.defaultPass) {
+    const profilePath = `${namePrefix}_performance_profile.json`;
     writeFileSync(
-      `${namePrefix}_performance_profile.json`,
+      profilePath,
       JSON.stringify(runnerResult.artifacts.traces.defaultPass)
     );
+    summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
   }
 
   const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);

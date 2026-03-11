@@ -19,3 +19,4 @@ export type {
 } from './run';
 export { abTest, getRegisteredTests, clearRegistry } from './ab-test-registry';
 export type { AbTestDefinition, AbTestOptions } from './ab-test-registry';
+export { summarizePerformanceProfile } from './summarize-performance-profile';
