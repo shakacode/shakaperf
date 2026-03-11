@@ -148,23 +148,25 @@ export class BaselineStorage {
     return null;
   }
 
-  async upload(): Promise<string> {
-    if (!fs.existsSync(this.baselineDir)) {
-      throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
+  async upload(sourceDir?: string): Promise<string> {
+    const dir = sourceDir || this.baselineDir;
+    if (!fs.existsSync(dir)) {
+      throw new Error(`No stats found at ${dir}. Run 'shaka-bundle-size generate-stats' first.`);
     }
 
     const commit = this.getCurrentCommit();
-    await this.uploadToS3(commit);
+    await this.uploadToS3(commit, dir);
     return commit;
   }
 
   /** Use this when you want to associate the baseline with a specific main branch commit. */
-  async uploadForCommit(commitSha: string): Promise<string> {
-    if (!fs.existsSync(this.baselineDir)) {
-      throw new Error(`No baseline found at ${this.baselineDir}. Generate stats first.`);
+  async uploadForCommit(commitSha: string, sourceDir?: string): Promise<string> {
+    const dir = sourceDir || this.baselineDir;
+    if (!fs.existsSync(dir)) {
+      throw new Error(`No stats found at ${dir}. Run 'shaka-bundle-size generate-stats' first.`);
     }
 
-    await this.uploadToS3(commitSha);
+    await this.uploadToS3(commitSha, dir);
     return commitSha;
   }
 
@@ -219,17 +221,18 @@ export class BaselineStorage {
     }
   }
 
-  private async uploadToS3(commit: string): Promise<void> {
+  private async uploadToS3(commit: string, sourceDir?: string): Promise<void> {
+    const dir = sourceDir || this.baselineDir;
     const prefix = this.getS3KeyForCommit(commit);
 
     // Delete existing objects for this commit (if any)
     await this.deleteS3Prefix(prefix);
 
-    // Upload all files from baselineDir
-    const files = this.getAllFiles(this.baselineDir);
+    // Upload all files from sourceDir (or baselineDir)
+    const files = this.getAllFiles(dir);
 
     for (const filePath of files) {
-      const relativePath = path.relative(this.baselineDir, filePath);
+      const relativePath = path.relative(dir, filePath);
       const s3Key = `${prefix}${relativePath}`;
 
       const fileContent = fs.readFileSync(filePath);

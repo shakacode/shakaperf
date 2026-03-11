@@ -21,6 +21,7 @@ import type {
   CheckResult,
   UpdateBaselineResult,
   DiffMetadata,
+  BaselineComponent,
 } from './types';
 
 function getBundlesDir(statsFile: string): string {
@@ -185,6 +186,52 @@ export class BundleSizeChecker {
 
     this.reporter.summary(result);
 
+    return result;
+  }
+
+  /** Compare pre-generated stats (from generate-stats) against the downloaded baseline. */
+  compareFromGeneratedStats(currentStatsDir: string): CheckResult {
+    this.reporter.header('Bundle Size Check');
+
+    const currentComparator = new BaselineComparator({
+      baselineDir: currentStatsDir,
+      sizeThresholdKb: 0.01,
+    });
+
+    if (!currentComparator.baselineFileExists(this.baselineFile)) {
+      this.reporter.error(`No generated stats found at ${this.baselineFile} in ${currentStatsDir}. Run 'shaka-bundle-size generate-stats' first.`);
+      return { passed: false, regressions: [], warnings: [], actualSizes: [], expectedSizes: [] };
+    }
+
+    const currentConfig = currentComparator.loadBaselineFile(this.baselineFile);
+    const actualSizes: ComponentSize[] = currentConfig.loadableComponents.map((c: BaselineComponent) => ({
+      name: c.name,
+      chunksCount: c.chunksCount,
+      gzipSizeKb: parseFloat(c.gzipSizeKb),
+      brotliSizeKb: parseFloat(c.brotliSizeKb),
+    }));
+
+    if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
+      this.reporter.error(`No baseline found at ${this.baselineFile}. Run 'shaka-bundle-size download-main-branch-stats' to create one.`);
+      return { passed: false, regressions: [], warnings: [], actualSizes, expectedSizes: [] };
+    }
+
+    const baseline = this.baselineComparator.loadBaselineFile(this.baselineFile);
+    const comparisonResult = this.baselineComparator.compare(actualSizes, baseline);
+    const regressions = this.regressionDetector.detectRegressions(comparisonResult);
+    const { failures, warnings } = this.regressionDetector.evaluateAll(regressions);
+    const passed = failures.length === 0;
+
+    const result: CheckResult = {
+      passed,
+      regressions: failures,
+      warnings,
+      actualSizes,
+      expectedSizes: baseline.loadableComponents,
+      comparison: comparisonResult,
+    };
+
+    this.reporter.summary(result);
     return result;
   }
 
