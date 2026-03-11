@@ -7,7 +7,7 @@ import {
 } from './helpers';
 
 // Store visreg results in the REAL repo so they persist and can be committed
-const VISREG_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'visreg-results');
+const VISREG_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'visreg-results');
 
 test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
