@@ -270,7 +270,7 @@ program
           reporter.error(`Cannot generate HTML diffs: failed to create ${expectedPath}`);
           reporter.error(`Webpack stats not found at ${webpackStatsPath}`);
         } else {
-          const currentDir = resolvedConfig.htmlDiffs.currentDir;
+          const currentDir = resolvedConfig.currentStatsDir;
           fs.mkdirSync(currentDir, { recursive: true });
           checker.generateCurrentStatsTo(currentDir);
 

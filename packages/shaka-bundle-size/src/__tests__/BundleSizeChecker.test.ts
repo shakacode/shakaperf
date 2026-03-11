@@ -21,6 +21,7 @@ describe('BundleSizeChecker', () => {
       ignoredBundles: [],
       acknowledgedBranchesFilePath: undefined,
       generateSourceMaps: false,
+      currentStatsDir: path.join(tmpDir, 'current_stats'),
       htmlDiffs: DEFAULT_HTML_DIFFS,
       storage: { ...DEFAULT_STORAGE, s3Bucket: 'test-bucket' },
       regressionPolicy: createDefaultPolicy(DEFAULT_THRESHOLDS),

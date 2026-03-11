@@ -38,8 +38,6 @@ export const HtmlDiffConfigSchema = z.object({
   enabled: z.boolean().optional(),
   /** Directory for output HTML diff files (default: 'bundle-size-diffs') */
   outputDir: z.string().optional(),
-  /** Directory for current source maps during compare (default: 'tmp/bundle_size_current') */
-  currentDir: z.string().optional(),
 });
 
 export type HtmlDiffConfig = z.infer<typeof HtmlDiffConfigSchema>;
@@ -75,6 +73,9 @@ export const BundleSizeConfigSchema = z.object({
 
   /** Prefix for webpack stats and extended stats files (e.g., 'consumer' -> 'consumer-webpack-stats.json'). If not set, no prefix is used. */
   bundleNamePrefix: z.string().optional(),
+
+  /** Directory for generated current stats (default: 'tmp/bundle_size_current'). Used by generate-stats, compare, and upload commands. */
+  currentStatsDir: z.string().optional(),
 
   /** Threshold configuration */
   thresholds: ThresholdConfigSchema.optional(),
@@ -120,6 +121,8 @@ export interface ResolvedConfig {
   acknowledgedBranchesFilePath: string | undefined;
   /** Whether to generate source maps */
   generateSourceMaps: boolean;
+  /** Directory for generated current stats */
+  currentStatsDir: string;
   /** Resolved HTML diff configuration */
   htmlDiffs: Required<HtmlDiffConfig>;
   /** Resolved storage configuration */
@@ -138,7 +141,6 @@ export const DEFAULT_THRESHOLDS: Required<ThresholdConfig> = {
 export const DEFAULT_HTML_DIFFS: Required<HtmlDiffConfig> = {
   enabled: true,
   outputDir: 'bundle-size-diffs',
-  currentDir: 'tmp/bundle_size_current',
 };
 
 export const DEFAULT_STORAGE: Required<StorageConfig> = {
@@ -245,6 +247,7 @@ export function resolveConfig(config: unknown): ResolvedConfig {
     ignoredBundles: validConfig.ignoredBundles ?? [],
     acknowledgedBranchesFilePath: validConfig.acknowledgedBranchesFilePath,
     generateSourceMaps: validConfig.generateSourceMaps !== false,
+    currentStatsDir: validConfig.currentStatsDir ?? 'tmp/bundle_size_current',
     htmlDiffs,
     storage,
     regressionPolicy,

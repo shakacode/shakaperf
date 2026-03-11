@@ -41,6 +41,7 @@ describe('resolveConfig', () => {
     expect(resolved.bundleNamePrefix).toBeUndefined();
     expect(resolved.ignoredBundles).toEqual([]);
     expect(resolved.generateSourceMaps).toBe(true);
+    expect(resolved.currentStatsDir).toBe('tmp/bundle_size_current');
     expect(resolved.thresholds).toEqual(DEFAULT_THRESHOLDS);
     expect(resolved.htmlDiffs).toEqual(DEFAULT_HTML_DIFFS);
     expect(resolved.storage.s3Bucket).toBe('my-bucket');
@@ -103,6 +104,11 @@ describe('resolveConfig', () => {
     expect(resolved.storage.s3Bucket).toBe('my-bucket');
     expect(resolved.storage.s3Prefix).toBe('custom/');
     expect(resolved.storage.mainCommitsToCheck).toBe(10); // default
+  });
+
+  it('respects custom currentStatsDir', () => {
+    const resolved = resolveConfig({ ...minimalConfig, currentStatsDir: 'custom/stats' });
+    expect(resolved.currentStatsDir).toBe('custom/stats');
   });
 
   it('sets generateSourceMaps to false when configured', () => {
@@ -395,7 +401,6 @@ describe('DEFAULT_HTML_DIFFS', () => {
   it('has correct default values', () => {
     expect(DEFAULT_HTML_DIFFS.enabled).toBe(true);
     expect(DEFAULT_HTML_DIFFS.outputDir).toBe('bundle-size-diffs');
-    expect(DEFAULT_HTML_DIFFS.currentDir).toBe('tmp/bundle_size_current');
   });
 });
 

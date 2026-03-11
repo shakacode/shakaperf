@@ -20,11 +20,13 @@ export default defineConfig({
     keyComponentThreshold: 5, // 5 KB for key components
   },
 
+  // Directory for generated current stats (used by generate-stats, compare, upload)
+  currentStatsDir: 'tmp/bundle_size_current',
+
   // HTML diff configuration
   htmlDiffs: {
     enabled: true,
     outputDir: 'bundle-size-diffs',
-    currentDir: 'tmp/bundle_size_current',
   },
 
   // Baseline storage for --download/--upload (S3/R2)
