@@ -15,6 +15,7 @@
     "build:prod:all:stats": "yarn build:prod:consumer && yarn build:prod:admin",
     "build:analyze": "ANALYZE=true bin/shakapacker",
     "bundle-size:download": "shaka-bundle-size download-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts download-main-branch-stats",
+    "bundle-size:generate": "shaka-bundle-size generate-stats && shaka-bundle-size -c admin.bundle-size.config.ts generate-stats",
     "bundle-size:compare": "shaka-bundle-size compare && shaka-bundle-size -c admin.bundle-size.config.ts compare",
     "bundle-size:upload": "shaka-bundle-size upload-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts upload-main-branch-stats",
     "typecheck": "tsc --noEmit && tsc -p visreg_data/engine_scripts --noEmit",
