@@ -28,8 +28,7 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
   run(
     [
       'yarn shaka-bench compare',
-      '--controlURL http://localhost:3020',
-      '--experimentURL http://localhost:3030',
+      '--testFile ./shop-now.bench.ts',
       '--numberOfMeasurements 5',
       '--report',
       `--tbResultsFolder ${BENCH_RESULTS_DIR}`,
