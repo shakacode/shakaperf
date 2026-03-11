@@ -4,7 +4,7 @@ import type { Marker } from './lighthouse-config';
 export interface AbTestOptions {
   markers?: Marker[];
   lhConfigPath?: string;
-  tbResultsFolder?: string;
+  resultsFolder?: string;
 }
 
 export interface AbTestDefinition {

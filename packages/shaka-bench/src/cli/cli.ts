@@ -36,9 +36,9 @@ program
     getDefaultValue("numberOfMeasurements")
   )
   .option(
-    "--tbResultsFolder <path>",
+    "--resultsFolder <path>",
     "The output folder path for all tracerbench results",
-    getDefaultValue("tbResultsFolder")
+    getDefaultValue("resultsFolder")
   )
   .option("--controlURL <url>", "Control URL to visit for compare command", "http://localhost:3020")
   .option(
@@ -103,9 +103,9 @@ program
     'Generates an HTML report from the "tracerbench compare" command output'
   )
   .option(
-    "--tbResultsFolder <path>",
+    "--resultsFolder <path>",
     "The output folder path for all tracerbench results",
-    getDefaultValue("tbResultsFolder")
+    getDefaultValue("resultsFolder")
   )
   .option("--plotTitle <title>", "Title of the report HTML file")
   .action(async (opts: Record<string, unknown>) => {

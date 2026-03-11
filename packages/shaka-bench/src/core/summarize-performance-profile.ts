@@ -141,5 +141,4 @@ export function summarizePerformanceProfile(inputPath: string, outputPath: strin
   const data: TraceData = JSON.parse(readFileSync(inputPath, 'utf-8'));
   const summary = generateSummary(data);
   writeFileSync(outputPath, summary);
-  console.log(`Summary written to ${outputPath}`);
 }

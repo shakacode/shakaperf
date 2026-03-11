@@ -136,7 +136,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         '',
         url,
         lhSettings,
-        this.options.tbResultsFolder ?? './tracerbench-results',
+        this.options.resultsFolder ?? './tracerbench-results',
         markers
       );
 

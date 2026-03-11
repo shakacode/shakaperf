@@ -44,7 +44,7 @@ export const DEFAULT_LH_CONFIG: LighthouseConfig = {
 };
 
 export interface LighthouseBenchmarkOptions {
-  tbResultsFolder?: string;
+  resultsFolder?: string;
   lhConfigPath?: string;
   markers?: Marker[];
 }

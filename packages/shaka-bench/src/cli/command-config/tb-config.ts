@@ -3,7 +3,7 @@ export interface ITBConfig {
   plotTitle?: string;
   numberOfMeasurements?: number;
   report?: string;
-  tbResultsFolder?: string;
+  resultsFolder?: string;
   controlURL?: string;
   experimentURL?: string;
   regressionThreshold?: number;

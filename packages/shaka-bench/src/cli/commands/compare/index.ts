@@ -31,7 +31,7 @@ import { runReport } from "./report";
 export interface ICompareFlags {
   hideAnalysis: boolean;
   numberOfMeasurements: number;
-  tbResultsFolder: string;
+  resultsFolder: string;
   controlURL: string | undefined;
   experimentURL: string | undefined;
   testFile: string | undefined;
@@ -80,11 +80,11 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     process.exit(2);
   }
 
-  mkdirpSync(compareFlags.tbResultsFolder!);
+  mkdirpSync(compareFlags.resultsFolder!);
 
-  const tbResultsFolder = compareFlags.tbResultsFolder;
+  const resultsFolder = compareFlags.resultsFolder;
   const options: Partial<LighthouseBenchmarkOptions> = {
-    tbResultsFolder,
+    resultsFolder,
     lhConfigPath: compareFlags.config,
   };
 
@@ -152,7 +152,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
       );
       process.exit(2);
     }
-    const resultJSONPath = `${compareFlags.tbResultsFolder}/compare.json`;
+    const resultJSONPath = `${compareFlags.resultsFolder}/compare.json`;
     compareNetworkActivity();
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
@@ -177,7 +177,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     // if we want to run the CompareReport without calling a separate command
     if (compareFlags.report) {
       await runReport({
-        tbResultsFolder: compareFlags.tbResultsFolder!,
+        resultsFolder: compareFlags.resultsFolder!,
       });
     }
   }

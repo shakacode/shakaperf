@@ -52,7 +52,7 @@ const ARTIFACT_FILE_NAME = "artifact";
 
 // TYPINGS
 export interface IReportFlags {
-  tbResultsFolder: string;
+  resultsFolder: string;
   plotTitle?: string;
 }
 
@@ -122,11 +122,11 @@ function createConsumableHTML(
 async function generateHTML(
   controlData: ITracerBenchTraceResult,
   experimentData: ITracerBenchTraceResult,
-  tbResultsFolder: string,
+  resultsFolder: string,
   parsedConfig: ITBConfig,
   reportPlotTitle?: string
 ): Promise<string> {
-  const outputFileName = determineOutputFileNamePrefix(tbResultsFolder);
+  const outputFileName = determineOutputFileNamePrefix(resultsFolder);
   const renderedHTML = createConsumableHTML(
     controlData,
     experimentData,
@@ -142,7 +142,7 @@ async function generateHTML(
   });
 
   const absPathToHTML = resolve(
-    join(tbResultsFolder, `/${outputFileName}.html`)
+    join(resultsFolder, `/${outputFileName}.html`)
   );
 
   writeFileSync(absPathToHTML, minifiedHTML);
@@ -151,31 +151,31 @@ async function generateHTML(
 }
 
 function logReportPaths(
-  tbResultsFolder: string,
+  resultsFolder: string,
   absPathToHTML: string
 ): void {
   const chalkBlueBold = chalkScheme.tbBranding.blue.underline.bold;
 
   logHeading("Benchmark Reports");
-  console.log(`\nJSON: ${chalkBlueBold(`${tbResultsFolder}/compare.json`)}`);
+  console.log(`\nJSON: ${chalkBlueBold(`${resultsFolder}/compare.json`)}`);
   console.log(`\nHTML: ${chalkBlueBold(absPathToHTML)}\n`);
 }
 
 export async function runReport(options: IReportFlags): Promise<void> {
-  const tbResultsFolder = options.tbResultsFolder ?? defaultFlagArgs.tbResultsFolder!;
+  const resultsFolder = options.resultsFolder ?? defaultFlagArgs.resultsFolder!;
 
-  mkdirSync(tbResultsFolder, { recursive: true });
+  mkdirSync(resultsFolder, { recursive: true });
 
-  const inputFilePath = join(tbResultsFolder, "compare.json");
+  const inputFilePath = join(resultsFolder, "compare.json");
   const { controlData, experimentData } = parseCompareResult(inputFilePath);
 
   const absPathToHTML = await generateHTML(
     controlData,
     experimentData,
-    tbResultsFolder,
-    { tbResultsFolder, plotTitle: options.plotTitle },
+    resultsFolder,
+    { resultsFolder, plotTitle: options.plotTitle },
     options.plotTitle
   );
 
-  logReportPaths(tbResultsFolder, absPathToHTML);
+  logReportPaths(resultsFolder, absPathToHTML);
 }

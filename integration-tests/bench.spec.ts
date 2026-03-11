@@ -31,7 +31,7 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
       '--testFile ./ab-tests/shop-now.bench.ts',
       '--numberOfMeasurements 5',
       '--report',
-      `--tbResultsFolder ${BENCH_RESULTS_DIR}`,
+      `--resultsFolder ${BENCH_RESULTS_DIR}`,
     ].join(' '),
     { timeout: 15 * 60 * 1000 },
   );

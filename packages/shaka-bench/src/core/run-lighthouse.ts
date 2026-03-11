@@ -18,7 +18,7 @@ export async function runLighthouse(
   prefix: string,
   url: string,
   lhSettings: any,
-  tbResultsFolder: string,
+  resultsFolder: string,
   markers: Marker[] = DEFAULT_MARKERS
 ): Promise<PhaseSample[]> {
   const lighthouse = (await eval("import('lighthouse')")).default;
@@ -48,7 +48,7 @@ export async function runLighthouse(
   const path = parsedUrl.pathname;
   const query = parsedUrl.search;
 
-  const namePrefix = `${tbResultsFolder}/${prefix}${host.replace(
+  const namePrefix = `${resultsFolder}/${prefix}${host.replace(
     ':',
     '_'
   )}_${path.replace(/\//g, '_')}_${query
