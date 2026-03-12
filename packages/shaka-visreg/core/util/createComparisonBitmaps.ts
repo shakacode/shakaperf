@@ -103,9 +103,11 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     return convertAbTestToScenario(t, controlURL, experimentURL);
   });
 
-  // Build the decorated config object
+  // Build the decorated config object with a default viewport if none specified
+  const defaultViewports: Viewport[] = [{ label: 'desktop', width: 1280, height: 800 }];
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
+    viewports: globalConfig.viewports || defaultViewports,
     scenarios,
   };
   ensureViewportLabel(configJSON as { viewports?: Viewport[] });
