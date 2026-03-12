@@ -2,6 +2,9 @@ import executeCommand from './command/index.js';
 import makeConfig from './util/makeConfig.js';
 import type { RuntimeConfig } from './types.js';
 
+export { defineVisregConfig } from './types.js';
+export type { VisregGlobalConfig } from './types.js';
+
 export default function (command: string, options?: Record<string, unknown>) {
   const config = makeConfig(command, options) as RuntimeConfig;
   return executeCommand(command, config);
