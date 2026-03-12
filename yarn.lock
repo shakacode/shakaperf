@@ -13384,6 +13384,7 @@ __metadata:
     lighthouse: "npm:12.3.0"
     playwright-core: "npm:^1.50.0"
     race-cancellation: "npm:^0.4.1"
+    shaka-shared: "workspace:*"
     tslib: "npm:^2.2.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
@@ -13411,6 +13412,15 @@ __metadata:
     zod: "npm:^3.24.0"
   bin:
     shaka-bundle-size: ./dist/cli.js
+  languageName: unknown
+  linkType: soft
+
+"shaka-shared@workspace:*, shaka-shared@workspace:packages/shaka-shared":
+  version: 0.0.0-use.local
+  resolution: "shaka-shared@workspace:packages/shaka-shared"
+  dependencies:
+    playwright-core: "npm:^1.50.0"
+    typescript: "npm:^5.3.3"
   languageName: unknown
   linkType: soft
 
