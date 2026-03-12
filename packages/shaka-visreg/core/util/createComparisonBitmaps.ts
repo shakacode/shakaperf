@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
@@ -108,6 +109,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
     viewports: globalConfig.viewports || defaultViewports,
+    engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
     scenarios,
   };
   ensureViewportLabel(configJSON as { viewports?: Viewport[] });
@@ -152,6 +154,12 @@ function decorateConfigForCompare (config: RuntimeConfig) {
   if (typeof config.args.config === 'object') {
     configJSON = cloneDeep(config.args.config);
   } else {
+    if (!existsSync(config.configFileName)) {
+      throw new Error(
+        'Config file not found: ' + config.configFileName + '\n' +
+        'Either provide a --config path or use --testFile to load scenarios from abTest() definitions.'
+      );
+    }
     configJSON = cloneDeep(_require(config.configFileName));
   }
   configJSON.scenarios = configJSON.scenarios || [];
