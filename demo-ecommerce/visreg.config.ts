@@ -1,0 +1,27 @@
+import { defineVisregConfig } from 'shaka-visreg';
+
+export default defineVisregConfig({
+  id: 'demo-ecommerce',
+  viewports: [
+    { label: 'phone', width: 375, height: 667 },
+    { label: 'tablet', width: 768, height: 1024 },
+    { label: 'desktop', width: 1280, height: 800 },
+  ],
+  paths: {
+    bitmaps_reference: 'visreg_data/bitmaps_reference',
+    bitmaps_test: 'visreg_data/bitmaps_test',
+    engine_scripts: 'visreg_data/engine_scripts',
+    html_report: 'visreg_data/html_report',
+    ci_report: 'visreg_data/ci_report',
+  },
+  report: ['browser', 'CI'],
+  engineOptions: {
+    browser: 'chromium',
+    args: ['--no-sandbox'],
+  },
+  asyncCaptureLimit: 5,
+  compareRetries: 5,
+  compareRetryDelay: 1000,
+  maxNumDiffPixels: 50,
+  defaultMisMatchThreshold: 0.1,
+});
