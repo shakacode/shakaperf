@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import extendConfig from './extendConfig.js';
@@ -20,6 +21,24 @@ function loadProjectConfig (command: string, options: Record<string, any> | unde
     config.testReportFileName = options.testReportFileName || null;
   }
 
+  // When using --testFile, the global config is loaded separately in
+  // createComparisonBitmaps.  We still need configFileName set for path
+  // derivation, but we skip loading scenarios from it.
+  if (options && options.testFile) {
+    let customConfigPath = options.configFilePath || options.configPath;
+    if (typeof options.config === 'string') {
+      customConfigPath = options.config;
+    }
+    if (customConfigPath) {
+      config.configFileName = path.isAbsolute(customConfigPath)
+        ? customConfigPath
+        : path.join(config.projectPath!, customConfigPath);
+    } else {
+      config.configFileName = path.join(config.projectPath!, 'visreg.config.ts');
+    }
+    return {};
+  }
+
   let customConfigPath = options && (options.configFilePath || options.configPath);
   if (options && typeof options.config === 'string' && !customConfigPath) {
     customConfigPath = options.config;
@@ -38,14 +57,13 @@ function loadProjectConfig (command: string, options: Record<string, any> | unde
   let userConfig = {};
   const CMD_REQUIRES_CONFIG = !NON_CONFIG_COMMANDS.includes(command);
   if (CMD_REQUIRES_CONFIG) {
-    // This flow is confusing -- is checking for !config.configFileName more reliable?
     if (options && typeof options.config === 'object' && options.config.scenarios) {
       console.log('Object-literal config detected.');
       if (options.config.debug) {
         console.log(JSON.stringify(options.config, null, 2));
       }
       userConfig = options.config;
-    } else if (config.configFileName) {
+    } else if (config.configFileName && existsSync(config.configFileName)) {
       // Remove from cache config content
       delete _require.cache[_require.resolve(config.configFileName)];
       console.log('Loading config: ', config.configFileName, '\n');

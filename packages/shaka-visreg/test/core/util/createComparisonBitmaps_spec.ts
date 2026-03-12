@@ -213,4 +213,81 @@ describe('createComparisonBitmaps', function () {
       try { unlinkSync(unlabeledConfigFilePath); } catch (_e) { /* ignore */ }
     }
   });
+
+  it('should load scenarios from testFile when --testFile is provided', async function () {
+    const mockTestFn = async function () {};
+
+    let capturedScenarios: Array<Record<string, unknown>> = [];
+    jest.resetModules();
+
+    // Mock shaka-shared to return pre-defined tests
+    jest.unstable_mockModule('shaka-shared', () => ({
+      clearRegistry: function () {},
+      getRegisteredTests: function () {
+        return [{
+          name: 'Test from registry',
+          startingPath: '/page1',
+          options: {
+            visreg: {
+              selectors: ['[data-cy="hero"]'],
+              misMatchThreshold: 0.05,
+            },
+          },
+          testFn: mockTestFn,
+        }];
+      },
+    }));
+
+    jest.unstable_mockModule('node:fs/promises', () => ({
+      writeFile: function () { return Promise.resolve(); }
+    }));
+    jest.unstable_mockModule('../../../core/util/runCompareScenario.js', () => ({
+      playwright: function (scenarioView: Record<string, unknown>) {
+        capturedConfig = scenarioView.config as Record<string, unknown>;
+        const scenario = scenarioView.scenario as Record<string, unknown>;
+        capturedScenarios.push(scenario);
+        return Promise.resolve({ testPairs: [] });
+      }
+    }));
+    jest.unstable_mockModule('../../../core/util/runPlaywright.js', () => ({
+      createPlaywrightBrowser: function () { return Promise.resolve({}); },
+      disposePlaywrightBrowser: function () { return Promise.resolve(); }
+    }));
+    jest.unstable_mockModule('../../../core/util/ensureDirectoryPath.js', () => ({
+      default: function () {}
+    }));
+    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+      default: function () {
+        return { log: function () {}, error: function () {} };
+      }
+    }));
+
+    // Mock tsx to avoid loading an actual test file
+    jest.unstable_mockModule('tsx/esm/api', () => ({
+      tsImport: function () { return Promise.resolve({}); }
+    }));
+
+    const mod = await import('../../../core/util/createComparisonBitmaps.js');
+    const createComparisonBitmaps = mod.default;
+
+    const testFileConfig = {
+      ...mockConfig,
+      args: {
+        testFile: '/dummy/test.bench.ts',
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
+      }
+    };
+
+    await createComparisonBitmaps(testFileConfig);
+
+    assert(capturedConfig, 'Should have captured config');
+    assert.strictEqual(capturedScenarios.length, 1, 'Should have 1 scenario from registry');
+    assert.strictEqual(capturedScenarios[0].label, 'Test from registry');
+    assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/page1');
+    assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/page1');
+    assert.deepStrictEqual(capturedScenarios[0].selectors, ['[data-cy="hero"]']);
+    assert.strictEqual(capturedScenarios[0].misMatchThreshold, 0.05);
+    assert.strictEqual(capturedScenarios[0]._testFn, mockTestFn, 'Should attach testFn');
+  });
 });
