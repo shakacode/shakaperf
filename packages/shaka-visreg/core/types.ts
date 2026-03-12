@@ -78,6 +78,7 @@ export interface Scenario {
   sIndex?: number;
   _parent?: Scenario;
   _playwrightBrowser?: Browser;
+  _testFn?: (context: { page: PlaywrightPage }) => Promise<void>;
 }
 
 // ── Variant ─────────────────────────────────────────────────────────
@@ -323,3 +324,54 @@ export type PlaywrightScriptFn = (
   browserContext: BrowserContext,
   config?: RuntimeConfig
 ) => Promise<void>;
+
+// ── Global Visreg Config (visreg.config.ts — no scenarios) ──────────
+export interface VisregGlobalConfig {
+  id?: string;
+  viewports: Viewport[];
+  paths?: VisregPaths;
+
+  onBeforeScript?: string;
+  readyEvent?: string;
+  readyTimeout?: number;
+
+  engine?: 'playwright' | null;
+  engineOptions?: EngineOptions;
+
+  report?: string[];
+  openReport?: boolean;
+  archiveReport?: boolean;
+  scenarioLogsInReports?: boolean;
+
+  asyncCaptureLimit?: number;
+  asyncCompareLimit?: number;
+
+  defaultMisMatchThreshold?: number;
+  resembleOutputOptions?: ResembleOutputOptions;
+
+  compareRetries?: number;
+  compareRetryDelay?: number;
+  maxNumDiffPixels?: number;
+
+  fileNameTemplate?: string;
+  outputFormat?: string;
+
+  debug?: boolean;
+  debugWindow?: boolean;
+
+  dynamicTestId?: string;
+
+  ci?: {
+    format?: string;
+    testReportFileName?: string;
+    testSuiteName?: string;
+  };
+
+  useBoundingBoxViewportForSelectors?: boolean;
+
+  liveComparePixelmatchThreshold?: number;
+}
+
+export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConfig {
+  return config;
+}
