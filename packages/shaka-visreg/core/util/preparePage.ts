@@ -146,19 +146,24 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     );
   }
 
-  // --- ON READY SCRIPT ---
-  const onReadyScript = scenario.onReadyScript || config.onReadyScript;
-  if (onReadyScript) {
-    const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
-    if (existsSync(readyScriptPath)) {
-      const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
-      await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
-    } else {
-      logger.warn('WARNING: script not found: ' + readyScriptPath);
+  // --- ON READY SCRIPT / TEST FN ---
+  if (scenario._testFn) {
+    // abTest flow: testFn replaces onReadyScript
+    await scenario._testFn({ page });
+  } else {
+    const onReadyScript = scenario.onReadyScript || config.onReadyScript;
+    if (onReadyScript) {
+      const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
+      if (existsSync(readyScriptPath)) {
+        const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
+        await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
+      } else {
+        logger.warn('WARNING: script not found: ' + readyScriptPath);
+      }
     }
   }
 
-  // reinstall tools in case onReadyScript has loaded a new URL.
+  // reinstall tools in case onReadyScript/testFn has loaded a new URL.
   await injectVisregTools(page);
 
   // --- HIDE SELECTORS ---
