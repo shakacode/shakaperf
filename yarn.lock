@@ -12378,6 +12378,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pixelmatch@npm:5.3.0, pixelmatch@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "pixelmatch@npm:5.3.0"
+  dependencies:
+    pngjs: "npm:^6.0.0"
+  bin:
+    pixelmatch: bin/pixelmatch
+  checksum: 10c0/30850661db29b57cefbe6cf36e930b7517aea4e0ed129e85fcc8ec04a7e6e7648a822a972f8e01d2d3db268ca3c735555caf6b8099a164d8b64d105986d682d2
+  languageName: node
+  linkType: hard
+
 "pixelmatch@npm:^4.0.2":
   version: 4.0.2
   resolution: "pixelmatch@npm:4.0.2"
@@ -12386,17 +12397,6 @@ __metadata:
   bin:
     pixelmatch: bin/pixelmatch
   checksum: 10c0/81fee4a8f3f8d462ada5fc7809399384f99c137fa44974e9eddd52dcd0f0d5838387e2c4cd2397f6adbbc2a6728688ff6124faf0091a1c776d57277f9d42e9fa
-  languageName: node
-  linkType: hard
-
-"pixelmatch@npm:^5.3.0":
-  version: 5.3.0
-  resolution: "pixelmatch@npm:5.3.0"
-  dependencies:
-    pngjs: "npm:^6.0.0"
-  bin:
-    pixelmatch: bin/pixelmatch
-  checksum: 10c0/30850661db29b57cefbe6cf36e930b7517aea4e0ed129e85fcc8ec04a7e6e7648a822a972f8e01d2d3db268ca3c735555caf6b8099a164d8b64d105986d682d2
   languageName: node
   linkType: hard
 
@@ -13848,6 +13848,7 @@ __metadata:
     "@types/fs-extra": "npm:^9.0.11"
     "@types/html-minifier-terser": "npm:^7.0.0"
     "@types/json5": "npm:^2.2.0"
+    "@types/pngjs": "npm:^6.0.5"
     chalk: "npm:^4.1.1"
     chrome-launcher: "npm:^0.15.1"
     commander: "npm:^13.1.0"
@@ -13858,10 +13859,13 @@ __metadata:
     fs-extra: "npm:^10.0.0"
     handlebars: "npm:^4.7.7"
     html-minifier-terser: "npm:^7.0.0"
+    jpeg-js: "npm:^0.4.4"
     json5: "npm:^2.2.0"
     jstat: "npm:^1.9.5"
     lighthouse: "npm:13.0.3"
+    pixelmatch: "npm:5.3.0"
     playwright-core: "npm:^1.50.0"
+    pngjs: "npm:^7.0.0"
     race-cancellation: "npm:^0.4.1"
     tslib: "npm:^2.2.0"
     tsx: "npm:^4.21.0"

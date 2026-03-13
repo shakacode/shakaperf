@@ -42,10 +42,13 @@
     "fs-extra": "^10.0.0",
     "handlebars": "^4.7.7",
     "html-minifier-terser": "^7.0.0",
+    "jpeg-js": "^0.4.4",
     "json5": "^2.2.0",
     "jstat": "^1.9.5",
     "lighthouse": "13.0.3",
+    "pixelmatch": "5.3.0",
     "playwright-core": "^1.50.0",
+    "pngjs": "^7.0.0",
     "race-cancellation": "^0.4.1",
     "tslib": "^2.2.0",
     "tsx": "^4.21.0"
@@ -58,6 +61,7 @@
     "@types/fs-extra": "^9.0.11",
     "@types/html-minifier-terser": "^7.0.0",
     "@types/json5": "^2.2.0",
+    "@types/pngjs": "^6.0.5",
     "typescript": "^5.3.3"
   }
 }

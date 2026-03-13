@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as path from "node:path";
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 
 import chalk from "chalk";
 import {
@@ -12,6 +12,7 @@ import {
   createLighthouseBenchmark,
   clearRegistry,
   generateHtmlDiffs,
+  generateTimelineComparison,
   getRegisteredTests,
   LighthouseBenchmarkOptions,
   NavigationSample,
@@ -65,6 +66,7 @@ const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
   'report.json': 'Statistical analysis (JSON)',
   'report.txt': 'Summary',
   'report.html': 'Interactive HTML report with charts',
+  'timeline_comparison.html': 'Visual timeline (control vs experiment)',
 };
 
 function describeArtifact(filename: string): string {
@@ -223,6 +225,22 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
       controlURL: compareFlags.controlURL!,
       experimentURL: compareFlags.experimentURL!,
     });
+
+    // Generate timeline comparison from performance profiles
+    {
+      const files = readdirSync(testResultsFolder);
+      const controlHost = new URL(compareFlags.controlURL!).host.replace(':', '_');
+      const experimentHost = new URL(compareFlags.experimentURL!).host.replace(':', '_');
+      const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
+      const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
+      if (controlProfile && experimentProfile) {
+        generateTimelineComparison({
+          controlProfilePath: path.join(testResultsFolder, controlProfile),
+          experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+          outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
+        });
+      }
+    }
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
     completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });

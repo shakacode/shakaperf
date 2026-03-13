@@ -22,3 +22,5 @@ export type { AbTestDefinition, AbTestOptions } from './ab-test-registry';
 export { summarizePerformanceProfile } from './summarize-performance-profile';
 export { generateHtmlDiffs } from './html-diff';
 export type { GenerateHtmlDiffsOptions } from './html-diff';
+export { generateTimelineComparison } from './timeline-comparison';
+export type { GenerateTimelineComparisonOptions } from './timeline-comparison';
