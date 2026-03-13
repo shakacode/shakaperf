@@ -19,8 +19,6 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
     waitForPort(3030),
   ]);
 
-  // Clean previous results
-  fs.rmSync(VISREG_RESULTS_DIR, { recursive: true, force: true });
   fs.mkdirSync(VISREG_RESULTS_DIR, { recursive: true });
 
   // Disable openReport so visreg doesn't launch a browser

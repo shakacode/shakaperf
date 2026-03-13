@@ -51,6 +51,10 @@ normalize_log() {
 
 cd "$REPO_ROOT"
 
+echo "=== Cleaning previous snapshots ==="
+rm -rf "$SCRIPT_DIR/snapshots"
+mkdir -p "$SCRIPT_DIR/snapshots"
+
 echo "=== Running integration tests ==="
 # Strip ANSI codes so the output is readable in plain text
 yarn test:integration 2>&1 | tee "$BASELINE"

@@ -2,7 +2,6 @@
 import type { Stats } from "../../stats";
 
 import { ICompareJSONResult } from "./compare-results";
-import { getDisplayName } from "../../core/metric-groups";
 
 export interface TBTableEntry {
   stats: Stats;
@@ -38,7 +37,7 @@ export default class TBTable {
 
       a.push({
         heading: this.heading,
-        phaseName: getDisplayName(stat.name),
+        phaseName: stat.name,
         isSignificant: stat.confidenceInterval.isSig,
         pValue: stat.confidenceInterval.pValue,
         estimatorDelta: `${stat.estimator * -1}${unitSuffix}`,

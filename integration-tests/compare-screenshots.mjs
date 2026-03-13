@@ -23,12 +23,9 @@ const tracked = execSync(`git ls-files -- "${resultsDir}/*.screenshot.png"`, { e
 const committed = execSync(`git ls-tree --name-only -r HEAD -- ${resultsDir}/`, { encoding: 'utf-8' }).trim().split('\n').filter(f => f.endsWith('.screenshot.png'));
 const allOldPaths = [...new Set([...tracked, ...committed])];
 for (const f of allOldPaths) {
-  try {
-    let data;
-    try { data = execSync(`git show HEAD:${f}`, { encoding: 'buffer', stdio: ['pipe', 'pipe', 'pipe'] }); }
-    catch { data = execSync(`git show :${f}`, { encoding: 'buffer', stdio: ['pipe', 'pipe', 'pipe'] }); }
-    fs.writeFileSync(path.join(oldDir, path.basename(f)), data);
-  } catch {}
+  const opts = { encoding: 'buffer', maxBuffer: 50 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] };
+  const data = execSync(`git show HEAD:${f}`, opts);
+  fs.writeFileSync(path.join(oldDir, path.basename(f)), data);
 }
 
 const oldFiles = fs.readdirSync(oldDir).filter(f => f.endsWith('.screenshot.png'));

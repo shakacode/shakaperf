@@ -1,18 +1,18 @@
 Benchmark Results Summary
 
 LH & Vitals
-  FCP no difference [-2222ms to 2238ms]
-  SI no difference [-2222ms to 2238ms]
-  LCP no difference [-173ms to 57ms]
-  TBT no difference [-205ms to 258ms]
-  CLS estimated regression +2/100 [+2/100 to +5/100] OR +31.75% [+31.75% to +72.47%] p=0.01219
-  TTFB no difference [-6ms to 1ms]
-  hydration no difference [-204ms to 31ms]
-  hydration-start no difference [-248ms to 49ms]
-  LH Score no difference [-11/100 to 0/100]
+  FCP no difference [-9ms to 7ms]
+  speed-index no difference [-9ms to 7ms]
+  LCP no difference [-78ms to 253ms]
+  TBT estimated regression +162ms [+129ms to +271ms] OR +18.79% [+14.97% to +31.44%] p=0.01219
+  CLS no difference [-4/100 to 5/100]
+  TTFB no difference [-7ms to 1ms]
+  hydration no difference [-44ms to 33ms]
+  hydration-start no difference [-162ms to 19ms]
+  LH Score estimated regression -4/100 [-5/100 to -3/100] OR -7.02% [-8.77% to -5.26%] p=0.01219
 
 Diagnostics
-  downloads estimated regression +80KB [+80KB to +80KB] OR +48.83% [+48.72% to +48.93%] p=0.01219
+  downloads estimated regression +80KB [+80KB to +80KB] OR +48.82% [+48.71% to +48.88%] p=0.01219
   downloads-count estimated regression +4 [+4 to +4] OR +36.36% [+36.36% to +36.36%] p=0.01219
   early-downloads no difference [0KB to 0KB]
   early-downloads-count no difference [0 to 0]

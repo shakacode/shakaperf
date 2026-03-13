@@ -10,7 +10,6 @@ import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
 import TBTable from "./tb-table";
-import { getDisplayName } from "../../core/metric-groups";
 
 export interface ICompareJSONResult {
   heading: string;
@@ -133,7 +132,7 @@ export class CompareResults {
     const { phase, pValue, hlDiff, isSignificant, ciMin, ciMax, asPercent } =
       phaseData;
     const { percentMedian, percentMax, percentMin } = asPercent;
-    const displayName = getDisplayName(phase);
+    const displayName = phase;
     const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
     const unit = phaseData.unit;
 
