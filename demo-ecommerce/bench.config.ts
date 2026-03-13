@@ -16,6 +16,7 @@ export default defineConfig({
     uploadThroughputKbps: 700,
     cpuSlowdownMultiplier: 20,
   },
+  throttlingMethod: "simulate",
   logLevel: "error",
   output: "html",
   onlyCategories: ["performance"],

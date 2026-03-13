@@ -1,7 +1,7 @@
 Performance Profile Summary
 ============================
 
-Total events: 6035
+Total events: 6265
 
 Thread names:
   Chrome_ChildIOThread
@@ -15,57 +15,56 @@ Thread names:
   MemoryInfra
   PerfettoTrace
   ThreadPoolForegroundWorker
-  ThreadPoolServiceThread
   VizCompositorThread
   swapper
 
 Categories:
-  __metadata: 36
+  __metadata: 32
   benchmark,loading: 1
-  blink,devtools.timeline: 8
+  blink,devtools.timeline: 9
   blink,loading: 1
-  blink.animations,devtools.timeline,benchmark,rail: 6
+  blink.animations,devtools.timeline,benchmark,rail: 12
   blink.user_timing: 10
   blink.user_timing,rail: 5
-  cc,benchmark,disabled-by-default-devtools.timeline.frame: 634
-  cc,disabled-by-default-devtools.timeline: 38
-  devtools.timeline: 265
-  disabled-by-default-devtools.screenshot: 24
+  cc,benchmark,disabled-by-default-devtools.timeline.frame: 702
+  cc,disabled-by-default-devtools.timeline: 45
+  devtools.timeline: 277
+  disabled-by-default-devtools.screenshot: 25
   disabled-by-default-devtools.target-rundown: 7
-  disabled-by-default-devtools.timeline: 3293
-  disabled-by-default-devtools.timeline.frame: 89
+  disabled-by-default-devtools.timeline: 3412
+  disabled-by-default-devtools.timeline.frame: 91
   disabled-by-default-devtools.v8-source-rundown: 37
   disabled-by-default-devtools.v8-source-rundown-sources: 37
-  loading: 394
+  loading: 396
   loading,interactions: 4
-  loading,rail,devtools.timeline: 7
+  loading,rail,devtools.timeline: 10
   v8: 107
   v8,devtools.timeline: 7
-  v8,devtools.timeline,disabled-by-default-v8.compile: 52
-  v8.execute: 973
+  v8,devtools.timeline,disabled-by-default-v8.compile: 54
+  v8.execute: 984
 
 Event names:
   AcceptCHFrameObserver.copy: 1
-  ActivateLayerTree: 6
-  Activation: 26
-  Animation: 6
-  AnimationFrame: 32
-  AnimationFrame::Presentation: 8
-  AnimationFrame::Render: 16
-  AnimationFrame::Script::Compile: 4
+  ActivateLayerTree: 7
+  Activation: 32
+  Animation: 12
+  AnimationFrame: 36
+  AnimationFrame::Presentation: 9
+  AnimationFrame::Render: 18
+  AnimationFrame::Script::Compile: 2
   AnimationFrame::Script::Execute: 8
-  AnimationFrame::StyleAndLayout: 16
+  AnimationFrame::StyleAndLayout: 18
   BackForwardCacheBufferLimitTracker::DidRemoveFrameOrWorkerFromBackForwardCache: 1
   BackgroundProcessor::MaybeStartProcessingResponse: 6
   BackgroundProcessor::OnDataPipeReadable: 6
   BackgroundProcessor::OnFinishStreaming: 6
   BackgroundProcessor::RunScriptStreamingTask: 6
   BackgroundProcessor::TryStartStreamingTask: 6
-  BeginCommitCompositorFrame: 8
-  BeginFrame: 31
-  BeginImplFrameToSendBeginMainFrame: 80
-  BeginMainThreadFrame: 8
-  Commit: 42
+  BeginCommitCompositorFrame: 9
+  BeginFrame: 32
+  BeginImplFrameToSendBeginMainFrame: 84
+  BeginMainThreadFrame: 9
+  Commit: 51
   CommitLoad: 1
   commitNavigationEnd: 1
   CommitSentToFirstSubresourceLoadStart: 2
@@ -92,11 +91,11 @@ Event names:
   domContentLoadedEventStart: 1
   domInteractive: 1
   domLoading: 1
-  DOMStats: 3
+  DOMStats: 4
   Draw LazyPixelRef: 5
-  DrawFrame: 23
-  EndActivateToSubmitCompositorFrame: 66
-  EndCommitToActivation: 26
+  DrawFrame: 24
+  EndActivateToSubmitCompositorFrame: 72
+  EndCommitToActivation: 32
   EvaluateScript: 11
   EventDispatch: 24
   FetchLaterLoaderFactories::BindFactory: 1
@@ -104,7 +103,7 @@ Event names:
   firstContentfulPaint: 1
   firstImagePaint: 1
   firstMeaningfulPaint: 2
-  firstMeaningfulPaintCandidate: 1
+  firstMeaningfulPaintCandidate: 3
   firstPaint: 1
   FrameCommittedInBrowser: 1
   FrameLoader: 2
@@ -117,13 +116,14 @@ Event names:
   hydration-end: 1
   hydration-start: 1
   InstallConditionalFeatures: 4
-  InvalidateLayout: 8
+  InvalidateLayout: 10
   KeepAliveURLLoaderFactories::BindFactory: 1
-  largestContentfulPaint::Candidate: 1
-  LargestTextPaint::Candidate: 1
-  layerId: 7
-  Layerize: 8
-  Layout: 5
+  largestContentfulPaint::Candidate: 2
+  LargestTextPaint::Candidate: 2
+  layerId: 8
+  Layerize: 9
+  Layout: 6
+  LayoutShift: 1
   loadEventEnd: 1
   loadEventStart: 1
   LoadingPredictor::OnNavigationStarted: 1
@@ -144,32 +144,32 @@ Event names:
   NavStartToExperimentalLargestContentfulPaint::Invalidate::AllFrames::UKM: 3
   NavStartToLargestContentfulPaint::Candidate::AllFrames::UKM: 2
   NavStartToLargestContentfulPaint::Invalidate::AllFrames::UKM: 1
-  NeedsBeginFrameChanged: 13
+  NeedsBeginFrameChanged: 10
   PageLoadMetrics.NavigationToDOMContentLoadedEventFired: 1
   PageLoadMetrics.NavigationToFirstContentfulPaint: 2
   PageLoadMetrics.NavigationToMainFrameOnLoad: 1
-  Paint: 12
+  Paint: 13
   PaintImage: 10
   PaintTimingVisualizer::LayoutObjectPainted: 44
   PaintTimingVisualizer::Viewport: 1
   ParseAuthorStyleSheet: 2
   ParseHTML: 3
   ParseMetaViewport: 1
-  PipelineReporter: 80
+  PipelineReporter: 84
   PrefetchMatchResolver::FindPrefetch: 22
   PrefetchMatchResolver::UnblockForNoCandidates: 6
   PrefetchURLLoaderInterceptor::GetPrefetch: 6
   PrefetchURLLoaderInterceptor::MaybeCreateLoader: 6
   PrefetchURLLoaderInterceptor::OnGetPrefetchComplete: 2
   PreloadRenderBlockingStatusChange: 2
-  PrePaint: 8
+  PrePaint: 9
   process_name: 4
   process_uptime_seconds: 4
-  RasterTask: 38
-  ReceiveCompositorFrameToStartDraw: 60
-  RequestMainThreadFrame: 8
+  RasterTask: 45
+  ReceiveCompositorFrameToStartDraw: 66
+  RequestMainThreadFrame: 9
   ResourceFinish: 15
-  ResourceReceivedData: 22
+  ResourceReceivedData: 23
   ResourceReceiveResponse: 15
   ResourceRequest::TrustedParams.copy: 1
   ResourceRequestSender::OnReceivedResponse: 14
@@ -178,25 +178,25 @@ Event names:
   ResourceWillSendRequest: 1
   responseEnd: 1
   RunMicrotasks: 21
-  RunTask: 3123
-  ScheduleStyleRecalculation: 3
-  Screenshot: 24
+  RunTask: 3215
+  ScheduleStyleRecalculation: 4
+  Screenshot: 25
   ScriptCatchup: 74
   ScriptCompiled: 7
   SearchPrefetchURLLoaderInterceptor::MaybeCreateLoader: 1
-  SendBeginMainFrameToCommit: 30
-  SetLayerTreeId: 8
+  SendBeginMainFrameToCommit: 36
+  SetLayerTreeId: 9
   SharedDictionaryAccessObserver.copy: 1
-  StartDrawToSwapStart: 60
-  SubmitCompositorFrameToPresentationCompositorFrame: 60
-  SubmitToReceiveCompositorFrame: 60
-  SwapEndToPresentationCompositorFrame: 60
-  thread_name: 28
+  StartDrawToSwapStart: 66
+  SubmitCompositorFrameToPresentationCompositorFrame: 66
+  SubmitToReceiveCompositorFrame: 66
+  SwapEndToPresentationCompositorFrame: 66
+  thread_name: 24
   ThrottlingURLLoader::~ThrottlingURLLoader: 15
-  ThrottlingURLLoader::OnReceiveResponse: 59
+  ThrottlingURLLoader::OnReceiveResponse: 55
   ThrottlingURLLoader::Start: 45
   ThrottlingURLLoader::StartNow: 45
-  ThrottlingURLLoader::ThrottlingURLLoader: 31
+  ThrottlingURLLoader::ThrottlingURLLoader: 35
   TimerFire: 3
   TimerInstall: 5
   TimerRemove: 2
@@ -206,8 +206,8 @@ Event names:
   unloadEventEnd: 1
   unloadEventStart: 1
   UpdateCounters: 32
-  UpdateLayer: 63
-  UpdateLayoutTree: 3
+  UpdateLayer: 80
+  UpdateLayoutTree: 4
   URLLoaderNetworkServiceObserver.copy: 1
   V8.BytecodeBudgetInterrupt: 575
   V8.BytecodeBudgetInterruptWithStackCheck: 52
@@ -215,199 +215,202 @@ Event names:
   v8.compile: 7
   V8.DeoptimizeCode: 5
   V8.DeserializeContext: 4
-  V8.HandleInterrupts: 164
+  V8.HandleInterrupts: 169
   v8.newInstance: 33
   v8.parseOnBackground: 6
-  v8.parseOnBackgroundParsing: 11
-  v8.parseOnBackgroundWaiting: 5
+  v8.parseOnBackgroundParsing: 12
+  v8.parseOnBackgroundWaiting: 6
   v8.produceCache: 7
   v8.run: 7
-  V8.StackGuard: 161
+  V8.StackGuard: 167
   viewport: 1
 
 Phase types:
-  b: 351
+  b: 389
   B: 5
   D: 2
-  e: 351
-  f: 93
-  I: 342
-  M: 36
-  n: 12
-  N: 5
+  e: 389
+  f: 94
+  I: 348
+  M: 32
+  n: 15
+  N: 6
   O: 2
-  R: 21
-  s: 93
-  X: 4722
+  R: 25
+  s: 94
+  X: 4864
 
 Navigation timeline (ms from navigationStart):
          0.0ms  navigationStart
-         0.4ms  fetchStart
-         7.3ms  responseEnd
-         8.6ms  unloadEventStart
-         8.6ms  unloadEventEnd
-         8.9ms  commitNavigationEnd
-         9.2ms  domLoading
-        16.3ms  domInteractive
-        56.4ms  hydration-start
-        56.5ms  domContentLoadedEventStart
-        56.6ms  domContentLoadedEventEnd
-        56.7ms  domComplete
-        56.7ms  loadEventStart
-        56.7ms  loadEventEnd
-        89.8ms  hydration-end
-       109.0ms  firstContentfulPaint
-       109.0ms  firstPaint
-       109.0ms  largestContentfulPaint::Candidate
+         0.3ms  fetchStart
+         8.3ms  responseEnd
+         9.9ms  unloadEventStart
+         9.9ms  unloadEventEnd
+        10.3ms  commitNavigationEnd
+        10.7ms  domLoading
+        18.1ms  domInteractive
+        60.3ms  hydration-start
+        60.4ms  domContentLoadedEventStart
+        60.5ms  domContentLoadedEventEnd
+        60.6ms  domComplete
+        60.6ms  loadEventStart
+        60.6ms  loadEventEnd
+        92.3ms  hydration-end
+        98.1ms  firstContentfulPaint
+        98.1ms  firstPaint
+        98.1ms  largestContentfulPaint::Candidate
+       102.0ms  LayoutShift  score=0.0881  cumulative=0.0000
+       115.0ms  largestContentfulPaint::Candidate
 
 Long tasks (>50ms): 0
 
 Timeline heatmap (500 buckets):
         0ms                                      2
        15ms                                      4
-       30ms  ████                              110
-       35ms  ███████                           174  [navigationStart, fetchStart]
-       40ms  ████████                          197  [responseEnd, unloadEventStart, unloadEventEnd, START:http://localhost:3030/, commitNavigationEnd, domLoading]
-       46ms  ███████████                       272  [START:http://localhost:3030/assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css, START:http://localhost:3030/packs/css/client-72e38325.css, START:http://localhost:3030/packs/js/runtime-4f0bcb5d28206f902cba.js, START:http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js, START:http://localhost:3030/packs/js/148-7088267baa9e2e0c2764.js, START:http://localhost:3030/packs/js/client-13b5b25fe496cae87f54.js]
-       51ms  ██████████████████████████████    743  [END:http://localhost:3030/assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css, END:http://localhost:3030/packs/css/client-72e38325.css, END:http://localhost:3030/, domInteractive, END:http://localhost:3030/packs/js/runtime-4f0bcb5d28206f902cba.js, END:http://localhost:3030/packs/js/client-13b5b25fe496cae87f54.js]
-       56ms  █████                             112  [END:http://localhost:3030/packs/js/148-7088267baa9e2e0c2764.js]
-       61ms                                      2
-       66ms  █████                             118  [END:http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js]
-       71ms                                      2
-       76ms  ████                               87
-       81ms  ███                                78
-       86ms  ████                               88
-       91ms  ██████████                        260  [hydration-start, domContentLoadedEventStart, domContentLoadedEventEnd, domComplete, loadEventStart, loadEventEnd]
-       96ms  ███████                           165
-      101ms  ██                                 39
-      106ms  █████                             121
-      111ms  ███                                65
-      116ms  ████████                          187
-      121ms  ███████████                       273  [START:http://localhost:3030/packs/js/719-f34241d7c2d17031511d.js, START:http://localhost:3030/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js, START:http://localhost:3030/api/v1/cart, hydration-end, END:http://localhost:3030/packs/js/719-f34241d7c2d17031511d.js]
-      126ms  ███████                           184  [END:http://localhost:3030/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js]
-      132ms  ████                               99  [START:http://localhost:3030/api/v1/products]
-      137ms  ████████████                      294  [END:http://localhost:3030/api/v1/cart]
-      142ms  ██████████                        237  [END:http://localhost:3030/api/v1/products, firstContentfulPaint, firstPaint, largestContentfulPaint::Candidate]
-      147ms  ███                                82
-      152ms  ███████                           161  [START:https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop]
-      157ms  ██████                            158
-      162ms  █                                  31
-      172ms  ██                                 49
-      182ms  █                                  23
-      192ms                                      2
-      197ms                                      1
-      207ms                                      1
-      212ms  █                                  22
-      218ms  █████████                         227  [END:https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop, END:https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop]
-      223ms  ████                              104  [END:https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop]
-      228ms  ██                                 60  [END:https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop]
-      233ms  ███                                65
-      243ms                                      2
-      248ms                                      5
-      258ms                                      6
-      263ms  █                                  13
-      273ms  █                                  32
-      278ms                                      2
-      288ms                                      1
-      334ms                                      5
-      349ms                                     12
-      354ms  █                                  22
-      364ms  █                                  23
-      369ms                                     10
-      379ms  █                                  23
-      384ms                                     10
-      400ms  █                                  32
-      405ms                                      1
-      410ms                                      7
-      415ms  █                                  23
-      420ms                                     10
-      430ms  █                                  23
-      435ms                                     10
-      445ms  █                                  19
-      450ms  █                                  14
-      465ms  █                                  32
-      470ms                                      1
-      481ms  █                                  23
-      486ms                                     10
-      496ms  █                                  23
-      501ms                                     10
-      516ms  █                                  33
-      531ms  █                                  23
-      536ms                                     11
-      546ms  █                                  23
-      551ms                                     11
-      567ms  █                                  33
-      582ms  █                                  23
-      587ms                                     10
-      597ms  █                                  23
-      602ms                                     10
-      612ms  █                                  32
-      617ms                                     10
-      632ms  █                                  33
-      647ms  █                                  23
-      653ms                                     10
-      663ms  ██                                 44
-      668ms                                     10
-      683ms                                      5
-      698ms                                      7
-      713ms                                      1
-      911ms                                      1
-      986ms  █                                  17
-      991ms  █                                  20
-      997ms                                      2
-     1032ms                                      5
-     1042ms                                      3
-     1047ms                                      2
-     1052ms                                      2
-     1077ms                                      2
-     1088ms                                      8
-     1093ms                                      2
-     1098ms                                      1
-     1103ms                                      1
-     1113ms                                     12
-     1118ms                                      1
-     1138ms                                      2
-     1143ms                                      1
-     1153ms                                      2
-     1158ms                                      2
-     1163ms                                      2
-     1214ms                                      1
-     1219ms  ██                                 48
-     1224ms  ██                                 42
-     1320ms                                      4
-     1351ms                                      1
-     1366ms                                      1
-     1371ms                                      4
-     1376ms                                      7
-     1381ms                                      1
-     1396ms                                      1
+       30ms                                      3
+       36ms  █████████                         214  [navigationStart, fetchStart]
+       41ms  █                                  32
+       46ms  ████████████                      282  [responseEnd, unloadEventStart, unloadEventEnd, START:http://localhost:3030/, commitNavigationEnd, domLoading, START:http://localhost:3030/assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css, START:http://localhost:3030/packs/css/client-72e38325.css]
+       51ms  ██████████████                    333  [START:http://localhost:3030/packs/js/runtime-4f0bcb5d28206f902cba.js, START:http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js, START:http://localhost:3030/packs/js/148-7088267baa9e2e0c2764.js, START:http://localhost:3030/packs/js/client-13b5b25fe496cae87f54.js, END:http://localhost:3030/assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css, END:http://localhost:3030/packs/css/client-72e38325.css]
+       56ms  ██████████████████████████████    708  [END:http://localhost:3030/, domInteractive, END:http://localhost:3030/packs/js/runtime-4f0bcb5d28206f902cba.js, END:http://localhost:3030/packs/js/148-7088267baa9e2e0c2764.js, END:http://localhost:3030/packs/js/client-13b5b25fe496cae87f54.js]
+       61ms  █                                  23
+       66ms  ███████                           171  [END:http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js]
+       71ms  █                                  12
+       76ms                                      3
+       81ms  ████                               96
+       86ms  █                                  35
+       91ms  ███                                72
+       96ms  ██████████                        246  [hydration-start, domContentLoadedEventStart, domContentLoadedEventEnd, domComplete, loadEventStart, loadEventEnd]
+      101ms  ███████                           159
+      107ms  █████                             124
+      112ms  ███                                68
+      117ms  ███████                           170
+      122ms  ██████                            139  [START:http://localhost:3030/packs/js/719-f34241d7c2d17031511d.js, START:http://localhost:3030/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js]
+      127ms  ██████████████                    334  [START:http://localhost:3030/api/v1/cart, hydration-end, END:http://localhost:3030/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js, END:http://localhost:3030/packs/js/719-f34241d7c2d17031511d.js]
+      132ms  █████████                         204  [firstContentfulPaint, firstPaint, largestContentfulPaint::Candidate]
+      137ms  ██████                            145  [LayoutShift, START:http://localhost:3030/api/v1/products]
+      142ms  ███████████                       261  [END:http://localhost:3030/api/v1/cart]
+      147ms  ████████                          186  [END:http://localhost:3030/api/v1/products]
+      152ms  ████                              103  [largestContentfulPaint::Candidate]
+      157ms  ███████                           162  [START:https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop, START:https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop]
+      162ms  ████████                          177
+      167ms  ██                                 50
+      178ms                                     10
+      183ms  ████                               92
+      193ms                                      2
+      198ms                                      4
+      213ms  █                                  15
+      218ms  ██                                 58
+      223ms  █████████                         218  [END:https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop, END:https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop]
+      228ms  ███████                           175  [END:https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop, END:https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop]
+      233ms  ███                                61
+      238ms                                      1
+      244ms                                      2
+      249ms                                      5
+      259ms                                      2
+      264ms  █                                  17
+      274ms                                      2
+      279ms                                      9
+      284ms  ██                                 38
+      294ms                                      1
+      330ms                                      5
+      345ms                                      2
+      355ms  █                                  22
+      360ms                                     10
+      365ms  █                                  23
+      370ms                                     10
+      381ms  █                                  23
+      386ms                                     10
+      396ms  █                                  23
+      401ms                                     10
+      416ms  █                                  30
+      421ms                                     10
+      431ms  █                                  23
+      436ms                                     10
+      447ms  █                                  23
+      452ms                                     10
+      462ms                                     10
+      467ms  █                                  23
+      482ms  █                                  23
+      487ms                                     10
+      497ms  █                                  23
+      502ms                                     10
+      512ms  █                                  23
+      518ms                                     10
+      533ms  █                                  33
+      538ms                                      1
+      548ms  █                                  23
+      553ms                                     11
+      563ms  █                                  23
+      568ms                                     10
+      578ms                                     10
+      584ms  █                                  23
+      599ms  █                                  32
+      604ms                                      1
+      614ms  █                                  23
+      619ms                                     10
+      629ms  █                                  23
+      634ms                                     10
+      649ms  █                                  33
+      665ms  ██                                 44
+      670ms                                     10
+      680ms                                      5
+      695ms                                      7
+      715ms                                      1
+      781ms  ██                                 41
+      868ms                                      2
+      883ms                                      7
+      984ms                                      1
+      995ms                                      6
+     1005ms                                      2
+     1035ms                                      5
+     1045ms                                      1
+     1050ms                                      5
+     1055ms                                      1
+     1066ms                                      1
+     1071ms                                      1
+     1081ms                                      2
+     1101ms                                      3
+     1116ms                                      2
+     1132ms                                      2
+     1137ms                                      1
+     1147ms                                      2
+     1152ms                                      2
+     1167ms                                      4
+     1182ms                                      2
+     1223ms                                      2
+     1228ms  ███                                78
+     1233ms  █                                  12
+     1279ms                                      6
+     1284ms                                      4
+     1289ms                                      2
+     1329ms                                      4
+     1355ms                                      1
+     1365ms                                      1
+     1380ms                                     11
+     1400ms                                      1
      1416ms                                      1
-     1432ms                                      1
-     1447ms                                      1
-     1467ms                                      2
+     1431ms                                      1
+     1446ms                                      1
+     1466ms                                      1
+     1477ms                                      1
      1482ms                                      1
      1497ms                                      1
-     1518ms                                      1
-     1533ms                                      1
+     1517ms                                      1
+     1532ms                                      1
      1548ms                                      1
      1563ms                                      1
      1583ms                                      1
-     1599ms                                      1
-     1614ms                                     10
+     1598ms                                      1
+     1614ms                                      1
      1634ms                                      1
      1649ms                                      1
      1664ms                                      1
-     1907ms                                      1
-     1978ms                                      1
-     1983ms                                     11
-     1988ms                                      1
-     1993ms                                      5
-     2034ms                                      1
-     2089ms                                      2
-     2114ms  █                                  15
-     2216ms                                      1
-     2362ms                                      1
-     2372ms  █                                  14
-     2378ms  █                                  19
-     2474ms                                      6
-     2524ms  █                                  19
+     1781ms                                     10
+     2101ms                                      2
+     2222ms                                      2
+     2228ms                                      2
+     2283ms  █                                  12
+     2380ms                                      2
+     2385ms                                     11
+     2532ms  █                                  21

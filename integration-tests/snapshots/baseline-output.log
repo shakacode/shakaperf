@@ -1,8 +1,8 @@
 
 >>> Copying current directory as experiment repo
 
-[roman-kuksin/advanced-metrics-for-printivity e3a98e6] integration test snapshot
- 126 files changed, 95 insertions(+), 15365 deletions(-)
+[roman-kuksin/advanced-metrics-for-printivity d066ab2] integration test snapshot
+ 131 files changed, 13 insertions(+), 15933 deletions(-)
  rewrite integration-tests/snapshots/baseline-output.log (99%)
  delete mode 100644 integration-tests/snapshots/bench-results/artifact-1.screenshot.png
  delete mode 100644 integration-tests/snapshots/bench-results/compare.json
@@ -120,14 +120,24 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index_bundle.js
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index_bundle.js.LICENSE.txt
  delete mode 100644 integration-tests/snapshots/visreg-results/xunit.xml
- rewrite packages/shaka-bench/src/core/metric-groups.ts (60%)
+ create mode 100644 single-screenshot.png
+ create mode 100644 timeline-39k.png
+ create mode 100644 timeline-at-screenshots.png
+ create mode 100644 timeline-default-zoom.png
+ create mode 100644 timeline-full-page.png
+ create mode 100644 timeline-gap.png
+ create mode 100644 timeline-mid.png
+ create mode 100644 timeline-screenshots-area.png
+ create mode 100644 timeline-screenshots.png
+ create mode 100644 timeline-top.png
+ create mode 100644 timeline-zoomed-out.png
 
 >>> Copying experiment repo as control
 
 
 >>> Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage
 
-[roman-kuksin/advanced-metrics-for-printivity b8772d5] integration test snapshot
+[roman-kuksin/advanced-metrics-for-printivity 76fdde4] integration test snapshot
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 >>> Installing dependencies in temp clone
@@ -223,16 +233,16 @@ Running in parallel: bin/rails db:prepare && bin/rails db:seed in both container
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
 
@@ -293,18 +303,18 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 ./ab-tests/shop-now.bench.ts:3 Visits the homepage
         control:  0
-     experiment:  0    01m:09s remaining
-     experiment:  1    01m:02s remaining
-        control:  1    00m:55s remaining
-     experiment:  2    00m:48s remaining
-        control:  2    00m:42s remaining
-        control:  3    00m:36s remaining
-     experiment:  3    00m:30s remaining
+     experiment:  0    01m:12s remaining
+     experiment:  1    01m:04s remaining
+        control:  1    00m:56s remaining
+        control:  2    00m:49s remaining
+     experiment:  2    00m:43s remaining
+     experiment:  3    00m:36s remaining
+        control:  3    00m:30s remaining
      experiment:  4    00m:24s remaining
         control:  4    00m:18s remaining
-     experiment:  5    00m:12s remaining
-        control:  5    00m:06s remaining
-Total downloads size increased by 481.42 KB
+        control:  5    00m:12s remaining
+     experiment:  5    00m:06s remaining
+Total downloads size increased by 481.40 KB
 HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/network_activity.diff.html
 HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html
 
@@ -320,18 +330,18 @@ HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/vis
 
 
 LH & Vitals
-  FCP no difference [-9ms to 7ms]
-  speed-index no difference [-9ms to 7ms]
-  LCP no difference [-78ms to 253ms]
-  TBT estimated regression +162ms [+129ms to +271ms] OR +18.79% [+14.97% to +31.44%] p=0.01219
-  CLS no difference [-4/100 to 5/100]
-  TTFB no difference [-7ms to 1ms]
-  hydration no difference [-44ms to 33ms]
-  hydration-start no difference [-162ms to 19ms]
-  LH Score estimated regression -4/100 [-5/100 to -3/100] OR -7.02% [-8.77% to -5.26%] p=0.01219
+  FCP no difference [-16ms to 4ms]
+  speed-index no difference [-16ms to 4ms]
+  LCP no difference [-155ms to 55ms]
+  TBT estimated regression +178ms [+67ms to +280ms] OR +20.53% [+7.73% to +32.3%] p=0.01219
+  CLS no difference [-7/100 to 2/100]
+  TTFB no difference [-5ms to 1ms]
+  hydration no difference [-84ms to 45ms]
+  hydration-start no difference [-191ms to 87ms]
+  LH Score estimated regression -3/100 [-5/100 to -2/100] OR -5.26% [-8.77% to -3.51%] p=0.01219
 
 Diagnostics
-  downloads estimated regression +80KB [+80KB to +80KB] OR +48.82% [+48.71% to +48.88%] p=0.01219
+  downloads estimated regression +80KB [+80KB to +80KB] OR +48.87% [+48.71% to +48.88%] p=0.01219
   downloads-count estimated regression +4 [+4 to +4] OR +36.36% [+36.36% to +36.36%] p=0.01219
   early-downloads no difference [0KB to 0KB]
   early-downloads-count no difference [0 to 0]
@@ -354,21 +364,21 @@ HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-t
 ./ab-tests/shop-now.bench.ts:9 Click Shop Now on the homepage
         control:  0
      experiment:  0    01m:13s remaining
-        control:  1    01m:05s remaining
-     experiment:  1    00m:58s remaining
-     experiment:  2    00m:52s remaining
-        control:  2    00m:45s remaining
+        control:  1    01m:06s remaining
+     experiment:  1    00m:59s remaining
+        control:  2    00m:52s remaining
+     experiment:  2    00m:45s remaining
         control:  3    00m:39s remaining
      experiment:  3    00m:32s remaining
      experiment:  4    00m:26s remaining
         control:  4    00m:19s remaining
         control:  5    00m:13s remaining
      experiment:  5    00m:06s remaining
-Total downloads size decreased by 0.15 KB
+Total downloads size decreased by 0.31 KB
 HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html
 HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html
 
-    SUCCESS     5 measurements took 01m:17s
+    SUCCESS     5 measurements took 01m:18s
 
     WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
 
@@ -377,16 +387,16 @@ HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/cli
 
 
 LH & Vitals
-  FCP no difference [-2249ms to 2ms]
-  speed-index no difference [-1907ms to 362ms]
-  LCP no difference [-137ms to 199ms]
-  TBT no difference [-129ms to 219ms]
-  CLS estimated regression +10/100 [+7/100 to +10/100] OR +75.05% [+53.87% to +75.05%] p=0.01219
+  FCP no difference [-4ms to 0ms]
+  speed-index no difference [-4ms to 376ms]
+  LCP estimated improvement -98ms [-268ms to -26ms] OR -1.69% [-4.6% to -0.44%] p=0.01219
+  TBT no difference [-242ms to 68ms]
+  CLS estimated regression +7/100 [+7/100 to +10/100] OR +44.46% [+44.46% to +61.93%] p=0.01219
   TTFB no difference [-7ms to 1ms]
-  hydration no difference [-57ms to 12ms]
-  hydration-start no difference [-95ms to 27ms]
-  LH Score no difference [-10/100 to 0/100]
-  interaction-to-next-paint estimated improvement -16ms [-16ms to -8ms] OR -50% [-50% to -25%] p=0.01219
+  hydration no difference [-17ms to 19ms]
+  hydration-start no difference [-113ms to 3ms]
+  LH Score estimated regression -4/100 [-7/100 to -3/100] OR -8.7% [-15.22% to -6.52%] p=0.01219
+  interaction-to-next-paint estimated improvement -16ms [-16ms to 0ms] OR -50% [-50% to 0%] p=0.0472
 
 Diagnostics
   downloads no difference [0KB to 0KB]
@@ -427,6 +437,7 @@ HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-sh
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/report.json — Statistical analysis (JSON)
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/report.txt — Summary
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
 
 ./ab-tests/shop-now.bench.ts:9 Click Shop Now on the homepage
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
@@ -443,13 +454,14 @@ HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-sh
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.json — Statistical analysis (JSON)
   /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.txt — Summary
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
 
 
 
 >>> Resetting git changes in temp clone
 
 Updated 0 paths from the index
-Updated 537 paths from the index
+Updated 550 paths from the index
   ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-bench compare on twin servers (<TIMING>m)
 
 >>> run: yarn shaka-twin-servers start-containers
@@ -596,8 +608,8 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	using yarn@4.12.0 to manage dependencies and scripts in package.json
-[EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
 [CONTROL]	D, [<TIMESTAMP> #<PID>] DEBUG -- : Everything's up-to-date. Nothing to do
+[EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Precompile hook completed successfully
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : 🔄 Running React on Rails precompile hook...
@@ -1026,7 +1038,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 >>> run: yarn shaka-visreg liveCompare --config visreg.json
 
-(node:1006650) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/engine_scripts/playwright/loadCookies.ts is not specified and it doesn't parse as CommonJS.
+(node:1152925) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/engine_scripts/playwright/loadCookies.ts is not specified and it doesn't parse as CommonJS.
 Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 To eliminate this warning, add "type": "module" to /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/package.json.
 (Use `node --trace-warnings ...` to show where the warning was created)
@@ -1042,73 +1054,73 @@ LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localh
 LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
+Cookie state restored with: []
+Cookie state restored with: []
+LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
 LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
-LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
-LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
 Cookie state restored with: []
 Cookie state restored with: []
-Cookie state restored with: []
-Cookie state restored with: []
+SCENARIO > Homepage
+SCENARIO > Products List
+SCENARIO > Homepage
+SCENARIO > Homepage
 SCENARIO > Products List
 SCENARIO > Homepage
 SCENARIO > Homepage
 SCENARIO > Homepage
-SCENARIO > Homepage
 SCENARIO > Products List
 SCENARIO > Products List
-SCENARIO > Homepage
-SCENARIO > Homepage
-SCENARIO > Products List
-Fonts for http://localhost:3030/products are ready
-All 0 images loaded for http://localhost:3030/products
 Fonts for http://localhost:3030/ are ready
-All 0 images loaded for http://localhost:3030/
-Fonts for http://localhost:3030/ are ready
+Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3020/ are ready
 Fonts for http://localhost:3020/ are ready
-Fonts for http://localhost:3030/products are ready
 Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3020/ are ready
 All 0 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
-Fonts for http://localhost:3020/products are ready
+Fonts for http://localhost:3030/ are ready
+Fonts for http://localhost:3030/products are ready
+Fonts for http://localhost:3030/products are ready
+All 4 images loaded for http://localhost:3030/
 All 4 images loaded for http://localhost:3030/
 All 4 images loaded for http://localhost:3020/
-All 4 images loaded for http://localhost:3020/
 All 4 images loaded for http://localhost:3030/
+All 4 images loaded for http://localhost:3020/
+All 10 images loaded for http://localhost:3020/products
+All 10 images loaded for http://localhost:3020/products
 All 10 images loaded for http://localhost:3030/products
-All 10 images loaded for http://localhost:3020/products
-All 10 images loaded for http://localhost:3020/products
-Network idle
-Network idle
+All 10 images loaded for http://localhost:3030/products
 Network idle
 Network idle
 Page http://localhost:3030/ has settled
 Network idle
 Network idle
 Network idle
+Network idle
+Page http://localhost:3020/ has settled
+Page http://localhost:3020/ has settled
+Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-Page http://localhost:3020/ has settled
-Page http://localhost:3020/ has settled
-Page http://localhost:3030/products has settled
-Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
+Network idle
+Page http://localhost:3020/products has settled
 Network idle
 Page http://localhost:3020/products has settled
 Network idle
 Page http://localhost:3030/products has settled
 Network idle
-Page http://localhost:3020/products has settled
+Page http://localhost:3030/products has settled
+PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
+PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
 PASS: "Products List" [document] (0 diff pixels)
 PASS: "Products List" [document] (0 diff pixels)
 MISMATCH: "Homepage" [[data-cy='hero-section']] (101772 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [[data-cy='hero-section']] - chilling for 1000ms
-PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
-PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
 x Close Browser Contexts
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
@@ -1121,28 +1133,28 @@ PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
 PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
 SCENARIO > Products List
 SCENARIO > Products - Electronics Filter
-SCENARIO > Products List
 SCENARIO > Products - Electronics Filter
-Fonts for http://localhost:3030/products are ready
+SCENARIO > Products List
 Fonts for http://localhost:3020/products are ready
+Fonts for http://localhost:3030/products are ready
 MISMATCH: "Homepage" [document] (2563 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [document] - chilling for 1000ms
 PASS: "Homepage" [document] (0 diff pixels)
 All 10 images loaded for http://localhost:3020/products
-All 10 images loaded for http://localhost:3030/products
 x Close Browser Contexts
+All 10 images loaded for http://localhost:3030/products
 retryCompare | Re-navigating both pages for retry 1...
 Cookie state restored with: []
 Cookie state restored with: []
 LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
 SCENARIO > Homepage
-Cookie state restored with: []
-Cookie state restored with: []
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
 SCENARIO > Homepage
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
 SCENARIO > Products - Electronics Filter
 SCENARIO > Products - Electronics Filter
 Network idle
@@ -1151,115 +1163,118 @@ Network idle
 Page http://localhost:3030/products has settled
 Network idle
 Network idle
-Page http://localhost:3030/ has settled
 PASS: "Products List" [document] (0 diff pixels)
-retryCompare | Re-navigating both pages for retry 1...
 Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
 x Close Browser Contexts
+retryCompare | Re-navigating both pages for retry 1...
 Cookie state restored with: []
 Cookie state restored with: []
 Network idle
-LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+Network idle
+Fonts for http://localhost:3030/products are ready
 Fonts for http://localhost:3020/products are ready
-All 0 images loaded for http://localhost:3020/products
+All 3 images loaded for http://localhost:3020/products
+All 3 images loaded for http://localhost:3030/products
+LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
 SCENARIO > Homepage
 SCENARIO > Homepage
 Cookie state restored with: []
 Cookie state restored with: []
 Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3030/
 All 0 images loaded for http://localhost:3020/
-Network idle
-Fonts for http://localhost:3030/products are ready
-All 3 images loaded for http://localhost:3030/products
 retryCompare | Retry 2/5 for "Homepage" [[data-cy='hero-section']] - chilling for 2000ms
+SCENARIO > Products - Electronics Filter
+SCENARIO > Products - Electronics Filter
+Network idle
 Network idle
 Fonts for http://localhost:3030/products are ready
-All 0 images loaded for http://localhost:3030/products
-SCENARIO > Products - Electronics Filter
-SCENARIO > Products - Electronics Filter
-Network idle
-Network idle
-Network idle
 Fonts for http://localhost:3020/products are ready
 All 3 images loaded for http://localhost:3020/products
-Page http://localhost:3030/ has settled
+All 3 images loaded for http://localhost:3030/products
+Network idle
+Network idle
 Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
 Page http://localhost:3020/products has settled
 Page http://localhost:3030/products has settled
 retryCompare | Retry 2/5 for "Homepage" [document] - chilling for 2000ms
 PASS: "Products - Electronics Filter" [document] (0 diff pixels)
-Page http://localhost:3030/products has settled
-Page http://localhost:3020/products has settled
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+Page http://localhost:3020/products has settled
+Page http://localhost:3030/products has settled
 Cookie state restored with: []
 Cookie state restored with: []
-PASS: "Products - Electronics Filter" [document] (0 diff pixels)
-x Close Browser Contexts
+Network idle
 Network idle
 Fonts for http://localhost:3020/products are ready
 All 0 images loaded for http://localhost:3020/products
-LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
 SCENARIO > Product Detail
 SCENARIO > Product Detail
-Cookie state restored with: []
-Cookie state restored with: []
-Fonts for http://localhost:3020/products/1 are ready
-Fonts for http://localhost:3030/products/1 are ready
-All 1 images loaded for http://localhost:3020/products/1
-Network idle
 Fonts for http://localhost:3030/products are ready
 All 0 images loaded for http://localhost:3030/products
-All 1 images loaded for http://localhost:3030/products/1
-SCENARIO > Product Detail
-SCENARIO > Product Detail
 Fonts for http://localhost:3020/products/1 are ready
 Fonts for http://localhost:3030/products/1 are ready
-All 1 images loaded for http://localhost:3020/products/1
-All 1 images loaded for http://localhost:3030/products/1
-retryCompare | Re-navigating both pages for retry 2...
-Network idle
-Network idle
-Cookie state restored with: []
-Cookie state restored with: []
-SCENARIO > Homepage
-SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3020/
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Page http://localhost:3020/products/1 has settled
-Page http://localhost:3030/products/1 has settled
-Network idle
-Network idle
-Page http://localhost:3020/products has settled
-Page http://localhost:3020/products/1 has settled
-PASS: "Product Detail" [document] (0 diff pixels)
-Page http://localhost:3030/products/1 has settled
-x Close Browser Contexts
-LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-Page http://localhost:3030/products has settled
-Network idle
-Network idle
-Cookie state restored with: []
-Cookie state restored with: []
-PASS: "Product Detail" [document] (0 diff pixels)
-Page http://localhost:3020/ has settled
-Page http://localhost:3030/ has settled
-x Close Browser Contexts
-retryCompare | Re-navigating both pages for retry 2...
-SCENARIO > Product Detail
-SCENARIO > Product Detail
-Cookie state restored with: []
-Cookie state restored with: []
-Fonts for http://localhost:3030/products/1 are ready
-All 1 images loaded for http://localhost:3030/products/1
-Fonts for http://localhost:3020/products/1 are ready
-All 1 images loaded for http://localhost:3020/products/1
 PASS: "Products - Electronics Filter" [document] (0 diff pixels)
 x Close Browser Contexts
+LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+All 1 images loaded for http://localhost:3030/products/1
+All 1 images loaded for http://localhost:3020/products/1
+Cookie state restored with: []
+Cookie state restored with: []
+SCENARIO > Product Detail
+SCENARIO > Product Detail
+Fonts for http://localhost:3020/products/1 are ready
+Fonts for http://localhost:3030/products/1 are ready
+All 1 images loaded for http://localhost:3020/products/1
+All 1 images loaded for http://localhost:3030/products/1
+retryCompare | Re-navigating both pages for retry 2...
+Network idle
+Network idle
+Page http://localhost:3020/products/1 has settled
+Cookie state restored with: []
+Cookie state restored with: []
+Page http://localhost:3030/products/1 has settled
+SCENARIO > Homepage
+SCENARIO > Homepage
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
+Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3020/
+Page http://localhost:3020/products has settled
+Page http://localhost:3030/products has settled
+PASS: "Product Detail" [document] (0 diff pixels)
+Network idle
+x Close Browser Contexts
+Network idle
+Page http://localhost:3020/products/1 has settled
+Page http://localhost:3030/products/1 has settled
+LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+Network idle
+Network idle
+PASS: "Products - Electronics Filter" [document] (0 diff pixels)
+x Close Browser Contexts
+LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
+SCENARIO > Product Detail
+SCENARIO > Product Detail
+Cookie state restored with: []
+Cookie state restored with: []
+Fonts for http://localhost:3030/products/1 are ready
+Fonts for http://localhost:3020/products/1 are ready
+PASS: "Product Detail" [document] (0 diff pixels)
+retryCompare | Re-navigating both pages for retry 2...
+Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
+All 1 images loaded for http://localhost:3020/products/1
+All 1 images loaded for http://localhost:3030/products/1
+x Close Browser Contexts
+Cookie state restored with: []
+Cookie state restored with: []
 LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
 SCENARIO > Homepage
 SCENARIO > Homepage
@@ -1269,41 +1284,38 @@ Fonts for http://localhost:3020/ are ready
 Fonts for http://localhost:3030/ are ready
 All 0 images loaded for http://localhost:3020/
 All 4 images loaded for http://localhost:3030/
-LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
+SCENARIO > Cart
 SCENARIO > Cart
 Network idle
 Network idle
 retryCompare | Retry 3/5 for "Homepage" [[data-cy='hero-section']] - chilling for 3000ms
-SCENARIO > Cart
-Network idle
 Fonts for http://localhost:3020/cart are ready
 All 0 images loaded for http://localhost:3020/cart
+Fonts for http://localhost:3030/cart are ready
+All 0 images loaded for http://localhost:3030/cart
 Page http://localhost:3030/products/1 has settled
 Page http://localhost:3020/products/1 has settled
+SCENARIO > Cart
+SCENARIO > Cart
 Network idle
-Fonts for http://localhost:3030/cart are ready
-All 0 images loaded for http://localhost:3030/cart
-SCENARIO > Cart
-SCENARIO > Cart
+Network idle
 Fonts for http://localhost:3020/cart are ready
 Fonts for http://localhost:3030/cart are ready
 All 0 images loaded for http://localhost:3020/cart
 All 0 images loaded for http://localhost:3030/cart
+Network idle
+Network idle
+PASS: "Product Detail" [document] (0 diff pixels)
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-PASS: "Product Detail" [document] (0 diff pixels)
-Network idle
-Network idle
 x Close Browser Contexts
+Network idle
+Network idle
 LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
-Network idle
-Network idle
 Page http://localhost:3020/cart has settled
-Cookie state restored with: []
-Cookie state restored with: []
 Page http://localhost:3030/cart has settled
+Cookie state restored with: []
+Cookie state restored with: []
 retryCompare | Retry 3/5 for "Homepage" [document] - chilling for 3000ms
 Page http://localhost:3020/cart has settled
 Page http://localhost:3030/cart has settled
@@ -1311,10 +1323,10 @@ PASS: "Cart" [document] (0 diff pixels)
 x Close Browser Contexts
 SCENARIO > Cart
 SCENARIO > Cart
-Fonts for http://localhost:3020/cart are ready
-All 0 images loaded for http://localhost:3020/cart
 Fonts for http://localhost:3030/cart are ready
 All 0 images loaded for http://localhost:3030/cart
+Fonts for http://localhost:3020/cart are ready
+All 0 images loaded for http://localhost:3020/cart
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
 Cookie state restored with: [
   {
@@ -1343,6 +1355,8 @@ Cookie state restored with: [
 PASS: "Cart" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
+SCENARIO > Admin Dashboard - Cookie Login
+SCENARIO > Admin Dashboard - Cookie Login
 Cookie state restored with: [
   {
     "name": "demo_ecommerce_admin_auth",
@@ -1367,28 +1381,26 @@ Cookie state restored with: [
     "sameSite": "Lax"
   }
 ]
-SCENARIO > Admin Dashboard - Cookie Login
-SCENARIO > Admin Dashboard - Cookie Login
-SCENARIO > Admin Dashboard - Cookie Login
-SCENARIO > Admin Dashboard - Cookie Login
 Network idle
 Network idle
+SCENARIO > Admin Dashboard - Cookie Login
+SCENARIO > Admin Dashboard - Cookie Login
 Network idle
 Network idle
 Fonts for http://localhost:3020/admin are ready
 All 0 images loaded for http://localhost:3020/admin
 Fonts for http://localhost:3030/admin are ready
 All 0 images loaded for http://localhost:3030/admin
-Page http://localhost:3020/cart has settled
 Page http://localhost:3030/cart has settled
+Page http://localhost:3020/cart has settled
+PASS: "Cart" [document] (0 diff pixels)
+x Close Browser Contexts
 Network idle
 Network idle
 Fonts for http://localhost:3020/admin are ready
 All 0 images loaded for http://localhost:3020/admin
 Fonts for http://localhost:3030/admin are ready
 All 0 images loaded for http://localhost:3030/admin
-PASS: "Cart" [document] (0 diff pixels)
-x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
 Cookie state restored with: [
   {
@@ -1419,21 +1431,23 @@ SCENARIO > Admin Dashboard - Cookie Login
 Page http://localhost:3020/admin has settled
 Page http://localhost:3030/admin has settled
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
-Page http://localhost:3020/admin has settled
-Page http://localhost:3030/admin has settled
 x Close Browser Contexts
 Network idle
 Network idle
 Fonts for http://localhost:3020/admin are ready
-All 0 images loaded for http://localhost:3020/admin
 Fonts for http://localhost:3030/admin are ready
+All 0 images loaded for http://localhost:3020/admin
 All 0 images loaded for http://localhost:3030/admin
+LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
+Page http://localhost:3020/admin has settled
+Page http://localhost:3030/admin has settled
+Cookie state restored with: []
+Cookie state restored with: []
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
-LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
+SCENARIO > Admin Orders - Form Login Interaction
+SCENARIO > Admin Orders - Form Login Interaction
 Cookie state restored with: []
 Cookie state restored with: []
 retryCompare | Re-navigating both pages for retry 3...
@@ -1443,12 +1457,10 @@ SCENARIO > Admin Orders - Form Login Interaction
 SCENARIO > Admin Orders - Form Login Interaction
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
-SCENARIO > Admin Orders - Form Login Interaction
-SCENARIO > Admin Orders - Form Login Interaction
+Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3020/
 Page http://localhost:3020/admin has settled
 Page http://localhost:3030/admin has settled
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
@@ -1460,30 +1472,31 @@ Network idle
 Network idle
 SCENARIO > Admin Orders - Form Login Interaction
 SCENARIO > Admin Orders - Form Login Interaction
-Page http://localhost:3020/ has settled
+Fonts for http://localhost:3030/admin/orders are ready
+All 0 images loaded for http://localhost:3030/admin/orders
+Fonts for http://localhost:3030/admin/orders are ready
+All 0 images loaded for http://localhost:3030/admin/orders
+Fonts for http://localhost:3030/admin/orders are ready
+All 0 images loaded for http://localhost:3030/admin/orders
+Fonts for http://localhost:3030/admin/orders are ready
+All 0 images loaded for http://localhost:3030/admin/orders
 Page http://localhost:3030/ has settled
-Fonts for http://localhost:3030/admin/orders are ready
-All 0 images loaded for http://localhost:3030/admin/orders
-Fonts for http://localhost:3030/admin/orders are ready
-All 0 images loaded for http://localhost:3030/admin/orders
-Fonts for http://localhost:3030/admin/orders are ready
-All 0 images loaded for http://localhost:3030/admin/orders
+Page http://localhost:3020/ has settled
 retryCompare | Re-navigating both pages for retry 3...
 Cookie state restored with: []
 Cookie state restored with: []
-Fonts for http://localhost:3030/admin/orders are ready
-All 0 images loaded for http://localhost:3030/admin/orders
+Network idle
 Network idle
 Network idle
 SCENARIO > Homepage
 SCENARIO > Homepage
 Network idle
-Network idle
+Page http://localhost:3030/admin/orders has settled
 Fonts for http://localhost:3020/ are ready
+retryCompare | Retry 4/5 for "Homepage" [[data-cy='hero-section']] - chilling for 4000ms
 All 0 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
-retryCompare | Retry 4/5 for "Homepage" [[data-cy='hero-section']] - chilling for 4000ms
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
@@ -1492,133 +1505,132 @@ All 0 images loaded for http://localhost:3030/admin/orders
 Fonts for http://localhost:3030/admin/orders are ready
 All 0 images loaded for http://localhost:3030/admin/orders
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-Page http://localhost:3030/admin/orders has settled
-x Close Browser Contexts
-Network idle
-Network idle
-LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
 x Close Browser Contexts
+x Close Browser Contexts
+Network idle
+Network idle
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+SCENARIO > Carousel Demo - Pause With Override CSS
+SCENARIO > Carousel Demo - Pause With Override CSS
 SCENARIO > Carousel Demo - Pause With Override CSS
 SCENARIO > Carousel Demo - Pause With Override CSS
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-Cookie state restored with: []
-Cookie state restored with: []
 Network idle
 Network idle
-SCENARIO > Carousel Demo - Pause With Override CSS
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+Fonts for http://localhost:3020/carousel-demo are ready
+All 6 images loaded for http://localhost:3020/carousel-demo
+Fonts for http://localhost:3020/carousel-demo are ready
+All 6 images loaded for http://localhost:3020/carousel-demo
 Fonts for http://localhost:3030/carousel-demo are ready
 All 6 images loaded for http://localhost:3030/carousel-demo
-Fonts for http://localhost:3020/carousel-demo are ready
-All 6 images loaded for http://localhost:3020/carousel-demo
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-Fonts for http://localhost:3020/carousel-demo are ready
-SCENARIO > Carousel Demo - Pause With Override CSS
-All 6 images loaded for http://localhost:3020/carousel-demo
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
 retryCompare | Retry 4/5 for "Homepage" [document] - chilling for 4000ms
 Network idle
 Network idle
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
+Network idle
+Network idle
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-Network idle
-Network idle
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+Page http://localhost:3020/carousel-demo has settled
+Page http://localhost:3020/carousel-demo has settled
 Page http://localhost:3030/carousel-demo has settled
-Page http://localhost:3020/carousel-demo has settled
-Page http://localhost:3020/carousel-demo has settled
-Cookie state restored with: []
-Cookie state restored with: []
+Page http://localhost:3030/carousel-demo has settled
+SCENARIO > Carousel Demo - Pause With Override CSS
+SCENARIO > Carousel Demo - Pause With Override CSS
 PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-SCENARIO > Carousel Demo - Pause With Override CSS
-SCENARIO > Carousel Demo - Pause With Override CSS
+PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
 x Close Browser Contexts
-LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+x Close Browser Contexts
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 Fonts for http://localhost:3030/carousel-demo are ready
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 Fonts for http://localhost:3020/carousel-demo are ready
-SCENARIO > Carousel Demo - Stub Slider Images
-SCENARIO > Carousel Demo - Stub Slider Images
+LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
 All 6 images loaded for http://localhost:3030/carousel-demo
-All 6 images loaded for http://localhost:3020/carousel-demo
-Page http://localhost:3030/carousel-demo has settled
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-x Close Browser Contexts
+Cookie state restored with: []
+Cookie state restored with: []
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
+All 6 images loaded for http://localhost:3020/carousel-demo
 SCENARIO > Carousel Demo - Stub Slider Images
 SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
 Network idle
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
 Network idle
 Page http://localhost:3030/carousel-demo has settled
 Page http://localhost:3020/carousel-demo has settled
 Network idle
 Network idle
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-Page http://localhost:3030/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
+Network idle
 PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+Network idle
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
 Cookie state restored with: []
 Cookie state restored with: []
+Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
+SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
 PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
 x Close Browser Contexts
-SCENARIO > Carousel Demo - Stub Slider Images
-SCENARIO > Carousel Demo - Stub Slider Images
-Network idle
-Network idle
+PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
+x Close Browser Contexts
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
 Fonts for http://localhost:3030/carousel-demo are ready
 All 6 images loaded for http://localhost:3030/carousel-demo
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
 Fonts for http://localhost:3030/carousel-demo are ready
 All 6 images loaded for http://localhost:3030/carousel-demo
-Page http://localhost:3030/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
-PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
-x Close Browser Contexts
 retryCompare | Re-navigating both pages for retry 4...
 Cookie state restored with: []
 Cookie state restored with: []
-Network idle
-Network idle
 SCENARIO > Homepage
 SCENARIO > Homepage
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
+Network idle
+Network idle
 Page http://localhost:3030/carousel-demo has settled
 Page http://localhost:3030/carousel-demo has settled
+Network idle
+Network idle
 PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
-Network idle
-Network idle
 x Close Browser Contexts
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
@@ -1642,14 +1654,14 @@ Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
 Network idle
 Network idle
-Page http://localhost:3030/ has settled
 Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
 retryCompare | All 5 retries exhausted for "Homepage" [[data-cy='hero-section']]. Least diff pixels: 101772
 FAIL after retries: "Homepage" [[data-cy='hero-section']]
 PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
@@ -1662,8 +1674,8 @@ MISMATCH: "Homepage" [document] (319853 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [document] - chilling for 1000ms
 Network idle
 Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
+All 0 images loaded for http://localhost:3020/
 All 4 images loaded for http://localhost:3030/
 Network idle
 Page http://localhost:3020/ has settled
@@ -1676,14 +1688,14 @@ Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
+Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3020/
 Network idle
 Network idle
-Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
 retryCompare | Retry 2/5 for "Homepage" [document] - chilling for 2000ms
 retryCompare | Re-navigating both pages for retry 2...
 Cookie state restored with: []
@@ -1718,14 +1730,14 @@ Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
+Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3020/
 Network idle
 Network idle
-Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
 retryCompare | Retry 5/5 for "Homepage" [document] - chilling for 5000ms
 retryCompare | Re-navigating both pages for retry 5...
 Cookie state restored with: []
@@ -1745,14 +1757,12 @@ FAIL after retries: "Homepage" [document]
 x Close Browser Contexts
 Disposing Browser
      COMMAND | Executing core for "report"
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
    See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 0.22%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
-     compare | OK: Homepage demo-ecommerce_Homepage_2_document_1_tablet.png
      compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 4.99%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
      compare | OK: Products List demo-ecommerce_Products_List_0_document_0_phone.png
@@ -1761,12 +1771,14 @@ Disposing Browser
      compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png
      compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png
      compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png
+     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_2_desktop.png
      compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_0_phone.png
      compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_1_tablet.png
-     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_2_desktop.png
+     compare | OK: Homepage demo-ecommerce_Homepage_2_document_1_tablet.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 0.22%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_0_phone.png
      compare | OK: Cart demo-ecommerce_Cart_0_document_0_phone.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
      compare | OK: Cart demo-ecommerce_Cart_0_document_1_tablet.png
+   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
      compare | OK: Cart demo-ecommerce_Cart_0_document_2_desktop.png
      compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
      compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
@@ -1776,11 +1788,11 @@ Disposing Browser
      compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
      compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 22.08%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_2_desktop.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
+     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
      compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
-     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
-     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
      compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
+     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
       report | Test completed...
       report | 30 Passed
       report | 3 Failed
@@ -1791,9 +1803,9 @@ Disposing Browser
       report | Copied jsonp report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/config.js
       report | Copied json report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/report.json
       report | *** Mismatch errors found ***
-     COMMAND | Command "report" ended with an error after [1.203s]
+     COMMAND | Command "report" ended with an error after [1.081s]
      COMMAND | Error: Mismatch errors found.
-     COMMAND | Command "liveCompare" ended with an error after [57.965s]
+     COMMAND | Command "liveCompare" ended with an error after [56.207s]
      COMMAND | Error: Mismatch errors found.
 
 

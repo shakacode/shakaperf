@@ -42,108 +42,108 @@
       "heading": "LH & Vitals",
       "phaseName": "FCP",
       "isSignificant": false,
-      "pValue": 0.6761,
+      "pValue": 0.2963,
       "estimatorDelta": "-1ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-2249ms",
-        "2ms"
+        "-4ms",
+        "0ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 1809,
-        "25": 1810,
-        "50": 1810,
-        "75": 1810,
-        "90": 3159,
-        "min": 1809,
-        "max": 4058
-      },
-      "experimentSevenFigureSummary": {
         "10": 1809,
         "25": 1809,
         "50": 1809,
         "75": 1811,
         "90": 1812,
         "min": 1808,
-        "max": 1812
+        "max": 1813
+      },
+      "experimentSevenFigureSummary": {
+        "10": 1808,
+        "25": 1808,
+        "50": 1809,
+        "75": 1809,
+        "90": 1810,
+        "min": 1807,
+        "max": 1811
       },
       "asPercent": {
-        "percentMin": -124.3,
-        "percentMedian": -0.03,
-        "percentMax": 0.11
+        "percentMin": -0.23,
+        "percentMedian": -0.06,
+        "percentMax": 0.02
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "speed-index",
       "isSignificant": false,
-      "pValue": 0.1437,
-      "estimatorDelta": "3ms",
+      "pValue": 0.6761,
+      "estimatorDelta": "2ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-1907ms",
-        "362ms"
+        "-4ms",
+        "376ms"
       ],
       "controlSevenFigureSummary": {
         "10": 1809,
-        "25": 1810,
-        "50": 1810,
-        "75": 1810,
-        "90": 3159,
-        "min": 1809,
-        "max": 4058
+        "25": 1809,
+        "50": 1809,
+        "75": 1811,
+        "90": 1812,
+        "min": 1808,
+        "max": 1813
       },
       "experimentSevenFigureSummary": {
-        "10": 1811,
-        "25": 1812,
-        "50": 2152,
-        "75": 2171,
-        "90": 2196,
-        "min": 1811,
-        "max": 2212
+        "10": 1808,
+        "25": 1809,
+        "50": 1811,
+        "75": 2156,
+        "90": 2176,
+        "min": 1808,
+        "max": 2189
       },
       "asPercent": {
-        "percentMin": -105.36,
-        "percentMedian": 0.17,
-        "percentMax": 20.02
+        "percentMin": -0.21,
+        "percentMedian": 0.08,
+        "percentMax": 20.79
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "LCP",
-      "isSignificant": false,
-      "pValue": 1,
-      "estimatorDelta": "31ms",
+      "isSignificant": true,
+      "pValue": 0.01219,
+      "estimatorDelta": "-98ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-137ms",
-        "199ms"
+        "-268ms",
+        "-26ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 5574,
-        "25": 5595,
-        "50": 5693,
-        "75": 5848,
-        "90": 5875,
-        "min": 5560,
-        "max": 5892
+        "10": 5816,
+        "25": 5823,
+        "50": 5833,
+        "75": 5834,
+        "90": 5873,
+        "min": 5811,
+        "max": 5898
       },
       "experimentSevenFigureSummary": {
-        "10": 5657,
-        "25": 5755,
-        "50": 5759,
-        "75": 5803,
-        "90": 5804,
-        "min": 5591,
-        "max": 5805
+        "10": 5580,
+        "25": 5602,
+        "50": 5797,
+        "75": 5797,
+        "90": 5799,
+        "min": 5566,
+        "max": 5800
       },
       "asPercent": {
-        "percentMin": -2.4,
-        "percentMedian": 0.54,
-        "percentMax": 3.49
+        "percentMin": -4.6,
+        "percentMedian": -1.69,
+        "percentMax": -0.44
       }
     },
     {
@@ -151,35 +151,35 @@
       "phaseName": "TBT",
       "isSignificant": false,
       "pValue": 0.4034,
-      "estimatorDelta": "110ms",
+      "estimatorDelta": "-46ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-129ms",
-        "219ms"
+        "-242ms",
+        "68ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 1100,
-        "25": 1140,
-        "50": 1257,
-        "75": 1290,
-        "90": 1369,
-        "min": 1074,
-        "max": 1421
+        "10": 1281,
+        "25": 1293,
+        "50": 1365,
+        "75": 1374,
+        "90": 1442,
+        "min": 1273,
+        "max": 1488
       },
       "experimentSevenFigureSummary": {
-        "10": 1249,
-        "25": 1250,
-        "50": 1293,
-        "75": 1416,
-        "90": 1424,
-        "min": 1248,
-        "max": 1430
+        "10": 1175,
+        "25": 1252,
+        "50": 1318,
+        "75": 1351,
+        "90": 1405,
+        "min": 1123,
+        "max": 1441
       },
       "asPercent": {
-        "percentMin": -10.24,
-        "percentMedian": 8.75,
-        "percentMax": 17.4
+        "percentMin": -17.72,
+        "percentMedian": -3.39,
+        "percentMax": 4.97
       }
     },
     {
@@ -187,7 +187,7 @@
       "phaseName": "CLS",
       "isSignificant": true,
       "pValue": 0.01219,
-      "estimatorDelta": "10/100",
+      "estimatorDelta": "7/100",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
@@ -195,9 +195,9 @@
         "10/100"
       ],
       "controlSevenFigureSummary": {
-        "10": 13,
-        "25": 13,
-        "50": 13,
+        "10": 14,
+        "25": 16,
+        "50": 16,
         "75": 16,
         "90": 16,
         "min": 13,
@@ -208,21 +208,21 @@
         "25": 23,
         "50": 23,
         "75": 23,
-        "90": 24,
+        "90": 23,
         "min": 23,
-        "max": 25
+        "max": 23
       },
       "asPercent": {
-        "percentMin": 53.87,
-        "percentMedian": 75.05,
-        "percentMax": 75.05
+        "percentMin": 44.46,
+        "percentMedian": 44.46,
+        "percentMax": 61.93
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "TTFB",
       "isSignificant": false,
-      "pValue": 0.3472,
+      "pValue": 0.2963,
       "estimatorDelta": "-1ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
@@ -231,156 +231,156 @@
         "1ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 4,
-        "25": 5,
-        "50": 5,
-        "75": 10,
+        "10": 5,
+        "25": 6,
+        "50": 6,
+        "75": 9,
         "90": 11,
-        "min": 4,
-        "max": 11
+        "min": 5,
+        "max": 12
       },
       "experimentSevenFigureSummary": {
         "10": 4,
-        "25": 4,
-        "50": 4,
+        "25": 5,
+        "50": 5,
         "75": 6,
         "90": 8,
         "min": 4,
-        "max": 9
+        "max": 10
       },
       "asPercent": {
-        "percentMin": -140,
-        "percentMedian": -20,
-        "percentMax": 20
+        "percentMin": -116.67,
+        "percentMedian": -16.67,
+        "percentMax": 16.67
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "hydration",
       "isSignificant": false,
-      "pValue": 0.8345,
-      "estimatorDelta": "-14ms",
+      "pValue": 0.754,
+      "estimatorDelta": "1ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-57ms",
-        "12ms"
+        "-17ms",
+        "19ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 441,
-        "25": 455,
-        "50": 456,
-        "75": 491,
-        "90": 506,
-        "min": 432,
-        "max": 516
+        "10": 447,
+        "25": 453,
+        "50": 461,
+        "75": 473,
+        "90": 473,
+        "min": 443,
+        "max": 474
       },
       "experimentSevenFigureSummary": {
-        "10": 439,
-        "25": 443,
-        "50": 459,
-        "75": 464,
-        "90": 466,
-        "min": 437,
-        "max": 468
+        "10": 450,
+        "25": 458,
+        "50": 464,
+        "75": 473,
+        "90": 473,
+        "min": 446,
+        "max": 474
       },
       "asPercent": {
-        "percentMin": -12.5,
-        "percentMedian": -2.96,
-        "percentMax": 2.63
+        "percentMin": -3.58,
+        "percentMedian": 0.33,
+        "percentMax": 4.23
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "hydration-start",
       "isSignificant": false,
-      "pValue": 0.5309,
-      "estimatorDelta": "-20ms",
+      "pValue": 0.1437,
+      "estimatorDelta": "-47ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-95ms",
-        "27ms"
+        "-113ms",
+        "3ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 800,
-        "25": 803,
-        "50": 849,
-        "75": 902,
-        "90": 903,
-        "min": 798,
-        "max": 905
+        "10": 821,
+        "25": 833,
+        "50": 863,
+        "75": 918,
+        "90": 919,
+        "min": 813,
+        "max": 920
       },
       "experimentSevenFigureSummary": {
-        "10": 793,
-        "25": 810,
-        "50": 819,
-        "75": 830,
-        "90": 869,
-        "min": 782,
+        "10": 783,
+        "25": 807,
+        "50": 816,
+        "75": 827,
+        "90": 868,
+        "min": 767,
         "max": 896
       },
       "asPercent": {
-        "percentMin": -11.13,
-        "percentMedian": -2.3,
-        "percentMax": 3.18
+        "percentMin": -13.04,
+        "percentMedian": -5.39,
+        "percentMax": 0.35
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "LH Score",
-      "isSignificant": false,
-      "pValue": 0.1172,
-      "estimatorDelta": "-7/100",
+      "isSignificant": true,
+      "pValue": 0.01219,
+      "estimatorDelta": "-4/100",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-10/100",
-        "0/100"
+        "-7/100",
+        "-3/100"
       ],
       "controlSevenFigureSummary": {
-        "10": 42,
-        "25": 47,
-        "50": 49,
-        "75": 49,
-        "90": 50,
-        "min": 39,
-        "max": 50
+        "10": 45,
+        "25": 46,
+        "50": 46,
+        "75": 47,
+        "90": 48,
+        "min": 45,
+        "max": 49
       },
       "experimentSevenFigureSummary": {
-        "10": 40,
+        "10": 41,
         "25": 41,
         "50": 42,
-        "75": 42,
-        "90": 43,
-        "min": 39,
-        "max": 43
+        "75": 43,
+        "90": 44,
+        "min": 41,
+        "max": 44
       },
       "asPercent": {
-        "percentMin": -20.41,
-        "percentMedian": -14.29,
-        "percentMax": 0
+        "percentMin": -15.22,
+        "percentMedian": -8.7,
+        "percentMax": -6.52
       }
     },
     {
       "heading": "LH & Vitals",
       "phaseName": "interaction-to-next-paint",
       "isSignificant": true,
-      "pValue": 0.01219,
+      "pValue": 0.0472,
       "estimatorDelta": "-16ms",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
         "-16ms",
-        "-8ms"
+        "0ms"
       ],
       "controlSevenFigureSummary": {
-        "10": 32,
+        "10": 22,
         "25": 32,
         "50": 32,
         "75": 32,
         "90": 32,
-        "min": 32,
+        "min": 16,
         "max": 32
       },
       "experimentSevenFigureSummary": {
@@ -388,14 +388,14 @@
         "25": 16,
         "50": 16,
         "75": 16,
-        "90": 21,
+        "90": 16,
         "min": 16,
-        "max": 24
+        "max": 16
       },
       "asPercent": {
         "percentMin": -50,
         "percentMedian": -50,
-        "percentMax": -25
+        "percentMax": 0
       }
     }
   ],
@@ -404,7 +404,7 @@
       "heading": "Diagnostics",
       "phaseName": "downloads",
       "isSignificant": false,
-      "pValue": 1,
+      "pValue": 0.8345,
       "estimatorDelta": "0KB",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
@@ -425,15 +425,15 @@
         "10": 436,
         "25": 436,
         "50": 436,
-        "75": 437,
-        "90": 437,
+        "75": 436,
+        "90": 436,
         "min": 436,
         "max": 437
       },
       "asPercent": {
-        "percentMin": -0.07,
-        "percentMedian": -0.02,
-        "percentMax": 0.05
+        "percentMin": -0.06,
+        "percentMedian": -0.01,
+        "percentMax": 0.04
       }
     },
     {
@@ -475,8 +475,8 @@
     {
       "heading": "Diagnostics",
       "phaseName": "early-downloads",
-      "isSignificant": true,
-      "pValue": 0.03671,
+      "isSignificant": false,
+      "pValue": 0.4034,
       "estimatorDelta": "0KB",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,

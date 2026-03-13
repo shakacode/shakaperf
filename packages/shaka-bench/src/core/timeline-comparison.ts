@@ -60,7 +60,7 @@ function parseProfile(filePath: string): ProfileData {
   for (const e of events) {
     if (e.name === 'Screenshot' && e.cat?.includes('screenshot') && e.args?.snapshot) {
       screenshots.push({
-        timeMs: (e.ts - navStart) / 1000,
+        timeMs: Math.max(0, (e.ts - navStart) / 1000),
         dataUri: `data:image/jpeg;base64,${e.args.snapshot}`,
         snapshot: Buffer.from(e.args.snapshot, 'base64'),
       });
@@ -79,7 +79,7 @@ function parseProfile(filePath: string): ProfileData {
   // Extract timeline events
   const timelineEvents: TimelineEvent[] = [];
   for (const e of events) {
-    const timeMs = (e.ts - navStart) / 1000;
+    const timeMs = Math.max(0, (e.ts - navStart) / 1000);
 
     if (PAINT_EVENTS.has(e.name)) {
       timelineEvents.push({ timeMs, label: e.name, category: 'paint' });
@@ -468,10 +468,11 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
 
   <script>
     (function() {
-      let scale = 1;
-      const MIN_SCALE = 0.1;
       const MAX_SCALE = 20;
       const BASE_HEIGHT = ${totalHeight};
+      var viewportH = window.innerHeight;
+      var MIN_SCALE = Math.min(0.1, viewportH / BASE_HEIGHT);
+      var scale = Math.max(MIN_SCALE, Math.min(1, (2 * viewportH) / BASE_HEIGHT));
 
       // Collect all positioned elements and their original top values
       const positioned = [];
@@ -485,6 +486,8 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
         columns.forEach(function(col) { col.style.height = h; });
         positioned.forEach(function(p) { p.el.style.top = (p.top * scale) + 'px'; });
       }
+
+      applyScale();
 
       var container = document.querySelector('.timeline-container');
 
@@ -500,7 +503,7 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
         // The "time position" this cursor point represents (scale-independent)
         var timePos = cursorInTimeline / scale;
 
-        var delta = e.deltaY > 0 ? 0.9 : 1.1;
+        var delta = e.deltaY > 0 ? 0.8 : 1.25;
         scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * delta));
         applyScale();
 
