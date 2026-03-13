@@ -1,0 +1,279 @@
+Performance Profile Summary
+============================
+
+Total events: 13613
+
+Thread names:
+  Chrome_ChildIOThread
+  Chrome_DevToolsHandlerThread
+  Chrome_IOThread
+  Compositor
+  CompositorTileWorker1
+  CrBrowserMain
+  CrGpuMain
+  CrRendererMain
+  MemoryInfra
+  PerfettoTrace
+  ThreadPoolForegroundWorker
+  VizCompositorThread
+  swapper
+
+Categories:
+  __metadata: 34
+  benchmark,loading: 1
+  blink,devtools.timeline: 427
+  blink,loading: 1
+  blink.animations,devtools.timeline,benchmark,rail: 12
+  blink.user_timing: 10
+  blink.user_timing,rail: 5
+  cc,benchmark,disabled-by-default-devtools.timeline.frame: 3308
+  cc,disabled-by-default-devtools.timeline: 133
+  devtools.timeline: 2010
+  disabled-by-default-devtools.screenshot: 25
+  disabled-by-default-devtools.target-rundown: 7
+  disabled-by-default-devtools.timeline: 5634
+  disabled-by-default-devtools.timeline.frame: 606
+  disabled-by-default-devtools.v8-source-rundown: 37
+  disabled-by-default-devtools.v8-source-rundown-sources: 37
+  loading: 301
+  loading,interactions: 4
+  loading,rail,devtools.timeline: 7
+  v8: 112
+  v8,devtools.timeline: 7
+  v8,devtools.timeline,disabled-by-default-v8.compile: 50
+  v8.execute: 845
+
+Event names:
+  AcceptCHFrameObserver.copy: 1
+  ActivateLayerTree: 143
+  Activation: 302
+  Animation: 12
+  AnimationFrame: 574
+  AnimationFrame::Presentation: 143
+  AnimationFrame::Render: 288
+  AnimationFrame::Script::Compile: 4
+  AnimationFrame::Script::Execute: 6
+  AnimationFrame::StyleAndLayout: 288
+  BackForwardCacheBufferLimitTracker::DidRemoveFrameOrWorkerFromBackForwardCache: 1
+  BackgroundProcessor::MaybeStartProcessingResponse: 6
+  BackgroundProcessor::OnDataPipeReadable: 6
+  BackgroundProcessor::OnFinishStreaming: 6
+  BackgroundProcessor::RunScriptStreamingTask: 6
+  BackgroundProcessor::TryStartStreamingTask: 6
+  BeginCommitCompositorFrame: 144
+  BeginFrame: 144
+  BeginImplFrameToSendBeginMainFrame: 590
+  BeginMainThreadFrame: 144
+  Commit: 457
+  CommitLoad: 1
+  commitNavigationEnd: 1
+  CommitSentToFirstSubresourceLoadStart: 2
+  ContextCreatedNotification: 4
+  CookieAccessObserver.copy: 1
+  DecodedDataDocumentParser::AppendBytes: 1
+  DeviceBoundSessionAccessObserver.copy: 1
+  DevToolsObserver.copy: 1
+  DocumentLoader::BodyDataReceivedImpl: 3
+  DocumentLoader::BodyLoadingFinished: 3
+  DocumentLoader::CommitData: 3
+  DocumentLoader::CommitNavigation: 3
+  DocumentLoader::CreateParserPostCommit: 3
+  DocumentLoader::DidCommitNavigation: 1
+  DocumentLoader::DidInstallNewDocument: 3
+  DocumentLoader::DocumentLoader: 3
+  DocumentLoader::FinishedLoading: 1
+  DocumentLoader::HandleData: 3
+  DocumentLoader::InitializeWindow: 3
+  DocumentLoader::RecordUseCountersForCommit: 3
+  DocumentLoader::StartLoadingResponse: 3
+  domComplete: 1
+  domContentLoadedEventEnd: 1
+  domContentLoadedEventStart: 1
+  domInteractive: 1
+  domLoading: 1
+  DOMStats: 3
+  DrawFrame: 24
+  DroppedFrame: 1
+  EndActivateToSubmitCompositorFrame: 348
+  EndCommitToActivation: 302
+  EvaluateScript: 11
+  EventDispatch: 24
+  FetchLaterLoaderFactories::BindFactory: 1
+  fetchStart: 1
+  firstContentfulPaint: 1
+  firstMeaningfulPaint: 2
+  firstMeaningfulPaintCandidate: 1
+  firstPaint: 1
+  FrameCommittedInBrowser: 1
+  FrameLoader: 2
+  FrameStartedLoading: 2
+  FunctionCall: 34
+  GlobalFirstContentfulPaint: 1
+  HitTest: 6
+  HTMLDocumentParser::DocumentElementAvailable: 1
+  HTMLDocumentParser::MaybeFetchQueuedPreloads: 1
+  hydration-end: 1
+  hydration-start: 1
+  InstallConditionalFeatures: 4
+  IntersectionObserverController::computeIntersections: 278
+  InvalidateLayout: 6
+  KeepAliveURLLoaderFactories::BindFactory: 1
+  largestContentfulPaint::Candidate: 2
+  LargestTextPaint::Candidate: 2
+  layerId: 8
+  Layerize: 144
+  Layout: 3
+  LayoutShift: 1
+  loadEventEnd: 1
+  loadEventStart: 1
+  LoadingPredictor::OnNavigationStarted: 1
+  LoadingPredictor::PrepareForPageLoad: 1
+  LocalWindowProxy::CreateContext: 4
+  LocalWindowProxy::Initialize: 4
+  LocalWindowProxy::SetupWindowPrototypeChain: 4
+  LocalWindowProxy::UpdateDocumentProperty: 2
+  MarkDOMContent: 1
+  MarkLoad: 1
+  MetricsWebContentsObserver::MaybeActivatePageLoadTracker: 1
+  MetricsWebContentsObserver::MaybeRestorePageLoadTrackerForBackForwardCache: 1
+  MojoURLLoaderClient::OnReceiveResponse: 10
+  NavigationBodyLoader::OnReadable: 1
+  NavigationBodyLoader::ReadFromDataPipe: 1
+  NavigationBodyLoader::StartLoadingBody: 1
+  navigationStart: 1
+  NavStartToExperimentalLargestContentfulPaint::Invalidate::AllFrames::UKM: 3
+  NavStartToLargestContentfulPaint::Candidate::AllFrames::UKM: 2
+  NavStartToLargestContentfulPaint::Invalidate::AllFrames::UKM: 1
+  NeedsBeginFrameChanged: 6
+  PageLoadMetrics.NavigationToDOMContentLoadedEventFired: 1
+  PageLoadMetrics.NavigationToFirstContentfulPaint: 2
+  PageLoadMetrics.NavigationToMainFrameOnLoad: 1
+  Paint: 279
+  PaintImage: 1
+  PaintTimingVisualizer::LayoutObjectPainted: 13
+  PaintTimingVisualizer::Viewport: 1
+  ParseAuthorStyleSheet: 2
+  ParseHTML: 3
+  ParseMetaViewport: 1
+  PipelineReporter: 590
+  PrefetchMatchResolver::FindPrefetch: 22
+  PrefetchMatchResolver::UnblockForNoCandidates: 6
+  PrefetchURLLoaderInterceptor::GetPrefetch: 6
+  PrefetchURLLoaderInterceptor::MaybeCreateLoader: 6
+  PrefetchURLLoaderInterceptor::OnGetPrefetchComplete: 2
+  PreloadRenderBlockingStatusChange: 2
+  PrePaint: 144
+  process_name: 4
+  process_uptime_seconds: 4
+  RasterTask: 133
+  ReceiveCompositorFrameToStartDraw: 114
+  RequestMainThreadFrame: 144
+  ResourceFinish: 11
+  ResourceReceivedData: 16
+  ResourceReceiveResponse: 11
+  ResourceRequest::TrustedParams.copy: 1
+  ResourceRequestSender::OnReceivedResponse: 10
+  ResourceRequestSender::OnRequestComplete: 10
+  ResourceSendRequest: 11
+  ResourceWillSendRequest: 1
+  responseEnd: 1
+  RunMicrotasks: 23
+  RunTask: 4491
+  ScheduleStyleRecalculation: 140
+  Screenshot: 25
+  ScriptCatchup: 74
+  ScriptCompiled: 7
+  SearchPrefetchURLLoaderInterceptor::MaybeCreateLoader: 1
+  SendBeginMainFrameToCommit: 304
+  SetLayerTreeId: 144
+  SharedDictionaryAccessObserver.copy: 1
+  StartDrawToSwapStart: 114
+  SubmitCompositorFrameToPresentationCompositorFrame: 114
+  SubmitToReceiveCompositorFrame: 114
+  SwapEndToPresentationCompositorFrame: 114
+  thread_name: 26
+  ThrottlingURLLoader::~ThrottlingURLLoader: 11
+  ThrottlingURLLoader::OnReceiveResponse: 41
+  ThrottlingURLLoader::Start: 33
+  ThrottlingURLLoader::StartNow: 33
+  ThrottlingURLLoader::ThrottlingURLLoader: 25
+  TimerFire: 4
+  TimerInstall: 6
+  TimerRemove: 2
+  TracingStartedInBrowser: 1
+  TrustTokenAccessObserver.copy: 1
+  UkmPageLoadTimingUpdate: 3
+  unloadEventEnd: 1
+  unloadEventStart: 1
+  UpdateCounters: 37
+  UpdateLayer: 498
+  UpdateLayoutTree: 140
+  URLLoaderNetworkServiceObserver.copy: 1
+  V8.BytecodeBudgetInterrupt: 520
+  V8.BytecodeBudgetInterruptWithStackCheck: 46
+  v8.callFunction: 34
+  v8.compile: 7
+  V8.DeoptimizeCode: 4
+  V8.DeserializeContext: 4
+  V8.HandleInterrupts: 129
+  v8.newInstance: 34
+  v8.parseOnBackground: 6
+  v8.parseOnBackgroundParsing: 10
+  v8.parseOnBackgroundWaiting: 4
+  v8.produceCache: 7
+  v8.run: 7
+  V8.StackGuard: 127
+  viewport: 1
+
+Phase types:
+  b: 2097
+  B: 5
+  D: 2
+  e: 2095
+  f: 212
+  I: 1220
+  M: 34
+  n: 151
+  N: 6
+  O: 2
+  R: 22
+  s: 212
+  X: 7555
+
+Navigation timeline (ms from navigationStart):
+         0.0  navigationStart
+         0.6  fetchStart
+         8.7  responseEnd
+        10.1  unloadEventStart
+        10.1  unloadEventEnd
+        10.4  commitNavigationEnd
+        10.7  domLoading
+        16.9  domInteractive
+        55.6  hydration-start
+        55.8  domContentLoadedEventStart
+        55.8  domContentLoadedEventEnd
+        55.9  domComplete
+        55.9  loadEventStart
+        55.9  loadEventEnd
+        85.6  hydration-end
+        90.8  firstContentfulPaint
+        90.8  firstPaint
+        90.8  largestContentfulPaint::Candidate
+       119.8  largestContentfulPaint::Candidate
+
+Layout shifts: 1
+  #1  score=0.0669  cumulative=0.0000  had_recent_input=true
+
+Long tasks (>50ms): 0
+
+Timeline heatmap (10 buckets):
+    0- 10%  ████████████████████████████████████████   4748 events ( 35.0%)
+   10- 20%  ██████████                                 1195 events (  8.8%)
+   20- 30%  ███████████                                1309 events (  9.6%)
+   30- 40%  ███████                                     842 events (  6.2%)
+   40- 50%  █████████                                  1019 events (  7.5%)
+   50- 60%  ████████                                    928 events (  6.8%)
+   60- 70%  ███████                                     886 events (  6.5%)
+   70- 80%  ████████                                    895 events (  6.6%)
+   80- 90%  ████████                                    899 events (  6.6%)
+   90-100%  ███████                                     858 events (  6.3%)

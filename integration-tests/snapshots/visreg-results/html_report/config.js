@@ -66,11 +66,11 @@ report({
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
-            "height": 162
+            "height": -162
           },
           "rawMisMatchPercentage": 0.2213942307692308,
           "misMatchPercentage": "0.22",
-          "analysisTime": 77
+          "analysisTime": 59
         },
         "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
@@ -169,7 +169,7 @@ report({
           },
           "rawMisMatchPercentage": 4.992173005565863,
           "misMatchPercentage": "4.99",
-          "analysisTime": 98
+          "analysisTime": 58
         },
         "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
@@ -218,9 +218,9 @@ report({
             "width": 0,
             "height": -64
           },
-          "rawMisMatchPercentage": 22.084054709141274,
+          "rawMisMatchPercentage": 22.084162915512465,
           "misMatchPercentage": "22.08",
-          "analysisTime": 79
+          "analysisTime": 100
         },
         "diffImage": "../bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
