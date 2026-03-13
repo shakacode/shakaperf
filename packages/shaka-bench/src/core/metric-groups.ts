@@ -17,15 +17,15 @@ const VITALS_METRICS = new Set([
 // Order determines display order in the summary.
 const DIAGNOSTICS_METRICS = [
   'downloads',
-  'downloads-files',
+  'downloads-count',
   'early-downloads',
-  'early-downloads-files',
+  'early-downloads-count',
   'js',
-  'js-files',
+  'js-count',
   'images',
-  'images-files',
+  'images-count',
   'fonts',
-  'fonts-files',
+  'fonts-count',
 ];
 
 const DIAGNOSTICS_SET = new Set(DIAGNOSTICS_METRICS);

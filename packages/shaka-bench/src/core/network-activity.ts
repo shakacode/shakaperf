@@ -237,19 +237,19 @@ export function analyzeNetworkResources(
   }
 
   const results: PhaseSample[] = [
-    { phase: prefix + 'downloads-files', duration: totalCount, start: 0, sign: 1, unit: '' },
+    { phase: prefix + 'downloads-count', duration: totalCount, start: 0, sign: 1, unit: '' },
     { phase: prefix + 'js', duration: jsBytes / 1024, start: 0, sign: 1, unit: 'KB' },
-    { phase: prefix + 'js-files', duration: jsCount, start: 0, sign: 1, unit: '' },
+    { phase: prefix + 'js-count', duration: jsCount, start: 0, sign: 1, unit: '' },
     { phase: prefix + 'images', duration: imagesBytes / 1024, start: 0, sign: 1, unit: 'KB' },
-    { phase: prefix + 'images-files', duration: imagesCount, start: 0, sign: 1, unit: '' },
+    { phase: prefix + 'images-count', duration: imagesCount, start: 0, sign: 1, unit: '' },
     { phase: prefix + 'fonts', duration: fontsBytes / 1024, start: 0, sign: 1, unit: 'KB' },
-    { phase: prefix + 'fonts-files', duration: fontsCount, start: 0, sign: 1, unit: '' },
+    { phase: prefix + 'fonts-count', duration: fontsCount, start: 0, sign: 1, unit: '' },
   ];
 
   if (earlyPhaseTimestampSec != null) {
     results.push(
       { phase: prefix + 'early-downloads', duration: earlyLoadsBytes / 1024, start: 0, sign: 1, unit: 'KB' },
-      { phase: prefix + 'early-downloads-files', duration: earlyLoadsCount, start: 0, sign: 1, unit: '' },
+      { phase: prefix + 'early-downloads-count', duration: earlyLoadsCount, start: 0, sign: 1, unit: '' },
     );
   }
 
