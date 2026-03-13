@@ -37,10 +37,10 @@
       }
     }
   ],
-  "phaseTableData": [
+  "vitalsTableData": [
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "first-contentful-paint",
+      "heading": "LH & Vitals",
+      "phaseName": "FCP",
       "isSignificant": false,
       "pValue": 0.5309,
       "estimatorDelta": "-2ms",
@@ -75,8 +75,8 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "speed-index",
+      "heading": "LH & Vitals",
+      "phaseName": "SI",
       "isSignificant": false,
       "pValue": 0.4034,
       "estimatorDelta": "-24ms",
@@ -111,8 +111,8 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "largest-contentful-paint",
+      "heading": "LH & Vitals",
+      "phaseName": "LCP",
       "isSignificant": false,
       "pValue": 0.6761,
       "estimatorDelta": "-31ms",
@@ -147,8 +147,8 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "total-blocking-time",
+      "heading": "LH & Vitals",
+      "phaseName": "TBT",
       "isSignificant": true,
       "pValue": 0.01219,
       "estimatorDelta": "201ms",
@@ -183,16 +183,16 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "cumulative-layout-shift",
+      "heading": "LH & Vitals",
+      "phaseName": "CLS",
       "isSignificant": true,
       "pValue": 0.01219,
-      "estimatorDelta": "10ms",
+      "estimatorDelta": "10/100",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "7ms",
-        "10ms"
+        "7/100",
+        "10/100"
       ],
       "controlSevenFigureSummary": {
         "10": 13,
@@ -219,8 +219,8 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "server-response-time",
+      "heading": "LH & Vitals",
+      "phaseName": "TTFB",
       "isSignificant": false,
       "pValue": 1,
       "estimatorDelta": "1ms",
@@ -255,7 +255,7 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
+      "heading": "LH & Vitals",
       "phaseName": "hydration",
       "isSignificant": false,
       "pValue": 0.09469,
@@ -291,7 +291,7 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
+      "heading": "LH & Vitals",
       "phaseName": "hydration-start",
       "isSignificant": false,
       "pValue": 1,
@@ -327,52 +327,16 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "downloads",
-      "isSignificant": false,
-      "pValue": 0.5309,
-      "estimatorDelta": "0ms",
-      "controlSampleCount": 5,
-      "experimentSampleCount": 5,
-      "confidenceInterval": [
-        "0ms",
-        "0ms"
-      ],
-      "controlSevenFigureSummary": {
-        "10": 436,
-        "25": 436,
-        "50": 436,
-        "75": 437,
-        "90": 437,
-        "min": 436,
-        "max": 437
-      },
-      "experimentSevenFigureSummary": {
-        "10": 436,
-        "25": 436,
-        "50": 436,
-        "75": 437,
-        "90": 437,
-        "min": 436,
-        "max": 437
-      },
-      "asPercent": {
-        "percentMin": -0.09,
-        "percentMedian": -0.01,
-        "percentMax": 0.08
-      }
-    },
-    {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "total-score",
+      "heading": "LH & Vitals",
+      "phaseName": "LH Score",
       "isSignificant": false,
       "pValue": 0.09469,
-      "estimatorDelta": "-7ms",
+      "estimatorDelta": "-7/100",
       "controlSampleCount": 5,
       "experimentSampleCount": 5,
       "confidenceInterval": [
-        "-8ms",
-        "0ms"
+        "-8/100",
+        "0/100"
       ],
       "controlSevenFigureSummary": {
         "10": 42,
@@ -399,8 +363,8 @@
       }
     },
     {
-      "heading": "Sub Phase of Duration",
-      "phaseName": "interaction-to-next-paint",
+      "heading": "LH & Vitals",
+      "phaseName": "INP",
       "isSignificant": false,
       "pValue": 0.0758,
       "estimatorDelta": "-8ms",
@@ -432,6 +396,44 @@
         "percentMin": -50,
         "percentMedian": -25,
         "percentMax": 0
+      }
+    }
+  ],
+  "diagnosticsTableData": [
+    {
+      "heading": "Diagnostics",
+      "phaseName": "downloads",
+      "isSignificant": false,
+      "pValue": 0.5309,
+      "estimatorDelta": "0KB",
+      "controlSampleCount": 5,
+      "experimentSampleCount": 5,
+      "confidenceInterval": [
+        "0KB",
+        "0KB"
+      ],
+      "controlSevenFigureSummary": {
+        "10": 436,
+        "25": 436,
+        "50": 436,
+        "75": 437,
+        "90": 437,
+        "min": 436,
+        "max": 437
+      },
+      "experimentSevenFigureSummary": {
+        "10": 436,
+        "25": 436,
+        "50": 436,
+        "75": 437,
+        "90": 437,
+        "min": 436,
+        "max": 437
+      },
+      "asPercent": {
+        "percentMin": -0.09,
+        "percentMedian": -0.01,
+        "percentMax": 0.08
       }
     }
   ],

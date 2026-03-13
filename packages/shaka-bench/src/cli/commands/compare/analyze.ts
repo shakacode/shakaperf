@@ -56,16 +56,21 @@ export async function runAnalyze(
     regressionThresholdStat
   );
 
-  compareResults.logTables();
   compareResults.logSummary();
 
+  const resultFileDir = dirname(resultsFile);
+
   if (jsonReport) {
-    const resultFileDir = dirname(resultsFile);
     writeFileSync(
       join(resultFileDir, "report.json"),
       compareResults.stringifyJSON()
     );
   }
+
+  writeFileSync(
+    join(resultFileDir, "report.txt"),
+    compareResults.getPlainTextSummary()
+  );
 
   return compareResults.stringifyJSON();
 }

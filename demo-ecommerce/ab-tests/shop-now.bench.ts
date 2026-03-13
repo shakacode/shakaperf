@@ -1,6 +1,12 @@
 import { abTest } from 'shaka-bench';
 
-abTest('Click Shop Now on homepage', {
+abTest('Visits the homepage', {
+  startingPath: '/',
+}, async ({ page }) => {
+});
+
+
+abTest('Click Shop Now on the homepage', {
   startingPath: '/',
 }, async ({ page }) => {
   await page.waitForSelector('[data-cy="hero-section"]');

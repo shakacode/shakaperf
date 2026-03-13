@@ -42,12 +42,24 @@
     <div class="page-break"></div>
     <div class="row">
       <div class="col">
-        <h1 class="isolated">Isolated sub-phases of duration</h1>
+        <h1 class="isolated">LH &amp; Vitals</h1>
         <hr>
       </div>
     </div>
 
-    {{#each subPhaseSections as |analysisForPhase|}}
+    {{#each vitalsSections as |analysisForPhase|}}
+    {{>phaseDetailSection analysisForPhase=analysisForPhase}}
+    {{/each}}
+
+    <div class="page-break"></div>
+    <div class="row">
+      <div class="col">
+        <h1 class="isolated">Diagnostics</h1>
+        <hr>
+      </div>
+    </div>
+
+    {{#each diagnosticsSections as |analysisForPhase|}}
     {{>phaseDetailSection analysisForPhase=analysisForPhase}}
     {{/each}}
     <div class="page-break"></div>

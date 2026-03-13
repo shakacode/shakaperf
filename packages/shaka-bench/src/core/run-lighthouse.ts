@@ -4,8 +4,8 @@ import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
-import { extractMarkers } from './extract-markers';
-import { updateDownloadedSizes } from './network-activity';
+import { extractMarkers, extractRawTraceTimestamp } from './extract-markers';
+import { updateDownloadedSizes, analyzeNetworkResources } from './network-activity';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
 // Read console errors whitelist from environment variable.
@@ -53,11 +53,11 @@ export async function runLighthouse(
     .replace(/=/g, '_')}`;
 
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);
-  if (runnerResult.artifacts?.traces?.defaultPass) {
+  if (runnerResult.artifacts?.Trace) {
     const profilePath = `${namePrefix}_performance_profile.json`;
     writeFileSync(
       profilePath,
-      JSON.stringify(runnerResult.artifacts.traces.defaultPass)
+      JSON.stringify(runnerResult.artifacts.Trace)
     );
     summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
   }
@@ -124,6 +124,14 @@ export async function runLighthouse(
       start: 0,
       unit: '/100'
     });
+
+    // Find the early-phase marker and extract its raw trace timestamp
+    const earlyPhaseMarker = markers.find((m) => m.isEarlyPhase);
+    const earlyPhaseTs = earlyPhaseMarker
+      ? extractRawTraceTimestamp(runnerResult, earlyPhaseMarker.end)
+      : null;
+
+    results.push(...analyzeNetworkResources(runnerResult, url, earlyPhaseTs, prefix));
   }
 
   if (runnerResult.lhr.categories.accessibility) {

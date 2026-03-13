@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { HtmlDiffGenerator } from '../HtmlDiffGenerator';
+import { escapeHtml, generateUnifiedDiff } from '../shared/html-diff';
 
 describe('HtmlDiffGenerator', () => {
   const tmpDir = path.join(__dirname, 'tmp-html-diff');
@@ -45,22 +46,19 @@ const diff2htmlUi = new Diff2HtmlUI(targetElement);
 
   describe('escapeHtml', () => {
     it('escapes special HTML characters', () => {
-      const gen = new HtmlDiffGenerator();
-      expect(gen.escapeHtml('&')).toBe('&amp;');
-      expect(gen.escapeHtml('<')).toBe('&lt;');
-      expect(gen.escapeHtml('>')).toBe('&gt;');
-      expect(gen.escapeHtml('"')).toBe('&quot;');
-      expect(gen.escapeHtml("'")).toBe('&#039;');
+      expect(escapeHtml('&')).toBe('&amp;');
+      expect(escapeHtml('<')).toBe('&lt;');
+      expect(escapeHtml('>')).toBe('&gt;');
+      expect(escapeHtml('"')).toBe('&quot;');
+      expect(escapeHtml("'")).toBe('&#039;');
     });
 
     it('escapes multiple characters in one string', () => {
-      const gen = new HtmlDiffGenerator();
-      expect(gen.escapeHtml('<div class="test">')).toBe('&lt;div class=&quot;test&quot;&gt;');
+      expect(escapeHtml('<div class="test">')).toBe('&lt;div class=&quot;test&quot;&gt;');
     });
 
     it('returns empty string unchanged', () => {
-      const gen = new HtmlDiffGenerator();
-      expect(gen.escapeHtml('')).toBe('');
+      expect(escapeHtml('')).toBe('');
     });
   });
 
@@ -120,21 +118,19 @@ const diff2htmlUi = new Diff2HtmlUI(targetElement);
 
   describe('generateUnifiedDiff', () => {
     it('returns empty string for identical files', () => {
-      const gen = new HtmlDiffGenerator();
       const file1 = path.join(tmpDir, 'same1.txt');
       const file2 = path.join(tmpDir, 'same2.txt');
       fs.writeFileSync(file1, 'same content');
       fs.writeFileSync(file2, 'same content');
-      expect(gen.generateUnifiedDiff(file1, file2)).toBe('');
+      expect(generateUnifiedDiff(file1, file2)).toBe('');
     });
 
     it('returns diff content for different files', () => {
-      const gen = new HtmlDiffGenerator();
       const file1 = path.join(tmpDir, 'old.txt');
       const file2 = path.join(tmpDir, 'new.txt');
       fs.writeFileSync(file1, 'old content\n');
       fs.writeFileSync(file2, 'new content\n');
-      const diff = gen.generateUnifiedDiff(file1, file2);
+      const diff = generateUnifiedDiff(file1, file2);
       expect(diff.length).toBeGreaterThan(0);
     });
   });

@@ -10,6 +10,7 @@ import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
 import TBTable from "./tb-table";
+import { getDisplayName } from "../../core/metric-groups";
 
 export interface ICompareJSONResult {
   heading: string;
@@ -27,7 +28,8 @@ export interface ICompareJSONResult {
 
 export interface ICompareJSONResults {
   benchmarkTableData: ICompareJSONResult[];
-  phaseTableData: ICompareJSONResult[];
+  vitalsTableData: ICompareJSONResult[];
+  diagnosticsTableData: ICompareJSONResult[];
   areResultsSignificant: boolean;
   isBelowRegressionThreshold: boolean;
   regressionThresholdStat: string;
@@ -51,10 +53,13 @@ type PhaseResultsFormatted = Array<
 // collect and analyze the data for the different phases for the experiment and control set and output the result to the console.
 export class CompareResults {
   benchmarkTable = new TBTable("Initial Render");
-  phaseTable = new TBTable("Sub Phase of Duration");
+  vitalsTable = new TBTable("LH & Vitals");
+  diagnosticsTable = new TBTable("Diagnostics");
   benchmarkTableData: ICompareJSONResult[];
-  phaseTableData: ICompareJSONResult[];
-  phaseResultsFormatted: PhaseResultsFormatted = [];
+  vitalsTableData: ICompareJSONResult[];
+  diagnosticsTableData: ICompareJSONResult[];
+  vitalsResultsFormatted: PhaseResultsFormatted = [];
+  diagnosticsResultsFormatted: PhaseResultsFormatted = [];
   areResultsSignificant = false;
   isBelowRegressionThreshold = true;
   numberOfMeasurements: number;
@@ -69,22 +74,33 @@ export class CompareResults {
     this.numberOfMeasurements = numberOfMeasurements;
     this.regressionThreshold = regressionThreshold;
     this.regressionThresholdStat = regressionThresholdStat;
-    this.phaseResultsFormatted.push(generateStats.durationSection);
-    this.benchmarkTable.display.push(generateStats.durationSection.stats);
+    this.benchmarkTable.display.push({
+      stats: generateStats.durationSection.stats,
+      unit: generateStats.durationSection.unit,
+    });
 
-    generateStats.subPhaseSections.map((section) => {
-      this.phaseTable.display.push(section.stats);
-      this.phaseResultsFormatted.push(section);
+    generateStats.vitalsSections.map((section) => {
+      this.vitalsTable.display.push({ stats: section.stats, unit: section.unit });
+      this.vitalsResultsFormatted.push(section);
+    });
+
+    generateStats.diagnosticsSections.map((section) => {
+      this.diagnosticsTable.display.push({ stats: section.stats, unit: section.unit });
+      this.diagnosticsResultsFormatted.push(section);
     });
 
     this.benchmarkTableData = this.benchmarkTable.getData();
-    this.phaseTableData = this.phaseTable.getData();
+    this.vitalsTableData = this.vitalsTable.getData();
+    this.diagnosticsTableData = this.diagnosticsTable.getData();
 
     // check if any result is significant on all tables
     // this statistic is from the confidence interval
     this.areResultsSignificant = this.anyResultsSignificant(
       this.benchmarkTable.isSigArray,
-      this.phaseTable.isSigArray
+      [
+        ...this.vitalsTable.isSigArray,
+        ...this.diagnosticsTable.isSigArray,
+      ]
     );
 
     // if any result is significant and
@@ -113,50 +129,71 @@ export class CompareResults {
   // generate the summary section for the results in the terminal
   // for each phase, color the significance appropriately by the HL estimated difference.
   // red for regression, green for improvement. Color with monotone if not significant.
+  private formatPhaseResult(phaseData: PhaseResultsFormatted[number]): { plain: string; colored: string } {
+    const { phase, pValue, hlDiff, isSignificant, ciMin, ciMax, asPercent } =
+      phaseData;
+    const { percentMedian, percentMax, percentMin } = asPercent;
+    const displayName = getDisplayName(phase);
+    const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
+    const unit = phaseData.unit;
+
+    if (
+      (isSignificant && estimatorISig) ||
+      (this.numberOfMeasurements === 1 && hlDiff !== 0)
+    ) {
+      const diffToS = (diff: number): string => {
+        const negativeDiff = -diff;
+        return negativeDiff > 0 ? `+${negativeDiff}` : `${negativeDiff}`;
+      };
+
+      const diffStr = `${diffToS(hlDiff)}${unit} [${diffToS(
+        ciMax
+      )}${unit} to ${diffToS(ciMin)}${unit}] OR ${diffToS(
+        percentMedian
+      )}% [${diffToS(percentMax)}% to ${diffToS(percentMin)}%]`;
+      const kind = hlDiff * phaseData.sign < 0 ? "regression" : "improvement";
+      const pSuffix = this.numberOfMeasurements !== 1 ? ` p=${pValue}` : "";
+
+      const plain = `  ${displayName} estimated ${kind} ${diffStr}${pSuffix}`;
+      const colorFn = kind === "regression" ? chalk.red : chalk.green;
+      const colored = `  ${chalk.bold(displayName)} estimated ${kind} ${colorFn(diffStr)}${pSuffix}`;
+      return { plain, colored };
+    } else {
+      const diffStr = `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`;
+      return {
+        plain: `  ${displayName} ${diffStr}`,
+        colored: `  ${chalk.bold(displayName)} ${chalk.grey(diffStr)}`,
+      };
+    }
+  }
+
+  private buildSummaryReport(): { plain: string; colored: string } {
+    const sections: { title: string; results: PhaseResultsFormatted }[] = [
+      { title: "LH & Vitals", results: this.vitalsResultsFormatted },
+      { title: "Diagnostics", results: this.diagnosticsResultsFormatted },
+    ];
+
+    const plainLines: string[] = ["Benchmark Results Summary"];
+    const coloredLines: string[] = [];
+
+    for (const section of sections) {
+      if (section.results.length === 0) continue;
+      plainLines.push(`\n${section.title}`);
+      coloredLines.push(chalk.underline(`\n${section.title}`));
+      for (const phaseData of section.results) {
+        const { plain, colored } = this.formatPhaseResult(phaseData);
+        plainLines.push(plain);
+        coloredLines.push(colored);
+      }
+    }
+
+    return { plain: plainLines.join("\n") + "\n", colored: coloredLines.join("\n") + "\n" };
+  }
+
   private logStatSummaryReport(): void {
     logHeading("Benchmark Results Summary", "log");
-
-    this.phaseResultsFormatted.forEach((phaseData) => {
-      const { phase, pValue, hlDiff, isSignificant, ciMin, ciMax, asPercent } =
-        phaseData;
-      const { percentMedian, percentMax, percentMin } = asPercent;
-      let msg = `${chalk.bold(phase)} phase `;
-      const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
-      // isSignificant comes from the confidence interval range and pValue NOT estimator
-      const unit = phaseData.unit;
-
-      if (
-        (isSignificant && estimatorISig) ||
-        (this.numberOfMeasurements === 1 && hlDiff !== 0)
-      ) {
-        msg += "estimated ";
-        const diffToS = (diff: number): string => {
-          const negativeDiff = -diff;
-          return negativeDiff > 0 ? `+${negativeDiff}` : `${negativeDiff}`;
-        };
-
-        const coloredDiff = `${diffToS(hlDiff)}${unit} [${diffToS(
-          ciMax
-        )}${unit} to ${diffToS(ciMin)}${unit}] OR ${diffToS(
-          percentMedian
-        )}% [${diffToS(percentMax)}% to ${diffToS(percentMin)}%]`;
-        if (hlDiff * phaseData.sign < 0) {
-          msg += `regression ${chalk.red(coloredDiff)}`;
-        } else {
-          msg += `improvement ${chalk.green(coloredDiff)}`;
-        }
-        if (this.numberOfMeasurements !== 1) msg += ` p=${pValue}`;
-      } else {
-        msg += `${chalk.grey(
-          `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`
-        )}`;
-      }
-      console.log(msg);
-    });
-
-    console.log(`\n`);
-
-    return;
+    const { colored } = this.buildSummaryReport();
+    console.log(colored);
   }
 
   // if numberOfMeasurements is at acceptable number, return true if any of the phase results were significant
@@ -178,10 +215,12 @@ export class CompareResults {
     const sigConfidenceIntervals: IConfidenceInterval[] = [];
     const sigDeltas: number[] = [];
     // all stats
-    const stats = this.benchmarkTable.display.concat(this.phaseTable.display);
+    const stats = this.benchmarkTable.display
+      .concat(this.vitalsTable.display)
+      .concat(this.diagnosticsTable.display);
 
     // only push statistics that are stat sig
-    stats.map((stat) => {
+    stats.map(({ stats: stat }) => {
       if (stat.confidenceInterval.isSig) {
         sigConfidenceIntervals.push(stat.confidenceInterval);
         sigDeltas.push(stat.estimator);
@@ -235,26 +274,19 @@ export class CompareResults {
   // return the trimmed compare results in JSON format
   // this is propogated as the default return all the way up to the Compare command directly
   public stringifyJSON(): string {
-    const benchmarkTableData = this.benchmarkTableData;
-    const phaseTableData = this.phaseTableData;
-    const areResultsSignificant = this.areResultsSignificant;
-    const isBelowRegressionThreshold = this.isBelowRegressionThreshold;
-    const regressionThresholdStat = this.regressionThresholdStat;
     const jsonResults: ICompareJSONResults = {
-      benchmarkTableData,
-      phaseTableData,
-      areResultsSignificant,
-      isBelowRegressionThreshold,
-      regressionThresholdStat,
+      benchmarkTableData: this.benchmarkTableData,
+      vitalsTableData: this.vitalsTableData,
+      diagnosticsTableData: this.diagnosticsTableData,
+      areResultsSignificant: this.areResultsSignificant,
+      isBelowRegressionThreshold: this.isBelowRegressionThreshold,
+      regressionThresholdStat: this.regressionThresholdStat,
     };
     return JSON.stringify(jsonResults);
   }
 
-  public logTables(): void {
-    // log the stdout tables
-    // only log the tables when NOT in a CI env
-    console.log(`\n\n${this.benchmarkTable.render()}`);
-    console.log(`\n\n${this.phaseTable.render()}`);
+  public getPlainTextSummary(): string {
+    return this.buildSummaryReport().plain;
   }
 
   public logSummary(): void {

@@ -10,6 +10,7 @@ export interface AbTestOptions {
 export interface AbTestDefinition {
   name: string;
   startingPath: string;
+  line: number | null;
   options: AbTestOptions;
   testFn: (context: { page: Page }) => Promise<void>;
 }
@@ -24,9 +25,26 @@ export function abTest(
   },
   testFn: (context: { page: Page }) => Promise<void>
 ): void {
+  // Capture call-site line number from the stack trace
+  let line: number | null = null;
+  const stack = new Error().stack;
+  if (stack) {
+    // Stack frame format: "at abTest (...)" then "at <call-site> (file:line:col)"
+    const frames = stack.split('\n');
+    // The caller is typically the 3rd frame (0=Error, 1=abTest, 2=caller)
+    for (let i = 2; i < frames.length; i++) {
+      const match = frames[i].match(/:(\d+):\d+\)?$/);
+      if (match) {
+        line = parseInt(match[1], 10);
+        break;
+      }
+    }
+  }
+
   registry.push({
     name,
     startingPath: config.startingPath,
+    line,
     options: config.options ?? {},
     testFn,
   });

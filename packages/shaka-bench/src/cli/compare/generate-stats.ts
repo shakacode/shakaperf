@@ -6,6 +6,7 @@ import {
 } from "../../stats";
 
 import { md5sum } from "../helpers/utils";
+import { isDiagnosticMetric, diagnosticSortOrder } from "../../core/metric-groups";
 export interface ParsedTitleConfigs {
   servers: Array<{ name: string }>;
   plotTitle: string | undefined;
@@ -94,6 +95,8 @@ export class GenerateStats {
   reportTitles: ParsedTitleConfigs;
   durationSection: HTMLSectionRenderData;
   subPhaseSections: HTMLSectionRenderData[];
+  vitalsSections: HTMLSectionRenderData[];
+  diagnosticsSections: HTMLSectionRenderData[];
   cumulativeCharts: CumulativeChartData[];
   constructor(
     controlData: ITracerBenchTraceResult,
@@ -111,6 +114,10 @@ export class GenerateStats {
     );
     this.durationSection = durationSection;
     this.subPhaseSections = subPhaseSections;
+    this.vitalsSections = subPhaseSections.filter((s) => !isDiagnosticMetric(s.phase));
+    this.diagnosticsSections = subPhaseSections
+      .filter((s) => isDiagnosticMetric(s.phase))
+      .sort((a, b) => diagnosticSortOrder(a.phase) - diagnosticSortOrder(b.phase));
 
     this.cumulativeCharts = this.bucketCumulative(
       this.controlData.samples,

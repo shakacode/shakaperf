@@ -34,7 +34,6 @@
   "dependencies": {
     "chalk": "^4.1.1",
     "chrome-launcher": "^0.15.1",
-    "cli-table3": "^0.6.0",
     "commander": "^13.1.0",
     "d3-array": "~2.12.1",
     "d3-hierarchy": "^3.0.1",
@@ -45,7 +44,7 @@
     "html-minifier-terser": "^7.0.0",
     "json5": "^2.2.0",
     "jstat": "^1.9.5",
-    "lighthouse": "12.3.0",
+    "lighthouse": "13.0.3",
     "playwright-core": "^1.50.0",
     "race-cancellation": "^0.4.1",
     "tslib": "^2.2.0",

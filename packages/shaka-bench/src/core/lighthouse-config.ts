@@ -2,21 +2,17 @@ export interface Marker {
   start?: string;
   end: string;
   label: string;
+  isEarlyPhase?: boolean;
 }
 
 export const DEFAULT_MARKERS: Marker[] = [
   { label: 'hydration', start: 'hydration-start', end: 'hydration-end' },
-  { label: 'hydration-start', end: 'hydration-start' },
+  { label: 'hydration-start', end: 'hydration-start', isEarlyPhase: true },
 ];
 
-export interface LighthouseConfig {
-  formFactor?: string;
-  screenEmulation?: { mobile?: boolean; width?: number; height?: number; deviceScaleFactor?: number };
-  throttling?: { rttMs?: number; throughputKbps?: number; requestLatencyMs?: number; downloadThroughputKbps?: number; uploadThroughputKbps?: number; cpuSlowdownMultiplier?: number } | false;
-  logLevel?: string;
-  output?: string;
-  onlyCategories?: string[];
-}
+import type { Flags } from 'lighthouse/types/externs.js';
+
+export type LighthouseConfig = Flags;
 
 export function defineConfig(config: LighthouseConfig): LighthouseConfig {
   return config;

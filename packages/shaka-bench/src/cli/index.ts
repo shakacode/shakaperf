@@ -17,3 +17,6 @@ export { IReportFlags };
 // Test definition API
 export { abTest } from "../core/ab-test-registry";
 export type { AbTestDefinition, AbTestOptions } from "../core/ab-test-registry";
+
+// Config API
+export { defineConfig } from "../core/lighthouse-config";

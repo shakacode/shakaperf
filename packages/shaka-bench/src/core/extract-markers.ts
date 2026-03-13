@@ -12,8 +12,8 @@ function extractPerformanceMarkerTime(
   result: RunnerResult,
   markerName: string
 ): number | null {
-  const traceEvents = result.artifacts.traces.defaultPass.traceEvents;
-  const event = traceEvents.find((event) => event.name === markerName);
+  const traceEvents = result.artifacts.Trace.traceEvents;
+  const event = traceEvents.find((event: any) => event.name === markerName);
   if (!event) {
     return null;
   }
@@ -31,6 +31,23 @@ function extractPerformanceDuration(
     return null;
   }
   return endTime - startTime;
+}
+
+/**
+ * Returns the raw trace event `ts` (microseconds, monotonic clock) for a given
+ * performance mark name. This is in the same clock domain as devtools log timestamps
+ * (which are in seconds). Convert: ts / 1_000_000 = seconds.
+ */
+export function extractRawTraceTimestamp(
+  result: RunnerResult,
+  markerName: string
+): number | null {
+  const traceEvents = result.artifacts.Trace.traceEvents;
+  const event = traceEvents.find((event: any) => event.name === markerName);
+  if (!event) {
+    return null;
+  }
+  return (event as any).ts ?? null;
 }
 
 export function extractMarkers(
