@@ -7633,6 +7633,7 @@ __metadata:
     sass-loader: "npm:^16.0.6"
     shaka-bench: "workspace:*"
     shaka-bundle-size: "workspace:*"
+    shaka-shared: "workspace:*"
     shaka-twin-servers: "workspace:*"
     shaka-visreg: "workspace:*"
     shakapacker: "npm:9.5.0"
