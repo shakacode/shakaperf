@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
-import { loadConfigFile } from '../shared/load-config-file';
+import { loadConfigFile } from 'shaka-shared';
 import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
 import { injectINPObserver, collectINP } from './inp';
