@@ -123,13 +123,13 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   configJSON.isCompare = true;
   configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
   (configJSON.paths as Record<string, unknown>).tempCompareConfigFileName = config.tempCompareConfigFileName;
-  configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
+  configJSON.defaultMisMatchThreshold = configJSON.defaultMisMatchThreshold ?? config.defaultMisMatchThreshold;
   configJSON.configFileName = config.configFileName;
-  configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
+  configJSON.defaultRequireSameDimensions = configJSON.defaultRequireSameDimensions ?? config.defaultRequireSameDimensions;
 
-  configJSON.compareRetries = config.compareRetries;
-  configJSON.compareRetryDelay = config.compareRetryDelay;
-  configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
+  configJSON.compareRetries = configJSON.compareRetries ?? config.compareRetries;
+  configJSON.compareRetryDelay = configJSON.compareRetryDelay ?? config.compareRetryDelay;
+  configJSON.maxNumDiffPixels = configJSON.maxNumDiffPixels ?? config.maxNumDiffPixels;
 
   if (config.args.filter) {
     const filtered: Scenario[] = [];
