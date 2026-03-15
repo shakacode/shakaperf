@@ -5,8 +5,8 @@ import type { RuntimeConfig } from './types.js';
 export { defineVisregConfig } from './types.js';
 export type { VisregGlobalConfig } from './types.js';
 
-export default function (command: string, options?: Record<string, unknown>) {
-  const config = makeConfig(command, options) as RuntimeConfig;
+export default async function (command: string, options?: Record<string, unknown>) {
+  const config = await makeConfig(command, options) as RuntimeConfig;
   return executeCommand(command, config);
 }
 
@@ -20,12 +20,12 @@ export default function (command: string, options?: Record<string, unknown>) {
         v: false,
         version: false,
         i: false,
-        config: 'visreg.json'
+        config: 'visreg.config.ts'
     },
     visregRoot: '/path/to/shaka-visreg',
     projectPath: '/path/to/project',
     perf: { init: { started: 2018-09-23T04:01:09.673Z } },
-    configFileName: '/path/to/project/visreg.json',
+    configFileName: '/path/to/project/visreg.config.ts',
     bitmaps_reference: '/path/to/project/visreg_data/bitmaps_reference',
     bitmaps_test: '/path/to/project/visreg_data/bitmaps_test',
     ci_report: '/path/to/project/visreg_data/ci_report',

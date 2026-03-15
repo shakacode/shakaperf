@@ -5,8 +5,6 @@ import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
 import cloneDeep from 'lodash/cloneDeep.js';
-import { createRequire } from 'node:module';
-import { existsSync } from 'node:fs';
 import builder from 'junit-report-builder';
 import allSettled from '../util/allSettled.js';
 import createLogger from '../util/logger.js';
@@ -16,7 +14,6 @@ import type Reporter from '../util/Reporter.js';
 import type { Test } from '../util/Reporter.js';
 
 const logger = createLogger('report');
-const _require = createRequire(import.meta.url);
 
 function writeReport (config: RuntimeConfig, reporter: Reporter) {
   const promises = [];
@@ -45,9 +42,7 @@ function archiveReport (config: RuntimeConfig) {
 }
 
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (typeof config.args.config === 'object')
-    ? config.args.config
-    : (existsSync(config.configFileName) && !config.configFileName.endsWith('.ts') ? Object.assign({}, _require(config.configFileName)) : {});
+  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
 
   let browserReporter = cloneDeep(reporter);
 
@@ -193,9 +188,7 @@ function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
 }
 
 function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (typeof config.args.config === 'object')
-    ? config.args.config
-    : (existsSync(config.configFileName) && !config.configFileName.endsWith('.ts') ? Object.assign({}, _require(config.configFileName)) : {});
+  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
 
   let jsonReporter = cloneDeep(reporter);
 

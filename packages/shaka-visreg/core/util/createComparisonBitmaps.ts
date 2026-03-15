@@ -1,6 +1,4 @@
-import { createRequire } from 'node:module';
 import path from 'node:path';
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
@@ -30,7 +28,6 @@ interface CompareResult {
   originalError?: Error;
 }
 
-const _require = createRequire(import.meta.url);
 const logger = createLogger('liveCompare');
 
 const CONCURRENCY_DEFAULT = 10;
@@ -61,23 +58,6 @@ async function loadTestFile (testFilePath: string): Promise<void> {
   }
 }
 
-async function loadGlobalVisregConfig (configPath: string): Promise<VisregGlobalConfig> {
-  const absolutePath = path.resolve(configPath);
-  const ext = path.extname(absolutePath);
-
-  let mod;
-  if (ext === '.ts') {
-    const { tsImport } = await import('tsx/esm/api');
-    const tsModule = await tsImport(absolutePath, import.meta.url);
-    mod = tsModule.default?.default ?? tsModule.default ?? tsModule;
-  } else {
-    const jsModule = await import(pathToFileURL(absolutePath).href);
-    mod = jsModule.default ?? jsModule;
-  }
-
-  return mod as VisregGlobalConfig;
-}
-
 async function decorateConfigForTestFile (config: RuntimeConfig) {
   const testFilePath = config.args.testFile as string;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
@@ -91,24 +71,18 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     throw new Error('No tests registered in ' + testFilePath + '. Did you call abTest()?');
   }
 
-  // Load global visreg config if provided
-  let globalConfig: Partial<VisregGlobalConfig> = {};
-  const configArg = config.args.config as string | undefined;
-  if (configArg && configArg !== 'visreg.json') {
-    // A custom config was explicitly provided — load it as a global visreg config
-    globalConfig = await loadGlobalVisregConfig(configArg);
-  }
+  // Global config was already loaded in makeConfig and passed through extendConfig.
+  // Retrieve it for viewports/engineOptions which aren't on RuntimeConfig.
+  const globalConfig = (config.args._loadedVisregConfig as Partial<VisregGlobalConfig>) || {};
 
   // Convert AbTestDefinitions to Scenarios
   const scenarios = tests.map(function (t) {
     return convertAbTestToScenario(t, controlURL, experimentURL);
   });
 
-  // Build the decorated config object with a default viewport if none specified
-  const defaultViewports: Viewport[] = [{ label: 'desktop', width: 1280, height: 800 }];
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
-    viewports: globalConfig.viewports || defaultViewports,
+    viewports: globalConfig.viewports,
     engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
     scenarios,
   };
@@ -123,13 +97,13 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   configJSON.isCompare = true;
   configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
   (configJSON.paths as Record<string, unknown>).tempCompareConfigFileName = config.tempCompareConfigFileName;
-  configJSON.defaultMisMatchThreshold = configJSON.defaultMisMatchThreshold ?? config.defaultMisMatchThreshold;
+  configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
   configJSON.configFileName = config.configFileName;
-  configJSON.defaultRequireSameDimensions = configJSON.defaultRequireSameDimensions ?? config.defaultRequireSameDimensions;
+  configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
-  configJSON.compareRetries = configJSON.compareRetries ?? config.compareRetries;
-  configJSON.compareRetryDelay = configJSON.compareRetryDelay ?? config.compareRetryDelay;
-  configJSON.maxNumDiffPixels = configJSON.maxNumDiffPixels ?? config.maxNumDiffPixels;
+  configJSON.compareRetries = config.compareRetries;
+  configJSON.compareRetryDelay = config.compareRetryDelay;
+  configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
 
   if (config.args.filter) {
     const filtered: Scenario[] = [];
@@ -146,66 +120,6 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const totalScenarioCount = tests.length;
   logger.log('Selected ' + (configJSON.scenarios as Scenario[]).length + ' of ' + totalScenarioCount + ' scenarios.');
   return configJSON as unknown as DecoratedCompareConfig;
-}
-
-function decorateConfigForCompare (config: RuntimeConfig) {
-  let configJSON;
-
-  if (typeof config.args.config === 'object') {
-    configJSON = cloneDeep(config.args.config);
-  } else {
-    if (!existsSync(config.configFileName)) {
-      throw new Error(
-        'Config file not found: ' + config.configFileName + '\n' +
-        'Either provide a --config path or use --testFile to load scenarios from abTest() definitions.'
-      );
-    }
-    configJSON = cloneDeep(_require(config.configFileName));
-  }
-  configJSON.scenarios = configJSON.scenarios || [];
-  ensureViewportLabel(configJSON);
-
-  const totalScenarioCount = configJSON.scenarios.length;
-
-  if (configJSON.dynamicTestId) {
-    console.log('dynamicTestId \'' + configJSON.dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
-  }
-
-  configJSON.env = cloneDeep(config);
-  configJSON.isReference = false;
-  configJSON.isCompare = true;
-  configJSON.paths = configJSON.paths || {};
-  configJSON.paths.tempCompareConfigFileName = config.tempCompareConfigFileName;
-  configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
-  configJSON.configFileName = config.configFileName;
-  configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
-
-  // Pass through compare-specific config
-  configJSON.compareRetries = config.compareRetries;
-  configJSON.compareRetryDelay = config.compareRetryDelay;
-  configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
-
-  if (config.args.filter) {
-    const scenarios: Scenario[] = [];
-    (config.args.filter as string).split(',').forEach(function (filteredTest: string) {
-      configJSON.scenarios.forEach(function (scenario: Scenario) {
-        if (regexTest(scenario.label, filteredTest)) {
-          scenarios.push(scenario);
-        }
-      });
-    });
-    configJSON.scenarios = scenarios;
-  }
-
-  // Validate that all scenarios have referenceUrl
-  const missingReferenceUrl = configJSON.scenarios.filter(function (s: Scenario) { return !s.referenceUrl; });
-  if (missingReferenceUrl.length > 0) {
-    const labels = missingReferenceUrl.map(function (s: Scenario) { return '"' + s.label + '"'; }).join(', ');
-    throw new Error('liveCompare requires referenceUrl for all scenarios. Missing on: ' + labels);
-  }
-
-  logger.log('Selected ' + configJSON.scenarios.length + ' of ' + totalScenarioCount + ' scenarios.');
-  return configJSON;
 }
 
 function saveViewportIndexes (viewport: Viewport, index: number) {
@@ -304,12 +218,7 @@ function flatMapTestPairs (rawTestPairs: CompareResult[]) {
 }
 
 export default async function createComparisonBitmaps (config: RuntimeConfig) {
-  let decoratedConfig: DecoratedCompareConfig;
-  if (config.args.testFile) {
-    decoratedConfig = await decorateConfigForTestFile(config);
-  } else {
-    decoratedConfig = decorateConfigForCompare(config);
-  }
+  const decoratedConfig = await decorateConfigForTestFile(config);
 
   const rawTestPairs = await delegateCompareScenarios(decoratedConfig);
   const result = {

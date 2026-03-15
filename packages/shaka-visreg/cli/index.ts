@@ -19,8 +19,8 @@ program
   .name('shaka-visreg')
   .description('Shaka-visreg: Catch CSS curveballs.')
   .version('v' + version, '--version', 'Display version')
-  .option('--config <path>', 'Path to config file name', 'visreg.json')
-  .option('--testFile <path>', 'Path to .bench.ts test file (loads scenarios from abTest registry)')
+  .option('--config <path>', 'Path to visreg config file (default: visreg.config.ts)')
+  .requiredOption('--testFile <path>', 'Path to .bench.ts test file (loads scenarios from abTest registry)')
   .option('--controlURL <url>', 'Control server URL', 'http://localhost:3020')
   .option('--experimentURL <url>', 'Experiment server URL', 'http://localhost:3030')
   .option('--filter <regex>', 'A RegEx string used to filter scenarios by label');
