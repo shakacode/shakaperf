@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
   },
   "keywords": [
     "performance",
@@ -28,7 +29,10 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.11",
     "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.3.3"
   }
 }
