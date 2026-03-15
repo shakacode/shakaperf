@@ -11,8 +11,8 @@
     "templates"
   ],
   "scripts": {
-    "build": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc",
-    "typecheck": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc --noEmit",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
     "prepublishOnly": "yarn build"
   },
@@ -36,6 +36,7 @@
   "dependencies": {
     "commander": "^13.1.0",
     "dotenv": "^16.0.0",
+    "shaka-shared": "workspace:*",
     "tsx": "^4.21.0",
     "zod": "^3.24.0"
   },

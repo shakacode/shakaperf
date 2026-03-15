@@ -13446,6 +13446,7 @@ __metadata:
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
+    shaka-shared: "workspace:*"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
