@@ -34,12 +34,7 @@ abTest('Admin Orders - Form Login Interaction', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page, browserContext }) => {
-  const url = page.url();
-  await browserContext.clearCookies();
-  await page.goto(url);
-  await page.waitForLoadState('networkidle');
-
+}, async ({ page, scenario }) => {
   const loginFormVisible = await page.locator('[data-cy="admin-login-form"]').isVisible();
   if (!loginFormVisible) {
     throw new Error('Expected admin login form to be visible for interaction-based login scenario.');
@@ -50,10 +45,11 @@ abTest('Admin Orders - Form Login Interaction', {
   await page.click('[data-cy="admin-login-submit"]');
   await page.waitForLoadState('networkidle');
 
-  if (page.url().includes('/admin/login')) {
+  const url = page.url();
+  if (url.includes('/admin/login')) {
     throw new Error('Admin login interaction did not navigate away from /admin/login.');
   }
 
-  await page.goto(url);
+  await page.goto(new URL(scenario.startingPath, url).href);
   await waitUntilPageSettled(page);
 });
