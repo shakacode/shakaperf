@@ -10,8 +10,8 @@
     "templates"
   ],
   "scripts": {
-    "build": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc",
-    "typecheck": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc --noEmit",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
     "prepublishOnly": "yarn build"
   },
@@ -38,6 +38,7 @@
     "commander": "^13.1.0",
     "diff2html": "^3.4.48",
     "dotenv": "^16.0.0",
+    "shaka-shared": "workspace:*",
     "tsx": "^4.21.0",
     "webpack-bundle-analyzer": "^4.10.0",
     "zod": "^3.24.0"
