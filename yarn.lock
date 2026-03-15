@@ -13358,6 +13358,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"shaka-accessibility@workspace:packages/shaka-accessibility":
+  version: 0.0.0-use.local
+  resolution: "shaka-accessibility@workspace:packages/shaka-accessibility"
+  dependencies:
+    typescript: "npm:^5.3.3"
+  languageName: unknown
+  linkType: soft
+
 "shaka-bench@workspace:*, shaka-bench@workspace:packages/shaka-bench":
   version: 0.0.0-use.local
   resolution: "shaka-bench@workspace:packages/shaka-bench"
