@@ -1,4 +1,4 @@
-import type { Page } from 'playwright-core';
+import type { Page, BrowserContext } from 'playwright-core';
 
 export interface Marker {
   start?: string;
@@ -63,7 +63,7 @@ export interface AbTestDefinition {
   name: string;
   startingPath: string;
   options: AbTestOptions;
-  testFn: (context: { page: Page }) => Promise<void>;
+  testFn: (context: { page: Page; browserContext: BrowserContext; isReference: boolean }) => Promise<void>;
 }
 
 const registry: AbTestDefinition[] = [];
@@ -74,7 +74,7 @@ export function abTest(
     startingPath: string;
     options?: AbTestOptions;
   },
-  testFn: (context: { page: Page }) => Promise<void>
+  testFn: (context: { page: Page; browserContext: BrowserContext; isReference: boolean }) => Promise<void>
 ): void {
   registry.push({
     name,

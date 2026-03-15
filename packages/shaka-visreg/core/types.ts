@@ -78,7 +78,7 @@ export interface Scenario {
   sIndex?: number;
   _parent?: Scenario;
   _playwrightBrowser?: Browser;
-  _testFn?: (context: { page: PlaywrightPage }) => Promise<void>;
+  _testFn?: (context: { page: PlaywrightPage; browserContext: BrowserContext; isReference: boolean }) => Promise<void>;
 }
 
 // ── Variant ─────────────────────────────────────────────────────────

@@ -144,7 +144,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);
       await injectINPObserver(page);
-      const playwrightPromise = this.testDef.testFn({ page }).then(() => collectINP(page));
+      const playwrightPromise = this.testDef.testFn({ page, browserContext: context, isReference: false }).then(() => collectINP(page));
 
       const [phases, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 
