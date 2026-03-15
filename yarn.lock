@@ -13424,10 +13424,16 @@ __metadata:
     dotenv: "npm:^16.0.0"
     jest: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
+    shaka-bundle-size: "workspace:*"
     ts-jest: "npm:^29.1.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.3.3"
     zod: "npm:^3.24.0"
+  peerDependencies:
+    shaka-bundle-size: "*"
+  peerDependenciesMeta:
+    shaka-bundle-size:
+      optional: true
   bin:
     shaka-twin-servers: ./dist/cli.js
   languageName: unknown

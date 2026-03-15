@@ -15,6 +15,7 @@ import { say } from './commands/say';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
+import { compareTwinServers } from './commands/compare-twin-servers';
 import type { ResolvedConfig } from './types';
 import { colorize } from './helpers/ui';
 
@@ -109,6 +110,11 @@ Examples:
   shaka-twin-servers forward-ports 54782 18.210.27.22                    # default ports 3020, 3030
   shaka-twin-servers forward-ports 54782 18.210.27.22 3000 3001          # custom ports
   shaka-twin-servers forward-ports 54782 18.210.27.22 3010:3020 3030     # local:remote mapping
+
+  # Compare bundle sizes between control and experiment volumes
+  shaka-twin-servers compare-twin-servers
+  shaka-twin-servers compare-twin-servers --bundle-config path/to/bundle-size.config.js
+  shaka-twin-servers compare-twin-servers --no-html-diffs
 
   # Specify config explicitly
   shaka-twin-servers build -c path/to/twin-servers.config.ts
@@ -275,6 +281,21 @@ program
   .action(wrapAction(async () => {
     const { resolvedConfig, configPath } = await getResolvedConfig(program);
     await customizeDockerCompose(resolvedConfig, configPath);
+  }));
+
+program
+  .command('compare-twin-servers')
+  .description('Compare bundle sizes between control and experiment volumes')
+  .option('--bundle-config <path>', 'Path to bundle-size config file')
+  .option('--no-html-diffs', 'Skip HTML diff generation')
+  .action(wrapAction(async (opts) => {
+    const { resolvedConfig } = await getResolvedConfig(program);
+    const globalOpts = program.opts();
+    await compareTwinServers(resolvedConfig, {
+      verbose: globalOpts.verbose,
+      bundleConfigPath: opts.bundleConfig,
+      noHtmlDiffs: !opts.htmlDiffs,
+    });
   }));
 
 program.parse();

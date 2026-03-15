@@ -10,3 +10,5 @@ export type { ServerTarget } from './commands/run-overmind-command';
 export { syncChanges } from './commands/sync-changes';
 export type { SyncTarget } from './commands/sync-changes';
 export { say } from './commands/say';
+export { compareTwinServers } from './commands/compare-twin-servers';
+export type { CompareTwinServersOptions } from './commands/compare-twin-servers';
