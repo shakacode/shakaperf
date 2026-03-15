@@ -149,7 +149,11 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         browserContext: context,
         isReference: false,
         scenario: this.testDef,
-        viewport: { label: 'default', width: 1280, height: 800 },
+        viewport: {
+          label: lhSettings.formFactor ?? 'default',
+          width: lhSettings.screenEmulation?.width ?? 0,
+          height: lhSettings.screenEmulation?.height ?? 0,
+        },
         testType: TestType.Performance,
       }).then(() => collectINP(page));
 
