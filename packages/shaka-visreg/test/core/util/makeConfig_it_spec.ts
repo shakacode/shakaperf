@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { getGitRunId } from '../../../core/util/gitRunId.js';
+import { VISREG_DEFAULT_CONFIG } from '../../../core/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
@@ -13,46 +14,50 @@ process.chdir(__dirname);
 import makeConfig from '../../../core/util/makeConfig.js';
 
 const { version } = packageJson;
-const configFile = _require('./visreg');
 
 // root of visreg package dir, not related to cwd
 const visregDir = path.resolve(__dirname, '../../..');
 const runId = getGitRunId();
 const runBase = path.resolve('visreg_data', runId);
 
+// Since no visreg.config.ts exists in the test dir, makeConfig falls back
+// to VISREG_DEFAULT_CONFIG. Default paths are relative strings and override
+// the absolute runBase paths via extendConfig.
+const defaultPaths = VISREG_DEFAULT_CONFIG.paths!;
+
 const expectedConfig: Record<string, any> = {
   args: {},
   asyncCompareLimit: undefined,
   visregRoot: visregDir,
   visregVersion: version,
-  bitmaps_reference: path.join(runBase, 'bitmaps_reference'),
-  bitmaps_test: path.join(runBase, 'bitmaps_test'),
-  ci_report: path.join(runBase, 'ci_report'),
-  html_report: path.join(runBase, 'html_report'),
+  bitmaps_reference: defaultPaths.bitmaps_reference,
+  bitmaps_test: defaultPaths.bitmaps_test,
+  ci_report: defaultPaths.ci_report,
+  html_report: defaultPaths.html_report,
   openReport: true,
   comparePath: path.resolve(visregDir, 'compare/output'),
   captureConfigFileNameDefault: path.resolve(
     visregDir,
-    'capture/config.default.json'
+    'capture/config.default.ts'
   ),
   engine: null,
-  engine_scripts: path.resolve('visreg_data/engine_scripts'),
+  engine_scripts: defaultPaths.engine_scripts,
   engine_scripts_default: path.resolve(visregDir, 'capture/engine_scripts'),
   perf: {},
-  id: configFile.id,
-  report: ['browser'],
+  id: undefined,
+  report: VISREG_DEFAULT_CONFIG.report,
   ciReport: {
     format: 'junit',
     testReportFileName: 'xunit',
     testSuiteName: 'shaka-visreg'
   },
-  compareConfigFileName: path.join(runBase, 'html_report/config.js'),
-  compareReportURL: path.join(runBase, 'html_report/index.html'),
+  compareConfigFileName: defaultPaths.html_report + '/config.js',
+  compareReportURL: defaultPaths.html_report + '/index.html',
   defaultMisMatchThreshold: 0.1,
   debug: false,
-  compareRetries: 0,
-  compareRetryDelay: 5000,
-  maxNumDiffPixels: 0,
+  compareRetries: VISREG_DEFAULT_CONFIG.compareRetries,
+  compareRetryDelay: VISREG_DEFAULT_CONFIG.compareRetryDelay,
+  maxNumDiffPixels: VISREG_DEFAULT_CONFIG.maxNumDiffPixels,
   resembleOutputOptions: undefined,
   scenarioLogsInReports: undefined,
   archivePath: path.join(runBase, 'reports'),
