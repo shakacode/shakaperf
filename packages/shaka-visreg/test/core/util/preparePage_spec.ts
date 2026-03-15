@@ -1,5 +1,7 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
+import { TestType } from 'shaka-shared';
+import type { AbTestDefinition } from 'shaka-shared';
 
 describe('preparePage', function () {
   let preparePage: typeof import('../../../core/util/preparePage.js').default;
@@ -38,6 +40,13 @@ describe('preparePage', function () {
     } as unknown as import('playwright').Page;
   }
 
+  const baseTestDef: AbTestDefinition = {
+    name: 'Test',
+    startingPath: '/page',
+    options: {},
+    testFn: async function () {},
+  };
+
   const baseScenario = {
     label: 'Test',
     url: 'http://localhost:3030/page',
@@ -71,6 +80,7 @@ describe('preparePage', function () {
       const scenario = {
         ...baseScenario,
         _testFn: testFn,
+        _testDef: baseTestDef,
       };
 
       await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
@@ -84,6 +94,7 @@ describe('preparePage', function () {
       const scenario = {
         ...baseScenario,
         _testFn: testFn,
+        _testDef: baseTestDef,
       };
 
       await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, true, baseBrowserContext, engineScriptsPath);
@@ -95,12 +106,31 @@ describe('preparePage', function () {
       assert.strictEqual(context.isReference, true);
     });
 
+    it('should pass scenario (testDef), viewport, and testType to testFn', async function () {
+      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const page = makePage();
+      const scenario = {
+        ...baseScenario,
+        _testFn: testFn,
+        _testDef: baseTestDef,
+      };
+
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+
+      const callArgs = testFn.mock.calls[0] as unknown[];
+      const context = callArgs[0] as Record<string, unknown>;
+      assert.strictEqual(context.scenario, baseTestDef);
+      assert.deepStrictEqual(context.viewport, { label: 'desktop', width: 1280, height: 800 });
+      assert.strictEqual(context.testType, TestType.VisualRegression);
+    });
+
     it('should call testFn with isReference=false for experiment page', async function () {
       const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
         _testFn: testFn,
+        _testDef: baseTestDef,
       };
 
       await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
@@ -116,6 +146,7 @@ describe('preparePage', function () {
       const scenario = {
         ...baseScenario,
         _testFn: testFn,
+        _testDef: baseTestDef,
         onReadyScript: 'should-not-be-loaded.ts',
       };
 
