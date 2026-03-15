@@ -1,4 +1,4 @@
-import { abTest } from 'shaka-shared';
+import { abTest, TestType } from 'shaka-shared';
 import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
 
 abTest('Click Shop Now on homepage', {
@@ -9,9 +9,11 @@ abTest('Click Shop Now on homepage', {
       maxNumDiffPixels: 5,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, testType }) => {
   await page.waitForSelector('[data-cy="hero-section"]');
   await page.click('text=Shop Now');
   await page.waitForURL('**/products');
-  await waitUntilPageSettled(page);
+  if (testType === TestType.VisualRegression) {
+    await waitUntilPageSettled(page);
+  }
 });
