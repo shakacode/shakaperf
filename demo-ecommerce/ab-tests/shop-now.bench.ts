@@ -1,10 +1,10 @@
 import { abTest } from 'shaka-shared';
+import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
 
 abTest('Click Shop Now on homepage', {
   startingPath: '/',
   options: {
     visreg: {
-      selectors: ['document'],
       misMatchThreshold: 0.1,
       maxNumDiffPixels: 5,
     },
@@ -13,4 +13,5 @@ abTest('Click Shop Now on homepage', {
   await page.waitForSelector('[data-cy="hero-section"]');
   await page.click('text=Shop Now');
   await page.waitForURL('**/products');
+  await waitUntilPageSettled(page);
 });
