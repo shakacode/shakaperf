@@ -1,5 +1,5 @@
-import { abTest, getRegisteredTests, clearRegistry } from '../ab-test-registry';
-import type { AbTestDefinition } from '../ab-test-registry';
+import { abTest, getRegisteredTests, clearRegistry, TestType } from '../ab-test-registry';
+import type { AbTestDefinition, TestFnContext } from '../ab-test-registry';
 
 describe('ab-test-registry', () => {
   afterEach(() => {
@@ -98,6 +98,45 @@ describe('ab-test-registry', () => {
       const tests = getRegisteredTests();
       expect(tests).toHaveLength(1);
       expect(tests[0].name).toBe('New');
+    });
+  });
+
+  describe('TestType enum', () => {
+    it('should have VisualRegression value', () => {
+      expect(TestType.VisualRegression).toBe('visual_regression');
+    });
+
+    it('should have Performance value', () => {
+      expect(TestType.Performance).toBe('performance');
+    });
+  });
+
+  describe('TestFnContext', () => {
+    it('should accept testFn with full context', () => {
+      const testFn = async (ctx: TestFnContext) => {
+        // Verify all context properties are accessible
+        expect(ctx.page).toBeDefined();
+        expect(ctx.browserContext).toBeDefined();
+        expect(typeof ctx.isReference).toBe('boolean');
+        expect(ctx.scenario).toBeDefined();
+        expect(ctx.viewport).toBeDefined();
+        expect(ctx.testType).toBeDefined();
+      };
+
+      abTest('Context test', { startingPath: '/page' }, testFn);
+
+      const tests = getRegisteredTests();
+      expect(tests[0].testFn).toBe(testFn);
+    });
+
+    it('should accept testFn that only destructures a subset of context', () => {
+      // This verifies backward compatibility — existing tests only use { page }
+      const testFn = async ({ page }: TestFnContext) => {
+        void page;
+      };
+
+      abTest('Subset test', { startingPath: '/' }, testFn);
+      expect(getRegisteredTests()).toHaveLength(1);
     });
   });
 
