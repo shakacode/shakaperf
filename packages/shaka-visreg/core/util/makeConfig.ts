@@ -26,7 +26,8 @@ function loadProjectConfig (command: string, options: Record<string, any> | unde
   // derivation, but we skip loading scenarios from it.
   if (options && options.testFile) {
     let customConfigPath = options.configFilePath || options.configPath;
-    if (typeof options.config === 'string') {
+    // Ignore the CLI default 'visreg.json' — only use explicitly provided config paths
+    if (typeof options.config === 'string' && options.config !== 'visreg.json') {
       customConfigPath = options.config;
     }
     if (customConfigPath) {
