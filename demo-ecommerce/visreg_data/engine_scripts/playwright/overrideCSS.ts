@@ -21,11 +21,11 @@ const VISREG_TEST_CSS_OVERRIDE = `
   }
 `;
 
-export default async function overrideCSS(page: Page, scenario: Scenario): Promise<void> {
+export default async function overrideCSS(page: Page, scenario?: Scenario): Promise<void> {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: VISREG_TEST_CSS_OVERRIDE
   });
 
-  console.log('VISREG_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
+  console.log('VISREG_TEST_CSS_OVERRIDE injected for: ' + (scenario?.label ?? page.url()));
 }

@@ -25,7 +25,7 @@ const IMAGE_STUB_URL = path.resolve(__dirname, '../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};
 
-export default async function interceptImages(page: Page, _scenario: Scenario): Promise<void> {
+export default async function interceptImages(page: Page, _scenario?: Scenario): Promise<void> {
   await page.route(IMAGE_URL_RE, route => {
     route.fulfill({
       body: IMAGE_DATA_BUFFER,
