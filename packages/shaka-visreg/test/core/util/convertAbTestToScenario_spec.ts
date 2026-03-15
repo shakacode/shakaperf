@@ -60,6 +60,14 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario._testFn, testFn);
   });
 
+  it('should attach the full test definition as _testDef', function () {
+    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment');
+
+    assert.strictEqual(scenario._testDef, baseDef);
+    assert.strictEqual(scenario._testDef!.name, 'Test scenario');
+    assert.strictEqual(scenario._testDef!.startingPath, '/products');
+  });
+
   it('should not set onReadyScript', function () {
     const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment');
 
