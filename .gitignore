@@ -52,8 +52,6 @@ playwright-report/
 **/visreg_data/engine_scripts/dist
 **/visreg_data/ci_report/xunit.xml
 
-**/src/shared/
-
 packages/shaka-bench/tracerbench-results
 tracerbench-results
 
