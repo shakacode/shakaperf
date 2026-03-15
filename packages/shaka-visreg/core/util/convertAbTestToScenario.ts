@@ -16,6 +16,7 @@ export function convertAbTestToScenario(
     referenceUrl: controlURL + testDef.startingPath,
     selectors: visreg.selectors ?? ['document'],
     _testFn: testDef.testFn,
+    _testDef: testDef,
   };
 
   // Only set optional properties when they have a value
