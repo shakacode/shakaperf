@@ -10,8 +10,8 @@ describe('cli', function () {
     delete process.exitCode;
   });
 
-  it('should call the runner without custom options correctly', async function () {
-    process.argv = ['node', 'shaka-visreg', 'liveCompare'];
+  it('should call the runner with --testFile correctly', async function () {
+    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.unstable_mockModule('../../core/runner.js', () => ({
@@ -22,11 +22,13 @@ describe('cli', function () {
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
-    expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.anything());
+    expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.objectContaining({
+      testFile: './ab-tests/test.bench.ts',
+    }));
   });
 
   it('should exit with code 1 if runner fails', async function () {
-    process.argv = ['node', 'shaka-visreg', 'liveCompare'];
+    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.unstable_mockModule('../../core/runner.js', () => ({
@@ -43,5 +45,20 @@ describe('cli', function () {
     // Give the .catch() handler in cli/index.js time to run
     await new Promise(resolve => setImmediate(resolve));
     assert.strictEqual(process.exitCode, 1);
+  });
+
+  it('should call the runner for init command', async function () {
+    process.argv = ['node', 'shaka-visreg', 'init'];
+    const promiseMock = Promise.resolve();
+    const runnerMock = jest.fn().mockReturnValue(promiseMock);
+    jest.unstable_mockModule('../../core/runner.js', () => ({
+      default: runnerMock
+    }));
+
+    await import('../../cli/index.js');
+
+    await promiseMock;
+    assert.strictEqual(process.exitCode, undefined);
+    expect(runnerMock).toHaveBeenCalledWith('init', expect.anything());
   });
 });
