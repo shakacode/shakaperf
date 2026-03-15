@@ -60,8 +60,8 @@ const expectedConfig: Record<string, any> = {
 };
 
 describe('make config it', function () {
-  it('should return the default config correctly', function () {
-    const actualConfig = makeConfig('test');
+  it('should return the default config correctly', async function () {
+    const actualConfig = await makeConfig('test');
 
     assert(actualConfig.tempCompareConfigFileName);
     delete actualConfig.tempCompareConfigFileName;
