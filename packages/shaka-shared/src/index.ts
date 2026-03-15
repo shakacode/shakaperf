@@ -10,3 +10,5 @@ export type {
   Marker,
   Viewport,
 } from './ab-test-registry';
+export { loadConfigFile } from './load-config-file';
+export { findConfigFile } from './find-config-file';
