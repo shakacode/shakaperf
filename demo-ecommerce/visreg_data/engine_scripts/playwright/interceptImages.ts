@@ -3,13 +3,14 @@
  * Listen to all requests. If a request matches IMAGE_URL_RE
  * then stub the image with data from IMAGE_STUB_URL
  *
- * Use this in an onBefore script E.G.
+ * Usage in an abTest (call before page.goto to intercept initial loads):
   ```
-  import interceptImages from './interceptImages';
+  import interceptImages from '../visreg_data/engine_scripts/playwright/interceptImages.ts';
 
-  export default async function onBefore(page, scenario) {
-    await interceptImages(page, scenario);
-  }
+  abTest('My Test', { startingPath: '/' }, async ({ page }) => {
+    await interceptImages(page);
+    await page.goto(page.url());
+  });
   ```
  */
 
