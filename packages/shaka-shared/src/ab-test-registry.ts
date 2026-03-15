@@ -13,6 +13,20 @@ export interface Viewport {
   height: number;
 }
 
+export enum TestType {
+  VisualRegression = 'visual_regression',
+  Performance = 'performance',
+}
+
+export interface TestFnContext {
+  page: Page;
+  browserContext: BrowserContext;
+  isReference: boolean;
+  scenario: AbTestDefinition;
+  viewport: Viewport;
+  testType: TestType;
+}
+
 export interface AbTestVisregConfig {
   // Selectors to capture (from Scenario)
   selectors?: string[];
@@ -63,7 +77,7 @@ export interface AbTestDefinition {
   name: string;
   startingPath: string;
   options: AbTestOptions;
-  testFn: (context: { page: Page; browserContext: BrowserContext; isReference: boolean }) => Promise<void>;
+  testFn: (context: TestFnContext) => Promise<void>;
 }
 
 const registry: AbTestDefinition[] = [];
@@ -74,7 +88,7 @@ export function abTest(
     startingPath: string;
     options?: AbTestOptions;
   },
-  testFn: (context: { page: Page; browserContext: BrowserContext; isReference: boolean }) => Promise<void>
+  testFn: (context: TestFnContext) => Promise<void>
 ): void {
   registry.push({
     name,

@@ -17,6 +17,6 @@ export type {
   SampleProgressCallback,
   RunOptions,
 } from './run';
-export { abTest, getRegisteredTests, clearRegistry } from './ab-test-registry';
-export type { AbTestDefinition, AbTestOptions, AbTestVisregConfig } from './ab-test-registry';
+export { abTest, getRegisteredTests, clearRegistry, TestType } from './ab-test-registry';
+export type { AbTestDefinition, AbTestOptions, AbTestVisregConfig, TestFnContext } from './ab-test-registry';
 export { summarizePerformanceProfile } from './summarize-performance-profile';

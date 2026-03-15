@@ -4,9 +4,11 @@ export {
   abTest,
   getRegisteredTests,
   clearRegistry,
+  TestType,
 } from 'shaka-shared';
 export type {
   AbTestDefinition,
   AbTestOptions,
   AbTestVisregConfig,
+  TestFnContext,
 } from 'shaka-shared';

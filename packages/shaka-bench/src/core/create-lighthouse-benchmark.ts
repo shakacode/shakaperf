@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
-import { loadConfigFile } from 'shaka-shared';
+import { loadConfigFile, TestType } from 'shaka-shared';
 import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
 import { injectINPObserver, collectINP } from './inp';
@@ -144,7 +144,14 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);
       await injectINPObserver(page);
-      const playwrightPromise = this.testDef.testFn({ page, browserContext: context, isReference: false }).then(() => collectINP(page));
+      const playwrightPromise = this.testDef.testFn({
+        page,
+        browserContext: context,
+        isReference: false,
+        scenario: this.testDef,
+        viewport: { label: 'default', width: 1280, height: 800 },
+        testType: TestType.Performance,
+      }).then(() => collectINP(page));
 
       const [phases, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 

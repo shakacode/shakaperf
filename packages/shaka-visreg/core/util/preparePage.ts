@@ -4,6 +4,7 @@ import _ from 'lodash';
 import { existsSync } from 'node:fs';
 import injectVisregTools from '../../capture/visregTools.js';
 import createLogger from './logger.js';
+import { TestType } from 'shaka-shared';
 import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types.js';
 import type { ConsoleMessage } from 'playwright';
 
@@ -149,7 +150,14 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   // --- ON READY SCRIPT / TEST FN ---
   if (scenario._testFn) {
     // abTest flow: testFn replaces onReadyScript
-    await scenario._testFn({ page, browserContext: browserOrContext, isReference });
+    await scenario._testFn({
+      page,
+      browserContext: browserOrContext,
+      isReference,
+      scenario: scenario._testDef!,
+      viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+      testType: TestType.VisualRegression,
+    });
   } else {
     const onReadyScript = scenario.onReadyScript || config.onReadyScript;
     if (onReadyScript) {
