@@ -149,7 +149,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   // --- ON READY SCRIPT / TEST FN ---
   if (scenario._testFn) {
     // abTest flow: testFn replaces onReadyScript
-    await scenario._testFn({ page });
+    await scenario._testFn({ page, browserContext: browserOrContext, isReference });
   } else {
     const onReadyScript = scenario.onReadyScript || config.onReadyScript;
     if (onReadyScript) {
