@@ -1,4 +1,4 @@
-import { abTest } from 'shaka-bench';
+import { abTest } from 'shaka-shared';
 
 abTest('Click Shop Now on homepage', {
   startingPath: '/',
