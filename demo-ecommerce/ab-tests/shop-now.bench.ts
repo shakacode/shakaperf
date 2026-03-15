@@ -4,7 +4,7 @@ abTest('Click Shop Now on homepage', {
   startingPath: '/',
   options: {
     visreg: {
-      selectors: ['[data-cy="features-section"]'],
+      selectors: ['document'],
       misMatchThreshold: 0.1,
       maxNumDiffPixels: 5,
     },
