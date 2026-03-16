@@ -55,6 +55,17 @@ echo "=== Cleaning previous snapshots ==="
 rm -rf "$SCRIPT_DIR/snapshots"
 mkdir -p "$SCRIPT_DIR/snapshots"
 
+# Ensure the Node version from .nvmrc is active (requires nvm to be loaded)
+REQUIRED_NODE=$(cat "$REPO_ROOT/.nvmrc")
+CURRENT_NODE=$(node -v 2>/dev/null | sed 's/^v//')
+if [ "$CURRENT_NODE" != "$REQUIRED_NODE" ]; then
+  echo "Node $REQUIRED_NODE required (currently $CURRENT_NODE). Running 'nvm use'..."
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  # shellcheck source=/dev/null
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm use || { echo "Failed to switch Node version. Run 'nvm install $REQUIRED_NODE' first."; exit 1; }
+fi
+
 echo "=== Running integration tests ==="
 # Strip ANSI codes so the output is readable in plain text
 yarn test:integration 2>&1 | tee "$BASELINE"
