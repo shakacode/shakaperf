@@ -151,7 +151,10 @@ export default class ImageScrubber extends React.Component {
       const h = refImg.height;
       const w = refImg.width;
 
-      const worker = new Worker('divergedWorker.js');
+      const inlineWorkerScript = document.getElementById('diverged-worker-script');
+      const worker = inlineWorkerScript
+        ? new Worker(URL.createObjectURL(new Blob([inlineWorkerScript.textContent], { type: 'application/javascript' })))
+        : new Worker('divergedWorker.js');
 
       worker.addEventListener(
         'message',
