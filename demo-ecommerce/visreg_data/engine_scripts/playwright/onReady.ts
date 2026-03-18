@@ -5,7 +5,7 @@ import clickAndHoverHelper from './clickAndHoverHelper.ts';
 const PAGE_SETTLE_CHECKING_INTERVAL_MS = 700;
 const PAGE_SETTLE_TIMEOUT_MS = 30000;
 const SKELETON_SELECTOR = '';
-const SPINNER_SELECTOR = '';
+const SPINNER_SELECTOR = '.MuiCircularProgress-root';
 
 /**
  * Wait until the page has settled - DOM mutations stopped, network idle, fonts loaded, images rendered.
@@ -15,7 +15,7 @@ export async function waitUntilPageSettled(page: Page): Promise<void> {
   const url = page.url();
 
   // Wait for DOM mutations to stop (debounced) and loading indicators to disappear
-  const mutationsStopped = page.evaluate(([checkingInterval]) => {
+  const mutationsStopped = page.evaluate(([checkingInterval, skeletonSelector, spinnerSelector]) => {
     type PromiseResolver = (value: unknown) => void;
 
     const debounce = (func: PromiseResolver, delay: number) => {
@@ -52,9 +52,9 @@ export async function waitUntilPageSettled(page: Page): Promise<void> {
         return count;
       };
 
-      const skeletonCount = SKELETON_SELECTOR ? countDisplayedElements(SKELETON_SELECTOR) : 0;
+      const skeletonCount = skeletonSelector ? countDisplayedElements(skeletonSelector) : 0;
       const spinnerCount =
-        SPINNER_SELECTOR ? countDisplayedElements(SPINNER_SELECTOR) : 0;
+        spinnerSelector ? countDisplayedElements(spinnerSelector) : 0;
 
       return { skeletonCount, spinnerCount };
     };
@@ -98,7 +98,7 @@ export async function waitUntilPageSettled(page: Page): Promise<void> {
       observer.disconnect();
       clearInterval(intervalId);
     });
-  }, [PAGE_SETTLE_CHECKING_INTERVAL_MS] as const);
+  }, [PAGE_SETTLE_CHECKING_INTERVAL_MS, SKELETON_SELECTOR, SPINNER_SELECTOR] as const);
 
   // Wait for fonts to be ready
   const fontsReady = page

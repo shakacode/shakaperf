@@ -15,5 +15,10 @@ abTest('Homepage', {
     },
   },
 }, async ({ page }) => {
+  await page.evaluate(async () => {
+    window.scrollTo(0, document.body.scrollHeight);
+    await new Promise((r) => setTimeout(r, 100));
+    window.scrollTo(0, 0);
+  });
   await waitUntilPageSettled(page);
 });
