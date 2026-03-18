@@ -55,10 +55,7 @@ describe('createComparisonBitmaps', function () {
     const tests = mockRegisteredTests(overrides?.registeredTests);
 
     jest.mock('shaka-shared', () => ({
-      clearRegistry: function () {},
-      getRegisteredTests: function () { return tests; },
-      loadTestFile: function () { return Promise.resolve(); },
-      discoverTestFiles: function () { return ['/discovered/test.abtest.ts']; },
+      loadTests: function () { return Promise.resolve(tests); },
     }));
 
     const runCompareScenarioMock = overrides?.runCompareScenario || {
@@ -116,7 +113,36 @@ describe('createComparisonBitmaps', function () {
   });
 
   it('should throw error when no tests registered', async function () {
-    const createComparisonBitmaps = createModule({ registeredTests: [] });
+    jest.resetModules();
+
+    const noTestsError = new Error('No tests registered in /dummy/test.abtest.ts. Did you call abTest()?');
+    jest.mock('shaka-shared', () => ({
+      loadTests: function () { return Promise.reject(noTestsError); },
+    }));
+
+    jest.mock('node:fs/promises', () => ({
+      writeFile: function () { return Promise.resolve(); },
+    }));
+    jest.mock('../../../core/util/runCompareScenario', () => ({
+      playwright: function () { return Promise.resolve({ testPairs: [] }); },
+    }));
+    jest.mock('../../../core/util/runPlaywright', () => ({
+      createPlaywrightBrowser: function () { return Promise.resolve({}); },
+      disposePlaywrightBrowser: function () { return Promise.resolve(); },
+    }));
+    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+      __esModule: true,
+      default: function () {},
+    }));
+    jest.mock('../../../core/util/logger', () => ({
+      __esModule: true,
+      default: function () {
+        return { log: function () {}, error: function () {} };
+      },
+    }));
+
+    const mod = require('../../../core/util/createComparisonBitmaps');
+    const createComparisonBitmaps = mod.default;
 
     let errorThrown = false;
     try {
@@ -286,14 +312,12 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedScenarios[0].label, 'Auto-discovered test');
   });
 
-  it('should throw when no test files discovered and no testFile provided', async function () {
+  it('should throw when loadTests throws (no test files found)', async function () {
     jest.resetModules();
 
+    const noFilesError = new Error('No .abtest.ts or .abtest.js files found. Use --testFile to specify a file directly.');
     jest.mock('shaka-shared', () => ({
-      clearRegistry: function () {},
-      getRegisteredTests: function () { return []; },
-      loadTestFile: function () { return Promise.resolve(); },
-      discoverTestFiles: function () { return []; },
+      loadTests: function () { return Promise.reject(noFilesError); },
     }));
 
     jest.mock('node:fs/promises', () => ({

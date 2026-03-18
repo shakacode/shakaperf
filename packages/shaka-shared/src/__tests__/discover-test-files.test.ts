@@ -1,9 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { discoverTestFiles } from '../discover-test-files';
+import { findTestFiles } from '../discover-test-files';
 
-describe('discoverTestFiles', () => {
-  const tmpDir = path.join(__dirname, 'tmp-discover-tests');
+describe('findTestFiles', () => {
+  const tmpDir = path.join(__dirname, 'tmp-find-test-files');
+
+  function mkfile(relPath: string, content = '') {
+    const abs = path.join(tmpDir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content);
+  }
 
   beforeEach(() => {
     if (fs.existsSync(tmpDir)) {
@@ -18,94 +24,126 @@ describe('discoverTestFiles', () => {
     }
   });
 
-  it('returns empty array when no test files exist', () => {
-    expect(discoverTestFiles(tmpDir)).toEqual([]);
+  it('returns empty array when no .abtest files exist', () => {
+    mkfile('homepage.bench.ts');
+    mkfile('products.test.ts');
+    expect(findTestFiles({ cwd: tmpDir })).toEqual([]);
   });
 
-  it('discovers .abtest.ts files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'homepage.abtest.ts'), '');
+  it('finds .abtest.ts files', () => {
+    mkfile('homepage.abtest.ts');
+    mkfile('products.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([path.join(tmpDir, 'homepage.abtest.ts')]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(2);
+    expect(results.some(f => f.endsWith('homepage.abtest.ts'))).toBe(true);
+    expect(results.some(f => f.endsWith('products.abtest.ts'))).toBe(true);
   });
 
-  it('discovers .abtest.js files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'homepage.abtest.js'), '');
+  it('finds .abtest.js files', () => {
+    mkfile('homepage.abtest.js');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([path.join(tmpDir, 'homepage.abtest.js')]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatch(/homepage\.abtest\.js$/);
   });
 
-  it('discovers files in subdirectories recursively', () => {
-    const subDir = path.join(tmpDir, 'ab-tests');
-    fs.mkdirSync(subDir, { recursive: true });
-    fs.writeFileSync(path.join(subDir, 'cart.abtest.ts'), '');
-    fs.writeFileSync(path.join(subDir, 'homepage.abtest.ts'), '');
+  it('finds files recursively in subdirectories', () => {
+    mkfile('ab-tests/homepage.abtest.ts');
+    mkfile('ab-tests/nested/products.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([
-      path.join(subDir, 'cart.abtest.ts'),
-      path.join(subDir, 'homepage.abtest.ts'),
-    ]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(2);
   });
 
-  it('ignores node_modules directories', () => {
-    const nmDir = path.join(tmpDir, 'node_modules', 'some-pkg');
-    fs.mkdirSync(nmDir, { recursive: true });
-    fs.writeFileSync(path.join(nmDir, 'test.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'real.abtest.ts'), '');
+  it('skips node_modules directory', () => {
+    mkfile('homepage.abtest.ts');
+    mkfile('node_modules/some-pkg/test.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([path.join(tmpDir, 'real.abtest.ts')]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(1);
+    expect(results[0]).not.toContain('node_modules');
+  });
+
+  it('skips dist directory', () => {
+    mkfile('homepage.abtest.ts');
+    mkfile('dist/homepage.abtest.ts');
+
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(1);
+    expect(results[0]).not.toContain('dist');
+  });
+
+  it('skips build, .next, and coverage directories', () => {
+    mkfile('homepage.abtest.ts');
+    mkfile('build/homepage.abtest.ts');
+    mkfile('.next/homepage.abtest.ts');
+    mkfile('coverage/homepage.abtest.ts');
+
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toHaveLength(1);
   });
 
   it('ignores non-abtest files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'homepage.test.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'homepage.spec.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'homepage.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'homepage.abtest.ts'), '');
+    mkfile('homepage.test.ts');
+    mkfile('homepage.spec.ts');
+    mkfile('homepage.ts');
+    mkfile('homepage.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([path.join(tmpDir, 'homepage.abtest.ts')]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results).toEqual([path.join(tmpDir, 'homepage.abtest.ts')]);
   });
 
-  it('filters files by regex pattern', () => {
-    fs.writeFileSync(path.join(tmpDir, 'homepage.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'cart.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'products.abtest.ts'), '');
+  it('filters by testPathPattern regex', () => {
+    mkfile('ab-tests/homepage.abtest.ts');
+    mkfile('ab-tests/products.abtest.ts');
+    mkfile('ab-tests/cart.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir, 'cart');
-    expect(result).toEqual([path.join(tmpDir, 'cart.abtest.ts')]);
+    const results = findTestFiles({ cwd: tmpDir, testPathPattern: 'homepage' });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatch(/homepage\.abtest\.ts$/);
   });
 
-  it('filters files by regex pattern matching multiple files', () => {
-    fs.writeFileSync(path.join(tmpDir, 'homepage.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'cart.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'products.abtest.ts'), '');
+  it('testPathPattern filters by full path', () => {
+    mkfile('ab-tests/homepage.abtest.ts');
+    mkfile('ab-tests/products.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir, 'cart|homepage');
-    expect(result).toEqual([
+    const results = findTestFiles({ cwd: tmpDir, testPathPattern: 'ab-tests/products' });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatch(/products\.abtest\.ts$/);
+  });
+
+  it('testPathPattern can match multiple files', () => {
+    mkfile('homepage.abtest.ts');
+    mkfile('cart.abtest.ts');
+    mkfile('products.abtest.ts');
+
+    const results = findTestFiles({ cwd: tmpDir, testPathPattern: 'cart|homepage' });
+    expect(results).toEqual([
       path.join(tmpDir, 'cart.abtest.ts'),
       path.join(tmpDir, 'homepage.abtest.ts'),
     ]);
   });
 
   it('returns sorted results', () => {
-    fs.writeFileSync(path.join(tmpDir, 'z-test.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'a-test.abtest.ts'), '');
-    fs.writeFileSync(path.join(tmpDir, 'm-test.abtest.ts'), '');
+    mkfile('z-last.abtest.ts');
+    mkfile('a-first.abtest.ts');
+    mkfile('m-middle.abtest.ts');
 
-    const result = discoverTestFiles(tmpDir);
-    expect(result).toEqual([
-      path.join(tmpDir, 'a-test.abtest.ts'),
-      path.join(tmpDir, 'm-test.abtest.ts'),
-      path.join(tmpDir, 'z-test.abtest.ts'),
-    ]);
+    const results = findTestFiles({ cwd: tmpDir });
+    expect(results[0]).toMatch(/a-first/);
+    expect(results[1]).toMatch(/m-middle/);
+    expect(results[2]).toMatch(/z-last/);
   });
 
-  it('defaults to process.cwd() when no cwd provided', () => {
-    // Just verify it doesn't throw
-    const result = discoverTestFiles();
-    expect(Array.isArray(result)).toBe(true);
+  it('uses process.cwd() as default when cwd not provided', () => {
+    expect(() => findTestFiles()).not.toThrow();
+  });
+
+  it('returns empty array when testPathPattern matches nothing', () => {
+    mkfile('homepage.abtest.ts');
+
+    const results = findTestFiles({ cwd: tmpDir, testPathPattern: 'nonexistent' });
+    expect(results).toEqual([]);
   });
 });

@@ -6,13 +6,11 @@ import {
   clearDownloadsSizes,
   compareNetworkActivity,
   createLighthouseBenchmark,
-  clearRegistry,
-  getRegisteredTests,
   LighthouseBenchmarkOptions,
   NavigationSample,
   run,
 } from "../../../core";
-import { loadTestFile, discoverTestFiles } from "shaka-shared";
+import { loadTests } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -54,30 +52,15 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     console.error("experimentURL is required as a cli flag");
     process.exit(2);
   }
-  clearRegistry();
-
-  if (compareFlags.testFile) {
-    await loadTestFile(compareFlags.testFile);
-  } else {
-    const discovered = discoverTestFiles(process.cwd(), compareFlags.testPathPattern);
-    if (discovered.length === 0) {
-      const hint = compareFlags.testPathPattern
-        ? ` matching pattern "${compareFlags.testPathPattern}"`
-        : '';
-      console.error(`No .abtest.ts or .abtest.js files found${hint}. Use --testFile to specify a file directly.`);
-      process.exit(2);
-    }
-    console.log(`Discovered ${discovered.length} test file(s):`);
-    for (const f of discovered) {
-      console.log(`  ${f}`);
-      await loadTestFile(f);
-    }
-  }
-
-  const tests = getRegisteredTests();
-  if (tests.length === 0) {
-    const source = compareFlags.testFile || 'discovered files';
-    console.error(`No tests registered in ${source}. Did you call abTest()?`);
+  let tests;
+  try {
+    tests = await loadTests({
+      testFile: compareFlags.testFile,
+      testPathPattern: compareFlags.testPathPattern,
+      log: (msg) => console.log(msg),
+    });
+  } catch (e: any) {
+    console.error(e.message);
     process.exit(2);
   }
 
