@@ -4,6 +4,7 @@ describe('core report', function () {
     json_report: '/test',
     compareJsonFileName: '/compareJson',
     compareConfigFileName: '/compareConfig',
+    comparePath: '/compare/output',
     html_report: '/html_report',
     bitmaps_test: '/bitmaps_test',
     args: {
@@ -35,7 +36,9 @@ describe('core report', function () {
     }));
     jest.mock('node:fs/promises', () => ({
       readFile: jest.fn().mockResolvedValue('{}'),
-      writeFile: writeFileStub
+      writeFile: writeFileStub,
+      copyFile: jest.fn().mockResolvedValue(undefined),
+      mkdir: jest.fn().mockResolvedValue(undefined)
     }));
     jest.mock('fs-extra', () => ({
       copy: jest.fn().mockResolvedValue(undefined),

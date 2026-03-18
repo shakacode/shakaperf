@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
 import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -52,7 +52,15 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   logger.log('Writing browser report');
 
-  return copy(config.comparePath, toAbsolute(config.html_report)).then(function () {
+  // Only copy the files needed for the report (index.html and index_bundle.js).
+  // diff.js and diverged.js are build-time inputs and are already inlined in the bundle.
+  const reportFiles = ['index.html', 'index_bundle.js', 'index_bundle.js.LICENSE.txt'];
+  const htmlReportDir = toAbsolute(config.html_report);
+  return mkdir(htmlReportDir, { recursive: true }).then(() =>
+    Promise.all(reportFiles.map(file =>
+      copyFile(path.join(config.comparePath, file), path.join(htmlReportDir, file))
+    ))
+  ).then(function () {
     // Slurp in logs
     const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
