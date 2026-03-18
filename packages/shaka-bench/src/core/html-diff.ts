@@ -1,6 +1,6 @@
 import { readdirSync, writeFileSync, existsSync } from 'node:fs';
 import * as path from 'node:path';
-import { generateUnifiedDiff, buildDiffHtml } from '../shared/html-diff';
+import { generateUnifiedDiff, buildDiffHtml } from 'shaka-shared';
 
 function hostPatternFromUrl(url: string): string {
   const parsed = new URL(url);

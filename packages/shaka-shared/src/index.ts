@@ -19,3 +19,5 @@ export { findTestFiles } from './discover-test-files';
 export type { FindTestFilesOptions } from './discover-test-files';
 export { loadTests } from './load-tests';
 export type { LoadTestsOptions } from './load-tests';
+export { generateUnifiedDiff, escapeHtml, buildDiffHtml } from './html-diff';
+export type { BuildDiffHtmlOptions } from './html-diff';

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { HtmlDiffGenerator } from '../HtmlDiffGenerator';
-import { escapeHtml, generateUnifiedDiff } from '../shared/html-diff';
+import { escapeHtml, generateUnifiedDiff } from 'shaka-shared';
 
 describe('HtmlDiffGenerator', () => {
   const tmpDir = path.join(__dirname, 'tmp-html-diff');

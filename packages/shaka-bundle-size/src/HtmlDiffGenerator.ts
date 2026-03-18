@@ -10,7 +10,7 @@ import type {
   SingleDiffOptions,
   GenerateDiffsOptions,
 } from './types';
-import { generateUnifiedDiff, escapeHtml } from './shared/html-diff';
+import { generateUnifiedDiff, escapeHtml } from 'shaka-shared';
 
 export class HtmlDiffGenerator {
   ensureDirectoryExists(outputDir: string): void {
