@@ -58,6 +58,7 @@ describe('createComparisonBitmaps', function () {
     jest.unstable_mockModule('shaka-shared', () => ({
       clearRegistry: function () {},
       getRegisteredTests: function () { return tests; },
+      loadTestFile: function () { return Promise.resolve(); },
     }));
 
     const runCompareScenarioMock = overrides?.runCompareScenario || {
@@ -89,10 +90,6 @@ describe('createComparisonBitmaps', function () {
         return { log: function () {}, error: function () {} };
       },
     }));
-    jest.unstable_mockModule('tsx/esm/api', () => ({
-      tsImport: function () { return Promise.resolve({}); },
-    }));
-
     const mod = await import('../../../core/util/createComparisonBitmaps.js');
     return mod.default;
   }

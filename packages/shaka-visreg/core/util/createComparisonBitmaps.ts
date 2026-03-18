@@ -1,10 +1,8 @@
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { clearRegistry, getRegisteredTests } from 'shaka-shared';
+import { clearRegistry, getRegisteredTests, loadTestFile } from 'shaka-shared';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright.js';
 import * as runCompareScenario from './runCompareScenario.js';
 import ensureDirectoryPath from './ensureDirectoryPath.js';
@@ -44,18 +42,6 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
       viewport.label = viewport.name || ('viewport_' + index);
     }
   });
-}
-
-async function loadTestFile (testFilePath: string): Promise<void> {
-  const absolutePath = path.resolve(testFilePath);
-  const ext = path.extname(absolutePath);
-
-  if (ext === '.ts') {
-    const { tsImport } = await import('tsx/esm/api');
-    await tsImport(absolutePath, import.meta.url);
-  } else {
-    await import(pathToFileURL(absolutePath).href);
-  }
 }
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {

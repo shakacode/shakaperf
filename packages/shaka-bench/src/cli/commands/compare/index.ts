@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import * as path from "node:path";
-
 import {
   Benchmark,
   clearDownloadsSizes,
@@ -14,6 +12,7 @@ import {
   NavigationSample,
   run,
 } from "../../../core";
+import { loadTestFile } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -41,19 +40,6 @@ export interface ICompareFlags {
   report?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   config?: string;
-}
-
-async function loadTestFile(testFilePath: string): Promise<void> {
-  const absolutePath = path.resolve(testFilePath);
-  const ext = path.extname(absolutePath);
-
-  if (ext === '.ts') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { tsImport } = require('tsx/esm/api');
-    await tsImport(absolutePath, __filename);
-  } else {
-    await import(absolutePath);
-  }
 }
 
 export async function runCompare(flags: Record<string, any>): Promise<string> {
