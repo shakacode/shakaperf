@@ -3,12 +3,12 @@ import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
 import { clearRegistry, getRegisteredTests, loadTestFile } from 'shaka-shared';
-import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright.js';
-import * as runCompareScenario from './runCompareScenario.js';
-import ensureDirectoryPath from './ensureDirectoryPath.js';
-import { convertAbTestToScenario } from './convertAbTestToScenario.js';
-import createLogger from './logger.js';
-import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregGlobalConfig, TestPair, Browser } from '../types.js';
+import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
+import * as runCompareScenario from './runCompareScenario';
+import ensureDirectoryPath from './ensureDirectoryPath';
+import { convertAbTestToScenario } from './convertAbTestToScenario';
+import createLogger from './logger';
+import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregGlobalConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;

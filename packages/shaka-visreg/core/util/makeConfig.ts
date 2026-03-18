@@ -1,12 +1,9 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { loadConfigFile } from 'shaka-shared';
-import extendConfig from './extendConfig.js';
-import { VISREG_DEFAULT_CONFIG } from '../types.js';
-import type { RuntimeConfig, VisregGlobalConfig } from '../types.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import extendConfig from './extendConfig';
+import { VISREG_DEFAULT_CONFIG } from '../types';
+import type { RuntimeConfig, VisregGlobalConfig } from '../types';
 
 function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();

@@ -1,18 +1,17 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
 import { TestType } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 
 describe('preparePage', function () {
-  let preparePage: typeof import('../../../core/util/preparePage.js').default;
-  let translateUrl: typeof import('../../../core/util/preparePage.js').translateUrl;
+  let preparePage: typeof import('../../../core/util/preparePage').default;
+  let translateUrl: typeof import('../../../core/util/preparePage').translateUrl;
 
-  const mockEvaluate = jest.fn<(...args: unknown[]) => Promise<unknown>>();
-  const mockGoto = jest.fn<(...args: unknown[]) => Promise<void>>();
-  const mockWaitForSelector = jest.fn<(...args: unknown[]) => Promise<void>>();
+  const mockEvaluate = jest.fn();
+  const mockGoto = jest.fn();
+  const mockWaitForSelector = jest.fn();
   const mockOn = jest.fn();
   const mockRemoveListener = jest.fn();
-  const mockAddInitScript = jest.fn<(...args: unknown[]) => Promise<void>>();
+  const mockAddInitScript = jest.fn();
 
   function makePage () {
     mockEvaluate.mockReset();
@@ -54,28 +53,30 @@ describe('preparePage', function () {
   };
 
   const baseViewport = { label: 'desktop', width: 1280, height: 800 };
-  const baseConfig = {} as import('../../../core/types.js').VisregConfig;
-  const baseBrowserContext = {} as import('../../../core/types.js').BrowserContext;
+  const baseConfig = {} as import('../../../core/types').VisregConfig;
+  const baseBrowserContext = {} as import('../../../core/types').BrowserContext;
   const engineScriptsPath = '/tmp/engine_scripts';
 
-  beforeAll(async function () {
-    jest.unstable_mockModule('../../../capture/visregTools.js', () => ({
-      default: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  beforeAll(function () {
+    jest.mock('../../../capture/visregTools', () => ({
+      __esModule: true,
+      default: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+    jest.mock('../../../core/util/logger', () => ({
+      __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {}, warn: function () {} };
       },
     }));
 
-    const mod = await import('../../../core/util/preparePage.js');
+    const mod = require('../../../core/util/preparePage');
     preparePage = mod.default;
     translateUrl = mod.translateUrl;
   });
 
   describe('testFn execution', function () {
     it('should call _testFn when present on scenario', async function () {
-      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
@@ -89,7 +90,7 @@ describe('preparePage', function () {
     });
 
     it('should pass page, browserContext, and isReference to testFn', async function () {
-      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
@@ -107,7 +108,7 @@ describe('preparePage', function () {
     });
 
     it('should pass scenario (testDef), viewport, and testType to testFn', async function () {
-      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
@@ -125,7 +126,7 @@ describe('preparePage', function () {
     });
 
     it('should call testFn with isReference=false for experiment page', async function () {
-      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
@@ -141,7 +142,7 @@ describe('preparePage', function () {
     });
 
     it('should not attempt onReadyScript when _testFn is present', async function () {
-      const testFn = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+      const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,

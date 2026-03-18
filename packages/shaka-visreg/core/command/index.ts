@@ -1,11 +1,11 @@
 import _ from 'lodash';
-import createLogger from '../util/logger.js';
-import * as init from './init.js';
-import * as openReport from './openReport.js';
-import * as report from './report.js';
-import * as liveCompare from './liveCompare.js';
-import * as version from './version.js';
-import type { RuntimeConfig } from '../types.js';
+import createLogger from '../util/logger';
+import * as init from './init';
+import * as openReport from './openReport';
+import * as report from './report';
+import * as liveCompare from './liveCompare';
+import * as version from './version';
+import type { RuntimeConfig } from '../types';
 
 const logger = createLogger('COMMAND');
 

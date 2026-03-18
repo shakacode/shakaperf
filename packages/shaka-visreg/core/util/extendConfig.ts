@@ -3,12 +3,10 @@ import temp from 'temp';
 import fs from 'node:fs';
 import hash from 'object-hash';
 import os from 'node:os';
-import { createRequire } from 'node:module';
-import { getGitRunId } from './gitRunId.js';
-import type { RuntimeConfig, VisregConfig } from '../types.js';
+import { getGitRunId } from './gitRunId';
+import type { RuntimeConfig, VisregConfig } from '../types';
 
-const _require = createRequire(import.meta.url);
-const packageJson = _require('../../package.json');
+const packageJson = require('../../package.json');
 const { version } = packageJson;
 const tmpdir = os.tmpdir();
 

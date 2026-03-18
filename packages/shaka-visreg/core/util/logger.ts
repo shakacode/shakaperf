@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import _ from 'lodash';
-import makeSpaces from './makeSpaces.js';
+import makeSpaces from './makeSpaces';
 
 function identity (string: string) { return string; }
 

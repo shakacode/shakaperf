@@ -1,4 +1,4 @@
-import type { Scenario, Viewport } from '../types.js';
+import type { Scenario, Viewport } from '../types';
 
 export default class VisregException {
   msg: string;

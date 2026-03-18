@@ -1,7 +1,4 @@
-import { createRequire } from 'node:module';
-
-const _require = createRequire(import.meta.url);
-const packageJson = _require('../../package.json');
+const packageJson = require('../../package.json');
 const { version } = packageJson;
 
 export function execute (_config: unknown) {

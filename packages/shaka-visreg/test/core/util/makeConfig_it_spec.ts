@@ -1,17 +1,13 @@
 import assert from 'node:assert';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-import { getGitRunId } from '../../../core/util/gitRunId.js';
-import { VISREG_DEFAULT_CONFIG } from '../../../core/types.js';
+import { getGitRunId } from '../../../core/util/gitRunId';
+import { VISREG_DEFAULT_CONFIG } from '../../../core/types';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const _require = createRequire(import.meta.url);
-const packageJson = _require('../../../package.json');
+const packageJson = require('../../../package.json');
 
 process.chdir(__dirname);
 
-import makeConfig from '../../../core/util/makeConfig.js';
+import makeConfig from '../../../core/util/makeConfig';
 
 const { version } = packageJson;
 
