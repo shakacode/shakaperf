@@ -1,28 +1,3 @@
-const HTML_TEMPLATE = `<!DOCTYPE html>
-<html>
-  <head>
-    <title>Shaka Vis Reg Report</title>
-    <style>
-      @font-face {
-          font-family: 'latoregular';
-          src: url('./assets/fonts/lato-regular-webfont.woff2') format('woff2'),
-              url('./assets/fonts/lato-regular-webfont.woff') format('woff');
-      }
-      @font-face {
-          font-family: 'latobold';
-          src: url('./assets/fonts/lato-bold-webfont.woff2') format('woff2'),
-              url('./assets/fonts/lato-bold-webfont.woff') format('woff');
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>function report(r){window.tests=r;}</script>
-    <script src="config.js"></script>
-    <script src="index_bundle.js"></script>
-  </body>
-</html>`;
-
 describe('core report', function () {
   const config = {
     report: ['json'],
@@ -61,9 +36,6 @@ describe('core report', function () {
     }));
     jest.mock('node:fs/promises', () => ({
       readFile: jest.fn().mockImplementation((filePath: string) => {
-        if (typeof filePath === 'string' && filePath.endsWith('index.html')) {
-          return Promise.resolve(HTML_TEMPLATE);
-        }
         // Return empty Buffer for font files, empty string for JS files
         if (typeof filePath === 'string' && filePath.endsWith('.woff2')) {
           return Promise.resolve(Buffer.from(''));
@@ -93,16 +65,24 @@ describe('core report', function () {
     });
   });
 
-  it('should inline the config JSONP data into the HTML', function () {
+  it('should produce a self-contained HTML with no external script references', function () {
     return report.execute(config).then(() => {
       const htmlCall = writeFileStub.mock.calls.find(
         (call: unknown[]) => call[0] === '/html_report/index.html'
       );
       expect(htmlCall).toBeDefined();
       const htmlContent = htmlCall![1] as string;
-      // Config should be inlined, not as external script src
-      expect(htmlContent).not.toContain('<script src="config.js">');
+      // No external script references
+      expect(htmlContent).not.toContain('<script src=');
+      // Config JSONP is inlined
       expect(htmlContent).toContain('report(');
+      // Basic structure is present
+      expect(htmlContent).toContain('<div id="root">');
+      expect(htmlContent).toContain('Shaka Vis Reg Report');
+      // Font is inlined as base64 data URI
+      expect(htmlContent).toContain("data:font/woff2;base64,");
+      // Worker script is embedded
+      expect(htmlContent).toContain('id="diverged-worker-script"');
     });
   });
 

@@ -41,23 +41,24 @@ function archiveReport (config: RuntimeConfig) {
   return copy(toAbsolute(config.html_report), archivePath);
 }
 
+// Escape </script> occurrences in JS content to prevent premature tag closure when inlined
+function safeInlineScript (js: string): string {
+  return js.replace(/<\/script/gi, '<\\/script');
+}
+
 async function buildInlineHtml (config: RuntimeConfig, jsonpReport: string): Promise<string> {
   const fontsDir = path.join(config.comparePath, 'assets', 'fonts');
 
-  const [htmlTemplate, bundleJs, diffJs, divergedJs, divergedWorkerJs, latoRegularWoff2, latoBoldWoff2] = await Promise.all([
-    readFile(path.join(config.comparePath, 'index.html'), 'utf8'),
+  logger.log('Reading assets from: ' + config.comparePath);
+
+  const [bundleJs, diffJs, divergedJs, divergedWorkerJs, latoRegularWoff2, latoBoldWoff2] = await Promise.all([
     readFile(path.join(config.comparePath, 'index_bundle.js'), 'utf8'),
     readFile(path.join(config.comparePath, 'diff.js'), 'utf8'),
     readFile(path.join(config.comparePath, 'diverged.js'), 'utf8'),
     readFile(path.join(config.comparePath, 'divergedWorker.js'), 'utf8'),
-    readFile(path.join(fontsDir, 'lato-regular-webfont.woff2')) as Promise<Buffer>,
-    readFile(path.join(fontsDir, 'lato-bold-webfont.woff2')) as Promise<Buffer>,
+    readFile(path.join(fontsDir, 'lato-regular-webfont.woff2')),
+    readFile(path.join(fontsDir, 'lato-bold-webfont.woff2')),
   ]);
-
-  // Escape </script> occurrences in JS content to prevent premature tag closure when inlined
-  function safeInlineScript (js: string): string {
-    return js.replace(/<\/script/gi, '<\\/script');
-  }
 
   // Build combined worker: inline diff.js + diverged.js content, strip importScripts lines
   const workerEventHandler = (divergedWorkerJs as string).split('\n')
@@ -65,37 +66,41 @@ async function buildInlineHtml (config: RuntimeConfig, jsonpReport: string): Pro
     .join('\n');
   const combinedWorker = `${diffJs as string}\n${divergedJs as string}\n${workerEventHandler}`;
 
-  let html = htmlTemplate as string;
+  const latoRegularBase64 = (latoRegularWoff2 as Buffer).toString('base64');
+  const latoBoldBase64 = (latoBoldWoff2 as Buffer).toString('base64');
 
-  // Inline fonts: replace multi-format src with single woff2 data URI
-  html = html.replace(
-    /src: url\('\.\/assets\/fonts\/lato-regular-webfont\.woff2'\) format\('woff2'\),\s*\n\s*url\('\.\/assets\/fonts\/lato-regular-webfont\.woff'\) format\('woff'\)/,
-    `src: url('data:font/woff2;base64,${(latoRegularWoff2 as Buffer).toString('base64')}') format('woff2')`
-  );
-  html = html.replace(
-    /src: url\('\.\/assets\/fonts\/lato-bold-webfont\.woff2'\) format\('woff2'\),\s*\n\s*url\('\.\/assets\/fonts\/lato-bold-webfont\.woff'\) format\('woff'\)/,
-    `src: url('data:font/woff2;base64,${(latoBoldWoff2 as Buffer).toString('base64')}') format('woff2')`
-  );
-
-  // Inline config JSONP
-  html = html.replace(
-    '<script src="config.js"></script>',
-    `<script>${safeInlineScript(jsonpReport)}</script>`
-  );
-
-  // Inline main bundle
-  html = html.replace(
-    '<script src="index_bundle.js"></script>',
-    `<script>${safeInlineScript(bundleJs as string)}</script>`
-  );
-
-  // Embed worker script for Blob URL creation (before closing body)
-  html = html.replace(
-    '</body>',
-    `<script type="text/plain" id="diverged-worker-script">${safeInlineScript(combinedWorker)}</script>\n</body>`
-  );
-
-  return html;
+  // Build the HTML directly instead of using template replacement, which is
+  // fragile and can silently fail if the template format changes.
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Shaka Vis Reg Report</title>
+    <style>
+      @font-face {
+        font-family: 'latoregular';
+        src: url('data:font/woff2;base64,${latoRegularBase64}') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'latobold';
+        src: url('data:font/woff2;base64,${latoBoldBase64}') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+      }
+      .ReactModal__Body--open { overflow: hidden; }
+      .ReactModal__Body--open .header { display: none; }
+    </style>
+  </head>
+  <body style="background-color: #E2E7EA">
+    <div id="root"></div>
+    <script>function report(r){window.tests=r;}</script>
+    <script>${safeInlineScript(jsonpReport)}</script>
+    <script>${safeInlineScript(bundleJs as string)}</script>
+    <script type="text/plain" id="diverged-worker-script">${safeInlineScript(combinedWorker)}</script>
+  </body>
+</html>`;
 }
 
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
