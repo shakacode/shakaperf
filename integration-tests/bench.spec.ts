@@ -28,7 +28,7 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
   run(
     [
       'yarn shaka-bench compare',
-      '--testFile ./ab-tests/shop-now.bench.ts',
+      '--testFile ./ab-tests/shop-now.abtest.ts',
       '--numberOfMeasurements 5',
       '--report',
       `--resultsFolder ${BENCH_RESULTS_DIR}`,

@@ -38,7 +38,7 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
   loud('Running shaka-visreg liveCompare');
   let visregFailed = false;
   try {
-    run('yarn shaka-visreg liveCompare --testFile ./ab-tests/index.bench.ts --config visreg.config.ts', {
+    run('yarn shaka-visreg liveCompare --testFile ./ab-tests/index.abtest.ts --config visreg.config.ts', {
       timeout: 15 * 60 * 1000,
     });
   } catch (e: unknown) {
