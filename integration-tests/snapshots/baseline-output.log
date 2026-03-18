@@ -174,7 +174,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> Running shaka-bench compare
 
 
->>> run: yarn shaka-bench compare --testFile ./ab-tests/shop-now.bench.ts --numberOfMeasurements 5 --report --resultsFolder /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results
+>>> run: yarn shaka-bench compare --testFile ./ab-tests/shop-now.abtest.ts --numberOfMeasurements 5 --report --resultsFolder /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results
 
 
 Running test: Click Shop Now on homepage

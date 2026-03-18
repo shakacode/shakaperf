@@ -2,7 +2,7 @@ import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { clearRegistry, getRegisteredTests, loadTestFile } from 'shaka-shared';
+import { loadTests } from 'shaka-shared';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
@@ -45,17 +45,16 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
 }
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {
-  const testFilePath = config.args.testFile as string;
+  const testFilePath = config.args.testFile as string | undefined;
+  const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
   const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
-  clearRegistry();
-  await loadTestFile(testFilePath);
-  const tests = getRegisteredTests();
-
-  if (tests.length === 0) {
-    throw new Error('No tests registered in ' + testFilePath + '. Did you call abTest()?');
-  }
+  const tests = await loadTests({
+    testFile: testFilePath,
+    testPathPattern,
+    log: function (msg) { logger.log(msg); },
+  });
 
   // Global config was already loaded in makeConfig and passed through extendConfig.
   // Retrieve it for viewports/engineOptions which aren't on RuntimeConfig.

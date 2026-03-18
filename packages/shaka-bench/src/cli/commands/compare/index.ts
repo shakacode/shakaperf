@@ -6,13 +6,11 @@ import {
   clearDownloadsSizes,
   compareNetworkActivity,
   createLighthouseBenchmark,
-  clearRegistry,
-  getRegisteredTests,
   LighthouseBenchmarkOptions,
   NavigationSample,
   run,
 } from "../../../core";
-import { loadTestFile } from "shaka-shared";
+import { loadTests } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -35,6 +33,7 @@ export interface ICompareFlags {
   controlURL: string | undefined;
   experimentURL: string | undefined;
   testFile: string | undefined;
+  testPathPattern: string | undefined;
   regressionThreshold?: number;
   sampleTimeout: number;
   report?: boolean;
@@ -53,19 +52,11 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     console.error("experimentURL is required as a cli flag");
     process.exit(2);
   }
-  if (!compareFlags.testFile) {
-    console.error("testFile is required as a cli flag");
-    process.exit(2);
-  }
-
-  clearRegistry();
-  await loadTestFile(compareFlags.testFile!);
-
-  const tests = getRegisteredTests();
-  if (tests.length === 0) {
-    console.error(`No tests registered in ${compareFlags.testFile}. Did you call abTest()?`);
-    process.exit(2);
-  }
+  const tests = await loadTests({
+    testFile: compareFlags.testFile,
+    testPathPattern: compareFlags.testPathPattern,
+    log: (msg) => console.log(msg),
+  });
 
   mkdirpSync(compareFlags.resultsFolder!);
 

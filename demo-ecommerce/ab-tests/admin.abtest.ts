@@ -35,10 +35,8 @@ abTest('Admin Orders - Form Login Interaction', {
     },
   },
 }, async ({ page, scenario }) => {
-  const loginFormVisible = await page.locator('[data-cy="admin-login-form"]').isVisible();
-  if (!loginFormVisible) {
-    throw new Error('Expected admin login form to be visible for interaction-based login scenario.');
-  }
+  await page.locator('[data-cy="admin-login-form"]')
+    .waitFor({ state: 'visible', timeout: 4000 });
 
   await page.fill('[data-cy="admin-username-input"]', 'admin');
   await page.fill('[data-cy="admin-password-input"]', 'admin');
