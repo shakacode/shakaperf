@@ -52,17 +52,11 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     console.error("experimentURL is required as a cli flag");
     process.exit(2);
   }
-  let tests;
-  try {
-    tests = await loadTests({
-      testFile: compareFlags.testFile,
-      testPathPattern: compareFlags.testPathPattern,
-      log: (msg) => console.log(msg),
-    });
-  } catch (e: any) {
-    console.error(e.message);
-    process.exit(2);
-  }
+  const tests = await loadTests({
+    testFile: compareFlags.testFile,
+    testPathPattern: compareFlags.testPathPattern,
+    log: (msg) => console.log(msg),
+  });
 
   mkdirpSync(compareFlags.resultsFolder!);
 
