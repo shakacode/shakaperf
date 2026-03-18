@@ -6,12 +6,12 @@ import chalk from 'chalk';
 import _ from 'lodash';
 import cloneDeep from 'lodash/cloneDeep.js';
 import builder from 'junit-report-builder';
-import allSettled from '../util/allSettled.js';
-import createLogger from '../util/logger.js';
-import compare from '../util/compare/index.js';
-import type { RuntimeConfig } from '../types.js';
-import type Reporter from '../util/Reporter.js';
-import type { Test } from '../util/Reporter.js';
+import allSettled from '../util/allSettled';
+import createLogger from '../util/logger';
+import compare from '../util/compare/index';
+import type { RuntimeConfig } from '../types';
+import type Reporter from '../util/Reporter';
+import type { Test } from '../util/Reporter';
 
 const logger = createLogger('report');
 
@@ -146,7 +146,8 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     }
 
     if (config.openReport && config.report && config.report.indexOf('browser') > -1) {
-      const { default: executeCommand } = await import('./index.js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const executeCommand = require('./index').default;
       return executeCommand('_openReport', config);
     }
     return undefined;

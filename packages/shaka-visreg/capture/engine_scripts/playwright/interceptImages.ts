@@ -16,12 +16,10 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import type { Page } from 'playwright-core';
 import type { Scenario } from 'shaka-visreg/core/types';
 
 const IMAGE_URL_RE = /\.gif|\.jpg|\.png/i;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IMAGE_STUB_URL = path.resolve(__dirname, '../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};

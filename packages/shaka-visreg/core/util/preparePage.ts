@@ -1,11 +1,10 @@
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import _ from 'lodash';
 import { existsSync } from 'node:fs';
-import injectVisregTools from '../../capture/visregTools.js';
-import createLogger from './logger.js';
+import injectVisregTools from '../../capture/visregTools';
+import createLogger from './logger';
 import { TestType } from 'shaka-shared';
-import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types.js';
+import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types';
 import type { ConsoleMessage } from 'playwright';
 
 declare global {
@@ -30,11 +29,11 @@ const DOCUMENT_SELECTOR = 'document';
 async function importScript(scriptPath: string): Promise<unknown> {
   let mod;
   if (scriptPath.endsWith('.ts')) {
-    const { tsImport } = await import('tsx/esm/api');
-    const tsModule = await tsImport(scriptPath, import.meta.url);
+    const { tsImport } = require('tsx/esm/api');
+    const tsModule = await tsImport(scriptPath, __filename);
     mod = tsModule.default?.default ?? tsModule.default ?? tsModule;
   } else {
-    const jsModule = await import(pathToFileURL(scriptPath).href);
+    const jsModule = await import(scriptPath);
     mod = jsModule.default ?? jsModule;
   }
   return mod;
