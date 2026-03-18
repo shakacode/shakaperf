@@ -4,8 +4,8 @@ import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
-import { extractMarkers } from './extract-markers';
-import { updateDownloadedSizes } from './network-activity';
+import { extractMarkers, extractRawTraceTimestamp } from './extract-markers';
+import { updateDownloadedSizes, analyzeNetworkResources } from './network-activity';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
 // Read console errors whitelist from environment variable.
@@ -55,11 +55,11 @@ export async function runLighthouse(
     .replace(/=/g, '_')}`;
 
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);
-  if (runnerResult.artifacts?.traces?.defaultPass) {
+  if (runnerResult.artifacts?.Trace) {
     const profilePath = `${namePrefix}_performance_profile.json`;
     writeFileSync(
       profilePath,
-      JSON.stringify(runnerResult.artifacts.traces.defaultPass)
+      JSON.stringify(runnerResult.artifacts.Trace)
     );
     summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
   }
@@ -92,21 +92,20 @@ export async function runLighthouse(
   let results: PhaseSample[] = [];
 
   if (runnerResult.lhr.categories.performance) {
-    results = [
-      'first-contentful-paint',
-      'speed-index',
-      'largest-contentful-paint',
-      'total-blocking-time',
-      'cumulative-layout-shift',
-      'server-response-time'
-    ].map((phase) => ({
-      phase: prefix + phase,
-      duration:
-        runnerResult.lhr.audits[phase].numericValue! *
-        (phase === 'cumulative-layout-shift' ? 100 : 1000),
+    const LH_AUDITS: { audit: string; name: string; unit: string; scale: number }[] = [
+      { audit: 'first-contentful-paint', name: 'FCP', unit: 'ms', scale: 1000 },
+      { audit: 'speed-index', name: 'speed-index', unit: 'ms', scale: 1000 },
+      { audit: 'largest-contentful-paint', name: 'LCP', unit: 'ms', scale: 1000 },
+      { audit: 'total-blocking-time', name: 'TBT', unit: 'ms', scale: 1000 },
+      { audit: 'cumulative-layout-shift', name: 'CLS', unit: '/100', scale: 100 },
+      { audit: 'server-response-time', name: 'TTFB', unit: 'ms', scale: 1000 },
+    ];
+    results = LH_AUDITS.map(({ audit, name, unit, scale }) => ({
+      phase: prefix + name,
+      duration: runnerResult.lhr.audits[audit].numericValue! * scale,
       start: 0,
       sign: 1,
-      unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
+      unit,
     }));
 
     results.push(...extractMarkers(runnerResult, markers, prefix));
@@ -120,31 +119,20 @@ export async function runLighthouse(
     });
 
     results.push({
-      phase: prefix + 'total-score',
+      phase: prefix + 'LH Score',
       duration: runnerResult.lhr.categories.performance.score! * 100,
       sign: -1,
       start: 0,
       unit: '/100'
     });
-  }
 
-  if (runnerResult.lhr.categories.accessibility) {
-    runnerResult.artifacts.Accessibility?.violations?.forEach((violation) => {
-      violation.nodes.forEach((node) => {
-        console.log(
-          chalk.red(
-            `Lighthouse acessibility violation ID=${violation.id} SELECTOR="${node.node.selector}" SNIPPET=${node.node.snippet} URL=${url}`
-          )
-        );
-      });
-    });
-    results.unshift({
-      phase: prefix + 'accessibility',
-      duration: runnerResult.lhr.categories.accessibility.score! * 100,
-      sign: -1,
-      start: 0,
-      unit: '/100'
-    });
+    // Find the early-phase marker and extract its raw trace timestamp
+    const earlyPhaseMarker = markers.find((m) => m.isEarlyPhase);
+    const earlyPhaseTs = earlyPhaseMarker
+      ? extractRawTraceTimestamp(runnerResult, earlyPhaseMarker.end)
+      : null;
+
+    results.push(...analyzeNetworkResources(runnerResult, url, earlyPhaseTs, prefix));
   }
 
   return results;

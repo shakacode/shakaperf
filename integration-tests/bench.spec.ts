@@ -21,10 +21,6 @@ test('run shaka-bench compare on twin servers', async ({ page }) => {
 
   // Run shaka-bench compare with minimal measurements for speed
   loud('Running shaka-bench compare');
-  fs.rmSync(BENCH_RESULTS_DIR, {
-    recursive: true,
-    force: true,
-  });
   run(
     [
       'yarn shaka-bench compare',

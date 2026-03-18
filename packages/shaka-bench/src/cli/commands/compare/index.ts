@@ -1,11 +1,17 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import * as path from "node:path";
+import { readdirSync, statSync } from "node:fs";
+
+import chalk from "chalk";
 import {
   Benchmark,
   clearDownloadsSizes,
   compareNetworkActivity,
   createLighthouseBenchmark,
+  generateHtmlDiffs,
+  generateTimelineComparison,
   LighthouseBenchmarkOptions,
   NavigationSample,
   run,
@@ -20,6 +26,7 @@ import type { RegressionThresholdStat } from "../../command-config/tb-config";
 import {
   chalkScheme,
   durationInSec,
+  logHeading,
   secondsToTime,
   timestamp,
 } from "../../helpers/utils";
@@ -39,6 +46,55 @@ export interface ICompareFlags {
   report?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   config?: string;
+}
+
+const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
+  'compare.json': 'Raw measurement samples',
+  'report.json': 'Statistical analysis (JSON)',
+  'report.txt': 'Summary',
+  'report.html': 'Interactive HTML report with charts',
+  'timeline_comparison.html': 'Visual timeline (control vs experiment)',
+};
+
+function describeArtifact(filename: string): string {
+  if (ARTIFACT_DESCRIPTIONS[filename]) return ARTIFACT_DESCRIPTIONS[filename];
+  if (filename.endsWith('_lighthouse_report.html')) return 'Lighthouse report';
+  if (filename.endsWith('_performance_profile.json')) return 'Performance profile (DevTools)';
+  if (filename.endsWith('_performance_profile_summary.txt')) return 'Performance profile summary';
+  if (filename.endsWith('_network_activity.txt')) return 'Network activity';
+  if (filename.endsWith('.diff.html')) return 'Control vs experiment diff';
+  return '';
+}
+
+function listArtifacts(dir: string, relativeBase: string): void {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir).sort();
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry);
+    const relativePath = path.join(relativeBase, entry);
+    const isDir = statSync(fullPath).isDirectory();
+    if (!isDir) {
+      const desc = describeArtifact(entry);
+      const descStr = desc ? ` ${chalk.dim('—')} ${chalk.dim(desc)}` : '';
+      console.log(`  ${chalk.cyan(relativePath)}${descStr}`);
+    }
+  }
+}
+
+interface TestInfo {
+  name: string;
+  testFile: string;
+  line: number | null;
+  resultsFolder: string;
+}
+
+function formatTestTitle(testFile: string, name: string, line?: number | null): string {
+  const loc = line ? `${testFile}:${line}` : testFile;
+  return chalk.dim(loc) + chalk.bold.yellow(` ${name}`);
 }
 
 export async function runCompare(flags: Record<string, any>): Promise<string> {
@@ -67,9 +123,10 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
   };
 
   let analyzedJSONString = "";
+  const completedTests: TestInfo[] = [];
 
   for (const testDef of tests) {
-    console.log(`\nRunning test: ${testDef.name}`);
+    console.log(`\n${formatTestTitle(compareFlags.testFile!, testDef.name, testDef.line)}`);
 
     const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const testResultsFolder = `${resultsFolder}/${slug}`;
@@ -142,8 +199,30 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     }
     const resultJSONPath = `${testResultsFolder}/compare.json`;
     compareNetworkActivity();
+    generateHtmlDiffs({
+      testResultsFolder,
+      controlURL: compareFlags.controlURL!,
+      experimentURL: compareFlags.experimentURL!,
+    });
+
+    // Generate timeline comparison from performance profiles
+    {
+      const files = readdirSync(testResultsFolder);
+      const controlHost = new URL(compareFlags.controlURL!).host.replace(':', '_');
+      const experimentHost = new URL(compareFlags.experimentURL!).host.replace(':', '_');
+      const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
+      const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
+      if (controlProfile && experimentProfile) {
+        generateTimelineComparison({
+          controlProfilePath: path.join(testResultsFolder, controlProfile),
+          experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+          outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
+        });
+      }
+    }
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
+    completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
 
     const duration = secondsToTime(durationInSec(endTime, startTime));
     const message = `${chalkScheme.blackBgGreen(
@@ -169,6 +248,14 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
       });
     }
   }
+
+  // List all generated artifacts per test
+  logHeading("Generated Artifacts", "log");
+  for (const test of completedTests) {
+    console.log(`\n${formatTestTitle(test.testFile, test.name, test.line)}`);
+    listArtifacts(test.resultsFolder, test.resultsFolder);
+  }
+  console.log('');
 
   return analyzedJSONString;
 }

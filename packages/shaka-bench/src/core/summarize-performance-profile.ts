@@ -66,28 +66,23 @@ function generateSummary(data: TraceData): string {
   const navStart = events.find(e => e.name === 'navigationStart')?.ts;
   const timelineEvents = events.filter(e =>
     e.cat?.includes('blink.user_timing') ||
-    ['firstContentfulPaint', 'firstPaint', 'largestContentfulPaint::Candidate'].includes(e.name)
+    ['firstContentfulPaint', 'firstPaint', 'largestContentfulPaint::Candidate'].includes(e.name) ||
+    e.name === 'LayoutShift'
   );
 
   if (navStart != null && timelineEvents.length > 0) {
     line();
     line('Navigation timeline (ms from navigationStart):');
     const sorted = timelineEvents
-      .map(e => ({ name: e.name, ms: (e.ts - navStart) / 1000 }))
+      .map(e => {
+        const ms = (e.ts - navStart) / 1000;
+        const d = e.name === 'LayoutShift' ? e.args?.data : null;
+        const suffix = d ? `  score=${d.score?.toFixed(4)}  cumulative=${d.cumulative_score?.toFixed(4)}` : '';
+        return { name: e.name, ms, suffix };
+      })
       .sort((a, b) => a.ms - b.ms || a.name.localeCompare(b.name));
     for (const e of sorted) {
-      line(`  ${e.ms.toFixed(1).padStart(10)}  ${e.name}`);
-    }
-  }
-
-  // --- Layout shifts ---
-  const layoutShifts = events.filter(e => e.name === 'LayoutShift');
-  line();
-  line(`Layout shifts: ${layoutShifts.length}`);
-  for (let i = 0; i < layoutShifts.length; i++) {
-    const d = layoutShifts[i].args?.data;
-    if (d) {
-      line(`  #${i + 1}  score=${d.score?.toFixed(4)}  cumulative=${d.cumulative_score?.toFixed(4)}  had_recent_input=${d.had_recent_input}`);
+      line(`  ${(e.ms.toFixed(1) + 'ms').padStart(12)}  ${e.name}${e.suffix}`);
     }
   }
 
@@ -102,7 +97,7 @@ function generateSummary(data: TraceData): string {
     line(`  ${(t.dur! / 1000).toFixed(1).padStart(8)}ms  at ${relMs.padStart(10)}ms  ${t.name}`);
   }
 
-  // --- Timeline heatmap (10 buckets) ---
+  // --- Timeline heatmap (50 buckets) ---
   const timedEvents = events.filter(e => e.ts > 0);
   if (timedEvents.length > 0) {
     const minTs = Math.min(...timedEvents.map(e => e.ts));
@@ -110,25 +105,54 @@ function generateSummary(data: TraceData): string {
     const range = maxTs - minTs;
 
     if (range > 0) {
-      const bucketCount = 10;
+      const bucketCount = 500;
       const buckets = new Array(bucketCount).fill(0);
+      const bucketNotables: Set<string>[] = Array.from({ length: bucketCount }, () => new Set());
+
+      // Reuse the navigation timeline events for notable markers
+      const timelineEventSet = new Set(timelineEvents);
+
+      // Build requestId -> URL map for network finish events
+      const requestUrls = new Map<string, string>();
+      for (const e of events) {
+        if (e.name === 'ResourceSendRequest' && e.args?.data?.requestId && e.args.data.url) {
+          requestUrls.set(e.args.data.requestId, e.args.data.url);
+        }
+      }
 
       for (const e of timedEvents) {
         const idx = Math.min(Math.floor(((e.ts - minTs) / range) * bucketCount), bucketCount - 1);
         buckets[idx]++;
+
+        if (timelineEventSet.has(e)) {
+          bucketNotables[idx].add(e.name);
+        } else if (e.name === 'ResourceSendRequest' && e.args?.data?.url) {
+          bucketNotables[idx].add(`START:${e.args.data.url}`);
+        } else if (e.name === 'ResourceFinish' && e.args?.data?.requestId) {
+          const url = requestUrls.get(e.args.data.requestId) ?? e.args.data.requestId;
+          bucketNotables[idx].add(`END:${url}`);
+        } else if (e.ph === 'X' && e.dur && e.dur > 50000) {
+          bucketNotables[idx].add(`LongTask:${e.name}(${(e.dur / 1000).toFixed(0)}ms)`);
+        }
       }
 
       const maxBucket = Math.max(...buckets);
-      const barWidth = 40;
+      const barWidth = 30;
+
+      const rangeMs = range / 1000; // microseconds to milliseconds
 
       line();
-      line('Timeline heatmap (10 buckets):');
+      line('Timeline heatmap (500 buckets):');
       for (let i = 0; i < bucketCount; i++) {
-        const pct = ((buckets[i] / timedEvents.length) * 100).toFixed(1);
+        if (buckets[i] === 0 && bucketNotables[i].size === 0) continue;
         const barLen = Math.round((buckets[i] / maxBucket) * barWidth);
         const bar = '\u2588'.repeat(barLen);
-        const label = `${(i * 10).toString().padStart(3)}-${((i + 1) * 10).toString().padStart(3)}%`;
-        line(`  ${label}  ${bar.padEnd(barWidth)}  ${String(buckets[i]).padStart(5)} events (${pct.padStart(5)}%)`);
+        const startMs = ((i / bucketCount) * rangeMs).toFixed(0);
+        const label = `${startMs.padStart(7)}ms`;
+        const notables = bucketNotables[i].size > 0
+          ? `  [${[...bucketNotables[i]].join(', ')}]`
+          : '';
+        line(`  ${label}  ${bar.padEnd(barWidth)}  ${String(buckets[i]).padStart(5)}${notables}`);
       }
     }
   }

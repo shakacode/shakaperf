@@ -1,19 +1,143 @@
 
 >>> Copying current directory as experiment repo
 
-[roman-kuksin/actually-refactor-tracerbench-stats-to-separate-files 742afd4] integration test snapshot
- 19 files changed, 798 insertions(+), 2967 deletions(-)
+[roman-kuksin/advanced-metrics-for-printivity d066ab2] integration test snapshot
+ 131 files changed, 13 insertions(+), 15933 deletions(-)
  rewrite integration-tests/snapshots/baseline-output.log (99%)
- rewrite integration-tests/snapshots/bench-results/artifact-1.screenshot.png (80%)
- rewrite integration-tests/snapshots/bench-results/localhost_3020____lighthouse_report.screenshot.png (95%)
- rewrite integration-tests/snapshots/bench-results/localhost_3030____lighthouse_report.screenshot.png (96%)
+ delete mode 100644 integration-tests/snapshots/bench-results/artifact-1.screenshot.png
+ delete mode 100644 integration-tests/snapshots/bench-results/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____lighthouse_report.screenshot.png
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3030____lighthouse_report.screenshot.png
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3030____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/localhost_3030____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/network_activity.diff.screenshot.png
+ delete mode 100644 integration-tests/snapshots/bench-results/performance_profile.summary.diff.screenshot.png
+ delete mode 100644 integration-tests/snapshots/bench-results/report.json
+ delete mode 100644 integration-tests/snapshots/bench-results/report.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/artifact-1.html
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____lighthouse_report.html
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.json
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____lighthouse_report.html
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.json
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/network_activity.diff.html
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/report.json
+ delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/report.txt
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Cart_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Cart_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Cart_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_2_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_2_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Homepage_2_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Product_Detail_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Product_Detail_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Product_Detail_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_List_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_List_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_reference/demo-ecommerce_Products_List_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Cart_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Cart_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Cart_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop_composite_diff.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_2_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_2_document_0_phone_composite_diff.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_2_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_2_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Homepage_2_document_2_desktop_composite_diff.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Product_Detail_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Product_Detail_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Product_Detail_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_List_0_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_List_0_document_1_tablet.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/demo-ecommerce_Products_List_0_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/bitmaps_test/report.json
+ delete mode 100644 integration-tests/snapshots/visreg-results/html-report.screenshot.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/a96f14595379b7c348d66e115ec65a93.png
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/Lato-Bold.ttf
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/Lato-Regular.ttf
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/lato-bold-webfont.woff
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/lato-bold-webfont.woff2
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/lato-regular-webfont.woff
+ delete mode 100755 integration-tests/snapshots/visreg-results/html_report/assets/fonts/lato-regular-webfont.woff2
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/b815e28b1e230cff6e9d7b749edcd562.png
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/config.js
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/diff.js
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/diverged.js
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/divergedWorker.js
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index.html
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index_bundle.js
+ delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index_bundle.js.LICENSE.txt
+ delete mode 100644 integration-tests/snapshots/visreg-results/xunit.xml
+ create mode 100644 single-screenshot.png
+ create mode 100644 timeline-39k.png
+ create mode 100644 timeline-at-screenshots.png
+ create mode 100644 timeline-default-zoom.png
+ create mode 100644 timeline-full-page.png
+ create mode 100644 timeline-gap.png
+ create mode 100644 timeline-mid.png
+ create mode 100644 timeline-screenshots-area.png
+ create mode 100644 timeline-screenshots.png
+ create mode 100644 timeline-top.png
+ create mode 100644 timeline-zoomed-out.png
 
 >>> Copying experiment repo as control
 
 
 >>> Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage
 
-[roman-kuksin/actually-refactor-tracerbench-stats-to-separate-files a842c07] integration test snapshot
+[roman-kuksin/advanced-metrics-for-printivity 76fdde4] integration test snapshot
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 >>> Installing dependencies in temp clone
@@ -59,8 +183,8 @@ Building both Docker images in parallel...
 Docker image(s) built successfully!
 
 Images created:
-  - demo-ecommerce:experiment (current branch: roman-kuksin/actually-refactor-tracerbench-stats-to-separate-files)
-  - demo-ecommerce:control (baseline branch: roman-kuksin/actually-refactor-tracerbench-stats-to-separate-files)
+  - demo-ecommerce:experiment (current branch: roman-kuksin/advanced-metrics-for-printivity)
+  - demo-ecommerce:control (baseline branch: roman-kuksin/advanced-metrics-for-printivity)
 
 Bind-mount directories:
   - Control: /home/<USER>/demo_ecommerce_control_docker_volume
@@ -105,10 +229,10 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
@@ -177,795 +301,24 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> run: yarn shaka-bench compare --testFile ./ab-tests/shop-now.abtest.ts --numberOfMeasurements 5 --report --resultsFolder /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results
 
 
-Running test: Click Shop Now on homepage
+./ab-tests/shop-now.bench.ts:3 Visits the homepage
         control:  0
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-Measurements Error: console.error: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:3020/favicon.ico TESTED PAGE: http://localhost:3020/
-     experiment:  0    01m:19s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-Measurements Error: console.error: Failed to load resource: the server responded with a status of 404 (Not Found) http://localhost:3030/favicon.ico TESTED PAGE: http://localhost:3030/
-     experiment:  1    01m:10s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-        control:  1    01m:02s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-     experiment:  2    00m:55s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-        control:  2    00m:48s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-     experiment:  3    00m:40s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-        control:  3    00m:34s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-        control:  4    00m:27s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-     experiment:  4    00m:20s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-        control:  5    00m:13s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3020/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3020/
-     experiment:  5    00m:07s remaining
-Measurements Error: console.warning: Optimization opportunity: "react-on-rails" includes ~14KB of server-rendering code. Browsers may not need it. See https://forum.shakacode.com/t/how-to-use-different-versions-of-a-file-for-client-and-server-rendering/1352 (Requires creating a free account). Click this for the stack trace. http://localhost:3030/packs/js/192-b63cfebd9a83a6087244.js TESTED PAGE: http://localhost:3030/
-Total downloads size decreased by 0.3 KB
-diff --git a/home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/localhost_3020____network_activity.txt b/home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/localhost_3030____network_activity.txt
-index e72e827..5248fc1 100644
---- a/home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/localhost_3020____network_activity.txt
-+++ b/home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/localhost_3030____network_activity.txt
-@@ -1,5 +1,5 @@
- /
--⤷ 2.78 KB. Downloaded 6 times
-+⤷ 2.77 KB. Downloaded 6 times
- /api/v1/cart
- ⤷ 0.53 KB. Downloaded 6 times
- /api/v1/products
-@@ -18,31 +18,31 @@
- ⤷ 2.77 KB. Downloaded 6 times
- /packs/js/905-dcf07c7ad76793afd2b3.js
- ⤷ 13.62 KB. Downloaded 6 times
--/packs/js/client-b1bc9ab60175df333710.js
-+/packs/js/client-13b5b25fe496cae87f54.js
- ⤷ 2.70 KB. Downloaded 6 times
--/packs/js/pages-HomePage-bd886ec65621d70d67cb.chunk.js
--⤷ 3.56 KB. Downloaded 6 times
-+/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js
-+⤷ 3.40 KB. Downloaded 6 times
- /packs/js/pages-ProductListPage-8872b36c4170743ddb3f.chunk.js
- ⤷ 3.74 KB. Downloaded 6 times
--/packs/js/runtime-e2afbd704305390fd5bc.js
--⤷ 1.83 KB. Downloaded 6 times
-+/packs/js/runtime-4f0bcb5d28206f902cba.js
-+⤷ 1.82 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop
--⤷ 23.86 KB. Downloaded 6 times
-+⤷ 23.80 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop
--⤷ 24.62 KB. Downloaded 6 times
-+⤷ 24.60 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=400&h=400&fit=crop
- ⤷ 37.90 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop
--⤷ 23.61 KB. Downloaded 6 times
-+⤷ 23.73 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop
--⤷ 33.66 KB. Downloaded 6 times
-+⤷ 33.78 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop
--⤷ 20.96 KB. Downloaded 6 times
-+⤷ 20.87 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop
--⤷ 21.14 KB. Downloaded 6 times
-+⤷ 21.11 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400&h=400&fit=crop
--⤷ 38.42 KB. Downloaded 6 times
-+⤷ 38.46 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop
--⤷ 11.26 KB. Downloaded 6 times
-+⤷ 11.16 KB. Downloaded 6 times
- https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&h=400&fit=crop
--⤷ 18.99 KB. Downloaded 6 times
-+⤷ 19.12 KB. Downloaded 6 times
+     experiment:  0    01m:12s remaining
+     experiment:  1    01m:04s remaining
+        control:  1    00m:56s remaining
+        control:  2    00m:49s remaining
+     experiment:  2    00m:43s remaining
+     experiment:  3    00m:36s remaining
+        control:  3    00m:30s remaining
+     experiment:  4    00m:24s remaining
+        control:  4    00m:18s remaining
+        control:  5    00m:12s remaining
+     experiment:  5    00m:06s remaining
+Total downloads size increased by 481.40 KB
+HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/network_activity.diff.html
+HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html
 
-    SUCCESS     5 measurements took 01m:21s
-
-
-┌───────────────────────────────────────────────────────────────────────┐
-│ Initial Render : duration                                             │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 0ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 0ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 0ms                    │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 0ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 0ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 0ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 0ms                    │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ 0ms                          │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ 0ms to 0ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.9168                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▁                            │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▁                            │
-└────────────────────────────────────────┴──────────────────────────────┘
-
-
-┌───────────────────────────────────────────────────────────────────────┐
-│ Sub Phase of Duration : first-contentful-paint                        │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1810ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 4056ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1811ms                 │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 1812ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 1815ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 1818ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 3161ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1809ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 1822ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1810ms                 │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 1811ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 1813ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 1814ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 1819ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -2ms                         │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -2242ms to 4ms               │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.5309                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ █▁▁▁▁▁▁▁▁▁▁▂                 │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▁▁▁▁▁▁▁▁▁▁▁                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : speed-index                                   │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1812ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 4056ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1813ms                 │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 1815ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 2082ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 2137ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 3288ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1811ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 2113ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1812ms                 │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 1813ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 1822ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 2069ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 2095ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -24ms                        │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -2234ms to 31ms              │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.4034                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ██▁▁▁▁▁▁▁▁▁▄                 │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▅▁▁▁▁▁▁▁▁▁▁                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : largest-contentful-paint                      │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 5478ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 5690ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 5529ms                 │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 5607ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 5610ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 5655ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 5676ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 5565ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 5666ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 5567ms                 │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 5571ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 5579ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 5612ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 5645ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -31ms                        │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -111ms to 87ms               │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.6761                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▄▁▁▁▁▁▁█▁▄▁▄                 │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▁▁▁▁▁█▁▃▁▁▃▁                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : total-blocking-time                           │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1107ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 1459ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1183ms                 │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 1297ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 1369ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 1385ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 1429ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 1492ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 1588ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 1495ms                 │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 1499ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 1570ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 1584ms                 │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 1587ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ 201ms                        │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ 108ms to 386ms               │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ true                         │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.01219                      │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▄▁▁▄▁█▁▄▁▁                   │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▁▁▁▁▁▁▁▅▁█                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : cumulative-layout-shift                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 13ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 16ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 13ms                   │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 13ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 13ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 16ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 16ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 23ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 25ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 23ms                   │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 23ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 23ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 23ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 24ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ 10ms                         │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ 7ms to 10ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ true                         │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.01219                      │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ █▁▁▅▁▁▁▁▁▁▁▁▁▁               │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▁▁▁▁▁▁▁▁▁▁█▁▁▂               │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : server-response-time                          │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 5ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 14ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 5ms                    │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 5ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 7ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 8ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 11ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 6ms                     │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 13ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 6ms                    │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 6ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 6ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 8ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 11ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ 1ms                          │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -7ms to 3ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 1                            │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ██▁██▁▁▁▁█                   │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▁▄█▄▁▁▁▁▄▁                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : hydration                                     │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 470ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 534ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 474ms                  │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 480ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 488ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 503ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 521ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 459ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 489ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 459ms                  │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 459ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 461ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 473ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 482ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -21ms                        │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -74ms to -8ms                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.09469                      │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▁▄▁█▁▄▁▁▄                    │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▄▄▄▁▁▁▁▁                    │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : hydration-start                               │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 741ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 890ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 765ms                  │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 801ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 840ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 852ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 875ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 725ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 968ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 743ms                  │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 770ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 783ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 918ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 948ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -17ms                        │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -120ms to 117ms              │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 1                            │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▁▄▁▁▄▁█▁▄▁▁▁▁                │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▁██▁▁▁▁▁█▁▁█                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : downloads                                     │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 436ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 437ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 437ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 437ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 436ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 437ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 436ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 437ms                  │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 437ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ 0ms                          │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ 0ms to 0ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.5309                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▁▁█▁▁▁▁▃▁▃▁                  │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▄▁▁▁▁▁▁▁▄▄                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : total-score                                   │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 40ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 49ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 42ms                   │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 46ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 48ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 48ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 49ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 40ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 41ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 40ms                   │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 40ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 41ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 41ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 41ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -7ms                         │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -8ms to 0ms                  │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.09469                      │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▄▁▁▁▁▁▄▁█▄                   │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ ▅█▁▁▁▁▁▁▁▁                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│ Sub Phase of Duration : interaction-to-next-paint                     │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ Control: 5                   │
-│ Sample Counts:                         ├──────────────────────────────┤
-│                                        │ Experiment: 5                │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 16ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 32ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 22ms                   │
-│                                        ├──────────────────────────────┤
-│ Control Seven Figure Summary:          │ 25th: 32ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 32ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 32ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 32ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│                                        │ MIN: 16ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ MAX: 24ms                    │
-│                                        ├──────────────────────────────┤
-│                                        │ 10th: 16ms                   │
-│                                        ├──────────────────────────────┤
-│ Experiment Seven Figure Summary:       │ 25th: 16ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 50th: 16ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 75th: 24ms                   │
-│                                        ├──────────────────────────────┤
-│                                        │ 90th: 24ms                   │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Hodges–Lehmann estimated delta:        │ -8ms                         │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ 95% confident the delta is between:    │ -16ms to 0ms                 │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Is Significant:                        │ false                        │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ P-Value:                               │ 0.0758                       │
-├────────────────────────────────────────┴──────────────────────────────┤
-│                                                                       │
-├────────────────────────────────────────┬──────────────────────────────┤
-│ Control Sparkline                      │ ▂▁▁▁▁▁▁▁█                    │
-├────────────────────────────────────────┼──────────────────────────────┤
-│ Experiment Sparkline                   │ █▁▁▁▅▁▁▁▁                    │
-└────────────────────────────────────────┴──────────────────────────────┘
+    SUCCESS     5 measurements took 01m:12s
 
     WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
 
@@ -975,34 +328,140 @@ index e72e827..5248fc1 100644
 
     Benchmark Results Summary    
 
-duration phase no difference [0ms to 0ms]
-first-contentful-paint phase no difference [-2242ms to 4ms]
-speed-index phase no difference [-2234ms to 31ms]
-largest-contentful-paint phase no difference [-111ms to 87ms]
-total-blocking-time phase estimated regression +201ms [+108ms to +386ms] OR +14.65% [+7.87% to +28.16%] p=0.01219
-cumulative-layout-shift phase estimated regression +10/100 [+7/100 to +10/100] OR +75.05% [+53.87% to +75.05%] p=0.01219
-server-response-time phase no difference [-7ms to 3ms]
-hydration phase no difference [-74ms to -8ms]
-hydration-start phase no difference [-120ms to 117ms]
-downloads phase no difference [0KB to 0KB]
-total-score phase no difference [-8/100 to 0/100]
-interaction-to-next-paint phase no difference [-16ms to 0ms]
 
+LH & Vitals
+  FCP no difference [-16ms to 4ms]
+  speed-index no difference [-16ms to 4ms]
+  LCP no difference [-155ms to 55ms]
+  TBT estimated regression +178ms [+67ms to +280ms] OR +20.53% [+7.73% to +32.3%] p=0.01219
+  CLS no difference [-7/100 to 2/100]
+  TTFB no difference [-5ms to 1ms]
+  hydration no difference [-84ms to 45ms]
+  hydration-start no difference [-191ms to 87ms]
+  LH Score estimated regression -3/100 [-5/100 to -2/100] OR -5.26% [-8.77% to -3.51%] p=0.01219
+
+Diagnostics
+  downloads estimated regression +80KB [+80KB to +80KB] OR +48.87% [+48.71% to +48.88%] p=0.01219
+  downloads-count estimated regression +4 [+4 to +4] OR +36.36% [+36.36% to +36.36%] p=0.01219
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
 
 
     Benchmark Reports    
 
 
-JSON: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/compare.json
+JSON: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/compare.json
 
-HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-homepage/artifact-1.html
+HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/artifact-1.html
+
+
+./ab-tests/shop-now.bench.ts:9 Click Shop Now on the homepage
+        control:  0
+     experiment:  0    01m:13s remaining
+        control:  1    01m:06s remaining
+     experiment:  1    00m:59s remaining
+        control:  2    00m:52s remaining
+     experiment:  2    00m:45s remaining
+        control:  3    00m:39s remaining
+     experiment:  3    00m:32s remaining
+     experiment:  4    00m:26s remaining
+        control:  4    00m:19s remaining
+        control:  5    00m:13s remaining
+     experiment:  5    00m:06s remaining
+Total downloads size decreased by 0.31 KB
+HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html
+HTML diff: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html
+
+    SUCCESS     5 measurements took 01m:18s
+
+    WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
+
+
+    Benchmark Results Summary    
+
+
+LH & Vitals
+  FCP no difference [-4ms to 0ms]
+  speed-index no difference [-4ms to 376ms]
+  LCP estimated improvement -98ms [-268ms to -26ms] OR -1.69% [-4.6% to -0.44%] p=0.01219
+  TBT no difference [-242ms to 68ms]
+  CLS estimated regression +7/100 [+7/100 to +10/100] OR +44.46% [+44.46% to +61.93%] p=0.01219
+  TTFB no difference [-7ms to 1ms]
+  hydration no difference [-17ms to 19ms]
+  hydration-start no difference [-113ms to 3ms]
+  LH Score estimated regression -4/100 [-7/100 to -3/100] OR -8.7% [-15.22% to -6.52%] p=0.01219
+  interaction-to-next-paint estimated improvement -16ms [-16ms to 0ms] OR -50% [-50% to 0%] p=0.0472
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+
+    Benchmark Reports    
+
+
+JSON: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json
+
+HTML: /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
+
+
+    Generated Artifacts    
+
+
+./ab-tests/shop-now.bench.ts:3 Visits the homepage
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/artifact-1.html
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/compare.json — Raw measurement samples
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____network_activity.txt — Network activity
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.summary.txt
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____network_activity.txt — Network activity
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.summary.txt
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/network_activity.diff.html — Control vs experiment diff
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/report.json — Statistical analysis (JSON)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/report.txt — Summary
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/visits-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
+
+./ab-tests/shop-now.bench.ts:9 Click Shop Now on the homepage
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json — Raw measurement samples
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____network_activity.txt — Network activity
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.summary.txt
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____network_activity.txt — Network activity
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.summary.txt
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html — Control vs experiment diff
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.json — Statistical analysis (JSON)
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.txt — Summary
+  /home/<USER>/shaka-perf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
 
 
 
 >>> Resetting git changes in temp clone
 
 Updated 0 paths from the index
-Updated 632 paths from the index
+Updated 550 paths from the index
   ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-bench compare on twin servers (<TIMING>m)
 
 >>> run: yarn shaka-twin-servers start-containers
@@ -1140,17 +599,17 @@ Files synced to: /home/<USER>/demo_ecommerce_experiment_docker_volume
 >>> run: yarn shaka-twin-servers run-cmd-parallel -- bundle exec rake assets:precompile
 
 Running in parallel: bundle exec rake assets:precompile in both containers
-[EXPERIMENT]	Running bundle exec rake assets:precompile in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bundle exec rake assets:precompile
 [CONTROL]	Running bundle exec rake assets:precompile in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bundle exec rake assets:precompile
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Running bundle exec rake assets:precompile in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bundle exec rake assets:precompile
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	using yarn@4.12.0 to manage dependencies and scripts in package.json
-[EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
 [CONTROL]	D, [<TIMESTAMP> #<PID>] DEBUG -- : Everything's up-to-date. Nothing to do
+[EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Precompile hook completed successfully
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : 🔄 Running React on Rails precompile hook...
@@ -1293,22 +752,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
-[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
 
 Both servers are ready!
 
@@ -1508,22 +967,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
-[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 
 Both servers are ready!
 
@@ -1579,7 +1038,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 >>> run: yarn shaka-visreg liveCompare --config visreg.json
 
-(node:213138) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/engine_scripts/playwright/loadCookies.ts is not specified and it doesn't parse as CommonJS.
+(node:1152925) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/engine_scripts/playwright/loadCookies.ts is not specified and it doesn't parse as CommonJS.
 Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
 To eliminate this warning, add "type": "module" to /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/package.json.
 (Use `node --trace-warnings ...` to show where the warning was created)
@@ -1598,8 +1057,8 @@ Cookie state restored with: []
 Cookie state restored with: []
 Cookie state restored with: []
 LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
-LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
 LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
 Cookie state restored with: []
@@ -1607,6 +1066,7 @@ Cookie state restored with: []
 Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
+SCENARIO > Products List
 SCENARIO > Homepage
 SCENARIO > Homepage
 SCENARIO > Products List
@@ -1615,50 +1075,49 @@ SCENARIO > Homepage
 SCENARIO > Homepage
 SCENARIO > Products List
 SCENARIO > Products List
-SCENARIO > Products List
+Fonts for http://localhost:3030/ are ready
+Fonts for http://localhost:3020/products are ready
+Fonts for http://localhost:3020/ are ready
+Fonts for http://localhost:3020/ are ready
+Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3020/ are ready
 All 0 images loaded for http://localhost:3020/
-Fonts for http://localhost:3020/ are ready
-Fonts for http://localhost:3020/ are ready
-Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3030/ are ready
 Fonts for http://localhost:3030/ are ready
-Fonts for http://localhost:3030/ are ready
-Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3030/products are ready
 Fonts for http://localhost:3030/products are ready
-All 4 images loaded for http://localhost:3020/
-All 4 images loaded for http://localhost:3030/
 All 4 images loaded for http://localhost:3030/
 All 4 images loaded for http://localhost:3030/
 All 4 images loaded for http://localhost:3020/
+All 4 images loaded for http://localhost:3030/
+All 4 images loaded for http://localhost:3020/
+All 10 images loaded for http://localhost:3020/products
 All 10 images loaded for http://localhost:3020/products
 All 10 images loaded for http://localhost:3030/products
 All 10 images loaded for http://localhost:3030/products
-All 10 images loaded for http://localhost:3020/products
-Network idle
-Page http://localhost:3020/ has settled
 Network idle
 Network idle
-Network idle
+Page http://localhost:3030/ has settled
 Network idle
 Network idle
 Network idle
 Network idle
 Page http://localhost:3020/ has settled
 Page http://localhost:3020/ has settled
+Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
+Page http://localhost:3030/ has settled
+Network idle
 Page http://localhost:3020/products has settled
-Page http://localhost:3030/ has settled
-Page http://localhost:3030/ has settled
-Page http://localhost:3030/ has settled
+Network idle
+Page http://localhost:3020/products has settled
+Network idle
 Page http://localhost:3030/products has settled
 Network idle
 Page http://localhost:3030/products has settled
-Network idle
-Page http://localhost:3020/products has settled
+PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
 PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
 PASS: "Products List" [document] (0 diff pixels)
-PASS: "Homepage" [[data-cy='hero-section']] (0 diff pixels)
 PASS: "Products List" [document] (0 diff pixels)
 MISMATCH: "Homepage" [[data-cy='hero-section']] (101772 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [[data-cy='hero-section']] - chilling for 1000ms
@@ -1672,17 +1131,17 @@ Cookie state restored with: []
 Cookie state restored with: []
 PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
 PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
-SCENARIO > Products - Electronics Filter
-SCENARIO > Products - Electronics Filter
 SCENARIO > Products List
+SCENARIO > Products - Electronics Filter
+SCENARIO > Products - Electronics Filter
 SCENARIO > Products List
 Fonts for http://localhost:3020/products are ready
 Fonts for http://localhost:3030/products are ready
 MISMATCH: "Homepage" [document] (2563 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [document] - chilling for 1000ms
 PASS: "Homepage" [document] (0 diff pixels)
-x Close Browser Contexts
 All 10 images loaded for http://localhost:3020/products
+x Close Browser Contexts
 All 10 images loaded for http://localhost:3030/products
 retryCompare | Re-navigating both pages for retry 1...
 Cookie state restored with: []
@@ -1712,10 +1171,10 @@ retryCompare | Re-navigating both pages for retry 1...
 Cookie state restored with: []
 Cookie state restored with: []
 Network idle
-Fonts for http://localhost:3020/products are ready
-All 0 images loaded for http://localhost:3020/products
 Network idle
 Fonts for http://localhost:3030/products are ready
+Fonts for http://localhost:3020/products are ready
+All 3 images loaded for http://localhost:3020/products
 All 3 images loaded for http://localhost:3030/products
 LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
 SCENARIO > Homepage
@@ -1723,153 +1182,151 @@ SCENARIO > Homepage
 Cookie state restored with: []
 Cookie state restored with: []
 Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3030/
 All 0 images loaded for http://localhost:3020/
 retryCompare | Retry 2/5 for "Homepage" [[data-cy='hero-section']] - chilling for 2000ms
 SCENARIO > Products - Electronics Filter
 SCENARIO > Products - Electronics Filter
 Network idle
 Network idle
-Network idle
 Fonts for http://localhost:3030/products are ready
-All 0 images loaded for http://localhost:3030/products
-Network idle
 Fonts for http://localhost:3020/products are ready
 All 3 images loaded for http://localhost:3020/products
-Page http://localhost:3030/ has settled
+All 3 images loaded for http://localhost:3030/products
+Network idle
+Network idle
 Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
 Page http://localhost:3020/products has settled
 Page http://localhost:3030/products has settled
 retryCompare | Retry 2/5 for "Homepage" [document] - chilling for 2000ms
 PASS: "Products - Electronics Filter" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
-Page http://localhost:3030/products has settled
 Page http://localhost:3020/products has settled
-SCENARIO > Product Detail
-SCENARIO > Product Detail
-Fonts for http://localhost:3020/products/1 are ready
-Fonts for http://localhost:3030/products/1 are ready
-PASS: "Products - Electronics Filter" [document] (0 diff pixels)
-x Close Browser Contexts
+Page http://localhost:3030/products has settled
+Cookie state restored with: []
+Cookie state restored with: []
+Network idle
 Network idle
 Fonts for http://localhost:3020/products are ready
 All 0 images loaded for http://localhost:3020/products
-Network idle
+SCENARIO > Product Detail
+SCENARIO > Product Detail
 Fonts for http://localhost:3030/products are ready
 All 0 images loaded for http://localhost:3030/products
+Fonts for http://localhost:3020/products/1 are ready
+Fonts for http://localhost:3030/products/1 are ready
+PASS: "Products - Electronics Filter" [document] (0 diff pixels)
+x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-All 1 images loaded for http://localhost:3020/products/1
 All 1 images loaded for http://localhost:3030/products/1
+All 1 images loaded for http://localhost:3020/products/1
 Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Product Detail
 SCENARIO > Product Detail
 Fonts for http://localhost:3020/products/1 are ready
 Fonts for http://localhost:3030/products/1 are ready
-All 1 images loaded for http://localhost:3030/products/1
 All 1 images loaded for http://localhost:3020/products/1
-Network idle
-Network idle
+All 1 images loaded for http://localhost:3030/products/1
 retryCompare | Re-navigating both pages for retry 2...
+Network idle
+Network idle
 Page http://localhost:3020/products/1 has settled
+Cookie state restored with: []
+Cookie state restored with: []
 Page http://localhost:3030/products/1 has settled
-Cookie state restored with: []
-Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-PASS: "Product Detail" [document] (0 diff pixels)
-Network idle
-Network idle
-x Close Browser Contexts
-LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-Page http://localhost:3020/products/1 has settled
-Page http://localhost:3030/products/1 has settled
 Page http://localhost:3020/products has settled
 Page http://localhost:3030/products has settled
-Cookie state restored with: []
-Cookie state restored with: []
-Network idle
-Network idle
-SCENARIO > Product Detail
-SCENARIO > Product Detail
-PASS: "Products - Electronics Filter" [document] (0 diff pixels)
 PASS: "Product Detail" [document] (0 diff pixels)
-Fonts for http://localhost:3020/products/1 are ready
-Fonts for http://localhost:3030/products/1 are ready
+Network idle
 x Close Browser Contexts
+Network idle
+Page http://localhost:3020/products/1 has settled
+Page http://localhost:3030/products/1 has settled
+LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+Network idle
+Network idle
+PASS: "Products - Electronics Filter" [document] (0 diff pixels)
+x Close Browser Contexts
+LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
+SCENARIO > Product Detail
+SCENARIO > Product Detail
+Cookie state restored with: []
+Cookie state restored with: []
+Fonts for http://localhost:3030/products/1 are ready
+Fonts for http://localhost:3020/products/1 are ready
+PASS: "Product Detail" [document] (0 diff pixels)
 retryCompare | Re-navigating both pages for retry 2...
+Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
 All 1 images loaded for http://localhost:3020/products/1
 All 1 images loaded for http://localhost:3030/products/1
-Page http://localhost:3020/ has settled
-Page http://localhost:3030/ has settled
 x Close Browser Contexts
 Cookie state restored with: []
 Cookie state restored with: []
 LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
 SCENARIO > Homepage
 SCENARIO > Homepage
-LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
-Fonts for http://localhost:3030/ are ready
 Fonts for http://localhost:3020/ are ready
+Fonts for http://localhost:3030/ are ready
 All 0 images loaded for http://localhost:3020/
 All 4 images loaded for http://localhost:3030/
-Cookie state restored with: []
-Cookie state restored with: []
+SCENARIO > Cart
+SCENARIO > Cart
 Network idle
 Network idle
 retryCompare | Retry 3/5 for "Homepage" [[data-cy='hero-section']] - chilling for 3000ms
+Fonts for http://localhost:3020/cart are ready
+All 0 images loaded for http://localhost:3020/cart
+Fonts for http://localhost:3030/cart are ready
+All 0 images loaded for http://localhost:3030/cart
 Page http://localhost:3030/products/1 has settled
 Page http://localhost:3020/products/1 has settled
+SCENARIO > Cart
+SCENARIO > Cart
 Network idle
 Network idle
-SCENARIO > Cart
-SCENARIO > Cart
-SCENARIO > Cart
-SCENARIO > Cart
-Fonts for http://localhost:3030/cart are ready
-All 0 images loaded for http://localhost:3030/cart
 Fonts for http://localhost:3020/cart are ready
-All 0 images loaded for http://localhost:3020/cart
 Fonts for http://localhost:3030/cart are ready
-All 0 images loaded for http://localhost:3030/cart
-Fonts for http://localhost:3020/cart are ready
 All 0 images loaded for http://localhost:3020/cart
+All 0 images loaded for http://localhost:3030/cart
+Network idle
+Network idle
+PASS: "Product Detail" [document] (0 diff pixels)
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-PASS: "Product Detail" [document] (0 diff pixels)
 x Close Browser Contexts
+Network idle
+Network idle
 LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
-Network idle
-Network idle
-Network idle
-Network idle
+Page http://localhost:3020/cart has settled
+Page http://localhost:3030/cart has settled
 Cookie state restored with: []
 Cookie state restored with: []
 retryCompare | Retry 3/5 for "Homepage" [document] - chilling for 3000ms
-Page http://localhost:3030/cart has settled
 Page http://localhost:3020/cart has settled
 Page http://localhost:3030/cart has settled
-Page http://localhost:3020/cart has settled
+PASS: "Cart" [document] (0 diff pixels)
+x Close Browser Contexts
 SCENARIO > Cart
 SCENARIO > Cart
-Fonts for http://localhost:3020/cart are ready
-All 0 images loaded for http://localhost:3020/cart
 Fonts for http://localhost:3030/cart are ready
 All 0 images loaded for http://localhost:3030/cart
-PASS: "Cart" [document] (0 diff pixels)
-x Close Browser Contexts
-PASS: "Cart" [document] (0 diff pixels)
-x Close Browser Contexts
+Fonts for http://localhost:3020/cart are ready
+All 0 images loaded for http://localhost:3020/cart
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
 Cookie state restored with: [
   {
@@ -1895,7 +1352,11 @@ Cookie state restored with: [
     "sameSite": "Lax"
   }
 ]
+PASS: "Cart" [document] (0 diff pixels)
+x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
+SCENARIO > Admin Dashboard - Cookie Login
+SCENARIO > Admin Dashboard - Cookie Login
 Cookie state restored with: [
   {
     "name": "demo_ecommerce_admin_auth",
@@ -1920,28 +1381,26 @@ Cookie state restored with: [
     "sameSite": "Lax"
   }
 ]
-SCENARIO > Admin Dashboard - Cookie Login
-SCENARIO > Admin Dashboard - Cookie Login
 Network idle
 Network idle
 SCENARIO > Admin Dashboard - Cookie Login
 SCENARIO > Admin Dashboard - Cookie Login
-Page http://localhost:3020/cart has settled
+Network idle
+Network idle
+Fonts for http://localhost:3020/admin are ready
+All 0 images loaded for http://localhost:3020/admin
+Fonts for http://localhost:3030/admin are ready
+All 0 images loaded for http://localhost:3030/admin
 Page http://localhost:3030/cart has settled
-Network idle
-Network idle
-Fonts for http://localhost:3030/admin are ready
-All 0 images loaded for http://localhost:3030/admin
-Fonts for http://localhost:3020/admin are ready
-All 0 images loaded for http://localhost:3020/admin
+Page http://localhost:3020/cart has settled
 PASS: "Cart" [document] (0 diff pixels)
-Network idle
 x Close Browser Contexts
 Network idle
-Fonts for http://localhost:3030/admin are ready
-All 0 images loaded for http://localhost:3030/admin
+Network idle
 Fonts for http://localhost:3020/admin are ready
 All 0 images loaded for http://localhost:3020/admin
+Fonts for http://localhost:3030/admin are ready
+All 0 images loaded for http://localhost:3030/admin
 LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
 Cookie state restored with: [
   {
@@ -1969,27 +1428,29 @@ Cookie state restored with: [
 ]
 SCENARIO > Admin Dashboard - Cookie Login
 SCENARIO > Admin Dashboard - Cookie Login
-Page http://localhost:3030/admin has settled
 Page http://localhost:3020/admin has settled
-Network idle
-Network idle
-Fonts for http://localhost:3030/admin are ready
-All 0 images loaded for http://localhost:3030/admin
-Fonts for http://localhost:3020/admin are ready
-All 0 images loaded for http://localhost:3020/admin
 Page http://localhost:3030/admin has settled
-Page http://localhost:3020/admin has settled
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
 x Close Browser Contexts
+Network idle
+Network idle
+Fonts for http://localhost:3020/admin are ready
+Fonts for http://localhost:3030/admin are ready
+All 0 images loaded for http://localhost:3020/admin
+All 0 images loaded for http://localhost:3030/admin
+LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
+Page http://localhost:3020/admin has settled
+Page http://localhost:3030/admin has settled
+Cookie state restored with: []
+Cookie state restored with: []
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
+SCENARIO > Admin Orders - Form Login Interaction
+SCENARIO > Admin Orders - Form Login Interaction
 Cookie state restored with: []
 Cookie state restored with: []
 retryCompare | Re-navigating both pages for retry 3...
-Cookie state restored with: []
-Cookie state restored with: []
-LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Admin Orders - Form Login Interaction
@@ -2000,10 +1461,8 @@ Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
-SCENARIO > Admin Orders - Form Login Interaction
-SCENARIO > Admin Orders - Form Login Interaction
-Page http://localhost:3030/admin has settled
 Page http://localhost:3020/admin has settled
+Page http://localhost:3030/admin has settled
 PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
@@ -2017,26 +1476,27 @@ Fonts for http://localhost:3030/admin/orders are ready
 All 0 images loaded for http://localhost:3030/admin/orders
 Fonts for http://localhost:3030/admin/orders are ready
 All 0 images loaded for http://localhost:3030/admin/orders
-Page http://localhost:3030/ has settled
-Page http://localhost:3020/ has settled
 Fonts for http://localhost:3030/admin/orders are ready
 All 0 images loaded for http://localhost:3030/admin/orders
+Fonts for http://localhost:3030/admin/orders are ready
+All 0 images loaded for http://localhost:3030/admin/orders
+Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
 retryCompare | Re-navigating both pages for retry 3...
 Cookie state restored with: []
 Cookie state restored with: []
-Fonts for http://localhost:3030/admin/orders are ready
-All 0 images loaded for http://localhost:3030/admin/orders
+Network idle
 Network idle
 Network idle
 SCENARIO > Homepage
 SCENARIO > Homepage
 Network idle
-Fonts for http://localhost:3030/ are ready
-retryCompare | Retry 4/5 for "Homepage" [[data-cy='hero-section']] - chilling for 4000ms
+Page http://localhost:3030/admin/orders has settled
 Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3030/
+retryCompare | Retry 4/5 for "Homepage" [[data-cy='hero-section']] - chilling for 4000ms
 All 0 images loaded for http://localhost:3020/
-Network idle
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
@@ -2045,140 +1505,139 @@ All 0 images loaded for http://localhost:3030/admin/orders
 Fonts for http://localhost:3030/admin/orders are ready
 All 0 images loaded for http://localhost:3030/admin/orders
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-x Close Browser Contexts
-Page http://localhost:3030/admin/orders has settled
-Network idle
-Network idle
-LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
 x Close Browser Contexts
+x Close Browser Contexts
+Network idle
+Network idle
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
+SCENARIO > Carousel Demo - Pause With Override CSS
+SCENARIO > Carousel Demo - Pause With Override CSS
 SCENARIO > Carousel Demo - Pause With Override CSS
 SCENARIO > Carousel Demo - Pause With Override CSS
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-Cookie state restored with: []
-Cookie state restored with: []
 Network idle
 Network idle
 Page http://localhost:3030/admin/orders has settled
 Page http://localhost:3030/admin/orders has settled
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 Fonts for http://localhost:3020/carousel-demo are ready
 All 6 images loaded for http://localhost:3020/carousel-demo
-SCENARIO > Carousel Demo - Pause With Override CSS
-SCENARIO > Carousel Demo - Pause With Override CSS
+Fonts for http://localhost:3020/carousel-demo are ready
+All 6 images loaded for http://localhost:3020/carousel-demo
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
 retryCompare | Retry 4/5 for "Homepage" [document] - chilling for 4000ms
 Network idle
 Network idle
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-Fonts for http://localhost:3020/carousel-demo are ready
-All 6 images loaded for http://localhost:3020/carousel-demo
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
+Network idle
+Network idle
 PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
 x Close Browser Contexts
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
 Cookie state restored with: []
 Cookie state restored with: []
-Page http://localhost:3030/carousel-demo has settled
 Page http://localhost:3020/carousel-demo has settled
+Page http://localhost:3020/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
 SCENARIO > Carousel Demo - Pause With Override CSS
 SCENARIO > Carousel Demo - Pause With Override CSS
 PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
 x Close Browser Contexts
-LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Network idle
-Network idle
-Cookie state restored with: []
-Cookie state restored with: []
+x Close Browser Contexts
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
+Fonts for http://localhost:3030/carousel-demo are ready
 VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
 Fonts for http://localhost:3020/carousel-demo are ready
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Pause With Override CSS
-Fonts for http://localhost:3030/carousel-demo are ready
-SCENARIO > Carousel Demo - Stub Slider Images
-SCENARIO > Carousel Demo - Stub Slider Images
+LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+All 6 images loaded for http://localhost:3030/carousel-demo
+Cookie state restored with: []
+Cookie state restored with: []
+LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Cookie state restored with: []
+Cookie state restored with: []
 All 6 images loaded for http://localhost:3020/carousel-demo
-All 6 images loaded for http://localhost:3030/carousel-demo
-Page http://localhost:3020/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-Fonts for http://localhost:3030/carousel-demo are ready
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-All 6 images loaded for http://localhost:3030/carousel-demo
-x Close Browser Contexts
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Cookie state restored with: []
-Cookie state restored with: []
-Network idle
-Network idle
 SCENARIO > Carousel Demo - Stub Slider Images
 SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Network idle
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+Network idle
+Page http://localhost:3030/carousel-demo has settled
 Page http://localhost:3020/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
 Network idle
 Network idle
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
+Network idle
 PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Page http://localhost:3030/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
+Network idle
 x Close Browser Contexts
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
 LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
 Cookie state restored with: []
 Cookie state restored with: []
+Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
+SCENARIO > Carousel Demo - Stub Slider Images
+SCENARIO > Carousel Demo - Stub Slider Images
 PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
 x Close Browser Contexts
-SCENARIO > Carousel Demo - Stub Slider Images
-SCENARIO > Carousel Demo - Stub Slider Images
-Network idle
-Network idle
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
-Fonts for http://localhost:3030/carousel-demo are ready
-All 6 images loaded for http://localhost:3030/carousel-demo
-Page http://localhost:3030/carousel-demo has settled
-Page http://localhost:3030/carousel-demo has settled
 PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
-Network idle
 x Close Browser Contexts
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
+VISREG_TEST_CSS_OVERRIDE injected for: Carousel Demo - Stub Slider Images
+Fonts for http://localhost:3030/carousel-demo are ready
+All 6 images loaded for http://localhost:3030/carousel-demo
 retryCompare | Re-navigating both pages for retry 4...
-Network idle
 Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
-Page http://localhost:3030/carousel-demo has settled
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
+Network idle
+Network idle
 Page http://localhost:3030/carousel-demo has settled
+Page http://localhost:3030/carousel-demo has settled
+Network idle
+Network idle
 PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
 x Close Browser Contexts
-Network idle
-Network idle
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
+retryCompare | Retry 5/5 for "Homepage" [[data-cy='hero-section']] - chilling for 5000ms
 retryCompare | Re-navigating both pages for retry 4...
 Cookie state restored with: []
 Cookie state restored with: []
-retryCompare | Retry 5/5 for "Homepage" [[data-cy='hero-section']] - chilling for 5000ms
 SCENARIO > Homepage
 SCENARIO > Homepage
 Fonts for http://localhost:3030/ are ready
@@ -2195,29 +1654,29 @@ Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
 Fonts for http://localhost:3020/ are ready
 All 4 images loaded for http://localhost:3020/
+Fonts for http://localhost:3030/ are ready
+All 4 images loaded for http://localhost:3030/
 Network idle
 Network idle
-Page http://localhost:3030/ has settled
 Page http://localhost:3020/ has settled
+Page http://localhost:3030/ has settled
 retryCompare | All 5 retries exhausted for "Homepage" [[data-cy='hero-section']]. Least diff pixels: 101772
 FAIL after retries: "Homepage" [[data-cy='hero-section']]
+PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
 retryCompare | Re-navigating both pages for retry 5...
 Cookie state restored with: []
 Cookie state restored with: []
-PASS: "Homepage" [[data-cy='features-section']] (0 diff pixels)
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-All 0 images loaded for http://localhost:3020/
-MISMATCH: "Homepage" [document] (319864 diff pixels). Entering retry loop...
+MISMATCH: "Homepage" [document] (319853 diff pixels). Entering retry loop...
 retryCompare | Retry 1/5 for "Homepage" [document] - chilling for 1000ms
 Network idle
+Fonts for http://localhost:3020/ are ready
+Fonts for http://localhost:3030/ are ready
+All 0 images loaded for http://localhost:3020/
+All 4 images loaded for http://localhost:3030/
 Network idle
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
@@ -2271,14 +1730,14 @@ Cookie state restored with: []
 Cookie state restored with: []
 SCENARIO > Homepage
 SCENARIO > Homepage
-Fonts for http://localhost:3020/ are ready
-All 4 images loaded for http://localhost:3020/
 Fonts for http://localhost:3030/ are ready
 All 4 images loaded for http://localhost:3030/
+Fonts for http://localhost:3020/ are ready
+All 4 images loaded for http://localhost:3020/
 Network idle
 Network idle
-Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
+Page http://localhost:3020/ has settled
 retryCompare | Retry 5/5 for "Homepage" [document] - chilling for 5000ms
 retryCompare | Re-navigating both pages for retry 5...
 Cookie state restored with: []
@@ -2293,47 +1752,47 @@ Network idle
 Network idle
 Page http://localhost:3020/ has settled
 Page http://localhost:3030/ has settled
-retryCompare | All 5 retries exhausted for "Homepage" [document]. Least diff pixels: 319079
+retryCompare | All 5 retries exhausted for "Homepage" [document]. Least diff pixels: 319068
 FAIL after retries: "Homepage" [document]
 x Close Browser Contexts
 Disposing Browser
      COMMAND | Executing core for "report"
+   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
-     compare | OK: Homepage demo-ecommerce_Homepage_2_document_1_tablet.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 4.99%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
      compare | OK: Products List demo-ecommerce_Products_List_0_document_0_phone.png
      compare | OK: Products List demo-ecommerce_Products_List_0_document_1_tablet.png
      compare | OK: Products List demo-ecommerce_Products_List_0_document_2_desktop.png
      compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_0_phone.png
-     compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png
-     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_0_phone.png
      compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_1_tablet.png
-     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_1_tablet.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
-     compare | OK: Cart demo-ecommerce_Cart_0_document_1_tablet.png
-     compare | OK: Cart demo-ecommerce_Cart_0_document_0_phone.png
+     compare | OK: Products - Electronics Filter demo-ecommerce_Products_-_Electronics_Filter_0_document_2_desktop.png
      compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_2_desktop.png
-     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 4.99%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
-     compare | OK: Cart demo-ecommerce_Cart_0_document_2_desktop.png
+     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_0_phone.png
+     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_1_tablet.png
+     compare | OK: Homepage demo-ecommerce_Homepage_2_document_1_tablet.png
      compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 0.22%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_0_phone.png
-     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
-     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
-     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png
+     compare | OK: Cart demo-ecommerce_Cart_0_document_0_phone.png
+     compare | OK: Cart demo-ecommerce_Cart_0_document_1_tablet.png
    See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
-     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
+     compare | OK: Cart demo-ecommerce_Cart_0_document_2_desktop.png
+     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
+     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
+     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
+     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png
      compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png
-     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
+     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 22.08%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_2_desktop.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
-     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
+     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
+     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
      compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
      compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 22.08%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_2_desktop.png
       report | Test completed...
       report | 30 Passed
       report | 3 Failed
@@ -2341,12 +1800,12 @@ Disposing Browser
       report | jUnit report written to: visreg_data/ci_report/xunit.xml
       report | Writing browser report
       report | Resources copied
-      report | Copied json report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/report.json
       report | Copied jsonp report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/config.js
+      report | Copied json report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/bitmaps_test/report.json
       report | *** Mismatch errors found ***
-     COMMAND | Command "report" ended with an error after [1.051s]
+     COMMAND | Command "report" ended with an error after [1.081s]
      COMMAND | Error: Mismatch errors found.
-     COMMAND | Command "liveCompare" ended with an error after [57.051s]
+     COMMAND | Command "liveCompare" ended with an error after [56.207s]
      COMMAND | Error: Mismatch errors found.
 
 

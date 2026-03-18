@@ -1,7 +1,13 @@
 import { abTest, TestType } from 'shaka-shared';
 import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
 
-abTest('Click Shop Now on homepage', {
+abTest('Visits the homepage', {
+  startingPath: '/',
+}, async () => {
+});
+
+
+abTest('Click Shop Now on the homepage', {
   startingPath: '/',
   options: {
     visreg: {

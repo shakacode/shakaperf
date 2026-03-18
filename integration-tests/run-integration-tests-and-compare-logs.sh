@@ -51,6 +51,10 @@ normalize_log() {
 
 cd "$REPO_ROOT"
 
+echo "=== Cleaning previous snapshots ==="
+rm -rf "$SCRIPT_DIR/snapshots"
+mkdir -p "$SCRIPT_DIR/snapshots"
+
 # Ensure the Node version from .nvmrc is active (requires nvm to be loaded)
 REQUIRED_NODE=$(cat "$REPO_ROOT/.nvmrc")
 CURRENT_NODE=$(node -v 2>/dev/null | sed 's/^v//')

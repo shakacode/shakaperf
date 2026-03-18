@@ -66,7 +66,7 @@ report({
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
-            "height": 162
+            "height": -162
           },
           "rawMisMatchPercentage": 0.22964743589743591,
           "misMatchPercentage": "0.23",
@@ -143,7 +143,9 @@ report({
             "width": 0,
             "height": 0
           },
-          "misMatchPercentage": "0.00"
+          "rawMisMatchPercentage": 0,
+          "misMatchPercentage": "0.00",
+          "analysisTime": 63
         }
       },
       "status": "pass"

@@ -141,6 +141,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         this.options.resultsFolder ?? './tracerbench-results',
         markers
       );
+      // Prevent unhandled rejection if browser closes while lighthouse is still running
+      lighthousePromise.catch((error) => { console.log(error); });
 
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);

@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { Command } from "commander";
 import { getDefaultValue } from "./command-config/default-flag-args";
 import { runCompare } from "./commands/compare";
 import { runAnalyze } from "./commands/compare/analyze";
 import { runReport } from "./commands/compare/report";
 import { runInit } from "./commands/init";
+
+const CONFIG_FILENAME = 'bench.config.ts';
 
 function parseIntArg(value: string): number {
   const parsed = parseInt(value, 10);
@@ -67,6 +71,12 @@ program
     getDefaultValue("regressionThresholdStat")
   )
   .action(async (opts: Record<string, unknown>) => {
+    if (!opts.config) {
+      const autoPath = join(process.cwd(), CONFIG_FILENAME);
+      if (existsSync(autoPath)) {
+        opts.config = autoPath;
+      }
+    }
     await runCompare(opts);
   });
 

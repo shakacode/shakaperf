@@ -5,12 +5,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 import type {
   DiffMetadata,
   SingleDiffOptions,
   GenerateDiffsOptions,
 } from './types';
+import { generateUnifiedDiff, escapeHtml } from 'shaka-shared';
 
 export class HtmlDiffGenerator {
   ensureDirectoryExists(outputDir: string): void {
@@ -37,41 +37,13 @@ export class HtmlDiffGenerator {
               el.innerHTML = content;
             });
           };
-          replaceContent('file-name', '${this.escapeHtml(filename)}');
-          replaceContent('master-commit', '${this.escapeHtml(masterCommit)}');
-          replaceContent('branch-name', '${this.escapeHtml(branchName)}');
-          replaceContent('current-commit', '${this.escapeHtml(currentCommit)}');
+          replaceContent('file-name', '${escapeHtml(filename)}');
+          replaceContent('master-commit', '${escapeHtml(masterCommit)}');
+          replaceContent('branch-name', '${escapeHtml(branchName)}');
+          replaceContent('current-commit', '${escapeHtml(currentCommit)}');
         });
       </script>
     `;
-  }
-
-  escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  generateUnifiedDiff(controlFile: string, currentFile: string): string {
-    try {
-      // diff returns exit code 1 when files differ, which is expected
-      execSync(`diff -bur "${controlFile}" "${currentFile}"`, {
-        encoding: 'utf8',
-        maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large diffs
-      });
-      return ''; // Files are identical
-    } catch (error) {
-      const execError = error as { status?: number; stdout?: string };
-      if (execError.status === 1) {
-        // Exit code 1 means files differ - this is expected
-        return execError.stdout || '';
-      }
-      // Exit code 2 means an actual error occurred
-      throw error;
-    }
   }
 
   generateHtmlFromDiff(diffContent: string, outputPath: string, templatePath: string, metadata: DiffMetadata, filename: string): void {
@@ -94,7 +66,7 @@ export class HtmlDiffGenerator {
     // Inject title (replicates CLI -t option)
     html = html.replace(
       '<!--diff2html-title-->',
-      `<title>${this.escapeHtml(filename)}</title>`
+      `<title>${escapeHtml(filename)}</title>`
     );
 
     // Escape the diff content for embedding in JavaScript
@@ -141,7 +113,7 @@ export class HtmlDiffGenerator {
       return null;
     }
 
-    const diffContent = this.generateUnifiedDiff(controlFile, currentFile);
+    const diffContent = generateUnifiedDiff(controlFile, currentFile);
     if (!diffContent) {
       return null;
     }

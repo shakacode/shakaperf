@@ -104,7 +104,7 @@ function createConsumableHTML(
 
   const reportTitles = resolveTitles(tbConfig, version, plotTitle);
 
-  const { durationSection, subPhaseSections, cumulativeCharts } =
+  const { durationSection, subPhaseSections, vitalsSections, diagnosticsSections, cumulativeCharts } =
     new GenerateStats(controlData, experimentData, reportTitles);
 
   const template = Handlebars.compile(REPORT_TEMPLATE_RAW);
@@ -114,6 +114,8 @@ function createConsumableHTML(
     durationSection,
     reportTitles,
     subPhaseSections,
+    vitalsSections,
+    diagnosticsSections,
     configsSJSONString: JSON.stringify(tbConfig, null, 4),
     sectionFormattedDataJson: JSON.stringify(subPhaseSections),
   });

@@ -15,7 +15,7 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 ### compare.json
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/compare.json
+git diff -- integration-tests/snapshots/bench-results/compare.json 'integration-tests/snapshots/bench-results/*/compare.json'
 ```
 
 All numeric timing values are random noise. Only flag: missing/added phases or groups, changed sample count (expect 5), order-of-magnitude jumps in values, or structural JSON changes.
@@ -23,10 +23,18 @@ All numeric timing values are random noise. Only flag: missing/added phases or g
 ### report.json
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/report.json
+git diff -- integration-tests/snapshots/bench-results/report.json 'integration-tests/snapshots/bench-results/*/report.json'
 ```
 
 Numeric values (p-values, deltas, CIs, percentiles, sparklines) are noise. Only flag: `isSignificant` flipping for any phase, `areResultsSignificant` or `isBelowRegressionThreshold` changing, missing phases, sample counts != 5.
+
+### report.txt
+
+```bash
+git diff -- integration-tests/snapshots/bench-results/report.txt 'integration-tests/snapshots/bench-results/*/report.txt'
+```
+
+Plain text summary. Numeric values are noise. Only flag: missing sections, structural changes, added/removed metric names.
 
 ### Bench HTML screenshots
 
@@ -47,7 +55,7 @@ Unlike bench screenshots, visreg report screenshots should be nearly identical b
 ### Experiment server network_activity.txt
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/localhost_3030____network_activity.txt
+git diff -- 'integration-tests/snapshots/bench-results/*3030*_network_activity.txt' 'integration-tests/snapshots/bench-results/*/*3030*_network_activity.txt'
 ```
 
 KB values, download counts, and asset hashes are noise. Only flag: resources appearing/disappearing, or 10x size changes.
@@ -55,22 +63,21 @@ KB values, download counts, and asset hashes are noise. Only flag: resources app
 ### Control server network_activity.txt
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/localhost_3020____network_activity.txt
+git diff -- 'integration-tests/snapshots/bench-results/*3020*_network_activity.txt' 'integration-tests/snapshots/bench-results/*/*3020*_network_activity.txt'
 ```
 
 KB values, download counts, and asset hashes are noise. Only flag: resources appearing/disappearing, or 10x size changes.
 
-
 ### Experiment server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/localhost_3030____performance_profile.summary.txt
+git diff -- 'integration-tests/snapshots/bench-results/*3030*_performance_profile.summary.txt' 'integration-tests/snapshots/bench-results/*/*3030*_performance_profile.summary.txt'
 ```
 
 ### Control server performance_profile.summary.txt
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/localhost_3020____performance_profile.summary.txt
+git diff -- 'integration-tests/snapshots/bench-results/*3020*_performance_profile.summary.txt' 'integration-tests/snapshots/bench-results/*/*3020*_performance_profile.summary.txt'
 ```
 
 ### visreg
