@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -52,15 +52,11 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   logger.log('Writing browser report');
 
-  // Only copy the files needed for the report (index.html and index_bundle.js).
-  // diff.js and diverged.js are build-time inputs and are already inlined in the bundle.
-  const reportFiles = ['index.html', 'index_bundle.js', 'index_bundle.js.LICENSE.txt'];
+  // The template index.html has fonts, bundle, and licenses already inlined.
+  // We read it and will inject config.js data at the end to produce a single-file report.
+  const htmlTemplate = await readFile(path.join(config.comparePath, 'index.html'), 'utf8');
   const htmlReportDir = toAbsolute(config.html_report);
-  return mkdir(htmlReportDir, { recursive: true }).then(() =>
-    Promise.all(reportFiles.map(file =>
-      copyFile(path.join(config.comparePath, file), path.join(htmlReportDir, file))
-    ))
-  ).then(function () {
+  return mkdir(htmlReportDir, { recursive: true }).then(function () {
     // Slurp in logs
     const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
@@ -96,8 +92,6 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       return Promise.resolve([] as void[]);
     }
   }).then(function () {
-    logger.log('Resources copied');
-
     // Fixing URLs in the configuration
     _.forEach(browserReporter.tests, (test: Test) => {
       const report = toAbsolute(config.html_report);
@@ -110,7 +104,6 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     });
 
-    const reportConfigFilename = toAbsolute(config.compareConfigFileName);
     const testReportJsonName = toAbsolute(config.bitmaps_test + '/report.json');
 
     // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
@@ -129,7 +122,15 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     }
 
     const jsonReport = JSON.stringify(browserReporter, null, 2);
-    const jsonpReport = `report(${jsonReport});`;
+    const configScript = `<script>report(${jsonReport});</script>`;
+    const inlinedHtml = htmlTemplate.replace('<!--SHAKA_VISREG_CONFIG-->', configScript);
+
+    const htmlWrite = writeFile(path.join(htmlReportDir, 'index.html'), inlinedHtml).then(function () {
+      logger.log('Wrote single-file HTML report to: ' + htmlReportDir);
+    }, function (err: unknown) {
+      logger.error('Failed writing HTML report to: ' + htmlReportDir);
+      throw err;
+    });
 
     const jsonConfigWrite = writeFile(testReportJsonName, jsonReport).then(function () {
       logger.log('Copied json report to: ' + testReportJsonName);
@@ -138,14 +139,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       throw err;
     });
 
-    const jsonpConfigWrite = writeFile(toAbsolute(reportConfigFilename), jsonpReport).then(function () {
-      logger.log('Copied jsonp report to: ' + reportConfigFilename);
-    }, function (err: unknown) {
-      logger.error('Failed jsonp report copy to: ' + reportConfigFilename);
-      throw err;
-    });
-
-    const promises = [jsonpConfigWrite, jsonConfigWrite];
+    const promises = [htmlWrite, jsonConfigWrite];
 
     return allSettled(promises);
   }).then(async function () {

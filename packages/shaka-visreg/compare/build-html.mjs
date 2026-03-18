@@ -1,6 +1,9 @@
 /**
- * Generates index.html with base64-inlined fonts.
+ * Generates index.html with all assets inlined (fonts, bundle, licenses).
  * Run after webpack build to produce a self-contained HTML template.
+ *
+ * The only remaining external piece is config.js (test data generated per run),
+ * which report.ts injects at report-write time to produce a single-file report.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -12,6 +15,9 @@ const outputDir = resolve(__dirname, 'output');
 const srcDir = resolve(__dirname, 'src');
 const regularFont = readFileSync(resolve(srcDir, 'assets/fonts/lato-regular-webfont.woff2')).toString('base64');
 const boldFont = readFileSync(resolve(srcDir, 'assets/fonts/lato-bold-webfont.woff2')).toString('base64');
+
+const bundle = readFileSync(resolve(outputDir, 'index_bundle.js'), 'utf8');
+const license = readFileSync(resolve(outputDir, 'index_bundle.js.LICENSE.txt'), 'utf8');
 
 const html = `<!DOCTYPE html>
 <html>
@@ -55,11 +61,14 @@ const html = `<!DOCTYPE html>
         window.tests = report;
       }
     </script>
-    <script src="config.js"></script>
-    <script src="index_bundle.js"></script>
+    <!--SHAKA_VISREG_CONFIG-->
+    <!--
+${license}
+    -->
+    <script>${bundle}</script>
   </body>
 </html>
 `;
 
 writeFileSync(resolve(outputDir, 'index.html'), html);
-console.log('Generated index.html with inlined fonts');
+console.log('Generated index.html with inlined bundle and fonts');

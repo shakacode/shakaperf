@@ -6,7 +6,7 @@ module.exports = {
   devServer: {
     static: [
       {
-        directory: path.resolve(__dirname, 'output'),
+        directory: path.resolve(__dirname, 'src'),
         serveIndex: true
       }, {
         directory: path.join(__dirname, '../test/configs/visreg_data/html_report'),

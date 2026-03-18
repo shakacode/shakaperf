@@ -13,11 +13,12 @@ This will generate `/compare/output/index_bundle.js` and `/compare/output/index.
 
 `index_bundle.js` contains all styles, JS, and the diverged diff worker (with `diff.js` and `diverged.js` inlined as source strings for a blob worker).
 
-`index.html` includes base64-inlined Lato fonts — no external font files are needed.
+`index.html` is a fully self-contained HTML template with everything inlined:
+- Base64-encoded Lato fonts
+- The full `index_bundle.js` bundle
+- Third-party license text (from `index_bundle.js.LICENSE.txt`)
+- A `<!--SHAKA_VISREG_CONFIG-->` placeholder for test data
 
-In normal shaka-visreg operation these files will be copied into the correct HTML report directory during a test flow (e.g. when running `shaka-visreg liveCompare`) after bitmap generation has completed. See: `/core/command/report.ts` writeBrowserReport() method for details.
+At report-write time (`/core/command/report.ts` `writeBrowserReport()`), the placeholder is replaced with an inline `<script>` containing the test config data, producing a **single `index.html` file** as the complete report.
 
-The report output consists of just 3 files:
-- `index.html` — self-contained HTML with inlined fonts
-- `index_bundle.js` — React app with inlined worker scripts
-- `config.js` — test data (generated per run)
+For local development, `src/index.html` provides a lightweight HTML with external `<script src>` references, used by `webpack-dev-server`.
