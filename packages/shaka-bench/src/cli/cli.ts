@@ -27,7 +27,8 @@ program
   .description(
     "Compare the performance delta between an experiment and control"
   )
-  .requiredOption("--testFile <path>", "Path to the test file containing abTest() calls")
+  .option("--testFile <path>", "Path to a specific .abtest.ts/.abtest.js file (if omitted, auto-discovers *.abtest.ts and *.abtest.js files in cwd)")
+  .option("--testPathPattern <regex>", "Regex to filter auto-discovered test files by path (like Jest's --testPathPattern)")
   .option("--hideAnalysis", "Hide the analysis output in terminal", false)
   .option(
     "-n, --numberOfMeasurements <n>",

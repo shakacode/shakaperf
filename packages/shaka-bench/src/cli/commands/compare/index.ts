@@ -12,7 +12,7 @@ import {
   NavigationSample,
   run,
 } from "../../../core";
-import { loadTestFile } from "shaka-shared";
+import { findTestFiles, loadTestFile } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -35,6 +35,7 @@ export interface ICompareFlags {
   controlURL: string | undefined;
   experimentURL: string | undefined;
   testFile: string | undefined;
+  testPathPattern: string | undefined;
   regressionThreshold?: number;
   sampleTimeout: number;
   report?: boolean;
@@ -53,17 +54,29 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     console.error("experimentURL is required as a cli flag");
     process.exit(2);
   }
-  if (!compareFlags.testFile) {
-    console.error("testFile is required as a cli flag");
-    process.exit(2);
-  }
-
   clearRegistry();
-  await loadTestFile(compareFlags.testFile!);
+
+  if (compareFlags.testFile) {
+    await loadTestFile(compareFlags.testFile);
+  } else {
+    const testFiles = findTestFiles({ testPathPattern: compareFlags.testPathPattern });
+    if (testFiles.length === 0) {
+      const hint = compareFlags.testPathPattern
+        ? `matching pattern "${compareFlags.testPathPattern}"`
+        : 'in current directory';
+      console.error(`No .abtest.ts/.abtest.js files found ${hint}. Use --testFile to specify a file or create *.abtest.ts files.`);
+      process.exit(2);
+    }
+    console.log(`Found ${testFiles.length} test file(s):\n  ${testFiles.join('\n  ')}`);
+    for (const file of testFiles) {
+      await loadTestFile(file);
+    }
+  }
 
   const tests = getRegisteredTests();
   if (tests.length === 0) {
-    console.error(`No tests registered in ${compareFlags.testFile}. Did you call abTest()?`);
+    const source = compareFlags.testFile ?? 'discovered test files';
+    console.error(`No tests registered in ${source}. Did you call abTest()?`);
     process.exit(2);
   }
 
