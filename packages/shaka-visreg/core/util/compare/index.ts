@@ -1,14 +1,12 @@
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import map from 'p-map';
 import fs from 'node:fs';
 import cp from 'node:child_process';
-import Reporter, { Test } from './../Reporter.js';
-import createLogger from './../logger.js';
-import storeFailedDiffStub from './store-failed-diff-stub.js';
-import type { RuntimeConfig, TestPair, CompareConfig, ResembleOutputOptions } from '../../types.js';
+import Reporter, { Test } from './../Reporter';
+import createLogger from './../logger';
+import storeFailedDiffStub from './store-failed-diff-stub';
+import type { RuntimeConfig, TestPair, CompareConfig, ResembleOutputOptions } from '../../types';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('compare');
 
 const ASYNC_COMPARE_LIMIT = 20;

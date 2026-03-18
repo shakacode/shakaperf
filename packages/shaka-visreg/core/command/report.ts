@@ -5,17 +5,15 @@ import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
 import cloneDeep from 'lodash/cloneDeep.js';
-import { createRequire } from 'node:module';
 import builder from 'junit-report-builder';
-import allSettled from '../util/allSettled.js';
-import createLogger from '../util/logger.js';
-import compare from '../util/compare/index.js';
-import type { RuntimeConfig } from '../types.js';
-import type Reporter from '../util/Reporter.js';
-import type { Test } from '../util/Reporter.js';
+import allSettled from '../util/allSettled';
+import createLogger from '../util/logger';
+import compare from '../util/compare/index';
+import type { RuntimeConfig } from '../types';
+import type Reporter from '../util/Reporter';
+import type { Test } from '../util/Reporter';
 
 const logger = createLogger('report');
-const _require = createRequire(import.meta.url);
 
 function writeReport (config: RuntimeConfig, reporter: Reporter) {
   const promises = [];
@@ -44,9 +42,7 @@ function archiveReport (config: RuntimeConfig) {
 }
 
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (typeof config.args.config === 'object')
-    ? config.args.config
-    : Object.assign({}, _require(config.configFileName));
+  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
 
   let browserReporter = cloneDeep(reporter);
 
@@ -150,7 +146,8 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     }
 
     if (config.openReport && config.report && config.report.indexOf('browser') > -1) {
-      const { default: executeCommand } = await import('./index.js');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const executeCommand = require('./index').default;
       return executeCommand('_openReport', config);
     }
     return undefined;
@@ -192,9 +189,7 @@ function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
 }
 
 function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (typeof config.args.config === 'object')
-    ? config.args.config
-    : Object.assign({}, _require(config.configFileName));
+  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
 
   let jsonReporter = cloneDeep(reporter);
 

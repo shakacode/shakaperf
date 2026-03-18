@@ -1,7 +1,7 @@
-import compareHashes from './compare-hash.js';
-import compareResemble from './compare-resemble.js';
-import storeFailedDiff from './store-failed-diff.js';
-import type { TestPair, ResembleOutputOptions, DiffResult } from '../../types.js';
+import compareHashes from './compare-hash';
+import compareResemble from './compare-resemble';
+import storeFailedDiff from './store-failed-diff';
+import type { TestPair, ResembleOutputOptions, DiffResult } from '../../types';
 
 interface ResembleDiffData extends DiffResult {
   getDiffImage: () => { pack: () => NodeJS.ReadableStream };

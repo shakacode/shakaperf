@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('core report', function () {
   const config = {
     report: ['json'],
@@ -17,32 +15,34 @@ describe('core report', function () {
   let report: { execute: (config: Record<string, unknown>) => Promise<void> };
   let writeFileStub: jest.Mock;
 
-  beforeAll(async function () {
+  beforeAll(function () {
     jest.resetModules();
 
     const reporterClass = { failed: (): undefined => undefined, passed: () => 'passed', getReport: () => { return { test: 123 }; } };
-    const compareMock = jest.fn<() => Promise<typeof reporterClass>>().mockResolvedValue(reporterClass);
+    const compareMock = jest.fn().mockResolvedValue(reporterClass);
     const loggerMock = () => {
       return { log: jest.fn(), error: jest.fn() };
     };
-    writeFileStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    writeFileStub = jest.fn().mockResolvedValue(undefined);
 
-    jest.unstable_mockModule('../../../core/util/compare/index.js', () => ({
+    jest.mock('../../../core/util/compare/index', () => ({
+      __esModule: true,
       default: compareMock
     }));
-    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+    jest.mock('../../../core/util/logger', () => ({
+      __esModule: true,
       default: loggerMock
     }));
-    jest.unstable_mockModule('node:fs/promises', () => ({
-      readFile: jest.fn<() => Promise<string>>().mockResolvedValue('{}'),
+    jest.mock('node:fs/promises', () => ({
+      readFile: jest.fn().mockResolvedValue('{}'),
       writeFile: writeFileStub
     }));
-    jest.unstable_mockModule('fs-extra', () => ({
-      copy: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-      ensureDir: jest.fn<() => Promise<void>>().mockResolvedValue(undefined)
+    jest.mock('fs-extra', () => ({
+      copy: jest.fn().mockResolvedValue(undefined),
+      ensureDir: jest.fn().mockResolvedValue(undefined)
     }));
 
-    report = await import('../../../core/command/report.js') as unknown as typeof report;
+    report = require('../../../core/command/report') as unknown as typeof report;
   });
 
   it('should generate two json reports and a default browser report when config.report specifies json', function () {

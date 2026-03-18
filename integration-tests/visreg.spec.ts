@@ -21,17 +21,22 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
 
   fs.mkdirSync(VISREG_RESULTS_DIR, { recursive: true });
 
-  // Disable openReport so visreg doesn't launch a browser
-  const visregConfigPath = path.join(DEMO_CWD, 'visreg.json');
-  const visregConfig = JSON.parse(fs.readFileSync(visregConfigPath, 'utf-8'));
-  visregConfig.openReport = false;
-  fs.writeFileSync(visregConfigPath, JSON.stringify(visregConfig, null, 2) + '\n');
+  // Patch visreg.config.ts to disable openReport so visreg doesn't launch a browser
+  const visregConfigPath = path.join(DEMO_CWD, 'visreg.config.ts');
+  let visregConfigContent = fs.readFileSync(visregConfigPath, 'utf-8');
+  if (!visregConfigContent.includes('openReport')) {
+    visregConfigContent = visregConfigContent.replace(
+      /defaultMisMatchThreshold.*$/m,
+      (match) => match + '\n  openReport: false,'
+    );
+    fs.writeFileSync(visregConfigPath, visregConfigContent);
+  }
 
   // Run shaka-visreg liveCompare — expect it to fail (mismatches from padding change)
   loud('Running shaka-visreg liveCompare');
   let visregFailed = false;
   try {
-    run('yarn shaka-visreg liveCompare --config visreg.json', {
+    run('yarn shaka-visreg liveCompare --testFile ./ab-tests/index.abtest.ts --config visreg.config.ts', {
       timeout: 15 * 60 * 1000,
     });
   } catch (e: unknown) {

@@ -1,6 +1,6 @@
 import playwright from 'playwright';
 import chalk from 'chalk';
-import type { Browser, DecoratedCompareConfig } from '../types.js';
+import type { Browser, DecoratedCompareConfig } from '../types';
 
 type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
 

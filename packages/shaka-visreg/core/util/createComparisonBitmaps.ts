@@ -1,13 +1,14 @@
-import { createRequire } from 'node:module';
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright.js';
-import * as runCompareScenario from './runCompareScenario.js';
-import ensureDirectoryPath from './ensureDirectoryPath.js';
-import createLogger from './logger.js';
-import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, TestPair, Browser } from '../types.js';
+import { loadTests } from 'shaka-shared';
+import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
+import * as runCompareScenario from './runCompareScenario';
+import ensureDirectoryPath from './ensureDirectoryPath';
+import { convertAbTestToScenario } from './convertAbTestToScenario';
+import createLogger from './logger';
+import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregGlobalConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -25,7 +26,6 @@ interface CompareResult {
   originalError?: Error;
 }
 
-const _require = createRequire(import.meta.url);
 const logger = createLogger('liveCompare');
 
 const CONCURRENCY_DEFAULT = 10;
@@ -44,58 +44,67 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
   });
 }
 
-function decorateConfigForCompare (config: RuntimeConfig) {
-  let configJSON;
+async function decorateConfigForTestFile (config: RuntimeConfig) {
+  const testFilePath = config.args.testFile as string | undefined;
+  const testPathPattern = config.args.testPathPattern as string | undefined;
+  const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
+  const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
-  if (typeof config.args.config === 'object') {
-    configJSON = cloneDeep(config.args.config);
-  } else {
-    configJSON = cloneDeep(_require(config.configFileName));
-  }
-  configJSON.scenarios = configJSON.scenarios || [];
-  ensureViewportLabel(configJSON);
+  const tests = await loadTests({
+    testFile: testFilePath,
+    testPathPattern,
+    log: function (msg) { logger.log(msg); },
+  });
 
-  const totalScenarioCount = configJSON.scenarios.length;
+  // Global config was already loaded in makeConfig and passed through extendConfig.
+  // Retrieve it for viewports/engineOptions which aren't on RuntimeConfig.
+  const globalConfig = (config.args._loadedVisregConfig as Partial<VisregGlobalConfig>) || {};
 
-  if (configJSON.dynamicTestId) {
-    console.log('dynamicTestId \'' + configJSON.dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
+  // Convert AbTestDefinitions to Scenarios
+  const scenarios = tests.map(function (t) {
+    return convertAbTestToScenario(t, controlURL, experimentURL);
+  });
+
+  const configJSON: Record<string, unknown> = {
+    ...globalConfig,
+    viewports: globalConfig.viewports,
+    engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
+    scenarios,
+  };
+  ensureViewportLabel(configJSON as { viewports?: Viewport[] });
+
+  if ((configJSON as Record<string, unknown>).dynamicTestId) {
+    console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
   }
 
   configJSON.env = cloneDeep(config);
   configJSON.isReference = false;
   configJSON.isCompare = true;
-  configJSON.paths = configJSON.paths || {};
-  configJSON.paths.tempCompareConfigFileName = config.tempCompareConfigFileName;
+  configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
+  (configJSON.paths as Record<string, unknown>).tempCompareConfigFileName = config.tempCompareConfigFileName;
   configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
   configJSON.configFileName = config.configFileName;
   configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
-  // Pass through compare-specific config
   configJSON.compareRetries = config.compareRetries;
   configJSON.compareRetryDelay = config.compareRetryDelay;
   configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
 
   if (config.args.filter) {
-    const scenarios: Scenario[] = [];
+    const filtered: Scenario[] = [];
     (config.args.filter as string).split(',').forEach(function (filteredTest: string) {
-      configJSON.scenarios.forEach(function (scenario: Scenario) {
+      (configJSON.scenarios as Scenario[]).forEach(function (scenario: Scenario) {
         if (regexTest(scenario.label, filteredTest)) {
-          scenarios.push(scenario);
+          filtered.push(scenario);
         }
       });
     });
-    configJSON.scenarios = scenarios;
+    configJSON.scenarios = filtered;
   }
 
-  // Validate that all scenarios have referenceUrl
-  const missingReferenceUrl = configJSON.scenarios.filter(function (s: Scenario) { return !s.referenceUrl; });
-  if (missingReferenceUrl.length > 0) {
-    const labels = missingReferenceUrl.map(function (s: Scenario) { return '"' + s.label + '"'; }).join(', ');
-    throw new Error('liveCompare requires referenceUrl for all scenarios. Missing on: ' + labels);
-  }
-
-  logger.log('Selected ' + configJSON.scenarios.length + ' of ' + totalScenarioCount + ' scenarios.');
-  return configJSON;
+  const totalScenarioCount = tests.length;
+  logger.log('Selected ' + (configJSON.scenarios as Scenario[]).length + ' of ' + totalScenarioCount + ' scenarios.');
+  return configJSON as unknown as DecoratedCompareConfig;
 }
 
 function saveViewportIndexes (viewport: Viewport, index: number) {
@@ -193,16 +202,14 @@ function flatMapTestPairs (rawTestPairs: CompareResult[]) {
   }, []);
 }
 
-export default function createComparisonBitmaps (config: RuntimeConfig) {
-  const promise = delegateCompareScenarios(decorateConfigForCompare(config))
-    .then(function (rawTestPairs) {
-      const result = {
-        compareConfig: {
-          testPairs: flatMapTestPairs(rawTestPairs as CompareResult[])
-        }
-      };
-      return writeCompareConfigFile(config.tempCompareConfigFileName, result);
-    });
+export default async function createComparisonBitmaps (config: RuntimeConfig) {
+  const decoratedConfig = await decorateConfigForTestFile(config);
 
-  return promise;
-};
+  const rawTestPairs = await delegateCompareScenarios(decoratedConfig);
+  const result = {
+    compareConfig: {
+      testPairs: flatMapTestPairs(rawTestPairs as CompareResult[])
+    }
+  };
+  return writeCompareConfigFile(config.tempCompareConfigFileName, result);
+}

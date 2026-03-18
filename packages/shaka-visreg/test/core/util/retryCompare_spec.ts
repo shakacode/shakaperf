@@ -1,18 +1,14 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const REF_IMG1 = path.join(__dirname, 'compare/refImage-1.png');
 const REF_IMG2 = path.join(__dirname, 'compare/refImage-2.png');
 
 // retryCompare is called AFTER an initial mismatch is detected
 // It attempts to re-capture screenshots and find a matching pair
-import retryCompareOriginal from '../../../core/util/retryCompare.js';
+import retryCompareOriginal from '../../../core/util/retryCompare';
 // Test mocks don't implement full Playwright interfaces — loosen the input type
 const retryCompare = retryCompareOriginal as unknown as (options: Record<string, unknown>) => ReturnType<typeof retryCompareOriginal>;
 

@@ -1,26 +1,27 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
 
 describe('liveCompare command', function () {
   // Dynamically imported mocked modules — types determined at runtime
   let liveCompare: { execute: (config: Record<string, unknown>) => Promise<void> };
-  let createComparisonBitmapsStub: jest.Mock<() => Promise<void>>;
+  let createComparisonBitmapsStub: jest.Mock;
   let executeCommandStub: jest.Mock;
 
   async function setupMocks () {
     jest.resetModules();
 
-    createComparisonBitmapsStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    executeCommandStub = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    createComparisonBitmapsStub = jest.fn().mockResolvedValue(undefined);
+    executeCommandStub = jest.fn().mockResolvedValue(undefined);
 
-    jest.unstable_mockModule('../../../core/util/createComparisonBitmaps.js', () => ({
+    jest.mock('../../../core/util/createComparisonBitmaps', () => ({
+      __esModule: true,
       default: createComparisonBitmapsStub
     }));
-    jest.unstable_mockModule('../../../core/command/index.js', () => ({
+    jest.mock('../../../core/command/index', () => ({
+      __esModule: true,
       default: executeCommandStub
     }));
 
-    liveCompare = await import('../../../core/command/liveCompare.js') as unknown as typeof liveCompare;
+    liveCompare = require('../../../core/command/liveCompare') as unknown as typeof liveCompare;
   }
 
   beforeEach(async function () {

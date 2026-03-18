@@ -1,4 +1,4 @@
-import type { TestPair, Scenario, Viewport, RuntimeConfig, EngineOptions, DecoratedCompareConfig } from "../types.js";
+import type { TestPair, Scenario, Viewport, RuntimeConfig, EngineOptions, DecoratedCompareConfig } from "../types";
 
 /**
  * @description Retrieves the mismatch threshold based on the given scenario and configuration.

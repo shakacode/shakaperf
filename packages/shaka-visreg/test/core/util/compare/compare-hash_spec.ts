@@ -1,9 +1,6 @@
-import compareHash from '../../../../core/util/compare/compare-hash.js';
+import compareHash from '../../../../core/util/compare/compare-hash';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import assert from 'node:assert';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const REF_IMG1 = path.join(__dirname, 'refImage-1.png');
 const REF_IMG1_OPTIMIZED = path.join(__dirname, 'refImage-1-optimized.png');

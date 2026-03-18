@@ -3,29 +3,28 @@
  * Listen to all requests. If a request matches IMAGE_URL_RE
  * then stub the image with data from IMAGE_STUB_URL
  *
- * Use this in an onBefore script E.G.
+ * Usage in an abTest (call before page.goto to intercept initial loads):
   ```
-  import interceptImages from './interceptImages';
+  import interceptImages from '../visreg_data/engine_scripts/playwright/interceptImages.ts';
 
-  export default async function onBefore(page, scenario) {
-    await interceptImages(page, scenario);
-  }
+  abTest('My Test', { startingPath: '/' }, async ({ page }) => {
+    await interceptImages(page);
+    await page.goto(page.url());
+  });
   ```
  */
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import type { Page } from 'playwright-core';
 import type { Scenario } from 'shaka-visreg/core/types';
 
 const IMAGE_URL_RE = /\.gif|\.jpg|\.png/i;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IMAGE_STUB_URL = path.resolve(__dirname, '../imageStub.jpg');
 const IMAGE_DATA_BUFFER = fs.readFileSync(IMAGE_STUB_URL);
 const HEADERS_STUB = {};
 
-export default async function interceptImages(page: Page, _scenario: Scenario): Promise<void> {
+export default async function interceptImages(page: Page, _scenario?: Scenario): Promise<void> {
   await page.route(IMAGE_URL_RE, route => {
     route.fulfill({
       body: IMAGE_DATA_BUFFER,

@@ -1,24 +1,25 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
 
 describe('the runner', function () {
   let runner: (command: string, args: Record<string, unknown>) => Promise<{ command: string; config: unknown }>;
 
-  beforeAll(async function () {
+  beforeAll(function () {
     jest.resetModules();
 
-    jest.unstable_mockModule('../../core/util/makeConfig.js', () => ({
+    jest.mock('../../core/util/makeConfig', () => ({
+      __esModule: true,
       default: function (command: string, args: Record<string, unknown>) {
         return { command, args };
       }
     }));
-    jest.unstable_mockModule('../../core/command/index.js', () => ({
+    jest.mock('../../core/command/index', () => ({
+      __esModule: true,
       default: function (command: string, config: unknown) {
         return Promise.resolve({ command, config });
       }
     }));
 
-    const mod = await import('../../core/runner.js');
+    const mod = require('../../core/runner');
     runner = mod.default as unknown as typeof runner;
   });
 

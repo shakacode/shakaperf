@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as path from "node:path";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 
 import chalk from "chalk";
 import {
@@ -10,14 +10,13 @@ import {
   clearDownloadsSizes,
   compareNetworkActivity,
   createLighthouseBenchmark,
-  clearRegistry,
   generateHtmlDiffs,
   generateTimelineComparison,
-  getRegisteredTests,
   LighthouseBenchmarkOptions,
   NavigationSample,
   run,
 } from "../../../core";
+import { loadTests } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -41,24 +40,12 @@ export interface ICompareFlags {
   controlURL: string | undefined;
   experimentURL: string | undefined;
   testFile: string | undefined;
+  testPathPattern: string | undefined;
   regressionThreshold?: number;
   sampleTimeout: number;
   report?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   config?: string;
-}
-
-async function loadTestFile(testFilePath: string): Promise<void> {
-  const absolutePath = path.resolve(testFilePath);
-  const ext = path.extname(absolutePath);
-
-  if (ext === '.ts') {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { tsImport } = require('tsx/esm/api');
-    await tsImport(absolutePath, __filename);
-  } else {
-    await import(absolutePath);
-  }
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
@@ -121,19 +108,11 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     console.error("experimentURL is required as a cli flag");
     process.exit(2);
   }
-  if (!compareFlags.testFile) {
-    console.error("testFile is required as a cli flag");
-    process.exit(2);
-  }
-
-  clearRegistry();
-  await loadTestFile(compareFlags.testFile!);
-
-  const tests = getRegisteredTests();
-  if (tests.length === 0) {
-    console.error(`No tests registered in ${compareFlags.testFile}. Did you call abTest()?`);
-    process.exit(2);
-  }
+  const tests = await loadTests({
+    testFile: compareFlags.testFile,
+    testPathPattern: compareFlags.testPathPattern,
+    log: (msg) => console.log(msg),
+  });
 
   mkdirpSync(compareFlags.resultsFolder!);
 

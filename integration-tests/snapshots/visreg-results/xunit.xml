@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="33" failures="3" errors="3" skipped="0">
-  <testsuite name="shaka-visreg" tests="33" failures="3" errors="3" skipped="0">
-    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage"/>
-    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+<testsuites tests="36" failures="3" errors="3" skipped="0">
+  <testsuite name="shaka-visreg" tests="36" failures="3" errors="3" skipped="0">
+    <testcase classname="[data-cy=&quot;hero-section&quot;]" name=" ›› Homepage"/>
+    <testcase classname="[data-cy=&quot;features-section&quot;]" name=" ›› Homepage"/>
     <testcase classname="document" name=" ›› Homepage">
       <failure message="Design deviation ›› Homepage (document) component"/>
       <error message="Design deviation ›› Homepage (document) component"/>
     </testcase>
-    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage"/>
-    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+    <testcase classname="[data-cy=&quot;hero-section&quot;]" name=" ›› Homepage"/>
+    <testcase classname="[data-cy=&quot;features-section&quot;]" name=" ›› Homepage"/>
     <testcase classname="document" name=" ›› Homepage"/>
-    <testcase classname="[data-cy='hero-section']" name=" ›› Homepage">
-      <failure message="Design deviation ›› Homepage ([data-cy='hero-section']) component"/>
-      <error message="Design deviation ›› Homepage ([data-cy='hero-section']) component"/>
+    <testcase classname="[data-cy=&quot;hero-section&quot;]" name=" ›› Homepage">
+      <failure message="Design deviation ›› Homepage ([data-cy=&quot;hero-section&quot;]) component"/>
+      <error message="Design deviation ›› Homepage ([data-cy=&quot;hero-section&quot;]) component"/>
     </testcase>
-    <testcase classname="[data-cy='features-section']" name=" ›› Homepage"/>
+    <testcase classname="[data-cy=&quot;features-section&quot;]" name=" ›› Homepage"/>
     <testcase classname="document" name=" ›› Homepage">
       <failure message="Design deviation ›› Homepage (document) component"/>
       <error message="Design deviation ›› Homepage (document) component"/>
@@ -43,5 +43,8 @@
     <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
     <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
     <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
+    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
+    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
   </testsuite>
 </testsuites>

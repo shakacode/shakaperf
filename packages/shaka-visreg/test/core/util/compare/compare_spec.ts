@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('compare', function () {
   // Dynamically imported mocked modules — types determined at runtime
   let compare: (img1: string, img2: string, threshold: number, opts: Record<string, unknown>) => Promise<unknown>;
@@ -7,20 +5,22 @@ describe('compare', function () {
   let compareResemble: jest.Mock;
   const error = new Error();
 
-  beforeAll(async function () {
+  beforeAll(function () {
     jest.resetModules();
 
     compareHashes = jest.fn();
     compareResemble = jest.fn();
 
-    jest.unstable_mockModule('../../../../core/util/compare/compare-hash.js', () => ({
+    jest.mock('../../../../core/util/compare/compare-hash', () => ({
+      __esModule: true,
       default: compareHashes
     }));
-    jest.unstable_mockModule('../../../../core/util/compare/compare-resemble.js', () => ({
+    jest.mock('../../../../core/util/compare/compare-resemble', () => ({
+      __esModule: true,
       default: compareResemble
     }));
 
-    const mod = await import('../../../../core/util/compare/compare.js') as unknown as { default: typeof compare };
+    const mod = require('../../../../core/util/compare/compare') as unknown as { default: typeof compare };
     compare = mod.default;
   });
 

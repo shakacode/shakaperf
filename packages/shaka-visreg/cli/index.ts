@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { createRequire } from 'node:module';
-import runner from '../core/runner.js';
+import runner from '../core/runner';
 
-const _require = createRequire(import.meta.url);
-const packageJson = _require('../package.json');
+const packageJson = require('../package.json');
 const { version } = packageJson;
 
 // Catch errors from failing promises
@@ -19,16 +17,19 @@ program
   .name('shaka-visreg')
   .description('Shaka-visreg: Catch CSS curveballs.')
   .version('v' + version, '--version', 'Display version')
-  .option('--config <path>', 'Path to config file name', 'visreg.json')
-  .option('--filter <regex>', 'A RegEx string used to filter scenarios by label');
+  .option('--config <path>', 'Path to visreg config file (default: visreg.config.ts)');
 
-function runCommand(commandName: string) {
-  const opts = program.opts();
-  // Build args object for the core runner
+function runCommand(commandName: string, command: Command) {
+  const globalOpts = program.opts();
+  const cmdOpts = command.opts();
   const argsOptions: Record<string, unknown> = {
     _: [commandName],
-    config: opts.config,
-    filter: opts.filter,
+    config: globalOpts.config,
+    testFile: cmdOpts.testFile,
+    testPathPattern: cmdOpts.testPathPattern,
+    controlURL: cmdOpts.controlURL,
+    experimentURL: cmdOpts.experimentURL,
+    filter: cmdOpts.filter,
   };
 
   console.log('shaka-visreg v' + version);
@@ -45,16 +46,21 @@ function runCommand(commandName: string) {
 program
   .command('init')
   .description('Generate boilerplate config files in your CWD.')
-  .action(() => runCommand('init'));
+  .action(function (this: Command) { runCommand('init', this); });
 
 program
   .command('liveCompare')
   .description('Open reference and test URLs simultaneously, compare side-by-side with retry logic.')
-  .action(() => runCommand('liveCompare'));
+  .option('--testFile <path>', 'Path to a specific test file (loads scenarios from abTest registry)')
+  .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
+  .option('--controlURL <url>', 'Control server URL', 'http://localhost:3020')
+  .option('--experimentURL <url>', 'Experiment server URL', 'http://localhost:3030')
+  .option('--filter <regex>', 'A RegEx string used to filter scenarios by label')
+  .action(function (this: Command) { runCommand('liveCompare', this); });
 
 program
   .command('openReport')
   .description('View the last test report in your browser.')
-  .action(() => runCommand('openReport'));
+  .action(function (this: Command) { runCommand('openReport', this); });
 
 program.parse();

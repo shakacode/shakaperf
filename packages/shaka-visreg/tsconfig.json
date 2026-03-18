@@ -1,19 +1,11 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
     "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": ".",
-    "declaration": true,
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-
-    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "allowUnreachableCode": false,
@@ -32,6 +24,8 @@
     "node_modules",
     "compare",
     "test",
-    "capture/engine_scripts"
+    "capture/engine_scripts",
+    "capture/ab-tests",
+    "capture/config.default.ts"
   ]
 }

@@ -1,12 +1,12 @@
 import { writeFile } from 'node:fs/promises';
 import { copy } from 'fs-extra';
 import chalk from 'chalk';
-import ensureDirectoryPath from './ensureDirectoryPath.js';
-import * as engineTools from './engineTools.js';
-import { compareBuffers } from './compare/pixelmatch-inline.js';
-import retryCompare from './retryCompare.js';
-import preparePage from './preparePage.js';
-import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair, DecoratedCompareConfig } from '../types.js';
+import ensureDirectoryPath from './ensureDirectoryPath';
+import * as engineTools from './engineTools';
+import { compareBuffers } from './compare/pixelmatch-inline';
+import retryCompare from './retryCompare';
+import preparePage from './preparePage';
+import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair, DecoratedCompareConfig } from '../types';
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
 interface CompareLogger {

@@ -1,10 +1,10 @@
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import _ from 'lodash';
 import { existsSync } from 'node:fs';
-import injectVisregTools from '../../capture/visregTools.js';
-import createLogger from './logger.js';
-import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types.js';
+import injectVisregTools from '../../capture/visregTools';
+import createLogger from './logger';
+import { TestType } from 'shaka-shared';
+import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types';
 import type { ConsoleMessage } from 'playwright';
 
 declare global {
@@ -29,11 +29,11 @@ const DOCUMENT_SELECTOR = 'document';
 async function importScript(scriptPath: string): Promise<unknown> {
   let mod;
   if (scriptPath.endsWith('.ts')) {
-    const { tsImport } = await import('tsx/esm/api');
-    const tsModule = await tsImport(scriptPath, import.meta.url);
+    const { tsImport } = require('tsx/esm/api');
+    const tsModule = await tsImport(scriptPath, __filename);
     mod = tsModule.default?.default ?? tsModule.default ?? tsModule;
   } else {
-    const jsModule = await import(pathToFileURL(scriptPath).href);
+    const jsModule = await import(scriptPath);
     mod = jsModule.default ?? jsModule;
   }
   return mod;
@@ -146,19 +146,31 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     );
   }
 
-  // --- ON READY SCRIPT ---
-  const onReadyScript = scenario.onReadyScript || config.onReadyScript;
-  if (onReadyScript) {
-    const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
-    if (existsSync(readyScriptPath)) {
-      const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
-      await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
-    } else {
-      logger.warn('WARNING: script not found: ' + readyScriptPath);
+  // --- ON READY SCRIPT / TEST FN ---
+  if (scenario._testFn) {
+    // abTest flow: testFn replaces onReadyScript
+    await scenario._testFn({
+      page,
+      browserContext: browserOrContext,
+      isReference,
+      scenario: scenario._testDef!,
+      viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+      testType: TestType.VisualRegression,
+    });
+  } else {
+    const onReadyScript = scenario.onReadyScript || config.onReadyScript;
+    if (onReadyScript) {
+      const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
+      if (existsSync(readyScriptPath)) {
+        const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
+        await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
+      } else {
+        logger.warn('WARNING: script not found: ' + readyScriptPath);
+      }
     }
   }
 
-  // reinstall tools in case onReadyScript has loaded a new URL.
+  // reinstall tools in case onReadyScript/testFn has loaded a new URL.
   await injectVisregTools(page);
 
   // --- HIDE SELECTORS ---
