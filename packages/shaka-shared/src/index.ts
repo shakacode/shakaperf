@@ -13,4 +13,5 @@ export type {
   Viewport,
 } from './ab-test-registry';
 export { loadConfigFile } from './load-config-file';
+export { loadTestFile } from './load-test-file';
 export { findConfigFile } from './find-config-file';

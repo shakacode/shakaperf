@@ -34,7 +34,7 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
     fs.writeFileSync(visregConfigPath, visregConfigContent);
   }
 
-  // Run shaka-visreg liveCompare with --testFile flag
+  // Run shaka-visreg liveCompare — expect it to fail (mismatches from padding change)
   loud('Running shaka-visreg liveCompare');
   let visregFailed = false;
   try {
