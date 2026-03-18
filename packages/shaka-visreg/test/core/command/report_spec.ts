@@ -68,6 +68,10 @@ describe('core report', function () {
         if (typeof filePath === 'string' && filePath.endsWith('.woff2')) {
           return Promise.resolve(Buffer.from(''));
         }
+        // Simulate a JS file that contains </script> to test escaping
+        if (typeof filePath === 'string' && filePath.endsWith('index_bundle.js')) {
+          return Promise.resolve('var x="</script>";');
+        }
         return Promise.resolve('');
       }),
       writeFile: writeFileStub
@@ -99,6 +103,20 @@ describe('core report', function () {
       // Config should be inlined, not as external script src
       expect(htmlContent).not.toContain('<script src="config.js">');
       expect(htmlContent).toContain('report(');
+    });
+  });
+
+  it('should escape </script> in inlined JS to prevent premature tag closure', function () {
+    return report.execute(config).then(() => {
+      const htmlCall = writeFileStub.mock.calls.find(
+        (call: unknown[]) => call[0] === '/html_report/index.html'
+      );
+      expect(htmlCall).toBeDefined();
+      const htmlContent = htmlCall![1] as string;
+      // The bundle mock 'var x="</script>";' must have </script escaped to <\/script
+      // so the inlined content never prematurely closes the <script> tag
+      expect(htmlContent).not.toContain('var x="</script>"');
+      expect(htmlContent).toContain('var x="<\\/script>"');
     });
   });
 });

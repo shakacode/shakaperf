@@ -54,6 +54,11 @@ async function buildInlineHtml (config: RuntimeConfig, jsonpReport: string): Pro
     readFile(path.join(fontsDir, 'lato-bold-webfont.woff2')) as Promise<Buffer>,
   ]);
 
+  // Escape </script> occurrences in JS content to prevent premature tag closure when inlined
+  function safeInlineScript (js: string): string {
+    return js.replace(/<\/script/gi, '<\\/script');
+  }
+
   // Build combined worker: inline diff.js + diverged.js content, strip importScripts lines
   const workerEventHandler = (divergedWorkerJs as string).split('\n')
     .filter((line: string) => !line.startsWith('importScripts('))
@@ -75,19 +80,19 @@ async function buildInlineHtml (config: RuntimeConfig, jsonpReport: string): Pro
   // Inline config JSONP
   html = html.replace(
     '<script src="config.js"></script>',
-    `<script>${jsonpReport}</script>`
+    `<script>${safeInlineScript(jsonpReport)}</script>`
   );
 
   // Inline main bundle
   html = html.replace(
     '<script src="index_bundle.js"></script>',
-    `<script>${bundleJs as string}</script>`
+    `<script>${safeInlineScript(bundleJs as string)}</script>`
   );
 
   // Embed worker script for Blob URL creation (before closing body)
   html = html.replace(
     '</body>',
-    `<script type="text/plain" id="diverged-worker-script">${combinedWorker}</script>\n</body>`
+    `<script type="text/plain" id="diverged-worker-script">${safeInlineScript(combinedWorker)}</script>\n</body>`
   );
 
   return html;
