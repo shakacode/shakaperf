@@ -61,8 +61,14 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 # Initialize a new project with boilerplate config
 shaka-visreg init
 
-# Compare screenshots between a reference URL and test URL side-by-side
-shaka-visreg liveCompare --config visreg.json
+# Compare screenshots — auto-discovers *.abtest.ts files in cwd
+shaka-visreg liveCompare
+
+# Compare screenshots using a specific test file
+shaka-visreg liveCompare --testFile ./ab-tests/homepage.abtest.ts
+
+# Run only tests whose file path matches a regex (like Jest's --testPathPattern)
+shaka-visreg liveCompare --testPathPattern homepage
 
 # Open the most recent test report in your browser
 shaka-visreg openReport
@@ -70,22 +76,28 @@ shaka-visreg openReport
 
 ### liveCompare
 
-The main workflow. Captures screenshots from both a reference URL and test URL for each scenario, compares them pixel-by-pixel, and generates a report showing any visual differences. Supports retry logic for flaky comparisons.
+The main workflow. Discovers test scenarios from `.abtest.ts` files (or a specific `--testFile`), captures screenshots from both control and experiment URLs side-by-side, compares them pixel-by-pixel, and generates a report showing any visual differences. Supports retry logic for flaky comparisons.
 
-Each scenario requires a `referenceUrl` (your baseline, e.g. production) and a `url` (what you're testing, e.g. staging).
+Scenarios are defined using `abTest()` calls in `*.abtest.ts` files. shaka-visreg auto-discovers all `*.abtest.ts` and `*.abtest.js` files recursively from the current directory (excluding `node_modules`, `dist`, etc.) when `--testFile` is not provided.
 
 Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 
 > [!TIP]
-> The `--filter` argument is a useful shortcut for re-running a single test or just the failed tests.
+> Use `--testPathPattern` to narrow which test files are loaded, and `--filter` to narrow which scenarios within those files are run.
 
 ### CLI Options
 
 ```
---config <path>     Config file path (default: visreg.json)
---filter <regex>    Filter scenarios by label
--h, --help          Display usage
--v, --version       Display version
+--config <path>              Config file path (default: visreg.config.ts)
+--testFile <path>            Path to a specific .abtest.ts/.abtest.js file
+                             (if omitted, auto-discovers *.abtest.ts and *.abtest.js in cwd)
+--testPathPattern <regex>    Regex to filter auto-discovered test files by path
+                             (like Jest's --testPathPattern, only used when --testFile is omitted)
+--controlURL <url>           Control server URL (default: http://localhost:3020)
+--experimentURL <url>        Experiment server URL (default: http://localhost:3030)
+--filter <regex>             Filter scenarios by label
+-h, --help                   Display usage
+-v, --version                Display version
 ```
 
 ## Getting Started
@@ -633,23 +645,25 @@ bitmaps_test/
 ```js
 import runner from 'shaka-visreg'
 
-// Basic usage
-await runner('liveCompare', { config: 'visreg.json' })
+// Auto-discover *.abtest.ts files in cwd
+await runner('liveCompare', { config: 'visreg.config.ts' })
 
-// With filter
+// Specific test file
 await runner('liveCompare', {
-  filter: 'someScenarioLabelAsRegExString',
-  config: 'visreg.json',
+  config: 'visreg.config.ts',
+  testFile: './ab-tests/homepage.abtest.ts',
 })
 
-// With inline config object
+// Filter auto-discovered files by path pattern (like Jest's --testPathPattern)
 await runner('liveCompare', {
-  config: {
-    id: 'foo',
-    scenarios: [
-      // scenarios here
-    ],
-  },
+  config: 'visreg.config.ts',
+  testPathPattern: 'homepage',
+})
+
+// With scenario label filter
+await runner('liveCompare', {
+  config: 'visreg.config.ts',
+  filter: 'someScenarioLabelAsRegExString',
 })
 ```
 
