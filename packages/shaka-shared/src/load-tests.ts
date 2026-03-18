@@ -28,12 +28,12 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
     }
     if (log) {
       log(`Discovered ${discovered.length} test file(s):`);
-      for (const f of discovered) {
-        log(`  ${f}`);
+      for (const testFile of discovered) {
+        log(`  ${testFile}`);
       }
     }
-    for (const f of discovered) {
-      await loadTestFile(f);
+    for (const testFile of discovered) {
+      await loadTestFile(testFile);
     }
   }
 
