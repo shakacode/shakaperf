@@ -2,7 +2,6 @@
   "name": "shaka-visreg",
   "version": "6.3.25",
   "description": "Shaka-visreg: Catch CSS curveballs.",
-  "type": "module",
   "homepage": "https://github.com/shakacode/shakaperf#readme",
   "bin": "./dist/cli/index.js",
   "engines": {
@@ -12,7 +11,7 @@
   "scripts": {
     "build": "tsc && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_OPTIONS=--experimental-vm-modules yarn jest",
+    "test": "yarn jest",
     "build-compare": "cp ./node_modules/diverged/src/diverged.js ./compare/output/ && cp ./node_modules/diff/dist/diff.js ./compare/output/ && webpack --config ./compare/webpack.config.cjs",
     "dev-compare": "webpack-dev-server --config ./compare/webpack.config.cjs"
   },
