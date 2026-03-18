@@ -10,7 +10,7 @@ describe('cli', function () {
   });
 
   it('should call the runner with --testFile correctly', async function () {
-    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
+    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../core/runner', () => ({
@@ -23,12 +23,48 @@ describe('cli', function () {
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
     expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.objectContaining({
-      testFile: './ab-tests/test.bench.ts',
+      testFile: './ab-tests/test.abtest.ts',
+    }));
+  });
+
+  it('should call the runner without --testFile (auto-discovery mode)', async function () {
+    process.argv = ['node', 'shaka-visreg', 'liveCompare'];
+    const promiseMock = Promise.resolve();
+    const runnerMock = jest.fn().mockReturnValue(promiseMock);
+    jest.mock('../../core/runner', () => ({
+      __esModule: true,
+      default: runnerMock
+    }));
+
+    require('../../cli/index');
+
+    await promiseMock;
+    assert.strictEqual(process.exitCode, undefined);
+    expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.objectContaining({
+      testFile: undefined,
+    }));
+  });
+
+  it('should pass --testPathPattern to runner', async function () {
+    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testPathPattern', 'homepage'];
+    const promiseMock = Promise.resolve();
+    const runnerMock = jest.fn().mockReturnValue(promiseMock);
+    jest.mock('../../core/runner', () => ({
+      __esModule: true,
+      default: runnerMock
+    }));
+
+    require('../../cli/index');
+
+    await promiseMock;
+    assert.strictEqual(process.exitCode, undefined);
+    expect(runnerMock).toHaveBeenCalledWith('liveCompare', expect.objectContaining({
+      testPathPattern: 'homepage',
     }));
   });
 
   it('should exit with code 1 if runner fails', async function () {
-    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
+    process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../core/runner', () => ({

@@ -26,6 +26,7 @@ function runCommand(commandName: string, command: Command) {
     _: [commandName],
     config: globalOpts.config,
     testFile: cmdOpts.testFile,
+    testPathPattern: cmdOpts.testPathPattern,
     controlURL: cmdOpts.controlURL,
     experimentURL: cmdOpts.experimentURL,
     filter: cmdOpts.filter,
@@ -50,7 +51,8 @@ program
 program
   .command('liveCompare')
   .description('Open reference and test URLs simultaneously, compare side-by-side with retry logic.')
-  .requiredOption('--testFile <path>', 'Path to .bench.ts test file (loads scenarios from abTest registry)')
+  .option('--testFile <path>', 'Path to a specific .abtest.ts/.abtest.js file (if omitted, auto-discovers *.abtest.ts and *.abtest.js files in cwd)')
+  .option('--testPathPattern <regex>', "Regex to filter auto-discovered test files by path (like Jest's --testPathPattern)")
   .option('--controlURL <url>', 'Control server URL', 'http://localhost:3020')
   .option('--experimentURL <url>', 'Experiment server URL', 'http://localhost:3030')
   .option('--filter <regex>', 'A RegEx string used to filter scenarios by label')

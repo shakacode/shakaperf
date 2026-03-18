@@ -2,7 +2,7 @@ import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { clearRegistry, getRegisteredTests, loadTestFile } from 'shaka-shared';
+import { clearRegistry, findTestFiles, getRegisteredTests, loadTestFile } from 'shaka-shared';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
@@ -45,16 +45,34 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
 }
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {
-  const testFilePath = config.args.testFile as string;
+  const testFilePath = config.args.testFile as string | undefined;
+  const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
   const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
   clearRegistry();
-  await loadTestFile(testFilePath);
+
+  if (testFilePath) {
+    await loadTestFile(testFilePath);
+  } else {
+    const testFiles = findTestFiles({ testPathPattern });
+    if (testFiles.length === 0) {
+      const hint = testPathPattern
+        ? 'matching pattern "' + testPathPattern + '"'
+        : 'in current directory';
+      throw new Error('No .abtest.ts/.abtest.js files found ' + hint + '. Use --testFile to specify a file or create *.abtest.ts files.');
+    }
+    logger.log('Found ' + testFiles.length + ' test file(s):\n  ' + testFiles.join('\n  '));
+    for (const file of testFiles) {
+      await loadTestFile(file);
+    }
+  }
+
   const tests = getRegisteredTests();
 
   if (tests.length === 0) {
-    throw new Error('No tests registered in ' + testFilePath + '. Did you call abTest()?');
+    const source = testFilePath ?? 'discovered test files';
+    throw new Error('No tests registered in ' + source + '. Did you call abTest()?');
   }
 
   // Global config was already loaded in makeConfig and passed through extendConfig.
