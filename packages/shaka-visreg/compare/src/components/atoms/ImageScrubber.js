@@ -3,6 +3,12 @@ import styled from 'styled-components';
 import TwentyTwenty from 'backstop-twentytwenty';
 import { colors, fonts, shadows } from '../../styles';
 
+// Import diff.js and diverged.js as raw source strings for inline blob worker.
+// The ?raw query triggers the asset/source webpack rule.
+// These files are pre-copied to compare/output/ by the build-compare script.
+import diffSource from '../../../output/diff.js?raw';
+import divergedSource from '../../../output/diverged.js?raw';
+
 const ScrubberViewBtn = styled.button`
   margin: 1em;
   padding: 10px 16px;
@@ -151,7 +157,7 @@ export default class ImageScrubber extends React.Component {
       const h = refImg.height;
       const w = refImg.width;
 
-      const worker = new Worker('divergedWorker.js');
+      const worker = createDivergedWorker();
 
       worker.addEventListener(
         'message',
@@ -322,4 +328,21 @@ function imageToCanvasContext (_img, h, w) {
     context.drawImage(img, 0, 0);
   }
   return context;
+}
+
+/**
+ * Creates a Web Worker from inlined diff.js and diverged.js source strings.
+ * This eliminates the need for separate diff.js, diverged.js, and divergedWorker.js files.
+ */
+function createDivergedWorker () {
+  const workerSource = `
+${diffSource}
+${divergedSource}
+self.addEventListener('message', function(e) {
+  self.postMessage(diverged.apply(null, e.data.divergedInput));
+  self.close();
+}, false);
+`;
+  const blob = new Blob([workerSource], { type: 'application/javascript' });
+  return new Worker(URL.createObjectURL(blob));
 }
