@@ -12,8 +12,8 @@ export function convertAbTestToScenario(
   // true for undefined values (which causes .map() crashes in preparePage).
   const scenario: Scenario = {
     label: testDef.name,
-    url: experimentURL + testDef.startingPath,
-    referenceUrl: controlURL + testDef.startingPath,
+    url: new URL(testDef.startingPath, experimentURL).href,
+    referenceUrl: new URL(testDef.startingPath, controlURL).href,
     selectors: visreg.selectors ?? ['document'],
     _testFn: testDef.testFn,
     _testDef: testDef,
