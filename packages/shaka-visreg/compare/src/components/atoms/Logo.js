@@ -1,19 +1,26 @@
 import React from 'react';
 import styled from 'styled-components';
+import { colors, fonts } from '../../styles';
 
-import LogoImg from '../../assets/images/logo.png';
+const LogoText = styled.a`
+  font-family: ${fonts.latoBold};
+  font-size: 18px;
+  color: ${colors.primaryText};
+  text-decoration: none;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 
-const LogoImage = styled.img`
-  display: block;
-  height: 35px;
+  &:hover {
+    color: ${colors.secondaryText};
+  }
 `;
 
 export default class Logo extends React.Component {
   render () {
     return (
-      <a href="https://github.com/shakacode/shakaperf" target="_blank">
-        <LogoImage src={LogoImg} />
-      </a>
+      <LogoText href="https://github.com/shakacode/shakaperf" target="_blank">
+        Shaka Vis Reg
+      </LogoText>
     );
   }
 }

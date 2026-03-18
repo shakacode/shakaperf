@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
 import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -52,7 +52,11 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   logger.log('Writing browser report');
 
-  return copy(config.comparePath, toAbsolute(config.html_report)).then(function () {
+  // Copy the template index.html (has fonts, bundle, and licenses already inlined).
+  const htmlReportDir = toAbsolute(config.html_report);
+  return mkdir(htmlReportDir, { recursive: true }).then(() =>
+    copyFile(path.join(config.comparePath, 'index.html'), path.join(htmlReportDir, 'index.html'))
+  ).then(function () {
     // Slurp in logs
     const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
@@ -88,8 +92,6 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       return Promise.resolve([] as void[]);
     }
   }).then(function () {
-    logger.log('Resources copied');
-
     // Fixing URLs in the configuration
     _.forEach(browserReporter.tests, (test: Test) => {
       const report = toAbsolute(config.html_report);
@@ -102,7 +104,6 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     });
 
-    const reportConfigFilename = toAbsolute(config.compareConfigFileName);
     const testReportJsonName = toAbsolute(config.bitmaps_test + '/report.json');
 
     // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
@@ -120,6 +121,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     }
 
+    const reportConfigFilename = toAbsolute(config.compareConfigFileName);
     const jsonReport = JSON.stringify(browserReporter, null, 2);
     const jsonpReport = `report(${jsonReport});`;
 

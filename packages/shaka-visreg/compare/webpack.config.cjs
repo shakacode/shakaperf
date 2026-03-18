@@ -6,7 +6,7 @@ module.exports = {
   devServer: {
     static: [
       {
-        directory: path.resolve(__dirname, 'output'),
+        directory: path.resolve(__dirname, 'src'),
         serveIndex: true
       }, {
         directory: path.join(__dirname, '../test/configs/visreg_data/html_report'),
@@ -34,6 +34,7 @@ module.exports = {
       {
         test: /\.?js$/,
         exclude: /node_modules/,
+        resourceQuery: { not: [/raw/] },
         use: {
           loader: 'babel-loader',
           options: {
@@ -44,6 +45,11 @@ module.exports = {
       {
         test: /\.(png|jpg|gif)$/i,
         type: 'asset/inline'
+      },
+      {
+        // Import diff.js and diverged.js as raw source strings for inline worker
+        resourceQuery: /raw/,
+        type: 'asset/source'
       }
     ]
   }
