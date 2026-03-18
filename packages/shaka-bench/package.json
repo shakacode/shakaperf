@@ -10,7 +10,7 @@
     "tb-schema.json"
   ],
   "scripts": {
-    "build": "mkdir -p src/shared && cp -R ../../shared/. src/shared && tsc && cp -a ./src/cli/static ./dist/cli",
+    "build": "tsc && cp -a ./src/cli/static ./dist/cli",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "yarn build"
   },
@@ -48,6 +48,7 @@
     "lighthouse": "12.3.0",
     "playwright-core": "^1.50.0",
     "race-cancellation": "^0.4.1",
+    "shaka-shared": "workspace:*",
     "tslib": "^2.2.0",
     "tsx": "^4.21.0"
   },

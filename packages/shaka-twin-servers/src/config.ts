@@ -1,8 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadConfigFile } from './shared/load-config-file';
-import { findConfigFile as sharedFindConfigFile } from './shared/find-config-file';
+import { loadConfigFile, findConfigFile as sharedFindConfigFile } from 'shaka-shared';
 import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];

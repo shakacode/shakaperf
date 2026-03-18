@@ -1,8 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
-import { loadConfigFile } from './shared/load-config-file';
-import { findConfigFile as sharedFindConfigFile } from './shared/find-config-file';
+import { loadConfigFile, findConfigFile as sharedFindConfigFile } from 'shaka-shared';
 import type { RegressionPolicyFunction, PolicyResult } from './types';
 import { RegressionType } from './types';
 

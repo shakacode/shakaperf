@@ -1,62 +1,45 @@
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { loadConfigFile } from 'shaka-shared';
 import extendConfig from './extendConfig.js';
-import type { RuntimeConfig } from '../types.js';
+import { VISREG_DEFAULT_CONFIG } from '../types.js';
+import type { RuntimeConfig, VisregGlobalConfig } from '../types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const _require = createRequire(import.meta.url);
-
-const NON_CONFIG_COMMANDS = ['init', 'version'];
 
 function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();
 }
 
-function loadProjectConfig (command: string, options: Record<string, any> | undefined, config: Partial<RuntimeConfig>) {
-  // TEST REPORT FILE NAME
+async function loadProjectConfig (options: Record<string, any> | undefined, config: Partial<RuntimeConfig>) {
   const customTestReportFileName = options && (options.testReportFileName || null);
   if (customTestReportFileName) {
     config.testReportFileName = options.testReportFileName || null;
   }
 
-  let customConfigPath = options && (options.configFilePath || options.configPath);
-  if (options && typeof options.config === 'string' && !customConfigPath) {
-    customConfigPath = options.config;
-  }
+  // Resolve config file path
+  const customConfigPath = options && (options.configFilePath || options.configPath || options.config);
+  const configPath = customConfigPath
+    ? (path.isAbsolute(customConfigPath) ? customConfigPath : path.join(config.projectPath!, customConfigPath))
+    : path.join(config.projectPath!, 'visreg.config.ts');
 
-  if (customConfigPath) {
-    if (path.isAbsolute(customConfigPath)) {
-      config.configFileName = customConfigPath;
-    } else {
-      config.configFileName = path.join(config.projectPath!, customConfigPath);
-    }
-  } else {
-    config.configFileName = path.join(config.projectPath!, 'visreg.json');
-  }
+  config.configFileName = configPath;
 
-  let userConfig = {};
-  const CMD_REQUIRES_CONFIG = !NON_CONFIG_COMMANDS.includes(command);
-  if (CMD_REQUIRES_CONFIG) {
-    // This flow is confusing -- is checking for !config.configFileName more reliable?
-    if (options && typeof options.config === 'object' && options.config.scenarios) {
-      console.log('Object-literal config detected.');
-      if (options.config.debug) {
-        console.log(JSON.stringify(options.config, null, 2));
-      }
-      userConfig = options.config;
-    } else if (config.configFileName) {
-      // Remove from cache config content
-      delete _require.cache[_require.resolve(config.configFileName)];
-      console.log('Loading config: ', config.configFileName, '\n');
-      userConfig = _require(config.configFileName);
-    }
+  // Load visreg config (or use defaults) so that extendConfig receives
+  // real values for paths, retries, viewports, etc.
+  if (existsSync(configPath)) {
+    const globalConfig = await loadConfigFile(configPath) as unknown as VisregGlobalConfig;
+    const { scenarios: _scenarios, ...configWithoutScenarios } = globalConfig as any;
+    if (options) options._loadedVisregConfig = configWithoutScenarios;
+    return configWithoutScenarios;
   }
-
-  return userConfig;
+  const defaults = { ...VISREG_DEFAULT_CONFIG };
+  if (options) options._loadedVisregConfig = defaults;
+  return defaults;
 }
 
-function makeConfig (command: string, options?: Record<string, any>) {
+async function makeConfig (_command: string, options?: Record<string, any>) {
   const config: Partial<RuntimeConfig> = {};
 
   config.args = options || {};
@@ -65,7 +48,7 @@ function makeConfig (command: string, options?: Record<string, any>) {
   config.projectPath = projectPath(config);
   config.perf = {};
 
-  const userConfig = Object.assign({}, loadProjectConfig(command, options, config));
+  const userConfig = Object.assign({}, await loadProjectConfig(options, config));
 
   return extendConfig(config, userConfig);
 }

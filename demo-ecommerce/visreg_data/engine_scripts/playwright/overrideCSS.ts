@@ -2,13 +2,13 @@
  * OVERRIDE CSS
  * Apply this CSS to the loaded page, as a way to override styles.
  *
- * Use this in an onReady script E.G.
+ * Usage in an abTest:
   ```
-  import overrideCSS from './overrideCSS';
+  import overrideCSS from '../visreg_data/engine_scripts/playwright/overrideCSS.ts';
 
-  export default async function onReady(page, scenario) {
-    await overrideCSS(page, scenario);
-  }
+  abTest('My Test', { startingPath: '/' }, async ({ page }) => {
+    await overrideCSS(page);
+  });
   ```
  */
 
@@ -21,11 +21,11 @@ const VISREG_TEST_CSS_OVERRIDE = `
   }
 `;
 
-export default async function overrideCSS(page: Page, scenario: Scenario): Promise<void> {
+export default async function overrideCSS(page: Page, scenario?: Scenario): Promise<void> {
   // inject arbitrary css to override styles
   await page.addStyleTag({
     content: VISREG_TEST_CSS_OVERRIDE
   });
 
-  console.log('VISREG_TEST_CSS_OVERRIDE injected for: ' + scenario.label);
+  console.log('VISREG_TEST_CSS_OVERRIDE injected for: ' + (scenario?.label ?? page.url()));
 }

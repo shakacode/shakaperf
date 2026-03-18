@@ -32,6 +32,8 @@
     "node_modules",
     "compare",
     "test",
-    "capture/engine_scripts"
+    "capture/engine_scripts",
+    "capture/ab-tests",
+    "capture/config.default.ts"
   ]
 }

@@ -1,101 +1,95 @@
 import { jest } from '@jest/globals';
 import assert from 'node:assert';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import type { RuntimeConfig } from '../../../core/types.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 describe('createComparisonBitmaps', function () {
-  // Captured from mock — shape determined at runtime by the mocked module
   let capturedConfig: Record<string, unknown> | null;
 
-  const fixturesDir = path.join(__dirname, 'fixtures');
-  const configFilePath = path.join(fixturesDir, 'mockComparisonConfig.json');
-
-  const mockConfigJSON = {
-    id: 'test-config',
-    viewports: [
-      { label: 'phone', width: 320, height: 480 },
-      { label: 'tablet', width: 1024, height: 768 }
-    ],
-    scenarios: [
-      {
-        label: 'Test Scenario 1',
-        url: 'http://test.com/page1',
-        referenceUrl: 'http://ref.com/page1'
-      },
-      {
-        label: 'Test Scenario 2',
-        url: 'http://test.com/page2',
-        referenceUrl: 'http://ref.com/page2'
-      }
-    ],
-    paths: {
-      bitmaps_reference: 'visreg_data/bitmaps_reference',
-      bitmaps_test: 'visreg_data/bitmaps_test'
-    },
-    engine: 'playwright'
-  };
-
   const mockConfig = {
-    configFileName: configFilePath,
+    configFileName: '/tmp/dummy-config.json',
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
     defaultMisMatchThreshold: 0.1,
     defaultRequireSameDimensions: true,
     compareRetries: 3,
     compareRetryDelay: 5000,
     maxNumDiffPixels: 10,
-    args: {}
+    args: {
+      testFile: '/dummy/test.bench.ts',
+      controlURL: 'http://localhost:3020',
+      experimentURL: 'http://localhost:3030',
+      _loadedVisregConfig: {
+        viewports: [
+          { label: 'phone', width: 320, height: 480 },
+          { label: 'tablet', width: 1024, height: 768 },
+        ],
+        engineOptions: { browser: 'chromium' },
+      },
+    },
   } as unknown as RuntimeConfig;
-
-  beforeAll(function () {
-    mkdirSync(fixturesDir, { recursive: true });
-    writeFileSync(configFilePath, JSON.stringify(mockConfigJSON));
-  });
 
   afterEach(function () {
     capturedConfig = null;
   });
 
-  afterAll(function () {
-    try { unlinkSync(configFilePath); } catch (_e) { /* ignore */ }
-  });
+  function mockRegisteredTests (tests?: unknown[]) {
+    const defaultTests = [{
+      name: 'Test Scenario 1',
+      startingPath: '/page1',
+      options: { visreg: {} },
+      testFn: async function () {},
+    }, {
+      name: 'Test Scenario 2',
+      startingPath: '/page2',
+      options: { visreg: {} },
+      testFn: async function () {},
+    }];
 
-  async function createModule (overrides?: Record<string, unknown>) {
+    return tests || defaultTests;
+  }
+
+  async function createModule (overrides?: {
+    runCompareScenario?: Record<string, unknown>;
+    registeredTests?: unknown[];
+  }) {
     jest.resetModules();
 
-    const runCompareScenarioMock = (overrides && overrides.runCompareScenario) || {
+    const tests = mockRegisteredTests(overrides?.registeredTests);
+
+    jest.unstable_mockModule('shaka-shared', () => ({
+      clearRegistry: function () {},
+      getRegisteredTests: function () { return tests; },
+      loadTestFile: function () { return Promise.resolve(); },
+    }));
+
+    const runCompareScenarioMock = overrides?.runCompareScenario || {
       playwright: function (scenarioView: Record<string, unknown>) {
         capturedConfig = scenarioView.config as Record<string, unknown>;
         return Promise.resolve({
           testPairs: [{
             test: '/path/to/test.png',
             reference: '/path/to/ref.png',
-            selector: 'body'
-          }]
+            selector: 'body',
+          }],
         });
-      }
+      },
     };
 
     jest.unstable_mockModule('node:fs/promises', () => ({
-      writeFile: function () { return Promise.resolve(); }
+      writeFile: function () { return Promise.resolve(); },
     }));
     jest.unstable_mockModule('../../../core/util/runCompareScenario.js', () => runCompareScenarioMock);
     jest.unstable_mockModule('../../../core/util/runPlaywright.js', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
-      disposePlaywrightBrowser: function () { return Promise.resolve(); }
+      disposePlaywrightBrowser: function () { return Promise.resolve(); },
     }));
     jest.unstable_mockModule('../../../core/util/ensureDirectoryPath.js', () => ({
-      default: function () {}
+      default: function () {},
     }));
     jest.unstable_mockModule('../../../core/util/logger.js', () => ({
       default: function () {
         return { log: function () {}, error: function () {} };
-      }
+      },
     }));
-
     const mod = await import('../../../core/util/createComparisonBitmaps.js');
     return mod.default;
   }
@@ -119,44 +113,22 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedConfig.isReference, false, 'Should set isReference to false');
   });
 
-  it('should throw error when scenario missing referenceUrl', async function () {
-    const badConfigJSON = {
-      id: 'test-config',
-      viewports: mockConfigJSON.viewports,
-      paths: mockConfigJSON.paths,
-      engine: 'playwright',
-      scenarios: [
-        { label: 'Missing referenceUrl', url: 'http://test.com/page' }
-      ]
-    };
+  it('should throw error when no tests registered', async function () {
+    const createComparisonBitmaps = await createModule({ registeredTests: [] });
 
-    const badConfigFilePath = path.join(fixturesDir, 'mockComparisonConfig_bad.json');
-    writeFileSync(badConfigFilePath, JSON.stringify(badConfigJSON));
-
+    let errorThrown = false;
     try {
-      const createComparisonBitmaps = await createModule();
-      const badMockConfig = {
-        ...mockConfig,
-        configFileName: badConfigFilePath
-      };
-
-      let errorThrown = false;
-      try {
-        await createComparisonBitmaps(badMockConfig);
-      } catch (e: unknown) {
-        errorThrown = true;
-        assert(e instanceof Error);
-        assert(
-          e.message.toLowerCase().includes('referenceurl') ||
-          e.message.toLowerCase().includes('reference'),
-          'Error should mention referenceUrl: ' + e.message
-        );
-      }
-
-      assert(errorThrown, 'Should have thrown an error');
-    } finally {
-      try { unlinkSync(badConfigFilePath); } catch (_e) { /* ignore */ }
+      await createComparisonBitmaps(mockConfig);
+    } catch (e: unknown) {
+      errorThrown = true;
+      assert(e instanceof Error);
+      assert(
+        e.message.includes('No tests registered'),
+        'Error should mention no tests registered: ' + e.message,
+      );
     }
+
+    assert(errorThrown, 'Should have thrown an error');
   });
 
   it('should filter scenarios by filter arg', async function () {
@@ -167,13 +139,13 @@ describe('createComparisonBitmaps', function () {
           scenarioCount++;
           capturedConfig = scenarioView.config as Record<string, unknown>;
           return Promise.resolve({ testPairs: [] });
-        }
-      }
+        },
+      },
     });
 
     const configWithFilter = {
       ...mockConfig,
-      args: { filter: 'Scenario 1' }
+      args: { ...mockConfig.args, filter: 'Scenario 1' },
     };
 
     await createComparisonBitmaps(configWithFilter);
@@ -185,32 +157,99 @@ describe('createComparisonBitmaps', function () {
 
   it('should ensure viewport labels exist', async function () {
     const configWithUnlabeledViewports = {
-      id: 'test-config',
-      paths: mockConfigJSON.paths,
-      engine: 'playwright',
-      scenarios: mockConfigJSON.scenarios,
-      viewports: [
-        { name: 'phone', width: 320, height: 480 }, // name but no label
-        { width: 1024, height: 768 } // neither name nor label
-      ]
+      ...mockConfig,
+      args: {
+        ...mockConfig.args,
+        _loadedVisregConfig: {
+          viewports: [
+            { name: 'phone', width: 320, height: 480 },
+            { width: 1024, height: 768 },
+          ],
+          engineOptions: { browser: 'chromium' },
+        },
+      },
     };
 
-    const unlabeledConfigFilePath = path.join(fixturesDir, 'mockComparisonConfig_unlabeled.json');
-    writeFileSync(unlabeledConfigFilePath, JSON.stringify(configWithUnlabeledViewports));
+    const createComparisonBitmaps = await createModule();
+    await createComparisonBitmaps(configWithUnlabeledViewports);
 
-    try {
-      const createComparisonBitmaps = await createModule();
-      const unlabeledMockConfig = {
-        ...mockConfig,
-        configFileName: unlabeledConfigFilePath
-      };
+    assert(capturedConfig, 'Should have captured config');
+    const viewports = capturedConfig.viewports as Array<{ label?: string }>;
+    assert(viewports[0].label, 'First viewport should have label');
+    assert.strictEqual(viewports[0].label, 'phone', 'Should use name as label');
+    assert(viewports[1].label, 'Second viewport should have label');
+    assert.strictEqual(viewports[1].label, 'viewport_1', 'Should generate label from index');
+  });
 
-      await createComparisonBitmaps(unlabeledMockConfig);
+  it('should load scenarios from testFile and convert via registry', async function () {
+    const mockTestFn = async function () {};
 
-      // The module should have set label = name for the first viewport
-      assert((capturedConfig!.viewports as Array<{ label?: string }>)[0].label, 'First viewport should have label');
-    } finally {
-      try { unlinkSync(unlabeledConfigFilePath); } catch (_e) { /* ignore */ }
-    }
+    const capturedScenarios: Array<Record<string, unknown>> = [];
+    const createComparisonBitmaps = await createModule({
+      registeredTests: [{
+        name: 'Test from registry',
+        startingPath: '/page1',
+        options: {
+          visreg: {
+            selectors: ['[data-cy="hero"]'],
+            misMatchThreshold: 0.05,
+          },
+        },
+        testFn: mockTestFn,
+      }],
+      runCompareScenario: {
+        playwright: function (scenarioView: Record<string, unknown>) {
+          capturedConfig = scenarioView.config as Record<string, unknown>;
+          const scenario = scenarioView.scenario as Record<string, unknown>;
+          capturedScenarios.push(scenario);
+          return Promise.resolve({ testPairs: [] });
+        },
+      },
+    });
+
+    await createComparisonBitmaps(mockConfig);
+
+    assert(capturedConfig, 'Should have captured config');
+    // 1 scenario × 2 viewports = 2 scenario views
+    assert.strictEqual(capturedScenarios.length, 2, 'Should have 2 scenario views (1 scenario × 2 viewports)');
+    assert.strictEqual(capturedScenarios[0].label, 'Test from registry');
+    assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/page1');
+    assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/page1');
+    assert.deepStrictEqual(capturedScenarios[0].selectors, ['[data-cy="hero"]']);
+    assert.strictEqual(capturedScenarios[0].misMatchThreshold, 0.05);
+    assert.strictEqual(capturedScenarios[0]._testFn, mockTestFn, 'Should attach testFn');
+  });
+
+  it('should use default control and experiment URLs', async function () {
+    const capturedScenarios: Array<Record<string, unknown>> = [];
+    const createComparisonBitmaps = await createModule({
+      registeredTests: [{
+        name: 'Default URLs test',
+        startingPath: '/products',
+        options: {},
+        testFn: async function () {},
+      }],
+      runCompareScenario: {
+        playwright: function (scenarioView: Record<string, unknown>) {
+          capturedConfig = scenarioView.config as Record<string, unknown>;
+          capturedScenarios.push(scenarioView.scenario as Record<string, unknown>);
+          return Promise.resolve({ testPairs: [] });
+        },
+      },
+    });
+
+    const configWithoutURLs = {
+      ...mockConfig,
+      args: {
+        testFile: '/dummy/test.bench.ts',
+        _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
+      },
+    };
+
+    await createComparisonBitmaps(configWithoutURLs);
+
+    // Without explicit URLs, defaults should be used
+    assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/products');
+    assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/products');
   });
 });

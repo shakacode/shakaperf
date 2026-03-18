@@ -78,6 +78,8 @@ export interface Scenario {
   sIndex?: number;
   _parent?: Scenario;
   _playwrightBrowser?: Browser;
+  _testFn?: (context: import('shaka-shared').TestFnContext) => Promise<void>;
+  _testDef?: import('shaka-shared').AbTestDefinition;
 }
 
 // ── Variant ─────────────────────────────────────────────────────────
@@ -131,7 +133,7 @@ export interface VisregPaths {
   tempCompareConfigFileName?: string;
 }
 
-// ── User Config (visreg.json) ─────────────────────────────────────
+// ── User Config ───────────────────────────────────────────────────
 export interface VisregConfig {
   id?: string;
   viewports: Viewport[];
@@ -323,3 +325,79 @@ export type PlaywrightScriptFn = (
   browserContext: BrowserContext,
   config?: RuntimeConfig
 ) => Promise<void>;
+
+// ── Global Visreg Config (visreg.config.ts — no scenarios) ──────────
+export interface VisregGlobalConfig {
+  id?: string;
+  viewports: Viewport[];
+  paths?: VisregPaths;
+
+  onBeforeScript?: string;
+  readyEvent?: string;
+  readyTimeout?: number;
+
+  engine?: 'playwright' | null;
+  engineOptions?: EngineOptions;
+
+  report?: string[];
+  openReport?: boolean;
+  archiveReport?: boolean;
+  scenarioLogsInReports?: boolean;
+
+  asyncCaptureLimit?: number;
+  asyncCompareLimit?: number;
+
+  defaultMisMatchThreshold?: number;
+  resembleOutputOptions?: ResembleOutputOptions;
+
+  compareRetries?: number;
+  compareRetryDelay?: number;
+  maxNumDiffPixels?: number;
+
+  fileNameTemplate?: string;
+  outputFormat?: string;
+
+  debug?: boolean;
+  debugWindow?: boolean;
+
+  dynamicTestId?: string;
+
+  ci?: {
+    format?: string;
+    testReportFileName?: string;
+    testSuiteName?: string;
+  };
+
+  useBoundingBoxViewportForSelectors?: boolean;
+
+  liveComparePixelmatchThreshold?: number;
+}
+
+export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConfig {
+  return config;
+}
+
+export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
+  viewports: [
+    { label: 'phone', width: 375, height: 667 },
+    { label: 'tablet', width: 768, height: 1024 },
+    { label: 'desktop', width: 1280, height: 800 },
+  ],
+  paths: {
+    bitmaps_reference: 'visreg_data/bitmaps_reference',
+    bitmaps_test: 'visreg_data/bitmaps_test',
+    engine_scripts: 'visreg_data/engine_scripts',
+    html_report: 'visreg_data/html_report',
+    ci_report: 'visreg_data/ci_report',
+  },
+  report: ['browser', 'CI'],
+  engineOptions: {
+    browser: 'chromium',
+    args: ['--no-sandbox'],
+  },
+  asyncCaptureLimit: 5,
+  compareRetries: 5,
+  compareRetryDelay: 1000,
+  maxNumDiffPixels: 50,
+  defaultMisMatchThreshold: 0.1,
+};

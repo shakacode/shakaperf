@@ -109,7 +109,7 @@ function captureConfigPaths (config: Partial<RuntimeConfig>) {
   }
   const configHash = hash(config);
   config.captureConfigFileName = path.join(tmpdir, 'capture', configHash + '.json');
-  config.captureConfigFileNameDefault = path.join(config.visregRoot!, 'capture', 'config.default.json');
+  config.captureConfigFileNameDefault = path.join(config.visregRoot!, 'capture', 'config.default.ts');
 }
 
 function engine (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
