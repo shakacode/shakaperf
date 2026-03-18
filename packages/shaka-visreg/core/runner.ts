@@ -1,9 +1,9 @@
-import executeCommand from './command/index.js';
-import makeConfig from './util/makeConfig.js';
-import type { RuntimeConfig } from './types.js';
+import executeCommand from './command/index';
+import makeConfig from './util/makeConfig';
+import type { RuntimeConfig } from './types';
 
-export { defineVisregConfig } from './types.js';
-export type { VisregGlobalConfig } from './types.js';
+export { defineVisregConfig } from './types';
+export type { VisregGlobalConfig } from './types';
 
 export default async function (command: string, options?: Record<string, unknown>) {
   const config = await makeConfig(command, options) as RuntimeConfig;

@@ -1,8 +1,8 @@
 import { PNG } from 'pngjs';
-import { compareBuffers, createCompositeImage } from './compare/pixelmatch-inline.js';
-import defaultPreparePage from './preparePage.js';
-import createLogger from './logger.js';
-import type { PlaywrightPage, Scenario, Viewport, BrowserContext, DecoratedCompareConfig } from '../types.js';
+import { compareBuffers, createCompositeImage } from './compare/pixelmatch-inline';
+import defaultPreparePage from './preparePage';
+import createLogger from './logger';
+import type { PlaywrightPage, Scenario, Viewport, BrowserContext, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('retryCompare');
 

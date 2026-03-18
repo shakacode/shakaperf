@@ -1,5 +1,5 @@
-import type { VisregTools } from '../core/types.js';
-import type { PlaywrightPage } from '../core/types.js';
+import type { VisregTools } from '../core/types';
+import type { PlaywrightPage } from '../core/types';
 
 declare global {
   interface Window {

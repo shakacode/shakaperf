@@ -1,4 +1,4 @@
-import streamToPromise from './../streamToPromise.js';
+import streamToPromise from './../streamToPromise';
 import fs from 'node:fs';
 import path from 'node:path';
 

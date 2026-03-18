@@ -1,6 +1,6 @@
 // @ts-expect-error no type declarations
 import resemble from '@mirzazeyrek/node-resemble-js';
-import type { ResembleOutputOptions } from '../../types.js';
+import type { ResembleOutputOptions } from '../../types';
 
 export default function compareResemble (referencePath: string, testPath: string, misMatchThreshold: number, resembleOutputSettings: ResembleOutputOptions, requireSameDimensions?: boolean) {
   return new Promise(function (resolve, reject) {

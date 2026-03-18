@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { copy } from 'fs-extra';
-import createLogger from '../util/logger.js';
-import type { RuntimeConfig } from '../types.js';
+import createLogger from '../util/logger';
+import type { RuntimeConfig } from '../types';
 
 const logger = createLogger('init');
 

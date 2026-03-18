@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { createRequire } from 'node:module';
-import runner from '../core/runner.js';
+import runner from '../core/runner';
 
-const _require = createRequire(import.meta.url);
-const packageJson = _require('../package.json');
+const packageJson = require('../package.json');
 const { version } = packageJson;
 
 // Catch errors from failing promises

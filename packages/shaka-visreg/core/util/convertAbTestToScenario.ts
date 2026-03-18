@@ -1,5 +1,5 @@
 import type { AbTestDefinition } from 'shaka-shared';
-import type { Scenario } from '../types.js';
+import type { Scenario } from '../types';
 
 export function convertAbTestToScenario(
   testDef: AbTestDefinition,

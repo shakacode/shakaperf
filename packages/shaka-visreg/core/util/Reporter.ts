@@ -1,4 +1,4 @@
-import type { TestPair } from '../types.js';
+import type { TestPair } from '../types';
 
 export class Test {
   pair: TestPair;

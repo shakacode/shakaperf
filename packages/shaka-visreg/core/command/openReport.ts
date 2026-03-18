@@ -2,9 +2,9 @@
 import open from 'opn';
 import path from 'node:path';
 import http from 'node:http';
-import createLogger from '../util/logger.js';
-import getRemotePort from '../util/getRemotePort.js';
-import type { RuntimeConfig } from '../types.js';
+import createLogger from '../util/logger';
+import getRemotePort from '../util/getRemotePort';
+import type { RuntimeConfig } from '../types';
 
 const logger = createLogger('openReport');
 const REPORT_SIGNATURE_RE = /BackstopJS Report|shaka-visreg Report/i;
