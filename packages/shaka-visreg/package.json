@@ -12,7 +12,7 @@
     "build": "tsc && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
     "test": "yarn jest",
-    "build-compare": "node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('diverged/src/diverged.js'),'./compare/output/diverged.js');fs.copyFileSync(require.resolve('diff/dist/diff.js'),'./compare/output/diff.js')\" && webpack --config ./compare/webpack.config.cjs",
+    "build-compare": "node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('diverged/src/diverged.js'),'./compare/output/diverged.js');fs.copyFileSync(require.resolve('diff/dist/diff.js'),'./compare/output/diff.js')\" && webpack --config ./compare/webpack.config.cjs && node ./compare/build-html.mjs",
     "dev-compare": "webpack-dev-server --config ./compare/webpack.config.cjs"
   },
   "repository": {
