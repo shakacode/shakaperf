@@ -14,10 +14,10 @@ describe('make config', function () {
 
   it('should skip loading config file when testFile is provided', async function () {
     const actualConfig = await makeConfig('liveCompare', {
-      testFile: './ab-tests/shop-now.bench.ts',
+      testFile: './ab-tests/shop-now.abtest.ts',
       config: 'visreg.config.ts',
     });
     // Should not throw even though visreg.config.ts doesn't exist on disk
-    assert.strictEqual(actualConfig.args!.testFile, './ab-tests/shop-now.bench.ts');
+    assert.strictEqual(actualConfig.args!.testFile, './ab-tests/shop-now.abtest.ts');
   });
 });

@@ -2,7 +2,7 @@ import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { clearRegistry, getRegisteredTests, loadTestFile } from 'shaka-shared';
+import { clearRegistry, getRegisteredTests, loadTestFile, discoverTestFiles } from 'shaka-shared';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
@@ -45,16 +45,32 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
 }
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {
-  const testFilePath = config.args.testFile as string;
+  const testFilePath = config.args.testFile as string | undefined;
+  const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
   const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
   clearRegistry();
-  await loadTestFile(testFilePath);
+
+  if (testFilePath) {
+    await loadTestFile(testFilePath);
+  } else {
+    const discovered = discoverTestFiles(process.cwd(), testPathPattern);
+    if (discovered.length === 0) {
+      const hint = testPathPattern ? ' matching pattern "' + testPathPattern + '"' : '';
+      throw new Error('No .abtest.ts or .abtest.js files found' + hint + '. Use --testFile to specify a file directly.');
+    }
+    logger.log('Discovered ' + discovered.length + ' test file(s)');
+    for (const f of discovered) {
+      await loadTestFile(f);
+    }
+  }
+
   const tests = getRegisteredTests();
 
   if (tests.length === 0) {
-    throw new Error('No tests registered in ' + testFilePath + '. Did you call abTest()?');
+    const source = testFilePath || 'discovered files';
+    throw new Error('No tests registered in ' + source + '. Did you call abTest()?');
   }
 
   // Global config was already loaded in makeConfig and passed through extendConfig.

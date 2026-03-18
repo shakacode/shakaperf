@@ -13,7 +13,7 @@ describe('createComparisonBitmaps', function () {
     compareRetryDelay: 5000,
     maxNumDiffPixels: 10,
     args: {
-      testFile: '/dummy/test.bench.ts',
+      testFile: '/dummy/test.abtest.ts',
       controlURL: 'http://localhost:3020',
       experimentURL: 'http://localhost:3030',
       _loadedVisregConfig: {
@@ -58,6 +58,7 @@ describe('createComparisonBitmaps', function () {
       clearRegistry: function () {},
       getRegisteredTests: function () { return tests; },
       loadTestFile: function () { return Promise.resolve(); },
+      discoverTestFiles: function () { return ['/discovered/test.abtest.ts']; },
     }));
 
     const runCompareScenarioMock = overrides?.runCompareScenario || {
@@ -242,7 +243,7 @@ describe('createComparisonBitmaps', function () {
     const configWithoutURLs = {
       ...mockConfig,
       args: {
-        testFile: '/dummy/test.bench.ts',
+        testFile: '/dummy/test.abtest.ts',
         _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
       },
     };
@@ -252,5 +253,88 @@ describe('createComparisonBitmaps', function () {
     // Without explicit URLs, defaults should be used
     assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/products');
     assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/products');
+  });
+
+  it('should auto-discover test files when testFile is not provided', async function () {
+    const capturedScenarios: Array<Record<string, unknown>> = [];
+    const createComparisonBitmaps = createModule({
+      registeredTests: [{
+        name: 'Auto-discovered test',
+        startingPath: '/auto',
+        options: {},
+        testFn: async function () {},
+      }],
+      runCompareScenario: {
+        playwright: function (scenarioView: Record<string, unknown>) {
+          capturedConfig = scenarioView.config as Record<string, unknown>;
+          capturedScenarios.push(scenarioView.scenario as Record<string, unknown>);
+          return Promise.resolve({ testPairs: [] });
+        },
+      },
+    });
+
+    const configWithoutTestFile = {
+      ...mockConfig,
+      args: {
+        _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
+      },
+    };
+
+    await createComparisonBitmaps(configWithoutTestFile);
+
+    assert(capturedScenarios.length > 0, 'Should have processed auto-discovered scenarios');
+    assert.strictEqual(capturedScenarios[0].label, 'Auto-discovered test');
+  });
+
+  it('should throw when no test files discovered and no testFile provided', async function () {
+    jest.resetModules();
+
+    jest.mock('shaka-shared', () => ({
+      clearRegistry: function () {},
+      getRegisteredTests: function () { return []; },
+      loadTestFile: function () { return Promise.resolve(); },
+      discoverTestFiles: function () { return []; },
+    }));
+
+    jest.mock('node:fs/promises', () => ({
+      writeFile: function () { return Promise.resolve(); },
+    }));
+    jest.mock('../../../core/util/runCompareScenario', () => ({
+      playwright: function () { return Promise.resolve({ testPairs: [] }); },
+    }));
+    jest.mock('../../../core/util/runPlaywright', () => ({
+      createPlaywrightBrowser: function () { return Promise.resolve({}); },
+      disposePlaywrightBrowser: function () { return Promise.resolve(); },
+    }));
+    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+      __esModule: true,
+      default: function () {},
+    }));
+    jest.mock('../../../core/util/logger', () => ({
+      __esModule: true,
+      default: function () {
+        return { log: function () {}, error: function () {} };
+      },
+    }));
+
+    const mod = require('../../../core/util/createComparisonBitmaps');
+    const createComparisonBitmaps = mod.default;
+
+    const configNoTestFile = {
+      ...mockConfig,
+      args: {
+        _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
+      },
+    };
+
+    let errorThrown = false;
+    try {
+      await createComparisonBitmaps(configNoTestFile);
+    } catch (e: unknown) {
+      errorThrown = true;
+      assert(e instanceof Error);
+      assert(e.message.includes('No .abtest.ts or .abtest.js files found'), 'Error should mention no files found: ' + e.message);
+    }
+    assert(errorThrown, 'Should have thrown an error');
   });
 });
