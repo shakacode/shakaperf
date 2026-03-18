@@ -35,8 +35,9 @@ describe('core report', function () {
       default: loggerMock
     }));
     jest.mock('node:fs/promises', () => ({
-      readFile: jest.fn().mockResolvedValue('<html><!--SHAKA_VISREG_CONFIG--></html>'),
+      readFile: jest.fn().mockResolvedValue('{}'),
       writeFile: writeFileStub,
+      copyFile: jest.fn().mockResolvedValue(undefined),
       mkdir: jest.fn().mockResolvedValue(undefined)
     }));
     jest.mock('fs-extra', () => ({
@@ -51,7 +52,7 @@ describe('core report', function () {
     return report.execute(config).then(() => {
       expect(writeFileStub).toHaveBeenCalledTimes(3);
       expect(writeFileStub).toHaveBeenCalledWith('/compareJson', expect.anything());
-      expect(writeFileStub).toHaveBeenCalledWith('/html_report/index.html', expect.anything());
+      expect(writeFileStub).toHaveBeenCalledWith('/compareConfig', expect.anything());
       expect(writeFileStub).toHaveBeenCalledWith('/bitmaps_test/report.json', expect.anything());
     });
   });

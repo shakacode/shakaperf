@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
 import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -52,11 +52,11 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   logger.log('Writing browser report');
 
-  // The template index.html has fonts, bundle, and licenses already inlined.
-  // We read it and will inject config.js data at the end to produce a single-file report.
-  const htmlTemplate = await readFile(path.join(config.comparePath, 'index.html'), 'utf8');
+  // Copy the template index.html (has fonts, bundle, and licenses already inlined).
   const htmlReportDir = toAbsolute(config.html_report);
-  return mkdir(htmlReportDir, { recursive: true }).then(function () {
+  return mkdir(htmlReportDir, { recursive: true }).then(() =>
+    copyFile(path.join(config.comparePath, 'index.html'), path.join(htmlReportDir, 'index.html'))
+  ).then(function () {
     // Slurp in logs
     const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
@@ -121,16 +121,9 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     }
 
+    const reportConfigFilename = toAbsolute(config.compareConfigFileName);
     const jsonReport = JSON.stringify(browserReporter, null, 2);
-    const configScript = `<script>report(${jsonReport});</script>`;
-    const inlinedHtml = htmlTemplate.replace('<!--SHAKA_VISREG_CONFIG-->', configScript);
-
-    const htmlWrite = writeFile(path.join(htmlReportDir, 'index.html'), inlinedHtml).then(function () {
-      logger.log('Wrote single-file HTML report to: ' + htmlReportDir);
-    }, function (err: unknown) {
-      logger.error('Failed writing HTML report to: ' + htmlReportDir);
-      throw err;
-    });
+    const jsonpReport = `report(${jsonReport});`;
 
     const jsonConfigWrite = writeFile(testReportJsonName, jsonReport).then(function () {
       logger.log('Copied json report to: ' + testReportJsonName);
@@ -139,7 +132,14 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       throw err;
     });
 
-    const promises = [htmlWrite, jsonConfigWrite];
+    const jsonpConfigWrite = writeFile(toAbsolute(reportConfigFilename), jsonpReport).then(function () {
+      logger.log('Copied jsonp report to: ' + reportConfigFilename);
+    }, function (err: unknown) {
+      logger.error('Failed jsonp report copy to: ' + reportConfigFilename);
+      throw err;
+    });
+
+    const promises = [jsonpConfigWrite, jsonConfigWrite];
 
     return allSettled(promises);
   }).then(async function () {

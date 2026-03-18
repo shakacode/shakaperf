@@ -1,9 +1,9 @@
 /**
- * Generates index.html with all assets inlined (fonts, bundle, licenses).
- * Run after webpack build to produce a self-contained HTML template.
+ * Generates index.html with fonts, bundle, and licenses inlined.
+ * Run after webpack build to produce a nearly self-contained HTML template.
  *
- * The only remaining external piece is config.js (test data generated per run),
- * which report.ts injects at report-write time to produce a single-file report.
+ * The only external file is config.js (test data generated per run),
+ * which report.ts writes alongside the HTML at report time.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -61,7 +61,7 @@ const html = `<!DOCTYPE html>
         window.tests = report;
       }
     </script>
-    <!--SHAKA_VISREG_CONFIG-->
+    <script src="config.js"></script>
     <!--
 ${license}
     -->
