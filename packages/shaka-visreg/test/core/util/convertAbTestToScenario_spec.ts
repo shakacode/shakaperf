@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { convertAbTestToScenario } from '../../../core/util/convertAbTestToScenario.js';
+import { convertAbTestToScenario } from '../../../core/util/convertAbTestToScenario';
 import type { AbTestDefinition } from 'shaka-shared';
 
 describe('convertAbTestToScenario', function () {

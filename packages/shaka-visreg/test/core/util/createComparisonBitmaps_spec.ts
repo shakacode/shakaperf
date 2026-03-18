@@ -1,6 +1,5 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
-import type { RuntimeConfig } from '../../../core/types.js';
+import type { RuntimeConfig } from '../../../core/types';
 
 describe('createComparisonBitmaps', function () {
   let capturedConfig: Record<string, unknown> | null;
@@ -47,7 +46,7 @@ describe('createComparisonBitmaps', function () {
     return tests || defaultTests;
   }
 
-  async function createModule (overrides?: {
+  function createModule (overrides?: {
     runCompareScenario?: Record<string, unknown>;
     registeredTests?: unknown[];
   }) {
@@ -55,7 +54,7 @@ describe('createComparisonBitmaps', function () {
 
     const tests = mockRegisteredTests(overrides?.registeredTests);
 
-    jest.unstable_mockModule('shaka-shared', () => ({
+    jest.mock('shaka-shared', () => ({
       clearRegistry: function () {},
       getRegisteredTests: function () { return tests; },
       loadTestFile: function () { return Promise.resolve(); },
@@ -74,28 +73,30 @@ describe('createComparisonBitmaps', function () {
       },
     };
 
-    jest.unstable_mockModule('node:fs/promises', () => ({
+    jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.unstable_mockModule('../../../core/util/runCompareScenario.js', () => runCompareScenarioMock);
-    jest.unstable_mockModule('../../../core/util/runPlaywright.js', () => ({
+    jest.mock('../../../core/util/runCompareScenario', () => runCompareScenarioMock);
+    jest.mock('../../../core/util/runPlaywright', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
     }));
-    jest.unstable_mockModule('../../../core/util/ensureDirectoryPath.js', () => ({
+    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+      __esModule: true,
       default: function () {},
     }));
-    jest.unstable_mockModule('../../../core/util/logger.js', () => ({
+    jest.mock('../../../core/util/logger', () => ({
+      __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {} };
       },
     }));
-    const mod = await import('../../../core/util/createComparisonBitmaps.js');
+    const mod = require('../../../core/util/createComparisonBitmaps');
     return mod.default;
   }
 
   it('should pass compare config options to scenarios', async function () {
-    const createComparisonBitmaps = await createModule();
+    const createComparisonBitmaps = createModule();
     await createComparisonBitmaps(mockConfig);
 
     assert(capturedConfig, 'Should have captured config');
@@ -105,7 +106,7 @@ describe('createComparisonBitmaps', function () {
   });
 
   it('should set isCompare flag', async function () {
-    const createComparisonBitmaps = await createModule();
+    const createComparisonBitmaps = createModule();
     await createComparisonBitmaps(mockConfig);
 
     assert(capturedConfig, 'Should have captured config');
@@ -114,7 +115,7 @@ describe('createComparisonBitmaps', function () {
   });
 
   it('should throw error when no tests registered', async function () {
-    const createComparisonBitmaps = await createModule({ registeredTests: [] });
+    const createComparisonBitmaps = createModule({ registeredTests: [] });
 
     let errorThrown = false;
     try {
@@ -133,7 +134,7 @@ describe('createComparisonBitmaps', function () {
 
   it('should filter scenarios by filter arg', async function () {
     let scenarioCount = 0;
-    const createComparisonBitmaps = await createModule({
+    const createComparisonBitmaps = createModule({
       runCompareScenario: {
         playwright: function (scenarioView: Record<string, unknown>) {
           scenarioCount++;
@@ -170,7 +171,7 @@ describe('createComparisonBitmaps', function () {
       },
     };
 
-    const createComparisonBitmaps = await createModule();
+    const createComparisonBitmaps = createModule();
     await createComparisonBitmaps(configWithUnlabeledViewports);
 
     assert(capturedConfig, 'Should have captured config');
@@ -185,7 +186,7 @@ describe('createComparisonBitmaps', function () {
     const mockTestFn = async function () {};
 
     const capturedScenarios: Array<Record<string, unknown>> = [];
-    const createComparisonBitmaps = await createModule({
+    const createComparisonBitmaps = createModule({
       registeredTests: [{
         name: 'Test from registry',
         startingPath: '/page1',
@@ -222,7 +223,7 @@ describe('createComparisonBitmaps', function () {
 
   it('should use default control and experiment URLs', async function () {
     const capturedScenarios: Array<Record<string, unknown>> = [];
-    const createComparisonBitmaps = await createModule({
+    const createComparisonBitmaps = createModule({
       registeredTests: [{
         name: 'Default URLs test',
         startingPath: '/products',

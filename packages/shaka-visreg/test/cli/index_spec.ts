@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import assert from 'node:assert';
 
 describe('cli', function () {
@@ -14,11 +13,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.unstable_mockModule('../../core/runner.js', () => ({
+    jest.mock('../../core/runner', () => ({
+      __esModule: true,
       default: runnerMock
     }));
 
-    await import('../../cli/index.js');
+    require('../../cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
@@ -31,11 +31,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'liveCompare', '--testFile', './ab-tests/test.bench.ts'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.unstable_mockModule('../../core/runner.js', () => ({
+    jest.mock('../../core/runner', () => ({
+      __esModule: true,
       default: runnerMock
     }));
 
-    await import('../../cli/index.js');
+    require('../../cli/index');
 
     try {
       await promiseMock;
@@ -51,11 +52,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'init'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.unstable_mockModule('../../core/runner.js', () => ({
+    jest.mock('../../core/runner', () => ({
+      __esModule: true,
       default: runnerMock
     }));
 
-    await import('../../cli/index.js');
+    require('../../cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);

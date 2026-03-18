@@ -1,6 +1,6 @@
 import assert from 'node:assert';
-import { defineVisregConfig, VISREG_DEFAULT_CONFIG } from '../../core/types.js';
-import type { VisregGlobalConfig } from '../../core/types.js';
+import { defineVisregConfig, VISREG_DEFAULT_CONFIG } from '../../core/types';
+import type { VisregGlobalConfig } from '../../core/types';
 
 describe('defineVisregConfig', function () {
   it('should return the config object unchanged', function () {

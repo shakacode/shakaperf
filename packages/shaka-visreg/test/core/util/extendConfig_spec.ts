@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import extendConfig from '../../../core/util/extendConfig.js';
+import extendConfig from '../../../core/util/extendConfig';
 
 describe('computeConfig_spec', function () {
   const baseConfig = { projectPath: process.cwd(), visregRoot: process.cwd() };
