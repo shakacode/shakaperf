@@ -19,6 +19,14 @@ function parseIntArg(value: string): number {
   return parsed;
 }
 
+function parseFloatArg(value: string): number {
+  const parsed = parseFloat(value);
+  if (isNaN(parsed)) {
+    throw new Error(`Expected a number, got "${value}"`);
+  }
+  return parsed;
+}
+
 const program = new Command();
 
 program
@@ -70,6 +78,12 @@ program
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
     getDefaultValue("regressionThresholdStat")
   )
+  .option(
+    "--pValueThreshold <threshold>",
+    "P-value threshold for statistical significance (0 to 1)",
+    parseFloatArg,
+    getDefaultValue("pValueThreshold")
+  )
   .action(async (opts: Record<string, unknown>) => {
     if (!opts.config) {
       const autoPath = join(process.cwd(), CONFIG_FILENAME);
@@ -102,6 +116,12 @@ program
     "--regressionThresholdStat <stat>",
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
     getDefaultValue("regressionThresholdStat")
+  )
+  .option(
+    "--pValueThreshold <threshold>",
+    "P-value threshold for statistical significance (0 to 1)",
+    parseFloatArg,
+    getDefaultValue("pValueThreshold")
   )
   .option("--jsonReport", "Include a JSON file from the stdout report", false)
   .action(async (resultsFile: string, opts: Record<string, unknown>) => {

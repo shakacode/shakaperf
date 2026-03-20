@@ -54,6 +54,7 @@ const ARTIFACT_FILE_NAME = "artifact";
 export interface IReportFlags {
   resultsFolder: string;
   plotTitle?: string;
+  pValueThreshold?: number;
 }
 
 export function resolveTitles(
@@ -95,7 +96,8 @@ function createConsumableHTML(
   controlData: ITracerBenchTraceResult,
   experimentData: ITracerBenchTraceResult,
   tbConfig: ITBConfig,
-  plotTitle?: string
+  plotTitle?: string,
+  pValueThreshold?: number
 ): string {
   const version =
     controlData.meta.browserVersion ||
@@ -104,8 +106,9 @@ function createConsumableHTML(
 
   const reportTitles = resolveTitles(tbConfig, version, plotTitle);
 
+  const confidenceLevel = pValueThreshold != null ? 1 - pValueThreshold : undefined;
   const { durationSection, subPhaseSections, vitalsSections, diagnosticsSections, cumulativeCharts } =
-    new GenerateStats(controlData, experimentData, reportTitles);
+    new GenerateStats(controlData, experimentData, reportTitles, confidenceLevel);
 
   const template = Handlebars.compile(REPORT_TEMPLATE_RAW);
 
@@ -126,14 +129,16 @@ async function generateHTML(
   experimentData: ITracerBenchTraceResult,
   resultsFolder: string,
   parsedConfig: ITBConfig,
-  reportPlotTitle?: string
+  reportPlotTitle?: string,
+  pValueThreshold?: number
 ): Promise<string> {
   const outputFileName = determineOutputFileNamePrefix(resultsFolder);
   const renderedHTML = createConsumableHTML(
     controlData,
     experimentData,
     parsedConfig,
-    reportPlotTitle
+    reportPlotTitle,
+    pValueThreshold
   );
 
   const minifiedHTML = await minify(renderedHTML, {
@@ -176,7 +181,8 @@ export async function runReport(options: IReportFlags): Promise<void> {
     experimentData,
     resultsFolder,
     { resultsFolder, plotTitle: options.plotTitle },
-    options.plotTitle
+    options.plotTitle,
+    options.pValueThreshold
   );
 
   logReportPaths(resultsFolder, absPathToHTML);

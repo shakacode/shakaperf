@@ -1,4 +1,4 @@
-import type { IConfidenceInterval } from "../../stats";
+import type { IConfidenceInterval, IStatsOptions } from "../../stats";
 import {
   convertMicrosecondsToMS,
   roundFloatAndConvertMicrosecondsToMS,
@@ -93,6 +93,7 @@ export class GenerateStats {
   controlData: ITracerBenchTraceResult;
   experimentData: ITracerBenchTraceResult;
   reportTitles: ParsedTitleConfigs;
+  confidenceLevel?: number;
   durationSection: HTMLSectionRenderData;
   subPhaseSections: HTMLSectionRenderData[];
   vitalsSections: HTMLSectionRenderData[];
@@ -101,11 +102,13 @@ export class GenerateStats {
   constructor(
     controlData: ITracerBenchTraceResult,
     experimentData: ITracerBenchTraceResult,
-    reportTitles: ParsedTitleConfigs
+    reportTitles: ParsedTitleConfigs,
+    confidenceLevel?: number
   ) {
     this.controlData = controlData;
     this.experimentData = experimentData;
     this.reportTitles = reportTitles;
+    this.confidenceLevel = confidenceLevel;
 
     const { durationSection, subPhaseSections } = this.generateData(
       this.controlData.samples,
@@ -224,6 +227,7 @@ export class GenerateStats {
         control: controlValues,
         experiment: experimentValues,
         name: phaseName,
+        confidenceLevel: this.confidenceLevel as IStatsOptions['confidenceLevel'],
       },
       unit === "ms"
         ? roundFloatAndConvertMicrosecondsToMS

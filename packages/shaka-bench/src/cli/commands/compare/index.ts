@@ -45,6 +45,7 @@ export interface ICompareFlags {
   sampleTimeout: number;
   report?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
+  pValueThreshold: number;
   config?: string;
 }
 
@@ -237,6 +238,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
         numberOfMeasurements: compareFlags.numberOfMeasurements!,
         regressionThreshold: compareFlags.regressionThreshold!,
         regressionThresholdStat: compareFlags.regressionThresholdStat!,
+        pValueThreshold: compareFlags.pValueThreshold,
         jsonReport: true,
       });
     }
@@ -245,6 +247,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     if (compareFlags.report) {
       await runReport({
         resultsFolder: testResultsFolder,
+        pValueThreshold: compareFlags.pValueThreshold,
       });
     }
   }

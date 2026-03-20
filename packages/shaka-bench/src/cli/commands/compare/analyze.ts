@@ -14,6 +14,7 @@ export interface CompareAnalyzeFlags {
   numberOfMeasurements: number;
   regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
+  pValueThreshold: number;
   jsonReport: boolean;
 }
 
@@ -21,6 +22,7 @@ export interface RunAnalyzeOptions {
   numberOfMeasurements: number;
   regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
+  pValueThreshold?: number;
   jsonReport?: boolean;
 }
 
@@ -41,6 +43,7 @@ export async function runAnalyze(
 ): Promise<string> {
   const { numberOfMeasurements, regressionThreshold, regressionThresholdStat } = options;
   const jsonReport = options.jsonReport ?? false;
+  const confidenceLevel = options.pValueThreshold != null ? 1 - options.pValueThreshold : undefined;
 
   const { controlData, experimentData } = parseCompareResult(resultsFile);
   const reportTitles = getReportTitles(
@@ -48,7 +51,7 @@ export async function runAnalyze(
     controlData.meta.browserVersion
   );
 
-  const stats = new GenerateStats(controlData, experimentData, reportTitles);
+  const stats = new GenerateStats(controlData, experimentData, reportTitles, confidenceLevel);
   const compareResults = new CompareResults(
     stats,
     numberOfMeasurements,
