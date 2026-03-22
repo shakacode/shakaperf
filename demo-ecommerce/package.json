@@ -78,7 +78,7 @@
     "react-refresh": "0.18.0",
     "shaka-bench": "workspace:*",
     "shaka-bundle-size": "workspace:*",
-    "shaka-shared": "workspace:*",
+    "shaka-shared": "workspace:^",
     "shaka-twin-servers": "workspace:*",
     "shaka-visreg": "workspace:*",
     "typescript": "^5.9.3",
