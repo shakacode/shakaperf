@@ -27,11 +27,11 @@ fi
 
 # Typecheck changed packages first
 if [ -n "$args" ]; then
-  yarn workspaces foreach -Ap $args run typecheck || exit 1
+  yarn workspaces foreach -Apt $args run typecheck || exit 1
 fi
 
 # Build all packages before checking demo-ecommerce so it can resolve all workspace imports
 if [ "$check_demo" = true ]; then
-  yarn workspaces foreach -Ap --include 'packages/*' run build || exit 1
+  yarn workspaces foreach -Apt --include 'packages/*' run build || exit 1
   yarn workspace demo-ecommerce run typecheck || exit 1
 fi
