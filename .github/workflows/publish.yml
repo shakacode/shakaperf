@@ -34,9 +34,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Build shaka-shared
+        run: yarn workspace shaka-shared run build
+
       - name: Build package
         run: yarn workspace ${{ steps.package.outputs.name }} run build
 
       - name: Publish package
-        working-directory: packages/${{ steps.package.outputs.name }}
-        run: npm publish --access public
+        run: yarn workspace ${{ steps.package.outputs.name }} npm publish --access public

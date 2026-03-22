@@ -88,7 +88,7 @@
     "playwright": "^1.40.1",
     "pngjs": "^7.0.0",
     "portfinder": "^1.0.32",
-    "shaka-shared": "workspace:*",
+    "shaka-shared": "workspace:^",
     "temp": "^0.9.4",
     "tsx": "^4.7.0"
   }
