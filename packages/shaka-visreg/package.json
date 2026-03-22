@@ -4,6 +4,9 @@
   "description": "Shaka-visreg: Catch CSS curveballs.",
   "homepage": "https://github.com/shakacode/shakaperf#readme",
   "bin": "./dist/cli/index.js",
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
