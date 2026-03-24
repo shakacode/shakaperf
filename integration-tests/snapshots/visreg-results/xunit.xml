@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="36" failures="3" errors="3" skipped="0">
-  <testsuite name="shaka-visreg" tests="36" failures="3" errors="3" skipped="0">
+<testsuites tests="39" failures="5" errors="5" skipped="0">
+  <testsuite name="shaka-visreg" tests="39" failures="5" errors="5" skipped="0">
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
+    <testcase classname="document" name=" ›› Cart"/>
+    <testcase classname="document" name=" ›› Cart"/>
+    <testcase classname="document" name=" ›› Cart"/>
     <testcase classname="[data-cy=&quot;hero-section&quot;]" name=" ›› Homepage"/>
     <testcase classname="[data-cy=&quot;features-section&quot;]" name=" ›› Homepage"/>
     <testcase classname="document" name=" ›› Homepage">
@@ -19,32 +34,26 @@
       <failure message="Design deviation ›› Homepage (document) component"/>
       <error message="Design deviation ›› Homepage (document) component"/>
     </testcase>
+    <testcase classname="document" name=" ›› Product Detail"/>
+    <testcase classname="document" name=" ›› Product Detail"/>
+    <testcase classname="document" name=" ›› Product Detail"/>
     <testcase classname="document" name=" ›› Products List"/>
     <testcase classname="document" name=" ›› Products List"/>
     <testcase classname="document" name=" ›› Products List"/>
     <testcase classname="document" name=" ›› Products - Electronics Filter"/>
     <testcase classname="document" name=" ›› Products - Electronics Filter"/>
     <testcase classname="document" name=" ›› Products - Electronics Filter"/>
-    <testcase classname="document" name=" ›› Product Detail"/>
-    <testcase classname="document" name=" ›› Product Detail"/>
-    <testcase classname="document" name=" ›› Product Detail"/>
-    <testcase classname="document" name=" ›› Cart"/>
-    <testcase classname="document" name=" ›› Cart"/>
-    <testcase classname="document" name=" ›› Cart"/>
-    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
-    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
-    <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
-    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
-    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
-    <testcase classname="document" name=" ›› Admin Orders - Form Login Interaction"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Pause With Override CSS"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
-    <testcase classname="document" name=" ›› Carousel Demo - Stub Slider Images"/>
-    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
-    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
-    <testcase classname="document" name=" ›› Click Shop Now on homepage"/>
+    <testcase classname="document" name=" ›› Visits the homepage">
+      <failure message="Design deviation ›› Visits the homepage (document) component"/>
+      <error message="Design deviation ›› Visits the homepage (document) component"/>
+    </testcase>
+    <testcase classname="document" name=" ›› Visits the homepage"/>
+    <testcase classname="document" name=" ›› Visits the homepage">
+      <failure message="Design deviation ›› Visits the homepage (document) component"/>
+      <error message="Design deviation ›› Visits the homepage (document) component"/>
+    </testcase>
+    <testcase classname="document" name=" ›› Click Shop Now on the homepage"/>
+    <testcase classname="document" name=" ›› Click Shop Now on the homepage"/>
+    <testcase classname="document" name=" ›› Click Shop Now on the homepage"/>
   </testsuite>
 </testsuites>

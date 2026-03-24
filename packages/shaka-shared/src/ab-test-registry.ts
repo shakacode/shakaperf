@@ -59,8 +59,8 @@ export interface AbTestVisregConfig {
   // Cookies
   cookiePath?: string;
 
-  // Scripts (onBeforeScript only — onReadyScript replaced by testFn)
-  onBeforeScript?: string;
+  // Lifecycle hook — runs before page navigation
+  onBefore?: (context: TestFnContext) => Promise<void>;
 
   // Viewport override
   viewports?: Viewport[];

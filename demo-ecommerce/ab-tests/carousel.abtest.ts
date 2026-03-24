@@ -1,7 +1,5 @@
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
-import overrideCSS from '../visreg_data/engine_scripts/playwright/overrideCSS.ts';
-import interceptImages from '../visreg_data/engine_scripts/playwright/interceptImages.ts';
+import { waitUntilPageSettled, overrideCSS, interceptImages } from 'shaka-visreg/helpers';
 
 const CAROUSEL_PAUSE_CSS = `
   [data-cy="marketing-carousel-track"] {

@@ -44,7 +44,7 @@ export function convertAbTestToScenario(
   if (visreg.delay != null) scenario.delay = visreg.delay;
 
   if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
-  if (visreg.onBeforeScript) scenario.onBeforeScript = visreg.onBeforeScript;
+  if (visreg.onBefore) scenario.onBefore = visreg.onBefore;
   if (visreg.viewports) scenario.viewports = visreg.viewports;
 
   return scenario;

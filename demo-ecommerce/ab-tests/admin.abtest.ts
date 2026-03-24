@@ -1,5 +1,5 @@
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
+import { waitUntilPageSettled } from 'shaka-visreg/helpers';
 
 abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
@@ -7,8 +7,7 @@ abTest('Admin Dashboard - Cookie Login', {
     visreg: {
       delay: 50,
       misMatchThreshold: 0.1,
-      cookiePath: 'visreg_data/engine_scripts/admin-auth-cookie.json',
-      onBeforeScript: 'playwright/onBefore.ts',
+      cookiePath: 'visreg_data/cookies/admin-auth-cookie.json',
     },
   },
 }, async ({ page }) => {

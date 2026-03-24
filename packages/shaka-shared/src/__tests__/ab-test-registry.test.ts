@@ -167,7 +167,6 @@ describe('ab-test-registry', () => {
               readyTimeout: 10000,
               delay: 200,
               cookiePath: 'cookies.json',
-              onBeforeScript: 'playwright/onBefore.ts',
               viewports: [{ label: 'mobile', width: 375, height: 667 }],
             },
           },

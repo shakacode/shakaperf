@@ -34,6 +34,10 @@
     "./core/types": {
       "types": "./dist/core/types.d.ts",
       "default": "./dist/core/types.js"
+    },
+    "./helpers": {
+      "types": "./dist/capture/helpers/index.d.ts",
+      "default": "./dist/capture/helpers/index.js"
     }
   },
   "devDependencies": {

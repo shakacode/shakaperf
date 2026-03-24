@@ -9,7 +9,6 @@ module.exports = {
       height: 900
     }
   ],
-  onReadyScript: 'playwright/onReady.js',
   scenarios: [
     {
       label: '{testName}',
@@ -20,7 +19,6 @@ module.exports = {
   paths: {
     bitmaps_reference: 'visreg_data/bitmaps_reference',
     bitmaps_test: 'visreg_data/bitmaps_test',
-    engine_scripts: 'visreg_data/engine_scripts',
     html_report: 'visreg_data/html_report',
     ci_report: 'visreg_data/ci_report'
   },

@@ -1,7 +1,6 @@
 import { cpSync, rmSync } from 'node:fs';
 
 // Clean stale compiled files from template directories before copying source .ts files
-rmSync('dist/capture/engine_scripts/playwright', { recursive: true, force: true });
 rmSync('dist/capture/ab-tests', { recursive: true, force: true });
 
 const assets = [
@@ -9,10 +8,8 @@ const assets = [
   ['capture/resources', 'dist/capture/resources'],
   ['capture/config.default.ts', 'dist/capture/config.default.ts'],
   ['capture/ab-tests', 'dist/capture/ab-tests'],
-  ['capture/engine_scripts/imageStub.jpg', 'dist/capture/engine_scripts/imageStub.jpg'],
-  ['capture/engine_scripts/cookies.json', 'dist/capture/engine_scripts/cookies.json'],
-  ['capture/engine_scripts/tsconfig.json', 'dist/capture/engine_scripts/tsconfig.json'],
-  ['capture/engine_scripts/playwright', 'dist/capture/engine_scripts/playwright'],
+  ['capture/cookies', 'dist/capture/cookies'],
+  ['capture/helpers/imageStub.jpg', 'dist/capture/helpers/imageStub.jpg'],
   ['compare/output', 'dist/compare/output'],
 ];
 

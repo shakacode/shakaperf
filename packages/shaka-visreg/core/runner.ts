@@ -40,8 +40,6 @@ export default async function (command: string, options?: Record<string, unknown
     compareConfigFileName: '/path/to/project/visreg_data/html_report/config.js',
     compareReportURL: '/path/to/project/visreg_data/html_report/index.html',
     comparePath: '/path/to/shaka-visreg/compare/output',
-    engine_scripts: '/path/to/project/visreg_data/engine_scripts',
-    engine_scripts_default: '/path/to/shaka-visreg/capture/engine_scripts',
     id: undefined,
     engine: null,
     report: [ 'browser' ],

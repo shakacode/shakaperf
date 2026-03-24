@@ -1,5 +1,5 @@
 import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from '../visreg_data/engine_scripts/playwright/onReady.ts';
+import { waitUntilPageSettled } from 'shaka-visreg/helpers';
 
 abTest('Visits the homepage', {
   startingPath: '/',

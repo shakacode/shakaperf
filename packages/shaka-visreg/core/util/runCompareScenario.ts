@@ -106,7 +106,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
   config._configId = config.id || engineTools.genHash(config.configFileName);
 
-  const engineScriptsPath = config.env.engine_scripts || config.env.engine_scripts_default;
   const VP_W = viewport.width || viewport.viewport!.width;
   const VP_H = viewport.height || viewport.viewport!.height;
 
@@ -124,8 +123,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
 
   // Prepare both pages in parallel
   const [refResult, testResult] = await Promise.all([
-    preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath),
-    preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath)
+    preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext),
+    preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext)
   ]);
 
   // Use selectors from test page (the main subject), fall back to reference
@@ -210,7 +209,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
       initialTestBuffer: testBuffer,
       refBrowserOrContext,
       testBrowserOrContext,
-      engineScriptsPath,
       pixelmatchThreshold
     });
 

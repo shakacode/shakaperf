@@ -77,7 +77,6 @@ describe('VISREG_DEFAULT_CONFIG', function () {
   it('should set default paths', function () {
     assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.bitmaps_reference, 'visreg_data/bitmaps_reference');
     assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.bitmaps_test, 'visreg_data/bitmaps_test');
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.engine_scripts, 'visreg_data/engine_scripts');
     assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.html_report, 'visreg_data/html_report');
     assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.ci_report, 'visreg_data/ci_report');
   });
