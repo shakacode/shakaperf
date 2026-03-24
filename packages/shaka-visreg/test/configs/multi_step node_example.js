@@ -55,24 +55,21 @@ const exampleConfig = {
         height: 768
       }
     ],
-    onBeforeScript: 'playwright/onBefore.js',
-    onReadyScript: 'playwright/onReady.js',
     scenarios: [
       {
         label: 'Homepage',
-        cookiePath: 'visreg_data/engine_scripts/cookies.json',
+        cookiePath: 'visreg_data/cookies/cookies.json',
         url: 'https://garris.github.io/BackstopJS/?delay'
       },
       {
         label: 'Homepage Delayed',
-        cookiePath: 'visreg_data/engine_scripts/cookies.json',
+        cookiePath: 'visreg_data/cookies/cookies.json',
         url: 'https://garris.github.io/BackstopJS/?delay'
       }
     ],
     paths: {
       bitmaps_reference: 'visreg_data/bitmaps_reference',
       bitmaps_test: 'visreg_data/bitmaps_test',
-      engine_scripts: 'visreg_data/engine_scripts',
       html_report: 'visreg_data/html_report',
       ci_report: 'visreg_data/ci_report'
     },

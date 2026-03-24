@@ -29,10 +29,6 @@ export interface Scenario {
   readyTimeout?: number;
   delay?: number;
 
-  // Scripts
-  onBeforeScript?: string;
-  onReadyScript?: string;
-
   // DOM manipulation
   hideSelectors?: string[];
   removeSelectors?: string[];
@@ -125,7 +121,6 @@ export interface CIReport {
 export interface VisregPaths {
   bitmaps_reference?: string;
   bitmaps_test?: string;
-  engine_scripts?: string;
   html_report?: string;
   ci_report?: string;
   json_report?: string;
@@ -141,8 +136,6 @@ export interface VisregConfig {
   scenarioDefaults?: Partial<Scenario>;
   paths?: VisregPaths;
 
-  onBeforeScript?: string;
-  onReadyScript?: string;
   readyEvent?: string;
   readyTimeout?: number;
 
@@ -197,9 +190,6 @@ export interface RuntimeConfig {
   ci_report: string;
   html_report: string;
   json_report: string;
-  engine_scripts: string;
-  engine_scripts_default: string;
-
   compareConfigFileName: string;
   compareReportURL: string;
   compareJsonFileName: string;
@@ -316,23 +306,12 @@ export interface VisregTools {
   _consoleLogger?: string;
 }
 
-// ── Playwright Script Function ──────────────────────────────────────
-export type PlaywrightScriptFn = (
-  page: PlaywrightPage,
-  scenario: Scenario,
-  viewport: Viewport,
-  isReference: boolean,
-  browserContext: BrowserContext,
-  config?: RuntimeConfig
-) => Promise<void>;
-
 // ── Global Visreg Config (visreg.config.ts — no scenarios) ──────────
 export interface VisregGlobalConfig {
   id?: string;
   viewports: Viewport[];
   paths?: VisregPaths;
 
-  onBeforeScript?: string;
   readyEvent?: string;
   readyTimeout?: number;
 
@@ -386,7 +365,6 @@ export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
   paths: {
     bitmaps_reference: 'visreg_data/bitmaps_reference',
     bitmaps_test: 'visreg_data/bitmaps_test',
-    engine_scripts: 'visreg_data/engine_scripts',
     html_report: 'visreg_data/html_report',
     ci_report: 'visreg_data/ci_report',
   },

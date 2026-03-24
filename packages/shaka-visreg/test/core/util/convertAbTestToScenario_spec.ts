@@ -6,6 +6,7 @@ describe('convertAbTestToScenario', function () {
   const baseDef: AbTestDefinition = {
     name: 'Test scenario',
     startingPath: '/products',
+    line: null,
     options: {},
     testFn: async function () {},
   };
@@ -34,7 +35,6 @@ describe('convertAbTestToScenario', function () {
           maxNumDiffPixels: 10,
           delay: 100,
           hideSelectors: ['.cookie-banner'],
-          onBeforeScript: 'playwright/onBefore.ts',
           viewports: [{ label: 'mobile', width: 375, height: 667 }],
         },
       },
@@ -47,7 +47,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.maxNumDiffPixels, 10);
     assert.strictEqual(scenario.delay, 100);
     assert.deepStrictEqual(scenario.hideSelectors, ['.cookie-banner']);
-    assert.strictEqual(scenario.onBeforeScript, 'playwright/onBefore.ts');
     assert.deepStrictEqual(scenario.viewports, [{ label: 'mobile', width: 375, height: 667 }]);
   });
 
@@ -66,12 +65,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario._testDef, baseDef);
     assert.strictEqual(scenario._testDef!.name, 'Test scenario');
     assert.strictEqual(scenario._testDef!.startingPath, '/products');
-  });
-
-  it('should not set onReadyScript', function () {
-    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.onReadyScript, undefined);
   });
 
   it('should pass through interaction properties', function () {
@@ -236,7 +229,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.misMatchThreshold, undefined);
     assert.strictEqual(scenario.readyEvent, undefined);
     assert.strictEqual(scenario.cookiePath, undefined);
-    assert.strictEqual(scenario.onBeforeScript, undefined);
     assert.strictEqual(scenario.viewports, undefined);
   });
 

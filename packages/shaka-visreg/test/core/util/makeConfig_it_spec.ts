@@ -37,8 +37,6 @@ const expectedConfig: Record<string, any> = {
     'capture/config.default.ts'
   ),
   engine: null,
-  engine_scripts: defaultPaths.engine_scripts,
-  engine_scripts_default: path.resolve(visregDir, 'capture/engine_scripts'),
   perf: {},
   id: undefined,
   report: VISREG_DEFAULT_CONFIG.report,

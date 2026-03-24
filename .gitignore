@@ -49,7 +49,6 @@ playwright-report/
 **/visreg_data/bitmaps_reference
 **/visreg_data/bitmaps_test
 **/visreg_data/html_report
-**/visreg_data/engine_scripts/dist
 **/visreg_data/ci_report/xunit.xml
 
 packages/shaka-bench/tracerbench-results

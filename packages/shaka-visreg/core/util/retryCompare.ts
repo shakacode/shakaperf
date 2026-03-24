@@ -22,7 +22,6 @@ export interface RetryCompareOptions {
   initialTestBuffer: Buffer;
   refBrowserOrContext: BrowserContext;
   testBrowserOrContext: BrowserContext;
-  engineScriptsPath: string;
   preparePage?: PreparePageFn;
   pixelmatchThreshold?: number;
 }
@@ -55,7 +54,7 @@ export default async function retryCompare (options: RetryCompareOptions) {
     refPage, testPage,
     selector, selectorMap, viewport, config, scenario,
     initialRefBuffer, initialTestBuffer,
-    refBrowserOrContext, testBrowserOrContext, engineScriptsPath,
+    refBrowserOrContext, testBrowserOrContext,
     preparePage: preparePageOverride,
     pixelmatchThreshold: pixelmatchThresholdOpt
   } = options;
@@ -114,8 +113,8 @@ export default async function retryCompare (options: RetryCompareOptions) {
     logger.log(`Re-navigating both pages for retry ${retry + 1}...`);
     try {
       await Promise.all([
-        preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext, engineScriptsPath),
-        preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext, engineScriptsPath)
+        preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext),
+        preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext)
       ]);
     } catch (e: unknown) {
       logger.log(`preparePage failed on retry ${retry + 1}: ${e instanceof Error ? e.message : String(e)}. Skipping to next retry...`);

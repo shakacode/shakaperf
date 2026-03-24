@@ -20,7 +20,6 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   jsonReport(config, userConfig);
   comparePaths(config);
   captureConfigPaths(config);
-  engine(config, userConfig);
 
   config.id = userConfig.id;
   config.engine = userConfig.engine || null;
@@ -108,15 +107,6 @@ function captureConfigPaths (config: Partial<RuntimeConfig>) {
   const configHash = hash(config);
   config.captureConfigFileName = path.join(tmpdir, 'capture', configHash + '.json');
   config.captureConfigFileNameDefault = path.join(config.visregRoot!, 'capture', 'config.default.ts');
-}
-
-function engine (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.engine_scripts = path.join(config.projectPath!, 'visreg_data', 'engine_scripts');
-  config.engine_scripts_default = path.join(config.visregRoot!, 'capture', 'engine_scripts');
-
-  if (userConfig.paths) {
-    config.engine_scripts = userConfig.paths.engine_scripts || config.engine_scripts;
-  }
 }
 
 export default extendConfig;

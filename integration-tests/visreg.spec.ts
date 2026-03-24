@@ -36,7 +36,7 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
   loud('Running shaka-visreg liveCompare');
   let visregFailed = false;
   try {
-    run('yarn shaka-visreg liveCompare --testFile ./ab-tests/index.abtest.ts --config visreg.config.ts', {
+    run('yarn shaka-visreg liveCompare --config visreg.config.ts', {
       timeout: 15 * 60 * 1000,
     });
   } catch (e: unknown) {
@@ -64,7 +64,7 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
     throw new Error('Expected xunit.xml to contain <failure> elements');
   }
 
-  // Copy visreg_data (html_report + bitmaps) to results dir, skip engine_scripts and ci_report
+  // Copy visreg_data (html_report + bitmaps) to results dir, skip ci_report
   const visregDataSrc = path.join(DEMO_CWD, 'visreg_data');
   for (const dir of ['html_report', 'bitmaps_reference', 'bitmaps_test']) {
     const src = path.join(visregDataSrc, dir);

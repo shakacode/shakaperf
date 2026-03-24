@@ -1,7 +1,9 @@
 import path from 'node:path';
 import _ from 'lodash';
-import { existsSync } from 'node:fs';
 import injectVisregTools from '../../capture/visregTools';
+import { loadCookies } from '../../capture/helpers/loadCookies';
+import { waitUntilPageSettled } from '../../capture/helpers/waitUntilPageSettled';
+import { clickAndHoverHelper } from '../../capture/helpers/clickAndHoverHelper';
 import createLogger from './logger';
 import { TestType } from 'shaka-shared';
 import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types';
@@ -22,23 +24,6 @@ const logger = createLogger('preparePage');
 
 const DOCUMENT_SELECTOR = 'document';
 
-/**
- * Dynamically import a script file, supporting .js, .mjs, and .ts (via tsx).
- * Resolves through default export wrapping (tsx can double-wrap: { default: { default: fn } }).
- */
-async function importScript(scriptPath: string): Promise<unknown> {
-  let mod;
-  if (scriptPath.endsWith('.ts')) {
-    const { tsImport } = require('tsx/esm/api');
-    const tsModule = await tsImport(scriptPath, __filename);
-    mod = tsModule.default?.default ?? tsModule.default ?? tsModule;
-  } else {
-    const jsModule = await import(scriptPath);
-    mod = jsModule.default ?? jsModule;
-  }
-  return mod;
-}
-
 function translateUrl (url: string) {
   const RE = /^[./]/;
   if (RE.test(url)) {
@@ -53,19 +38,12 @@ function translateUrl (url: string) {
  *
  * Shared by runCompareScenario (liveCompare) and runPlaywright.
  */
-async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext, engineScriptsPath: string) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
-  // --- BEFORE SCRIPT ---
-  const onBeforeScript = scenario.onBeforeScript || config.onBeforeScript;
-  if (onBeforeScript) {
-    const beforeScriptPath = path.resolve(engineScriptsPath, onBeforeScript);
-    if (existsSync(beforeScriptPath)) {
-      const beforeFn = await importScript(beforeScriptPath) as (...args: unknown[]) => Promise<void>;
-      await beforeFn(page, scenario, viewport, isReference, browserOrContext, config);
-    } else {
-      logger.warn('WARNING: script not found: ' + beforeScriptPath);
-    }
+  // --- BEFORE: LOAD COOKIES ---
+  if (scenario.cookiePath) {
+    await loadCookies(browserOrContext, scenario);
   }
 
   // --- READY EVENT SETUP (before navigation to avoid missing early events) ---
@@ -95,14 +73,6 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     };
     page.on('console', onConsole);
   }
-
-  // Define __name as a no-op in the page context. tsx/esbuild injects __name() calls
-  // when transpiling .ts engine scripts at runtime, and those calls end up inside
-  // page.evaluate callbacks where __name doesn't exist in the browser.
-  // Using addInitScript so it persists across navigations.
-  await page.addInitScript(function () {
-    (window as unknown as Record<string, unknown>).__name = function (fn: unknown) { return fn; };
-  });
 
   // --- OPEN URL + WAIT FOR READY EVENT ---
   try {
@@ -146,9 +116,9 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     );
   }
 
-  // --- ON READY SCRIPT / TEST FN ---
+  // --- ON READY / TEST FN ---
   if (scenario._testFn) {
-    // abTest flow: testFn replaces onReadyScript
+    // abTest flow: testFn replaces default onReady behavior
     await scenario._testFn({
       page,
       browserContext: browserOrContext,
@@ -158,19 +128,11 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
       testType: TestType.VisualRegression,
     });
   } else {
-    const onReadyScript = scenario.onReadyScript || config.onReadyScript;
-    if (onReadyScript) {
-      const readyScriptPath = path.resolve(engineScriptsPath, onReadyScript);
-      if (existsSync(readyScriptPath)) {
-        const readyFn = await importScript(readyScriptPath) as (...args: unknown[]) => Promise<void>;
-        await readyFn(page, scenario, viewport, isReference, browserOrContext, config);
-      } else {
-        logger.warn('WARNING: script not found: ' + readyScriptPath);
-      }
-    }
+    await waitUntilPageSettled(page);
+    await clickAndHoverHelper(page, scenario);
   }
 
-  // reinstall tools in case onReadyScript/testFn has loaded a new URL.
+  // reinstall tools in case testFn has loaded a new URL.
   await injectVisregTools(page);
 
   // --- HIDE SELECTORS ---

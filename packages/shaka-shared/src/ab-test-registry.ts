@@ -59,9 +59,6 @@ export interface AbTestVisregConfig {
   // Cookies
   cookiePath?: string;
 
-  // Scripts (onBeforeScript only — onReadyScript replaced by testFn)
-  onBeforeScript?: string;
-
   // Viewport override
   viewports?: Viewport[];
 }

@@ -42,6 +42,7 @@ describe('preparePage', function () {
   const baseTestDef: AbTestDefinition = {
     name: 'Test',
     startingPath: '/page',
+    line: null,
     options: {},
     testFn: async function () {},
   };
@@ -55,12 +56,23 @@ describe('preparePage', function () {
   const baseViewport = { label: 'desktop', width: 1280, height: 800 };
   const baseConfig = {} as import('../../../core/types').VisregConfig;
   const baseBrowserContext = {} as import('../../../core/types').BrowserContext;
-  const engineScriptsPath = '/tmp/engine_scripts';
 
   beforeAll(function () {
     jest.mock('../../../capture/visregTools', () => ({
       __esModule: true,
       default: jest.fn().mockResolvedValue(undefined),
+    }));
+    jest.mock('../../../capture/helpers/loadCookies', () => ({
+      __esModule: true,
+      loadCookies: jest.fn().mockResolvedValue(undefined),
+    }));
+    jest.mock('../../../capture/helpers/waitUntilPageSettled', () => ({
+      __esModule: true,
+      waitUntilPageSettled: jest.fn().mockResolvedValue(undefined),
+    }));
+    jest.mock('../../../capture/helpers/clickAndHoverHelper', () => ({
+      __esModule: true,
+      clickAndHoverHelper: jest.fn().mockResolvedValue(undefined),
     }));
     jest.mock('../../../core/util/logger', () => ({
       __esModule: true,
@@ -84,7 +96,7 @@ describe('preparePage', function () {
         _testDef: baseTestDef,
       };
 
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       assert.strictEqual(testFn.mock.calls.length, 1);
     });
@@ -98,7 +110,7 @@ describe('preparePage', function () {
         _testDef: baseTestDef,
       };
 
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, true, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, true, baseBrowserContext);
 
       const callArgs = testFn.mock.calls[0] as unknown[];
       const context = callArgs[0] as Record<string, unknown>;
@@ -116,7 +128,7 @@ describe('preparePage', function () {
         _testDef: baseTestDef,
       };
 
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       const callArgs = testFn.mock.calls[0] as unknown[];
       const context = callArgs[0] as Record<string, unknown>;
@@ -134,26 +146,24 @@ describe('preparePage', function () {
         _testDef: baseTestDef,
       };
 
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       const callArgs = testFn.mock.calls[0] as unknown[];
       const context = callArgs[0] as Record<string, unknown>;
       assert.strictEqual(context.isReference, false);
     });
 
-    it('should not attempt onReadyScript when _testFn is present', async function () {
+    it('should skip default onReady behavior when _testFn is present', async function () {
       const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
         ...baseScenario,
         _testFn: testFn,
         _testDef: baseTestDef,
-        onReadyScript: 'should-not-be-loaded.ts',
       };
 
-      // If onReadyScript were attempted on a nonexistent file, it would log a warning
-      // but since _testFn takes precedence, onReadyScript should be skipped entirely
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      // _testFn takes precedence over the default waitUntilPageSettled + clickAndHoverHelper
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       assert.strictEqual(testFn.mock.calls.length, 1);
     });
@@ -184,7 +194,7 @@ describe('preparePage', function () {
     it('should navigate to the provided URL', async function () {
       const page = makePage();
 
-      await preparePage(page, 'http://test.com/page', baseScenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, 'http://test.com/page', baseScenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       assert.strictEqual(mockGoto.mock.calls.length, 1);
       assert.strictEqual((mockGoto.mock.calls[0] as unknown[])[0], 'http://test.com/page');
@@ -197,7 +207,7 @@ describe('preparePage', function () {
         readySelector: '#app-loaded',
       };
 
-      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       assert.strictEqual(mockWaitForSelector.mock.calls.length, 1);
       assert.strictEqual((mockWaitForSelector.mock.calls[0] as unknown[])[0], '#app-loaded');
@@ -212,7 +222,7 @@ describe('preparePage', function () {
         url: 'http://test.com',
       };
 
-      await preparePage(page, scenario.url, scenario as typeof baseScenario, baseViewport, baseConfig, false, baseBrowserContext, engineScriptsPath);
+      await preparePage(page, scenario.url, scenario as typeof baseScenario, baseViewport, baseConfig, false, baseBrowserContext);
 
       // The function modifies scenario.selectors in place
       assert.deepStrictEqual((scenario as Record<string, unknown>).selectors, ['document']);
