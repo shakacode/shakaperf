@@ -25,5 +25,12 @@ export function execute (config: RuntimeConfig) {
     logger.log("Test templates written at '" + abTestsDest + "'");
   }));
 
+  // Copy example cookies
+  const cookiesSrc = path.join(config.visregRoot, 'capture', 'cookies');
+  const cookiesDest = path.join(config.projectPath, 'visreg_data', 'cookies');
+  promises.push(copy(cookiesSrc, cookiesDest).then(function () {
+    logger.log("Example cookies written at '" + cookiesDest + "'");
+  }));
+
   return Promise.all(promises);
 }

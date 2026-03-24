@@ -8,6 +8,7 @@ const assets = [
   ['capture/resources', 'dist/capture/resources'],
   ['capture/config.default.ts', 'dist/capture/config.default.ts'],
   ['capture/ab-tests', 'dist/capture/ab-tests'],
+  ['capture/cookies', 'dist/capture/cookies'],
   ['capture/helpers/imageStub.jpg', 'dist/capture/helpers/imageStub.jpg'],
   ['compare/output', 'dist/compare/output'],
 ];

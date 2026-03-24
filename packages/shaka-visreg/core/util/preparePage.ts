@@ -46,6 +46,18 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
     await loadCookies(browserOrContext, scenario);
   }
 
+  // --- BEFORE: USER HOOK ---
+  if (scenario.onBefore) {
+    await scenario.onBefore({
+      page,
+      browserContext: browserOrContext,
+      isReference,
+      scenario: scenario._testDef!,
+      viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+      testType: TestType.VisualRegression,
+    });
+  }
+
   // --- READY EVENT SETUP (before navigation to avoid missing early events) ---
   const readyEvent = scenario.readyEvent || config.readyEvent;
   const readyTimeout = scenario.readyTimeout || config.readyTimeout || 30000;

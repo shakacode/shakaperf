@@ -59,6 +59,9 @@ export interface AbTestVisregConfig {
   // Cookies
   cookiePath?: string;
 
+  // Lifecycle hook — runs before page navigation
+  onBefore?: (context: TestFnContext) => Promise<void>;
+
   // Viewport override
   viewports?: Viewport[];
 }

@@ -57,6 +57,9 @@ export interface Scenario {
   // Cookies
   cookiePath?: string;
 
+  // Lifecycle hook — runs before page navigation
+  onBefore?: (context: import('shaka-shared').TestFnContext) => Promise<void>;
+
   // Engine options override
   engineOptions?: Partial<EngineOptions>;
   gotoParameters?: Record<string, any>;
