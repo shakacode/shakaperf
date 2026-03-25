@@ -64,7 +64,7 @@ const exampleConfig = {
     ],
     paths: {
       htmlReport: 'visreg_data/html_report',
-      json_report: 'visreg_data/json_report'
+      jsonReport: 'visreg_data/json_report'
     },
     report: ['browser', 'json'],
     engine: 'playwright',

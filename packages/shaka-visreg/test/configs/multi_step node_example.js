@@ -26,9 +26,7 @@ function approveChanges () {
   console.log('Looks like there were some changes detected since last run.');
   runner('approve', {
     config: {
-      id: 'explicity_defined',
-      paths: {
-      }
+      id: 'explicity_defined'
     }
   });
 }

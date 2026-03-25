@@ -19,7 +19,7 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
     - [JS Config Files](#js-config-files)
     - [Scenario Properties](#scenario-properties)
     - [Global Scenario Defaults](#global-scenario-defaults)
-    - [Setting The Bitmap And Script Directory Paths](#setting-the-bitmap-and-script-directory-paths)
+    - [Setting Directory Paths](#setting-directory-paths)
     - [Changing Screenshot Filename Formats](#changing-screenshot-filename-formats)
   - [Advanced Scenarios](#advanced-scenarios)
     - [Click and Hover Interactions](#click-and-hover-interactions)
@@ -475,13 +475,7 @@ module.exports = async (page, scenario, vp) => {
 
 #### Setting the Base Path for Custom Scripts
 
-By default, the base path is a folder called `engine_scripts` inside your installation directory. Override this with `paths.engine_scripts` in your config (recommended):
-
-```json
-"paths": {
-  "engine_scripts": "visreg_data/engine_scripts"
-}
-```
+By default, the base path is a folder called `engine_scripts` inside your installation directory. You can place your custom scripts there or in any location relative to your current working directory.
 
 ## Playwright Engine Configuration
 
