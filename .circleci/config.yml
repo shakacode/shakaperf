@@ -209,12 +209,6 @@ workflows:
             - store_artifacts:
                 path: demo-ecommerce/visreg_data/html_report
                 destination: shaka-visreg-report
-            - store_artifacts:
-                path: demo-ecommerce/visreg_data/bitmaps_test
-                destination: bitmaps_test
-            - store_artifacts:
-                path: demo-ecommerce/visreg_data/bitmaps_reference
-                destination: bitmaps_reference
             - store_test_results:
                 path: demo-ecommerce/visreg_data/ci_report
 

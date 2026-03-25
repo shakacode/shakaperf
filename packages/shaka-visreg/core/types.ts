@@ -122,13 +122,10 @@ export interface CIReport {
 
 // ── Paths ───────────────────────────────────────────────────────────
 export interface VisregPaths {
-  bitmaps_reference?: string;
-  bitmaps_test?: string;
-  html_report?: string;
-  ci_report?: string;
-  json_report?: string;
-  reports_archive?: string;
-  tempCompareConfigFileName?: string;
+  htmlReport?: string;
+  ciReport?: string;
+  jsonReport?: string;
+  reportsArchive?: string;
 }
 
 // ── User Config ───────────────────────────────────────────────────
@@ -188,11 +185,11 @@ export interface RuntimeConfig {
   perf: Record<string, number>;
 
   configFileName: string;
-  bitmaps_reference: string;
-  bitmaps_test: string;
-  ci_report: string;
-  html_report: string;
-  json_report: string;
+  controlScreenshotDir: string;
+  experimentScreenshotDir: string;
+  ciReportDir: string;
+  htmlReportDir: string;
+  jsonReportDir: string;
   compareConfigFileName: string;
   compareReportURL: string;
   compareJsonFileName: string;
@@ -229,8 +226,8 @@ export interface RuntimeConfig {
 
 // ── Decorated Compare Config (internal, used during liveCompare) ─────
 export interface DecoratedCompareConfig extends VisregConfig {
-  _bitmapsTestPath: string;
-  _bitmapsReferencePath: string;
+  _experimentScreenshotPath: string;
+  _controlScreenshotPath: string;
   _fileNameTemplate: string;
   _outputFileFormatSuffix: string;
   _configId: string;
@@ -366,10 +363,8 @@ export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
     { label: 'desktop', width: 1280, height: 800 },
   ],
   paths: {
-    bitmaps_reference: 'visreg_data/bitmaps_reference',
-    bitmaps_test: 'visreg_data/bitmaps_test',
-    html_report: 'visreg_data/html_report',
-    ci_report: 'visreg_data/ci_report',
+    htmlReport: 'visreg_data/html_report',
+    ciReport: 'visreg_data/ci_report',
   },
   report: ['browser', 'CI'],
   engineOptions: {

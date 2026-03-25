@@ -63,10 +63,8 @@ const exampleConfig = {
       }
     ],
     paths: {
-      bitmaps_reference: 'visreg_data/bitmaps_reference',
-      bitmaps_test: 'visreg_data/bitmaps_test',
-      html_report: 'visreg_data/html_report',
-      json_report: 'visreg_data/json_report'
+      htmlReport: 'visreg_data/html_report',
+      jsonReport: 'visreg_data/json_report'
     },
     report: ['browser', 'json'],
     engine: 'playwright',

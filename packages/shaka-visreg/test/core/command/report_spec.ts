@@ -1,12 +1,12 @@
 describe('core report', function () {
   const config = {
     report: ['json'],
-    json_report: '/test',
+    jsonReportDir: '/test',
     compareJsonFileName: '/compareJson',
     compareConfigFileName: '/compareConfig',
     comparePath: '/compare/output',
-    html_report: '/html_report',
-    bitmaps_test: '/bitmaps_test',
+    htmlReportDir: '/html_report',
+    experimentScreenshotDir: '/experiment_screenshot',
     args: {
       config: {}
     }
@@ -53,7 +53,7 @@ describe('core report', function () {
       expect(writeFileStub).toHaveBeenCalledTimes(3);
       expect(writeFileStub).toHaveBeenCalledWith('/compareJson', expect.anything());
       expect(writeFileStub).toHaveBeenCalledWith('/compareConfig', expect.anything());
-      expect(writeFileStub).toHaveBeenCalledWith('/bitmaps_test/report.json', expect.anything());
+      expect(writeFileStub).toHaveBeenCalledWith('/experiment_screenshot/report.json', expect.anything());
     });
   });
 });

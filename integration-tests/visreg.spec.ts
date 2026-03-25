@@ -64,13 +64,11 @@ test('run shaka-visreg liveCompare on twin servers', async ({ page }) => {
     throw new Error('Expected xunit.xml to contain <failure> elements');
   }
 
-  // Copy visreg_data (html_report + bitmaps) to results dir, skip ci_report
+  // Copy visreg_data (html_report, which includes control/experiment screenshots) to results dir
   const visregDataSrc = path.join(DEMO_CWD, 'visreg_data');
-  for (const dir of ['html_report', 'bitmaps_reference', 'bitmaps_test']) {
-    const src = path.join(visregDataSrc, dir);
-    if (fs.existsSync(src)) {
-      fs.cpSync(src, path.join(VISREG_RESULTS_DIR, dir), { recursive: true });
-    }
+  const htmlReportSrc = path.join(visregDataSrc, 'html_report');
+  if (fs.existsSync(htmlReportSrc)) {
+    fs.cpSync(htmlReportSrc, path.join(VISREG_RESULTS_DIR, 'html_report'), { recursive: true });
   }
   loud('Copied visreg_data to results');
 

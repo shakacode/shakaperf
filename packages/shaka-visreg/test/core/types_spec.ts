@@ -28,8 +28,7 @@ describe('defineVisregConfig', function () {
         args: ['--no-sandbox', '--disable-gpu'],
       },
       paths: {
-        bitmaps_reference: 'custom/reference',
-        bitmaps_test: 'custom/test',
+        htmlReport: 'custom/html_report',
       },
       report: ['browser'],
       asyncCaptureLimit: 3,
@@ -41,7 +40,7 @@ describe('defineVisregConfig', function () {
     assert.strictEqual(result.compareRetries, 3);
     assert.strictEqual(result.maxNumDiffPixels, 100);
     assert.deepStrictEqual(result.engineOptions!.args, ['--no-sandbox', '--disable-gpu']);
-    assert.strictEqual(result.paths!.bitmaps_reference, 'custom/reference');
+    assert.strictEqual(result.paths!.htmlReport, 'custom/html_report');
     assert.strictEqual(result.debug, true);
   });
 });
@@ -75,10 +74,8 @@ describe('VISREG_DEFAULT_CONFIG', function () {
   });
 
   it('should set default paths', function () {
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.bitmaps_reference, 'visreg_data/bitmaps_reference');
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.bitmaps_test, 'visreg_data/bitmaps_test');
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.html_report, 'visreg_data/html_report');
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.ci_report, 'visreg_data/ci_report');
+    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.htmlReport, 'visreg_data/html_report');
+    assert.strictEqual(VISREG_DEFAULT_CONFIG.paths!.ciReport, 'visreg_data/ci_report');
   });
 
   it('should set default engine options', function () {

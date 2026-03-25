@@ -19,8 +19,8 @@ interface CompareLogger {
 
 const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
-const DEFAULT_BITMAPS_TEST_DIR = 'bitmaps_test';
-const DEFAULT_BITMAPS_REFERENCE_DIR = 'bitmaps_reference';
+const DEFAULT_EXPERIMENT_SCREENSHOT_DIR = 'experiment_screenshot';
+const DEFAULT_CONTROL_SCREENSHOT_DIR = 'control_screenshot';
 const SELECTOR_NOT_FOUND_PATH = '/capture/resources/notFound.png';
 const ERROR_SELECTOR_PATH = '/capture/resources/unexpectedErrorSm.png';
 const BODY_SELECTOR = 'body';
@@ -100,8 +100,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     viewport.label = viewport.name || '';
   }
 
-  config._bitmapsTestPath = config.paths.bitmaps_test || DEFAULT_BITMAPS_TEST_DIR;
-  config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
+  config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
+  config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
   config._configId = config.id || engineTools.genHash(config.configFileName);
@@ -248,8 +248,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
 }
 
 async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, error: Error) {
-  config._bitmapsTestPath = config.paths.bitmaps_test || DEFAULT_BITMAPS_TEST_DIR;
-  config._bitmapsReferencePath = config.paths.bitmaps_reference || DEFAULT_BITMAPS_REFERENCE_DIR;
+  config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
+  config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
   config._configId = config.id || engineTools.genHash(config.configFileName);

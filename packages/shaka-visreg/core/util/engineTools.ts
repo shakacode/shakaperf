@@ -103,7 +103,7 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     viewport.vIndex,
     viewport.label
   );
-  const testFilePath = config._bitmapsTestPath + '/' + fileName;
+  const testFilePath = config._experimentScreenshotPath + '/' + fileName;
   const logFileName = getFilename(
     config._fileNameTemplate,
     '.log.json',
@@ -115,8 +115,8 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     viewport.vIndex,
     viewport.label
   );
-  const testLogFilePath = config._bitmapsTestPath + '/' + logFileName;
-  const referenceFilePath = config._bitmapsReferencePath + '/' + getFilename(
+  const testLogFilePath = config._experimentScreenshotPath + '/' + logFileName;
+  const referenceFilePath = config._controlScreenshotPath + '/' + getFilename(
     config._fileNameTemplate,
     config._outputFileFormatSuffix,
     config._configId,
@@ -127,7 +127,7 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     viewport.vIndex,
     viewport.label
   );
-  const referenceLogFilePath = config._bitmapsReferencePath + '/' + getFilename(
+  const referenceLogFilePath = config._controlScreenshotPath + '/' + getFilename(
     config._fileNameTemplate,
     '.log.json',
     config._configId,

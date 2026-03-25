@@ -26,11 +26,7 @@ function approveChanges () {
   console.log('Looks like there were some changes detected since last run.');
   runner('approve', {
     config: {
-      id: 'explicity_defined',
-      paths: {
-        bitmaps_reference: 'visreg_data/bitmaps_reference',
-        bitmaps_test: 'visreg_data/bitmaps_test'
-      }
+      id: 'explicity_defined'
     }
   });
 }
@@ -68,10 +64,8 @@ const exampleConfig = {
       }
     ],
     paths: {
-      bitmaps_reference: 'visreg_data/bitmaps_reference',
-      bitmaps_test: 'visreg_data/bitmaps_test',
-      html_report: 'visreg_data/html_report',
-      ci_report: 'visreg_data/ci_report'
+      htmlReport: 'visreg_data/html_report',
+      ciReport: 'visreg_data/ci_report'
     },
     report: ['browser'],
     engine: 'playwright',

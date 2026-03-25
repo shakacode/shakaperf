@@ -26,10 +26,10 @@ const expectedConfig: Record<string, any> = {
   asyncCompareLimit: undefined,
   visregRoot: visregDir,
   visregVersion: version,
-  bitmaps_reference: defaultPaths.bitmaps_reference,
-  bitmaps_test: defaultPaths.bitmaps_test,
-  ci_report: defaultPaths.ci_report,
-  html_report: defaultPaths.html_report,
+  controlScreenshotDir: defaultPaths.htmlReport + '/control_screenshot',
+  experimentScreenshotDir: defaultPaths.htmlReport + '/experiment_screenshot',
+  ciReportDir: defaultPaths.ciReport,
+  htmlReportDir: defaultPaths.htmlReport,
   openReport: true,
   comparePath: path.resolve(visregDir, 'compare/output'),
   captureConfigFileNameDefault: path.resolve(
@@ -45,8 +45,8 @@ const expectedConfig: Record<string, any> = {
     testReportFileName: 'xunit',
     testSuiteName: 'shaka-visreg'
   },
-  compareConfigFileName: defaultPaths.html_report + '/config.js',
-  compareReportURL: defaultPaths.html_report + '/index.html',
+  compareConfigFileName: defaultPaths.htmlReport + '/config.js',
+  compareReportURL: defaultPaths.htmlReport + '/index.html',
   defaultMisMatchThreshold: 0.1,
   debug: false,
   compareRetries: VISREG_DEFAULT_CONFIG.compareRetries,
@@ -74,8 +74,8 @@ describe('make config it', function () {
     assert(actualConfig.captureConfigFileName);
     delete actualConfig.captureConfigFileName;
 
-    assert(actualConfig.json_report);
-    delete actualConfig.json_report;
+    assert(actualConfig.jsonReportDir);
+    delete actualConfig.jsonReportDir;
 
     assert(actualConfig.compareJsonFileName);
     delete actualConfig.compareJsonFileName;
