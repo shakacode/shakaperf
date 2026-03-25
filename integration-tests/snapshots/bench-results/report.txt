@@ -1,16 +1,16 @@
 Benchmark Results Summary
 
 LH & Vitals
-  FCP no difference [-1ms to 2ms]
-  speed-index no difference [-1ms to 13ms]
-  LCP no difference [-193ms to 151ms]
-  TBT no difference [-458ms to 73ms]
-  CLS estimated regression +7/100 [+1/100 to +10/100] OR +53.87% [+6.52% to +75.05%] p=0.03671
-  TTFB no difference [-4ms to 3ms]
-  hydration no difference [-104ms to 25ms]
-  hydration-start no difference [-255ms to 292ms]
-  LH Score no difference [-9/100 to -3/100]
-  interaction-to-next-paint estimated improvement -16ms [-16ms to 0ms] OR -50% [-50% to 0%] p=0.0472
+  FCP no difference [-1ms to 1ms]
+  speed-index no difference [0ms to 218ms]
+  LCP no difference [-123ms to 246ms]
+  TBT no difference [-265ms to 327ms]
+  CLS estimated regression +10/100 [+7/100 to +14/100] OR +75.05% [+53.87% to +105.89%] p=0.01219
+  TTFB no difference [-4ms to 1ms]
+  hydration no difference [-39ms to 73ms]
+  hydration-start no difference [-386ms to 477ms]
+  LH Score estimated regression -6/100 [-12/100 to -5/100] OR -13.04% [-26.09% to -10.87%] p=0.01219
+  interaction-to-next-paint no difference [-16ms to 0ms]
 
 Diagnostics
   downloads no difference [0KB to 0KB]
