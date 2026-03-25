@@ -141,11 +141,8 @@ Pass a `--filter=<scenarioLabelRegex>` argument to just run scenarios matching y
     }
   ],
   "paths": {
-    "bitmaps_reference": "visreg_data/bitmaps_reference",
-    "bitmaps_test": "visreg_data/bitmaps_test",
-    "engine_scripts": "visreg_data/engine_scripts",
-    "html_report": "visreg_data/html_report",
-    "ci_report": "visreg_data/ci_report"
+    "htmlReport": "visreg_data/html_report",
+    "ciReport": "visreg_data/ci_report"
   },
   "engine": "playwright",
   "engineOptions": {
@@ -226,21 +223,20 @@ You can include any of the above properties at the "global" level in the `scenar
 > [!IMPORTANT]
 > Global configuration is overridden at the scenario level. A scenario with `"selectors": []` set as an empty array will yield zero selectors — `scenarioDefaults.selectors` will NOT be used as a fallback. `scenario.selectors` takes precedence.
 
-### Setting The Bitmap And Script Directory Paths
+### Setting Directory Paths
 
 By default, shaka-visreg saves generated resources into the `visreg_data` directory in parallel with your `visreg.json` config file. The location of the various resource types are configurable so they can easily be moved inside or outside your source control or file sharing environment.
+
+Control and experiment screenshots are always stored inside the HTML report directory (`html_report/control_screenshot` and `html_report/experiment_screenshot`).
 
 > [!TIP]
 > These file paths are relative to your current working directory.
 
 ```json
 "paths": {
-  "bitmaps_reference": "visreg_data/bitmaps_reference",
-  "bitmaps_test": "visreg_data/bitmaps_test",
-  "engine_scripts": "visreg_data/engine_scripts",
-  "html_report": "visreg_data/html_report",
-  "json_report": "visreg_data/json_report",
-  "ci_report": "visreg_data/ci_report"
+  "htmlReport": "visreg_data/html_report",
+  "jsonReport": "visreg_data/json_report",
+  "ciReport": "visreg_data/ci_report"
 }
 ```
 
@@ -548,7 +544,7 @@ Customize the JUnit report with:
 
 ```json
 "paths": {
-  "ci_report": "visreg_data/ci_report"
+  "ciReport": "visreg_data/ci_report"
 },
 "ci": {
   "format": "junit",
@@ -625,7 +621,6 @@ For most projects, keeping reference files in source control is useful, but savi
 
 ```
 visreg_data/html_report/
-bitmaps_test/
 ```
 
 ## Programmatic Usage

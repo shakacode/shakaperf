@@ -45,9 +45,7 @@ playwright-report/
 # Local Claude settings
 .claude/settings.local.json
 
-# Visual Regression data
-**/visreg_data/bitmaps_reference
-**/visreg_data/bitmaps_test
+# Visual Regression data (screenshots are inside html_report/)
 **/visreg_data/html_report
 **/visreg_data/ci_report/xunit.xml
 

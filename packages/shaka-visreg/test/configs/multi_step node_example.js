@@ -28,8 +28,6 @@ function approveChanges () {
     config: {
       id: 'explicity_defined',
       paths: {
-        bitmaps_reference: 'visreg_data/bitmaps_reference',
-        bitmaps_test: 'visreg_data/bitmaps_test'
       }
     }
   });
@@ -68,10 +66,8 @@ const exampleConfig = {
       }
     ],
     paths: {
-      bitmaps_reference: 'visreg_data/bitmaps_reference',
-      bitmaps_test: 'visreg_data/bitmaps_test',
-      html_report: 'visreg_data/html_report',
-      ci_report: 'visreg_data/ci_report'
+      htmlReport: 'visreg_data/html_report',
+      ciReport: 'visreg_data/ci_report'
     },
     report: ['browser'],
     engine: 'playwright',

@@ -7,10 +7,8 @@ export default defineVisregConfig({
     { label: 'desktop', width: 1280, height: 800 },
   ],
   paths: {
-    bitmaps_reference: 'visreg_data/bitmaps_reference',
-    bitmaps_test: 'visreg_data/bitmaps_test',
-    html_report: 'visreg_data/html_report',
-    ci_report: 'visreg_data/ci_report',
+    htmlReport: 'visreg_data/html_report',
+    ciReport: 'visreg_data/ci_report',
   },
   report: ['browser', 'CI'],
   engineOptions: {

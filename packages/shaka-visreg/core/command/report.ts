@@ -38,7 +38,7 @@ function archiveReport (config: RuntimeConfig) {
 
   const archivePath = toAbsolute(config.archivePath);
 
-  return copy(toAbsolute(config.html_report), archivePath);
+  return copy(toAbsolute(config.htmlReportDir), archivePath);
 }
 
 async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
@@ -53,7 +53,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
   logger.log('Writing browser report');
 
   // Copy the template index.html (has fonts, bundle, and licenses already inlined).
-  const htmlReportDir = toAbsolute(config.html_report);
+  const htmlReportDir = toAbsolute(config.htmlReportDir);
   return mkdir(htmlReportDir, { recursive: true }).then(() =>
     copyFile(path.join(config.comparePath, 'index.html'), path.join(htmlReportDir, 'index.html'))
   ).then(function () {
@@ -65,7 +65,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
         const referenceLog = toAbsolute(pair.referenceLog!);
         const testLog = toAbsolute(pair.testLog!);
 
-        const report = toAbsolute(config.html_report);
+        const report = toAbsolute(config.htmlReportDir);
         pair.referenceLog = path.relative(report, referenceLog);
         pair.testLog = path.relative(report, testLog);
 
@@ -94,7 +94,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
   }).then(function () {
     // Fixing URLs in the configuration
     _.forEach(browserReporter.tests, (test: Test) => {
-      const report = toAbsolute(config.html_report);
+      const report = toAbsolute(config.htmlReportDir);
       const pair = test.pair;
       pair.reference = path.relative(report, toAbsolute(pair.reference));
       pair.test = path.relative(report, toAbsolute(pair.test));
@@ -104,7 +104,7 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     });
 
-    const testReportJsonName = toAbsolute(config.bitmaps_test + '/report.json');
+    const testReportJsonName = toAbsolute(config.experimentScreenshotDir + '/report.json');
 
     // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
     // This scenario with all viewport variants will be appended to any existing report.
@@ -177,7 +177,7 @@ function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
   return new Promise(function (resolve, reject) {
     let testReportFilename = config.testReportFileName || config.ciReport.testReportFileName;
     testReportFilename = testReportFilename.replace(/\.xml$/, '') + '.xml';
-    const destination = path.join(config.ci_report, testReportFilename);
+    const destination = path.join(config.ciReportDir, testReportFilename);
 
     try {
       builder.writeTo(destination);
@@ -200,11 +200,11 @@ function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
   }
 
   logger.log('Writing json report');
-  return ensureDir(toAbsolute(config.json_report)).then(function () {
+  return ensureDir(toAbsolute(config.jsonReportDir)).then(function () {
     logger.log('Resources copied');
 
     // Fixing URLs in the configuration
-    const report = toAbsolute(config.json_report);
+    const report = toAbsolute(config.jsonReportDir);
     _.forEach(jsonReporter.tests, (test: Test) => {
       const pair = test.pair;
       pair.reference = path.relative(report, toAbsolute(pair.reference));

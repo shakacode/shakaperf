@@ -26,16 +26,16 @@ export default async function (command: string, options?: Record<string, unknown
     projectPath: '/path/to/project',
     perf: { init: { started: 2018-09-23T04:01:09.673Z } },
     configFileName: '/path/to/project/visreg.config.ts',
-    bitmaps_reference: '/path/to/project/visreg_data/bitmaps_reference',
-    bitmaps_test: '/path/to/project/visreg_data/bitmaps_test',
-    ci_report: '/path/to/project/visreg_data/ci_report',
+    controlScreenshotDir: '/path/to/project/visreg_data/html_report/control_screenshot',
+    experimentScreenshotDir: '/path/to/project/visreg_data/html_report/experiment_screenshot',
+    ciReportDir: '/path/to/project/visreg_data/ci_report',
     ciReport:
     {
         format: 'junit',
         testReportFileName: 'xunit',
         testSuiteName: 'shaka-visreg'
     },
-    html_report: '/path/to/project/visreg_data/html_report',
+    htmlReportDir: '/path/to/project/visreg_data/html_report',
     openReport: true,
     compareConfigFileName: '/path/to/project/visreg_data/html_report/config.js',
     compareReportURL: '/path/to/project/visreg_data/html_report/index.html',

@@ -81,7 +81,6 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   configJSON.isReference = false;
   configJSON.isCompare = true;
   configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
-  (configJSON.paths as Record<string, unknown>).tempCompareConfigFileName = config.tempCompareConfigFileName;
   configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
   configJSON.configFileName = config.configFileName;
   configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
