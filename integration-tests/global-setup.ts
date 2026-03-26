@@ -7,6 +7,10 @@ import {
 } from './helpers';
 
 export default async function globalSetup() {
+  if (process.env.SKIP_GLOBAL_SETUP === '1') {
+    console.log('Skipping global setup (SKIP_GLOBAL_SETUP=1)');
+    return;
+  }
   // Clean previous temp directory
   if (fs.existsSync(TMP_ROOT)) {
     fs.rmSync(TMP_ROOT, { recursive: true, force: true });

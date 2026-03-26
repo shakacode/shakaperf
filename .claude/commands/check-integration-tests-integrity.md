@@ -88,10 +88,26 @@ git diff -- integration-tests/snapshots/visreg-results ':(exclude)*.png'
 
 Unlike perf-tests, visreg results are way more deterministic.
 
-### baseline-output.log
+### baseline-twin-servers.log
 
 ```bash
-git diff -- integration-tests/snapshots/baseline-output.log
+git diff -- integration-tests/snapshots/baseline-twin-servers.log
+```
+
+All timing values, hashes, sizes, and line ordering between `[CONTROL]`/`[EXPERIMENT]` are noise. Only flag: `>>>` steps added/removed, new `Error:`/`FAIL` messages, test count changes, or missing `SUCCESS`/docker steps.
+
+### baseline-visreg.log
+
+```bash
+git diff -- integration-tests/snapshots/baseline-visreg.log
+```
+
+All timing values, hashes, sizes, and line ordering between `[CONTROL]`/`[EXPERIMENT]` are noise. Only flag: `>>>` steps added/removed, new `Error:`/`FAIL` messages, test count changes, or missing `SUCCESS`/docker steps.
+
+### baseline-perf.log
+
+```bash
+git diff -- integration-tests/snapshots/baseline-perf.log
 ```
 
 All timing values, hashes, sizes, sparklines, p-values, and line ordering between `[CONTROL]`/`[EXPERIMENT]` are noise. Only flag: `>>>` steps added/removed, new `Error:`/`FAIL` messages, test count changes, `Is Significant` flipping, or missing `SUCCESS`/docker steps.

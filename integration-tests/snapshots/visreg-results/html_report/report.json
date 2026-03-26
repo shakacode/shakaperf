@@ -466,7 +466,7 @@
           },
           "rawMisMatchPercentage": 0.2213942307692308,
           "misMatchPercentage": "0.22",
-          "analysisTime": 56
+          "analysisTime": 50
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
@@ -573,7 +573,7 @@
           },
           "rawMisMatchPercentage": 4.992173005565863,
           "misMatchPercentage": "4.99",
-          "analysisTime": 45
+          "analysisTime": 55
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
@@ -628,7 +628,7 @@
           },
           "rawMisMatchPercentage": 22.084162915512465,
           "misMatchPercentage": "22.08",
-          "analysisTime": 43
+          "analysisTime": 51
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
@@ -874,9 +874,9 @@
             "width": 0,
             "height": -1621
           },
-          "rawMisMatchPercentage": 6.016511318242344,
-          "misMatchPercentage": "6.02",
-          "analysisTime": 24
+          "rawMisMatchPercentage": 0.7201065246338216,
+          "misMatchPercentage": "0.72",
+          "analysisTime": 31
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png"
       },
@@ -931,7 +931,7 @@
           },
           "rawMisMatchPercentage": 13.307760560941828,
           "misMatchPercentage": "13.31",
-          "analysisTime": 37
+          "analysisTime": 38
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png"
       },

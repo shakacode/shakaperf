@@ -11,7 +11,7 @@ const HOME_PAGE_FILE = path.join(
   'demo-ecommerce/app/javascript/components/pages/HomePage.tsx',
 );
 
-test('modify experiment, rebuild, and verify servers diverge', async ({ page }) => {
+test('modify experiment, rebuild, and verify servers diverge @twin-servers', async ({ page }) => {
   test.setTimeout(10 * 60 * 1000);
 
   startServers();
@@ -68,7 +68,7 @@ test('modify experiment, rebuild, and verify servers diverge', async ({ page }) 
   run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
 });
 
-test('run-cmd preserves single and double quotes', async ({ page }) => {
+test('run-cmd preserves single and double quotes @twin-servers', async ({ page }) => {
   test.setTimeout(10 * 60 * 1000);
 
   const HOMEPAGE_TSX = 'app/javascript/components/pages/HomePage.tsx';

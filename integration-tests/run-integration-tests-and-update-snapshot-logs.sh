@@ -3,7 +3,7 @@
 # After running, use `git diff` to review changes to the baseline.
 #
 # Usage:
-#   ./integration-tests/run-integration-tests-and-compare-logs.sh [--skip-perf]
+#   ./integration-tests/run-integration-tests-and-compare-logs.sh [--perf] [--visreg] [--twin-servers]
 #
 # The output is automatically normalized to replace run-variable values
 # (timestamps, timings, home directory paths, docker ages) with stubs.
@@ -23,17 +23,27 @@
 
 set -euo pipefail
 
+PERF=false
+VISREG=false
+TWIN_SERVERS=false
 EXTRA_ARGS=()
 for arg in "$@"; do
   case "$arg" in
-    --skip-perf) EXTRA_ARGS+=(--grep-invert "@perf") ;;
+    --perf)         PERF=true ;;
+    --visreg)       VISREG=true ;;
+    --twin-servers) TWIN_SERVERS=true ;;
     *) EXTRA_ARGS+=("$arg") ;;
   esac
 done
 
+# If no flags specified, run everything
+if ! $PERF && ! $VISREG && ! $TWIN_SERVERS; then
+  PERF=true; VISREG=true; TWIN_SERVERS=true
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-BASELINE="$SCRIPT_DIR/snapshots/baseline-output.log"
+SNAPSHOTS="$SCRIPT_DIR/snapshots"
 
 # Replace values that change between runs with stable stubs.
 # Uses POSIX BRE and > tmp + mv for macOS/Linux portability.
@@ -60,8 +70,10 @@ normalize_log() {
 cd "$REPO_ROOT"
 
 echo "=== Cleaning previous snapshots ==="
-rm -rf "$SCRIPT_DIR/snapshots"
-mkdir -p "$SCRIPT_DIR/snapshots"
+mkdir -p "$SNAPSHOTS"
+$PERF         && rm -rf "$SNAPSHOTS/baseline-perf.log" "$SNAPSHOTS/bench-results"
+$VISREG       && rm -rf "$SNAPSHOTS/baseline-visreg.log" "$SNAPSHOTS/visreg-results"
+$TWIN_SERVERS && rm -rf "$SNAPSHOTS/baseline-twin-servers.log"
 
 # Ensure the Node version from .nvmrc is active (requires nvm to be loaded)
 REQUIRED_NODE=$(cat "$REPO_ROOT/.nvmrc")
@@ -74,9 +86,26 @@ if [ "$CURRENT_NODE" != "$REQUIRED_NODE" ]; then
   nvm use || { echo "Failed to switch Node version. Run 'nvm install $REQUIRED_NODE' first."; exit 1; }
 fi
 
-echo "=== Running integration tests ==="
-# Strip ANSI codes so the output is readable in plain text
-yarn test:integration "${EXTRA_ARGS[@]}" 2>&1 | tee "$BASELINE"
+run_suite() {
+  local tag="$1" baseline="$2"
+  local args=("${EXTRA_ARGS[@]}" --grep "$tag")
+  if ! $SETUP_NEEDED; then
+    export SKIP_GLOBAL_SETUP=1
+  fi
+  SETUP_NEEDED=false
+  export SKIP_TEARDOWN=1
+  echo "=== Running $tag tests ==="
+  yarn test:integration "${args[@]}" 2>&1 | tee "$baseline"
+  normalize_log "$baseline"
+}
 
-# Normalize variable values in the saved output (not in the terminal output)
-normalize_log "$BASELINE"
+# Run each selected suite. First suite runs global setup; subsequent ones skip it.
+SETUP_NEEDED=true
+$TWIN_SERVERS && run_suite "@twin-servers" "$SNAPSHOTS/baseline-twin-servers.log"
+$VISREG       && run_suite "@visreg"       "$SNAPSHOTS/baseline-visreg.log"
+$PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
+
+# Stop containers after all suites
+echo "=== Stopping containers ==="
+DEMO_CWD="/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce"
+(cd "$DEMO_CWD" && yarn shaka-twin-servers stop-containers) || true
