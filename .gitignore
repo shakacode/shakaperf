@@ -25,7 +25,9 @@ Thumbs.db
 
 # Logs
 *.log
-!integration-tests/snapshots/baseline-output.log
+!integration-tests/snapshots/baseline-twin-servers.log
+!integration-tests/snapshots/baseline-visreg.log
+!integration-tests/snapshots/baseline-perf.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

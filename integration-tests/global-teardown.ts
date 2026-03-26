@@ -2,6 +2,11 @@ import * as fs from 'fs';
 import { DEMO_CWD, loud, run } from './helpers';
 
 export default async function globalTeardown() {
+  if (process.env.SKIP_TEARDOWN === '1') {
+    console.log('Skipping teardown (SKIP_TEARDOWN=1)');
+    return;
+  }
+
   if (fs.existsSync(DEMO_CWD)) {
     try {
       loud('Stopping containers');
