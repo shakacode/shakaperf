@@ -25,6 +25,6 @@ abTest('Products - Electronics Filter', {
   await page.waitForLoadState('networkidle');
   await page.click('[data-cy="category-select"]');
   await page.waitForSelector('[data-cy="category-option-electronics"]', { state: 'visible' });
-  await page.click('[data-cy="category-option-electronics"]');
+  await page.click('[data-cy="category-option-electronics-selector-not-exists"]');
   await waitUntilPageSettled(page);
 });

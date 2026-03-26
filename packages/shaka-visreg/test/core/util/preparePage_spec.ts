@@ -42,6 +42,7 @@ describe('preparePage', function () {
   const baseTestDef: AbTestDefinition = {
     name: 'Test',
     startingPath: '/page',
+    file: null,
     line: null,
     options: {},
     testFn: async function () {},

@@ -102,9 +102,12 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       if (pair.diffImage) {
         pair.diffImage = path.relative(report, toAbsolute(pair.diffImage));
       }
+      if (pair.errorScreenshot) {
+        pair.errorScreenshot = path.relative(report, toAbsolute(pair.errorScreenshot));
+      }
     });
 
-    const testReportJsonName = toAbsolute(config.experimentScreenshotDir + '/report.json');
+    const testReportJsonName = toAbsolute(config.htmlReportDir + '/report.json');
 
     // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
     // This scenario with all viewport variants will be appended to any existing report.

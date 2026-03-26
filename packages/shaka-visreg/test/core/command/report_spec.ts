@@ -53,7 +53,7 @@ describe('core report', function () {
       expect(writeFileStub).toHaveBeenCalledTimes(3);
       expect(writeFileStub).toHaveBeenCalledWith('/compareJson', expect.anything());
       expect(writeFileStub).toHaveBeenCalledWith('/compareConfig', expect.anything());
-      expect(writeFileStub).toHaveBeenCalledWith('/experiment_screenshot/report.json', expect.anything());
+      expect(writeFileStub).toHaveBeenCalledWith('/html_report/report.json', expect.anything());
     });
   });
 });

@@ -76,6 +76,7 @@ export interface AbTestOptions {
 export interface AbTestDefinition {
   name: string;
   startingPath: string;
+  file: string | null;
   line: number | null;
   options: AbTestOptions;
   testFn: (context: TestFnContext) => Promise<void>;
@@ -91,7 +92,8 @@ export function abTest(
   },
   testFn: (context: TestFnContext) => Promise<void>
 ): void {
-    // Capture call-site line number from the stack trace
+    // Capture call-site file and line number from the stack trace
+    let file: string | null = null;
     let line: number | null = null;
     const stack = new Error().stack;
     if (stack) {
@@ -99,9 +101,10 @@ export function abTest(
       const frames = stack.split('\n');
       // The caller is typically the 3rd frame (0=Error, 1=abTest, 2=caller)
       for (let i = 2; i < frames.length; i++) {
-        const match = frames[i].match(/:(\d+):\d+\)?$/);
+        const match = frames[i].match(/\(?([^()]+):(\d+):\d+\)?$/);
         if (match) {
-          line = parseInt(match[1], 10);
+          file = match[1];
+          line = parseInt(match[2], 10);
           break;
         }
       }
@@ -110,6 +113,7 @@ export function abTest(
   registry.push({
     name,
     startingPath: config.startingPath,
+    file,
     line,
     options: config.options ?? {},
     testFn,

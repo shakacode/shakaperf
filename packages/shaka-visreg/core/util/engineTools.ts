@@ -139,7 +139,7 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     viewport.label
   );
 
-  return {
+  const testPair: TestPair = {
     reference: referenceFilePath,
     referenceLog: referenceLogFilePath,
     test: testFilePath,
@@ -154,6 +154,13 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     expect: getScenarioExpect(scenario),
     viewportLabel: viewport.label
   };
+
+  if (scenario._testDef) {
+    if (scenario._testDef.file) testPair.testFile = scenario._testDef.file;
+    if (scenario._testDef.line != null) testPair.testLine = scenario._testDef.line;
+  }
+
+  return testPair;
 }
 
 export {

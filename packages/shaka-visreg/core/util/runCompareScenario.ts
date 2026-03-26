@@ -247,7 +247,7 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   return compareConfig;
 }
 
-async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, error: Error) {
+async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, error: Error, errorScreenshotPath?: string) {
   config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
   config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
@@ -256,6 +256,9 @@ async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario
 
   const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, (scenario.selectors || ['document']).join('__'));
   testPair.engineErrorMsg = error.message;
+  if (errorScreenshotPath) {
+    testPair.errorScreenshot = errorScreenshotPath;
+  }
 
   const filePath = testPair.test;
   ensureDirectoryPath(filePath);
@@ -286,6 +289,7 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
 
   let compareConfig;
   let error: Error | undefined;
+  let errorScreenshotPath: string | undefined;
 
   try {
     compareConfig = await processCompareView(
@@ -296,6 +300,17 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
     logger.log('red', 'Error during live compare for "' + scenario.label + '"');
     logger.log('red', String(e));
     error = e instanceof Error ? e : new Error(String(e));
+
+    // Capture screenshot of browser state at time of error
+    try {
+      const screenshotDir = config.env?.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
+      errorScreenshotPath = screenshotDir + '/error_' + scenarioLabelSafe + '.png';
+      ensureDirectoryPath(errorScreenshotPath);
+      const buffer = await testPage.screenshot({ fullPage: true });
+      await writeFile(errorScreenshotPath, buffer);
+    } catch (_screenshotErr) {
+      errorScreenshotPath = undefined;
+    }
   } finally {
     logger.log('green', 'x Close Browser Contexts');
     await refContext.close();
@@ -303,7 +318,7 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
   }
 
   if (error) {
-    compareConfig = await buildErrorCompareConfig(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, error);
+    compareConfig = await buildErrorCompareConfig(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, error, errorScreenshotPath);
   }
 
   return Promise.resolve(compareConfig);

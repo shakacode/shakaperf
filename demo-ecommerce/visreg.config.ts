@@ -17,7 +17,7 @@ export default defineVisregConfig({
     args: ['--no-sandbox'],
   },
   asyncCaptureLimit: 5,
-  compareRetries: 5,
+  compareRetries: 2,
   compareRetryDelay: 1000,
   maxNumDiffPixels: 50,
   defaultMisMatchThreshold: 0.1,

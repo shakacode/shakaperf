@@ -75,8 +75,11 @@ class TextDetails extends React.Component {
       url,
       referenceUrl,
       referenceLog,
-      testLog
+      testLog,
+      testFile,
+      testLine
     } = this.props.info;
+    const sourceLocation = testFile ? testFile + (testLine != null ? ':' + testLine : '') : null;
     const { settings } = this.props;
     const { showPanel } = this.state;
 
@@ -88,6 +91,12 @@ class TextDetails extends React.Component {
           <Label>selector: </Label>
           <Value>{selector}</Value>
         </Row>
+        {sourceLocation && (
+          <Row hidden={!settings.textInfo}>
+            <Label>source: </Label>
+            <Value>{sourceLocation}</Value>
+          </Row>
+        )}
         <Row>
           <Label>filename: </Label>
           <Value onMouseOver={this.showPanel}>{fileName}</Value>
@@ -101,6 +110,12 @@ class TextDetails extends React.Component {
             <Label>selector: </Label>
             <Value>{selector} </Value>
           </Row>
+          {sourceLocation && (
+            <Row>
+              <Label>source: </Label>
+              <Value>{sourceLocation} </Value>
+            </Row>
+          )}
           <Row>
             <Label>filename: </Label>
             <Value>{fileName} </Value>
