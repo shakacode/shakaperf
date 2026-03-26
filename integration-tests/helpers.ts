@@ -21,6 +21,13 @@ export function loud(msg: string): void {
   console.log(`\n${GREEN_BOLD}>>> ${msg}${RESET}\n`);
 }
 
+export function timed(label: string, fn: () => void): void {
+  const start = Date.now();
+  fn();
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`  ⏱ ${label}: ${elapsed}s`);
+}
+
 export function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
   const { cwd = DEMO_CWD, timeout = 10 * 60 * 1000 } = opts;
   loud(`run: ${cmd}`);
@@ -47,6 +54,8 @@ export function waitForPort(port: number, timeout = 180_000): Promise<void> {
       }
       const req = http.get(`http://localhost:${port}/up`, (res) => {
         if (res.statusCode === 200) {
+          const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+          console.log(`  ⏱ waitForPort(${port}): ${elapsed}s`);
           resolve();
         } else {
           setTimeout(attempt, 2000);
