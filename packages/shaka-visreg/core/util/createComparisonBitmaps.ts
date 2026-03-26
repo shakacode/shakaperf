@@ -8,6 +8,7 @@ import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario } from './convertAbTestToScenario';
 import createLogger from './logger';
+import { installTestNamePrefix, runWithTestName, registerTestNames } from './testContext';
 import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregGlobalConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
@@ -160,7 +161,11 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
         scenarioViews[i]._playwrightBrowser = browser;
       }
 
-      pMap(scenarioViews as Required<ScenarioView>[], runCompareScenario.playwright, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
+      registerTestNames(scenarioViews.map(function (v) { return v.scenario.label; }));
+      installTestNamePrefix();
+      pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
+        return runWithTestName(view.scenario.label, function () { return runCompareScenario.playwright(view); });
+      }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
         disposePlaywrightBrowser(browser!).then(function () { resolve(out); });
       }, function (e: unknown) {
         disposePlaywrightBrowser(browser!).then(function () { reject(e); });

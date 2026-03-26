@@ -272,10 +272,13 @@ export interface TestPair {
   diffImage?: string;
   error?: string;
   engineErrorMsg?: string;
+  errorScreenshot?: string;
   status?: string;
   scenario?: Scenario;
   viewport?: Viewport;
   msg?: string;
+  testFile?: string;
+  testLine?: number;
 }
 
 // ── Compare Config ──────────────────────────────────────────────────

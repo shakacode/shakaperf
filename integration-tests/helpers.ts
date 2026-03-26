@@ -24,6 +24,7 @@ export function loud(msg: string): void {
 export function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
   const { cwd = DEMO_CWD, timeout = 10 * 60 * 1000 } = opts;
   loud(`run: ${cmd}`);
+  const start = Date.now();
   const output = execSync(cmd, {
     cwd,
     env,
@@ -32,6 +33,8 @@ export function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}):
   });
   const text = output.toString();
   if (text) console.log(text);
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`  ⏱ ${elapsed}s`);
   return text;
 }
 

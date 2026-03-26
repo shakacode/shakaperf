@@ -20,6 +20,19 @@ const ErrorMsg = styled.p`
   display: ${props => (props.display ? 'block' : 'none')};
 `;
 
+const ScreenshotImg = styled.img`
+  max-width: 100%;
+  border: 2px solid brown;
+  margin-top: 10px;
+`;
+
+const ScreenshotLabel = styled.p`
+  font-family: monospace;
+  color: brown;
+  font-size: 12px;
+  margin: 10px 0 4px;
+`;
+
 class ErrorMessages extends React.Component {
   constructor (props) {
     super(props);
@@ -29,6 +42,7 @@ class ErrorMessages extends React.Component {
   render () {
     const visregError = this.props.info.error;
     const engineError = this.props.info.engineErrorMsg;
+    const errorScreenshot = this.props.info.errorScreenshot;
     const display = !!engineError || !!visregError;
 
     return (
@@ -37,6 +51,12 @@ class ErrorMessages extends React.Component {
         <ErrorMsg display={visregError}>
           VISREG ERROR: {visregError}
         </ErrorMsg>
+        {errorScreenshot && (
+          <div style={{ textAlign: 'center' }}>
+            <ScreenshotLabel>Browser state at time of error:</ScreenshotLabel>
+            <ScreenshotImg src={errorScreenshot} alt="Browser state at time of error" />
+          </div>
+        )}
       </DetailsPanel>
     );
   }

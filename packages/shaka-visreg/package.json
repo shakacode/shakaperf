@@ -1,6 +1,6 @@
 {
   "name": "shaka-visreg",
-  "version": "0.0.3",
+  "version": "0.0.7",
   "description": "Shaka-visreg: Catch CSS curveballs.",
   "homepage": "https://github.com/shakacode/shakaperf#readme",
   "bin": "./dist/cli/index.js",
@@ -38,6 +38,12 @@
     "./helpers": {
       "types": "./dist/capture/helpers/index.d.ts",
       "default": "./dist/capture/helpers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "helpers": ["dist/capture/helpers/index.d.ts"],
+      "core/types": ["dist/core/types.d.ts"]
     }
   },
   "devDependencies": {

@@ -6,6 +6,7 @@ describe('convertAbTestToScenario', function () {
   const baseDef: AbTestDefinition = {
     name: 'Test scenario',
     startingPath: '/products',
+    file: null,
     line: null,
     options: {},
     testFn: async function () {},
