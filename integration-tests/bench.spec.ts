@@ -9,7 +9,7 @@ import {
 // Store bench results in the REAL repo so they persist and can be committed
 const BENCH_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
 
-test('run shaka-bench compare on twin servers', async ({ page }) => {
+test('run shaka-bench compare on twin servers @perf', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
 
   startServers();

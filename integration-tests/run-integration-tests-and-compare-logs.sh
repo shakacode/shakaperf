@@ -3,7 +3,7 @@
 # After running, use `git diff` to review changes to the baseline.
 #
 # Usage:
-#   ./integration-tests/run-integration-tests-and-compare-logs.sh
+#   ./integration-tests/run-integration-tests-and-compare-logs.sh [--skip-perf]
 #
 # The output is automatically normalized to replace run-variable values
 # (timestamps, timings, home directory paths, docker ages) with stubs.
@@ -22,6 +22,14 @@
 #   - Missing or added steps
 
 set -euo pipefail
+
+EXTRA_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --skip-perf) EXTRA_ARGS+=(--grep-invert "@perf") ;;
+    *) EXTRA_ARGS+=("$arg") ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -68,7 +76,7 @@ fi
 
 echo "=== Running integration tests ==="
 # Strip ANSI codes so the output is readable in plain text
-yarn test:integration 2>&1 | tee "$BASELINE"
+yarn test:integration "${EXTRA_ARGS[@]}" 2>&1 | tee "$BASELINE"
 
 # Normalize variable values in the saved output (not in the terminal output)
 normalize_log "$BASELINE"

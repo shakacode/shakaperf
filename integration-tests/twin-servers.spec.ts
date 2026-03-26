@@ -63,6 +63,9 @@ test('modify experiment, rebuild, and verify servers diverge', async ({ page }) 
   loud('Verifying experiment (3030) has "Discover Your New Self"');
   await page.goto('http://localhost:3030');
   await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
+
+  // Restart containers to restore pristine state after modifications
+  run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
 });
 
 test('run-cmd preserves single and double quotes', async ({ page }) => {
@@ -91,4 +94,7 @@ test('run-cmd preserves single and double quotes', async ({ page }) => {
   loud('Verifying experiment (3030) has text with single and double quotes');
   await page.goto('http://localhost:3030');
   await expect(page.getByText(`It's a "quoted" world`)).toBeVisible({ timeout: 30_000 });
+
+  // Restart containers to restore pristine state after modifications
+  run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
 });
