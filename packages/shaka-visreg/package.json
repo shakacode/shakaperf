@@ -42,8 +42,12 @@
   },
   "typesVersions": {
     "*": {
-      "helpers": ["dist/capture/helpers/index.d.ts"],
-      "core/types": ["dist/core/types.d.ts"]
+      "helpers": [
+        "dist/capture/helpers/index.d.ts"
+      ],
+      "core/types": [
+        "dist/core/types.d.ts"
+      ]
     }
   },
   "devDependencies": {

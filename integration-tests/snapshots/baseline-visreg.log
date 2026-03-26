@@ -17,18 +17,18 @@ Running 1 test using 1 worker
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.5s
+  ⏱ 1.4s
 
 >>> run: yarn shaka-twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.5s
+  ⏱ 1.2s
 
 >>> Waiting for ports 3020 + 3030
 
-  ⏱ waitForPort(3020): 0.0s
+  ⏱ waitForPort(3020): 2.0s
   ⏱ waitForPort(3030): 2.0s
 
 >>> Running shaka-visreg liveCompare
@@ -40,18 +40,43 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 shaka-visreg v0.0.7
 COMMAND | Executing core for "liveCompare"
 liveCompare | Discovered 7 test file(s):
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts
-liveCompare |   /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts
+liveCompare |   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
 liveCompare | Selected 11 of 11 scenarios.
 Creating Browser
 liveCompare | Browser created
+  Admin Orders - Form Login Interaction: LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
          Admin Dashboard - Cookie Login: LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
          Admin Dashboard - Cookie Login: LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
+         Admin Dashboard - Cookie Login: Cookie state restored with: [
+  {
+    "name": "demo_ecommerce_admin_auth",
+    "value": "1",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
+         Admin Dashboard - Cookie Login: Cookie state restored with: [
+  {
+    "name": "demo_ecommerce_admin_auth",
+    "value": "1",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
   Admin Orders - Form Login Interaction: LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
          Admin Dashboard - Cookie Login: Cookie state restored with: [
   {
@@ -77,18 +102,6 @@ liveCompare | Browser created
     "sameSite": "Lax"
   }
 ]
-         Admin Dashboard - Cookie Login: Cookie state restored with: [
-  {
-    "name": "demo_ecommerce_admin_auth",
-    "value": "1",
-    "domain": "localhost",
-    "path": "/",
-    "expires": 1893456000,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  }
-]
          Admin Dashboard - Cookie Login: LIVE COMPARE: opening reference (http://localhost:3020/admin) and test (http://localhost:3030/admin) simultaneously
          Admin Dashboard - Cookie Login: Cookie state restored with: [
   {
@@ -102,19 +115,6 @@ liveCompare | Browser created
     "sameSite": "Lax"
   }
 ]
-  Admin Orders - Form Login Interaction: LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
-         Admin Dashboard - Cookie Login: Cookie state restored with: [
-  {
-    "name": "demo_ecommerce_admin_auth",
-    "value": "1",
-    "domain": "localhost",
-    "path": "/",
-    "expires": 1893456000,
-    "httpOnly": false,
-    "secure": false,
-    "sameSite": "Lax"
-  }
-]
          Admin Dashboard - Cookie Login: Cookie state restored with: [
   {
     "name": "demo_ecommerce_admin_auth",
@@ -128,19 +128,10 @@ liveCompare | Browser created
   }
 ]
          Admin Dashboard - Cookie Login: Network idle
-         Admin Dashboard - Cookie Login: Network idle
-         Admin Dashboard - Cookie Login: Network idle
          Admin Dashboard - Cookie Login: Fonts for http://localhost:3030/admin are ready
          Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3030/admin
-         Admin Dashboard - Cookie Login: Fonts for http://localhost:3020/admin are ready
-         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3020/admin
-         Admin Dashboard - Cookie Login: Fonts for http://localhost:3020/admin are ready
-         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3020/admin
          Admin Dashboard - Cookie Login: Network idle
          Admin Dashboard - Cookie Login: Network idle
-         Admin Dashboard - Cookie Login: Network idle
-         Admin Dashboard - Cookie Login: Fonts for http://localhost:3030/admin are ready
-         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3030/admin
          Admin Dashboard - Cookie Login: Fonts for http://localhost:3030/admin are ready
          Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3030/admin
          Admin Dashboard - Cookie Login: Fonts for http://localhost:3020/admin are ready
@@ -149,323 +140,296 @@ liveCompare | Browser created
   Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3030/admin/orders
   Admin Orders - Form Login Interaction: Fonts for http://localhost:3030/admin/orders are ready
   Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3030/admin/orders
+         Admin Dashboard - Cookie Login: Network idle
+         Admin Dashboard - Cookie Login: Fonts for http://localhost:3030/admin are ready
+         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3030/admin
+         Admin Dashboard - Cookie Login: Network idle
+         Admin Dashboard - Cookie Login: Fonts for http://localhost:3020/admin are ready
+         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3020/admin
   Admin Orders - Form Login Interaction: Fonts for http://localhost:3020/admin/orders are ready
   Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3020/admin/orders
   Admin Orders - Form Login Interaction: Fonts for http://localhost:3020/admin/orders are ready
   Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3020/admin/orders
+         Admin Dashboard - Cookie Login: Network idle
+         Admin Dashboard - Cookie Login: Fonts for http://localhost:3020/admin are ready
+         Admin Dashboard - Cookie Login: All 0 images loaded for http://localhost:3020/admin
   Admin Orders - Form Login Interaction: Network idle
   Admin Orders - Form Login Interaction: Network idle
   Admin Orders - Form Login Interaction: Network idle
   Admin Orders - Form Login Interaction: Network idle
-         Admin Dashboard - Cookie Login: Page http://localhost:3030/admin has settled
-         Admin Dashboard - Cookie Login: Page http://localhost:3020/admin has settled
-         Admin Dashboard - Cookie Login: Page http://localhost:3020/admin has settled
          Admin Dashboard - Cookie Login: Page http://localhost:3030/admin has settled
          Admin Dashboard - Cookie Login: Page http://localhost:3030/admin has settled
          Admin Dashboard - Cookie Login: Page http://localhost:3020/admin has settled
   Admin Orders - Form Login Interaction: Page http://localhost:3030/admin/orders has settled
   Admin Orders - Form Login Interaction: Page http://localhost:3030/admin/orders has settled
+         Admin Dashboard - Cookie Login: Page http://localhost:3030/admin has settled
+         Admin Dashboard - Cookie Login: Page http://localhost:3020/admin has settled
   Admin Orders - Form Login Interaction: Page http://localhost:3020/admin/orders has settled
   Admin Orders - Form Login Interaction: Page http://localhost:3020/admin/orders has settled
+         Admin Dashboard - Cookie Login: Page http://localhost:3020/admin has settled
          Admin Dashboard - Cookie Login: PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
          Admin Dashboard - Cookie Login: PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
          Admin Dashboard - Cookie Login: x Close Browser Contexts
          Admin Dashboard - Cookie Login: x Close Browser Contexts
          Admin Dashboard - Cookie Login: PASS: "Admin Dashboard - Cookie Login" [document] (0 diff pixels)
          Admin Dashboard - Cookie Login: x Close Browser Contexts
+  Admin Orders - Form Login Interaction: PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
+  Admin Orders - Form Login Interaction: x Close Browser Contexts
+  Admin Orders - Form Login Interaction: PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
+  Admin Orders - Form Login Interaction: x Close Browser Contexts
+Carousel Demo - Pause With Override CSS: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
   Admin Orders - Form Login Interaction: LIVE COMPARE: opening reference (http://localhost:3020/admin/orders) and test (http://localhost:3030/admin/orders) simultaneously
-  Admin Orders - Form Login Interaction: PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-Carousel Demo - Pause With Override CSS: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Carousel Demo - Pause With Override CSS: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-  Admin Orders - Form Login Interaction: x Close Browser Contexts
-  Admin Orders - Form Login Interaction: PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-  Admin Orders - Form Login Interaction: x Close Browser Contexts
 Carousel Demo - Pause With Override CSS: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
      Carousel Demo - Stub Slider Images: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
-Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
-     Carousel Demo - Stub Slider Images: Fonts for http://localhost:3030/carousel-demo are ready
-     Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3030/carousel-demo
-Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3030/carousel-demo are ready
+Carousel Demo - Pause With Override CSS: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
      Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
+Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
      Carousel Demo - Stub Slider Images: Fonts for http://localhost:3020/carousel-demo are ready
      Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3020/carousel-demo
-Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
-Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
 Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
 Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3030/carousel-demo are ready
+     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
 Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3020/carousel-demo are ready
-Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3020/carousel-demo are ready
-Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
-Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3030/carousel-demo are ready
-Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
-Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3020/carousel-demo are ready
-  Admin Orders - Form Login Interaction: Fonts for http://localhost:3020/admin/orders are ready
-  Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3020/admin/orders
+     Carousel Demo - Stub Slider Images: Fonts for http://localhost:3030/carousel-demo are ready
+     Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3030/carousel-demo
   Admin Orders - Form Login Interaction: Fonts for http://localhost:3030/admin/orders are ready
   Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3030/admin/orders
-Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3030/carousel-demo
+  Admin Orders - Form Login Interaction: Fonts for http://localhost:3020/admin/orders are ready
+  Admin Orders - Form Login Interaction: All 0 images loaded for http://localhost:3020/admin/orders
 Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3020/carousel-demo
-Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3020/carousel-demo
 Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3030/carousel-demo
+Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
+Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3030/carousel-demo are ready
+Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
+Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3020/carousel-demo are ready
 Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3030/carousel-demo
 Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3020/carousel-demo
      Carousel Demo - Stub Slider Images: Network idle
      Carousel Demo - Stub Slider Images: Network idle
+Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
   Admin Orders - Form Login Interaction: Network idle
+Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3030/carousel-demo are ready
+Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3030/carousel-demo
+Carousel Demo - Pause With Override CSS: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
+Carousel Demo - Pause With Override CSS: Fonts for http://localhost:3020/carousel-demo are ready
+Carousel Demo - Pause With Override CSS: All 6 images loaded for http://localhost:3020/carousel-demo
   Admin Orders - Form Login Interaction: Network idle
 Carousel Demo - Pause With Override CSS: Network idle
 Carousel Demo - Pause With Override CSS: Network idle
 Carousel Demo - Pause With Override CSS: Network idle
 Carousel Demo - Pause With Override CSS: Network idle
-     Carousel Demo - Stub Slider Images: Page http://localhost:3030/carousel-demo has settled
-Carousel Demo - Pause With Override CSS: Page http://localhost:3030/carousel-demo has settled
      Carousel Demo - Stub Slider Images: Page http://localhost:3020/carousel-demo has settled
-Carousel Demo - Pause With Override CSS: Network idle
-Carousel Demo - Pause With Override CSS: Network idle
 Carousel Demo - Pause With Override CSS: Page http://localhost:3030/carousel-demo has settled
 Carousel Demo - Pause With Override CSS: Page http://localhost:3020/carousel-demo has settled
-Carousel Demo - Pause With Override CSS: Page http://localhost:3020/carousel-demo has settled
-Carousel Demo - Pause With Override CSS: Page http://localhost:3030/carousel-demo has settled
-Carousel Demo - Pause With Override CSS: Page http://localhost:3020/carousel-demo has settled
-     Carousel Demo - Stub Slider Images: PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
-     Carousel Demo - Stub Slider Images: x Close Browser Contexts
-  Admin Orders - Form Login Interaction: Page http://localhost:3020/admin/orders has settled
+     Carousel Demo - Stub Slider Images: Page http://localhost:3030/carousel-demo has settled
   Admin Orders - Form Login Interaction: Page http://localhost:3030/admin/orders has settled
-Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-     Carousel Demo - Stub Slider Images: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
-Carousel Demo - Pause With Override CSS: x Close Browser Contexts
+Carousel Demo - Pause With Override CSS: Network idle
+Carousel Demo - Pause With Override CSS: Network idle
+  Admin Orders - Form Login Interaction: Page http://localhost:3020/admin/orders has settled
+Carousel Demo - Pause With Override CSS: Page http://localhost:3030/carousel-demo has settled
+Carousel Demo - Pause With Override CSS: Page http://localhost:3020/carousel-demo has settled
   Admin Orders - Form Login Interaction: PASS: "Admin Orders - Form Login Interaction" [document] (0 diff pixels)
-Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
-Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+     Carousel Demo - Stub Slider Images: PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
   Admin Orders - Form Login Interaction: x Close Browser Contexts
-Carousel Demo - Pause With Override CSS: x Close Browser Contexts
-Carousel Demo - Pause With Override CSS: x Close Browser Contexts
+     Carousel Demo - Stub Slider Images: x Close Browser Contexts
      Carousel Demo - Stub Slider Images: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+     Carousel Demo - Stub Slider Images: LIVE COMPARE: opening reference (http://localhost:3020/carousel-demo) and test (http://localhost:3030/carousel-demo) simultaneously
+Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+Carousel Demo - Pause With Override CSS: Page http://localhost:3030/carousel-demo has settled
+Carousel Demo - Pause With Override CSS: Page http://localhost:3020/carousel-demo has settled
+Carousel Demo - Pause With Override CSS: x Close Browser Contexts
                                    Cart: LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
-                                   Cart: LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
-                                   Cart: LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
+Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+Carousel Demo - Pause With Override CSS: PASS: "Carousel Demo - Pause With Override CSS" [document] (0 diff pixels)
+Carousel Demo - Pause With Override CSS: x Close Browser Contexts
+Carousel Demo - Pause With Override CSS: x Close Browser Contexts
      Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
+     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
+     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
+     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
      Carousel Demo - Stub Slider Images: Fonts for http://localhost:3020/carousel-demo are ready
      Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3020/carousel-demo
-     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
      Carousel Demo - Stub Slider Images: Fonts for http://localhost:3030/carousel-demo are ready
      Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3030/carousel-demo
-     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3030/carousel-demo
-     Carousel Demo - Stub Slider Images: Fonts for http://localhost:3030/carousel-demo are ready
-     Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3030/carousel-demo
-                                   Cart: Fonts for http://localhost:3020/cart are ready
-                                   Cart: All 0 images loaded for http://localhost:3020/cart
-                                   Cart: Fonts for http://localhost:3030/cart are ready
-                                   Cart: All 0 images loaded for http://localhost:3030/cart
-                                   Cart: Fonts for http://localhost:3020/cart are ready
-                                   Cart: All 0 images loaded for http://localhost:3020/cart
-                                   Cart: Fonts for http://localhost:3030/cart are ready
-                                   Cart: All 0 images loaded for http://localhost:3030/cart
-                                   Cart: Fonts for http://localhost:3020/cart are ready
-                                   Cart: Fonts for http://localhost:3030/cart are ready
-                                   Cart: All 0 images loaded for http://localhost:3020/cart
-                                   Cart: All 0 images loaded for http://localhost:3030/cart
-     Carousel Demo - Stub Slider Images: VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3020/carousel-demo
      Carousel Demo - Stub Slider Images: Fonts for http://localhost:3020/carousel-demo are ready
      Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3020/carousel-demo
+     Carousel Demo - Stub Slider Images: Fonts for http://localhost:3030/carousel-demo are ready
+     Carousel Demo - Stub Slider Images: All 6 images loaded for http://localhost:3030/carousel-demo
+                                   Cart: Fonts for http://localhost:3030/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3030/cart
+                                   Cart: Fonts for http://localhost:3020/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3020/cart
+                                   Cart: LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
+                                   Cart: LIVE COMPARE: opening reference (http://localhost:3020/cart) and test (http://localhost:3030/cart) simultaneously
+                                   Cart: Fonts for http://localhost:3020/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3020/cart
+                                   Cart: Fonts for http://localhost:3030/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3030/cart
+                                   Cart: Fonts for http://localhost:3020/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3020/cart
+                                   Cart: Fonts for http://localhost:3030/cart are ready
+                                   Cart: All 0 images loaded for http://localhost:3030/cart
+                                   Cart: Network idle
+                                   Cart: Network idle
+     Carousel Demo - Stub Slider Images: Network idle
+     Carousel Demo - Stub Slider Images: Network idle
      Carousel Demo - Stub Slider Images: Network idle
      Carousel Demo - Stub Slider Images: Network idle
                                    Cart: Network idle
                                    Cart: Network idle
                                    Cart: Network idle
-     Carousel Demo - Stub Slider Images: Network idle
                                    Cart: Network idle
-                                   Cart: Network idle
-                                   Cart: Network idle
-     Carousel Demo - Stub Slider Images: Network idle
      Carousel Demo - Stub Slider Images: Page http://localhost:3020/carousel-demo has settled
      Carousel Demo - Stub Slider Images: Page http://localhost:3030/carousel-demo has settled
-     Carousel Demo - Stub Slider Images: Page http://localhost:3030/carousel-demo has settled
-                                   Cart: Page http://localhost:3020/cart has settled
-                                   Cart: Page http://localhost:3030/cart has settled
-                                   Cart: Page http://localhost:3020/cart has settled
-                                   Cart: Page http://localhost:3030/cart has settled
-                                   Cart: Page http://localhost:3020/cart has settled
-                                   Cart: Page http://localhost:3030/cart has settled
      Carousel Demo - Stub Slider Images: Page http://localhost:3020/carousel-demo has settled
+     Carousel Demo - Stub Slider Images: Page http://localhost:3030/carousel-demo has settled
+                                   Cart: Page http://localhost:3030/cart has settled
+                                   Cart: Page http://localhost:3020/cart has settled
+                                   Cart: PASS: "Cart" [document] (0 diff pixels)
+                                   Cart: x Close Browser Contexts
+                                   Cart: Page http://localhost:3020/cart has settled
+                                   Cart: Page http://localhost:3030/cart has settled
+                                   Cart: Page http://localhost:3020/cart has settled
+                                   Cart: Page http://localhost:3030/cart has settled
+     Carousel Demo - Stub Slider Images: PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
      Carousel Demo - Stub Slider Images: PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
      Carousel Demo - Stub Slider Images: x Close Browser Contexts
-                                   Cart: PASS: "Cart" [document] (0 diff pixels)
-                                   Cart: PASS: "Cart" [document] (0 diff pixels)
-                                   Cart: PASS: "Cart" [document] (0 diff pixels)
-     Carousel Demo - Stub Slider Images: PASS: "Carousel Demo - Stub Slider Images" [document] (0 diff pixels)
-                                   Cart: x Close Browser Contexts
-                                   Cart: x Close Browser Contexts
-                                   Cart: x Close Browser Contexts
      Carousel Demo - Stub Slider Images: x Close Browser Contexts
                                Homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+                                   Cart: PASS: "Cart" [document] (0 diff pixels)
+                                   Cart: x Close Browser Contexts
+                                   Cart: PASS: "Cart" [document] (0 diff pixels)
+                                   Cart: x Close Browser Contexts
                                Homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
                                Homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: All 0 images loaded for http://localhost:3020/
                                Homepage: Fonts for http://localhost:3030/ are ready
-                               Homepage: All 0 images loaded for http://localhost:3030/
+                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: Fonts for http://localhost:3030/ are ready
                                Homepage: Fonts for http://localhost:3020/ are ready
                                Homepage: All 0 images loaded for http://localhost:3020/
                                Homepage: Fonts for http://localhost:3030/ are ready
                                Homepage: All 0 images loaded for http://localhost:3030/
-                               Homepage: Fonts for http://localhost:3030/ are ready
-                               Homepage: All 0 images loaded for http://localhost:3030/
-                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3030/
                          Product Detail: Fonts for http://localhost:3020/products/1 are ready
-                         Product Detail: All 0 images loaded for http://localhost:3020/products/1
-                               Homepage: Fonts for http://localhost:3020/ are ready
-                               Homepage: All 0 images loaded for http://localhost:3020/
+                         Product Detail: Fonts for http://localhost:3030/products/1 are ready
                          Product Detail: Fonts for http://localhost:3020/products/1 are ready
-                         Product Detail: All 0 images loaded for http://localhost:3020/products/1
                          Product Detail: Fonts for http://localhost:3030/products/1 are ready
-                         Product Detail: Fonts for http://localhost:3030/products/1 are ready
-                         Product Detail: All 1 images loaded for http://localhost:3030/products/1
-                         Product Detail: All 1 images loaded for http://localhost:3030/products/1
                                Homepage: All 4 images loaded for http://localhost:3020/
+                               Homepage: All 4 images loaded for http://localhost:3030/
                                Homepage: Network idle
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3030/ has settled
-                         Product Detail: Network idle
-                         Product Detail: Page http://localhost:3020/products/1 has settled
-                         Product Detail: Network idle
-                         Product Detail: Network idle
-                         Product Detail: Page http://localhost:3020/products/1 has settled
-                         Product Detail: Network idle
-                         Product Detail: Page http://localhost:3030/products/1 has settled
-                         Product Detail: Page http://localhost:3030/products/1 has settled
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: PASS: "Homepage" [[data-cy="hero-section"]] (0 diff pixels)
-                         Product Detail: PASS: "Product Detail" [document] (0 diff pixels)
-                         Product Detail: PASS: "Product Detail" [document] (0 diff pixels)
-                         Product Detail: x Close Browser Contexts
-                         Product Detail: x Close Browser Contexts
-                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
-                          Products List: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
-                               Homepage: PASS: "Homepage" [[data-cy="hero-section"]] (0 diff pixels)
-                               Homepage: MISMATCH: "Homepage" [[data-cy="hero-section"]] (101772 diff pixels). Entering retry loop...
-                               Homepage: retryCompare | Retry 1/2 for "Homepage" [[data-cy="hero-section"]] - chilling for 1000ms
-                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
-                          Products List: Fonts for http://localhost:3030/products are ready
-                         Product Detail: Fonts for http://localhost:3020/products/1 are ready
-                         Product Detail: Fonts for http://localhost:3030/products/1 are ready
-                          Products List: Fonts for http://localhost:3020/products are ready
-                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
+                         Product Detail: All 1 images loaded for http://localhost:3020/products/1
                          Product Detail: All 1 images loaded for http://localhost:3030/products/1
                          Product Detail: All 1 images loaded for http://localhost:3020/products/1
-                          Products List: All 10 images loaded for http://localhost:3030/products
-                          Products List: All 10 images loaded for http://localhost:3020/products
-                               Homepage: MISMATCH: "Homepage" [document] (2563 diff pixels). Entering retry loop...
-                               Homepage: retryCompare | Retry 1/2 for "Homepage" [document] - chilling for 1000ms
+                         Product Detail: All 1 images loaded for http://localhost:3030/products/1
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: PASS: "Homepage" [[data-cy="hero-section"]] (0 diff pixels)
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
                          Product Detail: Network idle
                          Product Detail: Network idle
+                         Product Detail: Network idle
+                         Product Detail: Page http://localhost:3020/products/1 has settled
                          Product Detail: Page http://localhost:3030/products/1 has settled
                          Product Detail: Page http://localhost:3020/products/1 has settled
+                         Product Detail: Network idle
+                         Product Detail: Page http://localhost:3030/products/1 has settled
+                               Homepage: MISMATCH: "Homepage" [document] (31027 diff pixels). Entering retry loop...
+                               Homepage: retryCompare | Retry 1/2 for "Homepage" [document] - chilling for 1000ms
+                               Homepage: MISMATCH: "Homepage" [[data-cy="hero-section"]] (102877 diff pixels). Entering retry loop...
+                               Homepage: retryCompare | Retry 1/2 for "Homepage" [[data-cy="hero-section"]] - chilling for 1000ms
+                               Homepage: PASS: "Homepage" [[data-cy="hero-section"]] (0 diff pixels)
+                         Product Detail: PASS: "Product Detail" [document] (0 diff pixels)
+                         Product Detail: PASS: "Product Detail" [document] (0 diff pixels)
+                         Product Detail: x Close Browser Contexts
+                         Product Detail: x Close Browser Contexts
+                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
+                         Product Detail: LIVE COMPARE: opening reference (http://localhost:3020/products/1) and test (http://localhost:3030/products/1) simultaneously
+                          Products List: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
                                Homepage: PASS: "Homepage" [document] (0 diff pixels)
                                Homepage: x Close Browser Contexts
-                          Products List: Network idle
-                          Products List: Page http://localhost:3030/products has settled
-                          Products List: Network idle
-                          Products List: Page http://localhost:3020/products has settled
-                          Products List: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
                                Homepage: retryCompare | Re-navigating both pages for retry 1...
-                          Products List: Fonts for http://localhost:3030/products are ready
+                         Product Detail: Fonts for http://localhost:3030/products/1 are ready
+                         Product Detail: Fonts for http://localhost:3020/products/1 are ready
                           Products List: Fonts for http://localhost:3020/products are ready
+                          Products List: Fonts for http://localhost:3030/products are ready
+                          Products List: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+                         Product Detail: All 1 images loaded for http://localhost:3020/products/1
+                         Product Detail: All 1 images loaded for http://localhost:3030/products/1
+                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: All 0 images loaded for http://localhost:3020/
+                               Homepage: Fonts for http://localhost:3030/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3030/
+                               Homepage: retryCompare | Re-navigating both pages for retry 1...
+                          Products List: All 10 images loaded for http://localhost:3030/products
+                          Products List: All 10 images loaded for http://localhost:3020/products
+                          Products List: Fonts for http://localhost:3020/products are ready
+                          Products List: Fonts for http://localhost:3030/products are ready
                                Homepage: Fonts for http://localhost:3030/ are ready
                                Homepage: All 4 images loaded for http://localhost:3030/
                                Homepage: Fonts for http://localhost:3020/ are ready
                                Homepage: All 4 images loaded for http://localhost:3020/
+                          Products List: All 10 images loaded for http://localhost:3030/products
+                               Homepage: Network idle
+                          Products List: All 10 images loaded for http://localhost:3020/products
+                               Homepage: Network idle
+                         Product Detail: Network idle
+                         Product Detail: Network idle
+                          Products List: Network idle
+                          Products List: Network idle
+                         Product Detail: Page http://localhost:3030/products/1 has settled
+                         Product Detail: Page http://localhost:3020/products/1 has settled
+                          Products List: Page http://localhost:3020/products has settled
+                          Products List: Page http://localhost:3030/products has settled
+                               Homepage: Network idle
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: Page http://localhost:3020/ has settled
+                          Products List: Network idle
+                          Products List: Page http://localhost:3030/products has settled
+                          Products List: Network idle
+                          Products List: Page http://localhost:3020/products has settled
                          Product Detail: PASS: "Product Detail" [document] (0 diff pixels)
                           Products List: PASS: "Products List" [document] (0 diff pixels)
                          Product Detail: x Close Browser Contexts
-                               Homepage: Network idle
-                               Homepage: Network idle
-                               Homepage: retryCompare | Re-navigating both pages for retry 1...
                           Products List: x Close Browser Contexts
-                          Products List: All 10 images loaded for http://localhost:3020/products
-                          Products List: All 10 images loaded for http://localhost:3030/products
+                               Homepage: retryCompare | Retry 2/2 for "Homepage" [document] - chilling for 2000ms
+                               Homepage: retryCompare | Retry 2/2 for "Homepage" [[data-cy="hero-section"]] - chilling for 2000ms
                           Products List: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
           Products - Electronics Filter: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
-                               Homepage: Fonts for http://localhost:3020/ are ready
-                               Homepage: All 0 images loaded for http://localhost:3020/
-                               Homepage: Fonts for http://localhost:3030/ are ready
-                               Homepage: All 4 images loaded for http://localhost:3030/
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: Page http://localhost:3020/ has settled
+                          Products List: PASS: "Products List" [document] (0 diff pixels)
+                          Products List: x Close Browser Contexts
                           Products List: Fonts for http://localhost:3030/products are ready
                           Products List: Fonts for http://localhost:3020/products are ready
-                          Products List: Network idle
-                          Products List: Page http://localhost:3020/products has settled
-                          Products List: Network idle
-                          Products List: Page http://localhost:3030/products has settled
-                               Homepage: Network idle
-                               Homepage: Network idle
-                               Homepage: retryCompare | Retry 2/2 for "Homepage" [[data-cy="hero-section"]] - chilling for 2000ms
+          Products - Electronics Filter: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
                           Products List: All 10 images loaded for http://localhost:3020/products
                           Products List: All 10 images loaded for http://localhost:3030/products
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: Page http://localhost:3030/ has settled
                           Products List: Network idle
-                          Products List: Page http://localhost:3020/products has settled
                           Products List: Network idle
                           Products List: Page http://localhost:3030/products has settled
-                          Products List: PASS: "Products List" [document] (0 diff pixels)
-                          Products List: x Close Browser Contexts
-                               Homepage: retryCompare | Retry 2/2 for "Homepage" [document] - chilling for 2000ms
-          Products - Electronics Filter: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
+                          Products List: Page http://localhost:3020/products has settled
                           Products List: PASS: "Products List" [document] (0 diff pixels)
                           Products List: x Close Browser Contexts
           Products - Electronics Filter: LIVE COMPARE: opening reference (http://localhost:3020/products) and test (http://localhost:3030/products) simultaneously
                                Homepage: retryCompare | Re-navigating both pages for retry 2...
-                               Homepage: Fonts for http://localhost:3020/ are ready
-                               Homepage: All 4 images loaded for http://localhost:3020/
-                               Homepage: Fonts for http://localhost:3030/ are ready
-                               Homepage: All 4 images loaded for http://localhost:3030/
-                               Homepage: Network idle
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: retryCompare | Re-navigating both pages for retry 2...
-                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [[data-cy="hero-section"]]. Least diff pixels: 101772
-                               Homepage: FAIL after retries: "Homepage" [[data-cy="hero-section"]]
                                Homepage: Fonts for http://localhost:3030/ are ready
                                Homepage: All 4 images loaded for http://localhost:3030/
                                Homepage: Fonts for http://localhost:3020/ are ready
                                Homepage: All 0 images loaded for http://localhost:3020/
-                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
-                               Homepage: MISMATCH: "Homepage" [document] (319852 diff pixels). Entering retry loop...
-                               Homepage: retryCompare | Retry 1/2 for "Homepage" [document] - chilling for 1000ms
-                               Homepage: Network idle
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [document]. Least diff pixels: 2563
-                               Homepage: FAIL after retries: "Homepage" [document]
-                               Homepage: x Close Browser Contexts
-                    Visits the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-                               Homepage: retryCompare | Re-navigating both pages for retry 1...
-                               Homepage: Fonts for http://localhost:3030/ are ready
-                               Homepage: All 4 images loaded for http://localhost:3030/
-                               Homepage: Fonts for http://localhost:3020/ are ready
-                               Homepage: All 4 images loaded for http://localhost:3020/
-                    Visits the homepage: MISMATCH: "Visits the homepage" [document] (64922 diff pixels). Entering retry loop...
-                    Visits the homepage: retryCompare | Retry 1/2 for "Visits the homepage" [document] - chilling for 1000ms
-                               Homepage: Network idle
-                               Homepage: Network idle
-                               Homepage: Page http://localhost:3030/ has settled
-                               Homepage: Page http://localhost:3020/ has settled
-                               Homepage: retryCompare | Retry 2/2 for "Homepage" [document] - chilling for 2000ms
-                    Visits the homepage: retryCompare | Re-navigating both pages for retry 1...
-                    Visits the homepage: retryCompare | Retry 2/2 for "Visits the homepage" [document] - chilling for 2000ms
                                Homepage: retryCompare | Re-navigating both pages for retry 2...
                                Homepage: Fonts for http://localhost:3020/ are ready
                                Homepage: All 4 images loaded for http://localhost:3020/
@@ -473,58 +437,100 @@ Carousel Demo - Pause With Override CSS: x Close Browser Contexts
                                Homepage: All 4 images loaded for http://localhost:3030/
                                Homepage: Network idle
                                Homepage: Network idle
-                    Visits the homepage: retryCompare | Re-navigating both pages for retry 2...
+                               Homepage: Network idle
+                               Homepage: Network idle
                                Homepage: Page http://localhost:3020/ has settled
                                Homepage: Page http://localhost:3030/ has settled
-                    Visits the homepage: retryCompare | All 2 retries exhausted for "Visits the homepage" [document]. Least diff pixels: 64922
-                    Visits the homepage: FAIL after retries: "Visits the homepage" [document]
-                    Visits the homepage: x Close Browser Contexts
-                    Visits the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [document]. Least diff pixels: 319067
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [document]. Least diff pixels: 31027
                                Homepage: FAIL after retries: "Homepage" [document]
                                Homepage: x Close Browser Contexts
+                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [[data-cy="hero-section"]]. Least diff pixels: 102877
+                               Homepage: FAIL after retries: "Homepage" [[data-cy="hero-section"]]
                     Visits the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-                    Visits the homepage: PASS: "Visits the homepage" [document] (0 diff pixels)
-                    Visits the homepage: x Close Browser Contexts
-         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-                    Visits the homepage: MISMATCH: "Visits the homepage" [document] (322281 diff pixels). Entering retry loop...
+                               Homepage: PASS: "Homepage" [[data-cy="features-section"]] (0 diff pixels)
+                               Homepage: MISMATCH: "Homepage" [document] (321466 diff pixels). Entering retry loop...
+                               Homepage: retryCompare | Retry 1/2 for "Homepage" [document] - chilling for 1000ms
+                    Visits the homepage: MISMATCH: "Visits the homepage" [document] (227673 diff pixels). Entering retry loop...
                     Visits the homepage: retryCompare | Retry 1/2 for "Visits the homepage" [document] - chilling for 1000ms
-         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
-         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
-         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
-         Click Shop Now on the homepage: All 0 images loaded for http://localhost:3020/products
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
+                               Homepage: retryCompare | Re-navigating both pages for retry 1...
+                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3020/
+                               Homepage: Fonts for http://localhost:3030/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3030/
                     Visits the homepage: retryCompare | Re-navigating both pages for retry 1...
-         Click Shop Now on the homepage: PASS: "Click Shop Now on the homepage" [document] (0 diff pixels)
-         Click Shop Now on the homepage: x Close Browser Contexts
-         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
                     Visits the homepage: retryCompare | Retry 2/2 for "Visits the homepage" [document] - chilling for 2000ms
-         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
-         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
-         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
-         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3020/products
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
-         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
-         Click Shop Now on the homepage: PASS: "Click Shop Now on the homepage" [document] (0 diff pixels)
-         Click Shop Now on the homepage: x Close Browser Contexts
-         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
-         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
-         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
-         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3020/products
-         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
+                               Homepage: Network idle
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3030/ has settled
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: retryCompare | Retry 2/2 for "Homepage" [document] - chilling for 2000ms
                     Visits the homepage: retryCompare | Re-navigating both pages for retry 2...
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Network idle
-         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
-         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
-                    Visits the homepage: retryCompare | All 2 retries exhausted for "Visits the homepage" [document]. Least diff pixels: 159392
+                    Visits the homepage: retryCompare | All 2 retries exhausted for "Visits the homepage" [document]. Least diff pixels: 65883
                     Visits the homepage: FAIL after retries: "Visits the homepage" [document]
                     Visits the homepage: x Close Browser Contexts
+                    Visits the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+                    Visits the homepage: MISMATCH: "Visits the homepage" [document] (60000 diff pixels). Entering retry loop...
+                    Visits the homepage: retryCompare | Retry 1/2 for "Visits the homepage" [document] - chilling for 1000ms
+                               Homepage: retryCompare | Re-navigating both pages for retry 2...
+                               Homepage: Fonts for http://localhost:3020/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3020/
+                               Homepage: Fonts for http://localhost:3030/ are ready
+                               Homepage: All 4 images loaded for http://localhost:3030/
+                               Homepage: Network idle
+                               Homepage: Network idle
+                               Homepage: Page http://localhost:3020/ has settled
+                               Homepage: Page http://localhost:3030/ has settled
+                    Visits the homepage: retryCompare | Re-navigating both pages for retry 1...
+                               Homepage: retryCompare | All 2 retries exhausted for "Homepage" [document]. Least diff pixels: 320688
+                               Homepage: FAIL after retries: "Homepage" [document]
+                               Homepage: x Close Browser Contexts
+                    Visits the homepage: retryCompare | Retry 2/2 for "Visits the homepage" [document] - chilling for 2000ms
+                    Visits the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+                    Visits the homepage: MISMATCH: "Visits the homepage" [document] (204249 diff pixels). Entering retry loop...
+                    Visits the homepage: retryCompare | Retry 1/2 for "Visits the homepage" [document] - chilling for 1000ms
+                    Visits the homepage: retryCompare | Re-navigating both pages for retry 1...
+                    Visits the homepage: retryCompare | Re-navigating both pages for retry 2...
+                    Visits the homepage: retryCompare | Retry 2/2 for "Visits the homepage" [document] - chilling for 2000ms
+                    Visits the homepage: retryCompare | Match found on retry 2 (test vs reference[1])
+                    Visits the homepage: PASS after retries: "Visits the homepage" [document]
+                    Visits the homepage: x Close Browser Contexts
+         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
+         Click Shop Now on the homepage: All 0 images loaded for http://localhost:3020/products
+         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
+         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
+         Click Shop Now on the homepage: PASS: "Click Shop Now on the homepage" [document] (0 diff pixels)
+         Click Shop Now on the homepage: x Close Browser Contexts
+         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+                    Visits the homepage: retryCompare | Re-navigating both pages for retry 2...
+         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
+         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
+         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
+         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3020/products
+                    Visits the homepage: retryCompare | All 2 retries exhausted for "Visits the homepage" [document]. Least diff pixels: 161264
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
+         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
+                    Visits the homepage: FAIL after retries: "Visits the homepage" [document]
+                    Visits the homepage: x Close Browser Contexts
+         Click Shop Now on the homepage: PASS: "Click Shop Now on the homepage" [document] (0 diff pixels)
+         Click Shop Now on the homepage: LIVE COMPARE: opening reference (http://localhost:3020/) and test (http://localhost:3030/) simultaneously
+         Click Shop Now on the homepage: x Close Browser Contexts
+         Click Shop Now on the homepage: Fonts for http://localhost:3020/products are ready
+         Click Shop Now on the homepage: Fonts for http://localhost:3030/products are ready
+         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3020/products
+         Click Shop Now on the homepage: All 4 images loaded for http://localhost:3030/products
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Page http://localhost:3030/products has settled
+         Click Shop Now on the homepage: Network idle
+         Click Shop Now on the homepage: Page http://localhost:3020/products has settled
          Click Shop Now on the homepage: PASS: "Click Shop Now on the homepage" [document] (0 diff pixels)
          Click Shop Now on the homepage: x Close Browser Contexts
           Products - Electronics Filter: Error during live compare for "Products - Electronics Filter"
@@ -547,17 +553,17 @@ Call log:
           Products - Electronics Filter: x Close Browser Contexts
 Disposing Browser
      COMMAND | Executing core for "report"
-     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
      compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
-     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
+     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
+     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
      compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_0_phone.png
-     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
      compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_2_desktop.png
-     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_0_phone.png
-     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
-     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
+     compare | OK: Admin Orders - Form Login Interaction demo-ecommerce_Admin_Orders_-_Form_Login_Interaction_0_document_1_tablet.png
      compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_2_desktop.png
+     compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
+     compare | OK: Cart demo-ecommerce_Cart_0_document_2_desktop.png
+     compare | OK: Carousel Demo - Pause With Override CSS demo-ecommerce_Carousel_Demo_-_Pause_With_Override_CSS_0_document_1_tablet.png
      compare | Engine error: page.click: Timeout 30000ms exceeded.
                Call log:
                  - waiting for locator('[data-cy="category-option-electronics-selector-not-exists"]')
@@ -570,48 +576,48 @@ Disposing Browser
                Call log:
                  - waiting for locator('[data-cy="category-option-electronics-selector-not-exists"]')
                . See scenario – Products - Electronics Filter (desktop)
-     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_2_desktop.png
-     compare | OK: Cart demo-ecommerce_Cart_0_document_1_tablet.png
+     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_0_phone.png
      compare | OK: Cart demo-ecommerce_Cart_0_document_0_phone.png
+     compare | OK: Cart demo-ecommerce_Cart_0_document_1_tablet.png
+     compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
      compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
      compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
-     compare | OK: Cart demo-ecommerce_Cart_0_document_2_desktop.png
-     compare | OK: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
-     compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
+     compare | OK: Admin Dashboard - Cookie Login demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
+     compare | OK: Carousel Demo - Stub Slider Images demo-ecommerce_Carousel_Demo_-_Stub_Slider_Images_0_document_1_tablet.png
      compare | OK: Homepage demo-ecommerce_Homepage_2_document_1_tablet.png
-     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_0_phone.png
-     compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
      compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_1_tablet.png
-     compare | OK: Products List demo-ecommerce_Products_List_0_document_0_phone.png
      compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_2_desktop.png
-     compare | OK: Products List demo-ecommerce_Products_List_0_document_1_tablet.png
-     compare | OK: Products List demo-ecommerce_Products_List_0_document_2_desktop.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
-     compare | OK: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png
+     compare | OK: Homepage demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
+     compare | OK: Product Detail demo-ecommerce_Product_Detail_0_document_0_phone.png
      compare | OK: Click Shop Now on the homepage demo-ecommerce_Click_Shop_Now_on_the_homepage_0_document_1_tablet.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 4.99%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
      compare | OK: Click Shop Now on the homepage demo-ecommerce_Click_Shop_Now_on_the_homepage_0_document_2_desktop.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 0.22%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_0_phone.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 0.72%, threshold: 0.1% }: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
-   See: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 22.08%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_2_desktop.png
      compare | OK: Click Shop Now on the homepage demo-ecommerce_Click_Shop_Now_on_the_homepage_0_document_0_phone.png
-     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 10.75%, threshold: 0.1% }: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
+     compare | OK: Products List demo-ecommerce_Products_List_0_document_0_phone.png
+     compare | OK: Products List demo-ecommerce_Products_List_0_document_2_desktop.png
+     compare | OK: Products List demo-ecommerce_Products_List_0_document_1_tablet.png
+   See: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+   See: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
+   See: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
+   See: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
+     compare | OK: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 11.80%, threshold: 0.1% }: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 5.23%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 3.95%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_0_phone.png
+   See: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 22.29%, threshold: 0.01% }: Homepage demo-ecommerce_Homepage_2_document_2_desktop.png
+     compare | ERROR { requireSameDimensions: true, size: isDifferent, content: 10.96%, threshold: 0.1% }: Visits the homepage demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
       report | Test completed...
       report | 31 Passed
       report | 8 Failed
       report | Writing jUnit Report
       report | jUnit report written to: visreg_data/ci_report/xunit.xml
       report | Writing browser report
-      report | Copied json report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/report.json
-      report | Copied jsonp report to: /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/config.js
+      report | Copied jsonp report to: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/config.js
+      report | Copied json report to: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/visreg_data/html_report/report.json
       report | *** Mismatch errors found ***
-     COMMAND | Command "report" ended with an error after [1.166s]
+     COMMAND | Command "report" ended with an error after [1.544s]
      COMMAND | Error: Mismatch errors found.
-     COMMAND | Command "liveCompare" ended with an error after [44.545s]
+     COMMAND | Command "liveCompare" ended with an error after [45.786s]
      COMMAND | Error: Mismatch errors found.
 
 
