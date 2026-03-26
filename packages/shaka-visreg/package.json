@@ -40,6 +40,12 @@
       "default": "./dist/capture/helpers/index.js"
     }
   },
+  "typesVersions": {
+    "*": {
+      "helpers": ["dist/capture/helpers/index.d.ts"],
+      "core/types": ["dist/core/types.d.ts"]
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.23.6",
     "@babel/preset-env": "^7.23.6",
