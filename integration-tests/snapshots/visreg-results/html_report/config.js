@@ -14,6 +14,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -38,6 +40,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -62,6 +66,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -86,6 +92,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 28,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -110,6 +118,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 28,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -134,6 +144,8 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 28,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -158,6 +170,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 11,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -182,6 +196,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 11,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -206,6 +222,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 11,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -230,6 +248,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 26,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -254,6 +274,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 26,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -278,6 +300,8 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 26,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -302,6 +326,8 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -326,6 +352,8 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -350,6 +378,8 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -374,6 +404,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -398,6 +430,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -422,15 +456,17 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
-            "height": -162
+            "height": 162
           },
           "rawMisMatchPercentage": 0.2213942307692308,
           "misMatchPercentage": "0.22",
-          "analysisTime": 83
+          "analysisTime": 56
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
@@ -449,6 +485,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -473,6 +511,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -497,6 +537,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -521,6 +563,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
@@ -529,7 +573,7 @@ report({
           },
           "rawMisMatchPercentage": 4.992173005565863,
           "misMatchPercentage": "4.99",
-          "analysisTime": 56
+          "analysisTime": 45
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
@@ -548,6 +592,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -572,6 +618,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
@@ -580,7 +628,7 @@ report({
           },
           "rawMisMatchPercentage": 22.084162915512465,
           "misMatchPercentage": "22.08",
-          "analysisTime": 61
+          "analysisTime": 43
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
@@ -599,6 +647,8 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -623,6 +673,8 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -647,6 +699,8 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -671,6 +725,8 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -695,6 +751,8 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -719,6 +777,8 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -743,16 +803,13 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "phone",
-        "diff": {
-          "isSameDimensions": true,
-          "dimensionDifference": {
-            "width": 0,
-            "height": 0
-          },
-          "misMatchPercentage": "0.00"
-        }
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 16,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
+        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
+        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (phone)"
       },
-      "status": "pass"
+      "status": "fail"
     },
     {
       "pair": {
@@ -767,16 +824,13 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "tablet",
-        "diff": {
-          "isSameDimensions": true,
-          "dimensionDifference": {
-            "width": 0,
-            "height": 0
-          },
-          "misMatchPercentage": "0.00"
-        }
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 16,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
+        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
+        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (tablet)"
       },
-      "status": "pass"
+      "status": "fail"
     },
     {
       "pair": {
@@ -791,16 +845,13 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "desktop",
-        "diff": {
-          "isSameDimensions": true,
-          "dimensionDifference": {
-            "width": 0,
-            "height": 0
-          },
-          "misMatchPercentage": "0.00"
-        }
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 16,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
+        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
+        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (desktop)"
       },
-      "status": "pass"
+      "status": "fail"
     },
     {
       "pair": {
@@ -815,15 +866,17 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
             "height": -1621
           },
-          "rawMisMatchPercentage": 0.7203728362183754,
-          "misMatchPercentage": "0.72",
-          "analysisTime": 36
+          "rawMisMatchPercentage": 6.016511318242344,
+          "misMatchPercentage": "6.02",
+          "analysisTime": 24
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png"
       },
@@ -842,6 +895,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -866,15 +921,17 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
             "height": -64
           },
-          "rawMisMatchPercentage": 22.084162915512465,
-          "misMatchPercentage": "22.08",
-          "analysisTime": 47
+          "rawMisMatchPercentage": 13.307760560941828,
+          "misMatchPercentage": "13.31",
+          "analysisTime": 37
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png"
       },
@@ -893,6 +950,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 10,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -917,6 +976,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 10,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -941,6 +1002,8 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
+        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 10,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {

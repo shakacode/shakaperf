@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="39" failures="5" errors="5" skipped="0">
-  <testsuite name="shaka-visreg" tests="39" failures="5" errors="5" skipped="0">
+<testsuites tests="39" failures="8" errors="8" skipped="0">
+  <testsuite name="shaka-visreg" tests="39" failures="8" errors="8" skipped="0">
     <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
     <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
     <testcase classname="document" name=" ›› Admin Dashboard - Cookie Login"/>
@@ -40,9 +40,18 @@
     <testcase classname="document" name=" ›› Products List"/>
     <testcase classname="document" name=" ›› Products List"/>
     <testcase classname="document" name=" ›› Products List"/>
-    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
-    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
-    <testcase classname="document" name=" ›› Products - Electronics Filter"/>
+    <testcase classname="document" name=" ›› Products - Electronics Filter">
+      <failure message="Design deviation ›› Products - Electronics Filter (document) component"/>
+      <error message="Design deviation ›› Products - Electronics Filter (document) component"/>
+    </testcase>
+    <testcase classname="document" name=" ›› Products - Electronics Filter">
+      <failure message="Design deviation ›› Products - Electronics Filter (document) component"/>
+      <error message="Design deviation ›› Products - Electronics Filter (document) component"/>
+    </testcase>
+    <testcase classname="document" name=" ›› Products - Electronics Filter">
+      <failure message="Design deviation ›› Products - Electronics Filter (document) component"/>
+      <error message="Design deviation ›› Products - Electronics Filter (document) component"/>
+    </testcase>
     <testcase classname="document" name=" ›› Visits the homepage">
       <failure message="Design deviation ›› Visits the homepage (document) component"/>
       <error message="Design deviation ›› Visits the homepage (document) component"/>
