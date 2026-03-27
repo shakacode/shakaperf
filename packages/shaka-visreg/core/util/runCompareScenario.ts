@@ -136,9 +136,9 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   const maxNumDiffPixels = scenario.maxNumDiffPixels != null
     ? scenario.maxNumDiffPixels
     : (config.maxNumDiffPixels != null ? config.maxNumDiffPixels : 0);
-  const pixelmatchThreshold = scenario.liveComparePixelmatchThreshold != null
-    ? scenario.liveComparePixelmatchThreshold
-    : (config.liveComparePixelmatchThreshold != null ? config.liveComparePixelmatchThreshold : 0.1);
+  const pixelmatchThreshold = scenario.comparePixelmatchThreshold != null
+    ? scenario.comparePixelmatchThreshold
+    : (config.comparePixelmatchThreshold != null ? config.comparePixelmatchThreshold : 0.1);
 
   for (let selectorIndex = 0; selectorIndex < selectors.length; selectorIndex++) {
     const selector = selectors[selectorIndex];

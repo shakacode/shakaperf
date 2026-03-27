@@ -9,7 +9,7 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 - [shaka-visreg](#shaka-visreg)
   - [Contents](#contents)
   - [Commands](#commands)
-    - [liveCompare](#livecompare)
+    - [compare](#compare)
     - [CLI Options](#cli-options)
   - [Getting Started](#getting-started)
     - [Initializing Your Project](#initializing-your-project)
@@ -62,13 +62,10 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 shaka-visreg init
 
 # Compare screenshots between a reference URL and test URL side-by-side
-shaka-visreg liveCompare --config visreg.json
-
-# Open the most recent test report in your browser
-shaka-visreg openReport
+shaka-visreg compare --config visreg.json
 ```
 
-### liveCompare
+### compare
 
 The main workflow. Captures screenshots from both a reference URL and test URL for each scenario, compares them pixel-by-pixel, and generates a report showing any visual differences. Supports retry logic for flaky comparisons.
 
@@ -168,7 +165,7 @@ module.exports = {
 }
 ```
 
-Then run: `shaka-visreg liveCompare --config="visreg.js"`
+Then run: `shaka-visreg compare --config="visreg.js"`
 
 ### Scenario Properties
 
@@ -180,7 +177,7 @@ Scenario properties, [which may be global](#global-scenario-defaults), are **pro
 | `onBeforeScript`        | Used to set up browser state e.g. cookies                                                                                                           |
 | `cookiePath`            | Import cookies in JSON format (available with default onBeforeScript, see [Setting Cookies](#setting-cookies))                                      |
 | `url`                   | [required] The URL of your app state                                                                                                                |
-| `referenceUrl`          | Specify a different state or environment for reference (required for liveCompare)                                                                   |
+| `referenceUrl`          | Specify a different state or environment for reference (required for compare)                                                                   |
 | `readyEvent`            | Wait until this string has been logged to the console                                                                                               |
 | `readySelector`         | Wait until this selector exists before continuing                                                                                                   |
 | `readyTimeout`          | Timeout for readyEvent and readySelector (default: 30000ms)                                                                                         |
@@ -383,7 +380,7 @@ For testing a DOM with dynamic content (e.g. ad banners), you have two options:
 
 ### Comparing Different Endpoints
 
-Comparing different endpoints (e.g. staging vs production) is easy with `referenceUrl`. For `liveCompare`, set `referenceUrl` to your baseline and `url` to what you're testing:
+Comparing different endpoints (e.g. staging vs production) is easy with `referenceUrl`. For `compare`, set `referenceUrl` to your baseline and `url` to what you're testing:
 
 ```json
 {
@@ -526,11 +523,7 @@ Available report types:
 - `"CI"` — JUnit XML report for CI integration (Jenkins, GitLab CI, etc.)
 - `"json"` — Machine-readable JSON report
 
-You can always view the latest report with:
-
-```sh
-shaka-visreg openReport
-```
+After a compare run, the full path to the HTML report is printed to the terminal — copy-paste it into your browser to view.
 
 ### CI Report Configuration
 
@@ -623,16 +616,16 @@ visreg_data/html_report/
 import runner from 'shaka-visreg'
 
 // Basic usage
-await runner('liveCompare', { config: 'visreg.json' })
+await runner('compare', { config: 'visreg.json' })
 
 // With filter
-await runner('liveCompare', {
+await runner('compare', {
   filter: 'someScenarioLabelAsRegExString',
   config: 'visreg.json',
 })
 
 // With inline config object
-await runner('liveCompare', {
+await runner('compare', {
   config: {
     id: 'foo',
     scenarios: [

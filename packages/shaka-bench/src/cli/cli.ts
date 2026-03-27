@@ -3,6 +3,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { Command } from "commander";
+import { addCompareOptions } from "shaka-shared";
 import { getDefaultValue } from "./command-config/default-flag-args";
 import { runCompare } from "./commands/compare";
 import { runAnalyze } from "./commands/compare/analyze";
@@ -26,13 +27,11 @@ program
   .description("Benchmarking tools for web applications")
   .version(require("../../package.json").version);
 
-program
+const compareCmd = program
   .command("compare")
   .description(
     "Compare the performance delta between an experiment and control"
   )
-  .option("--testFile <path>", "Path to a specific test file containing abTest() calls")
-  .option("--testPathPattern <regex>", "Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)")
   .option("--hideAnalysis", "Hide the analysis output in terminal", false)
   .option(
     "-n, --numberOfMeasurements <n>",
@@ -44,12 +43,6 @@ program
     "--resultsFolder <path>",
     "The output folder path for all tracerbench results",
     getDefaultValue("resultsFolder")
-  )
-  .option("--controlURL <url>", "Control URL to visit for compare command", "http://localhost:3020")
-  .option(
-    "--experimentURL <url>",
-    "Experiment URL to visit for compare command",
-    "http://localhost:3030"
   )
   .option(
     "--regressionThreshold <ms>",
@@ -79,6 +72,7 @@ program
     }
     await runCompare(opts);
   });
+addCompareOptions(compareCmd);
 
 program
   .command("analyze")

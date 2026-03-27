@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { addCompareOptions } from 'shaka-shared';
 import runner from '../core/runner';
 
 const packageJson = require('../package.json');
@@ -48,19 +49,11 @@ program
   .description('Generate boilerplate config files in your CWD.')
   .action(function (this: Command) { runCommand('init', this); });
 
-program
-  .command('liveCompare')
+const compareCmd = program
+  .command('compare')
   .description('Open reference and test URLs simultaneously, compare side-by-side with retry logic.')
-  .option('--testFile <path>', 'Path to a specific test file (loads scenarios from abTest registry)')
-  .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
-  .option('--controlURL <url>', 'Control server URL', 'http://localhost:3020')
-  .option('--experimentURL <url>', 'Experiment server URL', 'http://localhost:3030')
   .option('--filter <regex>', 'A RegEx string used to filter scenarios by label')
-  .action(function (this: Command) { runCommand('liveCompare', this); });
-
-program
-  .command('openReport')
-  .description('View the last test report in your browser.')
-  .action(function (this: Command) { runCommand('openReport', this); });
+  .action(function (this: Command) { runCommand('compare', this); });
+addCompareOptions(compareCmd);
 
 program.parse();

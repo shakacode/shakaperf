@@ -48,7 +48,7 @@ export interface AbTestVisregConfig {
   maxNumDiffPixels?: number;
   compareRetries?: number;
   compareRetryDelay?: number;
-  liveComparePixelmatchThreshold?: number;
+  comparePixelmatchThreshold?: number;
 
   // Ready state (from Scenario)
   readyEvent?: string;

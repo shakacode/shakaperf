@@ -150,12 +150,10 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       archiveReport(config);
     }
 
-    if (config.openReport && config.report && config.report.indexOf('browser') > -1) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const executeCommand = require('./index').default;
-      return executeCommand('_openReport', config);
+    if (config.report && config.report.indexOf('browser') > -1) {
+      const reportPath = path.resolve(config.compareReportURL);
+      logger.success('Report: ' + reportPath);
     }
-    return undefined;
   });
 }
 

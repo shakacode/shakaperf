@@ -36,7 +36,7 @@ function translateUrl (url: string) {
  * Prepare a page: navigate to url, inject tools, wait for ready, handle selectors.
  * Returns the expanded selectors and selectorMap.
  *
- * Shared by runCompareScenario (liveCompare) and runPlaywright.
+ * Shared by runCompareScenario (compare) and runPlaywright.
  */
 async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};

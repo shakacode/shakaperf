@@ -31,7 +31,7 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   config.visregVersion = version;
   config.scenarioLogsInReports = userConfig.scenarioLogsInReports;
 
-  // liveCompare command options
+  // compare command options
   config.compareRetries = userConfig.compareRetries ?? 0;
   config.compareRetryDelay = userConfig.compareRetryDelay ?? 5000;
   config.maxNumDiffPixels = userConfig.maxNumDiffPixels ?? 0;
@@ -67,7 +67,6 @@ function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<s
 function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   const baseDir = config._runBaseDir!;
   config.htmlReportDir = path.join(baseDir, 'html_report');
-  config.openReport = userConfig.openReport === undefined ? true : userConfig.openReport;
   config.archivePath = path.join(baseDir, 'reports');
   config.archiveReport = userConfig.archiveReport === undefined ? false : userConfig.archiveReport;
 

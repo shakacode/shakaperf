@@ -79,10 +79,6 @@ function approve () {
   runner('approve', exampleConfig);
 }
 
-function open () {
-  runner('openReport', exampleConfig);
-}
-
 function main () {
   runner('test', exampleConfig).then(
     () => {
@@ -97,10 +93,6 @@ function main () {
 switch (argsOptions.command) {
   case 'approve':
     approve();
-    break;
-  case 'open':
-  case 'openReport':
-    open();
     break;
   default:
     main();

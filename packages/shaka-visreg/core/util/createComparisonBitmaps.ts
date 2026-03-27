@@ -27,7 +27,7 @@ interface CompareResult {
   originalError?: Error;
 }
 
-const logger = createLogger('liveCompare');
+const logger = createLogger('compare');
 
 const CONCURRENCY_DEFAULT = 10;
 

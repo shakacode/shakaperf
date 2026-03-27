@@ -30,7 +30,6 @@ const expectedConfig: Record<string, any> = {
   experimentScreenshotDir: defaultPaths.htmlReport + '/experiment_screenshot',
   ciReportDir: defaultPaths.ciReport,
   htmlReportDir: defaultPaths.htmlReport,
-  openReport: true,
   comparePath: path.resolve(visregDir, 'compare/output'),
   captureConfigFileNameDefault: path.resolve(
     visregDir,

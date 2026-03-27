@@ -14,7 +14,7 @@ describe('computeConfig_spec', function () {
     assert.strictEqual(actualConfig.resembleOutputOptions!.transparency, 0.3);
   });
 
-  describe('liveCompare config options', function () {
+  describe('compare config options', function () {
     it('should set default compareRetries to 0', function () {
       const actualConfig = extendConfig({ ...baseConfig }, {});
       assert.strictEqual(actualConfig.compareRetries, 0);
@@ -45,7 +45,7 @@ describe('computeConfig_spec', function () {
       assert.strictEqual(actualConfig.maxNumDiffPixels, 100);
     });
 
-    it('should pass all liveCompare options together', function () {
+    it('should pass all compare options together', function () {
       const actualConfig = extendConfig({ ...baseConfig }, {
         compareRetries: 3,
         compareRetryDelay: 7500,

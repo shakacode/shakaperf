@@ -1,9 +1,8 @@
 import _ from 'lodash';
 import createLogger from '../util/logger';
 import * as init from './init';
-import * as openReport from './openReport';
 import * as report from './report';
-import * as liveCompare from './liveCompare';
+import * as compare from './compare';
 import * as version from './version';
 import type { RuntimeConfig } from '../types';
 
@@ -18,22 +17,20 @@ const logger = createLogger('COMMAND');
  * The execute function should not have much logic
  */
 
-const commandModules: Record<string, { execute: (config: RuntimeConfig) => any }> = { init, openReport, report, liveCompare, version };
+const commandModules: Record<string, { execute: (config: RuntimeConfig) => any }> = { init, report, compare, version };
 
 /* Each and every command defined, including commands used in before/after */
 const commandNames = [
   'init',
-  'openReport',
   'report',
-  'liveCompare',
+  'compare',
   'version'
 ];
 
 /* Commands that are only exposed to higher levels */
 const exposedCommandNames = [
   'init',
-  'liveCompare',
-  'openReport',
+  'compare',
   'version'
 ];
 
@@ -79,9 +76,6 @@ const commands = commandNames
         });
 
         return promise.then(function (result: unknown) {
-          if (/openReport/.test(command.name)) {
-            return result;
-          }
           const perf = (Date.now() - config.perf[command.name]) / 1000;
           logger.success('Command "' + command.name + '" successfully executed in [' + perf + 's]');
           return result;

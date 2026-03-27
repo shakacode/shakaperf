@@ -67,11 +67,11 @@ export interface Scenario {
   // Variants
   variants?: Variant[];
 
-  // liveCompare overrides
+  // compare overrides
   compareRetries?: number;
   compareRetryDelay?: number;
   maxNumDiffPixels?: number;
-  liveComparePixelmatchThreshold?: number;
+  comparePixelmatchThreshold?: number;
 
   // Internal (set at runtime)
   sIndex?: number;
@@ -143,7 +143,6 @@ export interface VisregConfig {
   engineOptions?: EngineOptions;
 
   report?: string[];
-  openReport?: boolean;
   archiveReport?: boolean;
   scenarioLogsInReports?: boolean;
 
@@ -173,8 +172,8 @@ export interface VisregConfig {
 
   useBoundingBoxViewportForSelectors?: boolean;
 
-  // liveCompare
-  liveComparePixelmatchThreshold?: number;
+  // compare
+  comparePixelmatchThreshold?: number;
 }
 
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
@@ -205,7 +204,6 @@ export interface RuntimeConfig {
   id?: string;
   engine: string | null;
   report: string[];
-  openReport: boolean;
   archiveReport: boolean;
   defaultMisMatchThreshold: number;
   defaultRequireSameDimensions?: boolean;
@@ -224,7 +222,7 @@ export interface RuntimeConfig {
   isReference?: boolean;
 }
 
-// ── Decorated Compare Config (internal, used during liveCompare) ─────
+// ── Decorated Compare Config (internal, used during compare) ─────
 export interface DecoratedCompareConfig extends VisregConfig {
   _experimentScreenshotPath: string;
   _controlScreenshotPath: string;
@@ -322,7 +320,6 @@ export interface VisregGlobalConfig {
   engineOptions?: EngineOptions;
 
   report?: string[];
-  openReport?: boolean;
   archiveReport?: boolean;
   scenarioLogsInReports?: boolean;
 
@@ -352,7 +349,7 @@ export interface VisregGlobalConfig {
 
   useBoundingBoxViewportForSelectors?: boolean;
 
-  liveComparePixelmatchThreshold?: number;
+  comparePixelmatchThreshold?: number;
 }
 
 export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConfig {

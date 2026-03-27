@@ -161,7 +161,7 @@ describe('ab-test-registry', () => {
               maxNumDiffPixels: 50,
               compareRetries: 3,
               compareRetryDelay: 1000,
-              liveComparePixelmatchThreshold: 0.3,
+              comparePixelmatchThreshold: 0.3,
               readyEvent: 'app:ready',
               readySelector: '#root',
               readyTimeout: 10000,
