@@ -10,7 +10,7 @@ import {
   Divider,
   Button,
 } from '@mui/material';
-import { Star, StarBorder, ArrowBack } from '@mui/icons-material';
+import { Star, StarBorder, ArrowBack, LocalOffer } from '@mui/icons-material';
 import { useProduct } from '../../hooks/useProducts';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
@@ -159,7 +159,7 @@ const ProductReviewsPage: React.FC = () => {
         ))}
       </Box>
 
-      <Box sx={{ mt: 4 }}>
+      <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
         <Button
           variant="outlined"
           component={Link}
@@ -168,6 +168,15 @@ const ProductReviewsPage: React.FC = () => {
           sx={{ borderColor: '#667eea', color: '#667eea' }}
         >
           Back to Product
+        </Button>
+        <Button
+          variant="contained"
+          component={Link}
+          to="/deals"
+          startIcon={<LocalOffer />}
+          sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+        >
+          View Deals
         </Button>
       </Box>
     </Container>

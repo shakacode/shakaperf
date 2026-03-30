@@ -15,7 +15,6 @@ import { Link, useLocation } from 'react-router-dom';
 const navItems = [
   { label: 'Home', path: '/' },
   { label: 'Products', path: '/products' },
-  { label: 'Deals', path: '/deals' },
   { label: 'Carousel Demo', path: '/carousel-demo' },
 ];
 
