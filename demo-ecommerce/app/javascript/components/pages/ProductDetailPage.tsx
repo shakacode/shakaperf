@@ -9,7 +9,7 @@ import {
   Breadcrumbs,
   Paper,
 } from '@mui/material';
-import { ShoppingCart, ArrowBack } from '@mui/icons-material';
+import { ShoppingCart, ArrowBack, RateReview } from '@mui/icons-material';
 import { useProduct } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -119,6 +119,16 @@ const ProductDetailPage: React.FC = () => {
                 sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
               >
                 Add to Cart
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                component={Link}
+                to={`/products/${id}/reviews`}
+                startIcon={<RateReview />}
+                sx={{ borderColor: '#667eea', color: '#667eea' }}
+              >
+                Reviews
               </Button>
               <Button
                 variant="outlined"
