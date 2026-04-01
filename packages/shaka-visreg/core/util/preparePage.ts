@@ -5,8 +5,7 @@ import { loadCookies } from '../../capture/helpers/loadCookies';
 import { waitUntilPageSettled } from '../../capture/helpers/waitUntilPageSettled';
 import { clickAndHoverHelper } from '../../capture/helpers/clickAndHoverHelper';
 import createLogger from './logger';
-import AnnotatedError from './AnnotatedError';
-import { TestType } from 'shaka-shared';
+import { TestType, AnnotatedError } from 'shaka-shared';
 import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types';
 import type { ConsoleMessage } from 'playwright';
 

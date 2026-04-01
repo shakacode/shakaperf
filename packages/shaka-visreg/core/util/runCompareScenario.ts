@@ -6,7 +6,7 @@ import * as engineTools from './engineTools';
 import { compareBuffers } from './compare/pixelmatch-inline';
 import retryCompare from './retryCompare';
 import preparePage from './preparePage';
-import AnnotatedError from './AnnotatedError';
+import { AnnotatedError } from 'shaka-shared';
 import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair, DecoratedCompareConfig } from '../types';
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
