@@ -5,6 +5,7 @@ import { loadCookies } from '../../capture/helpers/loadCookies';
 import { waitUntilPageSettled } from '../../capture/helpers/waitUntilPageSettled';
 import { clickAndHoverHelper } from '../../capture/helpers/clickAndHoverHelper';
 import createLogger from './logger';
+import AnnotatedError from './AnnotatedError';
 import { TestType } from 'shaka-shared';
 import type { PlaywrightPage, Scenario, Viewport, VisregConfig, BrowserContext, VisregTools } from '../types';
 import type { ConsoleMessage } from 'playwright';
@@ -48,14 +49,24 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
 
   // --- BEFORE: USER HOOK ---
   if (scenario.onBefore) {
-    await scenario.onBefore({
-      page,
-      browserContext: browserOrContext,
-      isReference,
-      scenario: scenario._testDef!,
-      viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
-      testType: TestType.VisualRegression,
-    });
+    let lastAnnotation: string | undefined;
+    const annotate = (label: string) => { lastAnnotation = label; };
+    try {
+      await scenario.onBefore({
+        page,
+        browserContext: browserOrContext,
+        isReference,
+        scenario: scenario._testDef!,
+        viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+        testType: TestType.VisualRegression,
+        annotate,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && lastAnnotation) {
+        throw new AnnotatedError(err, lastAnnotation);
+      }
+      throw err;
+    }
   }
 
   // --- READY EVENT SETUP (before navigation to avoid missing early events) ---
@@ -130,15 +141,28 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
 
   // --- ON READY / TEST FN ---
   if (scenario._testFn) {
-    // abTest flow: testFn replaces default onReady behavior
-    await scenario._testFn({
-      page,
-      browserContext: browserOrContext,
-      isReference,
-      scenario: scenario._testDef!,
-      viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
-      testType: TestType.VisualRegression,
-    });
+    // abTest flow: testFn replaces default onReady behavior.
+    // Track the last annotate() label per invocation so errors can report
+    // which step was in progress when the failure occurred.
+    let lastAnnotation: string | undefined;
+    const annotate = (label: string) => { lastAnnotation = label; };
+
+    try {
+      await scenario._testFn({
+        page,
+        browserContext: browserOrContext,
+        isReference,
+        scenario: scenario._testDef!,
+        viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+        testType: TestType.VisualRegression,
+        annotate,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && lastAnnotation) {
+        throw new AnnotatedError(err, lastAnnotation);
+      }
+      throw err;
+    }
   } else {
     await waitUntilPageSettled(page);
     await clickAndHoverHelper(page, scenario);
