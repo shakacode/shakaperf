@@ -52,7 +52,6 @@ program
 const compareCmd = program
   .command('compare')
   .description('Open reference and test URLs simultaneously, compare side-by-side with retry logic.')
-  .option('--filter <regex>', 'A RegEx string used to filter scenarios by label')
   .action(function (this: Command) { runCommand('compare', this); });
 addCompareOptions(compareCmd);
 

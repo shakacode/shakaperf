@@ -6,6 +6,7 @@ import { findTestFiles } from './discover-test-files';
 export interface LoadTestsOptions {
   testFile?: string;
   testPathPattern?: string;
+  filter?: string;
   log?: (message: string) => void;
 }
 
@@ -14,7 +15,7 @@ export interface LoadTestsOptions {
  * Throws if no files are found or no tests are registered.
  */
 export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestDefinition[]> {
-  const { testFile, testPathPattern, log } = options;
+  const { testFile, testPathPattern, filter, log } = options;
 
   clearRegistry();
 
@@ -37,10 +38,22 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
     }
   }
 
-  const tests = getRegisteredTests();
+  let tests = getRegisteredTests();
   if (tests.length === 0) {
     const source = testFile || 'discovered files';
     throw new Error(`No tests registered in ${source}. Did you call abTest()?`);
+  }
+
+  if (filter) {
+    const totalCount = tests.length;
+    const patterns = filter.split(',');
+    tests = tests.filter(t => patterns.some(p => new RegExp(p).test(t.name)));
+    if (log) {
+      log(`Selected ${tests.length} of ${totalCount} test(s).`);
+    }
+    if (tests.length === 0) {
+      throw new Error(`No tests matched filter "${filter}".`);
+    }
   }
 
   return tests;
