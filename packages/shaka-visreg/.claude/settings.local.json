@@ -16,7 +16,6 @@
       "Bash(npm run smoke-test-playwright)",
       "Bash(git add test/core/util/compare/pixelmatch-inline_spec.js)",
       "Bash(node -e \"const fs = require\\(''fs''\\); const { PNG } = require\\(''pngjs''\\); const buf = fs.readFileSync\\(''test/core/util/compare/refImage-1.png''\\); const png = PNG.sync.read\\(buf\\); console.log\\(''Image dimensions:'', png.width, ''x'', png.height, ''='', png.width * png.height, ''pixels''\\);\")",
-      "Bash(git add test/core/command/liveCompare_spec.js)",
       "Bash(git add test/core/util/extendConfig_spec.js)",
       "Bash(git add test/cli/usage_spec.js)",
       "Bash(node -e \"try { require\\(''proxyquire''\\); console.log\\(''proxyquire available''\\); } catch\\(e\\) { console.log\\(''proxyquire not available''\\); }\")",
