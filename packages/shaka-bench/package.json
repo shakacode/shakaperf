@@ -1,6 +1,6 @@
 {
   "name": "shaka-bench",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Benchmarking tools for web applications",
   "main": "dist/cli/index.js",
   "types": "dist/cli/index.d.ts",
