@@ -149,11 +149,6 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     if (config.archiveReport) {
       archiveReport(config);
     }
-
-    if (config.report && config.report.indexOf('browser') > -1) {
-      const reportPath = path.resolve(config.compareReportURL);
-      logger.success('Report: ' + reportPath);
-    }
   });
 }
 
@@ -266,6 +261,14 @@ export async function execute (config: RuntimeConfig) {
 
   if (failed) {
     logger.error('*** Mismatch errors found ***');
+  }
+
+  if (config.report && config.report.indexOf('browser') > -1) {
+    const reportPath = path.resolve(config.compareReportURL);
+    logger.success('Report: ' + reportPath);
+  }
+
+  if (failed) {
     throw new Error('Mismatch errors found.');
   }
 }
