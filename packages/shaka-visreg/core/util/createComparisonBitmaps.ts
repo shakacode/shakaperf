@@ -27,14 +27,9 @@ interface CompareResult {
   originalError?: Error;
 }
 
-const logger = createLogger('liveCompare');
+const logger = createLogger('compare');
 
 const CONCURRENCY_DEFAULT = 10;
-
-function regexTest (string: string, search: string) {
-  const re = new RegExp(search);
-  return re.test(string);
-}
 
 function ensureViewportLabel (config: { viewports?: Viewport[] }) {
   if (!Array.isArray(config.viewports)) return;
@@ -51,9 +46,11 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
   const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
+  const filter = config.args.filter as string | undefined;
   const tests = await loadTests({
     testFile: testFilePath,
     testPathPattern,
+    filter,
     log: function (msg) { logger.log(msg); },
   });
 
@@ -90,20 +87,6 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   configJSON.compareRetryDelay = config.compareRetryDelay;
   configJSON.maxNumDiffPixels = config.maxNumDiffPixels;
 
-  if (config.args.filter) {
-    const filtered: Scenario[] = [];
-    (config.args.filter as string).split(',').forEach(function (filteredTest: string) {
-      (configJSON.scenarios as Scenario[]).forEach(function (scenario: Scenario) {
-        if (regexTest(scenario.label, filteredTest)) {
-          filtered.push(scenario);
-        }
-      });
-    });
-    configJSON.scenarios = filtered;
-  }
-
-  const totalScenarioCount = tests.length;
-  logger.log('Selected ' + (configJSON.scenarios as Scenario[]).length + ' of ' + totalScenarioCount + ' scenarios.');
   return configJSON as unknown as DecoratedCompareConfig;
 }
 

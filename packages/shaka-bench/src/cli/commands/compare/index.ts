@@ -41,6 +41,7 @@ export interface ICompareFlags {
   experimentURL: string | undefined;
   testFile: string | undefined;
   testPathPattern: string | undefined;
+  filter: string | undefined;
   regressionThreshold?: number;
   sampleTimeout: number;
   report?: boolean;
@@ -111,6 +112,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
   const tests = await loadTests({
     testFile: compareFlags.testFile,
     testPathPattern: compareFlags.testPathPattern,
+    filter: compareFlags.filter,
     log: (msg) => console.log(msg),
   });
 

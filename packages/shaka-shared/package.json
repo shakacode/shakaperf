@@ -1,6 +1,6 @@
 {
   "name": "shaka-shared",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "description": "Shared types and utilities for shakaperf packages",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,6 +25,7 @@
     "directory": "packages/shaka-shared"
   },
   "dependencies": {
+    "commander": "^13.1.0",
     "playwright-core": "^1.50.0",
     "tsx": "^4.21.0"
   },

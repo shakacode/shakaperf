@@ -24,9 +24,9 @@ describe('the runner', function () {
   });
 
   it('should call the command/index with the correct config', function () {
-    return runner('liveCompare', {}).then(function (args: { command: string; config: unknown }) {
-      assert.strictEqual(args.command, 'liveCompare');
-      assert.deepStrictEqual(args.config, { command: 'liveCompare', args: {} });
+    return runner('compare', {}).then(function (args: { command: string; config: unknown }) {
+      assert.strictEqual(args.command, 'compare');
+      assert.deepStrictEqual(args.config, { command: 'compare', args: {} });
     });
   });
 });

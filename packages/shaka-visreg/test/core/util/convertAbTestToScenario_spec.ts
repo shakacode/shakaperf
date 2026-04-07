@@ -101,7 +101,7 @@ describe('convertAbTestToScenario', function () {
           requireSameDimensions: false,
           compareRetries: 3,
           compareRetryDelay: 2000,
-          liveComparePixelmatchThreshold: 0.2,
+          comparePixelmatchThreshold: 0.2,
         },
       },
     };
@@ -111,7 +111,7 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.requireSameDimensions, false);
     assert.strictEqual(scenario.compareRetries, 3);
     assert.strictEqual(scenario.compareRetryDelay, 2000);
-    assert.strictEqual(scenario.liveComparePixelmatchThreshold, 0.2);
+    assert.strictEqual(scenario.comparePixelmatchThreshold, 0.2);
   });
 
   it('should pass through ready state properties', function () {
@@ -190,7 +190,7 @@ describe('convertAbTestToScenario', function () {
           maxNumDiffPixels: 0,
           compareRetries: 0,
           compareRetryDelay: 0,
-          liveComparePixelmatchThreshold: 0,
+          comparePixelmatchThreshold: 0,
         },
       },
     };
@@ -204,7 +204,7 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.maxNumDiffPixels, 0);
     assert.strictEqual(scenario.compareRetries, 0);
     assert.strictEqual(scenario.compareRetryDelay, 0);
-    assert.strictEqual(scenario.liveComparePixelmatchThreshold, 0);
+    assert.strictEqual(scenario.comparePixelmatchThreshold, 0);
   });
 
   it('should not set optional properties when visreg config is empty', function () {

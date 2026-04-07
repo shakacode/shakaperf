@@ -36,7 +36,6 @@ export default async function (command: string, options?: Record<string, unknown
         testSuiteName: 'shaka-visreg'
     },
     htmlReportDir: '/path/to/project/visreg_data/html_report',
-    openReport: true,
     compareConfigFileName: '/path/to/project/visreg_data/html_report/config.js',
     compareReportURL: '/path/to/project/visreg_data/html_report/index.html',
     comparePath: '/path/to/shaka-visreg/compare/output',

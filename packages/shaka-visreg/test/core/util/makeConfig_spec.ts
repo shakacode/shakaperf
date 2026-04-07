@@ -13,7 +13,7 @@ describe('make config', function () {
   });
 
   it('should skip loading config file when testFile is provided', async function () {
-    const actualConfig = await makeConfig('liveCompare', {
+    const actualConfig = await makeConfig('compare', {
       testFile: './ab-tests/shop-now.abtest.ts',
       config: 'visreg.config.ts',
     });

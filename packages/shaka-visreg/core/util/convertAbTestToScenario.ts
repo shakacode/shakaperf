@@ -36,7 +36,7 @@ export function convertAbTestToScenario(
   if (visreg.maxNumDiffPixels != null) scenario.maxNumDiffPixels = visreg.maxNumDiffPixels;
   if (visreg.compareRetries != null) scenario.compareRetries = visreg.compareRetries;
   if (visreg.compareRetryDelay != null) scenario.compareRetryDelay = visreg.compareRetryDelay;
-  if (visreg.liveComparePixelmatchThreshold != null) scenario.liveComparePixelmatchThreshold = visreg.liveComparePixelmatchThreshold;
+  if (visreg.comparePixelmatchThreshold != null) scenario.comparePixelmatchThreshold = visreg.comparePixelmatchThreshold;
 
   if (visreg.readyEvent) scenario.readyEvent = visreg.readyEvent;
   if (visreg.readySelector) scenario.readySelector = visreg.readySelector;

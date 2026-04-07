@@ -13914,6 +13914,7 @@ __metadata:
   dependencies:
     "@types/jest": "npm:^29.5.11"
     "@types/node": "npm:^20.0.0"
+    commander: "npm:^13.1.0"
     jest: "npm:^29.7.0"
     playwright-core: "npm:^1.50.0"
     ts-jest: "npm:^29.1.0"
