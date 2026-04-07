@@ -7,6 +7,7 @@ export const defaultFlagArgs: ITBConfig = {
   regressionThreshold: 50,
   sampleTimeout: 30,
   regressionThresholdStat: "estimator",
+  pValueThreshold: 0.01,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -9,6 +9,7 @@ export interface ITBConfig {
   regressionThreshold?: number;
   sampleTimeout?: number;
   regressionThresholdStat?: RegressionThresholdStat;
+  pValueThreshold?: number;
   config?: string;
   [key: string]: any;
 }
