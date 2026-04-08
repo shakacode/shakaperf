@@ -6,7 +6,8 @@ import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfig
 
 const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
-const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', 'templates', 'docker-compose.yml');
+// At runtime __dirname is dist/twin-servers/, so go up two levels to package root
+const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
 
 export function defineConfig(config: TwinServersConfigInput): TwinServersConfigInput {
   return config;

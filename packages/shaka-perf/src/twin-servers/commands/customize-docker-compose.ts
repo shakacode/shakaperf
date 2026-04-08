@@ -4,8 +4,8 @@ import type { ResolvedConfig } from '../types';
 import { confirm } from '../helpers/shell';
 import { colorize } from '../helpers/ui';
 
-// At runtime __dirname is dist/commands/, so go up two levels to package root
-const TEMPLATE_PATH = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
+// At runtime __dirname is dist/twin-servers/commands/, so go up three levels to package root
+const TEMPLATE_PATH = path.resolve(__dirname, '..', '..', '..', 'templates', 'docker-compose.yml');
 
 function addComposeFileToConfig(configPath: string, relativeComposePath: string): boolean {
   const content = fs.readFileSync(configPath, 'utf8');
