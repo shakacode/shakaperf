@@ -158,20 +158,29 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     const testBuffer = await captureScreenshot(testPage, selector, testSelectorMap, viewport, config);
 
     if (!refBuffer || !testBuffer) {
-      // Selector not found on one or both pages
-      logger.log('magenta', 'Selector "' + selector + '" not found on ' + (!refBuffer ? 'reference' : 'test') + ' page');
       ensureDirectoryPath(testPair.reference);
       ensureDirectoryPath(testPair.test);
 
-      if (refBuffer) {
-        await writeFile(testPair.reference, refBuffer);
-      } else {
+      if (!refBuffer && !testBuffer) {
+        // Both pages missing the selector — always a failure
+        logger.log('magenta', 'Selector "' + selector + '" not found on both reference and test pages');
         await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.reference);
-      }
-      if (testBuffer) {
-        await writeFile(testPair.test, testBuffer);
-      } else {
         await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.test);
+        testPair.hadEngineError = true;
+        testPair.engineErrorMsg = `Selector "${selector}" not found on both reference and test pages`;
+      } else {
+        // Only one page missing the selector
+        logger.log('magenta', 'Selector "' + selector + '" not found on ' + (!refBuffer ? 'reference' : 'test') + ' page');
+        if (refBuffer) {
+          await writeFile(testPair.reference, refBuffer);
+        } else {
+          await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.reference);
+        }
+        if (testBuffer) {
+          await writeFile(testPair.test, testBuffer);
+        } else {
+          await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.test);
+        }
       }
 
       compareConfig.testPairs.push(testPair);
