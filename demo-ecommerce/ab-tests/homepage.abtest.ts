@@ -14,6 +14,7 @@ abTest('Homepage', {
       misMatchThreshold: 0.01,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Wait for homepage to settle');
   await waitUntilPageSettled(page);
 });

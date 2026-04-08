@@ -9,6 +9,7 @@ abTest('Cart', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Wait for cart page to settle');
   await waitUntilPageSettled(page);
 });

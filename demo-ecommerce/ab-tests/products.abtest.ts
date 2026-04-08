@@ -9,7 +9,8 @@ abTest('Products List', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Wait for products list to settle');
   await waitUntilPageSettled(page);
 });
 
@@ -21,10 +22,15 @@ abTest('Products - Electronics Filter', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Wait for products page to load');
   await page.waitForLoadState('networkidle');
+  annotate('Open category dropdown');
   await page.click('[data-cy="category-select"]');
+  annotate('Wait for electronics option to appear');
   await page.waitForSelector('[data-cy="category-option-electronics"]', { state: 'visible' });
+  annotate('Select electronics category filter');
   await page.click('[data-cy="category-option-electronics-selector-not-exists"]');
+  annotate('Wait for filtered results to settle');
   await waitUntilPageSettled(page);
 });

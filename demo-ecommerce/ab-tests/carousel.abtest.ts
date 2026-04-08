@@ -16,10 +16,14 @@ abTest('Carousel Demo - Pause With Override CSS', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Wait for carousel track to be visible');
   await page.waitForSelector('[data-cy="marketing-carousel-track"]', { state: 'visible' });
+  annotate('Override default CSS');
   await overrideCSS(page);
+  annotate('Inject CSS to pause carousel animation');
   await page.addStyleTag({ content: CAROUSEL_PAUSE_CSS });
+  annotate('Wait for page to settle');
   await waitUntilPageSettled(page);
 });
 
@@ -31,11 +35,17 @@ abTest('Carousel Demo - Stub Slider Images', {
       misMatchThreshold: 0.1,
     },
   },
-}, async ({ page }) => {
+}, async ({ page, annotate }) => {
+  annotate('Intercept and stub slider images');
   await interceptImages(page);
+  annotate('Reload page with image interception active');
   await page.goto(page.url());
+  annotate('Wait for carousel track to be visible');
   await page.waitForSelector('[data-cy="marketing-carousel-track"]', { state: 'visible' });
+  annotate('Override default CSS');
   await overrideCSS(page);
+  annotate('Inject CSS to pause carousel animation');
   await page.addStyleTag({ content: CAROUSEL_PAUSE_CSS });
+  annotate('Wait for page to settle');
   await waitUntilPageSettled(page);
 });
