@@ -72,6 +72,7 @@ export interface Scenario {
   compareRetryDelay?: number;
   maxNumDiffPixels?: number;
   comparePixelmatchThreshold?: number;
+  useBoundingBoxViewportForSelectors?: boolean;
 
   // Internal (set at runtime)
   sIndex?: number;
@@ -267,6 +268,10 @@ export interface TestPair {
   expect: number;
   viewportLabel: string;
   diff?: DiffResult;
+  refWhitePixelPercent?: number;
+  testWhitePixelPercent?: number;
+  refIsBottomSeventyPercentWhite?: boolean;
+  testIsBottomSeventyPercentWhite?: boolean;
   diffImage?: string;
   error?: string;
   engineErrorMsg?: string;
