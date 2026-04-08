@@ -41,7 +41,7 @@ parameters:
   cli-prefix:
     type: string
     default: 'npx'
-    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
   setup-steps:
     type: steps
     default: []
@@ -79,7 +79,7 @@ steps:
       working_directory: << parameters.working-directory >>
       command: |
         if [ -n "<< parameters.test-command >>" ]; then
-          << parameters.cli-prefix >> shaka-twin-servers run-cmd-parallel "<< parameters.test-command >>"
+          << parameters.cli-prefix >> shaka-perf twin-servers run-cmd-parallel "<< parameters.test-command >>"
         else
           echo "No test command specified, skipping"
         fi

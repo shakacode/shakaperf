@@ -1,5 +1,5 @@
 description: |
-  Start twin server containers using docker-compose via shaka-twin-servers.
+  Start twin server containers using docker-compose via shaka-perf twin-servers.
 
 parameters:
   working-directory:
@@ -13,7 +13,7 @@ parameters:
   cli-prefix:
     type: string
     default: 'npx'
-    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
 
 steps:
   - run:
@@ -21,7 +21,7 @@ steps:
       working_directory: << parameters.working-directory >>
       command: |
         if [ -n "<< parameters.config-path >>" ]; then
-          << parameters.cli-prefix >> shaka-twin-servers start-containers --config "<< parameters.config-path >>"
+          << parameters.cli-prefix >> shaka-perf twin-servers start-containers --config "<< parameters.config-path >>"
         else
-          << parameters.cli-prefix >> shaka-twin-servers start-containers
+          << parameters.cli-prefix >> shaka-perf twin-servers start-containers
         fi
