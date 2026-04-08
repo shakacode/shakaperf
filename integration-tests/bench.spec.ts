@@ -9,7 +9,7 @@ import {
 // Store bench results in the REAL repo so they persist and can be committed
 const BENCH_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
 
-test('run shaka-bench compare on twin servers @perf', async ({ page }) => {
+test('run shaka-perf bench compare on twin servers @perf', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
 
   startServers();
@@ -19,11 +19,11 @@ test('run shaka-bench compare on twin servers @perf', async ({ page }) => {
     waitForPort(3030),
   ]);
 
-  // Run shaka-bench compare with minimal measurements for speed
-  loud('Running shaka-bench compare');
+  // Run shaka-perf bench compare with minimal measurements for speed
+  loud('Running shaka-perf bench compare');
   run(
     [
-      'yarn shaka-bench compare',
+      'yarn shaka-perf bench compare',
       '--testFile ./ab-tests/shop-now.abtest.ts',
       '--numberOfMeasurements 5',
       '--report',
