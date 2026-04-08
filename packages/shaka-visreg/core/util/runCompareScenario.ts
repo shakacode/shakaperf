@@ -302,6 +302,17 @@ async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario
     await copy(config.env.visregRoot + ERROR_SELECTOR_PATH, filePath);
   }
 
+  if (refBuffer) {
+    const refAnalysis = analyzeWhitePixels(refBuffer);
+    testPair.refWhitePixelPercent = refAnalysis.whitePixelPercent;
+    testPair.refIsBottomSeventyPercentWhite = refAnalysis.isBottomSeventyPercentWhite;
+  }
+  if (testBuffer) {
+    const testAnalysis = analyzeWhitePixels(testBuffer);
+    testPair.testWhitePixelPercent = testAnalysis.whitePixelPercent;
+    testPair.testIsBottomSeventyPercentWhite = testAnalysis.isBottomSeventyPercentWhite;
+  }
+
   return { testPairs: [testPair] };
 }
 
