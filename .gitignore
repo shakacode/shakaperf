@@ -51,7 +51,7 @@ playwright-report/
 **/visreg_data/html_report
 **/visreg_data/ci_report/xunit.xml
 
-packages/shaka-bench/tracerbench-results
+packages/shaka-perf/tracerbench-results
 tracerbench-results
 
 # Bench results: track screenshots and summaries, not raw HTML/JSON or generated diffs
