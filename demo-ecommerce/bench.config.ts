@@ -1,4 +1,4 @@
-import { defineConfig } from "shaka-bench";
+import { defineConfig } from "shaka-perf/bench";
 
 export default defineConfig({
   formFactor: "mobile",
