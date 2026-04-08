@@ -21,14 +21,14 @@ parameters:
   cli-prefix:
     type: string
     default: 'npx'
-    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
 
 steps:
   - run:
       name: Copy Dockerfile to temp location
       working_directory: << parameters.working-directory >>
       command: |
-        DOCKERFILE=$(<< parameters.cli-prefix >> shaka-twin-servers get-config dockerfile)
+        DOCKERFILE=$(<< parameters.cli-prefix >> shaka-perf twin-servers get-config dockerfile)
         DOCKERFILE_NAME=$(basename "$DOCKERFILE")
         echo "Dockerfile from config: $DOCKERFILE (basename: $DOCKERFILE_NAME)"
         mkdir -p /tmp/docker-build

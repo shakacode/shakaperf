@@ -37,7 +37,7 @@ parameters:
   cli-prefix:
     type: string
     default: 'npx'
-    description: 'Command prefix to invoke shaka-twin-servers (e.g., npx, yarn, pnpm)'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
   setup-steps:
     type: steps
     default: []

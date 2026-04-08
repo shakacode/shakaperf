@@ -3,12 +3,12 @@ version: 2.1
 description: |
   A/B performance testing infrastructure for comparing Docker-based application
   versions. Builds twin Docker images (control from merge-base, experiment from
-  current branch) and runs comparative performance tests using shaka-twin-servers
-  npm package.
+  current branch) and runs comparative performance tests using the shaka-perf
+  npm package (twin-servers subcommand).
 
 display:
   source_url: https://github.com/shakacode/shakaperf/
-  home_url: https://github.com/shakacode/shakaperf/tree/main/packages/shaka-twin-servers
+  home_url: https://github.com/shakacode/shakaperf/tree/main/packages/shaka-perf
 
 orbs:
   node: circleci/node@7.2.1

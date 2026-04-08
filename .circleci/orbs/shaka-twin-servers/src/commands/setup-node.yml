@@ -1,5 +1,5 @@
 description: |
-  Install Node.js on the machine executor. This is required for shaka-twin-servers.
+  Install Node.js on the machine executor. This is required for shaka-perf twin-servers.
 
 parameters:
   node-version:
