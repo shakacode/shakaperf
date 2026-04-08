@@ -1,0 +1,169 @@
+{
+  "name": "shaka-perf",
+  "version": "0.0.1",
+  "description": "Frontend performance testing toolkit for web applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": "./dist/cli.js",
+  "files": [
+    "dist",
+    "templates",
+    "compare/output",
+    "tb-schema.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bench": {
+      "types": "./dist/bench/cli/index.d.ts",
+      "default": "./dist/bench/cli/index.js"
+    },
+    "./visreg": {
+      "types": "./dist/visreg/core/runner.d.ts",
+      "default": "./dist/visreg/core/runner.js"
+    },
+    "./visreg/core/types": {
+      "types": "./dist/visreg/core/types.d.ts",
+      "default": "./dist/visreg/core/types.js"
+    },
+    "./visreg/helpers": {
+      "types": "./dist/visreg/capture/helpers/index.d.ts",
+      "default": "./dist/visreg/capture/helpers/index.js"
+    },
+    "./twin-servers": {
+      "types": "./dist/twin-servers/index.d.ts",
+      "default": "./dist/twin-servers/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "bench": [
+        "dist/bench/cli/index.d.ts"
+      ],
+      "visreg": [
+        "dist/visreg/core/runner.d.ts"
+      ],
+      "visreg/helpers": [
+        "dist/visreg/capture/helpers/index.d.ts"
+      ],
+      "visreg/core/types": [
+        "dist/visreg/core/types.d.ts"
+      ],
+      "twin-servers": [
+        "dist/twin-servers/index.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc && cp -a ./src/bench/cli/static ./dist/bench/cli && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "build-compare": "node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('diverged/src/diverged.js'),'./compare/output/diverged.js');fs.copyFileSync(require.resolve('diff/dist/diff.js'),'./compare/output/diff.js')\" && webpack --config ./compare/webpack.config.cjs && node ./compare/build-html.mjs",
+    "dev-compare": "webpack-dev-server --config ./compare/webpack.config.cjs",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "performance",
+    "benchmark",
+    "visual-regression",
+    "twin-servers",
+    "testing"
+  ],
+  "author": "ShakaCode",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shakacode/shakaperf.git",
+    "directory": "packages/shaka-perf"
+  },
+  "homepage": "https://github.com/shakacode/shakaperf#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@mirzazeyrek/node-resemble-js": "^1.2.1",
+    "chalk": "^4.1.2",
+    "chrome-launcher": "^0.15.1",
+    "commander": "^13.1.0",
+    "d3-array": "~2.12.1",
+    "d3-hierarchy": "^3.0.1",
+    "d3-scale": "~3.3.0",
+    "debug": "^4.3.1",
+    "diverged": "^0.1.3",
+    "dotenv": "^16.0.0",
+    "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.7",
+    "html-minifier-terser": "^7.0.0",
+    "jpeg-js": "^0.4.4",
+    "json5": "^2.2.0",
+    "jstat": "^1.9.5",
+    "jump.js": "^1.0.2",
+    "junit-report-builder": "^3.1.0",
+    "lighthouse": "13.0.3",
+    "lodash": "^4.17.21",
+    "object-hash": "3.0.0",
+    "opn": "^6.0.0",
+    "os": "^0.1.2",
+    "p-map": "^4.0.0",
+    "path": "^0.12.7",
+    "pixelmatch": "^5.3.0",
+    "playwright": "^1.40.1",
+    "playwright-core": "^1.50.0",
+    "pngjs": "^7.0.0",
+    "portfinder": "^1.0.32",
+    "race-cancellation": "^0.4.1",
+    "shaka-shared": "workspace:^",
+    "temp": "^0.9.4",
+    "tslib": "^2.2.0",
+    "tsx": "^4.21.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.6",
+    "@babel/preset-env": "^7.23.6",
+    "@babel/preset-react": "^7.23.3",
+    "@jest/globals": "^30.0.0",
+    "@types/d3-array": "~2.12.1",
+    "@types/d3-hierarchy": "^3.1.0",
+    "@types/d3-scale": "~3.0.0",
+    "@types/debug": "^4.1.7",
+    "@types/fs-extra": "^11.0.0",
+    "@types/html-minifier-terser": "^7.0.0",
+    "@types/jest": "^29.5.11",
+    "@types/json5": "^2.2.0",
+    "@types/junit-report-builder": "^3.0.0",
+    "@types/lodash": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "@types/object-hash": "^3.0.0",
+    "@types/pixelmatch": "^5.2.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/temp": "^0.9.0",
+    "assert": "^2.1.0",
+    "babel-loader": "^9.1.3",
+    "backstop-twentytwenty": "^1.1.0",
+    "diff": "^3.5.0",
+    "file-loader": "^6.2.0",
+    "jest": "^30.0.0",
+    "jest-junit": "^16.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-modal": "^3.16.1",
+    "react-redux": "^9.0.4",
+    "react-sticky": "^6.0.3",
+    "react-toggle-button": "^2.2.0",
+    "react-visibility-sensor": "^5.1.1",
+    "redux": "^5.0.0",
+    "styled-components": "^6.1.2",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.9.0",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  }
+}
