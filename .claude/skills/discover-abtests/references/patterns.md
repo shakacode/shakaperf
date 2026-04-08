@@ -4,17 +4,61 @@ Each pattern below corresponds to a scenario you confirmed during probing. Only 
 
 ## Selectors strategy
 
-Choose selectors in this order:
+### How to choose selectors
 
-1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element's bounding box thanks to `useBoundingBoxViewportForSelectors: true` in `visreg.config.ts`. This is the default approach for most tests.
+1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element's bounding box thanks to `useBoundingBoxViewportForSelectors: true` in `visreg.config.ts`. The engine automatically calls `scrollIntoViewIfNeeded()` before capture, so manual scroll calls are only needed to trigger lazy loading, not for positioning.
 
-2. **Viewport + scroll (fallback)** — only use `selectors: ['viewport']` + `scrollIntoViewIfNeeded()` if the CSS selector can't be found AND the test screenshot shows mostly whitespace in the bottom 60% of the page. Read the test images to verify before switching to this approach. See Pattern 7.
+2. **Viewport + scroll (fallback)** — only use `selectors: ['viewport']` if no CSS selector can target the section. See scroll-to-section pattern below.
 
-3. **Short pages** — a single `'document'` capture is enough. No need for viewport or per-section selectors.
+3. **Short pages (<2000px)** — a single `'document'` capture is enough.
 
-4. **Tall pages (>3000px)** — split into multiple tests, each targeting a different section with a CSS selector.
+4. **Tall pages (>2000px)** — run `scripts/probe-sections.js` to find scored candidates, then apply AI visual heuristics to pick the best selectors.
 
-When a locator might match multiple elements, always use `.first()`:
+### Finding selectors for tall pages
+
+Use a two-strategy approach:
+
+**Strategy 1 — Algorithmic probe** (`scripts/probe-sections.js`):
+Run via `javascript_tool` after the page loads. It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
+
+**Strategy 2 — AI visual analysis**:
+Scroll through the page and identify natural visual sections a user would recognize. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show recognizable, self-contained UI?"
+
+### Good selector characteristics (what to pick)
+
+- Height 100-800px (a meaningful visual chunk)
+- Full-width (>90% of page) for main sections; 300-500px for sidebars
+- Shallow in DOM (close to layout root)
+- Semantic class name (`hero-slider`, `review-list`, not `_a3f2b`)
+- Unique — `querySelectorAll` returns exactly 1 element
+- Contains real text/images, not just empty wrappers
+- **Includes its heading** — if an `<h2>` sits above, try the parent
+- **"Tells a story"** — screenshot makes sense on its own
+
+### Bad selector characteristics (what to avoid)
+
+- Height < 50px — too granular, captures a fragment (e.g., a specs strip)
+- `whitePixelPercent > 90%` after capture — mostly empty space
+- Width = 0 at some viewports — causes `clip.width = 0` engine error
+- Content renders in a child, not the selected element (common with `-container` wrappers)
+- Height > 1000px — too tall, split into sub-sections
+- **"Would a designer draw a box here?"** — if no, it's not a real section
+
+### Two-column layouts (content + sidebar)
+
+- Capture content column and sidebar as **separate tests**
+- Sidebar test should have `viewports: [desktop]` (sidebars typically hidden/repositioned on mobile)
+- Detect sidebars: elements with `position: absolute/sticky/fixed` narrower than 50% page width
+
+### Post-capture validation
+
+After running each test, check `parse-report.py` output:
+- `whitePixelPercent > 90` → selector captures too much empty space. Try child or sibling.
+- `isBottomSeventyPercentWhite = true` → content concentrated at top
+- `hadEngineError` with `clip.width = 0` → add viewport restrictions
+- **Always read the first screenshot** of a new selector — whitespace metrics alone can miss "technically not blank but visually useless" captures
+
+When a locator might match multiple elements, use `.first()`:
 ```typescript
 await page.locator('.section-class').first().scrollIntoViewIfNeeded();
 ```
@@ -266,6 +310,90 @@ abTest('Fill [Form Name] on [Page]', {
   // For textareas:
   annotate('filling message field');
   await page.fill('textarea[name="message"]', 'Test message text');
+});
+```
+
+## Date picker / calendar inputs (confirmed in probing)
+
+Date pickers vary widely — probe the specific implementation during A6 to determine the right approach. Common patterns:
+
+```typescript
+// Pattern 1: Native date input
+await page.fill('input[type="date"]', '2026-06-15');
+
+// Pattern 2: Click-to-open calendar widget (e.g., DayPicker, react-dates)
+// Click the input/button to open the calendar, then click a specific date
+annotate('clicking Check In to open calendar');
+await page.locator('.check-in-input').click();
+await page.waitForTimeout(300);
+annotate('selecting a date');
+await page.locator('td[aria-label="June 15, 2026"]').click(); // or similar
+await page.waitForTimeout(300);
+
+// Pattern 3: Calendar already visible on page (inline calendar)
+// Just click dates directly
+annotate('selecting start date on calendar');
+await page.locator('.CalendarDay:has-text("15")').first().click();
+await page.waitForTimeout(200);
+annotate('selecting end date on calendar');
+await page.locator('.CalendarDay:has-text("20")').first().click();
+```
+
+When probing calendars, check: does clicking a date input open a popup? What are the day cell selectors? Are dates clickable `<td>` elements or `<button>` elements? Use `aria-label` attributes when available — they're the most reliable selectors for specific dates.
+
+## Number increment inputs (confirmed in probing)
+
+For inputs with +/- buttons (guest counters, quantity selectors), click the increment button rather than trying to type into the field. The display value is often read-only.
+
+```typescript
+annotate('incrementing adult count');
+// Click the "+" button next to Adults — find it by proximity to the label
+await page.locator('.adult-counter .increment-btn').click(); // or:
+await page.locator('button:has-text("+")').first().click();
+await page.waitForTimeout(200);
+// Repeat for desired count
+await page.locator('button:has-text("+")').first().click();
+await page.waitForTimeout(200);
+```
+
+When probing +/- inputs, note: what selector targets the + button? Does clicking it update a visible number? Is there a max limit? Record all of this so the test can be written without guessing.
+
+## Populating a full form before submit (chained interaction)
+
+When a form has multiple inputs AND a submit button, the test should fill everything first, then submit. This captures both the filled-form state and any validation/error UI that appears after submission.
+
+```typescript
+abTest('Fill and Submit Booking on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  // Fill all inputs first
+  annotate('selecting check-in date');
+  await page.locator('.check-in-input').click();
+  await page.waitForTimeout(300);
+  await page.locator('td[aria-label="June 15, 2026"]').click();
+  await page.waitForTimeout(300);
+  annotate('selecting check-out date');
+  await page.locator('td[aria-label="June 20, 2026"]').click();
+  await page.waitForTimeout(300);
+  annotate('opening guests dropdown');
+  await page.locator('.guest-input-btn').click();
+  await page.waitForTimeout(300);
+  annotate('incrementing adult count');
+  await page.locator('.increment-btn').first().click();
+  await page.waitForTimeout(200);
+  // Now click the submit button with all fields populated
+  annotate('clicking Book Now');
+  await page.locator('button:has-text("Book Now")').click();
+  await page.waitForTimeout(500);
 });
 ```
 
