@@ -1,6 +1,23 @@
 # abtest.ts Patterns
 
-Each pattern below corresponds to a scenario you confirmed during Phase 1 probing. Only use a pattern if the corresponding behavior was actually observed.
+Each pattern below corresponds to a scenario you confirmed during probing. Only use a pattern if the corresponding behavior was actually observed.
+
+## Selectors strategy
+
+Choose selectors in this order:
+
+1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element's bounding box thanks to `useBoundingBoxViewportForSelectors: true` in `visreg.config.ts`. This is the default approach for most tests.
+
+2. **Viewport + scroll (fallback)** — only use `selectors: ['viewport']` + `scrollIntoViewIfNeeded()` if the CSS selector can't be found AND the test screenshot shows mostly whitespace in the bottom 60% of the page. Read the test images to verify before switching to this approach. See Pattern 7.
+
+3. **Short pages** — a single `'document'` capture is enough. No need for viewport or per-section selectors.
+
+4. **Tall pages (>3000px)** — split into multiple tests, each targeting a different section with a CSS selector.
+
+When a locator might match multiple elements, always use `.first()`:
+```typescript
+await page.locator('.section-class').first().scrollIntoViewIfNeeded();
+```
 
 ## Simple snapshot (most pages)
 
@@ -33,9 +50,9 @@ abTest('Page Name', {
 });
 ```
 
-## Interaction test (click confirmed working in Phase 1)
+## Interaction test (click confirmed working in probing)
 
-Only use if you clicked the element in Phase 1 and saw a visible effect.
+Only use if you clicked the element during probing and saw a visible effect.
 
 ```typescript
 import { abTest, TestType } from 'shaka-shared';
@@ -58,26 +75,19 @@ abTest('Click [Button] on [Page]', {
 });
 ```
 
-## Page with lazy-loaded content (scroll confirmed in Phase 1)
+## Page with lazy-loaded content (scroll confirmed in probing)
 
 Only use if `scripts/probe-lazy-load.js` (or manual scroll probing) confirmed new content appeared after scrolling.
 
-Use `page.mouse.wheel()` for real incremental scrolling — not `window.scrollTo()` in JS. Sites that use IntersectionObserver-based lazy loaders only respond to genuine scroll events; a JS jump to the bottom bypasses them entirely.
+**NEVER use `while (!atBottom)` scroll loops with `page.mouse.wheel()`** — they go infinite in shaka-visreg because `window.scrollY` doesn't update in the Playwright context. Instead, use `scrollIntoViewIfNeeded()` on a known bottom element (footer, last section) to trigger lazy loading.
 
 ```typescript
 abTest('Page Name', {
   startingPath: '/path',
   options: { visreg: { delay: 50, misMatchThreshold: 0.05 } },
 }, async ({ page, annotate }) => {
-  annotate('scrolling incrementally to trigger lazy load');
-  let atBottom = false;
-  while (!atBottom) {
-    await page.mouse.wheel(0, 500);
-    await page.waitForTimeout(100);
-    atBottom = await page.evaluate(() =>
-      window.scrollY + window.innerHeight >= document.body.scrollHeight
-    );
-  }
+  annotate('scrolling to bottom to trigger lazy load');
+  await page.locator('footer').scrollIntoViewIfNeeded();
   annotate('waiting for lazy-loaded content to finish loading');
   await page.waitForLoadState('networkidle');
   annotate('scrolling back to top');
@@ -86,6 +96,8 @@ abTest('Page Name', {
   await waitUntilPageSettled(page);
 });
 ```
+
+If there's no footer, use the last visible section or `page.locator('body > *:last-child')`. The key is to avoid scroll loops entirely.
 
 ## Viewport-conditional selectors (element hidden on some viewports)
 
@@ -156,9 +168,9 @@ abTest('Search Results', {
 });
 ```
 
-## Carousel / animation (CSS override confirmed in Phase 1)
+## Carousel / animation (CSS override confirmed in probing)
 
-Only use if injecting the CSS override in Phase 1 visually froze the animation.
+Only use if injecting the CSS override during probing visually froze the animation.
 
 ```typescript
 import { abTest } from 'shaka-shared';
@@ -179,5 +191,165 @@ abTest('Carousel on [Page]', {
   await page.addStyleTag({ content: PAUSE_CSS });
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
+});
+```
+
+## Scroll to section (fallback — CSS selector not available)
+
+Only use when a CSS selector can't target the section you need AND the test screenshot shows mostly whitespace in the bottom 60% of the page. Read the test images to verify before switching to this pattern. The preferred approach is always a CSS selector (see "Selectors strategy" above).
+
+```typescript
+abTest('Below-fold Section on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      delay: 50,
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('scrolling target section into view');
+  await page.locator('.target-section').first().scrollIntoViewIfNeeded();
+});
+```
+
+## Modal / expandable interaction (confirmed in probing)
+
+Click a button to open a modal, drawer, or expanded panel, then capture the result. Also probe and test interactions INSIDE the modal — if the modal contains forms, buttons, or links, write separate tests for those (see form filling and chained interaction patterns below).
+
+```typescript
+abTest('Open [Modal Name] on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking button to open modal');
+  await page.locator('[data-cy="open-modal"]').click();
+  annotate('waiting for modal to appear');
+  await page.waitForTimeout(500);
+});
+```
+
+## Form filling (confirmed in probing)
+
+Fill form inputs and capture the filled state. Use `page.fill()` for text inputs and textareas. For `type="number"` inputs, use numeric-only strings (no dashes or special characters). Use `page.getByLabel()` when inputs have associated labels.
+
+```typescript
+abTest('Fill [Form Name] on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['.form-container'],
+      misMatchThreshold: 0.05,
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('filling name field');
+  await page.fill('input[name="name"]', 'Jane Smith');
+  annotate('filling email field');
+  await page.fill('input[name="email"]', 'jane@example.com');
+  // For type="number" inputs, use numeric-only strings:
+  annotate('filling phone field');
+  await page.fill('input[name="phone"]', '5551234567');
+  // For textareas:
+  annotate('filling message field');
+  await page.fill('textarea[name="message"]', 'Test message text');
+});
+```
+
+## Checkbox / filter interaction (confirmed in probing)
+
+Use `page.getByLabel()` for checkboxes and radio buttons. Add `{ exact: true }` when the label text could partially match other labels.
+
+```typescript
+abTest('Apply Filters on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['.results-container'],
+      misMatchThreshold: 0.1,
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('checking first filter option');
+  await page.getByLabel('Option A').check();
+  await page.waitForTimeout(200);
+  annotate('checking second filter option');
+  await page.getByLabel('Option B', { exact: true }).check();
+  await page.waitForTimeout(300);
+});
+```
+
+## Chained interaction (confirmed in probing)
+
+Click something → new UI appears → interact with the new UI. Each link in the chain should have been confirmed during probing. If the new UI itself reveals more interactions (e.g., a filter panel with checkboxes), chain further.
+
+```typescript
+abTest('Open Filters and Apply on [Page]', {
+  startingPath: '/path',
+  options: {
+    visreg: {
+      selectors: ['.results-container'],
+      misMatchThreshold: 0.1,
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking to open filter panel');
+  await page.locator('[aria-expanded]').first().click();
+  await page.waitForTimeout(300);
+  annotate('checking filter option');
+  await page.getByLabel('Category A').check();
+  await page.waitForTimeout(200);
+  annotate('clicking apply button');
+  await page.locator('button:has-text("Apply")').click();
+  await page.waitForTimeout(500);
+});
+```
+
+## Navigation click (confirmed in probing)
+
+Click a CTA or link that navigates to another page, then capture the destination. Use `{ waitUntil: 'commit' }` for pages with slow server responses (>30s).
+
+```typescript
+import { abTest, TestType } from 'shaka-shared';
+import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+
+abTest('Click [CTA] on [Page]', {
+  startingPath: '/start-page',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, testType, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking CTA link');
+  await page.locator('a[href="/destination"]').click();
+  annotate('waiting for navigation');
+  await page.waitForURL('**/destination');
+  // For slow pages: await page.waitForURL('**/destination', { waitUntil: 'commit' });
+  if (testType === TestType.VisualRegression) {
+    annotate('waiting for destination page to settle');
+    await waitUntilPageSettled(page);
+  }
 });
 ```
