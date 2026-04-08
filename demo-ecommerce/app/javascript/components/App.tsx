@@ -29,6 +29,14 @@ const CarouselDemoPage = loadable(() => import('./pages/CarouselDemoPage'), {
   fallback: <LoadingSpinner />,
 });
 
+const ProductReviewsPage = loadable(() => import('./pages/ProductReviewsPage'), {
+  fallback: <LoadingSpinner />,
+});
+
+const DealsPage = loadable(() => import('./pages/DealsPage'), {
+  fallback: <LoadingSpinner />,
+});
+
 const App: React.FC = () => {
   useEffect(() => {
     performance.mark('hydration-end');
@@ -52,6 +60,8 @@ const App: React.FC = () => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/products" element={<ProductListPage />} />
                 <Route path="/products/:id" element={<ProductDetailPage />} />
+                <Route path="/products/:id/reviews" element={<ProductReviewsPage />} />
+                <Route path="/deals" element={<DealsPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/carousel-demo" element={<CarouselDemoPage />} />
               </Routes>

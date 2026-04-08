@@ -4,6 +4,8 @@ Rails.application.routes.draw do
   # React SPA routes - all handled by React Router
   get "/products", to: "pages#index"
   get "/products/:id", to: "pages#index"
+  get "/products/:id/reviews", to: "pages#index"
+  get "/deals", to: "pages#index"
   get "/cart", to: "pages#index"
   get "/carousel-demo", to: "pages#index"
 

@@ -9,7 +9,7 @@ import {
   Breadcrumbs,
   Paper,
 } from '@mui/material';
-import { ShoppingCart, ArrowBack } from '@mui/icons-material';
+import { ShoppingCart, ArrowBack, RateReview } from '@mui/icons-material';
 import { useProduct } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import LoadingSpinner from '../shared/LoadingSpinner';
@@ -109,7 +109,8 @@ const ProductDetailPage: React.FC = () => {
                 : 'Out of stock'}
             </Typography>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            {/* Desktop actions */}
+            <Box data-cy="product-actions-desktop" sx={{ display: { xs: 'none', sm: 'flex' }, gap: 2 }}>
               <Button
                 variant="contained"
                 size="large"
@@ -124,12 +125,61 @@ const ProductDetailPage: React.FC = () => {
                 variant="outlined"
                 size="large"
                 component={Link}
+                to={`/products/${id}/reviews`}
+                startIcon={<RateReview />}
+                sx={{ borderColor: '#667eea', color: '#667eea' }}
+              >
+                Reviews
+              </Button>
+              <Button
+                variant="outlined"
+                size="large"
+                component={Link}
                 to="/products"
                 startIcon={<ArrowBack />}
                 sx={{ borderColor: '#667eea', color: '#667eea' }}
               >
                 Back to Products
               </Button>
+            </Box>
+
+            {/* Mobile actions */}
+            <Box data-cy="product-actions-mobile" sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                startIcon={<ShoppingCart />}
+                onClick={() => addToCart(product)}
+                disabled={product.stock === 0}
+                sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+              >
+                Add to Cart
+              </Button>
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="medium"
+                  component={Link}
+                  to={`/products/${id}/reviews`}
+                  startIcon={<RateReview />}
+                  sx={{ borderColor: '#667eea', color: '#667eea' }}
+                >
+                  Reviews
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="medium"
+                  component={Link}
+                  to="/products"
+                  startIcon={<ArrowBack />}
+                  sx={{ borderColor: '#667eea', color: '#667eea' }}
+                >
+                  Back
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Box>
