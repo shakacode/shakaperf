@@ -47,8 +47,7 @@ commands:
       - run:
           name: Install Playwright Chromium
           command: |
-            cd demo-ecommerce
-            DEBIAN_FRONTEND=noninteractive npx playwright install chromium --with-deps
+            DEBIAN_FRONTEND=noninteractive yarn playwright install chromium --with-deps
       - save_cache:
           key: playwright-v1-{{ arch }}-{{ checksum "yarn.lock" }}
           paths:
