@@ -1,5 +1,5 @@
 // Re-export from shaka-shared — the ab-test registry now lives there
-// so both shaka-bench and shaka-visreg can share it.
+// so both bench and visreg domains can share it.
 export {
   abTest,
   getRegisteredTests,

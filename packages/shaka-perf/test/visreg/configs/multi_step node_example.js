@@ -1,6 +1,6 @@
 import runner from '../../core/runner.js';
 
-console.log('Running a multi-step shaka-visreg test. vvv');
+console.log('Running a multi-step shaka-perf visreg test. vvv');
 
 // this will run `visreg test` with default config file (./visreg.json in current directory)
 runner('test')

@@ -72,7 +72,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   ensureViewportLabel(configJSON as { viewports?: Viewport[] });
 
   if ((configJSON as Record<string, unknown>).dynamicTestId) {
-    console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-visreg will run in dynamic-test mode.');
+    console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-perf visreg will run in dynamic-test mode.');
   }
 
   configJSON.env = cloneDeep(config);

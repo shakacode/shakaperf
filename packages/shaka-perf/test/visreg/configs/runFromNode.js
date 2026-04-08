@@ -1,7 +1,7 @@
-// Go get a hook to shaka-visreg
+// Go get a hook to shaka-perf visreg
 import runner from '../../core/runner.js';
 
-// Run shaka-visreg with docker
+// Run shaka-perf visreg with docker
 // NOTE: passing either config file name or actual config object is supported.
 runner('reference', {
   docker: false,

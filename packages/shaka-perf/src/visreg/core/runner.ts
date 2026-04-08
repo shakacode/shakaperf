@@ -11,7 +11,7 @@ export default async function (command: string, options?: Record<string, unknown
 }
 
 /* ***
-// Sample of the config object that is created on `shaka-visreg init` by makeConfig()
+// Sample of the config object that is created on `shaka-perf visreg init` by makeConfig()
 
 { args:
     { _: [ 'init' ],

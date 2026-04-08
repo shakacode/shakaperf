@@ -1,7 +1,7 @@
 HTML report resource bundle
 ====
 
-This directory contains the source files for the shaka-visreg report UI.
+This directory contains the source files for the shaka-perf visreg report UI.
 
 To build the React project run...
 
@@ -20,7 +20,7 @@ This will generate `/compare/output/index_bundle.js` and `/compare/output/index.
 
 The only external dependency is `config.js` (test data generated per run).
 
-In normal shaka-visreg operation, `index.html` is copied and `config.js` is generated into the HTML report directory during a test flow (e.g. when running `shaka-visreg compare`). See `/core/command/report.ts` `writeBrowserReport()` for details.
+In normal shaka-perf visreg operation, `index.html` is copied and `config.js` is generated into the HTML report directory during a test flow (e.g. when running `shaka-perf visreg compare`). See `/core/command/report.ts` `writeBrowserReport()` for details.
 
 The report output consists of just 2 files:
 - `index.html` — self-contained HTML with inlined fonts, bundle, and licenses
