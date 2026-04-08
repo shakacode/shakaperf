@@ -6,7 +6,7 @@ import type { PlaywrightPage, Scenario, Viewport, BrowserContext, DecoratedCompa
 
 const logger = createLogger('retryCompare');
 
-type CaptureScreenshotFn = (page: PlaywrightPage, selector: string, selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig) => Promise<Buffer | null>;
+type CaptureScreenshotFn = (page: PlaywrightPage, selector: string, selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig, useBoundingBox?: boolean) => Promise<Buffer | null>;
 type PreparePageFn = (...args: unknown[]) => Promise<unknown>;
 
 export interface RetryCompareOptions {
@@ -24,6 +24,7 @@ export interface RetryCompareOptions {
   testBrowserOrContext: BrowserContext;
   preparePage?: PreparePageFn;
   pixelmatchThreshold?: number;
+  useBoundingBoxViewportForSelectors?: boolean;
 }
 
 function tryMatchAgainstAll (newScreenshot: Buffer, existingScreenshots: Buffer[], maxNumDiffPixels: number, pixelmatchThreshold: number) {
@@ -122,7 +123,7 @@ export default async function retryCompare (options: RetryCompareOptions) {
     }
 
     // Step 1: Re-capture from test page, compare against all reference screenshots
-    const newTestBuffer = await captureScreenshot(testPage, selector, selectorMap, viewport, config);
+    const newTestBuffer = await captureScreenshot(testPage, selector, selectorMap, viewport, config, options.useBoundingBoxViewportForSelectors);
     if (newTestBuffer) {
       testScreenshots.push(newTestBuffer);
 
@@ -142,7 +143,7 @@ export default async function retryCompare (options: RetryCompareOptions) {
     }
 
     // Step 2: Re-capture from reference page, compare against all test screenshots
-    const newRefBuffer = await captureScreenshot(refPage, selector, selectorMap, viewport, config);
+    const newRefBuffer = await captureScreenshot(refPage, selector, selectorMap, viewport, config, options.useBoundingBoxViewportForSelectors);
     if (newRefBuffer) {
       refScreenshots.push(newRefBuffer);
 

@@ -50,6 +50,7 @@ export interface AbTestVisregConfig {
   compareRetries?: number;
   compareRetryDelay?: number;
   comparePixelmatchThreshold?: number;
+  useBoundingBoxViewportForSelectors?: boolean;
 
   // Ready state (from Scenario)
   readyEvent?: string;

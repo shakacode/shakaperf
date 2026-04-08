@@ -3,7 +3,7 @@ import { copy } from 'fs-extra';
 import chalk from 'chalk';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import * as engineTools from './engineTools';
-import { compareBuffers } from './compare/pixelmatch-inline';
+import { compareBuffers, analyzeWhitePixels } from './compare/pixelmatch-inline';
 import retryCompare from './retryCompare';
 import preparePage from './preparePage';
 import { AnnotatedError } from 'shaka-shared';
@@ -50,7 +50,7 @@ function createLogger (): CompareLogger {
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig) {
+async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig, useBoundingBox?: boolean) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {
@@ -63,7 +63,7 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
     if (el) {
       const box = await el.boundingBox();
       if (box) {
-        if (config.useBoundingBoxViewportForSelectors !== false) {
+        if ((useBoundingBox ?? config.useBoundingBoxViewportForSelectors) !== false) {
           const bodyHandle = await page.$('body');
           const boundingBox = await bodyHandle!.boundingBox();
           await page.setViewportSize({
@@ -140,6 +140,9 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   const pixelmatchThreshold = scenario.comparePixelmatchThreshold != null
     ? scenario.comparePixelmatchThreshold
     : (config.comparePixelmatchThreshold != null ? config.comparePixelmatchThreshold : 0.1);
+  const useBoundingBox = scenario.useBoundingBoxViewportForSelectors != null
+    ? scenario.useBoundingBoxViewportForSelectors
+    : undefined;
 
   for (let selectorIndex = 0; selectorIndex < selectors.length; selectorIndex++) {
     const selector = selectors[selectorIndex];
@@ -154,8 +157,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     }
 
     // Capture both screenshots to buffers
-    const refBuffer = await captureScreenshot(refPage, selector, refSelectorMap, viewport, config);
-    const testBuffer = await captureScreenshot(testPage, selector, testSelectorMap, viewport, config);
+    const refBuffer = await captureScreenshot(refPage, selector, refSelectorMap, viewport, config, useBoundingBox);
+    const testBuffer = await captureScreenshot(testPage, selector, testSelectorMap, viewport, config, useBoundingBox);
 
     if (!refBuffer || !testBuffer) {
       ensureDirectoryPath(testPair.reference);
@@ -195,6 +198,12 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
       logger.log('green', 'PASS: "' + scenario.label + '" [' + selector + '] (' + matchResult.numDiffPixels + ' diff pixels)');
       ensureDirectoryPath(testPair.reference);
       ensureDirectoryPath(testPair.test);
+      const refAnalysis = analyzeWhitePixels(refBuffer);
+      const testAnalysis = analyzeWhitePixels(testBuffer);
+      testPair.refWhitePixelPercent = refAnalysis.whitePixelPercent;
+      testPair.testWhitePixelPercent = testAnalysis.whitePixelPercent;
+      testPair.refIsBottomSeventyPercentWhite = refAnalysis.isBottomSeventyPercentWhite;
+      testPair.testIsBottomSeventyPercentWhite = testAnalysis.isBottomSeventyPercentWhite;
       await Promise.all([
         writeFile(testPair.reference, refBuffer),
         writeFile(testPair.test, testBuffer)
@@ -219,8 +228,16 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
       initialTestBuffer: testBuffer,
       refBrowserOrContext,
       testBrowserOrContext,
-      pixelmatchThreshold
+      pixelmatchThreshold,
+      useBoundingBoxViewportForSelectors: useBoundingBox,
     });
+
+    const refAnalysis = analyzeWhitePixels(retryResult.refBuffer);
+    const testAnalysis = analyzeWhitePixels(retryResult.testBuffer);
+    testPair.refWhitePixelPercent = refAnalysis.whitePixelPercent;
+    testPair.testWhitePixelPercent = testAnalysis.whitePixelPercent;
+    testPair.refIsBottomSeventyPercentWhite = refAnalysis.isBottomSeventyPercentWhite;
+    testPair.testIsBottomSeventyPercentWhite = testAnalysis.isBottomSeventyPercentWhite;
 
     // Save the best screenshots to disk
     ensureDirectoryPath(testPair.reference);
@@ -283,6 +300,17 @@ async function buildErrorCompareConfig (config: DecoratedCompareConfig, scenario
     await writeFile(filePath, testBuffer);
   } else {
     await copy(config.env.visregRoot + ERROR_SELECTOR_PATH, filePath);
+  }
+
+  if (refBuffer) {
+    const refAnalysis = analyzeWhitePixels(refBuffer);
+    testPair.refWhitePixelPercent = refAnalysis.whitePixelPercent;
+    testPair.refIsBottomSeventyPercentWhite = refAnalysis.isBottomSeventyPercentWhite;
+  }
+  if (testBuffer) {
+    const testAnalysis = analyzeWhitePixels(testBuffer);
+    testPair.testWhitePixelPercent = testAnalysis.whitePixelPercent;
+    testPair.testIsBottomSeventyPercentWhite = testAnalysis.isBottomSeventyPercentWhite;
   }
 
   return { testPairs: [testPair] };

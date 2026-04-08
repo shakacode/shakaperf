@@ -1,6 +1,37 @@
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 
+export interface WhitePixelAnalysis {
+  whitePixelPercent: number;
+  isBottomSeventyPercentWhite: boolean;
+}
+
+export function analyzeWhitePixels(input: Buffer | PNG, threshold = 250): WhitePixelAnalysis {
+  const img = Buffer.isBuffer(input) ? PNG.sync.read(input) : input;
+  const totalPixels = img.width * img.height;
+  const bottomStartRow = Math.floor(img.height * 0.3);
+
+  let whiteCount = 0;
+  let bottomNonWhiteFound = false;
+
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      const i = (y * img.width + x) * 4;
+      const isWhite = img.data[i] >= threshold && img.data[i + 1] >= threshold && img.data[i + 2] >= threshold;
+      if (isWhite) {
+        whiteCount++;
+      } else if (y >= bottomStartRow) {
+        bottomNonWhiteFound = true;
+      }
+    }
+  }
+
+  return {
+    whitePixelPercent: parseFloat(((whiteCount / totalPixels) * 100).toFixed(2)),
+    isBottomSeventyPercentWhite: !bottomNonWhiteFound
+  };
+}
+
 function resizePng(png: PNG, targetWidth: number, targetHeight: number) {
   if (png.width === targetWidth && png.height === targetHeight) {
     return png;

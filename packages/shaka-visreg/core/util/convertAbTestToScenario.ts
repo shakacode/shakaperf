@@ -37,6 +37,7 @@ export function convertAbTestToScenario(
   if (visreg.compareRetries != null) scenario.compareRetries = visreg.compareRetries;
   if (visreg.compareRetryDelay != null) scenario.compareRetryDelay = visreg.compareRetryDelay;
   if (visreg.comparePixelmatchThreshold != null) scenario.comparePixelmatchThreshold = visreg.comparePixelmatchThreshold;
+  if (visreg.useBoundingBoxViewportForSelectors != null) scenario.useBoundingBoxViewportForSelectors = visreg.useBoundingBoxViewportForSelectors;
 
   if (visreg.readyEvent) scenario.readyEvent = visreg.readyEvent;
   if (visreg.readySelector) scenario.readySelector = visreg.readySelector;
