@@ -4,10 +4,9 @@ Frontend performance testing toolkit for web applications. Yarn 4 monorepo.
 
 ## Packages
 
+- **shaka-perf** - Unified CLI for benchmarking, visual regression, and twin-servers (subcommands: `bench`, `visreg`, `twin-servers`)
 - **shaka-bundle-size** - Bundle size diffing with S3 baseline storage
-- **shaka-twin-servers** - Docker-based A/B testing infrastructure
-- **shaka-bench** - Benchmarking (placeholder)
-- **shaka-visreg** - Visual regression testing (placeholder)
+- **shaka-shared** - Shared utilities used by shaka-perf and shaka-bundle-size
 - **demo-ecommerce** - Rails + React demo app
 
 ## Commands
@@ -17,23 +16,41 @@ yarn install    # Install dependencies
 yarn build      # Build all packages (tsc)
 ```
 
+### shaka-perf CLI
+
+```bash
+shaka-perf bench compare        # Performance benchmarking
+shaka-perf visreg compare       # Visual regression testing
+shaka-perf twin-servers build   # Docker A/B testing infrastructure
+```
+
 ## Code Conventions
 
 - TypeScript strict mode, no ESLint/Prettier
 - Zod for runtime validation
 - PascalCase for classes/types, camelCase for functions
 - Commander.js for CLIs
-- In new code don't use docker compose directly, see @packages/shaka-twin-servers/README.md
+- In new code don't use docker compose directly, see @packages/shaka-perf/SETUP-twin-servers.md
 
 ## Package Structure
 
 ```
-packages/shaka-[name]/src/
-├── cli.ts      # CLI entry point
-├── types.ts    # Types + Zod schemas
-├── config.ts   # Config loading
-├── commands/   # CLI commands
-└── helpers/    # Utilities
+packages/shaka-perf/src/
+├── cli.ts              # Root CLI entry point
+├── index.ts            # Barrel exports
+├── bench/              # Benchmarking domain
+│   ├── cli/            # CLI commands, config, helpers
+│   ├── core/           # Lighthouse benchmarking engine
+│   └── stats/          # Statistical analysis
+├── visreg/             # Visual regression domain
+│   ├── cli/            # CLI commands
+│   ├── core/           # Comparison engine
+│   └── capture/        # Screenshot capture helpers
+└── twin-servers/       # Docker A/B infrastructure
+    ├── commands/       # CLI commands
+    ├── helpers/        # Docker, git, shell utilities
+    ├── config.ts       # Config loading
+    └── types.ts        # Zod schemas
 ```
 
 ## Publishing
