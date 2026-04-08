@@ -1,5 +1,5 @@
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
