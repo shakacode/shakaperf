@@ -1,6 +1,6 @@
 Deploy packages to npm by bumping versions, pushing commits, and creating git tags.
 
-Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (shaka-visreg, shaka-bench, shaka-bundle-size, shaka-twin-servers) need it published first.
+Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (shaka-perf, shaka-bundle-size) need it published first.
 
 ## Rules
 
@@ -11,7 +11,7 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
 
 ## Steps
 
-1. Ask which packages to deploy (if not specified via $ARGUMENTS). Valid packages: shaka-shared, shaka-visreg, shaka-bench, shaka-bundle-size, shaka-twin-servers.
+1. Ask which packages to deploy (if not specified via $ARGUMENTS). Valid packages: shaka-shared, shaka-perf, shaka-bundle-size.
 
 2. For each package, read its `packages/<name>/package.json` to get the current version, then bump the patch version.
 
@@ -28,4 +28,4 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
 
 ## Tag format
 
-Tags must follow the pattern: `<package-name>@<version>` (e.g., `shaka-visreg@0.0.8`)
+Tags must follow the pattern: `<package-name>@<version>` (e.g., `shaka-perf@0.0.1`)
