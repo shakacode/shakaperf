@@ -20,19 +20,6 @@ const ErrorMsg = styled.p`
   display: ${props => (props.display ? 'block' : 'none')};
 `;
 
-const ScreenshotImg = styled.img`
-  max-width: 100%;
-  border: 2px solid brown;
-  margin-top: 10px;
-`;
-
-const ScreenshotLabel = styled.p`
-  font-family: monospace;
-  color: brown;
-  font-size: 12px;
-  margin: 10px 0 4px;
-`;
-
 class ErrorMessages extends React.Component {
   constructor (props) {
     super(props);
@@ -40,23 +27,21 @@ class ErrorMessages extends React.Component {
   }
 
   render () {
-    const visregError = this.props.info.error;
+    const annotationError = this.props.info.annotationErrorMsg;
     const engineError = this.props.info.engineErrorMsg;
-    const errorScreenshot = this.props.info.errorScreenshot;
-    const display = !!engineError || !!visregError;
+    const visregError = this.props.info.error;
+    const display = !!annotationError || !!engineError || !!visregError;
 
     return (
       <DetailsPanel display={display}>
-        <ErrorMsg display={engineError}>ENGINE ERROR: {engineError}</ErrorMsg>
-        <ErrorMsg display={visregError}>
-          VISREG ERROR: {visregError}
-        </ErrorMsg>
-        {errorScreenshot && (
-          <div style={{ textAlign: 'center' }}>
-            <ScreenshotLabel>Browser state at time of error:</ScreenshotLabel>
-            <ScreenshotImg src={errorScreenshot} alt="Browser state at time of error" />
-          </div>
+        {annotationError && <ErrorMsg display={true}>{annotationError}</ErrorMsg>}
+        {!annotationError && visregError && (
+          <ErrorMsg display={true}>VISREG ERROR: {visregError}</ErrorMsg>
         )}
+        {/* Raw engine error hidden in DOM; accessible via devtools */}
+        <div style={{ display: 'none' }} data-engine-error={engineError || ''}>
+          ENGINE ERROR: {engineError}
+        </div>
       </DetailsPanel>
     );
   }

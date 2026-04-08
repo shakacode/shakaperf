@@ -271,6 +271,8 @@ export interface TestPair {
   error?: string;
   engineErrorMsg?: string;
   errorScreenshot?: string;
+  annotationErrorMsg?: string;
+  hadEngineError?: boolean;
   status?: string;
   scenario?: Scenario;
   viewport?: Viewport;

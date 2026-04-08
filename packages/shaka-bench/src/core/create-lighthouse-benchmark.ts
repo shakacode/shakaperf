@@ -158,6 +158,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           height: lhSettings.screenEmulation?.height ?? 0,
         },
         testType: TestType.Performance,
+        annotate: () => {},
       }).then(() => collectINP(page));
 
       const [phases, inp] = await Promise.all([lighthousePromise, playwrightPromise]);

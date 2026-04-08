@@ -17,7 +17,24 @@ function comparePair (pair: TestPair, report: Reporter, config: RuntimeConfig, c
   const referencePath = pair.reference ? path.resolve(config.projectPath, pair.reference) : '';
   const testPath = pair.test ? path.resolve(config.projectPath, pair.test) : '';
 
-  // ENGINE SCRIPT ERROR
+  // ENGINE ERROR — run comparison for visual context but always force fail
+  if (pair.hadEngineError) {
+    if (referencePath && testPath && fs.existsSync(referencePath) && fs.existsSync(testPath)) {
+      return (compareImages(referencePath, testPath, pair, config.resembleOutputOptions, Test) as Promise<unknown>).then((data) => {
+        Test.status = 'fail';
+        pair.error = pair.annotationErrorMsg || `Engine error: ${pair.engineErrorMsg}`;
+        return data;
+      });
+    }
+    // Fallback: no real screenshots captured
+    const MSG = pair.annotationErrorMsg || `Engine error: ${pair.engineErrorMsg}. See scenario – ${pair.label} (${pair.viewportLabel})`;
+    Test.status = 'fail';
+    logger.error(MSG);
+    pair.error = MSG;
+    return Promise.resolve(pair);
+  }
+
+  // Legacy path (backward compat — not reached with current runner code)
   if (pair.engineErrorMsg) {
     const MSG = `Engine error: ${pair.engineErrorMsg}. See scenario – ${pair.label} (${pair.viewportLabel})`;
     Test.status = 'fail';

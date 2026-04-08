@@ -25,6 +25,7 @@ export interface TestFnContext {
   scenario: AbTestDefinition;
   viewport: Viewport;
   testType: TestType;
+  annotate: (label: string) => void;
 }
 
 export interface AbTestVisregConfig {
