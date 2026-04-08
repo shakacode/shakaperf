@@ -11,16 +11,16 @@ describe('compare', function () {
     compareHashes = jest.fn();
     compareResemble = jest.fn();
 
-    jest.mock('../../../../core/util/compare/compare-hash', () => ({
+    jest.mock('../../../../../src/visreg/core/util/compare/compare-hash', () => ({
       __esModule: true,
       default: compareHashes
     }));
-    jest.mock('../../../../core/util/compare/compare-resemble', () => ({
+    jest.mock('../../../../../src/visreg/core/util/compare/compare-resemble', () => ({
       __esModule: true,
       default: compareResemble
     }));
 
-    const mod = require('../../../../core/util/compare/compare') as unknown as { default: typeof compare };
+    const mod = require('../../../../../src/visreg/core/util/compare/compare') as unknown as { default: typeof compare };
     compare = mod.default;
   });
 

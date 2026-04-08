@@ -6,20 +6,20 @@ describe('the runner', function () {
   beforeAll(function () {
     jest.resetModules();
 
-    jest.mock('../../core/util/makeConfig', () => ({
+    jest.mock('../../../src/visreg/core/util/makeConfig', () => ({
       __esModule: true,
       default: function (command: string, args: Record<string, unknown>) {
         return { command, args };
       }
     }));
-    jest.mock('../../core/command/index', () => ({
+    jest.mock('../../../src/visreg/core/command/index', () => ({
       __esModule: true,
       default: function (command: string, config: unknown) {
         return Promise.resolve({ command, config });
       }
     }));
 
-    const mod = require('../../core/runner');
+    const mod = require('../../../src/visreg/core/runner');
     runner = mod.default as unknown as typeof runner;
   });
 

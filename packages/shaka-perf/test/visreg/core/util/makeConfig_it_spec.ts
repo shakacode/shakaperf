@@ -1,18 +1,19 @@
 import assert from 'node:assert';
 import path from 'node:path';
-import { getGitRunId } from '../../../core/util/gitRunId';
-import { VISREG_DEFAULT_CONFIG } from '../../../core/types';
+import { getGitRunId } from '../../../../src/visreg/core/util/gitRunId';
+import { VISREG_DEFAULT_CONFIG } from '../../../../src/visreg/core/types';
 
-const packageJson = require('../../../package.json');
+const packageJson = require('../../../../package.json');
 
 process.chdir(__dirname);
 
-import makeConfig from '../../../core/util/makeConfig';
+import makeConfig from '../../../../src/visreg/core/util/makeConfig';
 
 const { version } = packageJson;
 
-// root of visreg package dir, not related to cwd
-const visregDir = path.resolve(__dirname, '../../..');
+// visregRoot is computed by makeConfig as path.join(__dirname, '../..') relative to
+// src/visreg/core/util/makeConfig.ts, which resolves to src/visreg/
+const visregDir = path.resolve(__dirname, '../../../../src/visreg');
 const runId = getGitRunId();
 const runBase = path.resolve('visreg_data', runId);
 
@@ -30,7 +31,7 @@ const expectedConfig: Record<string, any> = {
   experimentScreenshotDir: defaultPaths.htmlReport + '/experiment_screenshot',
   ciReportDir: defaultPaths.ciReport,
   htmlReportDir: defaultPaths.htmlReport,
-  comparePath: path.resolve(visregDir, 'compare/output'),
+  comparePath: path.resolve(visregDir, '..', 'compare', 'output'),
   captureConfigFileNameDefault: path.resolve(
     visregDir,
     'capture/config.default.ts'

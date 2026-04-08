@@ -12,16 +12,16 @@ describe('compare command', function () {
     createComparisonBitmapsStub = jest.fn().mockResolvedValue(undefined);
     executeCommandStub = jest.fn().mockResolvedValue(undefined);
 
-    jest.mock('../../../core/util/createComparisonBitmaps', () => ({
+    jest.mock('../../../../src/visreg/core/util/createComparisonBitmaps', () => ({
       __esModule: true,
       default: createComparisonBitmapsStub
     }));
-    jest.mock('../../../core/command/index', () => ({
+    jest.mock('../../../../src/visreg/core/command/index', () => ({
       __esModule: true,
       default: executeCommandStub
     }));
 
-    compare = require('../../../core/command/compare') as unknown as typeof compare;
+    compare = require('../../../../src/visreg/core/command/compare') as unknown as typeof compare;
   }
 
   beforeEach(async function () {

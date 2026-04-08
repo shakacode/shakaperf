@@ -1,4 +1,4 @@
-import compareHash from '../../../../core/util/compare/compare-hash';
+import compareHash from '../../../../../src/visreg/core/util/compare/compare-hash';
 import path from 'node:path';
 import assert from 'node:assert';
 

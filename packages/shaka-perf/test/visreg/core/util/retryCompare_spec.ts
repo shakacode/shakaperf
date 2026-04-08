@@ -8,7 +8,7 @@ const REF_IMG2 = path.join(__dirname, 'compare/refImage-2.png');
 
 // retryCompare is called AFTER an initial mismatch is detected
 // It attempts to re-capture screenshots and find a matching pair
-import retryCompareOriginal from '../../../core/util/retryCompare';
+import retryCompareOriginal from '../../../../src/visreg/core/util/retryCompare';
 // Test mocks don't implement full Playwright interfaces — loosen the input type
 const retryCompare = retryCompareOriginal as unknown as (options: Record<string, unknown>) => ReturnType<typeof retryCompareOriginal>;
 

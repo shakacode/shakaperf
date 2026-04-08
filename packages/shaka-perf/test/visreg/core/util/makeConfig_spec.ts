@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import makeConfig from '../../../core/util/makeConfig';
+import makeConfig from '../../../../src/visreg/core/util/makeConfig';
 
 describe('make config', function () {
   it('should pass the filter arg correctly', async function () {

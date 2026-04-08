@@ -3,8 +3,8 @@ import { TestType } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 
 describe('preparePage', function () {
-  let preparePage: typeof import('../../../core/util/preparePage').default;
-  let translateUrl: typeof import('../../../core/util/preparePage').translateUrl;
+  let preparePage: typeof import('../../../../src/visreg/core/util/preparePage').default;
+  let translateUrl: typeof import('../../../../src/visreg/core/util/preparePage').translateUrl;
 
   const mockEvaluate = jest.fn();
   const mockGoto = jest.fn();
@@ -55,34 +55,34 @@ describe('preparePage', function () {
   };
 
   const baseViewport = { label: 'desktop', width: 1280, height: 800 };
-  const baseConfig = {} as import('../../../core/types').VisregConfig;
-  const baseBrowserContext = {} as import('../../../core/types').BrowserContext;
+  const baseConfig = {} as import('../../../../src/visreg/core/types').VisregConfig;
+  const baseBrowserContext = {} as import('../../../../src/visreg/core/types').BrowserContext;
 
   beforeAll(function () {
-    jest.mock('../../../capture/visregTools', () => ({
+    jest.mock('../../../../src/visreg/capture/visregTools', () => ({
       __esModule: true,
       default: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../capture/helpers/loadCookies', () => ({
+    jest.mock('../../../../src/visreg/capture/helpers/loadCookies', () => ({
       __esModule: true,
       loadCookies: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../capture/helpers/waitUntilPageSettled', () => ({
+    jest.mock('../../../../src/visreg/capture/helpers/waitUntilPageSettled', () => ({
       __esModule: true,
       waitUntilPageSettled: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../capture/helpers/clickAndHoverHelper', () => ({
+    jest.mock('../../../../src/visreg/capture/helpers/clickAndHoverHelper', () => ({
       __esModule: true,
       clickAndHoverHelper: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../core/util/logger', () => ({
+    jest.mock('../../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {}, warn: function () {} };
       },
     }));
 
-    const mod = require('../../../core/util/preparePage');
+    const mod = require('../../../../src/visreg/core/util/preparePage');
     preparePage = mod.default;
     translateUrl = mod.translateUrl;
   });

@@ -13,12 +13,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.mock('../../core/runner', () => ({
+    jest.mock('../../../src/visreg/core/runner', () => ({
       __esModule: true,
       default: runnerMock
     }));
 
-    require('../../cli/index');
+    require('../../../src/visreg/cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
@@ -31,12 +31,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'compare', '--testPathPattern', 'homepage'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.mock('../../core/runner', () => ({
+    jest.mock('../../../src/visreg/core/runner', () => ({
       __esModule: true,
       default: runnerMock
     }));
 
-    require('../../cli/index');
+    require('../../../src/visreg/cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
@@ -49,12 +49,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'compare'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.mock('../../core/runner', () => ({
+    jest.mock('../../../src/visreg/core/runner', () => ({
       __esModule: true,
       default: runnerMock
     }));
 
-    require('../../cli/index');
+    require('../../../src/visreg/cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);
@@ -67,12 +67,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.mock('../../core/runner', () => ({
+    jest.mock('../../../src/visreg/core/runner', () => ({
       __esModule: true,
       default: runnerMock
     }));
 
-    require('../../cli/index');
+    require('../../../src/visreg/cli/index');
 
     try {
       await promiseMock;
@@ -88,12 +88,12 @@ describe('cli', function () {
     process.argv = ['node', 'shaka-visreg', 'init'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
-    jest.mock('../../core/runner', () => ({
+    jest.mock('../../../src/visreg/core/runner', () => ({
       __esModule: true,
       default: runnerMock
     }));
 
-    require('../../cli/index');
+    require('../../../src/visreg/cli/index');
 
     await promiseMock;
     assert.strictEqual(process.exitCode, undefined);

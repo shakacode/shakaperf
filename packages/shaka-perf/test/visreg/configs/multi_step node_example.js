@@ -1,4 +1,4 @@
-import runner from '../../core/runner.js';
+import runner from '../../../src/visreg/core/runner.js';
 
 console.log('Running a multi-step shaka-perf visreg test. vvv');
 

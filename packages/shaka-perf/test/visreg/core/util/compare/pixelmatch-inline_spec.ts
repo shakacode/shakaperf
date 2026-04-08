@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { compareBuffers, createCompositeImage, resizePng } from '../../../../core/util/compare/pixelmatch-inline';
+import { compareBuffers, createCompositeImage, resizePng } from '../../../../../src/visreg/core/util/compare/pixelmatch-inline';
 import { PNG } from 'pngjs';
 
 const REF_IMG1 = path.join(__dirname, 'refImage-1.png');

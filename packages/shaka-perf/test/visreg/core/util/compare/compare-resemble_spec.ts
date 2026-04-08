@@ -1,4 +1,4 @@
-import compareResemble from '../../../../core/util/compare/compare-resemble';
+import compareResemble from '../../../../../src/visreg/core/util/compare/compare-resemble';
 import path from 'node:path';
 
 const REF_IMG1 = path.join(__dirname, 'refImage-1.png');

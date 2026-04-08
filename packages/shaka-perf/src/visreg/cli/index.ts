@@ -4,7 +4,8 @@ import { Command } from 'commander';
 import { addCompareOptions } from 'shaka-shared';
 import runner from '../core/runner';
 
-const packageJson = require('../package.json');
+// At runtime this file is at dist/visreg/cli/, package.json is 3 levels up
+const packageJson = require('../../../package.json');
 const { version } = packageJson;
 
 // Catch errors from failing promises

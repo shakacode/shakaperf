@@ -26,11 +26,11 @@ describe('core report', function () {
     };
     writeFileStub = jest.fn().mockResolvedValue(undefined);
 
-    jest.mock('../../../core/util/compare/index', () => ({
+    jest.mock('../../../../src/visreg/core/util/compare/index', () => ({
       __esModule: true,
       default: compareMock
     }));
-    jest.mock('../../../core/util/logger', () => ({
+    jest.mock('../../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: loggerMock
     }));
@@ -45,7 +45,7 @@ describe('core report', function () {
       ensureDir: jest.fn().mockResolvedValue(undefined)
     }));
 
-    report = require('../../../core/command/report') as unknown as typeof report;
+    report = require('../../../../src/visreg/core/command/report') as unknown as typeof report;
   });
 
   it('should generate two json reports and a default browser report when config.report specifies json', function () {
