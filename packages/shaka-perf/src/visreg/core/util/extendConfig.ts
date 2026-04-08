@@ -6,7 +6,8 @@ import os from 'node:os';
 import { getGitRunId } from './gitRunId';
 import type { RuntimeConfig, VisregConfig } from '../types';
 
-const packageJson = require('../../package.json');
+// At runtime this file is at dist/visreg/core/util/, package.json is 4 levels up
+const packageJson = require('../../../../package.json');
 const { version } = packageJson;
 const tmpdir = os.tmpdir();
 
@@ -89,7 +90,8 @@ function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | 
 }
 
 function comparePaths (config: Partial<RuntimeConfig>) {
-  config.comparePath = path.join(config.visregRoot!, 'compare/output');
+  // visregRoot is dist/visreg/, compare/output is at dist/../compare/output
+  config.comparePath = path.join(config.visregRoot!, '..', 'compare', 'output');
   config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
 }
 
