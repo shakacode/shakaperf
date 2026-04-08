@@ -20,7 +20,7 @@
 
 import assert from 'node:assert/strict';
 import parseArgs from 'minimist';
-import runner from '../../core/runner.js';
+import runner from '../../../src/visreg/core/runner.js';
 const URL = 'https://garris.github.io/BackstopJS';
 
 const argsOptions = parseArgs(process.argv.slice(2), {

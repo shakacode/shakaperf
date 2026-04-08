@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import type { RuntimeConfig } from '../../../core/types';
+import type { RuntimeConfig } from '../../../../src/visreg/core/types';
 
 describe('createComparisonBitmaps', function () {
   let capturedConfig: Record<string, unknown> | null;
@@ -74,22 +74,22 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/runCompareScenario', () => runCompareScenarioMock);
-    jest.mock('../../../core/util/runPlaywright', () => ({
+    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);
+    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+    jest.mock('../../../../src/visreg/core/util/ensureDirectoryPath', () => ({
       __esModule: true,
       default: function () {},
     }));
-    jest.mock('../../../core/util/logger', () => ({
+    jest.mock('../../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {} };
       },
     }));
-    const mod = require('../../../core/util/createComparisonBitmaps');
+    const mod = require('../../../../src/visreg/core/util/createComparisonBitmaps');
     return mod.default;
   }
 
@@ -123,25 +123,25 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/runCompareScenario', () => ({
+    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => ({
       playwright: function () { return Promise.resolve({ testPairs: [] }); },
     }));
-    jest.mock('../../../core/util/runPlaywright', () => ({
+    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+    jest.mock('../../../../src/visreg/core/util/ensureDirectoryPath', () => ({
       __esModule: true,
       default: function () {},
     }));
-    jest.mock('../../../core/util/logger', () => ({
+    jest.mock('../../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {} };
       },
     }));
 
-    const mod = require('../../../core/util/createComparisonBitmaps');
+    const mod = require('../../../../src/visreg/core/util/createComparisonBitmaps');
     const createComparisonBitmaps = mod.default;
 
     let errorThrown = false;
@@ -323,25 +323,25 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/runCompareScenario', () => ({
+    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => ({
       playwright: function () { return Promise.resolve({ testPairs: [] }); },
     }));
-    jest.mock('../../../core/util/runPlaywright', () => ({
+    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => ({
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../core/util/ensureDirectoryPath', () => ({
+    jest.mock('../../../../src/visreg/core/util/ensureDirectoryPath', () => ({
       __esModule: true,
       default: function () {},
     }));
-    jest.mock('../../../core/util/logger', () => ({
+    jest.mock('../../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: function () {
         return { log: function () {}, error: function () {} };
       },
     }));
 
-    const mod = require('../../../core/util/createComparisonBitmaps');
+    const mod = require('../../../../src/visreg/core/util/createComparisonBitmaps');
     const createComparisonBitmaps = mod.default;
 
     const configNoTestFile = {

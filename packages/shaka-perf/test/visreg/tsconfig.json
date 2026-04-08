@@ -1,13 +1,12 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "noEmit": true
   },
   "include": [
-    "../core/**/*.ts",
-    "../cli/**/*.ts",
-    "../capture/**/*.ts",
-    "../src/**/*.ts",
+    "../../src/visreg/core/**/*.ts",
+    "../../src/visreg/cli/**/*.ts",
+    "../../src/visreg/capture/**/*.ts",
     "**/*.ts"
   ],
   "exclude": []
