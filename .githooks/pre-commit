@@ -10,7 +10,7 @@ fi
 
 args=""
 packages_changed=false
-for pkg in shaka-bundle-size shaka-twin-servers shaka-bench shaka-visreg; do
+for pkg in shaka-bundle-size shaka-perf shaka-shared; do
   if echo "$staged" | grep -q "^packages/$pkg/"; then
     args="$args --include $pkg"
     packages_changed=true
