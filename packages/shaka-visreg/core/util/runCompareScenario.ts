@@ -61,7 +61,8 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
     // Element selector
     const el = await page.$(selector);
     if (el) {
-      const box = await el.boundingBox();
+      await el.scrollIntoViewIfNeeded();
+      let box = await el.boundingBox();
       if (box) {
         if ((useBoundingBox ?? config.useBoundingBoxViewportForSelectors) !== false) {
           const bodyHandle = await page.$('body');
@@ -70,6 +71,11 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
             width: Math.max(viewport.width || viewport.viewport!.width, Math.ceil(boundingBox!.width)),
             height: Math.max(viewport.height || viewport.viewport!.height, Math.ceil(boundingBox!.height))
           });
+          // Re-fetch bounding box after viewport resize — layout may have shifted
+          const updatedBox = await el.boundingBox();
+          if (updatedBox) {
+            box = updatedBox;
+          }
         }
 
         return await page.screenshot({ clip: box });
