@@ -19,7 +19,7 @@ function parseLocalStorage (localStorageItem) {
     data = JSON.parse(localStorageItem);
   } catch (error) {
     console.error(error);
-    console.warn('shaka-visreg LocalStorage settings appear to be corrupted. Let me fix that for you.');
+    console.warn('shaka-perf visreg LocalStorage settings appear to be corrupted. Let me fix that for you.');
     localStorage.removeItem('shaka-visreg');
     data = false;
   }

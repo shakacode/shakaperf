@@ -173,7 +173,7 @@ export async function build(config: ResolvedConfig, options: BuildOptions = {}):
   console.log('');
   if (buildingBoth) {
     console.log('Next steps:');
-    console.log('  yarn shaka-twin-servers start-containers');
+    console.log('  yarn shaka-perf twin-servers start-containers');
     console.log('');
   }
 }

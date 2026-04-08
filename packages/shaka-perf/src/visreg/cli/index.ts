@@ -33,7 +33,7 @@ function runCommand(commandName: string, command: Command) {
     filter: cmdOpts.filter,
   };
 
-  console.log('shaka-visreg v' + version);
+  console.log('shaka-perf visreg v' + version);
   runner(commandName, argsOptions).catch(function () {
     process.exitCode = 1;
   });

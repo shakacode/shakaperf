@@ -13,7 +13,7 @@ export type ServerTarget = 'control' | 'experiment';
  * Executes a command in a Docker container with proper PID handling for Overmind.
  *
  * This is designed to be called from a Procfile like:
- *   control-rails: shaka-twin-servers run-overmind-command control "bundle exec puma ..."
+ *   control-rails: shaka-perf twin-servers run-overmind-command control "bundle exec puma ..."
  *
  * The command:
  * 1. Generates a unique temp file path

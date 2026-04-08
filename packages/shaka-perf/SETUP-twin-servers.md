@@ -1,6 +1,6 @@
 # Setting Up Twin Servers for Your Project
 
-This guide walks you through adding `shaka-twin-servers` to a project that already has a production Dockerfile.
+This guide walks you through adding twin-servers to a project that already has a production Dockerfile.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ This guide walks you through adding `shaka-twin-servers` to a project that alrea
 Create `twin-servers.config.ts` in your project root:
 
 ```ts
-import { defineConfig } from 'shaka-twin-servers';
+import { defineConfig } from 'shaka-perf/twin-servers';
 
 export default defineConfig({
   projectDir: '.',
@@ -154,11 +154,11 @@ setupCommands: [
 
 A default [`docker-compose.yml`](./templates/docker-compose.yml) is bundled with the package. Most projects don't need a custom one. To get a custom copy you can edit, run:
 ```bash
-yarn shaka-twin-servers customize-docker-compose
+yarn shaka-perf twin-servers customize-docker-compose
 ```
 
 Key points about the default:
-- `EXPERIMENT_IMAGE_NAME`, `CONTROL_IMAGE_NAME`, `CONTROL_VOLUME_DIR`, and `EXPERIMENT_VOLUME_DIR` are set automatically by shaka-twin-servers
+- `EXPERIMENT_IMAGE_NAME`, `CONTROL_IMAGE_NAME`, `CONTROL_VOLUME_DIR`, and `EXPERIMENT_VOLUME_DIR` are set automatically by shaka-perf twin-servers
 - `command: sleep infinity` keeps containers alive — Overmind manages server processes
 - `PERF_EXPERIMENT` distinguishes control from experiment at runtime
 - Bind-mount volumes let you sync code changes without rebuilding images
@@ -191,10 +191,10 @@ If a service already has a Dockerized setup in the project's dev instructions (e
 ## 4. Create a Procfile
 
 ```
-control-rails: yarn shaka-twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-experiment-rails: yarn shaka-twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-twin-servers say "Control server started" && while :; do sleep 2073600; done
-notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && yarn shaka-twin-servers say "Experiment server started" && while :; do sleep 2073600; done
+control-rails: yarn shaka-perf twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+experiment-rails: yarn shaka-perf twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twin-servers say "Control server started" && while :; do sleep 2073600; done
+notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && yarn shaka-perf twin-servers say "Experiment server started" && while :; do sleep 2073600; done
 ```
 
 `run-overmind-command` runs the command inside the Docker container with proper PID tracking so Overmind can stop/restart individual processes.
