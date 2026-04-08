@@ -17,7 +17,8 @@ The goal is to produce tests that _actually work_ — not just syntactically val
 | `scripts/extract-links.js`   | Run via `javascript_tool` to collect internal links from any page          |
 | `scripts/probe-lazy-load.js` | Run via `javascript_tool` to test whether scrolling triggers new content   |
 | `scripts/parse-report.py`    | Run after `liveCompare` to summarize pass/fail and diff % from report.json |
-| `references/patterns.md`     | Read when writing `.abtest.ts` files — contains all 5 code patterns        |
+| `scripts/check-blank-screenshots.py` | Run after `liveCompare` to flag screenshots where 70%+ pixels are one color (blank/empty captures) |
+| `references/patterns.md`     | Read when writing `.abtest.ts` files — contains all 6 code patterns        |
 | `references/api.md`          | Read when you need the full `abTest()` config API or helpers reference     |
 
 Read these files as needed rather than trying to keep the full details in mind. The patterns and API reference are too detailed to hold mentally — just load them.
@@ -147,7 +148,7 @@ _Single-server mode_:
 cd <app-directory> && yarn shaka-visreg liveCompare --testFile ab-tests/filename.abtest.ts --controlURL <url> --experimentURL <url>
 ```
 
-**Read results** using two techniques:
+**After every test run**, execute these three checks in order:
 
 **1. Parse report.json** — run `scripts/parse-report.py` from the app directory:
 
@@ -155,7 +156,22 @@ cd <app-directory> && yarn shaka-visreg liveCompare --testFile ab-tests/filename
 python3 .claude/skills/discover-abtests/scripts/parse-report.py
 ```
 
-**2. Inspect screenshots visually** — use the Read tool on `.png` files directly. This is the fastest way to tell whether a failure is a broken test or a real A/B diff:
+**2. Check for blank screenshots** — always run this. Use `--report` to scope to only the screenshots from the test you just ran (avoids stale/corrupt PNGs from older runs):
+
+```bash
+python3 .claude/skills/discover-abtests/scripts/check-blank-screenshots.py --report visreg_data/html_report/report.json
+```
+
+The script flags any screenshot where 70%+ of pixels share one color — a strong signal the capture got an empty container, unhydrated page, or missed lazy-loaded content instead of real UI. Exit code 1 means blanks were found.
+
+A test that passes the visreg comparison (0 diff) can still be broken if both control and experiment captured a blank page. This check catches that — **do not dismiss blank flags as false positives without visually confirming the screenshot shows real content.** A tall page with 90%+ same-color pixels almost certainly has missing lazy-loaded content, even if Phase 1 didn't detect lazy loading. Phase 1 probes only count `<img>` tags; sites also lazy-load entire content sections (property cards, grids, maps) via IntersectionObserver on `<div>` containers — those won't show up as new images but will leave the page mostly blank without scrolling.
+
+When blanks are flagged, always **read the screenshot with the Read tool** before deciding. Then fix:
+- If the page shows only the hero/header with empty space below → add scrolling + `waitForLoadState('networkidle')` (see lazy-load pattern in `patterns.md`). This is needed even if Phase 1 said "no lazy loading" — the blank screenshot is the ground truth.
+- If the selector targets a container that's empty at capture time → wait for its content to load, or use a different selector
+- If the element is `display:none` on some viewports → split into viewport-scoped tests (see viewport-conditional pattern in `patterns.md`)
+
+**3. Inspect screenshots visually** — use the Read tool on `.png` files directly. This is the fastest way to tell whether a failure is a broken test or a real A/B diff:
 
 - `visreg_data/html_report/experiment_screenshot/`
 - `visreg_data/html_report/reference_screenshot/`
@@ -171,13 +187,13 @@ A test only counts as PASS when **all** of the following are met:
 | --- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | 1   | No loading indicators (spinners, skeletons) visible                                   | Add `waitForLoadState('networkidle')` and/or `waitUntilPageSettled`                           |
 | 2   | No mid-animation carousels — frames frozen at deterministic position                  | Add CSS override confirmed in Phase 1                                                         |
-| 3   | No missing lazy-loaded content                                                        | Add scroll + networkidle + scroll-to-top (only if Phase 1 confirmed it)                       |
+| 3   | No missing lazy-loaded content                                                        | Add scroll + networkidle + scroll-to-top. Blank screenshot check overrides Phase 1 — if screenshots are mostly empty, add scrolling regardless of Phase 1 results |
 | 4   | Thresholds appropriate — `0.01` static, `0.05` dynamic. Never raise to hide a failure | Fix root cause                                                                                |
 | 5   | All selectors resolve without timeout                                                 | Inspect DOM in Chrome, use a more reliable selector                                           |
 | 6   | Every non-trivial action is annotated                                                 | Add missing `annotate(...)` calls                                                             |
 | 7   | No auth-gated content (login page/access denied in screenshot)                        | Remove the test                                                                               |
 | 8   | No unconfirmed interactions — every click/scroll/CSS override validated in Phase 1    | Remove unconfirmed action                                                                     |
-| 9   | No empty or near-blank screenshots — must show recognizable UI                        | Check for unhydrated containers, missing scroll, or `overrideCSS` stripping background images |
+| 9   | No blank screenshots (verified by `check-blank-screenshots.py --report`)              | If 70%+ same color: add scroll/networkidle for lazy content, switch selector, or split by viewport |
 
 **Before attempting any fix, look at the diff screenshot.** Two failure types:
 
@@ -190,10 +206,12 @@ A test only counts as PASS when **all** of the following are met:
 | ---------------------------- | ----------------------------------------------------------------------------- |
 | UI change on one server only | Real A/B diff — mark PASS (A/B diff), do not raise threshold                  |
 | Skeleton/spinner visible     | `waitForLoadState('networkidle')`                                             |
-| Content missing (lazy)       | scroll + networkidle + scroll-to-top (Phase 1 confirmed only)                 |
+| Content missing (lazy)       | scroll + networkidle + scroll-to-top — blank screenshot check is ground truth, add scrolling even if Phase 1 didn't detect it |
 | Carousel moving              | CSS override from Phase 1                                                     |
 | Selector timeout             | Inspect DOM in Chrome, use more reliable selector                             |
 | High diff on dynamic content | `hideSelectors`/`removeSelectors` or wait for settle — do not raise threshold |
+| Selector not found on some viewports | Element is `display:none` at that breakpoint — split into viewport-scoped tests (see patterns.md "Viewport-conditional selectors") |
+| Blank/near-blank screenshot (70%+ same color) | Missing lazy content, empty container, or wrong selector — add scroll/networkidle or pick a different selector |
 
 ---
 

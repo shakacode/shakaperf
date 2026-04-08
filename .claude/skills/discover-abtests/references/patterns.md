@@ -87,6 +87,75 @@ abTest('Page Name', {
 });
 ```
 
+## Viewport-conditional selectors (element hidden on some viewports)
+
+Use when a selector only exists on certain viewports (e.g. `display: none` on mobile). The `viewport` labels come from `visreg.config.ts` (e.g. `'phone'`, `'tablet'`, `'desktop'`).
+
+### Preferred: split into separate tests with `viewports` override
+
+Write separate `abTest()` calls scoped to specific viewports via the `viewports` option, so each test only runs where its selector exists. This is the cleanest approach — no branching logic, clear test names, and failures are easy to trace.
+
+```typescript
+import { abTest } from 'shaka-shared';
+import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+
+// Desktop/tablet only — .map-container is display:none on phone
+abTest('Homepage Map Section', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-container'],
+      misMatchThreshold: 0.05,
+      viewports: [
+        { label: 'tablet', width: 768, height: 1024 },
+        { label: 'desktop', width: 1280, height: 800 },
+      ],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+// Phone only — .mobile-featured-grid replaces the desktop grid
+abTest('Homepage Mobile Featured', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.mobile-featured-grid'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'phone', width: 375, height: 667 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+```
+
+### Alternative: branch inside the test callback
+
+When the viewport difference involves test logic (not just which selector to capture) — e.g. different waits, clicks, or scroll behavior — use the `viewport` parameter to branch within a single test.
+
+```typescript
+abTest('Search Results', {
+  startingPath: '/search',
+  options: {
+    visreg: { misMatchThreshold: 0.05, delay: 100 },
+  },
+}, async ({ page, viewport, annotate }) => {
+  if (viewport.label === 'phone') {
+    annotate('waiting for mobile results list');
+    await page.waitForSelector('.mobile-results', { state: 'visible' });
+  } else {
+    annotate('waiting for split-panel search layout');
+    await page.waitForSelector('.search-split-panel', { state: 'visible' });
+  }
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+```
+
 ## Carousel / animation (CSS override confirmed in Phase 1)
 
 Only use if injecting the CSS override in Phase 1 visually froze the animation.
