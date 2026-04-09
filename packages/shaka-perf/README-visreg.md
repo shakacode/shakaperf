@@ -62,6 +62,11 @@ Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 > [!TIP]
 > The `--filter` argument is a useful shortcut for re-running a single test or just the failed tests.
 
+<!-- -->
+
+> [!WARNING]
+> `compare` wipes the `htmlReport` directory (default: `visreg_data/html_report`) at the start of every run, so the output always reflects only the current run. Screenshots for tests that were renamed or removed since the previous run will NOT linger. Do not point `paths.htmlReport` at a directory containing files you care about.
+
 ### CLI Options
 
 ```
