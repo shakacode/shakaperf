@@ -8,7 +8,7 @@ parameters:
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  twin-servers: ramez/shaka-twin-servers@dev:alpha
+  shaka-perf: ramez/shaka-perf@dev:alpha
 
 executors:
   ruby-node-executor:
@@ -159,7 +159,7 @@ workflows:
   scheduled-perf-tests:
     when: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
-      - twin-servers/build-experiment: &build-experiment-job
+      - shaka-perf/build-experiment: &build-experiment-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -168,7 +168,7 @@ workflows:
             - enable-corepack
             - setup-yarn-and-build-packages
 
-      - twin-servers/build-control: &build-control-job
+      - shaka-perf/build-control: &build-control-job
           image-name: demo-ecommerce
           resource-class: medium
           working-directory: demo-ecommerce
@@ -184,13 +184,13 @@ workflows:
                   echo "export S3_ENDPOINT='${PERF_BASELINE_S3_ENDPOINT}'" >> "$BASH_ENV" # If the CI variable has a different name, you can override it here
                   echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
-            - twin-servers/download-control-commit-sha
+            - shaka-perf/download-control-commit-sha
 
-      - twin-servers/run-tests: &shaka-visual-regression-job
+      - shaka-perf/run-tests: &shaka-visual-regression-job
           name: scheduled-shaka-visual-regression
           requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
+            - shaka-perf/build-experiment
+            - shaka-perf/build-control
           resource-class: medium
           working-directory: demo-ecommerce
           cli-prefix: yarn
@@ -211,11 +211,11 @@ workflows:
             - store_test_results:
                 path: demo-ecommerce/visreg_data/ci_report
 
-      - twin-servers/run-tests: &perf-tests-job
+      - shaka-perf/run-tests: &perf-tests-job
           name: scheduled-perf-tests
           requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
+            - shaka-perf/build-experiment
+            - shaka-perf/build-control
           resource-class: medium
           working-directory: demo-ecommerce
           cli-prefix: yarn
@@ -234,7 +234,7 @@ workflows:
                   cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
 
       # Update control commit SHA (only runs when all tests pass)
-      - twin-servers/update-control-commit-sha: &update-control-sha-job
+      - shaka-perf/update-control-commit-sha: &update-control-sha-job
           pre-steps:
             - run:
                 name: Set S3 environment variables
@@ -251,10 +251,10 @@ workflows:
       - approve-baseline-update:
           type: approval
           requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
+            - shaka-perf/build-experiment
+            - shaka-perf/build-control
 
-      - twin-servers/update-control-commit-sha:
+      - shaka-perf/update-control-commit-sha:
           <<: *update-control-sha-job
           name: force-update-perf-baseline
           requires:
@@ -265,13 +265,13 @@ workflows:
     when:
       not: << pipeline.parameters.run-scheduled-perf-tests >>
     jobs:
-      - twin-servers/build-experiment:
+      - shaka-perf/build-experiment:
           <<: *build-experiment-job
           filters:
             branches:
               ignore: main
 
-      - twin-servers/build-control:
+      - shaka-perf/build-control:
           <<: *build-control-job
           setup-steps:
             - enable-corepack
@@ -280,14 +280,14 @@ workflows:
             branches:
               ignore: main
 
-      - twin-servers/run-tests:
+      - shaka-perf/run-tests:
           <<: *shaka-visual-regression-job
           name: shaka-visual-regression
           filters:
             branches:
               ignore: main
 
-      - twin-servers/run-tests:
+      - shaka-perf/run-tests:
           <<: *perf-tests-job
           name: perf-tests
           filters:
