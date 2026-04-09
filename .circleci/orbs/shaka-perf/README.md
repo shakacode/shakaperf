@@ -1,4 +1,4 @@
-# shaka-twin-servers CircleCI Orb
+# shaka-perf CircleCI Orb
 
 A/B performance testing infrastructure for comparing Docker-based application versions. Builds twin Docker images (control from merge-base, experiment from current branch) and runs comparative performance tests.
 
@@ -24,7 +24,7 @@ circleci setup  # Authenticate with your token
 Combine all component files into a single packed orb:
 
 ```bash
-circleci orb pack .circleci/orbs/shaka-twin-servers/src > shaka-twin-servers-orb.yml
+circleci orb pack .circleci/orbs/shaka-perf/src > shaka-perf-orb.yml
 ```
 
 ### Validate
@@ -32,7 +32,7 @@ circleci orb pack .circleci/orbs/shaka-twin-servers/src > shaka-twin-servers-orb
 Check for syntax errors before publishing:
 
 ```bash
-circleci orb validate shaka-twin-servers-orb.yml
+circleci orb validate shaka-perf-orb.yml
 ```
 
 ### Publish Dev Version (Mutable)
@@ -40,7 +40,7 @@ circleci orb validate shaka-twin-servers-orb.yml
 For testing changes before a release. Dev tags can be overwritten:
 
 ```bash
-circleci orb publish shaka-twin-servers-orb.yml ramez/shaka-twin-servers@dev:alpha
+circleci orb publish shaka-perf-orb.yml ramez/shaka-perf@dev:alpha
 ```
 
 ### Publish Release Version (Immutable)
@@ -49,10 +49,10 @@ For production use. Semantic versions cannot be overwritten:
 
 ```bash
 # Bump patch version (1.0.1 -> 1.0.2)
-circleci orb publish shaka-twin-servers-orb.yml ramez/shaka-twin-servers@1.0.2
+circleci orb publish shaka-perf-orb.yml ramez/shaka-perf@1.0.2
 
 # Or use increment command
-circleci orb publish increment shaka-twin-servers-orb.yml ramez/shaka-twin-servers patch
+circleci orb publish increment shaka-perf-orb.yml ramez/shaka-perf patch
 ```
 
 ## Using the Orb
@@ -61,21 +61,21 @@ Reference in your `.circleci/config.yml`:
 
 ```yaml
 orbs:
-  twin-servers: ramez/shaka-twin-servers@1.0.2
+  shaka-perf: ramez/shaka-perf@1.0.2
 
 workflows:
   perf-tests:
     jobs:
-      - twin-servers/build-experiment:
+      - shaka-perf/build-experiment:
           image-name: my-app
           # Other required params
-      - twin-servers/build-control:
+      - shaka-perf/build-control:
           image-name: my-app
           # Other required params
-      - twin-servers/run-tests:
+      - shaka-perf/run-tests:
           requires:
-            - twin-servers/build-experiment
-            - twin-servers/build-control
+            - shaka-perf/build-experiment
+            - shaka-perf/build-control
           server-command: 'npm start'
           # Other required params
 ```
