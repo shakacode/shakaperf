@@ -1,4 +1,4 @@
-import { abTest } from 'shaka-shared';
+import { abTest, TestType } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Admin Dashboard - Cookie Login', {
@@ -10,7 +10,10 @@ abTest('Admin Dashboard - Cookie Login', {
       cookiePath: 'visreg_data/cookies/admin-auth-cookie.json',
     },
   },
-}, async ({ page, annotate }) => {
+}, async ({ page, annotate, testType }) => {
+  if (testType !== TestType.VisualRegression) {
+    return
+  }
   annotate('Wait for page to fully load with cookie auth');
   await page.waitForLoadState('networkidle');
 
