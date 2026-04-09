@@ -55,7 +55,14 @@ describe('createComparisonBitmaps', function () {
     const tests = mockRegisteredTests(overrides?.registeredTests);
 
     jest.mock('shaka-shared', () => ({
-      loadTests: function () { return Promise.resolve(tests); },
+      loadTests: function (opts: { filter?: string } = {}) {
+        let result = tests;
+        if (opts.filter) {
+          const patterns = opts.filter.split(',');
+          result = tests.filter((t) => patterns.some((p) => new RegExp(p).test((t as { name: string }).name)));
+        }
+        return Promise.resolve(result);
+      },
     }));
 
     const runCompareScenarioMock = overrides?.runCompareScenario || {
