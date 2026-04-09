@@ -99,9 +99,7 @@ function formatTestTitle(testFile: string, name: string, line?: number | null): 
   return chalk.dim(loc) + chalk.bold.yellow(` ${name}`);
 }
 
-export async function runCompare(flags: Record<string, any>): Promise<string> {
-  const compareFlags = { ...flags } as ICompareFlags;
-
+export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   if (!compareFlags.controlURL) {
     console.error("controlURL is required as a cli flag");
     process.exit(2);

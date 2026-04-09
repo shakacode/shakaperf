@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { Command } from "commander";
 import { addCompareOptions } from "shaka-shared";
 import { getDefaultValue } from "./command-config/default-flag-args";
-import { runCompare } from "./commands/compare";
+import { ICompareFlags, runCompare } from "./commands/compare";
 import { runAnalyze } from "./commands/compare/analyze";
 import { runReport } from "./commands/compare/report";
 import { runInit } from "./commands/init";
@@ -62,7 +62,7 @@ export function createBenchProgram(): Command {
       getDefaultValue("sampleTimeout")
     )
     .option("--config <path>", "Path to a JS/TS Lighthouse config file")
-    .option("--report", "Generate an HTML report after compare", false)
+    .option("--skip-report", "Skip generating an HTML report after compare", false)
     .option(
       "--regressionThresholdStat <stat>",
       "Statistic for regression threshold (estimator, ci-lower, ci-upper)",
@@ -74,7 +74,7 @@ export function createBenchProgram(): Command {
       parseFloatArg,
       getDefaultValue("pValueThreshold")
     )
-    .action(async (opts: Record<string, unknown>) => {
+    .action(async (opts: ICompareFlags) => {
       if (!opts.config) {
         const autoPath = join(process.cwd(), CONFIG_FILENAME);
         if (existsSync(autoPath)) {
