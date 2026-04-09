@@ -18,8 +18,10 @@ The goal is to produce tests that _actually work_ — not just syntactically val
 | `scripts/probe-lazy-load.js` | Run via `javascript_tool` to test whether scrolling triggers new content   |
 | `scripts/probe-sections.js`  | Run via `javascript_tool` on tall pages (>2000px) to score candidate CSS selectors for section-based testing |
 | `scripts/parse-report.py`    | Run after `compare` to summarize pass/fail, diff %, whitespace metrics, and engine errors |
-| `references/patterns.md`     | Read when writing `.abtest.ts` files — contains code patterns and selector strategy |
-| `references/api.md`          | Read when you need the full `abTest()` config API or helpers reference     |
+| `references/comment-schema.md`    | Read in Step B before writing the JSDoc block above each `abTest()` — defines the mandatory tag schema and shows the canonical example |
+| `references/selectors-strategy.md` | Read in Step A4 when picking CSS selectors for sections, or any time a selector produced a bad screenshot |
+| `references/patterns.md`          | Read in Step C when filling in test bodies — copy-paste-ready `abTest()` snippets, one per probing scenario |
+| `references/api.md`               | Read when you need the full `abTest()` config API or helpers reference |
 
 Read these files as needed rather than trying to keep the full details in mind. The patterns and API reference are too detailed to hold mentally — just load them.
 
@@ -91,7 +93,7 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A3. CSS animation overrides** (if you see moving elements): inject via `javascript_tool` and screenshot to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
 
-**A4. Page sections**: run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
+**A4. Page sections**: read `references/selectors-strategy.md` for the rules on what makes a good vs. bad selector and the two-strategy approach for tall pages. Then run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
 
 **Strategy 1 — Algorithmic probe**: Run `scripts/probe-sections.js` via `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
 
@@ -177,17 +179,17 @@ After completing desktop probing (A1-A7), resize the browser to phone width and 
 
 ### Step B — Write the structured comment block for every planned test
 
-Read `references/patterns.md` before writing any test code — it has the correct pattern for each scenario AND the **mandatory comment schema** at the top of the file. Every `.abtest.ts` file you generate must follow that schema exactly. The schema exists because the probing work in Step A produces a lot of context (why a viewport is restricted, what was tried inside a modal, what fields a form has and how to fill them) and that context is the audit trail for the test — losing it forces the next person to redo all the probing.
+Read `references/comment-schema.md` before starting Step B — it defines the **mandatory comment schema** that every `.abtest.ts` file must follow, including the canonical example. The schema exists because the probing work in Step A produces a lot of context (why a viewport is restricted, what was tried inside a modal, what fields a form has and how to fill them) and that context is the audit trail for the test — losing it forces the next person to redo all the probing.
 
 Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write:
 
 1. **A file-level header block** (`/* ... */`) at the top summarizing cross-test findings: A1 lazy load, A2 loading indicators, A3 animations, A4 candidate sections, A8 mobile findings, and which shared sections this file claimed.
 
-2. **A per-test JSDoc block** (`/** ... */`) directly above each `abTest()` call, with the structured `@`-tags from the schema in `references/patterns.md`. The test body itself is still a stub at this stage — `async () => {}` — you'll fill it in during Step C. The JSDoc block goes in _now_, while probing is fresh.
+2. **A per-test JSDoc block** (`/** ... */`) directly above each `abTest()` call, with the structured `@`-tags from `references/comment-schema.md`. The test body itself is still a stub at this stage — `async () => {}` — you'll fill it in during Step C. The JSDoc block goes in _now_, while probing is fresh.
 
 The tags `@section`, `@selector`, `@viewports`, `@waitFor`, `@threshold`, `@probed`, `@interactions`, and `@form` are **all mandatory in every block** — including trivial section snapshots that have no interactions and no forms. If probing found no interactions, write `@interactions No interactions found`. If there's no form, write `@form No form found`. The explicit "none" form is meaningful: it's evidence that probing happened and found nothing, rather than the agent silently skipping the check.
 
-See the canonical example in `references/patterns.md` for the exact layout.
+See the canonical example in `references/comment-schema.md` for the exact layout.
 
 Before moving to Step C, verify every category below has at least one JSDoc-annotated `abTest()` stub (or, where applicable, an explicit "none found" note in the file header). This is a gate — do not proceed until you've checked each one:
 
@@ -213,9 +215,11 @@ Annotate waits, clicks, scrolls, fills, and state changes. Don't annotate every 
 
 ### Step C — Implement and validate tests one at a time
 
-Implement each TODO stub directly in the real `.abtest.ts` file, then validate it using `--filter` to run only that test by name:
+Read `references/patterns.md` before filling in any test bodies — it has copy-paste-ready `abTest()` snippets, one per probing scenario (simple snapshot, lazy load, modal, form fill, chained interaction, etc.). Pick the snippet that matches what you confirmed during probing.
 
-1. **Implement** the TODO stub — replace the empty `async () => {}` with the real test body
+Implement each stub directly in the real `.abtest.ts` file, then validate it using `--filter` to run only that test by name:
+
+1. **Implement** the stub — replace the empty `async () => {}` with the real test body, leaving the JSDoc block from Step B above it untouched
 2. **Run** with `--filter` to execute only this test (the filter is a regex matched against the test name):
 
    _Twin-server mode_:
