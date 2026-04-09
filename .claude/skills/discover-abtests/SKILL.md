@@ -10,6 +10,18 @@ Crawl a target site in Chrome, probe pages interactively to understand their beh
 
 The goal is to produce tests that _actually work_ — not just syntactically valid files. That's why each page is probed in the browser before writing any code: it avoids generating tests for interactions that don't exist, CSS overrides that don't work, or skeleton waits for elements that never appear.
 
+## No shortcuts under time pressure
+
+This skill takes a long time on large sites. That is expected and acceptable. **Do not invent "pragmatic" shortcuts to finish faster.** Specifically, do NOT:
+
+- Skip pages, or "representatively cover" pages that share a template, unless the dedup rules in Step A9 (`claimedSections`) explicitly tell you to. Templates render different data, and different data is exactly what visreg catches.
+- Pick a subset of "important" pages (homepage, search, etc.) and defer the rest. Every page in `pageList` from Phase 1 gets the full A→E loop.
+- Run full-file validation instead of `--filter` per-test validation in Step C "to save time on simple pages". The per-test loop exists because debugging one failing test inside a 10-test file run is dramatically slower than the time `--filter` "costs". There are no simple pages — assume nothing.
+- Skip A8 mobile probing, A5–A7 interaction probing, or the Step B coverage gate, on the grounds that the page "looks straightforward".
+- Announce a revised plan that trades thoroughness for speed. If the task is genuinely too large for one session, say so explicitly and ask the user how to scope it down — do not silently downgrade the methodology.
+
+If you catch yourself writing a message like "given the depth of this task, let me be pragmatic and..." — stop. That sentence is the anti-pattern. The methodology in this skill is the methodology. Follow it page by page, even if it takes many tool calls. The user would rather wait than get a half-probed result.
+
 ## Bundled resources
 
 | Path                         | When to use                                                                |
