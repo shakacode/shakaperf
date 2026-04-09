@@ -40,6 +40,12 @@ export const DEFAULT_LH_CONFIG: LighthouseConfig = {
   onlyCategories: ['performance'],
 };
 
+export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
+  return lhSettings.throttlingMethod === 'simulate'
+    ? (lhSettings.throttling?.cpuSlowdownMultiplier ?? 1)
+    : 1;
+}
+
 export interface LighthouseBenchmarkOptions {
   resultsFolder?: string;
   lhConfigPath?: string;

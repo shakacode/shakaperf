@@ -65,7 +65,7 @@ const compareCmd = program
     getDefaultValue("sampleTimeout")
   )
   .option("--config <path>", "Path to a JS/TS Lighthouse config file")
-  .option("--report", "Generate an HTML report after compare", false)
+  .option("--skip-report", "Skip generating an HTML report after compare", false)
   .option(
     "--regressionThresholdStat <stat>",
     "Statistic for regression threshold (estimator, ci-lower, ci-upper)",

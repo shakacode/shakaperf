@@ -44,7 +44,7 @@ export interface ICompareFlags {
   filter: string | undefined;
   regressionThreshold?: number;
   sampleTimeout: number;
-  report?: boolean;
+  skipReport?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
   config?: string;
@@ -246,7 +246,7 @@ export async function runCompare(flags: Record<string, any>): Promise<string> {
     }
 
     // if we want to run the CompareReport without calling a separate command
-    if (compareFlags.report) {
+    if (!compareFlags.skipReport) {
       await runReport({
         resultsFolder: testResultsFolder,
         pValueThreshold: compareFlags.pValueThreshold,

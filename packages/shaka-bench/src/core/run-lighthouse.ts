@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
-import { extractMarkers, extractRawTraceTimestamp } from './extract-markers';
+import { extractRawTraceTimestamp } from './extract-markers';
 import { updateDownloadedSizes, analyzeNetworkResources } from './network-activity';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
@@ -20,7 +20,7 @@ export async function runLighthouse(
   lhSettings: any,
   resultsFolder: string,
   markers: Marker[] = DEFAULT_MARKERS
-): Promise<PhaseSample[]> {
+): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // 5 minutes
   const timeoutMs = 300000;
 
@@ -108,8 +108,6 @@ export async function runLighthouse(
       unit,
     }));
 
-    results.push(...extractMarkers(runnerResult, markers, prefix));
-
     results.push({
       phase: prefix + 'downloads',
       duration: totalSizeBytes / 1024,
@@ -135,5 +133,5 @@ export async function runLighthouse(
     results.push(...analyzeNetworkResources(runnerResult, url, earlyPhaseTs, prefix));
   }
 
-  return results;
+  return { phases: results, runnerResult };
 }

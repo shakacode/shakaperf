@@ -2,12 +2,6 @@ import type { RunnerResult } from 'lighthouse';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 
-// Ligthouse applies some scaling factor to performance profiles.
-// All performance.mark and performance.measure calls should be multiplied by this factor.
-// Unfortunatly it's not exposed in the Lighthouse API.
-// This is a manually determined value roughly representing the correct ratio.
-const LIGHTHOUSE_SLOWDOWN_MULTIPLYER = 15;
-
 function extractPerformanceMarkerTime(
   result: RunnerResult,
   markerName: string
@@ -17,7 +11,7 @@ function extractPerformanceMarkerTime(
   if (!event) {
     return null;
   }
-  return event.args.data!.startTime! * LIGHTHOUSE_SLOWDOWN_MULTIPLYER;
+  return event.args.data!.startTime!;
 }
 
 function extractPerformanceDuration(
@@ -59,11 +53,7 @@ export function extractMarkers(
 
   for (const marker of markers) {
     if (marker.start) {
-      const duration = extractPerformanceDuration(
-        result,
-        marker.start,
-        marker.end
-      );
+      const duration = extractPerformanceDuration(result, marker.start, marker.end);
       if (duration != null) {
         results.push({
           phase: prefix + marker.label,

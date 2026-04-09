@@ -8,8 +8,9 @@ import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
 import { loadConfigFile, TestType } from 'shaka-shared';
-import { DEFAULT_LH_CONFIG, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
+import { DEFAULT_LH_CONFIG, getCpuSlowdownMultiplier, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
+import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
 import type { AbTestDefinition } from './ab-test-registry';
 
@@ -161,10 +162,14 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         annotate: () => {},
       }).then(() => collectINP(page));
 
-      const [phases, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
+      const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 
+      const multiplier = getCpuSlowdownMultiplier(lhSettings);
+      for (const phase of extractMarkers(runnerResult, markers ?? [], '')) {
+        phases.push({ ...phase, duration: phase.duration * multiplier });
+      }
       if (inp != null && inp > 0) {
-        phases.push({ phase: 'interaction-to-next-paint', duration: inp * 1000, start: 0, sign: 1, unit: 'ms' });
+        phases.push({ phase: 'interaction-to-next-paint', duration: inp * 1000 * multiplier, start: 0, sign: 1, unit: 'ms' });
       }
 
       return phases;
