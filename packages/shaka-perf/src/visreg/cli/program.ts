@@ -9,12 +9,7 @@ export function createVisregProgram(): Command {
     .description('Visual regression testing for web applications')
     .option('--config <path>', 'Path to visreg config file (default: visreg.config.ts)');
 
-  // Catch errors from failing promises
-  process.on('unhandledRejection', function (error: Error | undefined) {
-    console.error(error && error.stack);
-  });
-
-  function runCommand(commandName: string, command: Command) {
+  async function runCommand(commandName: string, command: Command) {
     const globalOpts = program.opts();
     const cmdOpts = command.opts();
     const argsOptions: Record<string, unknown> = {
@@ -29,25 +24,23 @@ export function createVisregProgram(): Command {
 
     const packageJson = require('../../../package.json');
     console.log('shaka-perf visreg v' + packageJson.version);
-    runner(commandName, argsOptions).catch(function () {
+    try {
+      await runner(commandName, argsOptions);
+    } catch (err) {
+      console.error((err as Error).message);
       process.exitCode = 1;
-    });
-
-    process.on('uncaughtException', function (err: Error) {
-      console.log('Uncaught exception:', err.message, err.stack);
-      throw err;
-    });
+    }
   }
 
   program
     .command('init')
     .description('Generate boilerplate config files in your CWD.')
-    .action(function (this: Command) { runCommand('init', this); });
+    .action(async function (this: Command) { await runCommand('init', this); });
 
   const compareCmd = program
     .command('compare')
     .description('Open reference and test URLs simultaneously, compare side-by-side with retry logic.')
-    .action(function (this: Command) { runCommand('compare', this); });
+    .action(async function (this: Command) { await runCommand('compare', this); });
   addCompareOptions(compareCmd);
 
   return program;
