@@ -51,10 +51,10 @@ async function getResolvedConfig(cmd: Command): Promise<{ resolvedConfig: Resolv
   }
 }
 
-function wrapAction(fn: (...args: any[]) => Promise<void>): (...args: any[]) => Promise<void> {
-  return async (...args: any[]) => {
+function wrapAction(fn: (this: Command, ...args: any[]) => Promise<void>): (...args: any[]) => Promise<void> {
+  return async function(this: Command, ...args: any[]) {
     try {
-      await fn(...args);
+      await fn.apply(this, args);
     } catch (error) {
       console.error(colorize(`Error: ${(error as Error).message}`, 'red'));
       process.exit(1);
