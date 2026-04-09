@@ -63,9 +63,38 @@ test('run shaka-perf visreg compare on twin servers @visreg', async ({ page }) =
 
   // Screenshot the HTML report
   const htmlReportIndex = path.join(VISREG_RESULTS_DIR, 'html_report', 'index.html');
-  await page.goto(`file://${htmlReportIndex}`);
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto(`file://${htmlReportIndex}`);
   await page.waitForSelector('#root div', { timeout: 10_000 });
+
+  // Scroll through the whole page in viewport-sized steps to trigger all lazy-loaded images
+  const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
+  const viewportHeight = 1080;
+  const steps = Math.ceil(scrollHeight / viewportHeight) * 4;
+  for (let i = 0; i <= steps; i++) {
+    const y = i * viewportHeight / 4;
+    await page.evaluate((y) => window.scrollTo(0, y), y);
+    await page.waitForTimeout(100);
+  }
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(100);
+
+  const imageCount = await page.evaluate(async () => {
+    const images = Array.from(document.querySelectorAll('img'));
+    await Promise.all(
+      images.map((img) => {
+        if (img.complete) return Promise.resolve();
+        return new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve());
+          img.addEventListener('error', () => resolve());
+        });
+      })
+    );
+    return images.length;
+  });
+  console.log(`All ${imageCount} images loaded`);
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   await page.screenshot({
     path: path.join(VISREG_RESULTS_DIR, 'html-report.screenshot.png'),
     fullPage: true,

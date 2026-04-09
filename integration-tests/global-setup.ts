@@ -58,6 +58,23 @@ export default async function globalSetup() {
       .replace(/py: \{ xs: 6, md: 10 \}/, 'py: { xs: 6, md: 14 }'),
   );
 
+  // Inject a non-existent selector into the experiment's products abtest so
+  // visreg tests exercise the "selector not found" engine-error path.
+  // The control clone keeps the working selector, producing a diff.
+  const productsAbtestPath = path.join(
+    EXPERIMENT_CLONE_PATH,
+    'demo-ecommerce/ab-tests/products.abtest.ts',
+  );
+  loud('Injecting broken selector into experiment products.abtest.ts');
+  const productsAbtestContent = fs.readFileSync(productsAbtestPath, 'utf-8');
+  fs.writeFileSync(
+    productsAbtestPath,
+    productsAbtestContent.replace(
+      "await page.click('[data-cy=\"category-option-electronics\"]');",
+      "await page.click('[data-cy=\"category-option-electronics-fake-broken-selector\"]');",
+    ),
+  );
+
   timed('git commit experiment changes', () => execSync('git add -A && git commit --no-verify --allow-empty -m "integration test snapshot"', {
     cwd: EXPERIMENT_CLONE_PATH,
     stdio: 'inherit',

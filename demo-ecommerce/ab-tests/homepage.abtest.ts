@@ -1,4 +1,4 @@
-import { abTest } from 'shaka-shared';
+import { abTest, TestType } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Homepage', {
@@ -14,7 +14,10 @@ abTest('Homepage', {
       misMatchThreshold: 0.01,
     },
   },
-}, async ({ page, annotate }) => {
+}, async ({ page, annotate, testType }) => {
   annotate('Wait for homepage to settle');
-  await waitUntilPageSettled(page);
+
+  if (testType === TestType.VisualRegression) {
+    await waitUntilPageSettled(page);
+  }
 });

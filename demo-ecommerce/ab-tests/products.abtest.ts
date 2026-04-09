@@ -30,7 +30,7 @@ abTest('Products - Electronics Filter', {
   annotate('Wait for electronics option to appear');
   await page.waitForSelector('[data-cy="category-option-electronics"]', { state: 'visible' });
   annotate('Select electronics category filter');
-  await page.click('[data-cy="category-option-electronics-selector-not-exists"]');
+  await page.click('[data-cy="category-option-electronics"]');
   annotate('Wait for filtered results to settle');
   await waitUntilPageSettled(page);
 });
