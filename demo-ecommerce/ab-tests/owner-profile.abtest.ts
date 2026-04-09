@@ -1,0 +1,85 @@
+import { abTest } from 'shaka-shared';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
+
+/* ============================================================================
+ * Owner profile (/owner-profile/<id>)
+ * ----------------------------------------------------------------------------
+ * Representative: /owner-profile/6C4B495A5368 (Nancy Plymel Campagna)
+ *
+ * Template structure:
+ *   - .home-page-hero.page-hero.owner (333px) — hero with owner badge
+ *     (claimed by homepage via .home-page-hero selector — but this one has
+ *     the .owner modifier class, so we can target it specifically)
+ *   - .owner-profile-wrapper (1254px)
+ *     - .owner-profile-picture-wrapper (200px) — avatar + name
+ *     - .owner-listings-container (1034px)
+ *       - .owner-property-container (958px) — owner's properties
+ *         - .property-card-container (× many)
+ *
+ * A1 lazy load:    15 images at load, 2074px tall
+ * A2 loading:      no skeletons/spinners
+ * A3 animations:   none
+ * A5/A6 interactions: only header search (covered by homepage)
+ * A7 modals:       none
+ * A8 mobile:       Grid stacks; profile wrapper remains.
+ * Claimed shared:  .home-page-hero base claimed by homepage — but this
+ *                  page has .owner modifier. Using .home-page-hero.owner
+ *                  selector to scope.
+ *                  footer from homepage
+ * ========================================================================== */
+
+/**
+ * @section Owner profile hero (with .owner modifier)
+ * @selector .home-page-hero.owner
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    A4 333px with .home-page-hero.page-hero.owner classes.
+ *            Uses the .owner modifier to scope away from homepage's hero.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Owner Profile Hero', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.home-page-hero.owner'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Profile picture + name wrapper
+ * @selector .owner-profile-picture-wrapper
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    A4 200px avatar + owner name.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Owner Profile Picture', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-profile-picture-wrapper'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Owner's properties list
+ * @selector .owner-property-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.1  (varied property cards)
+ * @probed    A4 958px tall. Contains .property-card-container children.
+ * @interactions
+ *   - Each card navigates to the property page (tested separately)
+ * @form No form found
+ */
+abTest('Owner Properties', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-property-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
