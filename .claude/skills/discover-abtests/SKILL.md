@@ -107,7 +107,7 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A4. Page sections**: read `references/selectors-strategy.md` for the rules on what makes a good vs. bad selector and the two-strategy approach for tall pages. Then run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
 
-**Strategy 1 — Algorithmic probe**: Run `scripts/probe-sections.js` via `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
+**Strategy 1 — Algorithmic probe**: Run `scripts/probe-sections.js` via `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1500px tall are deprioritized so their children get picked instead.
 
 **Strategy 2 — AI visual analysis**: Scroll through the page and identify the **natural visual sections** a user would recognize — hero, content blocks, sidebars, forms, navigation, footer. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show a recognizable, self-contained piece of UI?"
 

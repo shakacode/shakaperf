@@ -108,7 +108,7 @@
     if (c.height >= 100 && c.height <= 800) score += 30;
     else if (c.height >= 50 && c.height < 100) score += 10;
     else if (c.height > 800 && c.height <= 1500) score += 15;
-    else if (c.height > 1000) score -= 10; // too tall — children should be preferred
+    else if (c.height > 1500) score -= 10; // too tall — children should be preferred
 
     // WIDTH: full-width main sections or sidebar-width
     if (c.widthRatio >= 0.9) score += 20;
@@ -165,7 +165,7 @@
   for (var i = 0; i < candidates.length && selected.length < 15; i++) {
     var c = candidates[i];
     if (c.score < 20) continue;
-    if (c.height > 1000) continue; // skip giants in first pass
+    if (c.height > 1500) continue; // skip giants in first pass
 
     var dominated = coveredRanges.some(function (range) {
       var overlapStart = Math.max(range.top, c.absTop);
@@ -183,7 +183,7 @@
   // Pass 2: if a giant element covers a region with NO children selected, add it back
   for (var i = 0; i < candidates.length && selected.length < 15; i++) {
     var c = candidates[i];
-    if (c.score < 20 || c.height <= 1000) continue;
+    if (c.score < 20 || c.height <= 1500) continue;
 
     var hasChildCoverage = coveredRanges.some(function (range) {
       return range.top >= c.absTop && range.bottom <= c.absBottom;

@@ -17,7 +17,7 @@ How to choose the CSS selectors that a visreg test will screenshot. Read this du
 Use a two-strategy approach:
 
 **Strategy 1 — Algorithmic probe** (`scripts/probe-sections.js`):
-Run via `javascript_tool` after the page loads. It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
+Run via `javascript_tool` after the page loads. It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1500px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
 
 **Strategy 2 — AI visual analysis**:
 Scroll through the page and identify natural visual sections a user would recognize. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show recognizable, self-contained UI?"
@@ -39,7 +39,7 @@ Scroll through the page and identify natural visual sections a user would recogn
 - `whitePixelPercent > 90%` after capture — mostly empty space
 - Width = 0 at some viewports — causes `clip.width = 0` engine error
 - Content renders in a child, not the selected element (common with `-container` wrappers)
-- Height > 1000px — too tall, split into sub-sections
+- Height > 1500px — too tall, split into sub-sections
 - **"Would a designer draw a box here?"** — if no, it's not a real section
 
 ## Two-column layouts (content + sidebar)
