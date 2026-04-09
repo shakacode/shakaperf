@@ -5,7 +5,7 @@
  *
  * Usage in an abTest (call before page.goto to intercept initial loads):
   ```
-  import { interceptImages } from 'shaka-visreg/helpers';
+  import { interceptImages } from 'shaka-perf/visreg/helpers';
 
   abTest('My Test', { startingPath: '/' }, async ({ page }) => {
     await interceptImages(page);

@@ -1,4 +1,4 @@
-import { defineVisregConfig } from 'shaka-visreg';
+import { defineVisregConfig } from 'shaka-perf/visreg';
 
 export default defineVisregConfig({
   viewports: [

@@ -8,7 +8,7 @@ function buildConfigTemplate(): string {
   const json = JSON.stringify(DEFAULT_LH_CONFIG, null, 2);
   // Indent the config body by 2 spaces (inside defineConfig call)
   const indented = json.split('\n').join('\n  ');
-  return `import { defineConfig } from 'shaka-bench';
+  return `import { defineConfig } from 'shaka-perf/bench';
 
 export default defineConfig(${indented});
 `;

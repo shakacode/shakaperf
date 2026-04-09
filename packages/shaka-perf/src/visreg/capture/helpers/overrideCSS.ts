@@ -4,7 +4,7 @@
  *
  * Usage in an abTest:
   ```
-  import { overrideCSS } from 'shaka-visreg/helpers';
+  import { overrideCSS } from 'shaka-perf/visreg/helpers';
 
   abTest('My Test', { startingPath: '/' }, async ({ page }) => {
     await overrideCSS(page);
