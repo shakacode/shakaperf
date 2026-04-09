@@ -1,5 +1,5 @@
 report({
-  "testSuite": "shaka-visreg",
+  "testSuite": "shaka-perf-visreg",
   "tests": [
     {
       "pair": {
@@ -14,8 +14,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 87.28,
+        "testWhitePixelPercent": 87.28,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -40,8 +44,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 89.54,
+        "testWhitePixelPercent": 89.54,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -66,8 +74,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 88.33,
+        "testWhitePixelPercent": 88.33,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -92,8 +104,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
-        "testLine": 28,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 33,
+        "refWhitePixelPercent": 87.72,
+        "testWhitePixelPercent": 87.72,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -118,8 +134,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
-        "testLine": 28,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 33,
+        "refWhitePixelPercent": 88.27,
+        "testWhitePixelPercent": 88.27,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -144,8 +164,12 @@ report({
         "referenceUrl": "http://localhost:3020/admin/orders",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
-        "testLine": 28,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts",
+        "testLine": 33,
+        "refWhitePixelPercent": 87.08,
+        "testWhitePixelPercent": 87.08,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -170,8 +194,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
         "testLine": 11,
+        "refWhitePixelPercent": 13.46,
+        "testWhitePixelPercent": 13.46,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -196,8 +224,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
         "testLine": 11,
+        "refWhitePixelPercent": 8.69,
+        "testWhitePixelPercent": 8.69,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -222,8 +254,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
         "testLine": 11,
+        "refWhitePixelPercent": 10.73,
+        "testWhitePixelPercent": 10.73,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -248,8 +284,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
-        "testLine": 26,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 30,
+        "refWhitePixelPercent": 13.46,
+        "testWhitePixelPercent": 13.46,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -274,8 +314,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
-        "testLine": 26,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 30,
+        "refWhitePixelPercent": 8.69,
+        "testWhitePixelPercent": 8.69,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -300,8 +344,12 @@ report({
         "referenceUrl": "http://localhost:3020/carousel-demo",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
-        "testLine": 26,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts",
+        "testLine": 30,
+        "refWhitePixelPercent": 10.73,
+        "testWhitePixelPercent": 10.73,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -326,8 +374,12 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 78.88,
+        "testWhitePixelPercent": 78.88,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -352,8 +404,12 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 88.11,
+        "testWhitePixelPercent": 88.11,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -378,8 +434,12 @@ report({
         "referenceUrl": "http://localhost:3020/cart",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 85.89,
+        "testWhitePixelPercent": 85.89,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -404,8 +464,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 6.55,
+        "testWhitePixelPercent": 6.55,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -430,8 +494,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 85.77,
+        "testWhitePixelPercent": 85.77,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -456,17 +524,21 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 32.16,
+        "testWhitePixelPercent": 33.47,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
             "height": -162
           },
-          "rawMisMatchPercentage": 0.2213942307692308,
-          "misMatchPercentage": "0.22",
-          "analysisTime": 31
+          "rawMisMatchPercentage": 7.830769230769231,
+          "misMatchPercentage": "7.83",
+          "analysisTime": 25
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
@@ -485,8 +557,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 3.85,
+        "testWhitePixelPercent": 3.85,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -511,8 +587,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 87.66,
+        "testWhitePixelPercent": 87.66,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -537,8 +617,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 32.96,
+        "testWhitePixelPercent": 32.96,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -563,17 +647,21 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 2.53,
+        "testWhitePixelPercent": 2.23,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
             "height": -64
           },
-          "rawMisMatchPercentage": 4.992173005565863,
-          "misMatchPercentage": "4.99",
-          "analysisTime": 40
+          "rawMisMatchPercentage": 5.231041280148423,
+          "misMatchPercentage": "5.23",
+          "analysisTime": 20
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
@@ -592,8 +680,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 92.18,
+        "testWhitePixelPercent": 92.18,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -618,17 +710,21 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 28.01,
+        "testWhitePixelPercent": 26.77,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
             "height": -64
           },
-          "rawMisMatchPercentage": 22.084162915512465,
-          "misMatchPercentage": "22.08",
-          "analysisTime": 47
+          "rawMisMatchPercentage": 22.29197325138504,
+          "misMatchPercentage": "22.29",
+          "analysisTime": 36
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
@@ -647,8 +743,12 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 74.53,
+        "testWhitePixelPercent": 74.53,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -673,8 +773,12 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 70.8,
+        "testWhitePixelPercent": 70.8,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -699,8 +803,12 @@ report({
         "referenceUrl": "http://localhost:3020/products/1",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 76.36,
+        "testWhitePixelPercent": 76.36,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -725,8 +833,12 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 35.35,
+        "testWhitePixelPercent": 35.35,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -751,8 +863,12 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 34.39,
+        "testWhitePixelPercent": 34.39,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -777,8 +893,12 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
         "testLine": 4,
+        "refWhitePixelPercent": 27.12,
+        "testWhitePixelPercent": 27.12,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -803,11 +923,24 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
-        "testLine": 16,
-        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
-        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
-        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (phone)"
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 17,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-fake-broken-selector\"]')\u001b[22m\n",
+        "hadEngineError": true,
+        "annotationErrorMsg": "Failed while Select electronics category filter",
+        "refWhitePixelPercent": 37.12,
+        "refIsBottomSeventyPercentWhite": false,
+        "testWhitePixelPercent": 37.12,
+        "testIsBottomSeventyPercentWhite": false,
+        "diff": {
+          "isSameDimensions": true,
+          "dimensionDifference": {
+            "width": 0,
+            "height": 0
+          },
+          "misMatchPercentage": "0.00"
+        },
+        "error": "Failed while Select electronics category filter"
       },
       "status": "fail"
     },
@@ -824,11 +957,24 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
-        "testLine": 16,
-        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
-        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
-        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (tablet)"
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 17,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-fake-broken-selector\"]')\u001b[22m\n",
+        "hadEngineError": true,
+        "annotationErrorMsg": "Failed while Select electronics category filter",
+        "refWhitePixelPercent": 36.14,
+        "refIsBottomSeventyPercentWhite": false,
+        "testWhitePixelPercent": 36.14,
+        "testIsBottomSeventyPercentWhite": false,
+        "diff": {
+          "isSameDimensions": true,
+          "dimensionDifference": {
+            "width": 0,
+            "height": 0
+          },
+          "misMatchPercentage": "0.00"
+        },
+        "error": "Failed while Select electronics category filter"
       },
       "status": "fail"
     },
@@ -845,58 +991,15 @@ report({
         "referenceUrl": "http://localhost:3020/products",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
-        "testLine": 16,
-        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n",
-        "errorScreenshot": "experiment_screenshot/error_Products_-_Electronics_Filter.png",
-        "error": "Engine error: page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-selector-not-exists\"]')\u001b[22m\n. See scenario – Products - Electronics Filter (desktop)"
-      },
-      "status": "fail"
-    },
-    {
-      "pair": {
-        "reference": "control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_0_phone.png",
-        "test": "experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_0_phone.png",
-        "selector": "document",
-        "fileName": "demo-ecommerce_Visits_the_homepage_0_document_0_phone.png",
-        "label": "Visits the homepage",
-        "requireSameDimensions": true,
-        "misMatchThreshold": 0.1,
-        "url": "http://localhost:3030/",
-        "referenceUrl": "http://localhost:3020/",
-        "expect": 0,
-        "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 4,
-        "diff": {
-          "isSameDimensions": false,
-          "dimensionDifference": {
-            "width": 0,
-            "height": -1621
-          },
-          "rawMisMatchPercentage": 0.7203728362183754,
-          "misMatchPercentage": "0.72",
-          "analysisTime": 27
-        },
-        "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png"
-      },
-      "status": "fail"
-    },
-    {
-      "pair": {
-        "reference": "control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png",
-        "test": "experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png",
-        "selector": "document",
-        "fileName": "demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png",
-        "label": "Visits the homepage",
-        "requireSameDimensions": true,
-        "misMatchThreshold": 0.1,
-        "url": "http://localhost:3030/",
-        "referenceUrl": "http://localhost:3020/",
-        "expect": 0,
-        "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 4,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts",
+        "testLine": 17,
+        "engineErrorMsg": "page.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-cy=\"category-option-electronics-fake-broken-selector\"]')\u001b[22m\n",
+        "hadEngineError": true,
+        "annotationErrorMsg": "Failed while Select electronics category filter",
+        "refWhitePixelPercent": 28.74,
+        "refIsBottomSeventyPercentWhite": false,
+        "testWhitePixelPercent": 28.74,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -904,36 +1007,8 @@ report({
             "height": 0
           },
           "misMatchPercentage": "0.00"
-        }
-      },
-      "status": "pass"
-    },
-    {
-      "pair": {
-        "reference": "control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png",
-        "test": "experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png",
-        "selector": "document",
-        "fileName": "demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png",
-        "label": "Visits the homepage",
-        "requireSameDimensions": true,
-        "misMatchThreshold": 0.1,
-        "url": "http://localhost:3030/",
-        "referenceUrl": "http://localhost:3020/",
-        "expect": 0,
-        "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 4,
-        "diff": {
-          "isSameDimensions": false,
-          "dimensionDifference": {
-            "width": 0,
-            "height": -134
-          },
-          "rawMisMatchPercentage": 10.749264039855072,
-          "misMatchPercentage": "10.75",
-          "analysisTime": 42
         },
-        "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png"
+        "error": "Failed while Select electronics category filter"
       },
       "status": "fail"
     },
@@ -950,17 +1025,19 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "phone",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 10,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
+        "refWhitePixelPercent": 35.35,
+        "testWhitePixelPercent": 35.35,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
             "width": 0,
             "height": 0
           },
-          "rawMisMatchPercentage": 0,
-          "misMatchPercentage": "0.00",
-          "analysisTime": 25
+          "misMatchPercentage": "0.00"
         }
       },
       "status": "pass"
@@ -978,8 +1055,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "tablet",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 10,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
+        "refWhitePixelPercent": 34.39,
+        "testWhitePixelPercent": 34.39,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {
@@ -1004,8 +1085,12 @@ report({
         "referenceUrl": "http://localhost:3020/",
         "expect": 0,
         "viewportLabel": "desktop",
-        "testFile": "    at /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
-        "testLine": 10,
+        "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts",
+        "testLine": 4,
+        "refWhitePixelPercent": 27.12,
+        "testWhitePixelPercent": 27.12,
+        "refIsBottomSeventyPercentWhite": false,
+        "testIsBottomSeventyPercentWhite": false,
         "diff": {
           "isSameDimensions": true,
           "dimensionDifference": {

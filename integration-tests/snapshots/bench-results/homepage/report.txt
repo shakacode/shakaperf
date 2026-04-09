@@ -1,0 +1,24 @@
+Benchmark Results Summary
+
+LH & Vitals
+  FCP no difference [NaNms to 14ms]
+  speed-index no difference [NaNms to 14ms]
+  LCP no difference [NaNms to 309ms]
+  TBT no difference [NaNms to 75ms]
+  CLS no difference [NaN/100 to 5/100]
+  TTFB no difference [NaNms to 23ms]
+  hydration no difference [NaNms to 157ms]
+  hydration-start no difference [NaNms to 157ms]
+  LH Score no difference [NaN/100 to 1/100]
+
+Diagnostics
+  downloads no difference [NaNKB to 80KB]
+  downloads-count no difference [NaN to 4]
+  early-downloads no difference [NaNKB to 0KB]
+  early-downloads-count no difference [NaN to 0]
+  js no difference [NaNKB to 0KB]
+  js-count no difference [NaN to 0]
+  images no difference [NaNKB to 0KB]
+  images-count no difference [NaN to 0]
+  fonts no difference [NaNKB to 0KB]
+  fonts-count no difference [NaN to 0]

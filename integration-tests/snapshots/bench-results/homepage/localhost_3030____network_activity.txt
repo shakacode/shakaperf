@@ -1,0 +1,32 @@
+/
+⤷ 2.78 KB. Downloaded 6 times
+/api/v1/cart
+⤷ 0.53 KB. Downloaded 6 times
+/api/v1/products
+⤷ 4.06 KB. Downloaded 6 times
+/assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css
+⤷ 0.54 KB. Downloaded 6 times
+/favicon.ico
+⤷ 1.84 KB. Downloaded 1 times
+/packs/css/client-72e38325.css
+⤷ 0.20 KB. Downloaded 6 times
+/packs/js/148-7088267baa9e2e0c2764.js
+⤷ 5.14 KB. Downloaded 6 times
+/packs/js/192-b63cfebd9a83a6087244.js
+⤷ 140.12 KB. Downloaded 6 times
+/packs/js/719-f34241d7c2d17031511d.js
+⤷ 2.77 KB. Downloaded 6 times
+/packs/js/client-6c39334f409f79c01f9d.js
+⤷ 2.76 KB. Downloaded 6 times
+/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js
+⤷ 3.40 KB. Downloaded 6 times
+/packs/js/runtime-931001eaf0978aca00cb.js
+⤷ 1.86 KB. Downloaded 6 times
+https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop
+⤷ 23.75 KB. Downloaded 6 times
+https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop
+⤷ 24.59 KB. Downloaded 6 times
+https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop
+⤷ 20.83 KB. Downloaded 6 times
+https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop
+⤷ 11.25 KB. Downloaded 6 times

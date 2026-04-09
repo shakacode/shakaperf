@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>network activity</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+    .info { background-color: #e6f3ff; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>network activity</h1>
+  <div class="info">
+    <strong>Left:</strong> Control &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Right:</strong> Experiment
+  </div>
+  <div id="diff"></div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var targetElement = document.getElementById('diff');
+      var diff2htmlUi = new Diff2HtmlUI(targetElement, "--- /Users/ramezweissa/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt\t2026-04-09 16:48:49\n+++ /Users/ramezweissa/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3030____network_activity.txt\t2026-04-09 16:48:49\n@@ -1,5 +1,5 @@\n /\n-⤷ 2.77 KB. Downloaded 6 times\n+⤷ 2.78 KB. Downloaded 6 times\n /api/v1/cart\n ⤷ 0.53 KB. Downloaded 6 times\n /api/v1/products\n@@ -16,9 +16,17 @@\n ⤷ 140.12 KB. Downloaded 6 times\n /packs/js/719-f34241d7c2d17031511d.js\n ⤷ 2.77 KB. Downloaded 6 times\n-/packs/js/client-a107adde6658fd1363e3.js\n+/packs/js/client-6c39334f409f79c01f9d.js\n ⤷ 2.76 KB. Downloaded 6 times\n-/packs/js/pages-HomePage-bd886ec65621d70d67cb.chunk.js\n-⤷ 3.56 KB. Downloaded 6 times\n-/packs/js/runtime-bb7ee41abd397c0e0aa1.js\n-⤷ 1.87 KB. Downloaded 6 times\n+/packs/js/pages-HomePage-bd40abc1ed3c3cc8cb66.chunk.js\n+⤷ 3.40 KB. Downloaded 6 times\n+/packs/js/runtime-931001eaf0978aca00cb.js\n+⤷ 1.86 KB. Downloaded 6 times\n+https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop\n+⤷ 23.75 KB. Downloaded 6 times\n+https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=400&h=400&fit=crop\n+⤷ 24.59 KB. Downloaded 6 times\n+https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&h=400&fit=crop\n+⤷ 20.83 KB. Downloaded 6 times\n+https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&h=400&fit=crop\n+⤷ 11.25 KB. Downloaded 6 times\n", {"drawFileList":false,"matching":"lines","outputFormat":"side-by-side","synchronisedScroll":true,"highlight":true});
+      diff2htmlUi.draw();
+      diff2htmlUi.highlightCode();
+    });
+  </script>
+</body>
+</html>
