@@ -1,4 +1,4 @@
-# shaka-visreg-specific ignores
+# shaka-perf-specific ignores
 # (General ignores like node_modules, .DS_Store, *.log, .idea, .vscode are in root .gitignore)
 
 # TypeScript build output

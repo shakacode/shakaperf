@@ -1,4 +1,4 @@
-// shaka-visreg
+// shaka-perf visreg
 // Visual regression testing for web applications
 
 export {};

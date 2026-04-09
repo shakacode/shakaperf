@@ -1,12 +1,12 @@
 ---
 name: discover-abtests
-description: Crawl a website and auto-generate .abtest.ts files for shaka-visreg visual regression testing. Use this skill whenever the user wants to discover, generate, or scaffold AB tests for a URL — even if they just say "set up tests for localhost:3020", "generate tests for this site", or "create visreg tests".
+description: Crawl a website and auto-generate .abtest.ts files for shaka-perf visreg visual regression testing. Use this skill whenever the user wants to discover, generate, or scaffold AB tests for a URL — even if they just say "set up tests for localhost:3020", "generate tests for this site", or "create visreg tests".
 argument-hint: <url> [depth=2] [output=./ab-tests/] [mode=twin-server|single-server]
 ---
 
 # discover-abtests
 
-Crawl a target site in Chrome, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for `shaka-visreg`.
+Crawl a target site in Chrome, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for `shaka-perf visreg`.
 
 The goal is to produce tests that _actually work_ — not just syntactically valid files. That's why each page is probed in the browser before writing any code: it avoids generating tests for interactions that don't exist, CSS overrides that don't work, or skeleton waits for elements that never appear.
 
@@ -187,7 +187,7 @@ Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Wr
 
 ```typescript
 import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 // TODO: Hero section snapshot
 // - selector: [data-cy="hero"] or .hero-section
@@ -239,19 +239,19 @@ Implement each TODO stub directly in the real `.abtest.ts` file, then validate i
 
    _Twin-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero"
+   cd <app-directory> && yarn shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero"
    ```
 
    _Single-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
+   cd <app-directory> && yarn shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
    ```
 
 3. **Quick check**: read the screenshot to verify real content was captured (not blank)
 4. **If pass** → move on to the next TODO stub
 5. **If fail** → debug and fix (up to 3 attempts). If still failing, **comment out** the `abTest()` call (don't delete it) and add a `// TODO:` comment explaining what's broken and what was tried. This preserves the test code so it's easy to revisit later.
 
-**Important**: `shaka-visreg` must be run from the directory containing `visreg.config.ts`. If the user specified an app directory, `cd` there first.
+**Important**: `shaka-perf visreg` must be run from the directory containing `visreg.config.ts`. If the user specified an app directory, `cd` there first.
 
 **After every test run**, execute these checks:
 
@@ -280,7 +280,7 @@ Always look at screenshots before deciding on a fix. Do not rely on diff percent
 
 After all TODO stubs are implemented:
 
-1. Run `shaka-visreg compare --testFile ab-tests/<page>.abtest.ts` with ALL tests in the file
+1. Run `shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts` with ALL tests in the file
 2. Run `parse-report.py` and check for HIGH-WHITE / ENGINE-ERR flags
 3. If tests that passed individually now fail in combination → debug and fix (timing issues, shared state, etc.)
 

@@ -14,7 +14,7 @@
   ],
   "scenarios": [
     {
-      "label": "shaka-visreg Homepage",
+      "label": "shaka-perf-visreg Homepage",
       "cookiePath": "visreg_data/cookies/cookies.json",
       "url": "https://garris.github.io/BackstopJS/",
       "referenceUrl": "",

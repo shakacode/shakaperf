@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // EXAMPLE COMMAND
-// ~/Development/shaka-visreg/test/configs
+// ~/Development/shaka-perf/test/visreg/configs
 // $ node dynamic_node_app --dynamicTestId=6 --testLabel="dynamic test" --scenarioLabel="one" --url=https://garris.github.io/BackstopJS?cookie --command=test
 
 //  THIS IS A DEMO OF DYNAMIC SCENARIO MODE

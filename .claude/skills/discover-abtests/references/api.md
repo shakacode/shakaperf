@@ -51,7 +51,7 @@ abTest(name: string, {
 })
 ```
 
-## Helpers (`shaka-visreg/helpers`)
+## Helpers (`shaka-perf/visreg/helpers`)
 
 | Helper | What it does |
 |--------|-------------|

@@ -16,8 +16,8 @@ process.on('unhandledRejection', function (error: Error | undefined) {
 const program = new Command();
 
 program
-  .name('shaka-visreg')
-  .description('Shaka-visreg: Catch CSS curveballs.')
+  .name('shaka-perf-visreg')
+  .description('shaka-perf visreg: Catch CSS curveballs.')
   .version('v' + version, '--version', 'Display version')
   .option('--config <path>', 'Path to visreg config file (default: visreg.config.ts)');
 

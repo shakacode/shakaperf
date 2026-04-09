@@ -10,7 +10,7 @@ describe('cli', function () {
   });
 
   it('should call the runner with --testFile correctly', async function () {
-    process.argv = ['node', 'shaka-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
+    process.argv = ['node', 'shaka-perf-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../../src/visreg/core/runner', () => ({
@@ -28,7 +28,7 @@ describe('cli', function () {
   });
 
   it('should call the runner with --testPathPattern correctly', async function () {
-    process.argv = ['node', 'shaka-visreg', 'compare', '--testPathPattern', 'homepage'];
+    process.argv = ['node', 'shaka-perf-visreg', 'compare', '--testPathPattern', 'homepage'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../../src/visreg/core/runner', () => ({
@@ -46,7 +46,7 @@ describe('cli', function () {
   });
 
   it('should call the runner without --testFile (auto-discovery)', async function () {
-    process.argv = ['node', 'shaka-visreg', 'compare'];
+    process.argv = ['node', 'shaka-perf-visreg', 'compare'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../../src/visreg/core/runner', () => ({
@@ -64,7 +64,7 @@ describe('cli', function () {
   });
 
   it('should exit with code 1 if runner fails', async function () {
-    process.argv = ['node', 'shaka-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
+    process.argv = ['node', 'shaka-perf-visreg', 'compare', '--testFile', './ab-tests/test.abtest.ts'];
     const promiseMock = Promise.reject(new Error('errorMock'));
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../../src/visreg/core/runner', () => ({
@@ -85,7 +85,7 @@ describe('cli', function () {
   });
 
   it('should call the runner for init command', async function () {
-    process.argv = ['node', 'shaka-visreg', 'init'];
+    process.argv = ['node', 'shaka-perf-visreg', 'init'];
     const promiseMock = Promise.resolve();
     const runnerMock = jest.fn().mockReturnValue(promiseMock);
     jest.mock('../../../src/visreg/core/runner', () => ({

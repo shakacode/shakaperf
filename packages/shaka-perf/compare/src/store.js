@@ -20,7 +20,7 @@ function parseLocalStorage (localStorageItem) {
   } catch (error) {
     console.error(error);
     console.warn('shaka-perf visreg LocalStorage settings appear to be corrupted. Let me fix that for you.');
-    localStorage.removeItem('shaka-visreg');
+    localStorage.removeItem('shaka-perf-visreg');
     data = false;
   }
   return data;
@@ -30,7 +30,7 @@ function parseLocalStorage (localStorageItem) {
  * Retrieves the state from local storage, if available.
  * @returns {object|boolean} The persisted state object or false if not available.
  */
-const localState = localStorage.getItem('shaka-visreg');
+const localState = localStorage.getItem('shaka-perf-visreg');
 const persistedState = localState
   ? parseLocalStorage(localState)
   : false;
@@ -89,7 +89,7 @@ store.subscribe(function () {
   const localStateItems = JSON.stringify({
     layoutSettings
   });
-  localStorage.setItem('shaka-visreg', localStateItems);
+  localStorage.setItem('shaka-perf-visreg', localStateItems);
 });
 
 export default store;

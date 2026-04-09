@@ -43,7 +43,7 @@ const expectedConfig: Record<string, any> = {
   ciReport: {
     format: 'junit',
     testReportFileName: 'xunit',
-    testSuiteName: 'shaka-visreg'
+    testSuiteName: 'shaka-perf-visreg'
   },
   compareConfigFileName: defaultPaths.htmlReport + '/config.js',
   compareReportURL: defaultPaths.htmlReport + '/index.html',

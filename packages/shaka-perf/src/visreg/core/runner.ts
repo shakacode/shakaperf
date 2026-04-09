@@ -22,7 +22,7 @@ export default async function (command: string, options?: Record<string, unknown
         i: false,
         config: 'visreg.config.ts'
     },
-    visregRoot: '/path/to/shaka-visreg',
+    visregRoot: '/path/to/shaka-perf/visreg',
     projectPath: '/path/to/project',
     perf: { init: { started: 2018-09-23T04:01:09.673Z } },
     configFileName: '/path/to/project/visreg.config.ts',
@@ -33,12 +33,12 @@ export default async function (command: string, options?: Record<string, unknown
     {
         format: 'junit',
         testReportFileName: 'xunit',
-        testSuiteName: 'shaka-visreg'
+        testSuiteName: 'shaka-perf-visreg'
     },
     htmlReportDir: '/path/to/project/visreg_data/html_report',
     compareConfigFileName: '/path/to/project/visreg_data/html_report/config.js',
     compareReportURL: '/path/to/project/visreg_data/html_report/index.html',
-    comparePath: '/path/to/shaka-visreg/compare/output',
+    comparePath: '/path/to/shaka-perf/compare/output',
     id: undefined,
     engine: null,
     report: [ 'browser' ],
