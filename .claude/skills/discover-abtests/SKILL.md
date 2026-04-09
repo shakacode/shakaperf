@@ -58,17 +58,13 @@ Process the queue in BFS order, **up to `concurrency` pages in parallel**:
 3. For each: navigate, mark visited, run `scripts/extract-links.js` via `javascript_tool`. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
 4. Close extra tabs after each batch.
 
-**Hard limits**: max 40 unique paths.
-
 Skip only these:
 
 - External URLs (different hostname)
 - Non-page paths: `tel:`, `mailto:`, anchors-only (`#section`)
-- Admin panels (e.g. `/admin` — but go to `/login` normally)
 - Auth callbacks (`/auth/callback`, `/oauth`)
 - API routes (`/api/`, `.json` endpoints)
 - Paginated duplicates (`/products?page=2` when `/products` is already queued)
-- Pages that require authentication — check by navigating; if it redirects to login, skip
 
 Do **not** skip pages just because they seem "boring" or static.
 
