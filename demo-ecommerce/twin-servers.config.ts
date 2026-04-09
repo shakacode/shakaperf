@@ -1,4 +1,4 @@
-import { defineConfig } from 'shaka-twin-servers';
+import { defineConfig } from 'shaka-perf/twin-servers';
 
 export default defineConfig({
   projectDir: '.',

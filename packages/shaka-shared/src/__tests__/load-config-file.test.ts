@@ -48,7 +48,7 @@ describe('loadConfigFile', () => {
 
   // tsx ESM/CJS APIs require --experimental-vm-modules which is incompatible
   // with the default Jest VM environment. The .ts loading path is exercised
-  // by the shaka-visreg integration tests (makeConfig_it_spec) instead.
+  // by the shaka-perf visreg integration tests (makeConfig_it_spec) instead.
   it.skip('loads a .ts config file via tsx', async () => {
     const tsPath = path.join(tmpDir, 'config.ts');
     fs.writeFileSync(

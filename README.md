@@ -55,18 +55,14 @@ graph TD
 
 | Package                                            | Description                                                        |
 | ---------------------------------------------------| -------------------------------------------------------------------|
+| [shaka-perf](./packages/shaka-perf)                | Unified CLI: benchmarking, visual regression, twin-servers         |
 | [shaka-bundle-size](./packages/shaka-bundle-size)  | Bundle size diffing and analysis using loadable components         |
-| [shaka-twin-servers](./packages/shaka-twin-servers)| Identical servers main vs. feature branch running side by side     |
-| [shaka-bench](./packages/shaka-bench)              | Benchmarking tools                                                 |
-| [shaka-visreg](./packages/shaka-visreg)            | Visual regression testing tools                                    |
 
 ## Installation
 
 ```bash
+yarn add shaka-perf
 yarn add shaka-bundle-size
-yarn add shaka-twin-servers
-yarn add shaka-bench
-yarn add shaka-visreg
 ```
 
 ## To get started

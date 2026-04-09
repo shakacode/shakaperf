@@ -41,9 +41,9 @@ test('modify experiment, rebuild, and verify servers diverge @twin-servers', asy
   );
   fs.writeFileSync(HOME_PAGE_FILE, updatedContent);
 
-  run('yarn shaka-twin-servers sync-changes experiment');
+  run('yarn shaka-perf twin-servers sync-changes experiment');
 
-  run('yarn shaka-twin-servers run-cmd-parallel -- bundle exec rake assets:precompile', {
+  run('yarn shaka-perf twin-servers run-cmd-parallel -- bundle exec rake assets:precompile', {
     timeout: 5 * 60 * 1000,
   });
 
@@ -65,7 +65,7 @@ test('modify experiment, rebuild, and verify servers diverge @twin-servers', asy
   await expect(page.getByText('Discover Your New Self')).toBeVisible({ timeout: 30_000 });
 
   // Restart containers to restore pristine state after modifications
-  run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
+  run('yarn shaka-perf twin-servers start-containers', { timeout: 5 * 60 * 1000 });
 });
 
 test('run-cmd preserves single and double quotes @twin-servers', async ({ page }) => {
@@ -77,9 +77,9 @@ test('run-cmd preserves single and double quotes @twin-servers', async ({ page }
 
   // Use run-cmd with sed to replace text inside the container — tests double quotes
   loud('Using run-cmd with sed to replace "Discover Your Style" with "It\'s a \\"quoted\\" world"');
-  run(`yarn shaka-twin-servers run-cmd experiment "sed -i 's/Discover Your Style/It'\\''s a \\"quoted\\" world/' ${HOMEPAGE_TSX}"`);
+  run(`yarn shaka-perf twin-servers run-cmd experiment "sed -i 's/Discover Your Style/It'\\''s a \\"quoted\\" world/' ${HOMEPAGE_TSX}"`);
 
-  run('yarn shaka-twin-servers run-cmd experiment "bundle exec rake assets:precompile"', {
+  run('yarn shaka-perf twin-servers run-cmd experiment "bundle exec rake assets:precompile"', {
     timeout: 5 * 60 * 1000,
   });
 
@@ -96,5 +96,5 @@ test('run-cmd preserves single and double quotes @twin-servers', async ({ page }
   await expect(page.getByText(`It's a "quoted" world`)).toBeVisible({ timeout: 30_000 });
 
   // Restart containers to restore pristine state after modifications
-  run('yarn shaka-twin-servers start-containers', { timeout: 5 * 60 * 1000 });
+  run('yarn shaka-perf twin-servers start-containers', { timeout: 5 * 60 * 1000 });
 });

@@ -69,7 +69,7 @@ Use for any page with no meaningful dynamic content.
 
 ```typescript
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Page Name', {
   startingPath: '/path',
@@ -100,7 +100,7 @@ Only use if you clicked the element during probing and saw a visible effect.
 
 ```typescript
 import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click [Button] on [Page]', {
   startingPath: '/start',
@@ -123,7 +123,7 @@ abTest('Click [Button] on [Page]', {
 
 Only use if `scripts/probe-lazy-load.js` (or manual scroll probing) confirmed new content appeared after scrolling.
 
-**NEVER use `while (!atBottom)` scroll loops with `page.mouse.wheel()`** — they go infinite in shaka-visreg because `window.scrollY` doesn't update in the Playwright context. Instead, use `scrollIntoViewIfNeeded()` on a known bottom element (footer, last section) to trigger lazy loading.
+**NEVER use `while (!atBottom)` scroll loops with `page.mouse.wheel()`** — they go infinite in shaka-perf visreg because `window.scrollY` doesn't update in the Playwright context. Instead, use `scrollIntoViewIfNeeded()` on a known bottom element (footer, last section) to trigger lazy loading.
 
 ```typescript
 abTest('Page Name', {
@@ -153,7 +153,7 @@ Write separate `abTest()` calls scoped to specific viewports via the `viewports`
 
 ```typescript
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 // Desktop/tablet only — .map-container is display:none on phone
 abTest('Homepage Map Section', {
@@ -218,7 +218,7 @@ Only use if injecting the CSS override during probing visually froze the animati
 
 ```typescript
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled, overrideCSS } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled, overrideCSS } from 'shaka-perf/visreg/helpers';
 
 const PAUSE_CSS = `
   [data-cy="carousel-track"] { animation: none !important; transform: translateX(0) !important; }
@@ -456,7 +456,7 @@ Click a CTA or link that navigates to another page, then capture the destination
 
 ```typescript
 import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click [CTA] on [Page]', {
   startingPath: '/start-page',

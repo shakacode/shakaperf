@@ -51,7 +51,7 @@ playwright-report/
 **/visreg_data/html_report
 **/visreg_data/ci_report/xunit.xml
 
-packages/shaka-bench/tracerbench-results
+packages/shaka-perf/tracerbench-results
 tracerbench-results
 
 # Bench results: track screenshots and summaries, not raw HTML/JSON or generated diffs
@@ -63,4 +63,4 @@ integration-tests/snapshots/bench-results/*performance_profile.json
 integration-tests/snapshots/visreg-results/screenshot-diffs/
 integration-tests/snapshots/visreg-results/screenshot-diff-report.html
 
-shaka-twin-servers-orb.yml
+shaka-perf-orb.yml

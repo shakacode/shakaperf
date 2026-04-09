@@ -1,0 +1,85 @@
+description: |
+  Run A/B performance tests with both twin server images.
+
+executor:
+  name: machine
+  resource-class: << parameters.resource-class >>
+
+parameters:
+  resource-class:
+    type: enum
+    enum: ['medium', 'large', 'xlarge', '2xlarge', '2xlarge+']
+    default: 'large'
+    description: 'Machine resource class'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing twin-servers.config.ts'
+  server-command:
+    type: string
+    description: 'Command to start the server in each container'
+  control-health-url:
+    type: string
+    default: 'http://localhost:3020/up'
+    description: 'Control server health endpoint'
+  experiment-health-url:
+    type: string
+    default: 'http://localhost:3030/up'
+    description: 'Experiment server health endpoint'
+  health-timeout:
+    type: string
+    default: '120s'
+    description: 'Health check timeout'
+  test-command:
+    type: string
+    default: ''
+    description: 'Performance test command (optional)'
+  workspace-attach-at:
+    type: string
+    default: '/tmp/workspace'
+    description: 'Path to attach workspace'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
+  setup-steps:
+    type: steps
+    default: []
+    description: 'Steps to run before tests (use this for package manager setup)'
+steps:
+  - checkout
+  - attach_workspace:
+      at: << parameters.workspace-attach-at >>
+  - setup-node
+  - steps: << parameters.setup-steps >>
+  - load-images:
+      workspace-path: << parameters.workspace-attach-at >>/docker-images
+  - install-gnu-parallel
+  - start-containers:
+      working-directory: << parameters.working-directory >>
+      cli-prefix: << parameters.cli-prefix >>
+  - run-server:
+      target: control
+      command: << parameters.server-command >>
+      working-directory: << parameters.working-directory >>
+      background: true
+      cli-prefix: << parameters.cli-prefix >>
+  - run-server:
+      target: experiment
+      command: << parameters.server-command >>
+      working-directory: << parameters.working-directory >>
+      background: true
+      cli-prefix: << parameters.cli-prefix >>
+  - wait-for-servers:
+      control-health-url: << parameters.control-health-url >>
+      experiment-health-url: << parameters.experiment-health-url >>
+      timeout: << parameters.health-timeout >>
+  - run:
+      name: Run test command for both containers in parallel
+      working_directory: << parameters.working-directory >>
+      command: |
+        if [ -n "<< parameters.test-command >>" ]; then
+          << parameters.cli-prefix >> shaka-perf twin-servers run-cmd-parallel "<< parameters.test-command >>"
+        else
+          echo "No test command specified, skipping"
+        fi

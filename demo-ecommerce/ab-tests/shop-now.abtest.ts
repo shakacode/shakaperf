@@ -1,11 +1,5 @@
 import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-visreg/helpers';
-
-abTest('Visits the homepage', {
-  startingPath: '/',
-}, async () => {
-});
-
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click Shop Now on the homepage', {
   startingPath: '/',
