@@ -175,36 +175,21 @@ After completing desktop probing (A1-A7), resize the browser to phone width and 
   - Already claimed → exclude, record `{ selector, skippedOn, alreadyCoveredBy }`
 - **Product/detail pages**: only claim the unique top section (configurator, carousel). Don't claim shared lower sections (reviews, FAQ, footer).
 
-### Step B — Write TODO comments with all probing findings
+### Step B — Write the structured comment block for every planned test
 
-Read `references/patterns.md` before writing any test code — it has the correct pattern for each scenario.
+Read `references/patterns.md` before writing any test code — it has the correct pattern for each scenario AND the **mandatory comment schema** at the top of the file. Every `.abtest.ts` file you generate must follow that schema exactly. The schema exists because the probing work in Step A produces a lot of context (why a viewport is restricted, what was tried inside a modal, what fields a form has and how to fill them) and that context is the audit trail for the test — losing it forces the next person to redo all the probing.
 
-Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write `abTest()` stubs with `// TODO:` comments describing each planned test. Document ALL findings from probing so nothing is lost:
+Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write:
 
-```typescript
-import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
+1. **A file-level header block** (`/* ... */`) at the top summarizing cross-test findings: A1 lazy load, A2 loading indicators, A3 animations, A4 candidate sections, A8 mobile findings, and which shared sections this file claimed.
 
-// TODO: Hero section snapshot
-// - selector: [data-cy="hero"] or .hero-section
-// - wait for: .skeleton (found in A2) to disappear
-// - threshold: 0.05 (dynamic hero image)
-abTest('Homepage Hero', { startingPath: '/', options: { visreg: {} } }, async () => {});
+2. **A per-test JSDoc block** (`/** ... */`) directly above each `abTest()` call, with the structured `@`-tags from the schema in `references/patterns.md`. The test body itself is still a stub at this stage — `async () => {}` — you'll fill it in during Step C. The JSDoc block goes in _now_, while probing is fresh.
 
-// TODO: Click "Contact Us" button → modal opens
-// - confirmed in A6: clicking button.contact-cta opens modal .contact-modal
-// - inside modal (A7): form with name, email, message fields
-// - .contact-cta is display:none on phone viewport (A8)
-// - need desktop-only viewports
-abTest('Homepage Contact Modal', { startingPath: '/', options: { visreg: {} } }, async () => {});
+The tags `@section`, `@selector`, `@viewports`, `@waitFor`, `@threshold`, `@probed`, `@interactions`, and `@form` are **all mandatory in every block** — including trivial section snapshots that have no interactions and no forms. If probing found no interactions, write `@interactions No interactions found`. If there's no form, write `@form No form found`. The explicit "none" form is meaningful: it's evidence that probing happened and found nothing, rather than the agent silently skipping the check.
 
-// TODO: Fill contact form inside modal
-// - fields: input[name="name"], input[name="email"], textarea[name="message"]
-// - depends on: opening the modal first (chained interaction)
-abTest('Homepage Contact Form Fill', { startingPath: '/', options: { visreg: {} } }, async () => {});
-```
+See the canonical example in `references/patterns.md` for the exact layout.
 
-Before moving to Step C, verify every category below has at least one TODO stub (or an explicit "none found" note). This is a gate — do not proceed until you've checked each one:
+Before moving to Step C, verify every category below has at least one JSDoc-annotated `abTest()` stub (or, where applicable, an explicit "none found" note in the file header). This is a gate — do not proceed until you've checked each one:
 
 1. **Section snapshots** — hero, key content sections, footer (from A4)
 2. **Click interactions** — every button/tab confirmed working in A6 gets a test
@@ -244,8 +229,10 @@ Implement each TODO stub directly in the real `.abtest.ts` file, then validate i
    ```
 
 3. **Quick check**: read the screenshot to verify real content was captured (not blank)
-4. **If pass** → move on to the next TODO stub
+4. **If pass** → move on to the next stub
 5. **If fail** → debug and fix (up to 3 attempts). If still failing, **comment out** the `abTest()` call (don't delete it) and add a `// TODO:` comment explaining what's broken and what was tried. This preserves the test code so it's easy to revisit later.
+
+**Never delete the probing comment block.** When you implement a stub, the JSDoc block written in Step B (`@section`, `@selector`, `@viewports`, `@waitFor`, `@threshold`, `@probed`, `@interactions`, `@form`) must remain above the `abTest()` call, untouched. You may **add** to it — for example, append a new `@probed` line like `fixed: needed scrollIntoViewIfNeeded()` — but never strip a tag, never collapse the block, never replace it with a shorter summary. The comments are the audit trail explaining _why_ the test looks the way it does. Without them, the next person (or the next probing run) loses all the reasoning behind viewport restrictions, threshold choices, and selector decisions, and has to redo the probing from scratch. This rule applies on success, on failure (where the "comment out, don't delete" rule above already covers the code), and during Step E coverage iteration.
 
 **Important**: `shaka-perf visreg` must be run from the directory containing `visreg.config.ts`. If the user specified an app directory, `cd` there first.
 
