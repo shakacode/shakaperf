@@ -53,7 +53,7 @@ function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<s
   config.ciReport = {
     format: 'junit',
     testReportFileName: 'xunit',
-    testSuiteName: 'shaka-visreg'
+    testSuiteName: 'shaka-perf-visreg'
   };
 
   if (userConfig.ci) {
