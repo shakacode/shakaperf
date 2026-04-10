@@ -141,4 +141,48 @@ for (const post of POSTS) {
     await page.locator('.blog-show-img-wrapper').first().hover();
     await page.waitForTimeout(200);
   });
+
+  /**
+   * @section Blog post — second image hover
+   * @selector .blog-show-img-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.05
+   * @probed    Pass 2 — multiple images in the grid.
+   * @interactions
+   *   - Hover 2nd blog image
+   * @form No form found
+   */
+  abTest(`Blog Post: ${post.name} Second Image Hover`, {
+    startingPath: `/blog/${post.slug}`,
+    options: { visreg: { selectors: ['.blog-show-img-container'], misMatchThreshold: 0.05 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering 2nd blog image');
+    await page.locator('.blog-show-img-wrapper').nth(1).hover();
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Blog post — body first link hover
+   * @selector .blog-show-content
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.01
+   * @probed    Pass 2 — articles likely have internal links.
+   * @interactions
+   *   - Hover first link in article body
+   * @form No form found
+   */
+  abTest(`Blog Post: ${post.name} Body Link Hover`, {
+    startingPath: `/blog/${post.slug}`,
+    options: { visreg: { selectors: ['.blog-show-content'], misMatchThreshold: 0.01 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering first article link');
+    await page.locator('.blog-show-content a').first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
 }

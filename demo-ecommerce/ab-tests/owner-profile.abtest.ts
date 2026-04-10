@@ -110,3 +110,47 @@ abTest('Owner Property Card Hover', {
   await page.locator('.owner-property-container .property-card-container').first().hover();
   await page.waitForTimeout(200);
 });
+
+/**
+ * @section Owner — 2nd property card hover
+ * @selector .owner-property-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.15
+ * @probed    Pass 2 — multiple properties; hover the 2nd.
+ * @interactions
+ *   - Hover 2nd property card
+ * @form No form found
+ */
+abTest('Owner Second Card Hover', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-property-container'], misMatchThreshold: 0.15 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering 2nd property card');
+  await page.locator('.owner-property-container .property-card-container').nth(1).hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Owner profile — avatar hover
+ * @selector .owner-profile-picture-wrapper
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — owner avatar may have hover effect.
+ * @interactions
+ *   - Hover avatar
+ * @form No form found
+ */
+abTest('Owner Avatar Hover', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-profile-picture-wrapper'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering owner avatar');
+  await page.locator('.owner-profile-picture-wrapper').hover();
+  await page.waitForTimeout(200);
+});

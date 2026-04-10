@@ -220,3 +220,92 @@ abTest('Deals Promote CTA Hover', {
   await page.locator('button.list-promote-deal-button').hover();
   await page.waitForTimeout(200);
 });
+
+/**
+ * @section Deals — View all on map button hover
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "View all on map" button.
+ * @interactions
+ *   - Hover View on map button
+ * @form No form found
+ */
+abTest('Deals View On Map Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering View all on map');
+  await page.locator('button').filter({ hasText: 'View all on map' }).hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Deals — 5th deal card hover
+ * @selector .deals-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — middle of the deal list.
+ * @interactions
+ *   - Hover 5th deal card (using :nth-of-type strategy)
+ * @form No form found
+ */
+abTest('Deals Fifth Card Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering 5th deal card');
+  await page.locator('.deals-card-container').nth(4).hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Deals — Destin link in top description hover
+ * @selector .deals-description-paragraph
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "Destin", "30A", "Panama City Beach" links in top
+ *            paragraph.
+ * @interactions
+ *   - Hover Destin link
+ * @form No form found
+ */
+abTest('Deals Destin Link Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-description-paragraph'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Destin link');
+  await page.locator('.deals-description-paragraph a').filter({ hasText: 'Destin' }).first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Deals — Panama City Beach link hover
+ * @selector .deals-description-paragraph
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — Panama City Beach link.
+ * @interactions
+ *   - Hover Panama City Beach link
+ * @form No form found
+ */
+abTest('Deals PCB Link Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-description-paragraph'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Panama City Beach link');
+  await page.locator('.deals-description-paragraph a').filter({ hasText: 'Panama City Beach' }).first().hover();
+  await page.waitForTimeout(200);
+});

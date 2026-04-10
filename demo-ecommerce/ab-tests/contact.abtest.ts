@@ -132,3 +132,47 @@ abTest('Contact Phone Link Hover', {
   await page.locator('a[href="tel:18444632296"]').hover();
   await page.waitForTimeout(200);
 });
+
+/**
+ * @section Contact — Host radio hover
+ * @selector .contact-radio-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — hovering the label should show hover state.
+ * @interactions
+ *   - Hover I'm a host label
+ * @form No form found
+ */
+abTest('Contact Host Radio Hover', {
+  startingPath: '/contact',
+  options: { visreg: { selectors: ['.contact-radio-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering host radio label');
+  await page.locator('label[for="contact-host-radio"]').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Contact — Guest radio hover
+ * @selector .contact-radio-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — hovering the label should show hover state.
+ * @interactions
+ *   - Hover I'm a guest label
+ * @form No form found
+ */
+abTest('Contact Guest Radio Hover', {
+  startingPath: '/contact',
+  options: { visreg: { selectors: ['.contact-radio-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering guest radio label');
+  await page.locator('label[for="contact-guest-radio"]').hover();
+  await page.waitForTimeout(200);
+});

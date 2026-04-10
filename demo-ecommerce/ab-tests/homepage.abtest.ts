@@ -679,3 +679,156 @@ abTest('Homepage Search Button Hover', {
   await page.locator('#search-container button.search-btn').hover();
   await page.waitForTimeout(200);
 });
+
+/**
+ * @section Interest container — Ocean Springs link hover
+ * @selector .interest-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — first interest link "Ocean Springs Vacation Rentals".
+ * @interactions
+ *   - Hover Ocean Springs link
+ * @form No form found
+ */
+abTest('Homepage Interest Ocean Springs Hover', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.interest-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Ocean Springs link');
+  await page.locator('.interest-container a').filter({ hasText: 'Ocean Springs' }).first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Interest container — Gulf Breeze Cottage hover
+ * @selector .interest-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — Gulf Breeze Cottage link.
+ * @interactions
+ *   - Hover Gulf Breeze Cottage link
+ * @form No form found
+ */
+abTest('Homepage Interest Gulf Breeze Hover', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.interest-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Gulf Breeze link');
+  await page.locator('.interest-container a').filter({ hasText: 'Gulf Breeze' }).first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Interest container — Why Book Direct link hover
+ * @selector .interest-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — Why Book Direct blog link.
+ * @interactions
+ *   - Hover Why Book Direct link
+ * @form No form found
+ */
+abTest('Homepage Interest Book Direct Hover', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.interest-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Why Book Direct link');
+  await page.locator('.interest-container a').filter({ hasText: 'Why Book Direct' }).first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section FAQ — second item opened
+ * @selector .home-faq-section
+ * @viewports desktop, tablet
+ * @waitFor   second details open
+ * @threshold 0.01
+ * @probed    Pass 2 — 7 FAQ items. Open the 2nd one specifically.
+ * @interactions
+ *   - Open 2nd FAQ item
+ * @form No form found
+ */
+abTest('Homepage FAQ Second Item Opened', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.home-faq-section'],
+      misMatchThreshold: 0.01,
+      viewports: [
+        { label: 'tablet', width: 768, height: 1024 },
+        { label: 'desktop', width: 1280, height: 800 },
+      ],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening 2nd FAQ item');
+  await page.locator('.home-faq-section details').nth(1).evaluate((el: any) => { el.open = true; });
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Map state card — Louisiana hover
+ * @selector .map-wrapper
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — Louisiana card.
+ * @interactions
+ *   - Hover Louisiana card
+ * @form No form found
+ */
+abTest('Homepage Map Louisiana Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-wrapper'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Louisiana card');
+  await page.locator('a.search-state-card[href="/louisiana"]').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Map state card — Mississippi hover
+ * @selector .map-wrapper
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — Mississippi card.
+ * @interactions
+ *   - Hover Mississippi card
+ * @form No form found
+ */
+abTest('Homepage Map Mississippi Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-wrapper'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Mississippi card');
+  await page.locator('a.search-state-card[href="/mississippi"]').hover();
+  await page.waitForTimeout(200);
+});

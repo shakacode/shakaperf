@@ -560,4 +560,166 @@ for (const prop of PROPERTIES) {
     await page.locator('.property-amenities-container > *').first().hover();
     await page.waitForTimeout(200);
   });
+
+  /**
+   * @section Contact Host button hover
+   * @selector .rental-show-wrapper
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 2 — Contact Host primary button (sticky).
+   * @interactions
+   *   - Hover Contact Host button
+   * @form No form found
+   */
+  abTest(`${prop.name} Contact Host Hover`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.rental-show-wrapper'], misMatchThreshold: 0.15 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering Contact Host');
+    await page.locator('button:has-text("Contact Host")').first().hover();
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Gallery prev arrow hover
+   * @selector .hero-slider
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 2 — slick prev arrow (.slick-prev).
+   * @interactions
+   *   - Hover gallery prev arrow
+   * @form No form found
+   */
+  abTest(`${prop.name} Gallery Prev Arrow Hover`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.hero-slider'], misMatchThreshold: 0.1 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering gallery prev arrow');
+    await page.locator('.slick-prev, .hero-slider button[aria-label*="Prev"]').first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Gallery next arrow hover
+   * @selector .hero-slider
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 2 — slick next arrow (.slick-next).
+   * @interactions
+   *   - Hover gallery next arrow
+   * @form No form found
+   */
+  abTest(`${prop.name} Gallery Next Arrow Hover`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.hero-slider'], misMatchThreshold: 0.1 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering gallery next arrow');
+    await page.locator('.slick-next, .hero-slider button[aria-label*="Next"]').first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Availability — previous month
+   * @selector .availability-container
+   * @viewports desktop
+   * @waitFor   previous month displayed
+   * @threshold 0.05
+   * @probed    Pass 2 — DayPickerNavigation prev button.
+   * @interactions
+   *   - Click prev month
+   * @form No form found
+   */
+  abTest(`${prop.name} Availability Prev Month`, {
+    startingPath: `/${prop.id}`,
+    options: {
+      visreg: {
+        selectors: ['.availability-container'],
+        misMatchThreshold: 0.05,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('clicking next then prev to exercise both navigations');
+    await page.locator('.availability-container .DayPickerNavigation_button').nth(1).click();
+    await page.waitForTimeout(300);
+    await page.locator('.availability-container .DayPickerNavigation_button').nth(0).click();
+    await page.waitForTimeout(300);
+  });
+
+  /**
+   * @section Owner card hover (property-owner-container)
+   * @selector .property-owner-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.05
+   * @probed    Pass 2 — owner card is clickable; links to owner profile.
+   * @interactions
+   *   - Hover owner card
+   * @form No form found
+   */
+  abTest(`${prop.name} Owner Card Hover`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.property-owner-container'], misMatchThreshold: 0.05 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering property-owner-container');
+    await page.locator('.property-owner-container').hover();
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Amenities list all hovers (walk through)
+   * @selector .property-amenities-container
+   * @viewports all
+   * @waitFor   hover state on a specific amenity
+   * @threshold 0.05
+   * @probed    Pass 2 — 18 amenity items. Hover the 5th (middle).
+   * @interactions
+   *   - Hover 5th amenity item
+   * @form No form found
+   */
+  abTest(`${prop.name} Amenity Middle Hover`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.property-amenities-container'], misMatchThreshold: 0.05 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering 5th amenity item');
+    await page.locator('.property-amenities-container > *').nth(4).hover();
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section Gallery dot 10 (mid-gallery)
+   * @selector .hero-slider
+   * @viewports all
+   * @waitFor   slide 10 displayed
+   * @threshold 0.1
+   * @probed    Pass 2 — 24 dots; clicking the 10th jumps deep into gallery.
+   * @interactions
+   *   - Click 10th gallery dot
+   * @form No form found
+   */
+  abTest(`${prop.name} Gallery Slide 10`, {
+    startingPath: `/${prop.id}`,
+    options: { visreg: { selectors: ['.hero-slider'], misMatchThreshold: 0.1 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('clicking 10th gallery dot');
+    await page.locator('.slick-dots li').nth(9).click();
+    await page.waitForTimeout(500);
+  });
 }
