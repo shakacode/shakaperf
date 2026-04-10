@@ -84,3 +84,50 @@ abTest('Knowledge Center First Link Hover', {
   await page.locator('.about-page a').first().hover();
   await page.waitForTimeout(200);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section Knowledge center page header (sub-header below hero)
+ * @selector .static-page-container-header
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — .static-page-container-header (96px) found on staging
+ *            knowledge-center. Sub-section between hero and body.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Knowledge Center Page Header', {
+  startingPath: '/about/knowledge-center',
+  options: { visreg: { selectors: ['.static-page-container-header'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Knowledge center static-page wrapper
+ * @selector .static-page-container-wrapper
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — full static page content wrapper.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Knowledge Center Page Wrapper', {
+  startingPath: '/about/knowledge-center',
+  options: {
+    visreg: {
+      selectors: ['.static-page-container-wrapper'],
+      misMatchThreshold: 0.01,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});

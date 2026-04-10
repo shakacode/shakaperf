@@ -139,3 +139,70 @@ abTest('Blog Articles Grid Top', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section Blog card background container
+ * @selector .blog-card-background-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.1
+ * @probed    Pass 3 — .blog-card-background-container (273px) is the
+ *            background image part of a blog card. Found via staging.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Blog Card Background', {
+  startingPath: '/blog',
+  options: { visreg: { selectors: ['.blog-card-background-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Blog Read More button hover (specifically on first card)
+ * @selector .blog-card-container
+ * @viewports all
+ * @waitFor   button hover state
+ * @threshold 0.1
+ * @probed    Pass 3 — Read More buttons are inside each blog card.
+ * @interactions
+ *   - Hover Read More on first card
+ * @form No form found
+ */
+abTest('Blog First Card Read More Hover', {
+  startingPath: '/blog',
+  options: { visreg: { selectors: ['.blog-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Read More on first card');
+  await page.locator('.blog-card-container').first().locator('button').filter({ hasText: 'Read More' }).hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Blog 2nd card hover
+ * @selector .blog-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 3 — multiple cards.
+ * @interactions
+ *   - Hover 2nd card
+ * @form No form found
+ */
+abTest('Blog Second Card Hover', {
+  startingPath: '/blog',
+  options: { visreg: { selectors: ['.blog-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering 2nd blog card');
+  await page.locator('.blog-card-container').nth(1).hover();
+  await page.waitForTimeout(200);
+});

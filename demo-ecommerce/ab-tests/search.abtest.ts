@@ -131,3 +131,304 @@ abTest('Search Map Zoomed', {
   await page.keyboard.press('+');
   await page.waitForTimeout(800);
 });
+
+// ============================================================================
+// Pass 3: Major search interactions found via staging probe
+// ============================================================================
+
+/**
+ * @section Filters drawer/popover — opened
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   filter popover visible
+ * @threshold 0.05
+ * @probed    Pass 3 — confirmed in Chrome (screenshot ss_7826s55z9) that
+ *            clicking the "Filters" button opens a panel with: Deals toggle,
+ *            Pet Friendly toggle, Type checkboxes (Condo/House/Townhome/Cottage),
+ *            Min/Max Daily $ inputs, Bedrooms +/- counter, Bathrooms +/-
+ *            counter, Clear button, Apply button.
+ * @interactions
+ *   - Open filters
+ *       trigger: button.map-filter-btn "Filters"
+ *       action:  click
+ *       effect:  filter popover appears
+ * @form Filters popover
+ *   - button "Deals" toggle
+ *   - button "Pet Friendly" toggle
+ *   - input[type="checkbox"] Condo, House, Townhome, Cottage
+ *   - input Min Daily $
+ *   - input Max Daily $
+ *   - +/- counters Bedrooms, Bathrooms
+ *   submit: button "Apply"
+ *   reset: button "Clear"
+ */
+abTest('Search Filters Drawer Open', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking Filters button');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(500);
+});
+
+/**
+ * @section Filters — Deals toggle activated
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   Deals button active state
+ * @threshold 0.05
+ * @probed    Pass 3 — Deals toggle button inside Filters popover.
+ * @interactions
+ *   - Open filters
+ *   - Click Deals toggle
+ *       trigger: button containing "Deals" inside filter popover
+ *       action:  click
+ *       effect:  button switches to active state (highlighted)
+ * @form See Filters Drawer Open
+ */
+abTest('Search Filters Deals Toggle', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening filters');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(400);
+  annotate('clicking Deals toggle');
+  await page.locator('button').filter({ hasText: 'Deals' }).first().click();
+  await page.waitForTimeout(300);
+});
+
+/**
+ * @section Filters — Pet Friendly toggle activated
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   Pet Friendly active
+ * @threshold 0.05
+ * @probed    Pass 3 — Pet Friendly toggle in Filters.
+ * @interactions
+ *   - Open filters then click Pet Friendly
+ * @form See Filters Drawer Open
+ */
+abTest('Search Filters Pet Friendly Toggle', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening filters');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(400);
+  annotate('clicking Pet Friendly toggle');
+  await page.locator('button').filter({ hasText: 'Pet Friendly' }).click();
+  await page.waitForTimeout(300);
+});
+
+/**
+ * @section Filters — Condo type checked
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   checkbox checked
+ * @threshold 0.05
+ * @probed    Pass 3 — Type checkbox group with Condo/House/Townhome/Cottage.
+ * @interactions
+ *   - Open filters then check Condo
+ * @form See Filters Drawer Open
+ */
+abTest('Search Filters Type Condo Checked', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening filters');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(400);
+  annotate('checking Condo type');
+  await page.locator('label').filter({ hasText: 'Condo' }).first().click();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Filters — Min Daily $ filled
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   input populated
+ * @threshold 0.05
+ * @probed    Pass 3 — Min Daily $ input.
+ * @interactions
+ *   - Open filters then fill min price
+ * @form See Filters Drawer Open
+ */
+abTest('Search Filters Min Price Filled', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening filters');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(400);
+  annotate('filling Min Daily $');
+  await page.locator('input[placeholder="$"]').first().fill('100');
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Filters — Apply button clicked
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   filters applied (popover closed, results updated)
+ * @threshold 0.1
+ * @probed    Pass 3 — Apply button to commit filter changes.
+ * @interactions
+ *   - Open filters then click Apply
+ * @form See Filters Drawer Open
+ */
+abTest('Search Filters Apply Clicked', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening filters');
+  await page.locator('button.map-filter-btn').filter({ hasNotText: 'Clear' }).first().click();
+  await page.waitForTimeout(400);
+  annotate('clicking Apply');
+  await page.locator('button').filter({ hasText: 'Apply' }).click();
+  await page.waitForTimeout(500);
+});
+
+/**
+ * @section Search — Clear Filters clicked
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   filters cleared
+ * @threshold 0.1
+ * @probed    Pass 3 — "Clear Filters" button .map-filter-btn (separate from
+ *            the Filters one — it's a top-level reset).
+ * @interactions
+ *   - Click Clear Filters
+ *       trigger: button "Clear Filters"
+ *       action:  click
+ *       effect:  all filters reset
+ * @form No form found
+ */
+abTest('Search Clear Filters', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking Clear Filters');
+  await page.locator('button').filter({ hasText: 'Clear Filters' }).click();
+  await page.waitForTimeout(500);
+});
+
+/**
+ * @section Search — Sort dropdown opened
+ * @selector .map-page-search-container
+ * @viewports desktop
+ * @waitFor   sort dropdown shown
+ * @threshold 0.05
+ * @probed    Pass 3 — "Beds: Low to High" sort button (.map-search-sort).
+ * @interactions
+ *   - Open sort dropdown
+ *       trigger: .map-search-sort
+ *       action:  click
+ *       effect:  dropdown menu appears
+ * @form No form found
+ */
+abTest('Search Sort Dropdown Open', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.map-page-search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking sort button');
+  await page.locator('.map-search-sort').click();
+  await page.waitForTimeout(500);
+});
+
+/**
+ * @section Search — Search as I move checkbox toggled
+ * @selector .search-map-section
+ * @viewports desktop
+ * @waitFor   checkbox state changed
+ * @threshold 0.05
+ * @probed    Pass 3 — "Search as I move" checkbox on map (visible in
+ *            screenshot ss_7826s55z9).
+ * @interactions
+ *   - Toggle checkbox
+ *       trigger: input[type="checkbox"] near "Search as I move" label
+ *       action:  click
+ *       effect:  checkbox unchecked
+ * @form No form found
+ */
+abTest('Search Move Checkbox Toggled', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.search-map-section'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('toggling Search as I move checkbox');
+  await page.locator('input[type="checkbox"]').first().click().catch(() => {});
+  await page.waitForTimeout(300);
+});

@@ -309,3 +309,162 @@ abTest('Deals PCB Link Hover', {
   await page.locator('.deals-description-paragraph a').filter({ hasText: 'Panama City Beach' }).first().hover();
   await page.waitForTimeout(200);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section Infinite grid deals container
+ * @selector .infinite-grid-deals-container
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.15
+ * @probed    Pass 3 — .infinite-grid-deals-container (2730px on staging)
+ *            wraps the deal cards. Found via staging probe.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Infinite Grid Container', {
+  startingPath: '/deals',
+  options: {
+    visreg: {
+      selectors: ['.infinite-grid-deals-container'],
+      misMatchThreshold: 0.15,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card image part
+ * @selector .deals-card-image-container
+ * @viewports all
+ * @waitFor   image loaded
+ * @threshold 0.1
+ * @probed    Pass 3 — 180px image part of deal card. Found via staging.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Card Image Container', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-image-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card text part
+ * @selector .deals-card-text-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — 255px text part of deal card with deal info.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Card Text Container', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-text-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card text header (title)
+ * @selector .deals-card-text-header
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — header part of deal text. Found via deeper staging probe.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Card Header', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-text-header'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card text date
+ * @selector .deals-card-text-date
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — date display in deal card.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Card Date', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-text-date'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card text description
+ * @selector .deals-card-text-description
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — description text in deal card.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Card Description', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-text-description'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal tag (the orange "Deal" badge)
+ * @selector .deals-tag
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .deals-tag is the visual deal badge.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Deals Tag Badge', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-tag'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Deal card link wrapper
+ * @selector .deals-card-link
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.1
+ * @probed    Pass 3 — anchor wrapping the entire deal card.
+ * @interactions
+ *   - Hover deal card link
+ * @form No form found
+ */
+abTest('Deals Card Link Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering deals card link');
+  await page.locator('.deals-card-link').first().hover();
+  await page.waitForTimeout(200);
+});

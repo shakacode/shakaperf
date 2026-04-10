@@ -206,3 +206,45 @@ abTest('List Your Property Benefit Card Hover', {
   await page.locator('.benefits-card-container > *').first().hover();
   await page.waitForTimeout(200);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section List Your Property body section
+ * @selector .list-your-prop-container-body
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .list-your-prop-container-body (280px on staging) is
+ *            a body section. Local has it too.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('List Your Property Body Container', {
+  startingPath: '/list-your-property',
+  options: { visreg: { selectors: ['.list-your-prop-container-body'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section List Your Property subtext (legal/footnote)
+ * @selector .list-your-prop-container-subtext
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — .list-your-prop-container-subtext (72px) found in
+ *            initial probing but never tested. Footnote text.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('List Your Property Subtext', {
+  startingPath: '/list-your-property',
+  options: { visreg: { selectors: ['.list-your-prop-container-subtext'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});

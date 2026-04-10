@@ -832,3 +832,326 @@ abTest('Homepage Map Mississippi Hover', {
   await page.locator('a.search-state-card[href="/mississippi"]').hover();
   await page.waitForTimeout(200);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section Search by State container
+ * @selector .search-state-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — found via staging probe (214px). Local has it too.
+ *            Contains 5 state cards as a separate section from .map-wrapper.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Search State Container', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.search-state-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Featured property container (single card wrapper)
+ * @selector .featured-property-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.1
+ * @probed    Pass 3 — 267px container per featured property card. Found
+ *            via staging probe — different from .featured-property-section.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Featured Property Container', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.featured-property-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Home property content container (info under image)
+ * @selector .home-property-content-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — 107px text block under each property card image.
+ *            Local has 3 instances.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Property Content Container', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.home-property-content-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Ad banner container (default)
+ * @selector .ad-banner-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — staging has .ad-banner-container.rentals (400px).
+ *            Local also has .ad-banner-container as a wrapper around
+ *            .home-ad-banner. Static snapshot of the rendered banner.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Ad Banner Container', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.ad-banner-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Ad banner container — Get Started clicked (post-click state)
+ * @selector .ad-banner-container
+ * @viewports all
+ * @waitFor   button has been clicked (active/focus state)
+ * @threshold 0.05
+ * @probed    Pass 3 — Get Started is the primary CTA inside the ad banner.
+ *            It navigates away — this test captures the focused state
+ *            BEFORE the navigation completes.
+ * @interactions
+ *   - Click Get Started
+ *       trigger: button.primary-btn.ad-banner
+ *       action:  click and capture pre-navigation focused state
+ *       effect:  button shows :focus / :active state
+ * @form No form found
+ */
+abTest('Homepage Ad Banner Get Started Clicked', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.ad-banner-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('focusing Get Started button');
+  await page.locator('.ad-banner-container button.primary-btn').focus();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section SEO container (parent of seo-title-container)
+ * @selector .seo-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — .seo-container (1245px) wraps the SEO description.
+ *            Found via staging — local also has it. Contains "The ECBYO
+ *            Story" heading.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage SEO Container', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.seo-container'],
+      misMatchThreshold: 0.01,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Mobile search expanded container (visible on mobile/tablet)
+ * @selector .mobile-search-expanded
+ * @viewports phone, tablet
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .mobile-container.mobile-search-expanded (318px) is
+ *            present on staging at all viewports. This is the mobile-style
+ *            search form. Restrict to phone+tablet for visibility.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Mobile Search Expanded', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.mobile-search-expanded'],
+      misMatchThreshold: 0.05,
+      viewports: [
+        { label: 'phone', width: 375, height: 667 },
+        { label: 'tablet', width: 768, height: 1024 },
+      ],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Drawer container (mobile nav)
+ * @selector .drawer-container-style
+ * @viewports phone, tablet
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .drawer-container-style (627px) is the mobile nav drawer.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Drawer Container', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.drawer-container-style'],
+      misMatchThreshold: 0.05,
+      viewports: [
+        { label: 'phone', width: 375, height: 667 },
+        { label: 'tablet', width: 768, height: 1024 },
+      ],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Search inputs wrapper
+ * @selector .search-inputs
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .search-inputs wraps the search bar inputs.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Search Inputs', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.search-inputs'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Search left side (city combobox area)
+ * @selector .search-left
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .search-left contains the combobox + close-icon.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Search Left', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.search-left'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Search right side (date picker + guests + button)
+ * @selector .search-right
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .search-right contains date picker + Guests button.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Search Right', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.search-right'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Map search date picker
+ * @selector .map-search-date-picker
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .map-search-date-picker is the date picker wrapper
+ *            in the search bar.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Map Search Date Picker', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-search-date-picker'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Ad banner content
+ * @selector .ad-banner-content
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .ad-banner-content has the title + button.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Ad Banner Content', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.ad-banner-content'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Ad banner title
+ * @selector .ad-banner-title
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01
+ * @probed    Pass 3 — title text inside ad banner.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Homepage Ad Banner Title', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.ad-banner-title'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});

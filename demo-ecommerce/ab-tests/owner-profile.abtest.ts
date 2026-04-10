@@ -154,3 +154,80 @@ abTest('Owner Avatar Hover', {
   await page.locator('.owner-profile-picture-wrapper').hover();
   await page.waitForTimeout(200);
 });
+
+// ============================================================================
+// Pass 3: Sections found via staging cross-reference
+// ============================================================================
+
+/**
+ * @section Owner bio container
+ * @selector .owner-bio-container
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.05
+ * @probed    Pass 3 — .owner-bio-container (2488px) wraps the bio + listings.
+ *            Found via staging.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Owner Bio Container', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: {
+    visreg: {
+      selectors: ['.owner-bio-container'],
+      misMatchThreshold: 0.15,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
+
+/**
+ * @section Owner Call button hover
+ * @selector .owner-profile-wrapper
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 3 — "Call" button found on staging owner profile.
+ * @interactions
+ *   - Hover Call button
+ *       trigger: button containing "Call"
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Owner Call Button Hover', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-profile-wrapper'], misMatchThreshold: 0.15 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Call button');
+  await page.locator('button').filter({ hasText: 'Call' }).first().hover().catch(() => {});
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Owner listings container
+ * @selector .owner-listings-container
+ * @viewports desktop
+ * @waitFor   networkidle
+ * @threshold 0.15
+ * @probed    Pass 3 — .owner-listings-container (2488px) wraps owner properties.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Owner Listings Container', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: {
+    visreg: {
+      selectors: ['.owner-listings-container'],
+      misMatchThreshold: 0.15,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});

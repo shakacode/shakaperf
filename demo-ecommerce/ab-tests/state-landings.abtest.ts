@@ -119,4 +119,117 @@ for (const state of STATES) {
     await page.locator('.property-card-container').first().hover();
     await page.waitForTimeout(200);
   });
+
+  // ========================================================================
+  // Pass 3: Sections found via staging cross-reference
+  // ========================================================================
+
+  /**
+   * @section State header with map
+   * @selector .state-header-container
+   * @viewports all
+   * @waitFor   networkidle
+   * @threshold 0.1
+   * @probed    Pass 3 — .state-header-container (830px on staging) wraps
+   *            the state-specific header with map. Found via staging probe.
+   * @interactions
+   *   - Map cards are clickable
+   * @form No form found
+   */
+  abTest(`${state.name} State Header Container`, {
+    startingPath: `/${state.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.state-header-container'],
+        misMatchThreshold: 0.1,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+  });
+
+  /**
+   * @section Map key (legend)
+   * @selector .map-key-container
+   * @viewports desktop
+   * @waitFor   networkidle
+   * @threshold 0.05
+   * @probed    Pass 3 — .map-key-container (160px) is the map legend. Found
+   *            via staging probe.
+   * @interactions No interactions found
+   * @form No form found
+   */
+  abTest(`${state.name} Map Key Container`, {
+    startingPath: `/${state.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.map-key-container'],
+        misMatchThreshold: 0.05,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+  });
+
+  /**
+   * @section State map area buttons hover
+   * @selector .map-key-container
+   * @viewports desktop
+   * @waitFor   hover state
+   * @threshold 0.05
+   * @probed    Pass 3 — confirmed Florida has region buttons
+   *            ("Florida Panhandle 22 cities", "Florida West Coast 36 cities")
+   *            in the map-key-area-container. Each state likely has similar
+   *            sub-region buttons.
+   * @interactions
+   *   - Hover first map area button
+   * @form No form found
+   */
+  abTest(`${state.name} Map Area Hover`, {
+    startingPath: `/${state.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.map-key-container'],
+        misMatchThreshold: 0.05,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering first map area button');
+    await page.locator('.map-key-area-container button').first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section State View Map button hover
+   * @selector .c-index-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 3 — "View Map" button at bottom of state pages.
+   * @interactions
+   *   - Hover View Map button
+   * @form No form found
+   */
+  abTest(`${state.name} View Map Hover`, {
+    startingPath: `/${state.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.c-index-container'],
+        misMatchThreshold: 0.15,
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering View Map button');
+    await page.locator('button').filter({ hasText: 'View Map' }).first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
 }

@@ -121,4 +121,98 @@ for (const city of CITIES) {
     await page.locator('button').filter({ hasText: 'Browse' }).first().hover();
     await page.waitForTimeout(200);
   });
+
+  // ========================================================================
+  // Pass 3: Sections found via staging cross-reference
+  // ========================================================================
+
+  /**
+   * @section City breadcrumbs wrapper
+   * @selector .breadcrumbs-wrapper
+   * @viewports all
+   * @waitFor   networkidle
+   * @threshold 0.01
+   * @probed    Pass 3 — .breadcrumbs-wrapper (168px) found on staging city
+   *            pages. Different from .breadcrumbs-container on property pages.
+   * @interactions No interactions found
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} City Breadcrumbs`, {
+    startingPath: `/${city.slug}`,
+    options: { visreg: { selectors: ['.breadcrumbs-wrapper'], misMatchThreshold: 0.01 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+  });
+
+  /**
+   * @section City — Show All Communities button hover
+   * @selector .c-index-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 3 — "Show All N Communities" button found on staging
+   *            city pages.
+   * @interactions
+   *   - Hover Show All Communities CTA
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} Show All Communities Hover`, {
+    startingPath: `/${city.slug}`,
+    options: { visreg: { selectors: ['.c-index-container'], misMatchThreshold: 0.1 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering Show All Communities');
+    await page.locator('button').filter({ hasText: 'Show All' }).first().hover().catch(() => {});
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section City — about-content-wrapper section
+   * @selector .about-content-wrapper
+   * @viewports all
+   * @waitFor   networkidle
+   * @threshold 0.05
+   * @probed    Pass 3 — .about-content-wrapper found on staging city pages.
+   *            Local has it too. Description content area.
+   * @interactions No interactions found
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} About Content Wrapper`, {
+    startingPath: `/${city.slug}`,
+    options: { visreg: { selectors: ['.about-content-wrapper'], misMatchThreshold: 0.05 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+  });
+
+  /**
+   * @section City — Browse Travel Guides button click (navigates)
+   * @selector .c-index-container
+   * @viewports desktop
+   * @waitFor   button focused
+   * @threshold 0.1
+   * @probed    Pass 3 — Browse Travel Guides button. Hover already tested;
+   *            this captures the focused state pre-navigation.
+   * @interactions
+   *   - Focus Browse Travel Guides
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} Travel Guides Focus`, {
+    startingPath: `/${city.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.c-index-container'],
+        misMatchThreshold: 0.15,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('focusing Travel Guides button');
+    await page.locator('button').filter({ hasText: 'Browse' }).first().focus().catch(() => {});
+    await page.waitForTimeout(200);
+  });
 }
