@@ -57,3 +57,30 @@ abTest('Knowledge Center Body', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I'm browsing the knowledge hub.
+// Let me scan through the article."
+// ============================================================================
+
+/**
+ * @section Knowledge center first heading hover (link in TOC-like section)
+ * @selector .about-page
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — any internal link within the article body.
+ * @interactions
+ *   - Hover first article link
+ * @form No form found
+ */
+abTest('Knowledge Center First Link Hover', {
+  startingPath: '/about/knowledge-center',
+  options: { visreg: { selectors: ['.about-page'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first link in body');
+  await page.locator('.about-page a').first().hover();
+  await page.waitForTimeout(200);
+});

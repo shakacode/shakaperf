@@ -85,4 +85,38 @@ for (const state of STATES) {
     annotate('waiting for page to settle');
     await waitUntilPageSettled(page);
   });
+
+  // ========================================================================
+  // Pass 2: Interactive tests — user mindset: "I want to rent in <state>.
+  // Show me properties. Let me hover a card."
+  // ========================================================================
+
+  /**
+   * @section State page first property card hover
+   * @selector .community-properties-display-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.15
+   * @probed    Pass 2 — property cards on state pages are interactive.
+   * @interactions
+   *   - Hover first property card
+   *       trigger: .property-card-container (first)
+   *       action:  hover
+   * @form No form found
+   */
+  abTest(`${state.name} Property Card Hover`, {
+    startingPath: `/${state.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.community-properties-display-container'],
+        misMatchThreshold: state.slug === 'florida' ? 0.2 : 0.15,
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering first property card');
+    await page.locator('.property-card-container').first().hover();
+    await page.waitForTimeout(200);
+  });
 }

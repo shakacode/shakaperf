@@ -69,3 +69,65 @@ abTest('Search Map Section', {
 // covers the search page's primary rendering.
 //
 // abTest('Search List View', { ... });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I'm searching for a rental.
+// Let me interact with the map, filters, and sort."
+// ============================================================================
+
+/**
+ * @section Search page — header search bar interaction
+ * @selector .map-page-search-container
+ * @viewports all
+ * @waitFor   combobox focused
+ * @threshold 0.1
+ * @probed    Pass 2 — search page has a combobox input at the top.
+ * @interactions
+ *   - Focus city combobox
+ *       trigger: input[placeholder="Search"] (combobox-input)
+ *       action:  click
+ *       effect:  dropdown may open
+ * @form No form found
+ */
+abTest('Search Combobox Focused', {
+  startingPath: '/search',
+  options: { visreg: { selectors: ['.map-page-search-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking combobox input');
+  await page.locator('input.combobox-input').click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Search page — map zoomed
+ * @selector .search-map-section
+ * @viewports desktop
+ * @waitFor   map zoom level increased
+ * @threshold 0.2  (map tiles change on zoom)
+ * @probed    Pass 2 — maps support zoom; keyboard "+" or button click.
+ * @interactions
+ *   - Zoom in
+ *       trigger: keyboard "+" on map
+ *       action:  keyboard press
+ *       effect:  map zooms in (different tiles loaded)
+ * @form No form found
+ */
+abTest('Search Map Zoomed', {
+  startingPath: '/search',
+  options: {
+    visreg: {
+      selectors: ['.search-map-section'],
+      misMatchThreshold: 0.2,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('focusing map and pressing + to zoom');
+  await page.locator('.search-map-section').click();
+  await page.keyboard.press('+');
+  await page.waitForTimeout(800);
+});

@@ -83,3 +83,30 @@ abTest('Owner Properties', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "Who is this host? What do they
+// offer? Let me browse their properties."
+// ============================================================================
+
+/**
+ * @section Owner property card hover (first)
+ * @selector .owner-property-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.15
+ * @probed    Pass 2 — owner's properties use .property-card-container.
+ * @interactions
+ *   - Hover first owner property card
+ * @form No form found
+ */
+abTest('Owner Property Card Hover', {
+  startingPath: '/owner-profile/6C4B495A5368',
+  options: { visreg: { selectors: ['.owner-property-container'], misMatchThreshold: 0.15 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first owner property card');
+  await page.locator('.owner-property-container .property-card-container').first().hover();
+  await page.waitForTimeout(200);
+});

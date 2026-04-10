@@ -71,4 +71,54 @@ for (const city of CITIES) {
     annotate('waiting for page to settle');
     await waitUntilPageSettled(page);
   });
+
+  // ========================================================================
+  // Pass 2: Interactive tests — user mindset: "I want to rent in <city>.
+  // Let me hover a property or click Browse Travel Guides."
+  // ========================================================================
+
+  /**
+   * @section City page — first property card hover
+   * @selector .community-properties-display-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.2
+   * @probed    Pass 2 — same card pattern as state pages.
+   * @interactions
+   *   - Hover first property card
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} City Card Hover`, {
+    startingPath: `/${city.slug}`,
+    options: { visreg: { selectors: ['.community-properties-display-container'], misMatchThreshold: 0.2 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering first property card');
+    await page.locator('.property-card-container').first().hover();
+    await page.waitForTimeout(200);
+  });
+
+  /**
+   * @section City page — Browse Travel Guides CTA hover
+   * @selector .c-index-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.1
+   * @probed    Pass 2 — "Browse <City> Travel Guides" button found in A6.
+   * @interactions
+   *   - Hover travel guides CTA
+   *       trigger: button with text "Browse"
+   * @form No form found
+   */
+  abTest(`${city.filePrefix} Travel Guides CTA Hover`, {
+    startingPath: `/${city.slug}`,
+    options: { visreg: { selectors: ['.c-index-container'], misMatchThreshold: 0.1 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering Browse Travel Guides button');
+    await page.locator('button').filter({ hasText: 'Browse' }).first().hover();
+    await page.waitForTimeout(200);
+  });
 }

@@ -70,3 +70,102 @@ abTest('New Listings First Property Card', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "Show me the newest rentals.
+// Let me filter by state or city."
+// ============================================================================
+
+/**
+ * @section New Listings — All States dropdown opened
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   dropdown expanded
+ * @threshold 0.05
+ * @probed    Pass 2 — same filter pattern as /deals.
+ * @interactions
+ *   - Open All States dropdown
+ *       trigger: button.new-listings-dropdown-btn "All States"
+ *       action:  click
+ * @form No form found
+ */
+abTest('New Listings States Dropdown Open', {
+  startingPath: '/new-listings',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking All States');
+  await page.locator('button.new-listings-dropdown-btn').filter({ hasText: 'All States' }).click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section New Listings — All Cities dropdown opened
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   dropdown expanded
+ * @threshold 0.05
+ * @probed    Pass 2 — "All Cities (113)" dropdown.
+ * @interactions
+ *   - Open All Cities dropdown
+ *       trigger: button.new-listings-dropdown-btn "All Cities"
+ *       action:  click
+ * @form No form found
+ */
+abTest('New Listings Cities Dropdown Open', {
+  startingPath: '/new-listings',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking All Cities');
+  await page.locator('button.new-listings-dropdown-btn').filter({ hasText: 'All Cities' }).click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section New Listings — All Communities dropdown opened
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   dropdown expanded
+ * @threshold 0.05
+ * @probed    Pass 2 — "All Communities (1085)" dropdown (unique to new-listings).
+ * @interactions
+ *   - Open All Communities dropdown
+ *       trigger: button.new-listings-dropdown-btn "All Communities"
+ *       action:  click
+ * @form No form found
+ */
+abTest('New Listings Communities Dropdown Open', {
+  startingPath: '/new-listings',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking All Communities');
+  await page.locator('button.new-listings-dropdown-btn').filter({ hasText: 'All Communities' }).click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section New Listings — Property card hover
+ * @selector .property-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.15
+ * @probed    Pass 2 — cards hoverable.
+ * @interactions
+ *   - Hover first card
+ * @form No form found
+ */
+abTest('New Listings Card Hover', {
+  startingPath: '/new-listings',
+  options: { visreg: { selectors: ['.property-card-container'], misMatchThreshold: 0.15 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first property card');
+  await page.locator('.property-card-container').first().hover();
+  await page.waitForTimeout(200);
+});

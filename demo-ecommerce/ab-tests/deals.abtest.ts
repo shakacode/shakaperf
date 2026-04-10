@@ -113,3 +113,110 @@ abTest('Deals SEO Content', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I want a Gulf Coast deal. Let me
+// filter by state, by city, click a card I like."
+// ============================================================================
+
+/**
+ * @section Deals — All States dropdown opened
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   dropdown expanded (showing state options)
+ * @threshold 0.05
+ * @probed    Pass 2 — confirmed in Chrome (screenshot ss_4966pfgjv) that
+ *            clicking the "All States (2)" button expands a panel showing
+ *            "All States", "Alabama", "Florida" options.
+ * @interactions
+ *   - Open All States dropdown
+ *       trigger: button.new-listings-dropdown-btn containing "All States"
+ *       action:  click
+ *       effect:  dropdown panel shows state filter options
+ * @form No form found
+ */
+abTest('Deals All States Dropdown Open', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking All States dropdown');
+  await page.locator('button.new-listings-dropdown-btn').filter({ hasText: 'All States' }).click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Deals — All Cities dropdown opened
+ * @selector .new-listings-dropdown-container
+ * @viewports all
+ * @waitFor   dropdown expanded
+ * @threshold 0.05
+ * @probed    Pass 2 — second dropdown button "All Cities (11)".
+ * @interactions
+ *   - Open All Cities dropdown
+ *       trigger: button.new-listings-dropdown-btn containing "All Cities"
+ *       action:  click
+ *       effect:  dropdown panel shows city filter options
+ * @form No form found
+ */
+abTest('Deals All Cities Dropdown Open', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.new-listings-dropdown-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking All Cities dropdown');
+  await page.locator('button.new-listings-dropdown-btn').filter({ hasText: 'All Cities' }).click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Deals — First deal card hovered
+ * @selector .deals-card-container
+ * @viewports all
+ * @waitFor   hover state applied
+ * @threshold 0.1
+ * @probed    Pass 2 — deal cards are likely clickable links. Hovering may
+ *            reveal a hover style (shadow, scale).
+ * @interactions
+ *   - Hover first deal card
+ *       trigger: .deals-card-container (first)
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Deals First Card Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['.deals-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first deal card');
+  await page.locator('.deals-card-container').first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Deals — List Your Property promo CTA hover
+ * @selector .list-promote-deal-button
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "List Your Property & Promote a Deal" button (primary-btn).
+ *            Hovering reveals hover state if present.
+ * @interactions
+ *   - Hover List Your Property CTA
+ *       trigger: button.primary-btn.list-promote-deal-button
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Deals Promote CTA Hover', {
+  startingPath: '/deals',
+  options: { visreg: { selectors: ['button.list-promote-deal-button'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering List Your Property CTA');
+  await page.locator('button.list-promote-deal-button').hover();
+  await page.waitForTimeout(200);
+});

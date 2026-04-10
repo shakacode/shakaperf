@@ -87,4 +87,58 @@ for (const post of POSTS) {
     annotate('waiting for page to settle');
     await waitUntilPageSettled(page);
   });
+
+  // ========================================================================
+  // Pass 2: Interactive tests — user mindset: "I'm reading an article. I
+  // might scroll through the image gallery or click a related link."
+  // ========================================================================
+
+  /**
+   * @section Blog post full article (header + content)
+   * @selector .blog-show
+   * @viewports all
+   * @waitFor   networkidle
+   * @threshold 0.01
+   * @probed    Pass 2 — full article wrapper for complete coverage.
+   * @interactions No interactions found
+   * @form No form found
+   */
+  abTest(`Blog Post: ${post.name} Full Article`, {
+    startingPath: `/blog/${post.slug}`,
+    options: {
+      visreg: {
+        selectors: ['.blog-show'],
+        misMatchThreshold: 0.01,
+        viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+      },
+    },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+  });
+
+  /**
+   * @section Blog post image gallery hover
+   * @selector .blog-show-img-container
+   * @viewports all
+   * @waitFor   hover state
+   * @threshold 0.05
+   * @probed    Pass 2 — blog posts have .blog-show-img-wrapper images that
+   *            may be clickable.
+   * @interactions
+   *   - Hover first blog image
+   *       trigger: .blog-show-img-wrapper (first)
+   *       action:  hover
+   * @form No form found
+   */
+  abTest(`Blog Post: ${post.name} Image Hover`, {
+    startingPath: `/blog/${post.slug}`,
+    options: { visreg: { selectors: ['.blog-show-img-container'], misMatchThreshold: 0.05 } },
+  }, async ({ page, annotate }) => {
+    annotate('waiting for page to settle');
+    await waitUntilPageSettled(page);
+    annotate('hovering first blog image');
+    await page.locator('.blog-show-img-wrapper').first().hover();
+    await page.waitForTimeout(200);
+  });
 }

@@ -71,3 +71,54 @@ abTest('Travel Guides Content', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I'm planning a trip. Which
+// state do I want to explore?"
+// ============================================================================
+
+/**
+ * @section State picture hover (first)
+ * @selector .states-pics-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — states-pics-container has clickable state tiles.
+ * @interactions
+ *   - Hover first state tile
+ *       trigger: .states-pics-container > *:first-child
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Travel Guides State Hover', {
+  startingPath: '/travel-guides',
+  options: { visreg: { selectors: ['.states-pics-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first state tile');
+  await page.locator('.states-pics-container > *').first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Content picture grid hover
+ * @selector .travel-guides-content-picture-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — .travel-guides-content-picture-container has images.
+ * @interactions
+ *   - Hover first picture
+ * @form No form found
+ */
+abTest('Travel Guides Picture Hover', {
+  startingPath: '/travel-guides',
+  options: { visreg: { selectors: ['.travel-guides-content-picture-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first picture');
+  await page.locator('.travel-guides-content-picture-container > *').first().hover();
+  await page.waitForTimeout(200);
+});

@@ -126,3 +126,83 @@ abTest('List Your Property Integrations Button', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I want to list my property.
+// What do I get? Who integrates with this service? How do I sign up?"
+// ============================================================================
+
+/**
+ * @section List Your Property CTA hover
+ * @selector button.list-your-prop-btn.primary-btn
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — primary CTA button.
+ * @interactions
+ *   - Hover primary CTA
+ *       trigger: button.primary-btn.list-your-prop-btn "List Your Property"
+ *       action:  hover
+ * @form No form found
+ */
+abTest('List Your Property Primary CTA Hover', {
+  startingPath: '/list-your-property',
+  options: { visreg: { selectors: ['button.primary-btn.list-your-prop-btn'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering primary CTA');
+  await page.locator('button.primary-btn.list-your-prop-btn').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Show All Integrations button clicked
+ * @selector .integrations-container
+ * @viewports all
+ * @waitFor   integrations expanded
+ * @threshold 0.05
+ * @probed    Pass 2 — clicking "Show All Integrations" may expand the full
+ *            list of integrations (first pass noted no obvious effect but
+ *            the test captures whatever happens).
+ * @interactions
+ *   - Click Show All Integrations
+ *       trigger: button.secondary-btn.list-your-prop-btn
+ *       action:  click
+ *       effect:  integrations list may expand
+ * @form No form found
+ */
+abTest('List Your Property Integrations Expanded', {
+  startingPath: '/list-your-property',
+  options: { visreg: { selectors: ['.integrations-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking Show All Integrations');
+  await page.locator('button.secondary-btn.list-your-prop-btn').click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Benefits card hover (first card)
+ * @selector .benefits-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — benefits cards may have hover effects.
+ * @interactions
+ *   - Hover first benefit card
+ *       trigger: .benefits-card-container > *:first-child
+ *       action:  hover
+ * @form No form found
+ */
+abTest('List Your Property Benefit Card Hover', {
+  startingPath: '/list-your-property',
+  options: { visreg: { selectors: ['.benefits-card-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first benefit card');
+  await page.locator('.benefits-card-container > *').first().hover();
+  await page.waitForTimeout(200);
+});

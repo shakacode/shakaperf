@@ -83,3 +83,80 @@ abTest('About Cards', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "Who runs this site? Can I trust
+// them?" → they might click the CTA to explore or list a property.
+// ============================================================================
+
+/**
+ * @section Explore Properties CTA hover
+ * @selector .about-page
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "Explore Properties" button found in A5 probing.
+ * @interactions
+ *   - Hover Explore Properties CTA
+ *       trigger: button "Explore Properties"
+ *       action:  hover
+ * @form No form found
+ */
+abTest('About Explore Properties Hover', {
+  startingPath: '/about',
+  options: { visreg: { selectors: ['.about-page'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Explore Properties CTA');
+  await page.locator('button:has-text("Explore Properties")').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section List Your Property CTA hover
+ * @selector .about-page
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "List Your Property" button also present on about.
+ * @interactions
+ *   - Hover List Your Property CTA
+ *       trigger: button "List Your Property"
+ *       action:  hover
+ * @form No form found
+ */
+abTest('About List Property Hover', {
+  startingPath: '/about',
+  options: { visreg: { selectors: ['.about-page'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering List Your Property CTA');
+  await page.locator('button:has-text("List Your Property")').first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section About feature card hover (first)
+ * @selector .about-page-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — 3 about-page-card items; hover the first.
+ * @interactions
+ *   - Hover first about card
+ *       trigger: .about-page-card (first)
+ *       action:  hover
+ * @form No form found
+ */
+abTest('About First Card Hover', {
+  startingPath: '/about',
+  options: { visreg: { selectors: ['.about-page-card-container'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first about card');
+  await page.locator('.about-page-card').first().hover();
+  await page.waitForTimeout(200);
+});

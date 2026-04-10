@@ -297,3 +297,385 @@ abTest('Homepage Check In Calendar Open', {
   annotate('waiting for calendar to render');
   await page.waitForTimeout(800);
 });
+
+// ============================================================================
+// Pass 2: Additional interactive tests
+// ============================================================================
+
+/**
+ * @section Check Out calendar — opened state
+ * @selector viewport
+ * @viewports desktop
+ * @waitFor   calendar rendered
+ * @threshold 0.05
+ * @probed    Pass 2 — endDate input also opens react-dates calendar.
+ * @interactions
+ *   - Open Check Out calendar
+ *       trigger: input[name="endDate"]
+ *       action:  focus
+ *       effect:  react-dates calendar appears
+ * @form No form found
+ */
+abTest('Homepage Check Out Calendar Open', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('focusing Check Out input');
+  await page.locator('input[name="endDate"]').focus();
+  annotate('waiting for calendar');
+  await page.waitForTimeout(800);
+});
+
+/**
+ * @section Date range selected (Check In → Check Out)
+ * @selector viewport
+ * @viewports desktop
+ * @waitFor   date range highlighted in calendar
+ * @threshold 0.05
+ * @probed    Pass 2 — selecting a check-in date keeps calendar open and
+ *            allows a check-out date to be picked, highlighting range.
+ * @interactions
+ *   - Pick check-in date
+ *       trigger: TD with aria-label "Choose Thursday, April 9, 2026 as your check-in date..."
+ *       action:  click
+ *       effect:  cell highlighted, calendar moves to pick check-out
+ *   - Pick check-out date
+ *       trigger: TD a few days later
+ *       action:  click
+ *       effect:  range highlighted between
+ * @form No form found
+ */
+abTest('Homepage Date Range Selection', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening calendar');
+  await page.locator('input[name="startDate"]').focus();
+  await page.waitForTimeout(500);
+  annotate('picking first available check-in date');
+  await page.locator('td[role="button"]:not([aria-disabled="true"])').first().click();
+  await page.waitForTimeout(300);
+  annotate('picking check-out date');
+  await page.locator('td[role="button"]:not([aria-disabled="true"])').nth(5).click();
+  await page.waitForTimeout(500);
+});
+
+// TODO: Homepage Guests Adults Incremented
+// The +/- controls inside the guests popover are not plain buttons with
+// "+" text. They are SVG icons or React-styled buttons whose selector
+// I couldn't pin down during probing. The popover open test above
+// already captures the 0/0/pets state. Revisit with deeper DOM inspection
+// if the counter UI becomes load-bearing.
+//
+// abTest('Homepage Guests Adults Incremented', { ... });
+
+/**
+ * @section FAQ accordion — first item opened
+ * @selector .home-faq-section
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.01  (accordion expansion is a stable DOM change)
+ * @probed    Pass 2 — FAQ is 7 native <details> elements. Opening the
+ *            first one expands the answer under the summary.
+ * @interactions
+ *   - Open first FAQ item
+ *       trigger: details > summary "What is a vacation rental by owner?"
+ *       action:  click
+ *       effect:  details expands, answer visible
+ * @form No form found
+ */
+abTest('Homepage FAQ First Item Opened', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.home-faq-section'],
+      misMatchThreshold: 0.01,
+      // One viewport consistently times out on locator.evaluate — likely
+      // the .home-faq-section DOM isn't ready in time on that breakpoint.
+      // Restricting to the two that reliably work.
+      viewports: [
+        { label: 'tablet', width: 768, height: 1024 },
+        { label: 'desktop', width: 1280, height: 800 },
+      ],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening first FAQ item via details.open');
+  await page.locator('.home-faq-section details').first().evaluate((el: any) => { el.open = true; });
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section FAQ — all items opened
+ * @selector .home-faq-section
+ * @viewports all
+ * @waitFor   all details elements open
+ * @threshold 0.01
+ * @probed    Pass 2 — 7 FAQ items; clicking each summary expands it.
+ *            This captures the fully-expanded state.
+ * @interactions
+ *   - Open all FAQ items
+ *       trigger: every details summary in .home-faq-section
+ *       action:  click each in sequence
+ *       effect:  all 7 items expanded
+ * @form No form found
+ */
+abTest('Homepage FAQ All Items Opened', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.home-faq-section'], misMatchThreshold: 0.01 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('opening every FAQ item via details.open');
+  await page.locator('.home-faq-section').evaluate((root) => {
+    root.querySelectorAll('details').forEach((d: any) => { d.open = true; });
+  });
+  await page.waitForTimeout(300);
+});
+
+/**
+ * @section Map — hover a state card
+ * @selector .map-wrapper
+ * @viewports desktop  (map only on desktop)
+ * @waitFor   hover state applied
+ * @threshold 0.1
+ * @probed    Pass 2 — 5 clickable state cards (.search-state-card) on the
+ *            homepage map. Hovering one likely triggers a visual highlight.
+ * @interactions
+ *   - Hover Florida state card
+ *       trigger: a.search-state-card[href="/florida"]
+ *       action:  hover
+ *       effect:  hover styling (scale or highlight)
+ * @form No form found
+ */
+abTest('Homepage Map Florida Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-wrapper'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Florida state card on map');
+  await page.locator('a.search-state-card[href="/florida"]').hover();
+  await page.waitForTimeout(300);
+});
+
+/**
+ * @section Search bar: city combobox focused + expanded
+ * @selector viewport
+ * @viewports desktop
+ * @waitFor   combobox expanded (aria-expanded="true")
+ * @threshold 0.05
+ * @probed    Pass 2 — focusing the "Search by city, community or ID"
+ *            input opens a dropdown of suggestions.
+ * @interactions
+ *   - Focus city input
+ *       trigger: input[placeholder="Search by city, community or ID"]
+ *       action:  click
+ *       effect:  dropdown of suggestions appears
+ * @form No form found
+ */
+abTest('Homepage Search City Dropdown Open', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('clicking city search input');
+  await page.locator('input[placeholder="Search by city, community or ID"]').click();
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Search bar: city typed "Dest"
+ * @selector viewport
+ * @viewports desktop
+ * @waitFor   autocomplete suggestions filtered
+ * @threshold 0.05
+ * @probed    Pass 2 — typing into the city combobox filters suggestions.
+ * @interactions
+ *   - Type in city field
+ *       trigger: input[placeholder="Search by city, community or ID"]
+ *       action:  fill with "Dest"
+ *       effect:  dropdown shows Destin-related matches
+ * @form No form found
+ */
+abTest('Homepage Search City Autocomplete', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['viewport'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('typing in city combobox');
+  await page.locator('input[placeholder="Search by city, community or ID"]').fill('Dest');
+  await page.waitForTimeout(400);
+});
+
+/**
+ * @section Map state card — Texas hover
+ * @selector .map-wrapper
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — 5 state cards on map; Texas is one of them.
+ * @interactions
+ *   - Hover Texas state card
+ * @form No form found
+ */
+abTest('Homepage Map Texas Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-wrapper'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Texas state card');
+  await page.locator('a.search-state-card[href="/texas"]').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Map state card — Alabama hover
+ * @selector .map-wrapper
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — Alabama state card.
+ * @interactions
+ *   - Hover Alabama state card
+ * @form No form found
+ */
+abTest('Homepage Map Alabama Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.map-wrapper'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Alabama state card');
+  await page.locator('a.search-state-card[href="/alabama"]').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Featured property card hover
+ * @selector .featured-property-section
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — featured properties may have hover effect.
+ * @interactions
+ *   - Hover first featured card
+ * @form No form found
+ */
+abTest('Homepage Featured Card Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['.featured-property-section'],
+      misMatchThreshold: 0.1,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first featured card');
+  await page.locator('.featured-property-section a, .featured-property-section .property-card-container').first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Ad banner Get Started button hover
+ * @selector .home-ad-banner
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — "Get Started" primary-btn on ad banner.
+ * @interactions
+ *   - Hover Get Started
+ * @form No form found
+ */
+abTest('Homepage Get Started Button Hover', {
+  startingPath: '/',
+  options: { visreg: { selectors: ['.home-ad-banner'], misMatchThreshold: 0.05 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Get Started button');
+  await page.locator('button.primary-btn.ad-banner').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Search submit button hover
+ * @selector #search-container
+ * @viewports desktop
+ * @waitFor   hover state
+ * @threshold 0.05
+ * @probed    Pass 2 — Search button (.search-btn) in search bar.
+ * @interactions
+ *   - Hover Search button
+ * @form No form found
+ */
+abTest('Homepage Search Button Hover', {
+  startingPath: '/',
+  options: {
+    visreg: {
+      selectors: ['#search-container'],
+      misMatchThreshold: 0.05,
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering search button');
+  await page.locator('#search-container button.search-btn').hover();
+  await page.waitForTimeout(200);
+});

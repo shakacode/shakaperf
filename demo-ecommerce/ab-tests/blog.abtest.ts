@@ -60,3 +60,82 @@ abTest('Blog First Card', {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
+
+// ============================================================================
+// Pass 2: Interactive tests — user mindset: "I want to read articles about
+// Gulf Coast travel. Which article catches my eye?"
+// ============================================================================
+
+/**
+ * @section First blog card hover
+ * @selector .blog-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — cards are interactive (Read More button).
+ * @interactions
+ *   - Hover first blog card
+ *       trigger: .blog-card-container (first)
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Blog First Card Hover', {
+  startingPath: '/blog',
+  options: { visreg: { selectors: ['.blog-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering first blog card');
+  await page.locator('.blog-card-container').first().hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Read More button hover
+ * @selector .blog-card-container
+ * @viewports all
+ * @waitFor   hover state
+ * @threshold 0.1
+ * @probed    Pass 2 — each card has a Read More button.
+ * @interactions
+ *   - Hover Read More
+ *       trigger: button "Read More" inside first .blog-card-container
+ *       action:  hover
+ * @form No form found
+ */
+abTest('Blog Read More Hover', {
+  startingPath: '/blog',
+  options: { visreg: { selectors: ['.blog-card-container'], misMatchThreshold: 0.1 } },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+  annotate('hovering Read More button');
+  await page.locator('.blog-card-container').first().locator('button:has-text("Read More")').hover();
+  await page.waitForTimeout(200);
+});
+
+/**
+ * @section Articles grid (top section)
+ * @selector .articles-grid-container
+ * @viewports all
+ * @waitFor   networkidle
+ * @threshold 0.1
+ * @probed    Pass 2 — 5746px tall full grid of articles. Pass 2 adds this
+ *            as a coverage test; individual cards are captured separately.
+ * @interactions No interactions found
+ * @form No form found
+ */
+abTest('Blog Articles Grid Top', {
+  startingPath: '/blog',
+  options: {
+    visreg: {
+      selectors: ['.articles-grid-container'],
+      misMatchThreshold: 0.15,
+      // Grid too tall for single capture on mobile; restrict to desktop
+      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('waiting for page to settle');
+  await waitUntilPageSettled(page);
+});
