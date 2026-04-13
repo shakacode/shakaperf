@@ -153,9 +153,13 @@ export class BundleSizeChecker {
     this.reporter.header('Bundle Size Check');
 
     const statsFilename = getStatsFilename(this.statsFile);
+    this.reporter.verbose(`Reading webpack stats from: ${this.statsFile}`);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
+    this.reporter.verbose(`Found ${namedChunkGroups.length} named chunk groups, ${uncategorizedChunks.length} uncategorized chunks`);
     const actualSizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
+    this.reporter.verbose(`Calculated sizes for ${actualSizes.length} components`);
+    this.reporter.verbose(`Baseline file: ${path.join(this.baselineDir, this.baselineFile)}`);
 
     if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
       this.reporter.error(`No baseline found at ${this.baselineFile}. Run 'shaka-bundle-size download-main-branch-stats' to create one.`);
@@ -191,6 +195,8 @@ export class BundleSizeChecker {
   updateBaseline(): UpdateBaselineResult {
     this.reporter.header('Updating Baseline');
 
+    this.reporter.verbose(`Reading webpack stats from: ${this.statsFile}`);
+    this.reporter.verbose(`Writing baseline to: ${this.baselineDir}`);
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
@@ -221,6 +227,7 @@ export class BundleSizeChecker {
   }
 
   generateCurrentStatsTo(outputDir: string): { configPath: string; sourceMapPath: string | null } {
+    this.reporter.verbose(`Generating current stats to: ${outputDir}`);
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);

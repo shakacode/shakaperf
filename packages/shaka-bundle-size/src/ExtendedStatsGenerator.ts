@@ -6,10 +6,12 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { IReporter } from './types';
 
 export interface ExtendedStatsGeneratorConfig {
   bundlesDir: string;
   bundleNamePrefix?: string;
+  reporter?: IReporter;
 }
 
 const FIVE_MINUTES_MS = 300000;
@@ -17,10 +19,12 @@ const FIVE_MINUTES_MS = 300000;
 export class ExtendedStatsGenerator {
   private bundlesDir: string;
   private bundleNamePrefix?: string;
+  private reporter?: IReporter;
 
   constructor(config: ExtendedStatsGeneratorConfig) {
     this.bundlesDir = config.bundlesDir;
     this.bundleNamePrefix = config.bundleNamePrefix;
+    this.reporter = config.reporter;
   }
 
   getWebpackStatsPath(): string {
@@ -44,15 +48,21 @@ export class ExtendedStatsGenerator {
     const webpackStatsPath = this.getWebpackStatsPath();
     const extendedStatsPath = this.getExtendedStatsPath();
 
+    this.reporter?.info('Generating extended stats...');
+    this.reporter?.verbose(`Webpack stats path: ${webpackStatsPath}`);
+    this.reporter?.verbose(`Extended stats output: ${extendedStatsPath}`);
+
     if (!fs.existsSync(webpackStatsPath)) {
       return { error: 'stats-not-found', message: `Webpack stats not found at ${webpackStatsPath}` };
     }
 
     try {
+      this.reporter?.verbose('Running webpack-bundle-analyzer...');
       execSync(
         `yarn webpack-bundle-analyzer -m json -s gzip "${webpackStatsPath}" -r "${extendedStatsPath}"`,
         { stdio: 'pipe', timeout: FIVE_MINUTES_MS }
       );
+      this.reporter?.success(`Generated extended stats: ${extendedStatsPath}`);
       return { path: extendedStatsPath };
     } catch (e) {
       const stderr = e instanceof Error && 'stderr' in e ? String((e as any).stderr) : '';
