@@ -1,13 +1,28 @@
 
 >>> Copying current directory as experiment repo
 
-  ⏱ rsync experiment: 16.1s
-[new-merging-approach 8f10f209] integration test snapshot
- 139 files changed, 20 insertions(+), 15481 deletions(-)
+  ⏱ rsync experiment: 1.3s
+[roman-kuksin/fix-integration-tests 2f4a298] integration test snapshot
+ 114 files changed, 1 insertion(+), 15273 deletions(-)
  delete mode 100644 integration-tests/snapshots/baseline-perf.log
  delete mode 100644 integration-tests/snapshots/baseline-visreg.log
  delete mode 100644 integration-tests/snapshots/bench-results/artifact-1.screenshot.png
  delete mode 100644 integration-tests/snapshots/bench-results/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/artifact-1.html
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3030____lighthouse_report.html
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3030____network_activity.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.summary.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/network_activity.diff.html
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/performance_profile.summary.diff.html
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/report.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/report.txt
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/timeline_comparison.html
  delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____lighthouse_report.screenshot.png
  delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____network_activity.txt
  delete mode 100644 integration-tests/snapshots/bench-results/localhost_3020____performance_profile.summary.txt
@@ -19,21 +34,6 @@
  delete mode 100644 integration-tests/snapshots/bench-results/report.json
  delete mode 100644 integration-tests/snapshots/bench-results/report.txt
  delete mode 100644 integration-tests/snapshots/bench-results/timeline_comparison.screenshot.png
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/artifact-1.html
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/compare.json
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____lighthouse_report.html
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____network_activity.txt
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.json
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3020____performance_profile.summary.txt
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____lighthouse_report.html
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____network_activity.txt
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.json
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/localhost_3030____performance_profile.summary.txt
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/network_activity.diff.html
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/performance_profile.summary.diff.html
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/report.json
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/report.txt
- delete mode 100644 integration-tests/snapshots/bench-results/visits-the-homepage/timeline_comparison.html
  delete mode 100644 integration-tests/snapshots/visreg-results/html-report.screenshot.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/config.js
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
@@ -57,9 +57,6 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_document_1_tablet.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_0_document_2_desktop.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
@@ -75,9 +72,6 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Products_List_0_document_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Products_List_0_document_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Products_List_0_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_2_desktop.png
@@ -100,11 +94,6 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop_composite_diff.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_document_0_phone_composite_diff.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_document_1_tablet.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_0_document_2_desktop_composite_diff.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Homepage_1_data-cyfeatures-section_2_desktop.png
@@ -122,37 +111,26 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Products_List_0_document_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Products_List_0_document_1_tablet.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Products_List_0_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_0_phone_composite_diff.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_1_tablet.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/demo-ecommerce_Visits_the_homepage_0_document_2_desktop_composite_diff.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/error_Products_-_Electronics_Filter.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_document_2_desktop.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_0_phone.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/failed_diff_demo-ecommerce_Visits_the_homepage_0_document_2_desktop.png
- delete mode 100644 integration-tests/snapshots/visreg-results/html_report/experiment_screenshot/report.json
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index.html
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/report.json
  delete mode 100644 integration-tests/snapshots/visreg-results/xunit.xml
-  ⏱ git commit experiment: 0.3s
+  ⏱ git commit experiment: 0.2s
 
 >>> Copying experiment repo as control
 
-  ⏱ rsync control: 13.7s
+  ⏱ rsync control: 1.3s
 
 >>> Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage
 
 
 >>> Injecting broken selector into experiment products.abtest.ts
 
-[new-merging-approach e69c2bd8] integration test snapshot
+[roman-kuksin/fix-integration-tests c62f9fe] integration test snapshot
  2 files changed, 4 insertions(+), 4 deletions(-)
-  ⏱ git commit experiment changes: 0.1s
+  ⏱ git commit experiment changes: 0.0s
 
 >>> Installing dependencies in temp clone
 
@@ -174,13 +152,13 @@
 ➤ YN0000: │ [Warning] The runtime detected new information in a PnP file; reloading the API instance (/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/.pnp.cjs)
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: · Done with warnings in <TIMING>
-  ⏱ yarn install: 5.6s
+  ⏱ yarn install: 4.6s
 
 >>> Building packages in temp clone
 
 Assets copied to dist/
 Done in <TIMING>
-  ⏱ yarn build: 5.8s
+  ⏱ yarn build: 5.2s
 
 >>> run: yarn shaka-perf twin-servers build
 
@@ -199,8 +177,8 @@ Building both Docker images in parallel...
 Docker image(s) built successfully!
 
 Images created:
-  - demo-ecommerce:experiment (current branch: new-merging-approach)
-  - demo-ecommerce:control (baseline branch: new-merging-approach)
+  - demo-ecommerce:experiment (current branch: roman-kuksin/fix-integration-tests)
+  - demo-ecommerce:control (baseline branch: roman-kuksin/fix-integration-tests)
 
 Bind-mount directories:
   - Control: /home/<USER>/demo_ecommerce_control_docker_volume
@@ -210,7 +188,7 @@ Next steps:
   yarn shaka-perf twin-servers start-containers
 
 
-  ⏱ 381.0s
+  ⏱ 79.5s
 
 >>> run: yarn shaka-perf twin-servers start-containers
 
@@ -232,8 +210,8 @@ Starting twin containers...
 Waiting for containers to start...
 Checking container status...
 NAME                                 IMAGE                       COMMAND            SERVICE             CREATED          STATUS         PORTS
-demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
-demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp, [::]:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp, [::]:3030->3000/tcp
 
 Waiting for containers to be ready...
  [CONTROL-SERVER]  > docker exec : echo ready
@@ -243,20 +221,20 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
 
@@ -284,7 +262,7 @@ Next steps:
       yarn shaka-perf twin-servers stop-containers
 
 
-  ⏱ 111.9s
+  ⏱ 24.4s
 
 Running 2 tests using 1 worker
 
@@ -310,11 +288,11 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 2.0s
 
 >>> Waiting for ports 3020 + 3030
 
-  ⏱ waitForPort(3020): 2.0s
+  ⏱ waitForPort(3020): 0.0s
   ⏱ waitForPort(3030): 2.0s
 
 >>> Verifying experiment server has "Discover Your Style"
@@ -342,16 +320,16 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
   Syncing Changes to experiment  
 =================================
 
-Found 4 changed files
+Found 1 changed files
 
 
 Summary:
-  Copied: 4 files
+  Copied: 1 files
 
 Successfully synced changes to experiment
 Files synced to: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
-  ⏱ 1.5s
+  ⏱ 1.9s
 
 >>> run: yarn shaka-perf twin-servers run-cmd-parallel -- bundle exec rake assets:precompile
 
@@ -388,13 +366,13 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
 [EXPERIMENT]	[React on Rails] Creating both client and server bundles.
 [EXPERIMENT]	assets by status 828 KiB [cached] 18 assets
-[EXPERIMENT]	assets by path . 120 KiB
+[EXPERIMENT]	assets by path . 52.5 KiB
 [EXPERIMENT]	  assets by path js/*.js 13.3 KiB
 [EXPERIMENT]	    asset js/pages-HomePage-7a62adb74ed6464db537.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
 [EXPERIMENT]	    asset js/runtime-38def35b79a52c6e280f.js 3.9 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
-[EXPERIMENT]	  assets by path *.json 107 KiB
-[EXPERIMENT]	    asset manifest.json 80.7 KiB [emitted] 2 related assets
+[EXPERIMENT]	  assets by path *.json 39.2 KiB
 [EXPERIMENT]	    asset app-loadable-stats.json 26.2 KiB [emitted] [compared for emit] 2 related assets
+[EXPERIMENT]	    asset manifest.json 13 KiB [emitted] 2 related assets
 [EXPERIMENT]	Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
 [EXPERIMENT]	Entrypoint client [big] 630 KiB (3.02 MiB) = js/runtime-38def35b79a52c6e280f.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-6c39334f409f79c01f9d.js 9.71 KiB 5 auxiliary assets
 [EXPERIMENT]	Entrypoint server [big] 629 KiB (3.02 MiB) = js/runtime-38def35b79a52c6e280f.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-575498abfc1e10427a7b.js 9.68 KiB 4 auxiliary assets
@@ -447,7 +425,7 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	[Shakapacker] Completed webpack build in <TIMING>s (<TIMING>s)
 [EXPERIMENT]	
 
-  ⏱ 33.7s
+  ⏱ 20.2s
 
 >>> Starting puma in both containers
 
@@ -457,14 +435,14 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.8s
+  ⏱ 2.1s
 
 >>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 2.0s
 
 >>> Waiting for ports 3020 + 3030
 
@@ -497,8 +475,8 @@ Starting twin containers...
 Waiting for containers to start...
 Checking container status...
 NAME                                 IMAGE                       COMMAND            SERVICE             CREATED          STATUS         PORTS
-demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
-demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp, [::]:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp, [::]:3030->3000/tcp
 
 Waiting for containers to be ready...
  [CONTROL-SERVER]  > docker exec : echo ready
@@ -549,14 +527,14 @@ Next steps:
       yarn shaka-perf twin-servers stop-containers
 
 
-  ⏱ 63.4s
+  ⏱ 23.7s
 
 >>> Resetting git changes in temp clone
 
 Updated 1 path from the index
   ⏱ git checkout experiment: 0.0s
 Updated 556 paths from the index
-  ⏱ git checkout control: 0.4s
+  ⏱ git checkout control: 0.1s
   ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge @twin-servers (<TIMING>m)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -582,7 +560,7 @@ Updated 556 paths from the index
 Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
 
-  ⏱ 1.7s
+  ⏱ 1.9s
 
 >>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec rake assets:precompile"
 
@@ -612,13 +590,13 @@ I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Webpack config in: 
 Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
 [React on Rails] Creating both client and server bundles.
 assets by status 828 KiB [cached] 18 assets
-assets by path . 120 KiB
+assets by path . 52.5 KiB
   assets by path js/*.js 13.3 KiB
     asset js/pages-HomePage-43b8d11c6c681f7ecd15.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
     asset js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
-  assets by path *.json 107 KiB
-    asset manifest.json 80.7 KiB [emitted] 2 related assets
+  assets by path *.json 39.2 KiB
     asset app-loadable-stats.json 26.2 KiB [emitted] [compared for emit] 2 related assets
+    asset manifest.json 13 KiB [emitted] 2 related assets
 Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
 Entrypoint client [big] 630 KiB (3.02 MiB) = js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-6c39334f409f79c01f9d.js 9.71 KiB 5 auxiliary assets
 Entrypoint server [big] 629 KiB (3.02 MiB) = js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-575498abfc1e10427a7b.js 9.68 KiB 4 auxiliary assets
@@ -671,7 +649,7 @@ webpack 5.104.1 compiled successfully in <TIMING> ms
 [Shakapacker] Completed webpack build in <TIMING>s (<TIMING>s)
 
 
-  ⏱ 25.9s
+  ⏱ 16.6s
 
 >>> Starting puma in both containers
 
@@ -681,18 +659,18 @@ webpack 5.104.1 compiled successfully in <TIMING> ms
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 2.0s
 
 >>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.6s
+  ⏱ 2.1s
 
 >>> Waiting for ports 3020 + 3030
 
-  ⏱ waitForPort(3020): 2.0s
+  ⏱ waitForPort(3020): 0.0s
   ⏱ waitForPort(3030): 2.0s
 
 >>> Verifying control (3020) still has "Discover Your Style"
@@ -721,8 +699,8 @@ Starting twin containers...
 Waiting for containers to start...
 Checking container status...
 NAME                                 IMAGE                       COMMAND            SERVICE             CREATED          STATUS         PORTS
-demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp
-demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp
+demo-ecommerce-control-server-1      demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3020->3000/tcp, [::]:3020->3000/tcp
+demo-ecommerce-experiment-server-1   demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3030->3000/tcp, [::]:3030->3000/tcp
 
 Waiting for containers to be ready...
  [CONTROL-SERVER]  > docker exec : echo ready
@@ -732,20 +710,20 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
 
@@ -773,15 +751,15 @@ Next steps:
       yarn shaka-perf twin-servers stop-containers
 
 
-  ⏱ 56.5s
+  ⏱ 23.6s
 
 >>> Resetting git changes in temp clone
 
 Updated 0 paths from the index
-  ⏱ git checkout experiment: 0.1s
+  ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
   ⏱ git checkout control: 0.1s
-  ✓  2 integration-tests/twin-servers.spec.ts:71:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>m)
+  ✓  2 integration-tests/twin-servers.spec.ts:71:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>s)
 Skipping teardown (SKIP_TEARDOWN=1)
 
   2 passed (<TIMING>m)
