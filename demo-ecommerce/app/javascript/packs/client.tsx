@@ -4,7 +4,14 @@ import App from '../components/App';
 // Import stylesheets
 import '../stylesheets/application.css';
 
-performance.mark('hydration-start');
+const hydrationDelay = Number(new URLSearchParams(window.location.search).get('hydration_delay')) || 0;
 
-// Register components with React on Rails
-ReactOnRails.register({ App });
+if (hydrationDelay > 0) {
+  setTimeout(() => {
+    performance.mark('hydration-start');
+    ReactOnRails.register({ App });
+  }, hydrationDelay);
+} else {
+  performance.mark('hydration-start');
+  ReactOnRails.register({ App });
+}
