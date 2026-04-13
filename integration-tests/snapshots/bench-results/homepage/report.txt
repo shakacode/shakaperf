@@ -1,15 +1,15 @@
 Benchmark Results Summary
 
 LH & Vitals
-  FCP no difference [NaNms to 14ms]
-  speed-index no difference [NaNms to 14ms]
-  LCP no difference [NaNms to 309ms]
-  TBT no difference [NaNms to 75ms]
-  CLS no difference [NaN/100 to 5/100]
-  TTFB no difference [NaNms to 23ms]
-  hydration no difference [NaNms to 157ms]
-  hydration-start no difference [NaNms to 157ms]
-  LH Score no difference [NaN/100 to 1/100]
+  FCP no difference [NaNms to 1ms]
+  speed-index no difference [NaNms to 1ms]
+  LCP no difference [NaNms to 6ms]
+  TBT no difference [NaNms to 20ms]
+  CLS no difference [NaN/100 to 7/100]
+  TTFB no difference [NaNms to 5ms]
+  LH Score no difference [NaN/100 to -1/100]
+  hydration no difference [NaNms to 22ms]
+  hydration-start no difference [NaNms to 28ms]
 
 Diagnostics
   downloads no difference [NaNKB to 80KB]

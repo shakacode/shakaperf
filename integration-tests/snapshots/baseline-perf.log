@@ -17,14 +17,14 @@ Running 1 test using 1 worker
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 2.6s
 
 >>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.7s
+  ⏱ 2.0s
 
 >>> Waiting for ports 3020 + 3030
 
@@ -34,7 +34,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> Running shaka-perf bench compare
 
 
->>> run: yarn shaka-perf bench compare --testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts" --numberOfMeasurements 5 --report --resultsFolder /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results
+>>> run: yarn shaka-perf bench compare --testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts" --numberOfMeasurements 5 --resultsFolder /home/<USER>/shakaperf/integration-tests/snapshots/bench-results
 
 Discovered 2 test file(s):
   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
@@ -42,70 +42,22 @@ Discovered 2 test file(s):
 
 undefined:4 Homepage
         control:  0
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-     experiment:  0    01m:34s remaining
-Fonts for http://localhost:3030/ are ready
-All 0 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-     experiment:  1    01m:19s remaining
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-        control:  1    01m:07s remaining
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-     experiment:  2    00m:58s remaining
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-        control:  2    00m:50s remaining
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-        control:  3    00m:42s remaining
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-     experiment:  3    00m:35s remaining
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-     experiment:  4    00m:28s remaining
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-        control:  4    00m:21s remaining
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-        control:  5    00m:14s remaining
-Fonts for http://localhost:3020/ are ready
-All 0 images loaded for http://localhost:3020/
-Network idle
-Page http://localhost:3020/ has settled
-     experiment:  5    00m:07s remaining
-Fonts for http://localhost:3030/ are ready
-All 4 images loaded for http://localhost:3030/
-Network idle
-Page http://localhost:3030/ has settled
-Total downloads size increased by 481.50 KB
-HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/network_activity.diff.html
-HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/performance_profile.summary.diff.html
+     experiment:  0    01m:16s remaining
+     experiment:  1    01m:07s remaining
+        control:  1    00m:59s remaining
+        control:  2    00m:52s remaining
+     experiment:  2    00m:45s remaining
+     experiment:  3    00m:38s remaining
+        control:  3    00m:32s remaining
+     experiment:  4    00m:25s remaining
+        control:  4    00m:19s remaining
+     experiment:  5    00m:13s remaining
+        control:  5    00m:06s remaining
+Total downloads size increased by 481.41 KB
+HTML diff: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/network_activity.diff.html
+HTML diff: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/performance_profile.summary.diff.html
 
-    SUCCESS     5 measurements took 01m:23s
+    SUCCESS     5 measurements took 01m:16s
 
     WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
 
@@ -114,15 +66,15 @@ HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots
 
 
 LH & Vitals
-  FCP no difference [NaNms to 14ms]
-  speed-index no difference [NaNms to 14ms]
-  LCP no difference [NaNms to 309ms]
-  TBT no difference [NaNms to 75ms]
-  CLS no difference [NaN/100 to 5/100]
-  TTFB no difference [NaNms to 23ms]
-  hydration no difference [NaNms to 157ms]
-  hydration-start no difference [NaNms to 157ms]
-  LH Score no difference [NaN/100 to 1/100]
+  FCP no difference [NaNms to 1ms]
+  speed-index no difference [NaNms to 1ms]
+  LCP no difference [NaNms to 6ms]
+  TBT no difference [NaNms to 20ms]
+  CLS no difference [NaN/100 to 7/100]
+  TTFB no difference [NaNms to 5ms]
+  LH Score no difference [NaN/100 to -1/100]
+  hydration no difference [NaNms to 22ms]
+  hydration-start no difference [NaNms to 28ms]
 
 Diagnostics
   downloads no difference [NaNKB to 80KB]
@@ -140,29 +92,29 @@ Diagnostics
     Benchmark Reports    
 
 
-JSON: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/compare.json
+JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/compare.json
 
-HTML: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/artifact-1.html
+HTML: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/artifact-1.html
 
 
 undefined:4 Click Shop Now on the homepage
         control:  0
-     experiment:  0    01m:35s remaining
-        control:  1    01m:21s remaining
-     experiment:  1    01m:11s remaining
-     experiment:  2    01m:02s remaining
-        control:  2    00m:54s remaining
-     experiment:  3    00m:46s remaining
-        control:  3    00m:38s remaining
-     experiment:  4    00m:30s remaining
-        control:  4    00m:22s remaining
-        control:  5    00m:15s remaining
-     experiment:  5    00m:07s remaining
-Total downloads size decreased by 0.21 KB
-HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html
-HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html
+     experiment:  0    01m:18s remaining
+        control:  1    01m:10s remaining
+     experiment:  1    01m:02s remaining
+        control:  2    00m:55s remaining
+     experiment:  2    00m:48s remaining
+     experiment:  3    00m:41s remaining
+        control:  3    00m:34s remaining
+     experiment:  4    00m:27s remaining
+        control:  4    00m:20s remaining
+     experiment:  5    00m:14s remaining
+        control:  5    00m:07s remaining
+Total downloads size decreased by 0.03 KB
+HTML diff: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html
+HTML diff: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html
 
-    SUCCESS     5 measurements took 01m:30s
+    SUCCESS     5 measurements took 01m:23s
 
     WARNING     The number of measurements was set below the recommended for a viable result. Rerun with at least "--numberOfMeasurements=low" OR >= 10
 
@@ -171,15 +123,15 @@ HTML diff: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots
 
 
 LH & Vitals
-  FCP no difference [NaNms to 5ms]
-  speed-index no difference [NaNms to 5ms]
-  LCP no difference [NaNms to 289ms]
-  TBT no difference [NaNms to 21ms]
+  FCP no difference [NaNms to 2ms]
+  speed-index no difference [NaNms to 2ms]
+  LCP no difference [NaNms to 69ms]
+  TBT no difference [NaNms to 74ms]
   CLS no difference [NaN/100 to 9/100]
-  TTFB no difference [NaNms to 26ms]
-  hydration no difference [NaNms to 175ms]
-  hydration-start no difference [NaNms to 1113ms]
+  TTFB no difference [NaNms to 65ms]
   LH Score no difference [NaN/100 to 0/100]
+  hydration no difference [NaNms to 106ms]
+  hydration-start no difference [NaNms to 1592ms]
   interaction-to-next-paint no difference [NaNms to 0ms]
 
 Diagnostics
@@ -198,57 +150,57 @@ Diagnostics
     Benchmark Reports    
 
 
-JSON: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json
+JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json
 
-HTML: /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
+HTML: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
 
 
     Generated Artifacts    
 
 
 undefined:4 Homepage
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/artifact-1.html
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/compare.json — Raw measurement samples
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html — Lighthouse report
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt — Network activity
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.summary.txt
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3030____lighthouse_report.html — Lighthouse report
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3030____network_activity.txt — Network activity
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.summary.txt
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/network_activity.diff.html — Control vs experiment diff
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/performance_profile.summary.diff.html — Control vs experiment diff
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/report.json — Statistical analysis (JSON)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/report.txt — Summary
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/homepage/timeline_comparison.html — Visual timeline (control vs experiment)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/artifact-1.html
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/compare.json — Raw measurement samples
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt — Network activity
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.summary.txt
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3030____network_activity.txt — Network activity
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3030____performance_profile.summary.txt
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/network_activity.diff.html — Control vs experiment diff
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/performance_profile.summary.diff.html — Control vs experiment diff
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/report.json — Statistical analysis (JSON)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/report.txt — Summary
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/timeline_comparison.html — Visual timeline (control vs experiment)
 
 undefined:4 Click Shop Now on the homepage
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json — Raw measurement samples
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____network_activity.txt — Network activity
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.summary.txt
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____lighthouse_report.html — Lighthouse report
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____network_activity.txt — Network activity
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.summary.txt
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html — Control vs experiment diff
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.json — Statistical analysis (JSON)
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.txt — Summary
-  /home/<USER>/code/shaka/shaka-bundle-size/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json — Raw measurement samples
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____network_activity.txt — Network activity
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.summary.txt
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____network_activity.txt — Network activity
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.summary.txt
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/network_activity.diff.html — Control vs experiment diff
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/performance_profile.summary.diff.html — Control vs experiment diff
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.json — Statistical analysis (JSON)
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/report.txt — Summary
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
 
 
-  ⏱ 179.4s
+  ⏱ 165.3s
 
 >>> Resetting git changes in temp clone
 
 Updated 0 paths from the index
-  ⏱ git checkout experiment: 0.1s
+  ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
-  ⏱ git checkout control: 0.1s
+  ⏱ git checkout control: 0.0s
   ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-perf bench compare on twin servers @perf (<TIMING>m)
 Skipping teardown (SKIP_TEARDOWN=1)
 

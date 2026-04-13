@@ -526,7 +526,7 @@
         "viewportLabel": "phone",
         "testFile": "    at /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts",
         "testLine": 4,
-        "refWhitePixelPercent": 32.16,
+        "refWhitePixelPercent": 35.18,
         "testWhitePixelPercent": 33.47,
         "refIsBottomSeventyPercentWhite": false,
         "testIsBottomSeventyPercentWhite": false,
@@ -534,11 +534,11 @@
           "isSameDimensions": false,
           "dimensionDifference": {
             "width": 0,
-            "height": -162
+            "height": 162
           },
-          "rawMisMatchPercentage": 7.830769230769231,
-          "misMatchPercentage": "7.83",
-          "analysisTime": 25
+          "rawMisMatchPercentage": 0.22964743589743591,
+          "misMatchPercentage": "0.23",
+          "analysisTime": 19
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_0_phone.png"
       },
@@ -661,7 +661,7 @@
           },
           "rawMisMatchPercentage": 5.231041280148423,
           "misMatchPercentage": "5.23",
-          "analysisTime": 20
+          "analysisTime": 21
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_0_data-cyhero-section_2_desktop.png"
       },
@@ -722,9 +722,9 @@
             "width": 0,
             "height": -64
           },
-          "rawMisMatchPercentage": 22.29197325138504,
+          "rawMisMatchPercentage": 22.29186504501385,
           "misMatchPercentage": "22.29",
-          "analysisTime": 36
+          "analysisTime": 35
         },
         "diffImage": "experiment_screenshot/failed_diff_demo-ecommerce_Homepage_2_document_2_desktop.png"
       },
