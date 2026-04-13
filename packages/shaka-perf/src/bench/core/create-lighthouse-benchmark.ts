@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 
 import { Benchmark, BenchmarkSampler } from './run';
 import { loadConfigFile, TestType } from 'shaka-shared';
-import { DEFAULT_LH_CONFIG, getCpuSlowdownMultiplier, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
+import { DEFAULT_LH_CONFIG, DEFAULT_MARKERS, getCpuSlowdownMultiplier, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
 import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
@@ -165,7 +165,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 
       const multiplier = getCpuSlowdownMultiplier(lhSettings);
-      for (const phase of extractMarkers(runnerResult, markers ?? [], '')) {
+      for (const phase of extractMarkers(runnerResult, markers ?? DEFAULT_MARKERS, '')) {
         phases.push({ ...phase, duration: phase.duration * multiplier });
       }
       if (inp != null && inp > 0) {
