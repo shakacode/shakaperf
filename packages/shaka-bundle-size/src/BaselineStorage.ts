@@ -167,27 +167,29 @@ export class BaselineStorage {
     return null;
   }
 
-  async upload(): Promise<string> {
-    if (!fs.existsSync(this.baselineDir)) {
-      throw new Error(`No baseline found at ${this.baselineDir}. Run 'generate-stats' first.`);
+  async upload(sourceDir?: string): Promise<string> {
+    const uploadDir = sourceDir || this.baselineDir;
+    if (!fs.existsSync(uploadDir)) {
+      throw new Error(`No baseline found at ${uploadDir}. Run 'shaka-bundle-size generate-stats' first.`);
     }
 
     const commit = this.getCurrentCommit();
-    this.reporter.verbose(`Baseline directory: ${this.baselineDir}`);
+    this.reporter.verbose(`Upload source directory: ${uploadDir}`);
     this.reporter.info(`Uploading baseline for commit ${commit.substring(0, 7)}...`);
-    await this.uploadToS3(commit);
+    await this.uploadToS3(commit, uploadDir);
     return commit;
   }
 
   /** Use this when you want to associate the baseline with a specific main branch commit. */
-  async uploadForCommit(commitSha: string): Promise<string> {
-    if (!fs.existsSync(this.baselineDir)) {
-      throw new Error(`No baseline found at ${this.baselineDir}. Run 'generate-stats' first.`);
+  async uploadForCommit(commitSha: string, sourceDir?: string): Promise<string> {
+    const uploadDir = sourceDir || this.baselineDir;
+    if (!fs.existsSync(uploadDir)) {
+      throw new Error(`No baseline found at ${uploadDir}. Run 'shaka-bundle-size generate-stats' first.`);
     }
 
-    this.reporter.verbose(`Baseline directory: ${this.baselineDir}`);
+    this.reporter.verbose(`Upload source directory: ${uploadDir}`);
     this.reporter.info(`Uploading baseline for commit ${commitSha.substring(0, 7)}...`);
-    await this.uploadToS3(commitSha);
+    await this.uploadToS3(commitSha, uploadDir);
     return commitSha;
   }
 
@@ -246,19 +248,20 @@ export class BaselineStorage {
     }
   }
 
-  private async uploadToS3(commit: string): Promise<void> {
+  private async uploadToS3(commit: string, sourceDir?: string): Promise<void> {
+    const uploadDir = sourceDir || this.baselineDir;
     const prefix = this.getS3KeyForCommit(commit);
     this.reporter.verbose(`Uploading to s3://${this.bucket}/${prefix}`);
 
     // Delete existing objects for this commit (if any)
     await this.deleteS3Prefix(prefix);
 
-    // Upload all files from baselineDir
-    const files = this.getAllFiles(this.baselineDir);
-    this.reporter.verbose(`Uploading ${files.length} file(s) from ${this.baselineDir}`);
+    // Upload all files from source directory
+    const files = this.getAllFiles(uploadDir);
+    this.reporter.verbose(`Uploading ${files.length} file(s) from ${uploadDir}`);
 
     for (const filePath of files) {
-      const relativePath = path.relative(this.baselineDir, filePath);
+      const relativePath = path.relative(uploadDir, filePath);
       const s3Key = `${prefix}${relativePath}`;
       this.reporter.verbose(`  ${relativePath} -> ${s3Key}`);
 

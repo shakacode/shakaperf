@@ -188,6 +188,7 @@ program
       const { resolvedConfig } = await getResolvedConfig();
       const reporter = createReporter();
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
 
       // Generate extended stats first (needed for source maps)
       if (resolvedConfig.generateSourceMaps) {
@@ -205,8 +206,9 @@ program
         }
       }
 
-      checker.updateBaseline();
-      reporter.success('Stats generated successfully.');
+      fs.mkdirSync(currentDir, { recursive: true });
+      checker.generateCurrentStatsTo(currentDir);
+      reporter.success(`Stats generated to ${currentDir}`);
       process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error generating stats: ${(error as Error).message}`));
@@ -216,19 +218,20 @@ program
 
 program
   .command('upload-main-branch-stats')
-  .description('Upload baseline to S3 for current commit')
+  .description('Upload current stats to S3 for current commit')
   .option('--commit <sha>', 'Specific commit SHA')
   .action(async (opts) => {
     try {
       const { resolvedConfig } = await getResolvedConfig();
       const reporter = createReporter();
       const storage = createStorage(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
 
-      reporter.info('Uploading baseline to S3...');
+      reporter.info('Uploading current stats to S3...');
       const commit = opts.commit
-        ? await storage.uploadForCommit(opts.commit)
-        : await storage.upload();
-      reporter.success(`Uploaded baseline to S3 for commit ${commit.substring(0, 7)}`);
+        ? await storage.uploadForCommit(opts.commit, currentDir)
+        : await storage.upload(currentDir);
+      reporter.success(`Uploaded stats to S3 for commit ${commit.substring(0, 7)}`);
       process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error uploading baseline: ${(error as Error).message}`));
@@ -271,17 +274,11 @@ program
       const reporter = createReporter();
       const storage = createStorage(resolvedConfig, reporter);
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
 
-      reporter.verbose(`Stats file: ${resolvedConfig.statsFile}`);
-      reporter.verbose(`Baseline directory: ${resolvedConfig.baselineDir}`);
-
-      const result = checker.check();
+      const result = checker.checkFromFiles(currentDir);
 
       if (opts.htmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-        const currentDir = resolvedConfig.htmlDiffs.currentDir;
-        fs.mkdirSync(currentDir, { recursive: true });
-        checker.generateCurrentStatsTo(currentDir);
-
         checker.generateHtmlDiffs({
           controlDir: resolvedConfig.baselineDir,
           currentDir,
