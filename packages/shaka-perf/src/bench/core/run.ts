@@ -93,29 +93,26 @@ async function takeSamples<TSample>(
   const groupedSamples: GroupedSamples<TSample> = {};
   const start = Date.now();
   let completed = 0;
-  // we take 1 extra iteration we don't keep
+
   for (let i = 0; i <= samplesPerGroup; i++) {
-    // don't bother shuffling throw away iteration
     if (i > 0) {
       shuffle(groups);
     }
-    for (const group of groups) {
-      progress(
-        Date.now() - start,
-        completed,
-        sampleCount - completed,
-        group,
-        i
-      );
-      gc();
-      const sampler = samplers[group];
-      const sample = await sampleWithTimeout(
-        sampler,
-        i,
-        i === 0,
-        sampleTimeoutMs,
-        raceCancellation
-      );
+
+    gc();
+
+    const results = await Promise.all(
+      groups.map(async (group) => {
+        progress(Date.now() - start, completed, sampleCount - completed, group, i);
+        const sampler = samplers[group];
+        const sample = await sampleWithTimeout(
+          sampler, i, i === 0, sampleTimeoutMs, raceCancellation
+        );
+        return { group, sample };
+      })
+    );
+
+    for (const { group, sample } of results) {
       if (i === 0) {
         const samples: TSample[] = new Array(samplesPerGroup);
         groupedSamples[group] = samples;
@@ -128,10 +125,12 @@ async function takeSamples<TSample>(
       }
       completed++;
     }
+
     if (samplesPerGroup === 1) {
       break;
     }
   }
+
   return sampleGroups;
 }
 
