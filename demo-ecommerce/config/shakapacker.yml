@@ -45,12 +45,12 @@ default: &default
   # Available options: 'swc' (default, 20x faster), 'babel', 'esbuild', or 'none'
   # Use 'none' when providing a completely custom webpack configuration
   # Note: When using rspack, swc is used automatically regardless of this setting
-  javascript_transpiler: 'babel'
-  webpack_loader: 'babel'
+  javascript_transpiler: 'swc'
+  webpack_loader: 'swc'
 
   # Select assets bundler to use
   # Available options: 'webpack' (default) or 'rspack'
-  assets_bundler: 'webpack'
+  assets_bundler: 'rspack'
 
   # Raises an error if there is a mismatch in the shakapacker gem and npm package being used
   ensure_consistent_versioning: true
