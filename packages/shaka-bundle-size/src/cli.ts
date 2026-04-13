@@ -195,11 +195,10 @@ program
           bundleNamePrefix: resolvedConfig.bundleNamePrefix,
         });
 
-        const extendedStatsPath = extendedStatsGenerator.generate();
+        const extendedStatsResult = extendedStatsGenerator.generate();
 
-        if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
-          reporter.warning(`Cannot generate source maps: webpack stats not found at ${webpackStatsPath}`);
+        if ('error' in extendedStatsResult) {
+          reporter.warning(`Cannot generate source maps: ${extendedStatsResult.message}`);
         }
       }
 
@@ -262,13 +261,10 @@ program
           bundleNamePrefix: resolvedConfig.bundleNamePrefix,
         });
 
-        const extendedStatsPath = extendedStatsGenerator.generate();
+        const extendedStatsResult = extendedStatsGenerator.generate();
 
-        if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
-          const expectedPath = extendedStatsGenerator.getExtendedStatsPath();
-          reporter.error(`Cannot generate HTML diffs: failed to create ${expectedPath}`);
-          reporter.error(`Webpack stats not found at ${webpackStatsPath}`);
+        if ('error' in extendedStatsResult) {
+          reporter.error(`Cannot generate HTML diffs: ${extendedStatsResult.message}`);
         } else {
           const currentDir = resolvedConfig.htmlDiffs.currentDir;
           fs.mkdirSync(currentDir, { recursive: true });

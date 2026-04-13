@@ -58,6 +58,7 @@
     "shaka-bundle-size": "workspace:*",
     "shaka-perf": "workspace:*",
     "shaka-shared": "workspace:^",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "webpack-bundle-analyzer": "^5.1.1"
   }
 }

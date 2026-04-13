@@ -39,14 +39,13 @@ export class ExtendedStatsGenerator {
 
   /**
    * Generates extended stats from webpack stats.
-   * Returns the output path on success, null if webpack stats don't exist or generation fails.
    */
-  generate(): string | null {
+  generate(): { path: string } | { error: 'stats-not-found' | 'analyzer-failed'; message: string } {
     const webpackStatsPath = this.getWebpackStatsPath();
     const extendedStatsPath = this.getExtendedStatsPath();
 
     if (!fs.existsSync(webpackStatsPath)) {
-      return null;
+      return { error: 'stats-not-found', message: `Webpack stats not found at ${webpackStatsPath}` };
     }
 
     try {
@@ -54,9 +53,13 @@ export class ExtendedStatsGenerator {
         `yarn webpack-bundle-analyzer -m json -s gzip "${webpackStatsPath}" -r "${extendedStatsPath}"`,
         { stdio: 'pipe', timeout: FIVE_MINUTES_MS }
       );
-      return extendedStatsPath;
-    } catch {
-      return null;
+      return { path: extendedStatsPath };
+    } catch (e) {
+      const stderr = e instanceof Error && 'stderr' in e ? String((e as any).stderr) : '';
+      return {
+        error: 'analyzer-failed',
+        message: `webpack-bundle-analyzer failed on ${webpackStatsPath}${stderr ? `:\n${stderr}` : ''}`,
+      };
     }
   }
 }
