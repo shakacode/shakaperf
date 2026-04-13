@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import type { RunnerResult } from 'lighthouse';
+import lighthouse, { type RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
@@ -31,8 +31,6 @@ export async function runLighthouse(
     }, timeoutMs);
   });
 
-  // Dynamic import because lighthouse v12+ is ESM-only and can't be require()'d from CommonJS
-  const { default: lighthouse } = await import('lighthouse');
   const runnerResult = await Promise.race([
     lighthouse(url, lhSettings),
     timeoutPromise
