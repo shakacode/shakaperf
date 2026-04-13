@@ -7,8 +7,6 @@ import { readdirSync, statSync } from "node:fs";
 import chalk from "chalk";
 import {
   Benchmark,
-  clearDownloadsSizes,
-  compareNetworkActivity,
   createLighthouseBenchmark,
   generateHtmlDiffs,
   generateTimelineComparison,
@@ -133,7 +131,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const testResultsFolder = `${resultsFolder}/${slug}`;
     mkdirpSync(testResultsFolder);
-    clearDownloadsSizes();
 
     const testOptions: Partial<LighthouseBenchmarkOptions> = {
       ...options,
@@ -201,7 +198,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       process.exit(2);
     }
     const resultJSONPath = `${testResultsFolder}/compare.json`;
-    compareNetworkActivity();
     generateHtmlDiffs({
       testResultsFolder,
       controlURL: compareFlags.controlURL!,

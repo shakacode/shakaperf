@@ -1,5 +1,6 @@
-export { compareNetworkActivity, clearDownloadsSizes } from './network-activity';
+export { saveNetworkActivity } from './network-activity';
 export { default as createLighthouseBenchmark } from './create-lighthouse-benchmark';
+export { default as createLighthouseBenchmarkInProcess } from './create-lighthouse-benchmark-in-process';
 export type {
   Marker,
   NavigationSample,
