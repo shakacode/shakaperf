@@ -9,7 +9,7 @@ import {
 // Store visreg results in the REAL repo so they persist and can be committed
 const VISREG_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'visreg-results');
 
-test('run shaka-perf visreg compare on twin servers @visreg', async ({ page }) => {
+test('run shaka-perf visreg-compare on twin servers @visreg', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
 
   startServers();
@@ -21,11 +21,11 @@ test('run shaka-perf visreg compare on twin servers @visreg', async ({ page }) =
 
   fs.mkdirSync(VISREG_RESULTS_DIR, { recursive: true });
 
-  // Run shaka-perf visreg compare — expect it to fail (mismatches from padding change)
-  loud('Running shaka-perf visreg compare');
+  // Run shaka-perf visreg-compare — expect it to fail (mismatches from padding change)
+  loud('Running shaka-perf visreg-compare');
   let visregFailed = false;
   try {
-    run('yarn shaka-perf visreg compare --config visreg.config.ts', {
+    run('yarn shaka-perf visreg-compare --config visreg.config.ts', {
       timeout: 15 * 60 * 1000,
     });
   } catch (e: unknown) {

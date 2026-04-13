@@ -11,7 +11,7 @@ export interface RunCmdParallelOptions {
  * with colorful tagged output.
  *
  * Usage:
- *   shaka-perf twin-servers run-cmd-parallel "bundle exec rake db:migrate"
+ *   shaka-perf twins-run-cmd-parallel "bundle exec rake db:migrate"
  */
 export async function runCmdParallel(
   config: ResolvedConfig,
@@ -22,7 +22,7 @@ export async function runCmdParallel(
 
   const escaped = command.replace(/'/g, "'\\''");
   await runInParallel(
-    `yarn shaka-perf twin-servers run-cmd experiment '${escaped}'`,
-    `yarn shaka-perf twin-servers run-cmd control '${escaped}'`,
+    `yarn shaka-perf twins-run-cmd experiment '${escaped}'`,
+    `yarn shaka-perf twins-run-cmd control '${escaped}'`,
   );
 }

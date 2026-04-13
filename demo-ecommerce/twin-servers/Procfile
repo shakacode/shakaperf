@@ -1,6 +1,6 @@
-control-rails: yarn shaka-perf twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-# control-renderer: yarn shaka-perf twin-servers run-overmind-command control "node node-renderer.js"
-experiment-rails: yarn shaka-perf twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-# experiment-renderer: yarn shaka-perf twin-servers run-overmind-command experiment "node node-renderer.js"
-notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twin-servers say "Control server started" && echo "visit http://localhost:3020 to access the control server" && while :; do sleep 2073600; done # (Sleep infinity)
-notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && sleep 2 && yarn shaka-perf twin-servers say "Experiment server started" && echo "visit http://localhost:3030 to access the experiment server" && while :; do sleep 2073600; done # (Sleep infinity)
+control-rails: yarn shaka-perf twins-run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# control-renderer: yarn shaka-perf twins-run-overmind-command control "node node-renderer.js"
+experiment-rails: yarn shaka-perf twins-run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# experiment-renderer: yarn shaka-perf twins-run-overmind-command experiment "node node-renderer.js"
+notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twins-say "Control server started" && echo "visit http://localhost:3020 to access the control server" && while :; do sleep 2073600; done # (Sleep infinity)
+notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && sleep 2 && yarn shaka-perf twins-say "Experiment server started" && echo "visit http://localhost:3030 to access the experiment server" && while :; do sleep 2073600; done # (Sleep infinity)

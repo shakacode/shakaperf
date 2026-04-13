@@ -27,5 +27,5 @@ steps:
       name: Start << parameters.target >> server
       working_directory: << parameters.working-directory >>
       command: |
-        << parameters.cli-prefix >> shaka-perf twin-servers run-cmd << parameters.target >> "<< parameters.command >>"
+        << parameters.cli-prefix >> shaka-perf twins-run-cmd << parameters.target >> "<< parameters.command >>"
       background: << parameters.background >>

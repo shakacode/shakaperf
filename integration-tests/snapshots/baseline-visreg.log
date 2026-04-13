@@ -5,21 +5,21 @@ Running 1 test using 1 worker
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
->>>>>>>>>>>>>>>>>> TEST: run shaka-perf visreg compare on twin servers @visreg
+>>>>>>>>>>>>>>>>>> TEST: run shaka-perf visreg-compare on twin servers @visreg
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 >>> Starting puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
   ⏱ 2.1s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
@@ -31,10 +31,10 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
   ⏱ waitForPort(3020): 0.0s
   ⏱ waitForPort(3030): 2.0s
 
->>> Running shaka-perf visreg compare
+>>> Running shaka-perf visreg-compare
 
 
->>> run: yarn shaka-perf visreg compare --config visreg.config.ts
+>>> run: yarn shaka-perf visreg-compare --config visreg.config.ts
 
 Mismatch errors found.
 
@@ -597,7 +597,7 @@ Updated 0 paths from the index
   ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
   ⏱ git checkout control: 0.0s
-  ✓  1 integration-tests/visreg.spec.ts:12:5 › run shaka-perf visreg compare on twin servers @visreg (<TIMING>m)
+  ✓  1 integration-tests/visreg.spec.ts:12:5 › run shaka-perf visreg-compare on twin servers @visreg (<TIMING>m)
 Skipping teardown (SKIP_TEARDOWN=1)
 
   1 passed (<TIMING>m)

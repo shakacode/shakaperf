@@ -25,10 +25,9 @@ function requireTarget(target: string | undefined, usage: string): asserts targe
 }
 
 async function getResolvedConfig(cmd: Command): Promise<{ resolvedConfig: ResolvedConfig; configPath: string }> {
-  const twinServersCmd = cmd.parent ?? cmd;
-  const globalOpts = twinServersCmd.opts();
+  const opts = cmd.opts();
 
-  let configPath = globalOpts.config;
+  let configPath = opts.config;
   if (!configPath) {
     configPath = findConfigFile() ?? undefined;
     if (!configPath) {
@@ -36,7 +35,7 @@ async function getResolvedConfig(cmd: Command): Promise<{ resolvedConfig: Resolv
       console.error('Create a twin-servers.config.ts file or specify one with --config');
       process.exit(2);
     }
-    if (globalOpts.verbose) {
+    if (opts.verbose) {
       console.log(`Using config: ${configPath}`);
     }
   }
@@ -62,59 +61,21 @@ function wrapAction(fn: (this: Command, ...args: any[]) => Promise<void>): (...a
   };
 }
 
-export function createTwinServersProgram(): Command {
-  const program = new Command('twin-servers');
-
-  program
-    .description('Twin server management for A/B performance testing')
+function addTwinsOptions(cmd: Command): Command {
+  return cmd
     .option('-c, --config <file>', 'Config file path (.js or .ts)')
-    .option('-v, --verbose', 'Verbose output', false)
-    .addHelpText('after', `
-Command options:
-  build:
-      -t, --target <target>  Build target (control or experiment)
-          --no-cache         Disable Docker layer cache
+    .option('-v, --verbose', 'Verbose output', false);
+}
 
-<target> is either "control" or "experiment"
+export function createTwinServersCommands(): Command[] {
+  const commands: Command[] = [];
 
-Examples:
-  shaka-perf twin-servers build
-  shaka-perf twin-servers build --target experiment
-  shaka-perf twin-servers build --target control
-  shaka-perf twin-servers start-containers
-  shaka-perf twin-servers start-servers
-
-  # Sync changes to experiment volume
-  shaka-perf twin-servers sync-changes experiment
-
-  # Run command in container interactively
-  shaka-perf twin-servers run-cmd experiment "bundle exec rails console"
-
-  # Run command in both containers in parallel
-  shaka-perf twin-servers run-cmd-parallel "bundle exec rake db:migrate"
-
-  # Run command in container with PID tracking (used in Procfile)
-  shaka-perf twin-servers run-overmind-command control "bundle exec puma -b tcp://0.0.0.0:3000"
-
-  # Copy local git changes to CI via SSH (for debugging)
-  shaka-perf twin-servers copy-changes-to-ssh 54782 18.210.27.22
-  shaka-perf twin-servers copy-changes-to-ssh 54782 18.210.27.22 experiment
-
-  # Forward CI twin server ports to localhost
-  shaka-perf twin-servers forward-ports 54782 18.210.27.22
-
-  # Specify config explicitly
-  shaka-perf twin-servers build -c path/to/twin-servers.config.ts
-`);
-
-  program
-    .command('build')
+  const buildCmd = new Command('twins-build')
     .description('Build Docker images (both by default, or single target)')
     .option('-t, --target <target>', 'Build target (control or experiment)')
     .option('--no-cache', 'Disable Docker layer cache')
     .action(wrapAction(async function(this: Command, opts) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      const globalOpts = program.opts();
       let target: BuildTarget | undefined;
       if (opts.target) {
         if (opts.target !== 'control' && opts.target !== 'experiment') {
@@ -123,11 +84,12 @@ Examples:
         }
         target = opts.target;
       }
-      await build(resolvedConfig, { verbose: globalOpts.verbose, target, noCache: !opts.cache });
+      await build(resolvedConfig, { verbose: this.opts().verbose, target, noCache: !opts.cache });
     }));
+  addTwinsOptions(buildCmd);
+  commands.push(buildCmd);
 
-  program
-    .command('get-config')
+  const getConfigCmd = new Command('twins-get-config')
     .description('Get a config value (e.g., dockerfile)')
     .argument('[key]', 'Config key to print')
     .action(wrapAction(async function(this: Command, key) {
@@ -140,39 +102,43 @@ Examples:
       const value = resolvedConfig[key as keyof ResolvedConfig];
       console.log(value);
     }));
+  addTwinsOptions(getConfigCmd);
+  commands.push(getConfigCmd);
 
-  program
-    .command('start-containers')
+  const startContainersCmd = new Command('twins-start-containers')
     .description('Start Docker containers')
     .action(wrapAction(async function(this: Command) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      await startContainers(resolvedConfig, { verbose: program.opts().verbose });
+      await startContainers(resolvedConfig, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(startContainersCmd);
+  commands.push(startContainersCmd);
 
-  program
-    .command('stop-containers')
+  const stopContainersCmd = new Command('twins-stop-containers')
     .description('Stop Docker containers and remove volumes')
     .action(wrapAction(async function(this: Command) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      await stopContainers(resolvedConfig, { verbose: program.opts().verbose });
+      await stopContainers(resolvedConfig, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(stopContainersCmd);
+  commands.push(stopContainersCmd);
 
-  program
-    .command('start-servers')
+  const startServersCmd = new Command('twins-start-servers')
     .description('Start Rails servers via Overmind')
     .action(wrapAction(async function(this: Command) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      await startServers(resolvedConfig, { verbose: program.opts().verbose });
+      await startServers(resolvedConfig, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(startServersCmd);
+  commands.push(startServersCmd);
 
-  program
-    .command('run-cmd')
+  const runCmdCmd = new Command('twins-run-cmd')
     .description('Run a command in a container interactively')
     .argument('<target>', 'control or experiment')
     .argument('[cmd...]', 'Command to run')
     .action(wrapAction(async function(this: Command, target, cmdParts) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      const usage = 'shaka-perf twin-servers run-cmd <control|experiment> <command>';
+      const usage = 'shaka-perf twins-run-cmd <control|experiment> <command>';
       requireTarget(target, usage);
       const cmd = cmdParts.length > 0 ? cmdParts.join(' ') : undefined;
       if (!cmd) {
@@ -180,51 +146,56 @@ Examples:
         console.error(`Usage: ${usage}`);
         process.exit(2);
       }
-      await runCmd(resolvedConfig, target, cmd, { verbose: program.opts().verbose });
+      await runCmd(resolvedConfig, target, cmd, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(runCmdCmd);
+  commands.push(runCmdCmd);
 
-  program
-    .command('run-cmd-parallel')
+  const runCmdParallelCmd = new Command('twins-run-cmd-parallel')
     .description('Run a command in both containers in parallel')
     .argument('<cmd...>', 'Command to run')
     .action(wrapAction(async function(this: Command, cmdParts) {
       const { resolvedConfig } = await getResolvedConfig(this);
       const cmd = cmdParts.join(' ');
-      await runCmdParallel(resolvedConfig, cmd, { verbose: program.opts().verbose });
+      await runCmdParallel(resolvedConfig, cmd, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(runCmdParallelCmd);
+  commands.push(runCmdParallelCmd);
 
-  program
-    .command('run-overmind-command')
+  const runOvermindCmd = new Command('twins-run-overmind-command')
     .description('Run a command in a container with PID tracking (for Procfile)')
     .argument('<target>', 'control or experiment')
     .argument('<cmd...>', 'Command to run')
     .action(wrapAction(async function(this: Command, target, cmdParts) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      const usage = 'shaka-perf twin-servers run-overmind-command <control|experiment> <command>';
+      const usage = 'shaka-perf twins-run-overmind-command <control|experiment> <command>';
       requireTarget(target, usage);
       const cmd = cmdParts.join(' ');
-      await runOvermindCommand(resolvedConfig, target, cmd, { verbose: program.opts().verbose });
+      await runOvermindCommand(resolvedConfig, target, cmd, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(runOvermindCmd);
+  commands.push(runOvermindCmd);
 
-  program
-    .command('sync-changes')
+  const syncChangesCmd = new Command('twins-sync-changes')
     .description('Sync git changes to control or experiment volume')
     .argument('<target>', 'control or experiment')
     .action(wrapAction(async function(this: Command, target) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      const usage = 'shaka-perf twin-servers sync-changes <control|experiment>';
+      const usage = 'shaka-perf twins-sync-changes <control|experiment>';
       requireTarget(target, usage);
-      await syncChanges(resolvedConfig, target, { verbose: program.opts().verbose });
+      await syncChanges(resolvedConfig, target, { verbose: this.opts().verbose });
     }));
+  addTwinsOptions(syncChangesCmd);
+  commands.push(syncChangesCmd);
 
-  program
-    .command('say')
+  const sayCmd = new Command('twins-say')
     .description('Speak a message using text-to-speech (macOS/Linux)')
     .argument('<message...>', 'Message to speak')
     .action(wrapAction(async (_messageParts) => {
       const message = _messageParts.join(' ');
       await say(message);
     }));
+  commands.push(sayCmd);
 
   const SSH_HINT = `
 To get the correct arguments:
@@ -233,8 +204,7 @@ To get the correct arguments:
 3. Copy the SSH command from the job logs
 4. Extract the port and host from: ssh -p <PORT> <HOST>`;
 
-  program
-    .command('copy-changes-to-ssh')
+  const copyChangesCmd = new Command('twins-copy-changes-to-ssh')
     .description('Copy local git changes to SSH (for CI debugging)')
     .argument('<port>', 'SSH port')
     .argument('<host>', 'SSH host')
@@ -246,11 +216,12 @@ To get the correct arguments:
         console.error(colorize('Error: Target must be "control", "experiment", or "all"', 'red'));
         process.exit(2);
       }
-      await copyChangesToSsh(resolvedConfig, { port, host }, { verbose: program.opts().verbose, target: copyTarget });
+      await copyChangesToSsh(resolvedConfig, { port, host }, { verbose: this.opts().verbose, target: copyTarget });
     }));
+  addTwinsOptions(copyChangesCmd);
+  commands.push(copyChangesCmd);
 
-  program
-    .command('forward-ports')
+  const forwardPortsCmd = new Command('twins-forward-ports')
     .description('Forward CI ports to localhost')
     .argument('<port>', 'SSH port')
     .argument('<host>', 'SSH host')
@@ -259,16 +230,19 @@ To get the correct arguments:
     .addHelpText('after', SSH_HINT)
     .action(wrapAction(async function(this: Command, port, host, controlPort, experimentPort) {
       const { resolvedConfig } = await getResolvedConfig(this);
-      await forwardPorts(resolvedConfig, { port, host }, { verbose: program.opts().verbose, controlPort, experimentPort });
+      await forwardPorts(resolvedConfig, { port, host }, { verbose: this.opts().verbose, controlPort, experimentPort });
     }));
+  addTwinsOptions(forwardPortsCmd);
+  commands.push(forwardPortsCmd);
 
-  program
-    .command('customize-docker-compose')
+  const customizeCmd = new Command('twins-customize-docker-compose')
     .description('Copy bundled docker-compose.yml for customization')
     .action(wrapAction(async function(this: Command) {
       const { resolvedConfig, configPath } = await getResolvedConfig(this);
       await customizeDockerCompose(resolvedConfig, configPath);
     }));
+  addTwinsOptions(customizeCmd);
+  commands.push(customizeCmd);
 
-  return program;
+  return commands;
 }

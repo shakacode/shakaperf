@@ -108,4 +108,4 @@ $PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
 # Stop containers after all suites
 echo "=== Stopping containers ==="
 DEMO_CWD="/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce"
-(cd "$DEMO_CWD" && yarn shaka-perf twin-servers stop-containers) || true
+(cd "$DEMO_CWD" && yarn shaka-perf twins-stop-containers) || true

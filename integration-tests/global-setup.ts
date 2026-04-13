@@ -98,6 +98,6 @@ export default async function globalSetup() {
   }));
 
   // Build docker images and start containers
-  run('yarn shaka-perf twin-servers build', { timeout: 15 * 60 * 1000 });
-  run('yarn shaka-perf twin-servers start-containers', { timeout: 5 * 60 * 1000 });
+  run('yarn shaka-perf twins-build', { timeout: 15 * 60 * 1000 });
+  run('yarn shaka-perf twins-start-containers', { timeout: 5 * 60 * 1000 });
 }

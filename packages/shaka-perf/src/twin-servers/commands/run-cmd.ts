@@ -12,8 +12,8 @@ export type ServerTarget = 'control' | 'experiment';
  * Executes a command in a Docker container interactively.
  *
  * Usage:
- *   shaka-perf twin-servers run-cmd control "bundle exec rails console"
- *   shaka-perf twin-servers run-cmd experiment "yarn test"
+ *   shaka-perf twins-run-cmd control "bundle exec rails console"
+ *   shaka-perf twins-run-cmd experiment "yarn test"
  */
 export async function runCmd(
   config: ResolvedConfig,

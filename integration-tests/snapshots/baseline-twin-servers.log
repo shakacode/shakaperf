@@ -160,7 +160,7 @@ Assets copied to dist/
 Done in <TIMING>
   ⏱ yarn build: 5.2s
 
->>> run: yarn shaka-perf twin-servers build
+>>> run: yarn shaka-perf twins-build
 
 
 =======================================
@@ -185,12 +185,12 @@ Bind-mount directories:
   - Experiment: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
 Next steps:
-  yarn shaka-perf twin-servers start-containers
+  yarn shaka-perf twins-start-containers
 
 
   ⏱ 79.5s
 
->>> run: yarn shaka-perf twin-servers start-containers
+>>> run: yarn shaka-perf twins-start-containers
 
 
 ====================================
@@ -251,15 +251,15 @@ Edit project code inside containers:
    Experiment: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
 Access container shells:
-   yarn shaka-perf twin-servers run-cmd control bash
-   yarn shaka-perf twin-servers run-cmd experiment bash
+   yarn shaka-perf twins-run-cmd control bash
+   yarn shaka-perf twins-run-cmd experiment bash
 
 Next steps:
    1. Start the servers:
-      yarn shaka-perf twin-servers start-servers
+      yarn shaka-perf twins-start-servers
 
    2. Stop containers when done:
-      yarn shaka-perf twin-servers stop-containers
+      yarn shaka-perf twins-stop-containers
 
 
   ⏱ 24.4s
@@ -276,14 +276,14 @@ Running 2 tests using 1 worker
 >>> Starting puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
   ⏱ 1.9s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
@@ -304,16 +304,16 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> Stopping puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "pkill -f puma || true"
+>>> run: yarn shaka-perf twins-run-cmd control "pkill -f puma || true"
 
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "pkill -f puma || true"
+>>> run: yarn shaka-perf twins-run-cmd experiment "pkill -f puma || true"
 
 
 >>> Modifying HomePage.tsx: "Discover Your Style" -> "Discover Your New Self"
 
 
->>> run: yarn shaka-perf twin-servers sync-changes experiment
+>>> run: yarn shaka-perf twins-sync-changes experiment
 
 
 =================================
@@ -331,7 +331,7 @@ Files synced to: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
   ⏱ 1.9s
 
->>> run: yarn shaka-perf twin-servers run-cmd-parallel -- bundle exec rake assets:precompile
+>>> run: yarn shaka-perf twins-run-cmd-parallel -- bundle exec rake assets:precompile
 
 Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	Running bundle exec rake assets:precompile in experiment-server
@@ -430,14 +430,14 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 >>> Starting puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
   ⏱ 2.1s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
@@ -455,7 +455,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> Verifying experiment (3030) has "Discover Your New Self"
 
 
->>> run: yarn shaka-perf twin-servers start-containers
+>>> run: yarn shaka-perf twins-start-containers
 
 
 ====================================
@@ -516,15 +516,15 @@ Edit project code inside containers:
    Experiment: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
 Access container shells:
-   yarn shaka-perf twin-servers run-cmd control bash
-   yarn shaka-perf twin-servers run-cmd experiment bash
+   yarn shaka-perf twins-run-cmd control bash
+   yarn shaka-perf twins-run-cmd experiment bash
 
 Next steps:
    1. Start the servers:
-      yarn shaka-perf twin-servers start-servers
+      yarn shaka-perf twins-start-servers
 
    2. Stop containers when done:
-      yarn shaka-perf twin-servers stop-containers
+      yarn shaka-perf twins-stop-containers
 
 
   ⏱ 23.7s
@@ -546,23 +546,23 @@ Updated 556 paths from the index
 >>> Stopping puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "pkill -f puma || true"
+>>> run: yarn shaka-perf twins-run-cmd control "pkill -f puma || true"
 
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "pkill -f puma || true"
+>>> run: yarn shaka-perf twins-run-cmd experiment "pkill -f puma || true"
 
 
 >>> Using run-cmd with sed to replace "Discover Your Style" with "It's a \"quoted\" world"
 
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "sed -i 's/Discover Your Style/It'\''s a \"quoted\" world/' app/javascript/components/pages/HomePage.tsx"
+>>> run: yarn shaka-perf twins-run-cmd experiment "sed -i 's/Discover Your Style/It'\''s a \"quoted\" world/' app/javascript/components/pages/HomePage.tsx"
 
 Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
 
   ⏱ 1.9s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec rake assets:precompile"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec rake assets:precompile"
 
 Running bundle exec rake assets:precompile in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec rake assets:precompile
@@ -654,14 +654,14 @@ webpack 5.104.1 compiled successfully in <TIMING> ms
 >>> Starting puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
   ⏱ 2.0s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
@@ -679,7 +679,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 >>> Verifying experiment (3030) has text with single and double quotes
 
 
->>> run: yarn shaka-perf twin-servers start-containers
+>>> run: yarn shaka-perf twins-start-containers
 
 
 ====================================
@@ -740,15 +740,15 @@ Edit project code inside containers:
    Experiment: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
 Access container shells:
-   yarn shaka-perf twin-servers run-cmd control bash
-   yarn shaka-perf twin-servers run-cmd experiment bash
+   yarn shaka-perf twins-run-cmd control bash
+   yarn shaka-perf twins-run-cmd experiment bash
 
 Next steps:
    1. Start the servers:
-      yarn shaka-perf twin-servers start-servers
+      yarn shaka-perf twins-start-servers
 
    2. Stop containers when done:
-      yarn shaka-perf twin-servers stop-containers
+      yarn shaka-perf twins-stop-containers
 
 
   ⏱ 23.6s

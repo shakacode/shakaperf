@@ -4,7 +4,7 @@ Frontend performance testing toolkit for web applications. Yarn 4 monorepo.
 
 ## Packages
 
-- **shaka-perf** - Unified CLI for benchmarking, visual regression, and twin-servers (subcommands: `bench`, `visreg`, `twin-servers`)
+- **shaka-perf** - Unified CLI for benchmarking, visual regression, and twin-servers (commands: `perf-*`, `visreg-*`, `twins-*`)
 - **shaka-bundle-size** - Bundle size diffing with S3 baseline storage
 - **shaka-shared** - Shared utilities used by shaka-perf and shaka-bundle-size
 - **demo-ecommerce** - Rails + React demo app
@@ -19,9 +19,9 @@ yarn build      # Build all packages (tsc)
 ### shaka-perf CLI
 
 ```bash
-shaka-perf bench compare        # Performance benchmarking
-shaka-perf visreg compare       # Visual regression testing
-shaka-perf twin-servers build   # Docker A/B testing infrastructure
+shaka-perf perf-compare        # Performance benchmarking
+shaka-perf visreg-compare       # Visual regression testing
+shaka-perf twins-build          # Docker A/B testing infrastructure
 ```
 
 ## Code Conventions

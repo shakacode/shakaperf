@@ -154,7 +154,7 @@ setupCommands: [
 
 A default [`docker-compose.yml`](./templates/docker-compose.yml) is bundled with the package. Most projects don't need a custom one. To get a custom copy you can edit, run:
 ```bash
-yarn shaka-perf twin-servers customize-docker-compose
+yarn shaka-perf twins-customize-docker-compose
 ```
 
 Key points about the default:
@@ -191,10 +191,10 @@ If a service already has a Dockerized setup in the project's dev instructions (e
 ## 4. Create a Procfile
 
 ```
-control-rails: yarn shaka-perf twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-experiment-rails: yarn shaka-perf twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twin-servers say "Control server started" && while :; do sleep 2073600; done
-notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && yarn shaka-perf twin-servers say "Experiment server started" && while :; do sleep 2073600; done
+control-rails: yarn shaka-perf twins-run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+experiment-rails: yarn shaka-perf twins-run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twins-say "Control server started" && while :; do sleep 2073600; done
+notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && yarn shaka-perf twins-say "Experiment server started" && while :; do sleep 2073600; done
 ```
 
 `run-overmind-command` runs the command inside the Docker container with proper PID tracking so Overmind can stop/restart individual processes.

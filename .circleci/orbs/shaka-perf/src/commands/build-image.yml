@@ -34,7 +34,7 @@ steps:
           VERBOSE_FLAG="--verbose"
         fi
         if [ -n "<< parameters.config-path >>" ]; then
-          << parameters.cli-prefix >> shaka-perf twin-servers build --target << parameters.target >> --config "<< parameters.config-path >>" $VERBOSE_FLAG
+          << parameters.cli-prefix >> shaka-perf twins-build --target << parameters.target >> --config "<< parameters.config-path >>" $VERBOSE_FLAG
         else
-          << parameters.cli-prefix >> shaka-perf twin-servers build --target << parameters.target >> $VERBOSE_FLAG
+          << parameters.cli-prefix >> shaka-perf twins-build --target << parameters.target >> $VERBOSE_FLAG
         fi

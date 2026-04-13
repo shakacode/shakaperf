@@ -201,7 +201,7 @@ workflows:
           post-steps:
             - install-playwright
             - run:
-                name: Run shaka-perf visreg compare
+                name: Run shaka-perf visreg-compare
                 command: |
                   cd demo-ecommerce
                   yarn visreg:test
