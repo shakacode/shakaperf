@@ -76,12 +76,12 @@ const PUMA_CMD = 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000';
 
 export function startServers(): void {
   loud('Starting puma in both containers');
-  run(`yarn shaka-perf twin-servers run-cmd control "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
-  run(`yarn shaka-perf twin-servers run-cmd experiment "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
+  run(`yarn shaka-perf twins-run-cmd control "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
+  run(`yarn shaka-perf twins-run-cmd experiment "${PUMA_CMD} > /tmp/puma.log 2>&1 &"`);
 }
 
 export function stopServers(): void {
   loud('Stopping puma in both containers');
-  try { run('yarn shaka-perf twin-servers run-cmd control "pkill -f puma || true"'); } catch { /* ignore */ }
-  try { run('yarn shaka-perf twin-servers run-cmd experiment "pkill -f puma || true"'); } catch { /* ignore */ }
+  try { run('yarn shaka-perf twins-run-cmd control "pkill -f puma || true"'); } catch { /* ignore */ }
+  try { run('yarn shaka-perf twins-run-cmd experiment "pkill -f puma || true"'); } catch { /* ignore */ }
 }

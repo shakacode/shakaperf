@@ -26,14 +26,8 @@ function parseFloatArg(value: string): number {
   return parsed;
 }
 
-export function createBenchProgram(): Command {
-  const program = new Command('bench');
-
-  program
-    .description("Benchmarking tools for web applications");
-
-  const compareCmd = program
-    .command("compare")
+export function createBenchCommands(): Command[] {
+  const compareCmd = new Command("perf-compare")
     .description(
       "Compare the performance delta between an experiment and control"
     )
@@ -85,8 +79,7 @@ export function createBenchProgram(): Command {
     });
   addCompareOptions(compareCmd);
 
-  program
-    .command("analyze")
+  const analyzeCmd = new Command("perf-analyze")
     .description(
       'Generates stdout report from the "tracerbench compare" command output'
     )
@@ -119,8 +112,7 @@ export function createBenchProgram(): Command {
       await runAnalyze(resultsFile, opts as any);
     });
 
-  program
-    .command("report")
+  const reportCmd = new Command("perf-report")
     .description(
       'Generates an HTML report from the "tracerbench compare" command output'
     )
@@ -134,12 +126,11 @@ export function createBenchProgram(): Command {
       await runReport(opts as any);
     });
 
-  program
-    .command("init")
+  const initCmd = new Command("perf-init")
     .description("Generate a default Lighthouse config file")
     .action(async () => {
       await runInit();
     });
 
-  return program;
+  return [compareCmd, analyzeCmd, reportCmd, initCmd];
 }

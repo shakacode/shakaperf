@@ -79,7 +79,7 @@ steps:
       working_directory: << parameters.working-directory >>
       command: |
         if [ -n "<< parameters.test-command >>" ]; then
-          << parameters.cli-prefix >> shaka-perf twin-servers run-cmd-parallel "<< parameters.test-command >>"
+          << parameters.cli-prefix >> shaka-perf twins-run-cmd-parallel "<< parameters.test-command >>"
         else
           echo "No test command specified, skipping"
         fi

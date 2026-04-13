@@ -57,7 +57,7 @@ function checkPort(port: string, name: string): boolean {
  * Used for accessing Twin Servers running in CI from your local machine.
  *
  * Usage:
- *   shaka-perf twin-servers forward-ports -p <port> <host>
+ *   shaka-perf twins-forward-ports -p <port> <host>
  */
 export async function forwardPorts(
   config: ResolvedConfig,

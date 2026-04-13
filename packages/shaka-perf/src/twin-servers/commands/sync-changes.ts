@@ -14,8 +14,8 @@ export type SyncTarget = 'control' | 'experiment';
  * Syncs git-changed files to the specified volume directory.
  *
  * Usage:
- *   shaka-perf twin-servers sync-changes experiment
- *   shaka-perf twin-servers sync-changes control
+ *   shaka-perf twins-sync-changes experiment
+ *   shaka-perf twins-sync-changes control
  */
 export async function syncChanges(
   config: ResolvedConfig,

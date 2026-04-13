@@ -34,7 +34,7 @@ function extractDirectories(files: string[]): string[] {
  * Used for debugging CI failures by syncing local changes to CircleCI nodes.
  *
  * Usage:
- *   shaka-perf twin-servers copy-changes-to-ssh -p <port> <host>
+ *   shaka-perf twins-copy-changes-to-ssh -p <port> <host>
  */
 export async function copyChangesToSsh(
   config: ResolvedConfig,

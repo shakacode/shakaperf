@@ -45,10 +45,10 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 
 ```bash
 # Initialize a new project with boilerplate config
-shaka-perf visreg init
+shaka-perf visreg-init
 
 # Compare screenshots between a reference URL and test URL side-by-side
-shaka-perf visreg compare --config visreg.config.ts
+shaka-perf visreg-compare --config visreg.config.ts
 ```
 
 ### compare
@@ -79,10 +79,10 @@ Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 
 ### Initializing Your Project
 
-`shaka-perf visreg init` creates a default configuration file and project scaffolding in your current working directory. Note: this will overwrite any existing files.
+`shaka-perf visreg-init` creates a default configuration file and project scaffolding in your current working directory. Note: this will overwrite any existing files.
 
 ```sh
-shaka-perf visreg init
+shaka-perf visreg-init
 ```
 
 ## Configuration

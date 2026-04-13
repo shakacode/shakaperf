@@ -239,12 +239,12 @@ Implement each TODO stub directly in the real `.abtest.ts` file, then validate i
 
    _Twin-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero"
+   cd <app-directory> && yarn shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero"
    ```
 
    _Single-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
+   cd <app-directory> && yarn shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
    ```
 
 3. **Quick check**: read the screenshot to verify real content was captured (not blank)
@@ -280,7 +280,7 @@ Always look at screenshots before deciding on a fix. Do not rely on diff percent
 
 After all TODO stubs are implemented:
 
-1. Run `shaka-perf visreg compare --testFile ab-tests/<page>.abtest.ts` with ALL tests in the file
+1. Run `shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts` with ALL tests in the file
 2. Run `parse-report.py` and check for HIGH-WHITE / ENGINE-ERR flags
 3. If tests that passed individually now fail in combination → debug and fix (timing issues, shared state, etc.)
 

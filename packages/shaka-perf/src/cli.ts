@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { createBenchProgram } from './bench/cli/program';
-import { createVisregProgram } from './visreg/cli/program';
-import { createTwinServersProgram } from './twin-servers/program';
+import { createBenchCommands } from './bench/cli/program';
+import { createVisregCommands } from './visreg/cli/program';
+import { createTwinServersCommands } from './twin-servers/program';
 
 const { version } = require('../package.json');
 
@@ -13,8 +13,12 @@ program
   .description('Frontend performance testing toolkit for web applications')
   .version(`shaka-perf v${version}`, '--version', 'Show version');
 
-program.addCommand(createBenchProgram());
-program.addCommand(createVisregProgram());
-program.addCommand(createTwinServersProgram());
+for (const cmd of [
+  ...createBenchCommands(),
+  ...createVisregCommands(),
+  ...createTwinServersCommands(),
+]) {
+  program.addCommand(cmd);
+}
 
 program.parse();

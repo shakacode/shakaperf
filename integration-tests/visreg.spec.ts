@@ -25,7 +25,7 @@ test('run shaka-perf visreg compare on twin servers @visreg', async ({ page }) =
   loud('Running shaka-perf visreg compare');
   let visregFailed = false;
   try {
-    run('yarn shaka-perf visreg compare --config visreg.config.ts', {
+    run('yarn shaka-perf visreg-compare --config visreg.config.ts', {
       timeout: 15 * 60 * 1000,
     });
   } catch (e: unknown) {

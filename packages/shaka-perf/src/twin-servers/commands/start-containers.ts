@@ -34,7 +34,7 @@ export async function startContainers(
     if (!dockerImageExists(image)) {
       printWarning(`Image ${image} not found locally`);
       console.log('   Will build on first start (slower) or run:');
-      console.log('   shaka-perf twin-servers build');
+      console.log('   shaka-perf twins-build');
       console.log('');
     }
   }
@@ -96,14 +96,14 @@ export async function startContainers(
   console.log(`   Experiment: ${config.volumes.experiment}`);
   console.log('');
   console.log('Access container shells:');
-  console.log('   yarn shaka-perf twin-servers run-cmd control bash');
-  console.log('   yarn shaka-perf twin-servers run-cmd experiment bash');
+  console.log('   yarn shaka-perf twins-run-cmd control bash');
+  console.log('   yarn shaka-perf twins-run-cmd experiment bash');
   console.log('');
   console.log('Next steps:');
   console.log('   1. Start the servers:');
-  console.log('      yarn shaka-perf twin-servers start-servers');
+  console.log('      yarn shaka-perf twins-start-servers');
   console.log('');
   console.log('   2. Stop containers when done:');
-  console.log('      yarn shaka-perf twin-servers stop-containers');
+  console.log('      yarn shaka-perf twins-stop-containers');
   console.log('');
 }

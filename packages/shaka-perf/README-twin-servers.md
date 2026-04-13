@@ -10,13 +10,13 @@ Docker-based A/B performance testing infrastructure. Runs two identical servers 
 cd your-app
 
 # Build Docker images for both servers
-yarn shaka-perf twin-servers build
+yarn shaka-perf twins-build
 
 # Start containers
-yarn shaka-perf twin-servers start-containers
+yarn shaka-perf twins-start-containers
 
 # Start servers via Overmind
-yarn shaka-perf twin-servers start-servers
+yarn shaka-perf twins-start-servers
 
 # Visit:
 #   Control:    http://localhost:3020
@@ -28,14 +28,14 @@ yarn shaka-perf twin-servers start-servers
 Docker volumes are bind-mounted to host directories, so you can sync changes without rebuilding images:
 
 * Stop servers (Ctrl+C on Overmind)
-* `yarn shaka-perf twin-servers sync-changes experiment`
-* `yarn shaka-perf twin-servers run-cmd experiment "bundle exec rake assets:precompile"`
-* `yarn shaka-perf twin-servers start-servers`
+* `yarn shaka-perf twins-sync-changes experiment`
+* `yarn shaka-perf twins-run-cmd experiment "bundle exec rake assets:precompile"`
+* `yarn shaka-perf twins-start-servers`
 
 ### Stop Everything (shut down docker containers)
 
 ```bash
-yarn shaka-perf twin-servers stop-containers
+yarn shaka-perf twins-stop-containers
 ```
 
 ## Architecture
@@ -67,8 +67,8 @@ Volumes are bind-mounted to host directories (not Docker-managed volumes):
 The Procfile uses `run-overmind-command` to run server processes inside Docker containers with proper PID tracking:
 
 ```
-control-rails: yarn shaka-perf twin-servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-experiment-rails: yarn shaka-perf twin-servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+control-rails: yarn shaka-perf twins-run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+experiment-rails: yarn shaka-perf twins-run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
 ```
 
 ## CLI Reference
@@ -76,50 +76,50 @@ experiment-rails: yarn shaka-perf twin-servers run-overmind-command experiment "
 ### Build
 
 ```bash
-yarn shaka-perf twin-servers build                          # Build both images in parallel
-yarn shaka-perf twin-servers build --target experiment      # Build only one
-yarn shaka-perf twin-servers build --no-cache               # Build without Docker layer cache
+yarn shaka-perf twins-build                          # Build both images in parallel
+yarn shaka-perf twins-build --target experiment      # Build only one
+yarn shaka-perf twins-build --no-cache               # Build without Docker layer cache
 ```
 
 ### Containers and Servers
 
 ```bash
-yarn shaka-perf twin-servers start-containers               # Start Docker containers
-yarn shaka-perf twin-servers start-servers                  # Start servers via Overmind
+yarn shaka-perf twins-start-containers               # Start Docker containers
+yarn shaka-perf twins-start-servers                  # Start servers via Overmind
 ```
 
 ### Running Commands in Containers
 
 ```bash
-yarn shaka-perf twin-servers run-cmd experiment bash
-yarn shaka-perf twin-servers run-cmd experiment "bundle exec rails console"
-yarn shaka-perf twin-servers run-cmd-parallel "bundle exec rake db:migrate"
+yarn shaka-perf twins-run-cmd experiment bash
+yarn shaka-perf twins-run-cmd experiment "bundle exec rails console"
+yarn shaka-perf twins-run-cmd-parallel "bundle exec rake db:migrate"
 ```
 
 ### Syncing Changes
 
 ```bash
-yarn shaka-perf twin-servers sync-changes experiment
-yarn shaka-perf twin-servers sync-changes control
+yarn shaka-perf twins-sync-changes experiment
+yarn shaka-perf twins-sync-changes control
 ```
 
 ### CI / SSH Integration
 
 ```bash
 # Copy local changes to CI containers via SSH
-yarn shaka-perf twin-servers copy-changes-to-ssh <port> <host>
-yarn shaka-perf twin-servers copy-changes-to-ssh <port> <host> experiment
+yarn shaka-perf twins-copy-changes-to-ssh <port> <host>
+yarn shaka-perf twins-copy-changes-to-ssh <port> <host> experiment
 
 # Forward CI ports to localhost
-yarn shaka-perf twin-servers forward-ports <port> <host>
+yarn shaka-perf twins-forward-ports <port> <host>
 ```
 
 ### Other
 
 ```bash
-yarn shaka-perf twin-servers get-config <key>               # Print a resolved config value
-yarn shaka-perf twin-servers customize-docker-compose       # Copy bundled docker-compose.yml for customization
-yarn shaka-perf twin-servers say "Build complete"           # Text-to-speech notification
+yarn shaka-perf twins-get-config <key>               # Print a resolved config value
+yarn shaka-perf twins-customize-docker-compose       # Copy bundled docker-compose.yml for customization
+yarn shaka-perf twins-say "Build complete"           # Text-to-speech notification
 ```
 
 ## Options

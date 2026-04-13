@@ -5,21 +5,21 @@ Running 1 test using 1 worker
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
->>>>>>>>>>>>>>>>>> TEST: run shaka-perf bench compare on twin servers @perf
+>>>>>>>>>>>>>>>>>> TEST: run shaka-perf perf-compare on twin servers @perf
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 >>> Starting puma in both containers
 
 
->>> run: yarn shaka-perf twin-servers run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
   ⏱ 2.6s
 
->>> run: yarn shaka-perf twin-servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
@@ -31,10 +31,10 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
   ⏱ waitForPort(3020): 0.0s
   ⏱ waitForPort(3030): 0.0s
 
->>> Running shaka-perf bench compare
+>>> Running shaka-perf perf-compare
 
 
->>> run: yarn shaka-perf bench compare --testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts" --numberOfMeasurements 5 --resultsFolder /home/<USER>/shakaperf/integration-tests/snapshots/bench-results
+>>> run: yarn shaka-perf perf-compare --testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts" --numberOfMeasurements 5 --resultsFolder /home/<USER>/shakaperf/integration-tests/snapshots/bench-results
 
 Discovered 2 test file(s):
   /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
@@ -201,7 +201,7 @@ Updated 0 paths from the index
   ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
   ⏱ git checkout control: 0.0s
-  ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-perf bench compare on twin servers @perf (<TIMING>m)
+  ✓  1 integration-tests/bench.spec.ts:12:5 › run shaka-perf perf-compare on twin servers @perf (<TIMING>m)
 Skipping teardown (SKIP_TEARDOWN=1)
 
   1 passed (<TIMING>m)
