@@ -55,6 +55,12 @@ export function createBenchCommands(): Command[] {
       parseIntArg,
       getDefaultValue("sampleTimeout")
     )
+    .option(
+      "--parallelism <n>",
+      "Number of control/experiment pairs to run in parallel",
+      parseIntArg,
+      getDefaultValue("parallelism")
+    )
     .option("--config <path>", "Path to a JS/TS Lighthouse config file")
     .option("--skip-report", "Skip generating an HTML report after compare", false)
     .option(

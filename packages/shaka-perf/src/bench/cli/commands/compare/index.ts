@@ -47,6 +47,7 @@ export interface ICompareFlags {
   skipReport?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
+  parallelism: number;
   config?: string;
 }
 
@@ -180,6 +181,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         },
         {
           sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
+          parallelism: compareFlags.parallelism,
         }
       )
     ).map(({ group, samples }) => {

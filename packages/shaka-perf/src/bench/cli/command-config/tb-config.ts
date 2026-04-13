@@ -10,6 +10,7 @@ export interface ITBConfig {
   sampleTimeout?: number;
   regressionThresholdStat?: RegressionThresholdStat;
   pValueThreshold?: number;
+  parallelism?: number;
   config?: string;
   [key: string]: any;
 }
