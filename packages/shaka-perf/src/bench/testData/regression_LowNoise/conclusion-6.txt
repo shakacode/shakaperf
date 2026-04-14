@@ -1,0 +1,92 @@
+=== regression_LowNoise run 6 ===
+
+Setup:
+  control    = http://localhost:3030/
+  experiment = http://localhost:3030/?hydration_delay=50
+  noise      = low
+  No additional CPU noise — only ambient system load.
+
+Expectation: regression on hydration-start (~+50 ms, the injected hydration_delay)
+Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
+
+--- perf-analyze (compare-6.json) ---
+Benchmark Results Summary
+
+LH & Vitals
+  FCP no difference [-5ms to 4ms]
+  speed-index no difference [-5ms to 4ms]
+  LCP no difference [-204ms to 697ms]
+  TBT no difference [-70ms to 857ms]
+  CLS no difference [-3/100 to 1/100]
+  TTFB no difference [-3ms to 9ms]
+  LH Score no difference [-5/100 to 1/100]
+  hydration no difference [-186ms to 775ms]
+  hydration-start estimated regression +1286ms [+896ms to +1646ms] OR +70.45% [+49.07% to +90.14%] p=0.007813
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 1KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+--- hydration-start paired values (8 pairs) ---
+http://localhost:3030/                          http://localhost:3030/?hydration_delay=50
+1860.0                                          3666.0
+1792.0                                          2462.0
+3042.0                                          4164.0
+2282.0                                          3206.0
+2778.0                                          4208.0
+1554.0                                          3032.0
+1606.0                                          2722.0
+1504.0                                          3318.0
+
+--- hydration-start distribution heatmap ---
+control (http://localhost:3030/):
+    1504ms  ██████████████████████████████     3
+    1639ms                                     0
+    1774ms  ████████████████████               2
+    1910ms                                     0
+    2045ms                                     0
+    2180ms  ██████████                         1
+    2315ms                                     0
+    2450ms                                     0
+    2586ms                                     0
+    2721ms  ██████████                         1
+    2856ms                                     0
+    2991ms  ██████████                         1
+    3126ms                                     0
+    3262ms                                     0
+    3397ms                                     0
+    3532ms                                     0
+    3667ms                                     0
+    3802ms                                     0
+    3938ms                                     0
+    4073ms                                     0
+
+experiment (http://localhost:3030/?hydration_delay=50):
+    1504ms                                     0
+    1639ms                                     0
+    1774ms                                     0
+    1910ms                                     0
+    2045ms                                     0
+    2180ms                                     0
+    2315ms                                     0
+    2450ms  ███████████████                    1
+    2586ms                                     0
+    2721ms  ███████████████                    1
+    2856ms                                     0
+    2991ms  ███████████████                    1
+    3126ms  ███████████████                    1
+    3262ms  ███████████████                    1
+    3397ms                                     0
+    3532ms  ███████████████                    1
+    3667ms                                     0
+    3802ms                                     0
+    3938ms                                     0
+    4073ms  ██████████████████████████████     2

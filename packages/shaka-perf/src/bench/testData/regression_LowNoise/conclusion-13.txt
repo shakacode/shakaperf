@@ -1,0 +1,92 @@
+=== regression_LowNoise run 13 ===
+
+Setup:
+  control    = http://localhost:3030/
+  experiment = http://localhost:3030/?hydration_delay=50
+  noise      = low
+  No additional CPU noise — only ambient system load.
+
+Expectation: regression on hydration-start (~+50 ms, the injected hydration_delay)
+Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
+
+--- perf-analyze (compare-13.json) ---
+Benchmark Results Summary
+
+LH & Vitals
+  FCP no difference [-2ms to 11ms]
+  speed-index no difference [-2ms to 11ms]
+  LCP no difference [-179ms to 41ms]
+  TBT no difference [-170ms to 6ms]
+  CLS no difference [-3/100 to 3/100]
+  TTFB no difference [-5ms to 6ms]
+  LH Score no difference [-1/100 to 3/100]
+  hydration estimated improvement -141ms [-252ms to -109ms] OR -19.9% [-35.69% to -15.44%] p=0.007813
+  hydration-start estimated regression +1388ms [+925ms to +1850ms] OR +78.2% [+52.11% to +104.23%] p=0.007813
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 1KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+--- hydration-start paired values (8 pairs) ---
+http://localhost:3030/                          http://localhost:3030/?hydration_delay=50
+3550.0                                          4428.0
+1848.0                                          2604.0
+2410.0                                          3504.0
+1360.0                                          2722.0
+2748.0                                          4254.0
+1248.0                                          3074.0
+1702.0                                          3552.0
+1270.0                                          3216.0
+
+--- hydration-start distribution heatmap ---
+control (http://localhost:3030/):
+    1248ms  ██████████████████████████████     3
+    1407ms                                     0
+    1566ms  ██████████                         1
+    1725ms  ██████████                         1
+    1884ms                                     0
+    2043ms                                     0
+    2202ms                                     0
+    2361ms  ██████████                         1
+    2520ms                                     0
+    2679ms  ██████████                         1
+    2838ms                                     0
+    2997ms                                     0
+    3156ms                                     0
+    3315ms                                     0
+    3474ms  ██████████                         1
+    3633ms                                     0
+    3792ms                                     0
+    3951ms                                     0
+    4110ms                                     0
+    4269ms                                     0
+
+experiment (http://localhost:3030/?hydration_delay=50):
+    1248ms                                     0
+    1407ms                                     0
+    1566ms                                     0
+    1725ms                                     0
+    1884ms                                     0
+    2043ms                                     0
+    2202ms                                     0
+    2361ms                                     0
+    2520ms  ███████████████                    1
+    2679ms  ███████████████                    1
+    2838ms                                     0
+    2997ms  ███████████████                    1
+    3156ms  ███████████████                    1
+    3315ms                                     0
+    3474ms  ██████████████████████████████     2
+    3633ms                                     0
+    3792ms                                     0
+    3951ms                                     0
+    4110ms  ███████████████                    1
+    4269ms  ███████████████                    1

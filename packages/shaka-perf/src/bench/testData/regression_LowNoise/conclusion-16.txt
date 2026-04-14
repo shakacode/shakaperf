@@ -1,0 +1,92 @@
+=== regression_LowNoise run 16 ===
+
+Setup:
+  control    = http://localhost:3030/
+  experiment = http://localhost:3030/?hydration_delay=50
+  noise      = low
+  No additional CPU noise — only ambient system load.
+
+Expectation: regression on hydration-start (~+50 ms, the injected hydration_delay)
+Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
+
+--- perf-analyze (compare-16.json) ---
+Benchmark Results Summary
+
+LH & Vitals
+  FCP no difference [-4ms to 8ms]
+  speed-index no difference [-4ms to 8ms]
+  LCP estimated improvement -47ms [-123ms to -4ms] OR -0.85% [-2.25% to -0.06%] p=0.02344
+  TBT no difference [-93ms to 1ms]
+  CLS no difference [-1/100 to 3/100]
+  TTFB no difference [-7ms to 17ms]
+  LH Score no difference [-1/100 to 2/100]
+  hydration estimated improvement -110ms [-210ms to -8ms] OR -16.18% [-30.88% to -1.18%] p=0.03906
+  hydration-start estimated regression +1159ms [+878ms to +1476ms] OR +62.21% [+47.13% to +79.23%] p=0.007813
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 1KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+--- hydration-start paired values (8 pairs) ---
+http://localhost:3030/                          http://localhost:3030/?hydration_delay=50
+3196.0                                          4206.0
+1966.0                                          2962.0
+2596.0                                          3772.0
+1470.0                                          2744.0
+1832.0                                          3510.0
+1644.0                                          2404.0
+1894.0                                          2678.0
+1452.0                                          3108.0
+
+--- hydration-start distribution heatmap ---
+control (http://localhost:3030/):
+    1452ms  ██████████████████████████████     2
+    1590ms  ███████████████                    1
+    1727ms  ███████████████                    1
+    1865ms  ██████████████████████████████     2
+    2003ms                                     0
+    2141ms                                     0
+    2278ms                                     0
+    2416ms                                     0
+    2554ms  ███████████████                    1
+    2691ms                                     0
+    2829ms                                     0
+    2967ms                                     0
+    3104ms  ███████████████                    1
+    3242ms                                     0
+    3380ms                                     0
+    3518ms                                     0
+    3655ms                                     0
+    3793ms                                     0
+    3931ms                                     0
+    4068ms                                     0
+
+experiment (http://localhost:3030/?hydration_delay=50):
+    1452ms                                     0
+    1590ms                                     0
+    1727ms                                     0
+    1865ms                                     0
+    2003ms                                     0
+    2141ms                                     0
+    2278ms  ██████████████████████████████     1
+    2416ms                                     0
+    2554ms  ██████████████████████████████     1
+    2691ms  ██████████████████████████████     1
+    2829ms  ██████████████████████████████     1
+    2967ms                                     0
+    3104ms  ██████████████████████████████     1
+    3242ms                                     0
+    3380ms  ██████████████████████████████     1
+    3518ms                                     0
+    3655ms  ██████████████████████████████     1
+    3793ms                                     0
+    3931ms                                     0
+    4068ms  ██████████████████████████████     1

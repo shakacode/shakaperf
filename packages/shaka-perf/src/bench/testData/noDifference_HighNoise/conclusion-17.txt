@@ -1,0 +1,92 @@
+=== noDifference_HighNoise run 17 ===
+
+Setup:
+  control    = http://localhost:3030/
+  experiment = http://localhost:3030/
+  noise      = high
+  Random CPU noise generator running in parallel (1-10s waves, 1-N cores @ 10-100% load).
+
+Expectation: no difference on hydration-start
+Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
+
+--- perf-analyze (compare-17.json) ---
+Benchmark Results Summary
+
+LH & Vitals
+  FCP no difference [-5ms to 10ms]
+  speed-index no difference [-5ms to 10ms]
+  LCP no difference [-179ms to 90ms]
+  TBT no difference [-96ms to 129ms]
+  CLS no difference [-5/100 to 1/100]
+  TTFB no difference [-3ms to 16ms]
+  LH Score no difference [-2/100 to 2/100]
+  hydration no difference [-199ms to 12ms]
+  hydration-start estimated improvement -235ms [-366ms to -32ms] OR -12.73% [-19.83% to -1.73%] p=0.03906
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+--- hydration-start paired values (8 pairs) ---
+http://localhost:3030/                          http://localhost:3030/
+2590.0                                          2312.0
+1834.0                                          1552.0
+2274.0                                          2438.0
+1450.0                                          1418.0
+1722.0                                          1396.0
+1678.0                                          1520.0
+2204.0                                          1904.0
+1858.0                                          1408.0
+
+--- hydration-start distribution heatmap ---
+control (http://localhost:3030/):
+    1396ms  ███████████████                    1
+    1456ms                                     0
+    1515ms                                     0
+    1575ms                                     0
+    1635ms  ███████████████                    1
+    1695ms  ███████████████                    1
+    1754ms                                     0
+    1814ms  ██████████████████████████████     2
+    1874ms                                     0
+    1933ms                                     0
+    1993ms                                     0
+    2053ms                                     0
+    2112ms                                     0
+    2172ms  ███████████████                    1
+    2232ms  ███████████████                    1
+    2292ms                                     0
+    2351ms                                     0
+    2411ms                                     0
+    2471ms                                     0
+    2530ms  ███████████████                    1
+
+experiment (http://localhost:3030/):
+    1396ms  ██████████████████████████████     3
+    1456ms                                     0
+    1515ms  ████████████████████               2
+    1575ms                                     0
+    1635ms                                     0
+    1695ms                                     0
+    1754ms                                     0
+    1814ms                                     0
+    1874ms  ██████████                         1
+    1933ms                                     0
+    1993ms                                     0
+    2053ms                                     0
+    2112ms                                     0
+    2172ms                                     0
+    2232ms                                     0
+    2292ms  ██████████                         1
+    2351ms                                     0
+    2411ms  ██████████                         1
+    2471ms                                     0
+    2530ms                                     0
