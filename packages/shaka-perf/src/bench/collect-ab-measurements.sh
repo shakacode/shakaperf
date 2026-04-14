@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Runs a perf-test command N times and archives each compare.json into
-# packages/shaka-perf/src/bench/testData/<group>/compare-<N>.json
+# Runs a perf-test command N times and archives each ab-measurements.json into
+# packages/shaka-perf/src/bench/testData/<group>/ab-measurements-<N>.json
 #
 # Usage:
-#   collect-compare-samples.sh <group> <n> <cmd...>
+#   collect-ab-measurements.sh <group> <n> <cmd...>
 #
 # Example (run from demo-ecommerce):
-#   ../packages/shaka-perf/src/bench/collect-compare-samples.sh noDifference 30 \
+#   ../packages/shaka-perf/src/bench/collect-ab-measurements.sh noDifference 30 \
 #     yarn shaka-perf perf-compare --iterations 10
 
 set -euo pipefail
@@ -22,7 +22,7 @@ shift 2
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$SCRIPT_DIR/testData/$GROUP"
-SRC_FILE="tracerbench-results/homepage/compare.json"
+SRC_FILE="tracerbench-results/homepage/ab-measurements.json"
 
 mkdir -p "$OUT_DIR"
 
@@ -33,8 +33,8 @@ for i in $(seq 1 "$N"); do
     echo "ERROR: $SRC_FILE not found after run $i (cwd: $(pwd))" >&2
     exit 1
   fi
-  cp "$SRC_FILE" "$OUT_DIR/compare-$i.json"
-  echo "=== [$GROUP] saved $OUT_DIR/compare-$i.json ==="
+  cp "$SRC_FILE" "$OUT_DIR/ab-measurements-$i.json"
+  echo "=== [$GROUP] saved $OUT_DIR/ab-measurements-$i.json ==="
 done
 
 printf '`%s` was run %s times\n' "$*" "$N" > "$OUT_DIR/summary.txt"

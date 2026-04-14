@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# Runs the full noise-resilience measurement campaign: 4 groups x N samples each.
-# Groups:
-#   noDifference_LowNoise    - control == experiment, no CPU noise
-#   noDifference_HighNoise   - control == experiment, with random CPU noise
-#   regression_LowNoise      - control vs ?hydration_delay=50, no CPU noise
-#   regression_HighNoise     - control vs ?hydration_delay=50, with random CPU noise
+# Runs the full noise-resilience measurement campaign.
+# Groups (3 sampling conditions x 4 outcomes x noise = 12):
+#   Sampling conditions:
+#     seq1  - --sampling-mode sequential  --parallelism 1  (pre-PR behavior)
+#     seqP  - --sampling-mode sequential  --parallelism 4  (pairs drift between workers)
+#     simP  - --sampling-mode simultaneous --parallelism 4 (current PR default)
+#   Outcomes:
+#     noDifference  - control == experiment
+#     regression    - control vs ?hydration_delay=50
+#   Noise:
+#     LowNoise      - no additional CPU noise
+#     HighNoise     - synthetic CPU noise generator running in parallel
 #
 # Prereqs:
 #   - twin-servers up (localhost:3030 reachable)
@@ -22,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 REPO_DIR="$(cd "$PKG_DIR/../.." && pwd)"
 DEMO_DIR="$REPO_DIR/demo-ecommerce"
-COLLECT="$SCRIPT_DIR/collect-compare-samples.sh"
+COLLECT="$SCRIPT_DIR/collect-ab-measurements.sh"
 NOISE_JS="$PKG_DIR/dist/bench/random-cpu-noise-generator.js"
 
 if [ ! -f "$NOISE_JS" ]; then
@@ -54,40 +60,51 @@ start_noise() {
   echo "[campaign] noise generator pid=$NOISE_PID"
 }
 
-CMD_NODIFF=(yarn shaka-perf perf-compare \
-  --controlURL http://localhost:3030/ \
-  --experimentURL http://localhost:3030/ \
-  --parallelism 2 -n 8 --filter Homepage)
-
-CMD_REGRESSION=(yarn shaka-perf perf-compare \
-  --controlURL http://localhost:3030/ \
-  --experimentURL 'http://localhost:3030/?hydration_delay=50' \
-  --parallelism 2 -n 8 --filter Homepage)
+# (tag, sampling-mode, parallelism)
+CONDITIONS=(
+  "seq1 sequential 1"
+  "seqP sequential 4"
+  "simP simultaneous 4"
+)
 
 cd "$DEMO_DIR"
 
-echo "============================================================"
-echo "[campaign] group 1/4: noDifference_LowNoise (N=$N)"
-echo "============================================================"
-"$COLLECT" noDifference_LowNoise "$N" "${CMD_NODIFF[@]}"
+group_idx=0
+total_groups=$((${#CONDITIONS[@]} * 4))
 
-echo "============================================================"
-echo "[campaign] group 2/4: noDifference_HighNoise (N=$N)"
-echo "============================================================"
-start_noise
-"$COLLECT" noDifference_HighNoise "$N" "${CMD_NODIFF[@]}"
-stop_noise
+for cond in "${CONDITIONS[@]}"; do
+  read -r TAG MODE PAR <<< "$cond"
 
-echo "============================================================"
-echo "[campaign] group 3/4: regression_LowNoise (N=$N)"
-echo "============================================================"
-"$COLLECT" regression_LowNoise "$N" "${CMD_REGRESSION[@]}"
+  CMD_NODIFF=(yarn shaka-perf perf-compare \
+    --controlURL http://localhost:3030/ \
+    --experimentURL http://localhost:3030/ \
+    --sampling-mode "$MODE" --parallelism "$PAR" -n 8 --filter Homepage)
 
-echo "============================================================"
-echo "[campaign] group 4/4: regression_HighNoise (N=$N)"
-echo "============================================================"
-start_noise
-"$COLLECT" regression_HighNoise "$N" "${CMD_REGRESSION[@]}"
-stop_noise
+  CMD_REGRESSION=(yarn shaka-perf perf-compare \
+    --controlURL http://localhost:3030/ \
+    --experimentURL 'http://localhost:3030/?hydration_delay=50' \
+    --sampling-mode "$MODE" --parallelism "$PAR" -n 8 --filter Homepage)
 
-echo "[campaign] all 4 groups complete"
+  for OUTCOME in noDifference regression; do
+    for NOISE in LowNoise HighNoise; do
+      group_idx=$((group_idx + 1))
+      GROUP="${OUTCOME}_${NOISE}_${TAG}"
+      echo "============================================================"
+      echo "[campaign] group ${group_idx}/${total_groups}: ${GROUP} (N=$N)"
+      echo "============================================================"
+      if [ "$NOISE" = "HighNoise" ]; then
+        start_noise
+      fi
+      if [ "$OUTCOME" = "regression" ]; then
+        "$COLLECT" "$GROUP" "$N" "${CMD_REGRESSION[@]}"
+      else
+        "$COLLECT" "$GROUP" "$N" "${CMD_NODIFF[@]}"
+      fi
+      if [ "$NOISE" = "HighNoise" ]; then
+        stop_noise
+      fi
+    done
+  done
+done
+
+echo "[campaign] all ${total_groups} groups complete"

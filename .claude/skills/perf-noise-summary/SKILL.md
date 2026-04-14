@@ -19,6 +19,7 @@ Overwrite `packages/shaka-perf/src/bench/testData/SUMMARY.md`.
 
 1. For each group, `grep -h "hydration-start" testData/<group>/conclusion-*.txt`.
 2. For each conclusion, classify the line:
+
    - `no difference` → no regression detected
    - `estimated regression +Xms` → regression detected
 3. Write `SUMMARY.md`. **Pad every cell so the source lines up vertically** — compute each column's max width across header + rows and left-pad the `Group` column, right-pad the numeric columns. Header separator dashes must match each column's full width (use `-` for left-aligned, `-:` ending for right-aligned). Sort rows alphabetically by group name.

@@ -11,8 +11,11 @@ export interface ITBConfig {
   regressionThresholdStat?: RegressionThresholdStat;
   pValueThreshold?: number;
   parallelism?: number;
+  samplingMode?: SamplingMode;
   config?: string;
   [key: string]: any;
 }
 
 export type RegressionThresholdStat = "estimator" | "ci-lower" | "ci-upper";
+
+export type SamplingMode = "sequential" | "simultaneous";

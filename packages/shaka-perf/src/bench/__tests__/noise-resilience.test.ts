@@ -2,7 +2,7 @@
  * Snapshot tests for the noise-resilience measurement campaign.
  *
  * For each (group, run) pair in testData/, regenerates a per-run
- * `conclusion-<N>.txt` next to its `compare-<N>.json` containing:
+ * `conclusion-<N>.txt` next to its `ab-measurements-<N>.json` containing:
  *   - setup + statistical-method expectations for the group
  *   - perf-analyze (Wilcoxon Signed-Rank + Hodges-Lehmann) output for that run
  *   - paired (control, experiment) hydration-start values from that run
@@ -15,7 +15,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import parseCompareResult from '../cli/compare/parse-compare-result';
+import parseAbMeasurements from '../cli/compare/parse-ab-measurements';
 import { GenerateStats } from '../cli/compare/generate-stats';
 import { CompareResults } from '../cli/compare/compare-results';
 
@@ -62,11 +62,11 @@ const GROUPS: Group[] = [
   },
 ];
 
-function listCompareFiles(groupDir: string): { idx: number; file: string }[] {
+function listMeasurementFiles(groupDir: string): { idx: number; file: string }[] {
   return fs
     .readdirSync(groupDir)
     .map((f) => {
-      const m = f.match(/^compare-(\d+)\.json$/);
+      const m = f.match(/^ab-measurements-(\d+)\.json$/);
       return m ? { idx: parseInt(m[1], 10), file: path.join(groupDir, f) } : null;
     })
     .filter((x): x is { idx: number; file: string } => x !== null)
@@ -74,7 +74,7 @@ function listCompareFiles(groupDir: string): { idx: number; file: string }[] {
 }
 
 function extractMetric(file: string): { control: number[]; experiment: number[] } {
-  const { controlData, experimentData } = parseCompareResult(file);
+  const { controlData, experimentData } = parseAbMeasurements(file);
   const pull = (samples: typeof controlData.samples): number[] =>
     samples.map((s) => {
       const phase = s.phases.find((p) => p.phase === METRIC);
@@ -85,7 +85,7 @@ function extractMetric(file: string): { control: number[]; experiment: number[] 
 }
 
 function analyze(file: string): CompareResults {
-  const { controlData, experimentData } = parseCompareResult(file);
+  const { controlData, experimentData } = parseAbMeasurements(file);
   const stats = new GenerateStats(
     controlData,
     experimentData,
@@ -182,7 +182,7 @@ describe('noise-resilience snapshot', () => {
   for (const group of GROUPS) {
     describe(group.name, () => {
       const groupDir = path.join(TEST_DATA_DIR, group.name);
-      const runs = listCompareFiles(groupDir);
+      const runs = listMeasurementFiles(groupDir);
       for (const { idx, file } of runs) {
         test(`conclusion-${idx}.txt is up to date`, () => {
           const conclusion = buildConclusion(group, idx, file);

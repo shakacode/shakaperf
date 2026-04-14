@@ -12,7 +12,7 @@ import {
   ITracerBenchTraceResult,
   ParsedTitleConfigs,
 } from "../../compare/generate-stats";
-import parseCompareResult from "../../compare/parse-compare-result";
+import parseAbMeasurements from "../../compare/parse-ab-measurements";
 import { chalkScheme, logHeading } from "../../helpers/utils";
 import {
   PHASE_CHART_JS_TEMPLATE_RAW,
@@ -164,7 +164,7 @@ function logReportPaths(
   const chalkBlueBold = chalkScheme.tbBranding.blue.underline.bold;
 
   logHeading("Benchmark Reports");
-  console.log(`\nJSON: ${chalkBlueBold(`${resultsFolder}/compare.json`)}`);
+  console.log(`\nJSON: ${chalkBlueBold(`${resultsFolder}/ab-measurements.json`)}`);
   console.log(`\nHTML: ${chalkBlueBold(absPathToHTML)}\n`);
 }
 
@@ -173,8 +173,8 @@ export async function runReport(options: IReportFlags): Promise<void> {
 
   mkdirSync(resultsFolder, { recursive: true });
 
-  const inputFilePath = join(resultsFolder, "compare.json");
-  const { controlData, experimentData } = parseCompareResult(inputFilePath);
+  const inputFilePath = join(resultsFolder, "ab-measurements.json");
+  const { controlData, experimentData } = parseAbMeasurements(inputFilePath);
 
   const absPathToHTML = await generateHTML(
     controlData,

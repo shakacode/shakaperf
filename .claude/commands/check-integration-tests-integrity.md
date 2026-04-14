@@ -12,10 +12,10 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
 ## Files
 
-### compare.json
+### ab-measurements.json
 
 ```bash
-git diff -- integration-tests/snapshots/bench-results/compare.json 'integration-tests/snapshots/bench-results/*/compare.json'
+git diff -- integration-tests/snapshots/bench-results/ab-measurements.json 'integration-tests/snapshots/bench-results/*/ab-measurements.json'
 ```
 
 All numeric timing values are random noise. Only flag: missing/added phases or groups, changed sample count (expect 5), order-of-magnitude jumps in values, or structural JSON changes.

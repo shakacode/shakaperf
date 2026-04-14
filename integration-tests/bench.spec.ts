@@ -44,7 +44,7 @@ test('run shaka-perf perf-compare on twin servers @perf', async ({ page }) => {
   }
 
   // Pretty-print JSON results for readable diffs
-  for (const file of ['compare.json', 'report.json', 'localhost_3020____performance_profile.json']) {
+  for (const file of ['ab-measurements.json', 'report.json', 'localhost_3020____performance_profile.json']) {
     const filePath = path.join(BENCH_RESULTS_DIR, file);
     const json = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + '\n');

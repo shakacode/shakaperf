@@ -46,12 +46,13 @@ export interface ICompareFlags {
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
   parallelism: number;
+  samplingMode: 'sequential' | 'simultaneous';
   duration?: number;
   config?: string;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
-  'compare.json': 'Raw measurement samples',
+  'ab-measurements.json': 'Raw measurement samples',
   'report.json': 'Statistical analysis (JSON)',
   'report.txt': 'Summary',
   'report.html': 'Interactive HTML report with charts',
@@ -180,6 +181,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         {
           sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
           parallelism: compareFlags.parallelism,
+          samplingMode: compareFlags.samplingMode,
           durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
         }
       )
@@ -199,7 +201,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       );
       process.exit(2);
     }
-    const resultJSONPath = `${testResultsFolder}/compare.json`;
+    const abMeasurementsPath = `${testResultsFolder}/ab-measurements.json`;
     generateHtmlDiffs({
       testResultsFolder,
       controlURL: compareFlags.controlURL!,
@@ -222,7 +224,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       }
     }
 
-    writeFileSync(resultJSONPath, JSON.stringify(results));
+    writeFileSync(abMeasurementsPath, JSON.stringify(results));
     completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
 
     const duration = secondsToTime(durationInSec(endTime, startTime));
@@ -235,7 +237,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
 
     // if the stdout analysis is not hidden show it
     if (!compareFlags.hideAnalysis) {
-      analyzedJSONString = await runAnalyze(resultJSONPath, {
+      analyzedJSONString = await runAnalyze(abMeasurementsPath, {
         numberOfMeasurements: actualMeasurements,
         regressionThreshold: compareFlags.regressionThreshold!,
         regressionThresholdStat: compareFlags.regressionThresholdStat!,

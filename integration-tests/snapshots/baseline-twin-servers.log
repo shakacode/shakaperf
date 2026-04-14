@@ -7,9 +7,9 @@
  delete mode 100644 integration-tests/snapshots/baseline-perf.log
  delete mode 100644 integration-tests/snapshots/baseline-visreg.log
  delete mode 100644 integration-tests/snapshots/bench-results/artifact-1.screenshot.png
- delete mode 100644 integration-tests/snapshots/bench-results/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/ab-measurements.json
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/artifact-1.html
- delete mode 100644 integration-tests/snapshots/bench-results/homepage/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/ab-measurements.json
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json

@@ -45,10 +45,13 @@ export type SampleProgressCallback = (
   iteration: number
 ) => void;
 
+export type SamplingMode = 'sequential' | 'simultaneous';
+
 export interface RunOptions {
   setupTimeoutMs: number;
   sampleTimeoutMs: number;
   parallelism: number;
+  samplingMode: SamplingMode;
   durationMs?: number;
   raceCancellation: RaceCancellation;
 }
@@ -64,6 +67,7 @@ export default async function run<TSample>(
     setupTimeoutMs = SETUP_TIMEOUT,
     sampleTimeoutMs = SAMPLE_TIMEOUT,
     parallelism = 1,
+    samplingMode = 'simultaneous',
     durationMs,
     raceCancellation
   } = options;
@@ -81,6 +85,7 @@ export default async function run<TSample>(
       iterations,
       progress,
       sampleTimeoutMs,
+      samplingMode,
       durationMs,
       raceCancellation
     );
@@ -95,6 +100,7 @@ async function takeSamples<TSample>(
   samplesPerGroup: number,
   progress: SampleProgressCallback,
   sampleTimeoutMs: number,
+  samplingMode: SamplingMode,
   durationMs: number | undefined,
   raceCancellation: RaceCancellation | undefined
 ): Promise<SampleGroup<TSample>[]> {
@@ -125,7 +131,7 @@ async function takeSamples<TSample>(
   };
 
   // Trial run using first sampler set only
-  await runOnePair(samplerSets[0], groups, 0, true, sampleTimeoutMs, raceCancellation, reportProgress);
+  await runOnePair(samplerSets[0], groups, 0, true, sampleTimeoutMs, samplingMode, raceCancellation, reportProgress);
 
   // Worker pool: each worker grabs the next iteration index and runs a pair
   let nextIndex = 0;
@@ -139,7 +145,7 @@ async function takeSamples<TSample>(
         break;
       }
 
-      const results = await runOnePair(samplerSet, groups, myIndex + 1, false, sampleTimeoutMs, raceCancellation, reportProgress);
+      const results = await runOnePair(samplerSet, groups, myIndex + 1, false, sampleTimeoutMs, samplingMode, raceCancellation, reportProgress);
       for (const { group, sample } of results) {
         if (durationMs) {
           groupedSamples[group].push(sample);
@@ -161,21 +167,30 @@ async function runOnePair<TSample>(
   iteration: number,
   isTrial: boolean,
   sampleTimeoutMs: number,
+  samplingMode: SamplingMode,
   raceCancellation: RaceCancellation | undefined,
   onProgress: (group: string, iteration: number) => void
 ): Promise<{ group: string; sample: TSample }[]> {
   const shuffled = [...groups];
   shuffle(shuffled);
-  return Promise.all(
-    shuffled.map(async (group) => {
-      onProgress(group, iteration);
-      const sampler = samplerSet[group];
-      const sample = await sampleWithTimeout(
-        sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation
-      );
-      return { group, sample };
-    })
-  );
+
+  const sampleOne = async (group: string): Promise<{ group: string; sample: TSample }> => {
+    onProgress(group, iteration);
+    const sampler = samplerSet[group];
+    const sample = await sampleWithTimeout(
+      sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation
+    );
+    return { group, sample };
+  };
+
+  if (samplingMode === 'sequential') {
+    const results: { group: string; sample: TSample }[] = [];
+    for (const group of shuffled) {
+      results.push(await sampleOne(group));
+    }
+    return results;
+  }
+  return Promise.all(shuffled.map(sampleOne));
 }
 
 async function setupWithTimeout<TSample>(

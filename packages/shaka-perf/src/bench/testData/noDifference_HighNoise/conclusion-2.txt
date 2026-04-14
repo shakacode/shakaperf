@@ -9,7 +9,7 @@ Setup:
 Expectation: no difference on hydration-start
 Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
 
---- perf-analyze (compare-2.json) ---
+--- perf-analyze (ab-measurements-2.json) ---
 Benchmark Results Summary
 
 LH & Vitals

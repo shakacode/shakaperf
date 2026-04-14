@@ -69,6 +69,14 @@ export function createBenchCommands(): Command[] {
       parseIntArg,
       getDefaultValue("parallelism")
     )
+    .addOption(
+      new Option(
+        "--sampling-mode <mode>",
+        "Within one iteration, sample control + experiment sequentially or simultaneously (Promise.all)"
+      )
+        .choices(["sequential", "simultaneous"])
+        .default(getDefaultValue("samplingMode"))
+    )
     .option("--config <path>", "Path to a JS/TS Lighthouse config file")
     .option("--skip-report", "Skip generating an HTML report after compare", false)
     .option(
