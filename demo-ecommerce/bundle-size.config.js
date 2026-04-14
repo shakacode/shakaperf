@@ -20,10 +20,10 @@ module.exports = defineConfig({
   // baselineFile: 'consumer-config.json', // default value. dervied from bundleNamePrefix
 
   thresholds,
+  currentStatsDir: 'tmp/bundle_size_current',
   htmlDiffs: {
     enabled: true,
     outputDir: 'bundle-size-diffs',
-    currentDir: 'tmp/bundle_size_current',
   },
 
   storage: {

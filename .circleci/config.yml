@@ -103,6 +103,11 @@ jobs:
             cd demo-ecommerce
             yarn bundle-size:download || echo "No baseline found, skipping comparison"
       - run:
+          name: Generate current stats
+          command: |
+            cd demo-ecommerce
+            yarn bundle-size:generate
+      - run:
           name: Compare bundle sizes
           command: |
             cd demo-ecommerce
@@ -122,6 +127,11 @@ jobs:
       - attach_workspace:
           at: .
       - setup-yarn-and-build-packages
+      - run:
+          name: Generate current stats
+          command: |
+            cd demo-ecommerce
+            yarn bundle-size:generate
       - run:
           name: Upload bundle size baseline
           command: |

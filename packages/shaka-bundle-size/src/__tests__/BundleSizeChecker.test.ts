@@ -21,6 +21,7 @@ describe('BundleSizeChecker', () => {
       ignoredBundles: [],
       acknowledgedBranchesFilePath: undefined,
       generateSourceMaps: false,
+      currentStatsDir: path.join(tmpDir, 'current_stats'),
       htmlDiffs: DEFAULT_HTML_DIFFS,
       storage: { ...DEFAULT_STORAGE, s3Bucket: 'test-bucket' },
       regressionPolicy: createDefaultPolicy(DEFAULT_THRESHOLDS),
@@ -283,6 +284,105 @@ describe('BundleSizeChecker', () => {
       );
       const result = checker.updateBaseline();
       expect(result.sourceMapPath).toBeNull();
+    });
+  });
+
+  describe('compareFromGeneratedStats', () => {
+    const currentStatsDir = path.join(tmpDir, 'current_stats');
+
+    function writeGeneratedStats(config: BaselineConfig): void {
+      fs.mkdirSync(currentStatsDir, { recursive: true });
+      fs.writeFileSync(path.join(currentStatsDir, 'config.json'), JSON.stringify(config));
+    }
+
+    it('returns failed result when no generated stats exist', () => {
+      const checker = new BundleSizeChecker(createConfig(), new SilentReporter());
+      const result = checker.compareFromGeneratedStats(currentStatsDir);
+      expect(result.passed).toBe(false);
+      expect(result.actualSizes).toHaveLength(0);
+    });
+
+    it('returns failed result when no baseline exists', () => {
+      writeGeneratedStats({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      // Remove baseline
+      fs.rmSync(baselineDir, { recursive: true });
+      fs.mkdirSync(baselineDir, { recursive: true });
+
+      const checker = new BundleSizeChecker(createConfig(), new SilentReporter());
+      const result = checker.compareFromGeneratedStats(currentStatsDir);
+      expect(result.passed).toBe(false);
+      expect(result.actualSizes).toHaveLength(1);
+      expect(result.expectedSizes).toHaveLength(0);
+    });
+
+    it('returns passed result when sizes match baseline', () => {
+      writeGeneratedStats({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      writeBaseline({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      const checker = new BundleSizeChecker(createConfig(), new SilentReporter());
+      const result = checker.compareFromGeneratedStats(currentStatsDir);
+      expect(result.passed).toBe(true);
+      expect(result.regressions).toHaveLength(0);
+    });
+
+    it('detects regressions when sizes increase beyond threshold', () => {
+      writeGeneratedStats({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '120.00', brotliSizeKb: '96.00' },
+        ],
+        totalgzipSizeKb: '120.00',
+      });
+
+      writeBaseline({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      const checker = new BundleSizeChecker(createConfig(), new SilentReporter());
+      const result = checker.compareFromGeneratedStats(currentStatsDir);
+      expect(result.passed).toBe(false);
+      expect(result.regressions.length).toBeGreaterThan(0);
+    });
+
+    it('populates actualSizes and expectedSizes', () => {
+      writeGeneratedStats({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      writeBaseline({
+        loadableComponents: [
+          { name: 'App', chunksCount: 1, gzipSizeKb: '100.00', brotliSizeKb: '80.00' },
+        ],
+        totalgzipSizeKb: '100.00',
+      });
+
+      const checker = new BundleSizeChecker(createConfig(), new SilentReporter());
+      const result = checker.compareFromGeneratedStats(currentStatsDir);
+      expect(result.actualSizes).toHaveLength(1);
+      expect(result.actualSizes[0].gzipSizeKb).toBe(100);
+      expect(result.expectedSizes).toHaveLength(1);
     });
   });
 
