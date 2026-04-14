@@ -42,7 +42,7 @@ graph TD
 
 ## Why choose `shaka-perf`?
 1. **One test to rule them all**. Write a Playwright test once — get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
-2. [partially ready, WIP] **Real statistics**. Mann-Whitney U test, Hodges-Lehmann estimator, Auto-calibrated statistical thresholds based on the number of metrics tested. We know the difference between noise and a real regression — even on noisy CI environments.                                
+2. **Statistically sound, adjusted for CPU noise.**. Unlike when using other performance benchmarks, you don't have to reduce CPU noise. Control and experiment are sampled *simultaneously* so they hit the same instant of CPU activity, then analyzed with a paired Wilcoxon Signed-Rank test + paired Hodges-Lehmann estimator, with exact-distribution p-values at small n. You don't need a quiet machine, a dedicated CI box — shared noise cancels inside each pair. This make perf-tests extremely cheap and easy to setup. No other open-source web-perf toolkit we could find (such as TracerBench, sitespeed.io) combines noise-aligned sampling with paired statistics this way. See [used_statistics.md](./packages/shaka-perf/used_statistics.md) for the justification of the methods used. 
 3. **True A/B isolation**. Control and experiment run simultaneously in separate Docker containers from separate git branches. No "run before, run after, hope nothing changed" — actual side-by-side comparison.
 4. **~2 hours to full setup**. Write a Dockerfile, a short config, some Playwright tests, done. Works both locally and on CI.
 5. [WIP] **CI-native at scale**. Designed for parallel measurement collection across CI nodes and processes. 
