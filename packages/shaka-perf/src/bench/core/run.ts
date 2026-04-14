@@ -127,15 +127,6 @@ async function takeSamples<TSample>(
   // Trial run using first sampler set only
   await runOnePair(samplerSets[0], groups, 0, true, sampleTimeoutMs, raceCancellation, reportProgress);
 
-  if (!durationMs && samplesPerGroup === 1) {
-    // Only one real measurement needed — run it and store
-    const results = await runOnePair(samplerSets[0], groups, 1, false, sampleTimeoutMs, raceCancellation, reportProgress);
-    for (const { group, sample } of results) {
-      groupedSamples[group][0] = sample;
-    }
-    return sampleGroups;
-  }
-
   // Worker pool: each worker grabs the next iteration index and runs a pair
   let nextIndex = 0;
 

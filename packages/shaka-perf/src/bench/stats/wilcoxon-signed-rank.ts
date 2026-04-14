@@ -1,92 +1,125 @@
-// ! we are not using this ATM; rather using the conf interval isSig
-// all exports are alpha of 0.05 for two-tailed tests
-// using (array length) as N value up to 50
-// prettier-ignore
-const wilcoxonSignedRanksTable = [
-  0,0,0,0,0,0,2,3,5,8,10,13,17,21,25,29,34,40,46,52,58,65,73,81,89,98,107,116,126,
-  137,147,159,170,182,195,208,221,235,249,264,279,294,310,327,343,361,378,396,415,434,
-];
+import jStat = require('jstat');
 
-interface ISample {
-  c: number;
-  e: number | string;
-  diff: number;
-  absDiff: number;
-  rank: number;
-}
-
-export function getSamples(control: number[], experiment: number[]): ISample[] {
-  return control.map((c, i) => {
-    return {
-      c,
-      e: experiment[i],
-      diff: experiment[i] - c,
-      absDiff: Math.abs(experiment[i] - c),
-      rank: 0
-    };
-  });
-}
-
-// sort by absolute difference
-export function sortSamples(samples: ISample[]): ISample[] {
-  return samples.sort((a, b) => {
-    return a.absDiff - b.absDiff;
-  });
-}
-
-// rank based on sorted samples
-export function rankSamples(sortedSamples: ISample[]): ISample[] {
-  const ss = sortedSamples;
-  ss.slice().map((s) => {
-    s.rank = ss.indexOf(s) + 1;
-  });
-  return ss;
-}
-
-export function getTMinusVal(rankedSamples: ISample[]): number {
-  return rankedSamples.reduce((currentSum, sample) => {
-    if (Math.sign(sample.diff) === -1) {
-      return currentSum + sample.rank;
-    }
-    return currentSum;
-  }, 0);
-}
-
-export function getTPlusVal(rankedSamples: ISample[]): number {
-  return rankedSamples.reduce((currentSum, sample) => {
-    if (Math.sign(sample.diff) === 1 || Math.sign(sample.diff) === 0) {
-      return currentSum + sample.rank;
-    }
-    return currentSum;
-  }, 0);
+// Average-rank ties: indices [i..j) in the sorted array all get rank (i+1+j)/2.
+function averageRanks(sortedAbs: number[]): number[] {
+  const n = sortedAbs.length;
+  const ranks = new Array<number>(n);
+  let i = 0;
+  while (i < n) {
+    let j = i;
+    while (j < n && sortedAbs[j] === sortedAbs[i]) j++;
+    const avg = (i + 1 + j) / 2;
+    for (let k = i; k < j; k++) ranks[k] = avg;
+    i = j;
+  }
+  return ranks;
 }
 
 /**
- * Wilcoxon Signed Rank Test
- * paired two-tailed test alpha 0.05 critical values
+ * Exact PMF of the Wilcoxon Signed-Rank W+ statistic under the null
+ * (each of the n ranks equally likely to be + or -). Returns an array of
+ * length n*(n+1)/2 + 1 where entry k is P(W+ = k).
  *
- * @param control - Control as array of numbers
- * @param listTwo - Experiment as array of numbers
+ * Port of SciPy's `_get_wilcoxon_distr` (scipy.stats._hypotests). Builds
+ * the distribution by convolving in rank k at each step: the sign of k
+ * is + (contributes k) or - (contributes 0), each with probability 0.5.
  */
-export function getWilcoxonSignedRankTest(
+function wilcoxonSignedRankPMF(n: number): number[] {
+  let c: number[] = [1];
+  for (let k = 1; k <= n; k++) {
+    const prev = c;
+    const size = (k * (k + 1)) / 2 + 1;
+    c = new Array<number>(size).fill(0);
+    for (let j = 0; j < prev.length; j++) {
+      c[j] += prev[j] * 0.5;
+      c[j + k] += prev[j] * 0.5;
+    }
+  }
+  return c;
+}
+
+// Two-sided exact p-value from the PMF of W+. Matches SciPy's convention:
+//   p = 2 * min(sf(floor(W+)), cdf(ceil(W+))), clipped to [0, 1].
+function exactTwoSidedPValue(wPlus: number, pmf: number[]): number {
+  const maxK = pmf.length - 1;
+  const floor = Math.floor(wPlus);
+  const ceil = Math.ceil(wPlus);
+  let sf = 0;
+  for (let i = floor; i <= maxK; i++) sf += pmf[i];
+  let cdf = 0;
+  for (let i = 0; i <= ceil; i++) cdf += pmf[i];
+  return Math.min(1, 2 * Math.min(sf, cdf));
+}
+
+/**
+ * Two-tailed p-value for the Wilcoxon Signed-Rank test on paired samples.
+ *
+ * Mirrors SciPy's `stats.wilcoxon(..., method='auto')`:
+ *   - Zero differences are discarded (Wilcoxon's reduced-sample convention).
+ *   - When no ties and n <= 50, use the *exact* null distribution.
+ *   - Otherwise, use the normal approximation with continuity correction
+ *     and tie correction to the variance.
+ */
+export function wilcoxonSignedRankPValue(
   control: number[],
   experiment: number[]
-): boolean {
-  const N = control.length;
-  const samples = getSamples(control, experiment);
-  const sortedSamples = sortSamples(samples);
-  const rankedSamples = rankSamples(sortedSamples);
-  const tMinusVal = getTMinusVal(rankedSamples);
-  const tPlusVal = getTPlusVal(rankedSamples);
-  const wStat = Math.min(tMinusVal, tPlusVal);
-
-  try {
-    const wCrit = wilcoxonSignedRanksTable[N];
-    // !! important this is lt not gt
-    return wStat < wCrit;
-  } catch (e) {
+): number {
+  if (control.length !== experiment.length) {
     throw new Error(
-      `Sample sizes greater than 50 are not supported. Your sample size is ${N}`
+      `Wilcoxon Signed-Rank requires paired samples of equal length (got ${control.length} vs ${experiment.length})`
     );
   }
+
+  const diffs: number[] = [];
+  for (let i = 0; i < control.length; i++) {
+    const d = control[i] - experiment[i];
+    if (d !== 0) diffs.push(d);
+  }
+  const n = diffs.length;
+  if (n === 0) return 1;
+
+  const sorted = diffs.slice().sort((a, b) => Math.abs(a) - Math.abs(b));
+  const absSorted = sorted.map((d) => Math.abs(d));
+  const ranks = averageRanks(absSorted);
+
+  let wPlus = 0;
+  for (let i = 0; i < n; i++) {
+    if (sorted[i] > 0) wPlus += ranks[i];
+  }
+
+  // Detect ties in absolute-difference magnitudes.
+  let hasTies = false;
+  for (let i = 1; i < n; i++) {
+    if (absSorted[i] === absSorted[i - 1]) {
+      hasTies = true;
+      break;
+    }
+  }
+
+  // Exact path: no ties and n small enough that the O(n^3) PMF build is cheap.
+  // SciPy's auto-switch threshold is n > 50; we match it.
+  if (!hasTies && n <= 50) {
+    return exactTwoSidedPValue(wPlus, wilcoxonSignedRankPMF(n));
+  }
+
+  // Asymptotic path: normal approximation with continuity + tie correction.
+  const mean = (n * (n + 1)) / 4;
+
+  let tieCorrection = 0;
+  let i = 0;
+  while (i < n) {
+    let j = i;
+    while (j < n && absSorted[j] === absSorted[i]) j++;
+    const t = j - i;
+    if (t > 1) tieCorrection += (t * t * t - t) / 48;
+    i = j;
+  }
+  const variance = (n * (n + 1) * (2 * n + 1)) / 24 - tieCorrection;
+  if (variance <= 0) return 1;
+  const sd = Math.sqrt(variance);
+
+  const continuity = wPlus > mean ? -0.5 : wPlus < mean ? 0.5 : 0;
+  const z = (wPlus - mean + continuity) / sd;
+
+  return jStat.normal.cdf(-Math.abs(z), 0, 1) * 2;
 }

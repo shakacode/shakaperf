@@ -1,108 +1,150 @@
 import jStat = require('jstat');
-import { median } from 'd3-array';
 
-import type { IConfidenceInterval } from './stats';
 import { toNearestHundreth } from './utils';
 
 /**
- * Difference of x and y
- *
- * @private
+ * Exact PMF of the Wilcoxon Signed-Rank W+ statistic under the null, used to
+ * find the critical rank for the paired Hodges-Lehmann confidence interval.
+ * Port of SciPy's `_get_wilcoxon_distr`; see `wilcoxon-signed-rank.ts` for
+ * the identical recursion.
  */
-function _defaultModifier(x: number, y: number): number {
-  return x - y;
+function wilcoxonSignedRankPMF(n: number): number[] {
+  let c: number[] = [1];
+  for (let k = 1; k <= n; k++) {
+    const prev = c;
+    const size = (k * (k + 1)) / 2 + 1;
+    c = new Array<number>(size).fill(0);
+    for (let j = 0; j < prev.length; j++) {
+      c[j] += prev[j] * 0.5;
+      c[j + k] += prev[j] * 0.5;
+    }
+  }
+  return c;
+}
+
+export interface PairedCIInputs {
+  n: number;
+  sortedWalsh: number[];
+  pmf: number[] | null; // exact PMF when n ≤ 50, null otherwise (asymptotic)
+  controlMedian: number;
 }
 
 /**
- * Apply the passed "func" to the permutations of the items in listOne and listTwo
- *
- * @param listOne - Array of numbers
- * @param listTwo - Array of numbers
- * @param func - Function used to do something with x and y
+ * Precompute the sorted Walsh averages of the paired differences and the
+ * exact W+ PMF (for small n). The confidence interval at any level can then
+ * be derived in O(1) lookups plus O(pmf) critical-rank search.
  */
-export function cartesianProduct(
-  listOne: number[],
-  listTwo: number[],
-  func = _defaultModifier
-): number[] {
-  let results: number[] = [];
-  listOne.forEach((x) => {
-    listTwo.forEach((y) => {
-      results.push(func(x, y));
-    });
-  });
-  results = results.sort((a, b) => a - b);
-  return results;
+export function preparePairedCIInputs(
+  control: number[],
+  experiment: number[]
+): PairedCIInputs {
+  if (control.length !== experiment.length) {
+    throw new Error(
+      `Paired CI requires equal-length arrays (got ${control.length} vs ${experiment.length})`
+    );
+  }
+  const n = control.length;
+
+  const diffs = new Array<number>(n);
+  for (let i = 0; i < n; i++) diffs[i] = control[i] - experiment[i];
+
+  const walshLen = (n * (n + 1)) / 2;
+  const walsh = new Array<number>(walshLen);
+  let idx = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i; j < n; j++) {
+      walsh[idx++] = (diffs[i] + diffs[j]) / 2;
+    }
+  }
+  walsh.sort((a, b) => a - b);
+
+  const pmf = n > 0 && n <= 50 ? wilcoxonSignedRankPMF(n) : null;
+
+  const sc = control.slice().sort((a, b) => a - b);
+  const m = sc.length;
+  const controlMedian =
+    m === 0 ? 0 : m % 2 === 1 ? sc[(m - 1) / 2] : (sc[m / 2 - 1] + sc[m / 2]) / 2;
+
+  return { n, sortedWalsh: walsh, pmf, controlMedian };
 }
 
 /**
- * Calculate the confidence interval of the delta between the two distributions
- *
- * @param distributionOne - Expected to be array of numbers
- * @param distributionTwo - Expected to be array of numbers
- * @param interval - Float between 0 and 1
+ * Largest integer c such that P(W+ ≤ c) ≤ alpha/2. Returns -1 if no such
+ * integer exists (i.e. the requested confidence level is not achievable at
+ * this n), in which case the CI spans the full Walsh range.
  */
-export function confidenceInterval(
-  a: number[],
-  b: number[],
+function criticalRank(n: number, alpha: number, pmf: number[] | null): number {
+  const halfAlpha = alpha / 2;
+  if (pmf !== null) {
+    let cdf = 0;
+    let c = -1;
+    for (let k = 0; k < pmf.length; k++) {
+      if (cdf + pmf[k] > halfAlpha) break;
+      cdf += pmf[k];
+      c = k;
+    }
+    return c;
+  }
+  const mean = (n * (n + 1)) / 4;
+  const sd = Math.sqrt((n * (n + 1) * (2 * n + 1)) / 24);
+  // continuity correction: P(W+ ≤ c) ≈ Φ((c + 0.5 − mean)/sd)
+  return Math.floor(jStat.normal.inv(halfAlpha, mean, sd) - 0.5);
+}
+
+export interface IPairedCI {
+  min: number;
+  median: number;
+  max: number;
+  asPercent: { percentMin: number; percentMedian: number; percentMax: number };
+}
+
+/**
+ * Two-sided confidence interval for the median paired difference, and the
+ * paired Hodges-Lehmann point estimate (median of Walsh averages). Matches
+ * the Wilcoxon Signed-Rank test used for significance, so the CI excludes
+ * zero iff the signed-rank test rejects H0 at the same level.
+ */
+export function pairedConfidenceInterval(
+  inputs: PairedCIInputs,
   confidence: number
-): Omit<IConfidenceInterval, 'isSig'> {
-  const aLength = a.length;
-  const bLength = b.length;
-  const maxU = aLength * bLength;
-  const meanU = maxU / 2;
+): IPairedCI {
+  const { n, sortedWalsh, pmf, controlMedian } = inputs;
+  const N = sortedWalsh.length;
 
-  // subtract every control data point to every experiment data point
-  const deltas = a
-    .map((a) => b.map((b) => a - b))
-    .flat()
-    .sort((a, b) => a - b);
-
-  // count the number of "wins" a > b and 0.5 for a tie if a == b
-  const U = deltas.reduce(
-    (accum, value) => accum + (value < 0 ? 1 : value == 0 ? 0.5 : 0),
-    0
-  );
-
-  const lowerTail = U <= meanU;
-
-  const standardDeviationU = Math.sqrt((maxU * (aLength + bLength + 1)) / 12);
-
-  // we are estimating a discrete distribution so bias the mean depending on which tail
-  // we are computing the pValue for. literally just +/- 0.5
-  const continuityCorrection = lowerTail ? 0.5 : -0.5;
-
-  // how many standard deviations the result is given the null hypothesis is true
-  const zScore = (U - meanU + continuityCorrection) / standardDeviationU;
-
-  // z is symmetrical, so use lower tail and double the cumulative of U for each tail
-  // since this is a two tailed test. normal cumulative distribution function
-  const pValue = jStat.normal.cdf(-Math.abs(zScore), 0, 1) * 2;
+  let estimator = 0;
+  if (N > 0) {
+    estimator =
+      N % 2 === 1
+        ? sortedWalsh[(N - 1) / 2]
+        : (sortedWalsh[N / 2 - 1] + sortedWalsh[N / 2]) / 2;
+  }
 
   const alpha = 1 - confidence;
+  const c = criticalRank(n, alpha, pmf);
 
-  const lowerU = Math.round(
-    jStat.normal.inv(alpha / 2, meanU + 0.5, standardDeviationU)
-  );
-  const upperU = Math.round(
-    jStat.normal.inv(1 - alpha / 2, meanU + 0.5, standardDeviationU)
-  );
+  let ciLow: number;
+  let ciHigh: number;
+  if (N === 0) {
+    ciLow = 0;
+    ciHigh = 0;
+  } else if (c < 0 || c >= N) {
+    // confidence level not achievable at this n — fall back to full Walsh range
+    ciLow = sortedWalsh[0];
+    ciHigh = sortedWalsh[N - 1];
+  } else {
+    ciLow = sortedWalsh[c];
+    ciHigh = sortedWalsh[N - 1 - c];
+  }
 
-  // set percentage delta from control median
-  const aMedian = median(a) as number;
-  const medianDeltas = median(deltas) as number;
-
+  const denom = controlMedian === 0 ? 1 : controlMedian;
   return {
-    min: deltas[lowerU],
-    median: medianDeltas ?? 0,
-    max: deltas[upperU],
-    zScore: +zScore.toPrecision(4),
-    pValue: +pValue.toPrecision(4),
-    U,
+    min: ciLow,
+    max: ciHigh,
+    median: estimator,
     asPercent: {
-      percentMin: toNearestHundreth((deltas[lowerU] / aMedian) * 100),
-      percentMedian: toNearestHundreth((medianDeltas / aMedian) * 100) ?? 0,
-      percentMax: toNearestHundreth((deltas[upperU] / aMedian) * 100)
+      percentMin: toNearestHundreth((ciLow / denom) * 100),
+      percentMedian: toNearestHundreth((estimator / denom) * 100),
+      percentMax: toNearestHundreth((ciHigh / denom) * 100)
     }
   };
 }

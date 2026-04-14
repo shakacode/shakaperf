@@ -18,7 +18,8 @@
     "bundle-size:compare": "shaka-bundle-size compare && shaka-bundle-size -c admin.bundle-size.config.ts compare",
     "bundle-size:upload": "shaka-bundle-size upload-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts upload-main-branch-stats",
     "typecheck": "tsc --noEmit",
-    "visreg:test": "shaka-perf visreg-compare"
+    "visreg:test": "shaka-perf visreg-compare",
+    "rebuild-deps": "yarn workspaces foreach -Apt --include 'packages/*' run build && yarn install"
   },
   "dependencies": {
     "@babel/helper-plugin-utils": "^7.28.6",
