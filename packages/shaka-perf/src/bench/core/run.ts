@@ -49,6 +49,7 @@ export interface RunOptions {
   setupTimeoutMs: number;
   sampleTimeoutMs: number;
   parallelism: number;
+  durationMs?: number;
   raceCancellation: RaceCancellation;
 }
 
@@ -63,6 +64,7 @@ export default async function run<TSample>(
     setupTimeoutMs = SETUP_TIMEOUT,
     sampleTimeoutMs = SAMPLE_TIMEOUT,
     parallelism = 1,
+    durationMs,
     raceCancellation
   } = options;
 
@@ -79,6 +81,7 @@ export default async function run<TSample>(
       iterations,
       progress,
       sampleTimeoutMs,
+      durationMs,
       raceCancellation
     );
   } finally {
@@ -92,37 +95,41 @@ async function takeSamples<TSample>(
   samplesPerGroup: number,
   progress: SampleProgressCallback,
   sampleTimeoutMs: number,
+  durationMs: number | undefined,
   raceCancellation: RaceCancellation | undefined
 ): Promise<SampleGroup<TSample>[]> {
   const groups = Object.keys(samplerSets[0]);
-  const sampleCount = (samplesPerGroup + 1) * groups.length;
   const groupedSamples: GroupedSamples<TSample> = {};
   const sampleGroups: SampleGroup<TSample>[] = [];
   const start = Date.now();
   let completed = 0;
 
   for (const group of groups) {
-    const samples: TSample[] = new Array(samplesPerGroup);
+    const samples: TSample[] = durationMs ? [] : new Array(samplesPerGroup);
     groupedSamples[group] = samples;
     sampleGroups.push({ group, samples });
   }
 
-  // Trial run using first sampler set only
-  await runOnePair(samplerSets[0], groups, 0, true, sampleTimeoutMs, raceCancellation,
-    (group, iteration) => {
-      progress(Date.now() - start, completed, sampleCount - completed, group, iteration);
-      completed++;
+  const reportProgress = (group: string, iteration: number) => {
+    const elapsed = Date.now() - start;
+    let remaining: number;
+    if (durationMs) {
+      const remainingMs = Math.max(0, durationMs - elapsed);
+      remaining = completed > 0 ? Math.round((remainingMs * completed) / elapsed) : 0;
+    } else {
+      const sampleCount = (samplesPerGroup + 1) * groups.length;
+      remaining = sampleCount - completed;
     }
-  );
+    progress(elapsed, completed, remaining, group, iteration);
+    completed++;
+  };
 
-  if (samplesPerGroup === 1) {
+  // Trial run using first sampler set only
+  await runOnePair(samplerSets[0], groups, 0, true, sampleTimeoutMs, raceCancellation, reportProgress);
+
+  if (!durationMs && samplesPerGroup === 1) {
     // Only one real measurement needed — run it and store
-    const results = await runOnePair(samplerSets[0], groups, 1, false, sampleTimeoutMs, raceCancellation,
-      (group, iteration) => {
-        progress(Date.now() - start, completed, sampleCount - completed, group, iteration);
-        completed++;
-      }
-    );
+    const results = await runOnePair(samplerSets[0], groups, 1, false, sampleTimeoutMs, raceCancellation, reportProgress);
     for (const { group, sample } of results) {
       groupedSamples[group][0] = sample;
     }
@@ -135,16 +142,19 @@ async function takeSamples<TSample>(
   async function worker(samplerSet: SamplerSet<TSample>): Promise<void> {
     while (true) {
       const myIndex = nextIndex++;
-      if (myIndex >= samplesPerGroup) break;
+      if (durationMs) {
+        if (Date.now() - start >= durationMs) break;
+      } else if (myIndex >= samplesPerGroup) {
+        break;
+      }
 
-      const results = await runOnePair(samplerSet, groups, myIndex + 1, false, sampleTimeoutMs, raceCancellation,
-        (group, iteration) => {
-          progress(Date.now() - start, completed, sampleCount - completed, group, iteration);
-          completed++;
-        }
-      );
+      const results = await runOnePair(samplerSet, groups, myIndex + 1, false, sampleTimeoutMs, raceCancellation, reportProgress);
       for (const { group, sample } of results) {
-        groupedSamples[group][myIndex] = sample;
+        if (durationMs) {
+          groupedSamples[group].push(sample);
+        } else {
+          groupedSamples[group][myIndex] = sample;
+        }
       }
     }
   }

@@ -46,6 +46,7 @@ export interface ICompareFlags {
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
   parallelism: number;
+  duration?: number;
   config?: string;
 }
 
@@ -179,6 +180,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         {
           sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
           parallelism: compareFlags.parallelism,
+          durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
         }
       )
     ).map(({ group, samples }) => {
@@ -224,16 +226,17 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
 
     const duration = secondsToTime(durationInSec(endTime, startTime));
+    const actualMeasurements = results[0].samples.length;
     const message = `${chalkScheme.blackBgGreen(
       `    ${chalkScheme.white("SUCCESS")}    `
-    )} ${compareFlags.numberOfMeasurements} measurements took ${duration}`;
+    )} ${actualMeasurements} measurements took ${duration}`;
 
     console.log(`\n${message}`);
 
     // if the stdout analysis is not hidden show it
     if (!compareFlags.hideAnalysis) {
       analyzedJSONString = await runAnalyze(resultJSONPath, {
-        numberOfMeasurements: compareFlags.numberOfMeasurements!,
+        numberOfMeasurements: actualMeasurements,
         regressionThreshold: compareFlags.regressionThreshold!,
         regressionThresholdStat: compareFlags.regressionThresholdStat!,
         pValueThreshold: compareFlags.pValueThreshold,

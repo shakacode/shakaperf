@@ -46,12 +46,8 @@ export async function runLighthouse(
   const path = parsedUrl.pathname;
   const query = parsedUrl.search;
 
-  const namePrefix = `${resultsFolder}/${prefix}${host.replace(
-    ':',
-    '_'
-  )}_${path.replace(/\//g, '_')}_${query
-    .replace(/\?/g, '_')
-    .replace(/=/g, '_')}`;
+  const sanitized = `${prefix}${host}_${path}_${query}`.replace(/[/:?=]/g, '_');
+  const namePrefix = `${resultsFolder}/${sanitized}`;
 
   if (saveArtifacts) {
     writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);

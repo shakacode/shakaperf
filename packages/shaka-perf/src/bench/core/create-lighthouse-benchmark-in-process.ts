@@ -82,7 +82,15 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       lhSettings = { ...lhSettings, ...userConfig, port: this.chrome!.port };
     }
 
-    const fullUrl = this.baseUrl + this.testDef.startingPath;
+    const base = new URL(this.baseUrl);
+    const parsed = new URL(this.testDef.startingPath, base);
+    // Preserve query params from baseUrl (e.g. ?hydration_delay=1000)
+    for (const [key, value] of base.searchParams) {
+      if (!parsed.searchParams.has(key)) {
+        parsed.searchParams.set(key, value);
+      }
+    }
+    const fullUrl = parsed.href;
     const markers = this.testDef.options.markers ?? this.options.markers;
 
     let lastError: Error | null = null;

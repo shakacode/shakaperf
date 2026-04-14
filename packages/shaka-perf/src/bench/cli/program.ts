@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { addCompareOptions } from "shaka-shared";
 import { getDefaultValue } from "./command-config/default-flag-args";
 import { ICompareFlags, runCompare } from "./commands/compare";
@@ -54,6 +54,14 @@ export function createBenchCommands(): Command[] {
       "Seconds to wait for a sample",
       parseIntArg,
       getDefaultValue("sampleTimeout")
+    )
+    .addOption(
+      new Option(
+        "--duration <seconds>",
+        "Run measurements for this many seconds instead of a fixed count"
+      )
+        .argParser(parseIntArg)
+        .conflicts("numberOfMeasurements")
     )
     .option(
       "--parallelism <n>",
