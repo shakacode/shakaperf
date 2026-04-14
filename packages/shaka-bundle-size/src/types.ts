@@ -15,11 +15,6 @@ export enum RegressionType {
 }
 
 /**
- * Verbosity level for the reporter.
- */
-export type VerbosityLevel = 'quiet' | 'normal' | 'verbose';
-
-/**
  * Result of a regression policy evaluation.
  */
 export interface PolicyResult {
@@ -74,8 +69,6 @@ export interface IReporter {
   error(message: string): void;
   /** Log a section header */
   header(title: string): void;
-  /** Log verbose message (only in verbose mode) */
-  verbose(message: string): void;
   /** Output final summary */
   summary(result: CheckResult): void;
   /** Report a size increase */
@@ -439,8 +432,6 @@ export interface UpdateBaselineResult {
  * Options for Reporter constructor.
  */
 export interface ReporterOptions {
-  /** Output verbosity level */
-  verbosity?: VerbosityLevel;
   /** Whether to use ANSI colors */
   colors?: boolean;
   /** Output stream */

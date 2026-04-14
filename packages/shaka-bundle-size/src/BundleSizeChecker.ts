@@ -86,7 +86,7 @@ export class BundleSizeChecker {
     this.sizeCalculator = new SizeCalculator({
       bundlesDir: this.bundlesDir,
       onMissingFile: (filePath) => {
-        this.reporter.verbose(`Missing compressed file: ${filePath}`);
+        this.reporter.warning(`Missing compressed file: ${filePath}`);
       },
     });
 
@@ -151,6 +151,7 @@ export class BundleSizeChecker {
 
   check(): CheckResult {
     this.reporter.header('Bundle Size Check');
+    this.reporter.info(`Reading stats from ${this.statsFile}`);
 
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
@@ -168,7 +169,10 @@ export class BundleSizeChecker {
       };
     }
 
+    const baselinePath = path.join(this.baselineDir, this.baselineFile);
+    this.reporter.info(`Reading baseline from ${baselinePath}`);
     const baseline = this.baselineComparator.loadBaselineFile(this.baselineFile);
+    this.reporter.info(`Comparing ${actualSizes.length} component(s) against baseline`);
     const comparisonResult = this.baselineComparator.compare(actualSizes, baseline);
     const regressions = this.regressionDetector.detectRegressions(comparisonResult);
     const { failures, warnings } = this.regressionDetector.evaluateAll(regressions);
@@ -190,6 +194,7 @@ export class BundleSizeChecker {
 
   updateBaseline(): UpdateBaselineResult {
     this.reporter.header('Updating Baseline');
+    this.reporter.info(`Reading stats from ${this.statsFile}`);
 
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);

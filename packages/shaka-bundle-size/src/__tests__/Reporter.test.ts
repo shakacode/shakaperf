@@ -17,11 +17,11 @@ function createOutputStream(): { stream: NodeJS.WriteStream; getOutput: () => st
 
 describe('Reporter', () => {
   describe('constructor', () => {
-    it('defaults to normal verbosity with colors', () => {
+    it('creates reporter with defaults', () => {
       const { stream } = createOutputStream();
       const reporter = new Reporter({ output: stream });
       reporter.info('test');
-      // Should produce output in normal mode
+      // Should produce output
     });
   });
 
@@ -40,42 +40,28 @@ describe('Reporter', () => {
   });
 
   describe('info', () => {
-    it('outputs message in normal mode', () => {
+    it('outputs message', () => {
       const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'normal' });
+      const reporter = new Reporter({ output: stream });
       reporter.info('hello');
       expect(getOutput()).toContain('hello');
-    });
-
-    it('suppresses output in quiet mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'quiet' });
-      reporter.info('hello');
-      expect(getOutput()).toBe('');
     });
   });
 
   describe('success', () => {
-    it('outputs green message in normal mode', () => {
+    it('outputs green message', () => {
       const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'normal' });
+      const reporter = new Reporter({ output: stream });
       reporter.success('passed');
       expect(getOutput()).toContain('passed');
       expect(getOutput()).toContain(ANSI.GREEN);
     });
-
-    it('suppresses output in quiet mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'quiet' });
-      reporter.success('passed');
-      expect(getOutput()).toBe('');
-    });
   });
 
   describe('warning', () => {
-    it('outputs yellow message even in quiet mode', () => {
+    it('outputs yellow message', () => {
       const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'quiet' });
+      const reporter = new Reporter({ output: stream });
       reporter.warning('warn!');
       expect(getOutput()).toContain('warn!');
     });
@@ -92,43 +78,13 @@ describe('Reporter', () => {
   });
 
   describe('header', () => {
-    it('outputs title with separators in normal mode', () => {
+    it('outputs title with separators', () => {
       const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'normal' });
+      const reporter = new Reporter({ output: stream });
       reporter.header('My Section');
       const output = getOutput();
       expect(output).toContain('My Section');
       expect(output).toContain('='.repeat(80));
-    });
-
-    it('suppresses output in quiet mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'quiet' });
-      reporter.header('My Section');
-      expect(getOutput()).toBe('');
-    });
-  });
-
-  describe('verbose', () => {
-    it('outputs message only in verbose mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'verbose' });
-      reporter.verbose('debug info');
-      expect(getOutput()).toContain('debug info');
-    });
-
-    it('suppresses output in normal mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'normal' });
-      reporter.verbose('debug info');
-      expect(getOutput()).toBe('');
-    });
-
-    it('suppresses output in quiet mode', () => {
-      const { stream, getOutput } = createOutputStream();
-      const reporter = new Reporter({ output: stream, verbosity: 'quiet' });
-      reporter.verbose('debug info');
-      expect(getOutput()).toBe('');
     });
   });
 
@@ -515,13 +471,6 @@ describe('SilentReporter', () => {
   it('produces no output for header', () => {
     const reporter: IReporter = new SilentReporter();
     reporter.header('test');
-    expect(consoleSpy).not.toHaveBeenCalled();
-    expect(stdoutSpy).not.toHaveBeenCalled();
-  });
-
-  it('produces no output for verbose', () => {
-    const reporter: IReporter = new SilentReporter();
-    reporter.verbose('test');
     expect(consoleSpy).not.toHaveBeenCalled();
     expect(stdoutSpy).not.toHaveBeenCalled();
   });
