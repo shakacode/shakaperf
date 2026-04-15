@@ -14,11 +14,19 @@ Both land in `testData/SUMMARY.md` via the `perf-noise-summary` skill.
 
 ## Sampling conditions
 
+Full 2×2 grid (sampling-mode × parallelism):
+
+|              | par=1 | par=4 |
+| ------------ | ----- | ----- |
+| sequential   | seq1  | seqP  |
+| simultaneous | sim1  | simP  |
+
 - **seq1** — `--sampling-mode sequential --parallelism 1` (pre-PR)
 - **seqP** — `--sampling-mode sequential --parallelism 4` (parallelism, no pair-coupling)
+- **sim1** — `--sampling-mode simultaneous --parallelism 1` (pair-coupling, no parallelism)
 - **simP** — `--sampling-mode simultaneous --parallelism 4` (current default)
 
-## 12 campaign groups
+## 16 campaign groups
 
 | Group                          | Sampling     | Par | Noise  | Control URL              | Experiment URL                              |
 | ------------------------------ | ------------ | :-: | ------ | ------------------------ | ------------------------------------------- |
@@ -28,12 +36,16 @@ Both land in `testData/SUMMARY.md` via the `perf-noise-summary` skill.
 | `noDifference_HighNoise_seq1`  | sequential   |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `noDifference_HighNoise_seqP`  | sequential   |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `noDifference_HighNoise_simP`  | simultaneous |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_LowNoise_sim1`   | simultaneous |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_HighNoise_sim1`  | simultaneous |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `regression_LowNoise_seq1`     | sequential   |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_LowNoise_seqP`     | sequential   |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_LowNoise_simP`     | simultaneous |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_HighNoise_seq1`    | sequential   |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_HighNoise_seqP`    | sequential   |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_HighNoise_simP`    | simultaneous |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_LowNoise_sim1`     | simultaneous |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_HighNoise_sim1`    | simultaneous |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 
 20 runs per group. Detection metric: `hydration-start`.
 
@@ -59,16 +71,21 @@ The main thing is I expect smaller p-values under noise for paired tests, but on
   simP should outperform seq1 by a huge margin. The regression will be detected more frequently and with orders of magnitude smaller p-value.
 - **Q2.** HighNoise, regression, NEW: `simP` vs `seqP`.
   same as Q1. simP should outperform seqP
-- **Q3.** HighNoise, noDifference, NEW: does `seqP` produce more false regressions than `seq1`/`simP`?
+- **Q3.** HighNoise, regression, NEW: `sim1` vs `seq1`.
+  sim1 should drastically outperform seq1
+- **Q4.** HighNoise, regression, NEW: `sim1` vs `simP`.
+  roughly same performance expected
+- **Q5.** HighNoise, noDifference, NEW: does `seqP` produce more false regressions than `seq1`/`sim1`/`simP`?
   No difference actually. p-value threshould 0.01 should reduce false regressions to absolute minimum.
-- **Q4 (control).** LowNoise.
-  Three sampling conditions should be indistinguishable in terms of true and false regressions.
-- **Q5.** HighNoise, regression, `simP`: NEW vs OLD mean p-value. Does paired stats help when pairs are locked?
+- **Q6 (control).** LowNoise.
+  NEW stats: All four sampling conditions should be indistinguishable in terms of true and false regressions.
+  OLD stats: sim1 (the best) == seq1 > simP > seqP (the worst)
+- **Q7.** HighNoise, regression, `simP`: NEW vs OLD mean p-value. Does paired stats help when pairs are locked?
   NEW should outperform OLD by a huge margin. In NEW the regression will be detected more frequently and with orders of magnitude smaller p-value.
-- **Q6.** HighNoise, regression, `seqP`: NEW vs OLD. Paired stats should lose the edge (or lose) when pairs drift.
+- **Q8.** HighNoise, regression, `seqP`: NEW vs OLD. Paired stats should lose the edge (or lose) when pairs drift.
   No difference in performance. Both should perform badly.
-- **Q7 (synthesis).** Bigger swing in mean p-value: (seq1→simP at NEW) or (OLD→NEW at simP)?
-  depending on noise. On low noise, seq1 shoul de same as simP at NEW, however adding noise makes simP way better.
+- **Q9 (synthesis).** Bigger swing in mean p-value: (seq1→simP at NEW) or (OLD→NEW at simP)?
+  Depends on noise. On low noise, seq1 shoul de same as simP at NEW, however adding noise makes simP way better.
   Switching OLD→NEW at simP gives way better results at high noise, but still benefitial at low noise
 
 
@@ -106,8 +123,8 @@ git checkout 5da18f5^ -- packages/shaka-perf/src/bench/stats \
 yarn build
 ```
 
-Do not revert sampling-mode, parallelism, process-isolation, or
-campaign-script commits.
+Do not revert sampling-mode, parallelism, process-isolation, or campaign-script commits.
+Only revert canges in statistical methods.
 
 ### 4. Regenerate OLD-stats summary (no remeasurement)
 
@@ -125,23 +142,6 @@ git diff HEAD -- packages/shaka-perf/src/bench/testData/SUMMARY.md
 git diff HEAD -- packages/shaka-perf/src/bench/testData
 ```
 
-### 6. Answer Q1–Q7
+### 6. Check predictions Q1–Q9. Notice where your answers were wrong
 
-One sentence each, citing the two numbers being compared. Then conclude:
 
-- Q5 big improvement + Q6 none/regression → stats and sampling ship together.
-- Q7 stats swing ≫ sampling swing → drop sampling work, ship stats only.
-- Q7 sampling swing ≫ stats swing → drop stats change, ship sampling only.
-- All swings small → PR isn't pulling weight.
-
-Roll the stats revert back before landing:
-
-```bash
-git checkout HEAD -- packages/shaka-perf/src/bench/stats \
-                     packages/shaka-perf/src/bench/cli/compare/generate-stats.ts \
-                     packages/shaka-perf/src/bench/cli/compare/compare-results.ts
-yarn build
-UPDATE_TESTDATA=1 yarn jest noise-resilience
-```
-
-Put the Q1–Q7 findings in the PR description.

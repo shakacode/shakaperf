@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Runs the full noise-resilience measurement campaign.
-# Groups (3 sampling conditions x 4 outcomes x noise = 12):
+# Groups (4 sampling conditions x 2 outcomes x 2 noise = 16):
 #   Sampling conditions:
-#     seq1  - --sampling-mode sequential  --parallelism 1  (pre-PR behavior)
-#     seqP  - --sampling-mode sequential  --parallelism 4  (pairs drift between workers)
-#     simP  - --sampling-mode simultaneous --parallelism 4 (current PR default)
+#     seq1  - --sampling-mode sequential   --parallelism 1  (pre-PR behavior)
+#     seqP  - --sampling-mode sequential   --parallelism 4  (pairs drift between workers)
+#     sim1  - --sampling-mode simultaneous --parallelism 1  (pair-coupling without parallelism)
+#     simP  - --sampling-mode simultaneous --parallelism 4  (current PR default)
 #   Outcomes:
 #     noDifference  - control == experiment
 #     regression    - control vs ?hydration_delay=50
@@ -64,6 +65,7 @@ start_noise() {
 CONDITIONS=(
   "seq1 sequential 1"
   "seqP sequential 4"
+  "sim1 simultaneous 1"
   "simP simultaneous 4"
 )
 
