@@ -5,6 +5,18 @@ paired-simultaneous sampling actually make perf-tests noise-resilient,
 or is one of the two pieces doing all the work? Run the campaign, diff
 the summaries, check if all predictions hold.
 
+The core insight: a paired difference `d_i = exp[i] − ctrl[i]` only
+cancels noise if the two samples in the pair *experienced the same
+noise*. That requires sampling them at the same instant.
+
+![Sequential vs Simultaneous noise impact](noise-resilient-study.svg)
+
+![Mann-Whitney U vs paired Wilcoxon Signed-Rank](stats-comparison.svg)
+
+The PR couples two changes: sample control + experiment simultaneously,
+*and* switch to paired stats that consume `d_i`. The study asks whether
+both are necessary, or one alone is enough.
+
 ## Test-quality metrics
 
 1. **False-regression count** in `noDifference_*` groups — lower is better.
