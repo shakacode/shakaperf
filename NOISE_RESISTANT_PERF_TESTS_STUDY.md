@@ -16,34 +16,34 @@ Both land in `testData/SUMMARY.md` via the `perf-noise-summary` skill.
 
 Full 2×2 grid (sampling-mode × parallelism):
 
-|              | par=1 | par=4 |
+|              | par=1 | par=3 |
 | ------------ | ----- | ----- |
 | sequential   | seq1  | seqP  |
 | simultaneous | sim1  | simP  |
 
 - **seq1** — `--sampling-mode sequential --parallelism 1` (pre-PR)
-- **seqP** — `--sampling-mode sequential --parallelism 4` (parallelism, no pair-coupling)
+- **seqP** — `--sampling-mode sequential --parallelism 3` (parallelism, no pair-coupling)
 - **sim1** — `--sampling-mode simultaneous --parallelism 1` (pair-coupling, no parallelism)
-- **simP** — `--sampling-mode simultaneous --parallelism 4` (current default)
+- **simP** — `--sampling-mode simultaneous --parallelism 3` (current default)
 
 ## 16 campaign groups
 
 | Group                          | Sampling     | Par | Noise  | Control URL              | Experiment URL                              |
 | ------------------------------ | ------------ | :-: | ------ | ------------------------ | ------------------------------------------- |
 | `noDifference_LowNoise_seq1`   | sequential   |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
-| `noDifference_LowNoise_seqP`   | sequential   |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
-| `noDifference_LowNoise_simP`   | simultaneous |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_LowNoise_seqP`   | sequential   |  3  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_LowNoise_simP`   | simultaneous |  3  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `noDifference_HighNoise_seq1`  | sequential   |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
-| `noDifference_HighNoise_seqP`  | sequential   |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
-| `noDifference_HighNoise_simP`  | simultaneous |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_HighNoise_seqP`  | sequential   |  3  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
+| `noDifference_HighNoise_simP`  | simultaneous |  3  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `noDifference_LowNoise_sim1`   | simultaneous |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `noDifference_HighNoise_sim1`  | simultaneous |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/`                    |
 | `regression_LowNoise_seq1`     | sequential   |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
-| `regression_LowNoise_seqP`     | sequential   |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
-| `regression_LowNoise_simP`     | simultaneous |  4  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_LowNoise_seqP`     | sequential   |  3  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_LowNoise_simP`     | simultaneous |  3  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_HighNoise_seq1`    | sequential   |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
-| `regression_HighNoise_seqP`    | sequential   |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
-| `regression_HighNoise_simP`    | simultaneous |  4  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_HighNoise_seqP`    | sequential   |  3  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
+| `regression_HighNoise_simP`    | simultaneous |  3  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_LowNoise_sim1`     | simultaneous |  1  | off    | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 | `regression_HighNoise_sim1`    | simultaneous |  1  | **on** | `http://localhost:3030/` | `http://localhost:3030/?hydration_delay=50` |
 

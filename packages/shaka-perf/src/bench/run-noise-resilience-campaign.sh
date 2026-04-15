@@ -3,9 +3,9 @@
 # Groups (4 sampling conditions x 2 outcomes x 2 noise = 16):
 #   Sampling conditions:
 #     seq1  - --sampling-mode sequential   --parallelism 1  (pre-PR behavior)
-#     seqP  - --sampling-mode sequential   --parallelism 4  (pairs drift between workers)
+#     seqP  - --sampling-mode sequential   --parallelism 3  (pairs drift between workers)
 #     sim1  - --sampling-mode simultaneous --parallelism 1  (pair-coupling without parallelism)
-#     simP  - --sampling-mode simultaneous --parallelism 4  (current PR default)
+#     simP  - --sampling-mode simultaneous --parallelism 3  (current PR default)
 #   Outcomes:
 #     noDifference  - control == experiment
 #     regression    - control vs ?hydration_delay=50
@@ -64,9 +64,9 @@ start_noise() {
 # (tag, sampling-mode, parallelism)
 CONDITIONS=(
   "seq1 sequential 1"
-  "seqP sequential 4"
+  "seqP sequential 3"
   "sim1 simultaneous 1"
-  "simP simultaneous 4"
+  "simP simultaneous 3"
 )
 
 cd "$DEMO_DIR"
