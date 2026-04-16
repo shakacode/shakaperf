@@ -23,44 +23,47 @@ const TEST_DATA_DIR = path.join(__dirname, '..', 'testData');
 const METRIC = 'hydration-start';
 const N_SAMPLES_PER_RUN = 8;
 
+type Sampling = 'seq1' | 'seqP' | 'sim1' | 'simP';
+
 interface Group {
   name: string;
   kind: 'noDifference' | 'regression';
   noise: 'low' | 'high';
+  sampling: Sampling;
   controlURL: string;
   experimentURL: string;
 }
 
-const GROUPS: Group[] = [
-  {
-    name: 'noDifference_LowNoise',
-    kind: 'noDifference',
-    noise: 'low',
-    controlURL: 'http://localhost:3030/',
-    experimentURL: 'http://localhost:3030/',
-  },
-  {
-    name: 'noDifference_HighNoise',
-    kind: 'noDifference',
-    noise: 'high',
-    controlURL: 'http://localhost:3030/',
-    experimentURL: 'http://localhost:3030/',
-  },
-  {
-    name: 'regression_LowNoise',
-    kind: 'regression',
-    noise: 'low',
-    controlURL: 'http://localhost:3030/',
-    experimentURL: 'http://localhost:3030/?hydration_delay=50',
-  },
-  {
-    name: 'regression_HighNoise',
-    kind: 'regression',
-    noise: 'high',
-    controlURL: 'http://localhost:3030/',
-    experimentURL: 'http://localhost:3030/?hydration_delay=50',
-  },
-];
+const SAMPLINGS: ReadonlySet<Sampling> = new Set(['seq1', 'seqP', 'sim1', 'simP']);
+
+function describeSampling(s: Sampling): string {
+  const order = s.startsWith('seq') ? 'sequential (control campaign, then experiment campaign)' : 'simultaneous (control and experiment interleaved)';
+  const parallelism = s.endsWith('1') ? 'parallelism = 1' : 'parallelism > 1';
+  return `${order}, ${parallelism}`;
+}
+
+function discoverGroups(root: string): Group[] {
+  if (!fs.existsSync(root)) return [];
+  return fs
+    .readdirSync(root)
+    .filter((name) => fs.statSync(path.join(root, name)).isDirectory())
+    .map((name): Group | null => {
+      const m = name.match(/^(noDifference|regression)_(Low|High)Noise_(seq1|seqP|sim1|simP)$/);
+      if (!m) return null;
+      const kind = m[1] as 'noDifference' | 'regression';
+      const noise = m[2] === 'High' ? 'high' : 'low';
+      const sampling = m[3] as Sampling;
+      if (!SAMPLINGS.has(sampling)) return null;
+      const controlURL = 'http://localhost:3030/';
+      const experimentURL =
+        kind === 'regression' ? 'http://localhost:3030/?hydration_delay=50' : 'http://localhost:3030/';
+      return { name, kind, noise, sampling, controlURL, experimentURL };
+    })
+    .filter((g): g is Group => g !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const GROUPS: Group[] = discoverGroups(TEST_DATA_DIR);
 
 function listMeasurementFiles(groupDir: string): { idx: number; file: string }[] {
   return fs
@@ -140,6 +143,7 @@ function expectationsBlock(g: Group): string {
   experiment = ${g.experimentURL}
   noise      = ${g.noise}
   ${noiseLine}
+  sampling   = ${g.sampling} (${describeSampling(g.sampling)})
 
 Expectation: ${expectation}
 Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
