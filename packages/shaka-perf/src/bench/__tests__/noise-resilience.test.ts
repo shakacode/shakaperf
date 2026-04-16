@@ -56,7 +56,7 @@ function discoverGroups(root: string): Group[] {
       if (!SAMPLINGS.has(sampling)) return null;
       const controlURL = 'http://localhost:3030/';
       const experimentURL =
-        kind === 'regression' ? 'http://localhost:3030/?hydration_delay=50' : 'http://localhost:3030/';
+        kind === 'regression' ? 'http://localhost:3030/?hydration_delay=10' : 'http://localhost:3030/';
       return { name, kind, noise, sampling, controlURL, experimentURL };
     })
     .filter((g): g is Group => g !== null)
@@ -136,7 +136,7 @@ function expectationsBlock(g: Group): string {
       : 'No additional CPU noise — only ambient system load.';
   const expectation =
     g.kind === 'regression'
-      ? 'regression on hydration-start (~+50 ms, the injected hydration_delay)'
+      ? 'regression on hydration-start (~+10 ms, the injected hydration_delay)'
       : 'no difference on hydration-start';
   return `Setup:
   control    = ${g.controlURL}

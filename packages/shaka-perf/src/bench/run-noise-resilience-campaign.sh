@@ -84,7 +84,7 @@ for cond in "${CONDITIONS[@]}"; do
 
   CMD_REGRESSION=(yarn shaka-perf perf-compare \
     --controlURL http://localhost:3030/ \
-    --experimentURL 'http://localhost:3030/?hydration_delay=50' \
+    --experimentURL 'http://localhost:3030/?hydration_delay=10' \
     --sampling-mode "$MODE" --parallelism "$PAR" -n 8 --filter Homepage)
 
   for OUTCOME in noDifference regression; do

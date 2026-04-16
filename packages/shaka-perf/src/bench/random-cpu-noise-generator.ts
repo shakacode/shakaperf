@@ -3,23 +3,20 @@ import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { performance } from 'node:perf_hooks';
 
 const TOTAL_CORES = os.cpus().length;
-const MIN_INTERVAL_MS = 200;
-const MAX_INTERVAL_MS = 1000;
+const MIN_INTERVAL_MS = 1000;
+const MAX_INTERVAL_MS = 5000;
 
-// Bimodal distribution over the number of busy cores: spend most of the time
-// at the extremes (all idle, all busy) so the HighNoise group is actually
-// stressful rather than averaging out to "some cores busy most of the time".
-const P_ZERO = 0.4; // probability of 0 busy cores
-const P_ALL = 0.4;  // probability of all cores busy
+// Always-busy distribution: alternate between all cores at 100% and a random
+// subset at 100%. Never idle — the system is always under load so the
+// HighNoise regime is genuinely stressful.
+const P_ALL = 0.5; // probability of all cores busy; otherwise random 1..N-1
 
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function pickBusyCoreCount(): number {
-  const pick = Math.random();
-  if (pick < P_ZERO) return 0;
-  if (pick < P_ZERO + P_ALL) return TOTAL_CORES;
+  if (Math.random() < P_ALL) return TOTAL_CORES;
   return randInt(1, Math.max(1, TOTAL_CORES - 1));
 }
 
