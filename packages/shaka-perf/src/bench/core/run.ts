@@ -66,11 +66,19 @@ export default async function run<TSample>(
   const {
     setupTimeoutMs = SETUP_TIMEOUT,
     sampleTimeoutMs = SAMPLE_TIMEOUT,
-    parallelism = 1,
+    parallelism: requestedParallelism = 1,
     samplingMode = 'simultaneous',
     durationMs,
     raceCancellation
   } = options;
+
+  // In simultaneous mode each worker runs control + experiment concurrently,
+  // doubling the actual CPU usage compared to sequential. Halve the worker
+  // count so `--parallelism N` means the same number of Lighthouse instances
+  // regardless of sampling mode. When N is odd, round up before halving.
+  const parallelism = samplingMode === 'simultaneous'
+    ? Math.max(1, Math.floor((requestedParallelism % 2 === 1 ? requestedParallelism + 1 : requestedParallelism) / 2))
+    : requestedParallelism;
 
   const samplerSets: SamplerSet<TSample>[] = [];
   let sampleGroups: SampleGroup<TSample>[];
