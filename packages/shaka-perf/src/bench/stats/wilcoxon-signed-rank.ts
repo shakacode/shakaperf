@@ -24,7 +24,7 @@ function averageRanks(sortedAbs: number[]): number[] {
  * the distribution by convolving in rank k at each step: the sign of k
  * is + (contributes k) or - (contributes 0), each with probability 0.5.
  */
-function wilcoxonSignedRankPMF(n: number): number[] {
+export function wilcoxonSignedRankPMF(n: number): number[] {
   let c: number[] = [1];
   for (let k = 1; k <= n; k++) {
     const prev = c;

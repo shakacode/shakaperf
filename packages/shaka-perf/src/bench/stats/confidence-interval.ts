@@ -1,26 +1,7 @@
 import jStat = require('jstat');
 
 import { toNearestHundreth } from './utils';
-
-/**
- * Exact PMF of the Wilcoxon Signed-Rank W+ statistic under the null, used to
- * find the critical rank for the paired Hodges-Lehmann confidence interval.
- * Port of SciPy's `_get_wilcoxon_distr`; see `wilcoxon-signed-rank.ts` for
- * the identical recursion.
- */
-function wilcoxonSignedRankPMF(n: number): number[] {
-  let c: number[] = [1];
-  for (let k = 1; k <= n; k++) {
-    const prev = c;
-    const size = (k * (k + 1)) / 2 + 1;
-    c = new Array<number>(size).fill(0);
-    for (let j = 0; j < prev.length; j++) {
-      c[j] += prev[j] * 0.5;
-      c[j + k] += prev[j] * 0.5;
-    }
-  }
-  return c;
-}
+import { wilcoxonSignedRankPMF } from './wilcoxon-signed-rank';
 
 export interface PairedCIInputs {
   n: number;
