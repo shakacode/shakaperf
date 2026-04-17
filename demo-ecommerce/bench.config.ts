@@ -14,7 +14,7 @@ export default defineConfig({
     requestLatencyMs: 1125,
     downloadThroughputKbps: 700,
     uploadThroughputKbps: 700,
-    cpuSlowdownMultiplier: 1,
+    cpuSlowdownMultiplier: 20,
   },
   throttlingMethod: "simulate",
   logLevel: "error",

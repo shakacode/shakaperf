@@ -1,25 +1,25 @@
 Benchmark Results Summary
 
 LH & Vitals
-  FCP no difference [NaNms to 2ms]
-  speed-index no difference [NaNms to 2ms]
-  LCP no difference [NaNms to 69ms]
-  TBT no difference [NaNms to 74ms]
-  CLS no difference [NaN/100 to 9/100]
-  TTFB no difference [NaNms to 65ms]
-  LH Score no difference [NaN/100 to 0/100]
-  hydration no difference [NaNms to 106ms]
-  hydration-start no difference [NaNms to 1592ms]
-  interaction-to-next-paint no difference [NaNms to 0ms]
+  FCP no difference [-5ms to 21ms]
+  speed-index no difference [-265ms to 255ms]
+  LCP no difference [-188ms to 134ms]
+  TBT estimated improvement -304ms [-1716ms to -92ms] OR -26.15% [-147.64% to -7.92%] p=0.0005341
+  CLS estimated regression +7/100 [+2/100 to +9/100] OR +46.12% [+12.71% to +65.17%] p=0.00238
+  TTFB no difference [-11ms to 23ms]
+  LH Score no difference [-4/100 to 2/100]
+  hydration no difference [-165ms to 59ms]
+  hydration-start no difference [-395ms to 796ms]
+  interaction-to-next-paint estimated improvement -320ms [-400ms to -80ms] OR -25% [-31.25% to -6.25%] p=0.002035
 
 Diagnostics
-  downloads no difference [NaNKB to 0KB]
-  downloads-count no difference [NaN to 0]
-  early-downloads no difference [NaNKB to 0KB]
-  early-downloads-count no difference [NaN to 0]
-  js no difference [NaNKB to 0KB]
-  js-count no difference [NaN to 0]
-  images no difference [NaNKB to 0KB]
-  images-count no difference [NaN to 0]
-  fonts no difference [NaNKB to 0KB]
-  fonts-count no difference [NaN to 0]
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
