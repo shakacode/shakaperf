@@ -1,24 +1,22 @@
 /
-⤷ 2.77 KB. Downloaded 6 times
+⤷ 2.77 KB
 /api/v1/cart
-⤷ 0.53 KB. Downloaded 6 times
+⤷ 0.53 KB
 /api/v1/products
-⤷ 4.06 KB. Downloaded 6 times
+⤷ 4.06 KB
 /assets/application-e0cf9d8fcb18bf7f909d8d91a5e78499f82ac29523d475bf3a9ab265d5e2b451.css
-⤷ 0.54 KB. Downloaded 6 times
-/favicon.ico
-⤷ 1.84 KB. Downloaded 1 times
+⤷ 0.54 KB
 /packs/css/client-72e38325.css
-⤷ 0.20 KB. Downloaded 6 times
+⤷ 0.20 KB
 /packs/js/148-7088267baa9e2e0c2764.js
-⤷ 5.14 KB. Downloaded 6 times
+⤷ 5.14 KB
 /packs/js/192-b63cfebd9a83a6087244.js
-⤷ 140.12 KB. Downloaded 6 times
+⤷ 140.12 KB
 /packs/js/719-f34241d7c2d17031511d.js
-⤷ 2.77 KB. Downloaded 6 times
-/packs/js/client-a107adde6658fd1363e3.js
-⤷ 2.76 KB. Downloaded 6 times
+⤷ 2.77 KB
+/packs/js/client-a3a47d676bffe50dec14.js
+⤷ 2.85 KB
 /packs/js/pages-HomePage-bd886ec65621d70d67cb.chunk.js
-⤷ 3.56 KB. Downloaded 6 times
+⤷ 3.56 KB
 /packs/js/runtime-bb7ee41abd397c0e0aa1.js
-⤷ 1.87 KB. Downloaded 6 times
+⤷ 1.87 KB

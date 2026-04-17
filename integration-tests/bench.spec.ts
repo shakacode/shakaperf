@@ -25,8 +25,8 @@ test('run shaka-perf perf-compare on twin servers @perf', async ({ page }) => {
     [
       'yarn shaka-perf perf-compare',
       '--testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"',
-      '--parallelism 2',
-      '--numberOfMeasurements 6',
+      '--parallelism 6',
+      '--numberOfMeasurements 18',
       `--resultsFolder ${BENCH_RESULTS_DIR}`,
     ].join(' '),
     { timeout: 15 * 60 * 1000 },
