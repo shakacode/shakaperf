@@ -5,7 +5,7 @@ import { writeFileSync } from 'node:fs';
 import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
 import { extractRawTraceTimestamp } from './extract-markers';
-import { updateDownloadedSizes, analyzeNetworkResources } from './network-activity';
+import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
 // Read console errors whitelist from environment variable.
@@ -19,7 +19,8 @@ export async function runLighthouse(
   url: string,
   lhSettings: any,
   resultsFolder: string,
-  markers: Marker[] = DEFAULT_MARKERS
+  markers: Marker[] = DEFAULT_MARKERS,
+  saveArtifacts: boolean = true
 ): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // 5 minutes
   const timeoutMs = 300000;
@@ -45,24 +46,22 @@ export async function runLighthouse(
   const path = parsedUrl.pathname;
   const query = parsedUrl.search;
 
-  const namePrefix = `${resultsFolder}/${prefix}${host.replace(
-    ':',
-    '_'
-  )}_${path.replace(/\//g, '_')}_${query
-    .replace(/\?/g, '_')
-    .replace(/=/g, '_')}`;
+  const sanitized = `${prefix}${host}_${path}_${query}`.replace(/[/:?=]/g, '_');
+  const namePrefix = `${resultsFolder}/${sanitized}`;
 
-  writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);
-  if (runnerResult.artifacts?.Trace) {
-    const profilePath = `${namePrefix}_performance_profile.json`;
-    writeFileSync(
-      profilePath,
-      JSON.stringify(runnerResult.artifacts.Trace)
-    );
-    summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
+  if (saveArtifacts) {
+    writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report as string);
+    if (runnerResult.artifacts?.Trace) {
+      const profilePath = `${namePrefix}_performance_profile.json`;
+      writeFileSync(
+        profilePath,
+        JSON.stringify(runnerResult.artifacts.Trace)
+      );
+      summarizePerformanceProfile(profilePath, profilePath.replace('.json', '.summary.txt'));
+    }
   }
 
-  const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);
+  const totalSizeBytes = saveNetworkActivity(runnerResult, url, saveArtifacts ? `${namePrefix}_network_activity.txt` : null);
 
   if (runnerResult.lhr.runtimeError) {
     throw new Error(

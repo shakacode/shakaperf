@@ -136,10 +136,7 @@ export class CompareResults {
     const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
     const unit = phaseData.unit;
 
-    if (
-      (isSignificant && estimatorISig) ||
-      (this.numberOfMeasurements === 1 && hlDiff !== 0)
-    ) {
+    if (isSignificant && estimatorISig) {
       const diffToS = (diff: number): string => {
         const negativeDiff = -diff;
         return negativeDiff > 0 ? `+${negativeDiff}` : `${negativeDiff}`;
@@ -151,7 +148,7 @@ export class CompareResults {
         percentMedian
       )}% [${diffToS(percentMax)}% to ${diffToS(percentMin)}%]`;
       const kind = hlDiff * phaseData.sign < 0 ? "regression" : "improvement";
-      const pSuffix = this.numberOfMeasurements !== 1 ? ` p=${pValue}` : "";
+      const pSuffix = ` p=${pValue}`;
 
       const plain = `  ${displayName} estimated ${kind} ${diffStr}${pSuffix}`;
       const colorFn = kind === "regression" ? chalk.red : chalk.green;
@@ -195,17 +192,11 @@ export class CompareResults {
     console.log(colored);
   }
 
-  // if numberOfMeasurements is at acceptable number, return true if any of the phase results were significant
   public anyResultsSignificant(
     benchmarkIsSigArray: boolean[],
     phaseIsSigArray: boolean[]
   ): boolean {
-    if (this.numberOfMeasurements > 2) {
-      return (
-        benchmarkIsSigArray.includes(true) || phaseIsSigArray.includes(true)
-      );
-    }
-    return false;
+    return benchmarkIsSigArray.includes(true) || phaseIsSigArray.includes(true);
   }
 
   // if any phase of the experiment has regressed slower beyond the threshold limit returns false; otherwise true

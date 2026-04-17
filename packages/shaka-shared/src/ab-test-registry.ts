@@ -105,7 +105,7 @@ export function abTest(
       for (let i = 2; i < frames.length; i++) {
         const match = frames[i].match(/\(?([^()]+):(\d+):\d+\)?$/);
         if (match) {
-          file = match[1];
+          file = match[1].replace(/^\s*at\s+/, '');
           line = parseInt(match[2], 10);
           break;
         }

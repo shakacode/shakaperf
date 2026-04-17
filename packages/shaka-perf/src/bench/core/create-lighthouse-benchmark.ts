@@ -1,198 +1,77 @@
-import chalk from 'chalk';
-import { launch, LaunchedChrome } from 'chrome-launcher';
-import { chromium, BrowserContext, Page } from 'playwright-core';
-import type { RaceCancellation } from 'race-cancellation';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { fork, type ChildProcess } from 'node:child_process';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import type { RaceCancellation } from 'race-cancellation';
 
 import { Benchmark, BenchmarkSampler } from './run';
-import { loadConfigFile, TestType } from 'shaka-shared';
-import { DEFAULT_LH_CONFIG, DEFAULT_MARKERS, getCpuSlowdownMultiplier, LighthouseBenchmarkOptions, NavigationSample, PhaseSample } from './lighthouse-config';
-import { runLighthouse } from './run-lighthouse';
-import { extractMarkers } from './extract-markers';
-import { injectINPObserver, collectINP } from './inp';
+import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
 import type { AbTestDefinition } from './ab-test-registry';
 
-class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
-  private chrome: LaunchedChrome | null = null;
-  private userDataDir: string | null = null;
+interface ResultMessage {
+  type: 'result';
+  sample: NavigationSample;
+}
 
-  constructor(
-    private baseUrl: string,
-    private testDef: AbTestDefinition,
-    private options: Partial<LighthouseBenchmarkOptions>
-  ) {}
+interface ErrorMessage {
+  type: 'error';
+  message: string;
+  stack: string;
+}
 
-  async setupBrowser(): Promise<void> {
-    const chromeFlags = [
-      '--headless',
-      // For Image Proxy
-      '--ignore-certificate-errors',
-      // There is no GPU on CI
-      '--enable-unsafe-swiftshader',
-      // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
-      '--disable-dev-shm-usage'
-    ];
+interface ReadyMessage {
+  type: 'ready';
+}
 
-    if (process.env.TRACERBENCH_PROXY_URL) {
-      chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
+type WorkerMessage = ResultMessage | ErrorMessage | ReadyMessage;
+
+function waitForMessage(worker: ChildProcess): Promise<WorkerMessage> {
+  return new Promise((resolve, reject) => {
+    const onMessage = (msg: WorkerMessage) => {
+      cleanup();
+      resolve(msg);
+    };
+    const onExit = (code: number | null) => {
+      cleanup();
+      reject(new Error(`Worker exited unexpectedly with code ${code}`));
+    };
+    const cleanup = () => {
+      worker.off('message', onMessage);
+      worker.off('exit', onExit);
+    };
+    worker.on('message', onMessage);
+    worker.on('exit', onExit);
+  });
+}
+
+class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
+  constructor(private worker: ChildProcess) {}
+
+  async sample(
+    iteration: number,
+    isTrial: boolean,
+    _raceCancellation: RaceCancellation
+  ): Promise<NavigationSample> {
+    this.worker.send({ type: 'sample', iteration, isTrial });
+    const msg = await waitForMessage(this.worker);
+    if (msg.type === 'error') {
+      const err = new Error(msg.message);
+      err.stack = msg.stack;
+      throw err;
     }
-
-    this.userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
-    this.chrome = await launch({
-      chromeFlags,
-      userDataDir: this.userDataDir
-    });
-  }
-
-  async killBrowser(): Promise<void> {
-    await this.chrome!.kill();
-    await rm(this.userDataDir!, { recursive: true, force: true });
+    return (msg as ResultMessage).sample;
   }
 
   async dispose(): Promise<void> {
-    await this.killBrowser();
-  }
-
-  async getMobileSettings(): Promise<any> {
-    // Dynamic import because lighthouse v12+ is ESM-only and can't be require()'d from CommonJS
-    const { defaultConfig } = await import('lighthouse');
-    const defaultMobileSettings = defaultConfig?.settings;
-    return {
-      ...defaultMobileSettings,
-      ...DEFAULT_LH_CONFIG,
-      throttling: {
-        ...DEFAULT_LH_CONFIG.throttling as object,
-        cpuSlowdownMultiplier: process.env.CI ? 6 : 20,
-      },
-      port: this.chrome!.port
-    };
-  }
-
-  async sample(
-    _iteration: number,
-    _isTrial: boolean,
-    _raceCancellation: RaceCancellation
-  ): Promise<NavigationSample> {
-    let lhSettings = await this.getMobileSettings();
-
-    if (this.options.lhConfigPath) {
-      const userConfig = await loadConfigFile(this.options.lhConfigPath);
-      lhSettings = { ...lhSettings, ...userConfig, port: this.chrome!.port };
-    }
-
-    const fullUrl = this.baseUrl + this.testDef.startingPath;
-    const markers = this.testDef.options.markers ?? this.options.markers;
-
-    let lastError: Error | null = null;
-    const maxRetries = 3;
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      try {
-        const phases = await this.runLighthouseWithPlaywright(
-          fullUrl,
-          lhSettings,
-          markers
-        );
-        return {
-          metadata: {},
-          duration: 0,
-          phases
-        };
-      } catch (error) {
-        lastError = error as Error;
-        if (attempt <= maxRetries) {
-          console.log(chalk.red(lastError.message), lastError.stack);
-          console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
-          await this.killBrowser();
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-          await this.setupBrowser();
-          lhSettings.port = this.chrome!.port;
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        } else {
-          throw new Error(
-            `Failed after ${maxRetries + 1} attempts. Last error: ${
-              lastError?.message
-            }`
-          );
-        }
-      }
-    }
-
-    // unreachable, but satisfies TypeScript
-    throw new Error('Unexpected: retry loop exited without result');
-  }
-
-  private async runLighthouseWithPlaywright(
-    url: string,
-    lhSettings: any,
-    markers: LighthouseBenchmarkOptions['markers']
-  ): Promise<PhaseSample[]> {
-    const port = this.chrome!.port;
-    const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
-
-    try {
-      const context = browser.contexts()[0];
-
-      // Start Lighthouse — it navigates the page itself
-      const lighthousePromise = runLighthouse(
-        '',
-        url,
-        lhSettings,
-        this.options.resultsFolder ?? './tracerbench-results',
-        markers
-      );
-      // Prevent unhandled rejection if browser closes while lighthouse is still running
-      lighthousePromise.catch((error) => { console.log(error); });
-
-      // Wait for the page to appear at the target URL, then run the Playwright test
-      const page = await this.waitForPage(context, url);
-      await injectINPObserver(page);
-      const playwrightPromise = this.testDef.testFn({
-        page,
-        browserContext: context,
-        isReference: false,
-        scenario: this.testDef,
-        viewport: {
-          label: lhSettings.formFactor ?? 'default',
-          width: lhSettings.screenEmulation?.width ?? 0,
-          height: lhSettings.screenEmulation?.height ?? 0,
-        },
-        testType: TestType.Performance,
-        annotate: () => {},
-      }).then(() => collectINP(page));
-
-      const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
-
-      const multiplier = getCpuSlowdownMultiplier(lhSettings);
-      for (const phase of extractMarkers(runnerResult, markers ?? DEFAULT_MARKERS, '')) {
-        phases.push({ ...phase, duration: phase.duration * multiplier });
-      }
-      if (inp != null && inp > 0) {
-        phases.push({ phase: 'interaction-to-next-paint', duration: inp * 1000 * multiplier, start: 0, sign: 1, unit: 'ms' });
-      }
-
-      return phases;
-    } finally {
-      await browser.close();
-    }
-  }
-
-  private async waitForPage(context: BrowserContext, url: string): Promise<Page> {
-    const targetOrigin = new URL(url).origin;
-    const timeout = 30_000;
-    const start = Date.now();
-
-    while (Date.now() - start < timeout) {
-      for (const page of context.pages()) {
-        if (page.url().startsWith(targetOrigin)) {
-          await page.waitForLoadState('domcontentloaded');
-          return page;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    throw new Error(`Timed out waiting for page at ${targetOrigin}`);
+    this.worker.send({ type: 'dispose' });
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        if (!this.worker.killed) this.worker.kill('SIGTERM');
+        resolve();
+      }, 5000);
+      this.worker.on('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
   }
 }
 
@@ -205,9 +84,24 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
-      const sampler = new LighthouseSampler(baseUrl, testDef, options);
-      await sampler.setupBrowser();
-      return sampler;
+      const workerPath = join(__dirname, 'lighthouse-worker.js');
+      const worker = fork(workerPath, [], { stdio: 'inherit' });
+
+      worker.send({
+        type: 'setup',
+        testFile: testDef.file,
+        testName: testDef.name,
+        baseUrl,
+        group,
+        options,
+      });
+
+      const ready = await waitForMessage(worker);
+      if (ready.type === 'error') {
+        throw new Error((ready as ErrorMessage).message);
+      }
+
+      return new OOPLighthouseSampler(worker);
     }
   };
 }

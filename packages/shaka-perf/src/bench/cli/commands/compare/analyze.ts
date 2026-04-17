@@ -8,7 +8,7 @@ import {
   GenerateStats,
   ParsedTitleConfigs,
 } from "../../compare/generate-stats";
-import parseCompareResult from "../../compare/parse-compare-result";
+import parseAbMeasurements from "../../compare/parse-ab-measurements";
 
 export interface CompareAnalyzeFlags {
   numberOfMeasurements: number;
@@ -45,7 +45,7 @@ export async function runAnalyze(
   const jsonReport = options.jsonReport ?? false;
   const confidenceLevel = options.pValueThreshold != null ? 1 - options.pValueThreshold : undefined;
 
-  const { controlData, experimentData } = parseCompareResult(resultsFile);
+  const { controlData, experimentData } = parseAbMeasurements(resultsFile);
   const reportTitles = getReportTitles(
     "TracerBench",
     controlData.meta.browserVersion

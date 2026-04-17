@@ -92,7 +92,7 @@ Diagnostics
     Benchmark Reports    
 
 
-JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/compare.json
+JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/ab-measurements.json
 
 HTML: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/artifact-1.html
 
@@ -150,7 +150,7 @@ Diagnostics
     Benchmark Reports    
 
 
-JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json
+JSON: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/ab-measurements.json
 
 HTML: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
 
@@ -160,7 +160,7 @@ HTML: /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-sho
 
 undefined:4 Homepage
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/artifact-1.html
-  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/compare.json — Raw measurement samples
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/ab-measurements.json — Raw measurement samples
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html — Lighthouse report
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt — Network activity
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
@@ -177,7 +177,7 @@ undefined:4 Homepage
 
 undefined:4 Click Shop Now on the homepage
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/artifact-1.html
-  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/compare.json — Raw measurement samples
+  /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/ab-measurements.json — Raw measurement samples
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____network_activity.txt — Network activity
   /home/<USER>/shakaperf/integration-tests/snapshots/bench-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)

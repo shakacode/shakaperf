@@ -7,8 +7,6 @@ import { readdirSync, statSync } from "node:fs";
 import chalk from "chalk";
 import {
   Benchmark,
-  clearDownloadsSizes,
-  compareNetworkActivity,
   createLighthouseBenchmark,
   generateHtmlDiffs,
   generateTimelineComparison,
@@ -22,7 +20,7 @@ import {
   writeFileSync,
 } from "fs-extra";
 
-import type { RegressionThresholdStat } from "../../command-config/tb-config";
+import type { RegressionThresholdStat, SamplingMode } from "../../command-config/tb-config";
 import {
   chalkScheme,
   durationInSec,
@@ -47,11 +45,14 @@ export interface ICompareFlags {
   skipReport?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
+  parallelism: number;
+  samplingMode: SamplingMode;
+  duration?: number;
   config?: string;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
-  'compare.json': 'Raw measurement samples',
+  'ab-measurements.json': 'Raw measurement samples',
   'report.json': 'Statistical analysis (JSON)',
   'report.txt': 'Summary',
   'report.html': 'Interactive HTML report with charts',
@@ -132,7 +133,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const testResultsFolder = `${resultsFolder}/${slug}`;
     mkdirpSync(testResultsFolder);
-    clearDownloadsSizes();
 
     const testOptions: Partial<LighthouseBenchmarkOptions> = {
       ...options,
@@ -180,6 +180,9 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         },
         {
           sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
+          parallelism: compareFlags.parallelism,
+          samplingMode: compareFlags.samplingMode,
+          durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
         }
       )
     ).map(({ group, samples }) => {
@@ -198,8 +201,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       );
       process.exit(2);
     }
-    const resultJSONPath = `${testResultsFolder}/compare.json`;
-    compareNetworkActivity();
+    const abMeasurementsPath = `${testResultsFolder}/ab-measurements.json`;
     generateHtmlDiffs({
       testResultsFolder,
       controlURL: compareFlags.controlURL!,
@@ -222,20 +224,21 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       }
     }
 
-    writeFileSync(resultJSONPath, JSON.stringify(results));
+    writeFileSync(abMeasurementsPath, JSON.stringify(results));
     completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
 
     const duration = secondsToTime(durationInSec(endTime, startTime));
+    const actualMeasurements = results[0].samples.length;
     const message = `${chalkScheme.blackBgGreen(
       `    ${chalkScheme.white("SUCCESS")}    `
-    )} ${compareFlags.numberOfMeasurements} measurements took ${duration}`;
+    )} ${actualMeasurements} measurements took ${duration}`;
 
     console.log(`\n${message}`);
 
     // if the stdout analysis is not hidden show it
     if (!compareFlags.hideAnalysis) {
-      analyzedJSONString = await runAnalyze(resultJSONPath, {
-        numberOfMeasurements: compareFlags.numberOfMeasurements!,
+      analyzedJSONString = await runAnalyze(abMeasurementsPath, {
+        numberOfMeasurements: actualMeasurements,
         regressionThreshold: compareFlags.regressionThreshold!,
         regressionThresholdStat: compareFlags.regressionThresholdStat!,
         pValueThreshold: compareFlags.pValueThreshold,

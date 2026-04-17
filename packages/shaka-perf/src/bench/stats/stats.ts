@@ -1,7 +1,12 @@
-import { mean, cross, histogram, quantile } from 'd3-array';
+import { mean, histogram, quantile } from 'd3-array';
 import { scaleLinear } from 'd3-scale';
 
-import { confidenceInterval } from './confidence-interval';
+import {
+  pairedConfidenceInterval,
+  preparePairedCIInputs,
+  PairedCIInputs
+} from './confidence-interval';
+import { wilcoxonSignedRankPValue } from './wilcoxon-signed-rank';
 import { toNearestHundreth } from './utils';
 
 export interface Bucket {
@@ -49,10 +54,8 @@ export type IConfidenceInterval = {
   min: number;
   median: number;
   max: number;
-  zScore: number;
   isSig: boolean;
   pValue: number;
-  U: number;
   asPercent: IAsPercentage;
 };
 
@@ -85,16 +88,27 @@ export class Stats {
   public populationVariance: { control: number; experiment: number };
   public control: number[];
   public experiment: number[];
+  public pairedPValue: number;
+  private pairedCIInputs: PairedCIInputs | null;
   constructor(options: IStatsOptions, unitConverterFn?: (n: number) => number) {
     const { name, control, experiment, confidenceLevel } = options;
 
-    this.control = control;
-    this.experiment = experiment;
+    // Preserve paired order — all paired stats (Wilcoxon Signed-Rank p-value,
+    // Hodges-Lehmann estimator, Walsh-averages CI) operate on the per-index
+    // differences. Sorted copies are used only for descriptive stats.
+    this.control = control.slice();
+    this.experiment = experiment.slice();
 
-    const controlSorted = control;
-    const experimentSorted = experiment;
-    this.controlSorted = controlSorted.sort((a, b) => a - b);
-    this.experimentSorted = experimentSorted.sort((a, b) => a - b);
+    this.controlSorted = control.slice().sort((a, b) => a - b);
+    this.experimentSorted = experiment.slice().sort((a, b) => a - b);
+
+    const sameLength = this.control.length === this.experiment.length;
+    this.pairedPValue = sameLength
+      ? wilcoxonSignedRankPValue(this.control, this.experiment)
+      : 1;
+    this.pairedCIInputs = sameLength
+      ? preparePairedCIInputs(this.control, this.experiment)
+      : null;
 
     this.name = name;
     this.sampleCount = {
@@ -111,50 +125,16 @@ export class Stats {
       )
     };
     this.confidenceIntervals = {
-      80: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.8
-      ),
-      85: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.85
-      ),
-      90: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.9
-      ),
-      95: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.95
-      ),
-      99: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.99
-      ),
-      995: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.995
-      ),
-      999: this.getConfidenceInterval(
-        this.controlSorted,
-        this.experimentSorted,
-        0.999
-      )
+      80: this.getConfidenceInterval(0.8),
+      85: this.getConfidenceInterval(0.85),
+      90: this.getConfidenceInterval(0.9),
+      95: this.getConfidenceInterval(0.95),
+      99: this.getConfidenceInterval(0.99),
+      995: this.getConfidenceInterval(0.995),
+      999: this.getConfidenceInterval(0.999)
     };
-    this.confidenceInterval = this.getConfidenceInterval(
-      this.controlSorted,
-      this.experimentSorted,
-      confidenceLevel
-    );
-    this.estimator = toNearestHundreth(
-      this.getHodgesLehmann(this.controlSorted, this.experimentSorted) as number
-    );
+    this.confidenceInterval = this.getConfidenceInterval(confidenceLevel);
+    this.estimator = toNearestHundreth(this.confidenceInterval.median);
     this.sevenFigureSummary = {
       control: this.getSevenFigureSummary(this.controlSorted),
       experiment: this.getSevenFigureSummary(this.experimentSorted)
@@ -302,41 +282,32 @@ export class Stats {
   }
 
   private getConfidenceInterval(
-    control: number[],
-    experiment: number[],
     confidenceLevel: IStatsOptions['confidenceLevel'] = 0.95
   ): IConfidenceInterval {
-    const ci = confidenceInterval(control, experiment, confidenceLevel);
-    const isCISig =
-      (ci.min < 0 && 0 < ci.max) ||
-      (ci.min > 0 && 0 > ci.max) ||
-      (ci.min === 0 && ci.max === 0)
-        ? false
-        : true;
     const sigLevel: number = 1 - confidenceLevel;
-    // ci sign must match on lower and upper bounds and pValue < 5%
-    const isSig = isCISig && ci.pValue < sigLevel;
+    const pValue = this.pairedPValue;
+    const isSig = pValue < sigLevel;
 
+    if (this.pairedCIInputs === null) {
+      return {
+        min: 0,
+        max: 0,
+        median: 0,
+        isSig,
+        pValue: +pValue.toPrecision(4),
+        asPercent: { percentMin: 0, percentMedian: 0, percentMax: 0 }
+      };
+    }
+
+    const ci = pairedConfidenceInterval(this.pairedCIInputs, confidenceLevel);
     return {
       min: Math.round(Math.ceil(ci.min * 100) / 100),
       max: Math.round(Math.ceil(ci.max * 100) / 100),
-      isSig,
       median: ci.median,
-      zScore: ci.zScore,
-      pValue: ci.pValue,
-      U: ci.U,
+      isSig,
+      pValue: +pValue.toPrecision(4),
       asPercent: ci.asPercent
     };
-  }
-
-  private getHodgesLehmann(
-    control: number[],
-    experiment: number[]
-  ): number | undefined {
-    const crossProduct = cross(control, experiment, (a, b) => a - b).sort(
-      (a, b) => a - b
-    );
-    return quantile(crossProduct, 0.5);
   }
 
   private getRange(

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { addCompareOptions } from "shaka-shared";
 import { getDefaultValue } from "./command-config/default-flag-args";
 import { ICompareFlags, runCompare } from "./commands/compare";
@@ -54,6 +54,28 @@ export function createBenchCommands(): Command[] {
       "Seconds to wait for a sample",
       parseIntArg,
       getDefaultValue("sampleTimeout")
+    )
+    .addOption(
+      new Option(
+        "--duration <seconds>",
+        "Run measurements for this many seconds instead of a fixed count"
+      )
+        .argParser(parseIntArg)
+        .conflicts("numberOfMeasurements")
+    )
+    .option(
+      "--parallelism <n>",
+      "Number of control/experiment pairs to run in parallel",
+      parseIntArg,
+      getDefaultValue("parallelism")
+    )
+    .addOption(
+      new Option(
+        "--sampling-mode <mode>",
+        "Within one iteration, sample control + experiment sequentially or simultaneously (Promise.all)"
+      )
+        .choices(["sequential", "simultaneous"])
+        .default(getDefaultValue("samplingMode"))
     )
     .option("--config <path>", "Path to a JS/TS Lighthouse config file")
     .option("--skip-report", "Skip generating an HTML report after compare", false)

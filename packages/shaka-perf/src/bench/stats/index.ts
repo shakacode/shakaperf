@@ -1,4 +1,3 @@
-import { cartesianProduct, confidenceInterval } from './confidence-interval';
 import {
   IAsPercentage,
   IConfidenceInterval,
@@ -14,19 +13,15 @@ import {
   roundFloatAndConvertMicrosecondsToMS,
   toNearestHundreth
 } from './utils';
-import { getWilcoxonRankSumTest } from './wilcoxon-rank-sum';
-import { getWilcoxonSignedRankTest } from './wilcoxon-signed-rank';
+import { wilcoxonSignedRankPValue } from './wilcoxon-signed-rank';
 
 export {
   Bucket,
-  cartesianProduct,
-  confidenceInterval,
   Stats,
   convertMicrosecondsToMS,
   convertMSToMicroseconds,
   toNearestHundreth,
-  getWilcoxonRankSumTest,
-  getWilcoxonSignedRankTest,
+  wilcoxonSignedRankPValue,
   ISevenFigureSummary,
   IOutliers,
   IStatsOptions,

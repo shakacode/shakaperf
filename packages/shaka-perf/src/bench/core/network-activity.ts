@@ -1,99 +1,29 @@
-import chalk from 'chalk';
 import type { RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 
 import type { PhaseSample } from './lighthouse-config';
 
-interface DownloadsSizesKB {
-  [filename: string]: number[];
-}
-
-const downloadsSizes: {
-  [name: string]: DownloadsSizesKB;
-} = {};
-
-export function clearDownloadsSizes(): void {
-  for (const key of Object.keys(downloadsSizes)) {
-    delete downloadsSizes[key];
-  }
-}
-
-const saveDownloadsSizes = (
-  downloadsSizes: DownloadsSizesKB,
-  path: string
-): void => {
-  const downloads = Object.keys(downloadsSizes);
-
-  downloads.sort((a, b) => a.localeCompare(b));
-
-  const lines = downloads.map((url) => {
-    const averageSize: number =
-      downloadsSizes[url].reduce((partialSum, a) => partialSum + a, 0) /
-      downloadsSizes[url].length;
-
-    return `${url}\n⤷ ${(averageSize / 1024).toFixed(2)} KB. Downloaded ${
-      downloadsSizes[url].length
-    } times`;
-  });
-
-  writeFileSync(path, lines.join('\n') + '\n');
-};
-
-export function compareNetworkActivity(): void {
-  const [controlReport, experimentReport] = Object.keys(downloadsSizes).map(
-    (name) => {
-      const reportFilePath = `${name}_network_activity.txt`;
-      saveDownloadsSizes(downloadsSizes[name], reportFilePath);
-
-      return {
-        path: reportFilePath,
-        totalSize: Object.values(downloadsSizes[name]).reduce(
-          (partialSum, sizes) =>
-            partialSum +
-            sizes.reduce((partialSum, size) => partialSum + size, 0),
-          0
-        )
-      };
-    }
-  );
-
-  const totalSizeDiffKb =
-    (experimentReport.totalSize - controlReport.totalSize) / 1024;
-
-  if (totalSizeDiffKb != 0) {
-    if (totalSizeDiffKb > 0) {
-      console.log(
-        chalk.red(
-          `Total downloads size increased by ${totalSizeDiffKb.toFixed(2)} KB`
-        )
-      );
-    } else {
-      console.log(
-        chalk.green(
-          `Total downloads size decreased by ${-totalSizeDiffKb.toFixed(2)} KB`
-        )
-      );
-    }
-  }
-
-}
-
-export const updateDownloadedSizes = (
+/**
+ * Computes total download size from devtools logs. If outputPath is provided,
+ * writes a per-URL breakdown file.
+ */
+export function saveNetworkActivity(
   lighthouseResult: RunnerResult,
-  namePrefix: string,
-  url: string
-): number => {
-  let totalSizeBytes = 0;
-  downloadsSizes[namePrefix] = downloadsSizes[namePrefix] || {};
+  url: string,
+  outputPath: string | null
+): number {
   const devtoolsLogs = lighthouseResult.artifacts.DevtoolsLog;
+  if (!devtoolsLogs) return 0;
 
-  devtoolsLogs?.forEach((requestWillBeSentEntry: any) => {
+  const parsedPageUrl = new URL(url);
+  const sizesByUrl: { [requestUrl: string]: number } = {};
+  let totalSizeBytes = 0;
+
+  devtoolsLogs.forEach((requestWillBeSentEntry: any) => {
     if (
       requestWillBeSentEntry.method === 'Network.requestWillBeSent' &&
       requestWillBeSentEntry.params.request
     ) {
-      const parsedPageUrl = new URL(url);
-
       let requestUrl = requestWillBeSentEntry.params.request.url.replace(
         parsedPageUrl.origin,
         ''
@@ -117,11 +47,8 @@ export const updateDownloadedSizes = (
             requestWillBeSentEntry.params.requestId
         ) {
           const size = loadingFinishedEntry.params.encodedDataLength;
-          if (!downloadsSizes[namePrefix][requestUrl]) {
-            downloadsSizes[namePrefix][requestUrl] = [];
-          }
           if (size) {
-            downloadsSizes[namePrefix][requestUrl].push(size);
+            sizesByUrl[requestUrl] = (sizesByUrl[requestUrl] ?? 0) + size;
             totalSizeBytes += size;
           }
         }
@@ -129,8 +56,16 @@ export const updateDownloadedSizes = (
     }
   });
 
+  if (outputPath) {
+    const urls = Object.keys(sizesByUrl).sort((a, b) => a.localeCompare(b));
+    const lines = urls.map(
+      (u) => `${u}\n⤷ ${(sizesByUrl[u] / 1024).toFixed(2)} KB`
+    );
+    writeFileSync(outputPath, lines.join('\n') + '\n');
+  }
+
   return totalSizeBytes;
-};
+}
 
 const JS_EXTENSIONS = ['.js', '.mjs'];
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.avif'];
