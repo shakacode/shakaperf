@@ -3,6 +3,7 @@
  * regression detection, and reporting. This is the main entry point for the library.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 import { WebpackStatsReader } from './WebpackStatsReader';
 import { SizeCalculator } from './SizeCalculator';
@@ -21,6 +22,7 @@ import type {
   CheckResult,
   UpdateBaselineResult,
   DiffMetadata,
+  BaselineConfig,
 } from './types';
 
 function getBundlesDir(statsFile: string): string {
@@ -153,9 +155,13 @@ export class BundleSizeChecker {
     this.reporter.header('Bundle Size Check');
 
     const statsFilename = getStatsFilename(this.statsFile);
+    this.reporter.verbose(`Reading webpack stats from: ${this.statsFile}`);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
+    this.reporter.verbose(`Found ${namedChunkGroups.length} named chunk groups, ${uncategorizedChunks.length} uncategorized chunks`);
     const actualSizes = this.calculateComponentSizes(namedChunkGroups, uncategorizedChunks);
+    this.reporter.verbose(`Calculated sizes for ${actualSizes.length} components`);
+    this.reporter.verbose(`Baseline file: ${path.join(this.baselineDir, this.baselineFile)}`);
 
     if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
       this.reporter.error(`No baseline found at ${this.baselineFile}. Run 'shaka-bundle-size download-main-branch-stats' to create one.`);
@@ -191,6 +197,8 @@ export class BundleSizeChecker {
   updateBaseline(): UpdateBaselineResult {
     this.reporter.header('Updating Baseline');
 
+    this.reporter.verbose(`Reading webpack stats from: ${this.statsFile}`);
+    this.reporter.verbose(`Writing baseline to: ${this.baselineDir}`);
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
@@ -220,7 +228,72 @@ export class BundleSizeChecker {
     };
   }
 
+  checkFromFiles(currentDir: string): CheckResult {
+    this.reporter.header('Bundle Size Check');
+
+    const controlDir = this.baselineDir;
+    this.reporter.info(`Comparing ${controlDir} vs ${currentDir}`);
+
+    // Load control (baseline) config
+    if (!this.baselineComparator.baselineFileExists(this.baselineFile)) {
+      this.reporter.error(`No control baseline found at ${path.join(controlDir, this.baselineFile)}. Run 'shaka-bundle-size download-main-branch-stats' first.`);
+      return {
+        passed: false,
+        regressions: [],
+        warnings: [],
+        actualSizes: [],
+        expectedSizes: [],
+      };
+    }
+
+    // Load experiment (current) config
+    const currentConfigPath = path.join(currentDir, this.baselineFile);
+    if (!fs.existsSync(currentConfigPath)) {
+      this.reporter.error(`No experiment stats found at ${currentConfigPath}. Run 'shaka-bundle-size generate-stats' first.`);
+      return {
+        passed: false,
+        regressions: [],
+        warnings: [],
+        actualSizes: [],
+        expectedSizes: [],
+      };
+    }
+
+    const baseline = this.baselineComparator.loadBaselineFile(this.baselineFile);
+    const currentConfig: BaselineConfig = JSON.parse(fs.readFileSync(currentConfigPath, 'utf8'));
+
+    // Convert current config's BaselineComponent[] to ComponentSize[] for comparison
+    const actualSizes: ComponentSize[] = currentConfig.loadableComponents.map(c => ({
+      name: c.name,
+      chunksCount: c.chunksCount,
+      gzipSizeKb: Number(c.gzipSizeKb),
+      brotliSizeKb: Number(c.brotliSizeKb),
+    }));
+
+    this.reporter.verbose(`Control: ${baseline.loadableComponents.length} components`);
+    this.reporter.verbose(`Experiment: ${actualSizes.length} components`);
+
+    const comparisonResult = this.baselineComparator.compare(actualSizes, baseline);
+    const regressions = this.regressionDetector.detectRegressions(comparisonResult);
+    const { failures, warnings } = this.regressionDetector.evaluateAll(regressions);
+    const passed = failures.length === 0;
+
+    const result: CheckResult = {
+      passed,
+      regressions: failures,
+      warnings,
+      actualSizes,
+      expectedSizes: baseline.loadableComponents,
+      comparison: comparisonResult,
+    };
+
+    this.reporter.summary(result);
+
+    return result;
+  }
+
   generateCurrentStatsTo(outputDir: string): { configPath: string; sourceMapPath: string | null } {
+    this.reporter.verbose(`Generating current stats to: ${outputDir}`);
     const statsFilename = getStatsFilename(this.statsFile);
     const { namedChunkGroups, allChunkFiles } = this.statsReader.readStats(statsFilename);
     const uncategorizedChunks = this.statsReader.findUncategorizedChunks(allChunkFiles, namedChunkGroups);
@@ -256,6 +329,7 @@ export class BundleSizeChecker {
     const { controlDir, currentDir, outputDir, metadata = {} } = options;
 
     this.reporter.header('Generating HTML diff artifacts');
+    this.reporter.info(`Comparing ${controlDir} vs ${currentDir}`);
     const templatePath = path.join(__dirname, '../templates/diff-template.html');
 
     const generatedFiles = this.htmlDiffGenerator.generateDiffs({

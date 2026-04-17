@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { BaselineStorage } from '../BaselineStorage';
+import { SilentReporter } from '../Reporter';
 
 // Mock the AWS SDK and child_process
 jest.mock('@aws-sdk/client-s3', () => {
@@ -31,6 +32,7 @@ describe('BaselineStorage', () => {
     s3Prefix: 'bundle-size-baselines/',
     baselineDir: '/tmp/baseline',
     mainCommitsToCheck: 10,
+    reporter: new SilentReporter(),
   };
 
   beforeEach(() => {
