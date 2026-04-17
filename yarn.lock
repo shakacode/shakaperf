@@ -7201,6 +7201,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"compression-webpack-plugin@npm:^11.1.0":
+  version: 11.1.0
+  resolution: "compression-webpack-plugin@npm:11.1.0"
+  dependencies:
+    schema-utils: "npm:^4.2.0"
+    serialize-javascript: "npm:^6.0.2"
+  peerDependencies:
+    webpack: ^5.1.0
+  checksum: 10c0/387043d1e7dd776768bbc92071953ae0459891337f1ca908c0b4c9fe98322caf19847fae3713876e3976d894599712f784ccf13baa6d1c64ecb915786a54f2ec
+  languageName: node
+  linkType: hard
+
 "compression@npm:^1.7.4":
   version: 1.8.1
   resolution: "compression@npm:1.8.1"
@@ -7660,6 +7672,7 @@ __metadata:
     "@types/react": "npm:^19.2.8"
     "@types/react-dom": "npm:^19.2.3"
     autoprefixer: "npm:^10.4.23"
+    compression-webpack-plugin: "npm:^11.1.0"
     css-loader: "npm:7.1.2"
     playwright-core: "npm:^1.52.0"
     postcss: "npm:^8.5.6"
