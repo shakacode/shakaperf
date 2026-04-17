@@ -27,7 +27,7 @@ SRC_FILE="tracerbench-results/homepage/ab-measurements.json"
 mkdir -p "$OUT_DIR"
 
 DURATIONS_FILE="$OUT_DIR/durations.json"
-echo "{" > "$DURATIONS_FILE"
+ENTRIES=()
 
 for i in $(seq 1 "$N"); do
   echo "=== [$GROUP] run $i/$N: $* ==="
@@ -40,13 +40,22 @@ for i in $(seq 1 "$N"); do
   fi
   cp "$SRC_FILE" "$OUT_DIR/ab-measurements-$i.json"
   echo "=== [$GROUP] saved $OUT_DIR/ab-measurements-$i.json (${run_duration}s) ==="
-  # Append to durations JSON (trailing comma handled below)
-  echo "  \"$i\": $run_duration," >> "$DURATIONS_FILE"
+  ENTRIES+=("  \"$i\": $run_duration")
 done
 
-# Fix trailing comma: replace last comma with nothing, close object
-sed -i '' '$ s/,$//' "$DURATIONS_FILE"
-echo "}" >> "$DURATIONS_FILE"
+# Write durations.json with a clean (comma-separated, no trailing comma) body.
+# Avoids `sed -i` portability differences between BSD (macOS) and GNU sed.
+{
+  echo "{"
+  for idx in "${!ENTRIES[@]}"; do
+    if [ "$idx" -lt "$(( ${#ENTRIES[@]} - 1 ))" ]; then
+      echo "${ENTRIES[$idx]},"
+    else
+      echo "${ENTRIES[$idx]}"
+    fi
+  done
+  echo "}"
+} > "$DURATIONS_FILE"
 
 
 echo "Done. $N samples in $OUT_DIR"

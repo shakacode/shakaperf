@@ -20,7 +20,7 @@ import {
   writeFileSync,
 } from "fs-extra";
 
-import type { RegressionThresholdStat } from "../../command-config/tb-config";
+import type { RegressionThresholdStat, SamplingMode } from "../../command-config/tb-config";
 import {
   chalkScheme,
   durationInSec,
@@ -46,7 +46,7 @@ export interface ICompareFlags {
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
   parallelism: number;
-  samplingMode: 'sequential' | 'simultaneous';
+  samplingMode: SamplingMode;
   duration?: number;
   config?: string;
 }

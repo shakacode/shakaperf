@@ -59,6 +59,9 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     // Dynamic import because lighthouse v12+ is ESM-only and can't be require()'d from CommonJS
     const { defaultConfig } = await import('lighthouse');
     const defaultMobileSettings = defaultConfig?.settings;
+    // CPU slowdown default: 20x locally, 6x on CI (CI machines are already slow).
+    // User's bench.config.ts (applied via lhConfigPath in sample()) fully
+    // overrides throttling — the demo's 1x takes effect through that path.
     return {
       ...defaultMobileSettings,
       ...DEFAULT_LH_CONFIG,

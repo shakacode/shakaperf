@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { SamplingMode } from "../../core/run";
+
 export interface ITBConfig {
   plotTitle?: string;
   numberOfMeasurements?: number;
@@ -17,5 +19,4 @@ export interface ITBConfig {
 }
 
 export type RegressionThresholdStat = "estimator" | "ci-lower" | "ci-upper";
-
-export type SamplingMode = "sequential" | "simultaneous";
+export type { SamplingMode };

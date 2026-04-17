@@ -73,11 +73,13 @@ export default async function run<TSample>(
   } = options;
 
   // In simultaneous mode each worker runs control + experiment concurrently,
-  // doubling the actual CPU usage compared to sequential. Halve the worker
-  // count so `--parallelism N` means the same number of Lighthouse instances
-  // regardless of sampling mode. When N is odd, round up before halving.
+  // so one worker occupies two Lighthouse instances. Halve the worker count
+  // so `--parallelism N` approximates N concurrent Lighthouse instances across
+  // modes. For odd N this is rounded up to preserve a distinct "multi-worker"
+  // regime (e.g. N=3 → 2 workers × 2 instances = 4, slightly overshooting
+  // sequential N=3). Pass an even N for exact CPU-usage parity.
   const parallelism = samplingMode === 'simultaneous'
-    ? Math.max(1, Math.floor((requestedParallelism % 2 === 1 ? requestedParallelism + 1 : requestedParallelism) / 2))
+    ? Math.max(1, Math.round(requestedParallelism / 2))
     : requestedParallelism;
 
   const samplerSets: SamplerSet<TSample>[] = [];
@@ -198,7 +200,19 @@ async function runOnePair<TSample>(
     }
     return results;
   }
-  return Promise.all(shuffled.map(sampleOne));
+  // Use allSettled so a rejection in one sampler doesn't leave siblings
+  // orphaned (they'd keep running in their worker until done). Wait for every
+  // sibling to finish, then rethrow.
+  const settled = await Promise.allSettled(shuffled.map(sampleOne));
+  const rejections = settled.filter(
+    (r): r is PromiseRejectedResult => r.status === 'rejected'
+  );
+  if (rejections.length > 0) {
+    throw rejections[0].reason;
+  }
+  return settled.map(
+    (r) => (r as PromiseFulfilledResult<{ group: string; sample: TSample }>).value
+  );
 }
 
 async function setupWithTimeout<TSample>(

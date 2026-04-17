@@ -63,11 +63,14 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   async dispose(): Promise<void> {
     this.worker.send({ type: 'dispose' });
     await new Promise<void>((resolve) => {
-      this.worker.on('exit', () => resolve());
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (!this.worker.killed) this.worker.kill('SIGTERM');
         resolve();
       }, 5000);
+      this.worker.on('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
     });
   }
 }

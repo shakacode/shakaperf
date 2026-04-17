@@ -257,10 +257,15 @@ describe('noise-resilience snapshot', () => {
           const result = buildConclusion(group, idx, file);
           const resultPath = path.join(groupDir, `test-results-${idx}.txt`);
 
-          if (process.env.UPDATE_TESTDATA === '1' || !fs.existsSync(resultPath)) {
+          if (process.env.UPDATE_TESTDATA === '1') {
             fs.writeFileSync(resultPath, result);
           }
 
+          if (!fs.existsSync(resultPath)) {
+            throw new Error(
+              `Missing snapshot ${resultPath}. Rerun with UPDATE_TESTDATA=1 to regenerate.`
+            );
+          }
           const expected = fs.readFileSync(resultPath, 'utf-8');
           expect(result).toBe(expected);
         });

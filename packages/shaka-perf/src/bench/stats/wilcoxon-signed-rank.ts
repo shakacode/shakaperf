@@ -40,6 +40,9 @@ function wilcoxonSignedRankPMF(n: number): number[] {
 
 // Two-sided exact p-value from the PMF of W+. Matches SciPy's convention:
 //   p = 2 * min(sf(floor(W+)), cdf(ceil(W+))), clipped to [0, 1].
+// The exact path is only entered when there are no ties, so W+ is always an
+// integer here — floor(W+) == ceil(W+) == W+. The floor/ceil split is kept
+// for parity with SciPy and as a safety net against future callers.
 function exactTwoSidedPValue(wPlus: number, pmf: number[]): number {
   const maxK = pmf.length - 1;
   const floor = Math.floor(wPlus);
