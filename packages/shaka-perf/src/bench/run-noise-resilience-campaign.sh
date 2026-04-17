@@ -63,10 +63,10 @@ start_noise() {
 
 # (tag, sampling-mode, parallelism)
 CONDITIONS=(
-  "seq1 sequential 1"
-  "seqP sequential 3"
-  "sim1 simultaneous 1"
-  "simP simultaneous 3"
+  "sequentialSampling_singleProcess sequential 1"
+  "sequentialSampling_multiProcess sequential 3"
+  "simultaneousSampling_singleProcess simultaneous 1"
+  "simultaneousSampling_multiProcess simultaneous 3"
 )
 
 cd "$DEMO_DIR"

@@ -2,14 +2,14 @@
  * Snapshot tests for the noise-resilience measurement campaign.
  *
  * For each (group, run) pair in testData/, regenerates a per-run
- * `conclusion-<N>.txt` next to its `ab-measurements-<N>.json` containing:
+ * `test-results-<N>.txt` next to its `ab-measurements-<N>.json` containing:
  *   - setup + statistical-method expectations for the group
  *   - perf-analyze (Wilcoxon Signed-Rank + Hodges-Lehmann) output for that run
  *   - paired (control, experiment) hydration-start values from that run
  *   - per-URL distribution heatmap (reuses the bucket-bar pattern from
  *     summarize-performance-profile.ts) so the noise blow-up is visible at a glance
  *
- * Run with `UPDATE_TESTDATA=1` to (re)write the committed conclusion files.
+ * Run with `UPDATE_TESTDATA=1` to (re)write the committed test-results files.
  */
 
 import * as fs from 'fs';
@@ -23,7 +23,11 @@ const TEST_DATA_DIR = path.join(__dirname, '..', 'testData');
 const METRIC = 'hydration-start';
 const N_SAMPLES_PER_RUN = 8;
 
-type Sampling = 'seq1' | 'seqP' | 'sim1' | 'simP';
+type Sampling =
+  | 'sequentialSampling_singleProcess'
+  | 'sequentialSampling_multiProcess'
+  | 'simultaneousSampling_singleProcess'
+  | 'simultaneousSampling_multiProcess';
 
 interface Group {
   name: string;
@@ -34,13 +38,12 @@ interface Group {
   experimentURL: string;
 }
 
-const SAMPLINGS: ReadonlySet<Sampling> = new Set(['seq1', 'seqP', 'sim1', 'simP']);
-
-function describeSampling(s: Sampling): string {
-  const order = s.startsWith('seq') ? 'sequential (control campaign, then experiment campaign)' : 'simultaneous (control and experiment interleaved)';
-  const parallelism = s.endsWith('1') ? 'parallelism = 1' : 'parallelism > 1';
-  return `${order}, ${parallelism}`;
-}
+const SAMPLINGS: ReadonlySet<string> = new Set([
+  'sequentialSampling_singleProcess',
+  'sequentialSampling_multiProcess',
+  'simultaneousSampling_singleProcess',
+  'simultaneousSampling_multiProcess',
+]);
 
 function discoverGroups(root: string): Group[] {
   if (!fs.existsSync(root)) return [];
@@ -48,7 +51,7 @@ function discoverGroups(root: string): Group[] {
     .readdirSync(root)
     .filter((name) => fs.statSync(path.join(root, name)).isDirectory())
     .map((name): Group | null => {
-      const m = name.match(/^(noDifference|regression)_(Low|High)Noise_(seq1|seqP|sim1|simP)$/);
+      const m = name.match(/^(noDifference|regression)_(Low|High)Noise_((?:sequential|simultaneous)Sampling_(?:single|multi)Process)$/);
       if (!m) return null;
       const kind = m[1] as 'noDifference' | 'regression';
       const noise = m[2] === 'High' ? 'high' : 'low';
@@ -129,27 +132,6 @@ function heatmap(values: number[], min: number, max: number, bucketCount = 20, b
   return out.join('\n') + '\n';
 }
 
-function expectationsBlock(g: Group): string {
-  const noiseLine =
-    g.noise === 'high'
-      ? 'Random CPU noise generator running in parallel (1-10s waves, 1-N cores @ 10-100% load).'
-      : 'No additional CPU noise — only ambient system load.';
-  const expectation =
-    g.kind === 'regression'
-      ? 'regression on hydration-start (~+10 ms, the injected hydration_delay)'
-      : 'no difference on hydration-start';
-  return `Setup:
-  control    = ${g.controlURL}
-  experiment = ${g.experimentURL}
-  noise      = ${g.noise}
-  ${noiseLine}
-  sampling   = ${g.sampling} (${describeSampling(g.sampling)})
-
-Expectation: ${expectation}
-Statistical method: paired Wilcoxon Signed-Rank + Hodges-Lehmann (95% CI).
-`;
-}
-
 function buildConclusion(g: Group, runIdx: number, file: string): string {
   const cr = analyze(file);
   const report = cr.getPlainTextSummary().trimEnd();
@@ -158,28 +140,111 @@ function buildConclusion(g: Group, runIdx: number, file: string): string {
   const min = Math.min(...control, ...experiment);
   const max = Math.max(...control, ...experiment);
 
-  const tableHeader = `${g.controlURL.padEnd(48)}${g.experimentURL}`;
+  const tableHeader = `control${' '.repeat(41)}experiment`;
   const tableRows = control
     .map((c, i) => `${c.toFixed(1).padEnd(48)}${experiment[i].toFixed(1)}`)
     .join('\n');
 
   return [
     `=== ${g.name} run ${runIdx} ===`,
-    '',
-    expectationsBlock(g),
-    `--- perf-analyze (${path.basename(file)}) ---`,
     report,
     '',
-    `--- ${METRIC} paired values (${control.length} pairs) ---`,
+    `--- paired values (${control.length} pairs) ---`,
     tableHeader,
     tableRows,
     '',
-    `--- ${METRIC} distribution heatmap ---`,
-    `control (${g.controlURL}):`,
+    '--- heatmap ---',
+    'control:',
     heatmap(control, min, max),
-    `experiment (${g.experimentURL}):`,
+    'experiment:',
     heatmap(experiment, min, max),
   ].join('\n');
+}
+
+function generateSummary(): string {
+  interface GroupTally {
+    name: string;
+    runs: number;
+    detected: number;
+    pValues: number[];
+    totalDurationSec: number | null;
+  }
+
+  const tallies: GroupTally[] = [];
+
+  for (const group of GROUPS) {
+    const groupDir = path.join(TEST_DATA_DIR, group.name);
+    const resultFiles = fs
+      .readdirSync(groupDir)
+      .filter((f) => /^test-results-\d+\.txt$/.test(f))
+      .sort();
+
+    const tally: GroupTally = { name: group.name, runs: 0, detected: 0, pValues: [], totalDurationSec: null };
+
+    // Read per-run durations if available
+    const durationsPath = path.join(groupDir, 'durations.json');
+    let durations: Record<string, number> = {};
+    if (fs.existsSync(durationsPath)) {
+      durations = JSON.parse(fs.readFileSync(durationsPath, 'utf-8'));
+      tally.totalDurationSec = Object.values(durations).reduce((a, b) => a + b, 0);
+    }
+
+    for (const file of resultFiles) {
+      const content = fs.readFileSync(path.join(groupDir, file), 'utf-8');
+      // Find the perf-analyze hydration-start line (indented, not in headers)
+      const match = content.match(/^ {2}hydration-start .+$/m);
+      if (!match) continue;
+      tally.runs++;
+      const line = match[0];
+      const regMatch = line.match(/estimated regression .+p=([0-9.e-]+)/);
+      if (regMatch) {
+        tally.detected++;
+        tally.pValues.push(parseFloat(regMatch[1]));
+      }
+    }
+    tallies.push(tally);
+  }
+
+  function formatPValue(pValues: number[]): string {
+    if (pValues.length === 0) return 'N/A';
+    return (pValues.reduce((a, b) => a + b, 0) / pValues.length)
+      .toExponential(2)
+      .replace(/e([+-])(\d)$/, 'e$10$2');
+  }
+
+  function formatDuration(sec: number | null): string {
+    if (sec === null) return 'N/A';
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m > 0 ? `${m}m${s}s` : `${s}s`;
+  }
+
+  // Column definitions
+  const headers = ['Group', 'Regressions', 'p-value', 'Duration'];
+
+  const rows = tallies.map((t) => [
+    t.name,
+    `${t.detected}/${t.runs}`,
+    formatPValue(t.pValues),
+    formatDuration(t.totalDurationSec),
+  ]);
+
+  // Compute column widths
+  const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
+
+  const pad = (s: string, w: number, right: boolean) => (right ? s.padStart(w) : s.padEnd(w));
+  const isRight = [false, true, true, true];
+
+  const headerLine = '| ' + headers.map((h, i) => pad(h, widths[i], isRight[i])).join(' | ') + ' |';
+  const sepLine =
+    '| ' +
+    widths.map((w, i) => (isRight[i] ? '-'.repeat(w - 1) + ':' : '-'.repeat(w))).join(' | ') +
+    ' |';
+  const dataLines = rows.map(
+    (r) => '| ' + r.map((c, i) => pad(c, widths[i], isRight[i])).join(' | ') + ' |',
+  );
+
+  return ['# Noise-Resilience Summary', '', headerLine, sepLine, ...dataLines, ''].join('\n');
 }
 
 describe('noise-resilience snapshot', () => {
@@ -188,18 +253,30 @@ describe('noise-resilience snapshot', () => {
       const groupDir = path.join(TEST_DATA_DIR, group.name);
       const runs = listMeasurementFiles(groupDir);
       for (const { idx, file } of runs) {
-        test(`conclusion-${idx}.txt is up to date`, () => {
-          const conclusion = buildConclusion(group, idx, file);
-          const conclusionPath = path.join(groupDir, `conclusion-${idx}.txt`);
+        test(`test-results-${idx}.txt is up to date`, () => {
+          const result = buildConclusion(group, idx, file);
+          const resultPath = path.join(groupDir, `test-results-${idx}.txt`);
 
-          if (process.env.UPDATE_TESTDATA === '1' || !fs.existsSync(conclusionPath)) {
-            fs.writeFileSync(conclusionPath, conclusion);
+          if (process.env.UPDATE_TESTDATA === '1' || !fs.existsSync(resultPath)) {
+            fs.writeFileSync(resultPath, result);
           }
 
-          const expected = fs.readFileSync(conclusionPath, 'utf-8');
-          expect(conclusion).toBe(expected);
+          const expected = fs.readFileSync(resultPath, 'utf-8');
+          expect(result).toBe(expected);
         });
       }
     });
   }
+
+  test('SUMMARY.md is up to date', () => {
+    const summary = generateSummary();
+    const summaryPath = path.join(TEST_DATA_DIR, 'SUMMARY.md');
+
+    if (process.env.UPDATE_TESTDATA === '1') {
+      fs.writeFileSync(summaryPath, summary);
+    }
+
+    const expected = fs.readFileSync(summaryPath, 'utf-8');
+    expect(summary).toBe(expected);
+  });
 });

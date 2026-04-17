@@ -26,17 +26,27 @@ SRC_FILE="tracerbench-results/homepage/ab-measurements.json"
 
 mkdir -p "$OUT_DIR"
 
+DURATIONS_FILE="$OUT_DIR/durations.json"
+echo "{" > "$DURATIONS_FILE"
+
 for i in $(seq 1 "$N"); do
   echo "=== [$GROUP] run $i/$N: $* ==="
+  run_start=$SECONDS
   "$@"
+  run_duration=$(( SECONDS - run_start ))
   if [ ! -f "$SRC_FILE" ]; then
     echo "ERROR: $SRC_FILE not found after run $i (cwd: $(pwd))" >&2
     exit 1
   fi
   cp "$SRC_FILE" "$OUT_DIR/ab-measurements-$i.json"
-  echo "=== [$GROUP] saved $OUT_DIR/ab-measurements-$i.json ==="
+  echo "=== [$GROUP] saved $OUT_DIR/ab-measurements-$i.json (${run_duration}s) ==="
+  # Append to durations JSON (trailing comma handled below)
+  echo "  \"$i\": $run_duration," >> "$DURATIONS_FILE"
 done
 
-printf '`%s` was run %s times\n' "$*" "$N" > "$OUT_DIR/summary.txt"
+# Fix trailing comma: replace last comma with nothing, close object
+sed -i '' '$ s/,$//' "$DURATIONS_FILE"
+echo "}" >> "$DURATIONS_FILE"
+
 
 echo "Done. $N samples in $OUT_DIR"
