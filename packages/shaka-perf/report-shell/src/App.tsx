@@ -5,6 +5,7 @@ import { SearchBar } from './components/SearchBar';
 import { StatusFilter } from './components/StatusFilter';
 import { Section } from './components/Section';
 import { TestCard } from './components/TestCard';
+import { ErrorBanner } from './components/ErrorBanner';
 
 const VISIBLE_BY_DEFAULT: Status[] = ['regression', 'visual_change', 'improvement'];
 const SECTION_ORDER: Status[] = ['regression', 'visual_change', 'improvement', 'no_difference'];
@@ -71,6 +72,8 @@ export function App({ data }: { data: ReportData }) {
   return (
     <div className="app">
       <Header meta={data.meta} total={data.tests.length} />
+
+      <ErrorBanner errors={data.meta.errors ?? []} />
 
       <div className="header__controls">
         <SearchBar value={query} onChange={setQuery} />

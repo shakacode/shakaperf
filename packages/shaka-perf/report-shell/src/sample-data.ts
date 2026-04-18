@@ -12,6 +12,7 @@ export const SAMPLE_DATA: ReportData = {
     durationMs: 287_400,
     cwd: '/Users/dev/projects/demo-ecommerce',
     categories: ['visreg', 'perf'],
+    errors: [],
   },
   tests: [
     {

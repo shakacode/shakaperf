@@ -35,6 +35,7 @@ export interface PerfArtifact {
 export interface CategoryResult {
   category: Category;
   status: Status;
+  error?: string;
   visreg?: VisregArtifact[];
   perf?: PerfArtifact;
 }
@@ -60,6 +61,7 @@ export interface ReportMeta {
   durationMs: number;
   cwd: string;
   categories: Category[];
+  errors: string[];
 }
 
 export interface ReportData {

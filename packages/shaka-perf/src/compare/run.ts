@@ -104,6 +104,8 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<string> 
   }
 
   const startedAt = Date.now();
+  const engineErrors: string[] = [];
+  let perfEngineFailed = false;
 
   // Run the engines sequentially (each launches its own browser).
   let visregByLabel = new Map<string, CategoryResult>();
@@ -112,35 +114,49 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<string> 
   if (categories.includes('visreg')) {
     if (!opts.skipEngines) {
       console.log('\n>>> visreg');
-      await invokeVisregEngine({
-        controlURL,
-        experimentURL,
-        htmlReportDir,
-        visregConfig,
-        testFile: opts.testFile,
-        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-        filter: opts.filter ?? shared.filter,
-      }).catch((err: Error) => {
-        console.error(`visreg engine error: ${err.message}`);
-      });
+      try {
+        await invokeVisregEngine({
+          controlURL,
+          experimentURL,
+          htmlReportDir,
+          visregConfig,
+          testFile: opts.testFile,
+          testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+          filter: opts.filter ?? shared.filter,
+        });
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        console.error(`visreg engine error: ${message}`);
+        engineErrors.push(`visreg engine: ${message}`);
+      }
     }
     visregByLabel = harvestVisreg(htmlReportDir);
   }
 
   if (categories.includes('perf') && !opts.skipEngines) {
     console.log('\n>>> perf');
-    await invokePerfEngine({
-      controlURL,
-      experimentURL,
-      resultsFolder: resultsRoot,
-      perfConfig,
-      sharedConfig: shared,
-      testFile: opts.testFile,
-      testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-      filter: opts.filter ?? shared.filter,
-    }).catch((err: Error) => {
-      console.error(`perf engine error: ${err.message}`);
-    });
+    // Pre-create each per-test dir so the bench engine's internal readdirSync
+    // calls never ENOENT before a test has any profile files written.
+    for (const test of tests) {
+      fs.mkdirSync(path.join(resultsRoot, slugifyForBench(test.name)), { recursive: true });
+    }
+    try {
+      await invokePerfEngine({
+        controlURL,
+        experimentURL,
+        resultsFolder: resultsRoot,
+        perfConfig,
+        sharedConfig: shared,
+        testFile: opts.testFile,
+        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+        filter: opts.filter ?? shared.filter,
+      });
+    } catch (err) {
+      const message = (err as Error).message || String(err);
+      console.error(`perf engine error: ${message}`);
+      engineErrors.push(`perf engine: ${message}`);
+      perfEngineFailed = true;
+    }
   }
 
   const testResults: TestResult[] = tests.map((test) =>
@@ -153,6 +169,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<string> 
       resultsRoot,
       categories,
       visregByLabel,
+      perfEngineFailed,
     }),
   );
 
@@ -165,6 +182,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<string> 
       durationMs: Date.now() - startedAt,
       cwd,
       categories,
+      errors: engineErrors,
     },
     tests: testResults,
   };
@@ -186,20 +204,32 @@ interface BuildTestResultOpts {
   resultsRoot: string;
   categories: Category[];
   visregByLabel: Map<string, CategoryResult>;
+  perfEngineFailed: boolean;
 }
 
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel } = opts;
+  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
 
   if (categories.includes('visreg')) {
-    perCategory.push(visregByLabel.get(test.name) ?? EMPTY_VISREG_CATEGORY);
+    const visregResult = visregByLabel.get(test.name);
+    if (visregResult) {
+      perCategory.push(visregResult);
+    } else {
+      // Visreg engine ran but this test has no pairs in the manifest —
+      // commonly means the engine aborted before capturing this test.
+      perCategory.push({
+        ...EMPTY_VISREG_CATEGORY,
+        error: 'visreg did not produce artifacts for this test',
+      });
+    }
   }
   if (categories.includes('perf')) {
     const perTestDir = path.join(resultsRoot, slug);
-    if (fs.existsSync(perTestDir)) {
+    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+    if (reportJsonExists) {
       perCategory.push(
         harvestPerf({
           perTestDir,
@@ -210,6 +240,11 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
           slug,
         }),
       );
+    } else if (perfEngineFailed) {
+      perCategory.push({
+        ...EMPTY_PERF_CATEGORY,
+        error: 'perf engine aborted before measuring this test — see the error banner above',
+      });
     } else {
       perCategory.push(EMPTY_PERF_CATEGORY);
     }

@@ -35,6 +35,12 @@ export interface PerfArtifact {
 export interface CategoryResult {
   category: Category;
   status: Status;
+  /**
+   * Non-fatal error message to surface in the report card — e.g. "perf
+   * engine aborted before this test ran". Presence of `error` does NOT
+   * change the category status (still `no_difference` by default).
+   */
+  error?: string;
   visreg?: VisregArtifact[];
   perf?: PerfArtifact;
 }
@@ -60,6 +66,11 @@ export interface ReportMeta {
   durationMs: number;
   cwd: string;
   categories: Category[];
+  /**
+   * Engine-level (cross-cutting) errors to show as a banner at the top
+   * of the report. Per-test / per-category errors go on CategoryResult.
+   */
+  errors: string[];
 }
 
 export interface ReportData {
