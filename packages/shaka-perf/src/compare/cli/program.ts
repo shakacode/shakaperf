@@ -25,6 +25,7 @@ export function createCompareCommand(): Command {
       VALID_CATEGORIES,
     )
     .option('--config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
+    .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
     .action(async function (this: Command) {
       const opts = this.opts();
       const reportPath = await runCompare({
@@ -34,6 +35,7 @@ export function createCompareCommand(): Command {
         filter: opts.filter,
         controlURL: opts.controlURL,
         experimentURL: opts.experimentURL,
+        skipEngines: opts.skipEngines === true,
       });
       console.log(`\nReport: ${reportPath}`);
     });

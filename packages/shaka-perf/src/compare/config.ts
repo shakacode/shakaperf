@@ -66,8 +66,8 @@ export const PerfConfigSchema = z
       .enum(['estimator', 'ci-lower', 'ci-upper'])
       .default('estimator'),
     samplingMode: z
-      .enum(['baseline-control', 'normal'])
-      .default('normal'),
+      .enum(['sequential', 'simultaneous'])
+      .default('sequential'),
     parallelism: z.number().int().positive().default(1),
     sampleTimeout: z.number().int().positive().default(120000),
     lhConfigPath: z.string().optional(),

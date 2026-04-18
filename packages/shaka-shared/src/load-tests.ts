@@ -1,4 +1,4 @@
-import { clearRegistry, getRegisteredTests } from './ab-test-registry';
+import { clearRegistry, getRegisteredTests, restoreRegistry } from './ab-test-registry';
 import type { AbTestDefinition } from './ab-test-registry';
 import { loadTestFile } from './load-test-file';
 import { findTestFiles } from './discover-test-files';
@@ -17,6 +17,11 @@ export interface LoadTestsOptions {
 export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestDefinition[]> {
   const { testFile, testPathPattern, filter, log } = options;
 
+  // Capture what's already registered so we can restore if re-import is a
+  // no-op (Node's ESM cache — and tsx's tsImport — won't re-execute a module
+  // that has already been loaded in the same process, so repeated loadTests()
+  // calls would otherwise return 0 tests).
+  const priorRegistry = getRegisteredTests();
   clearRegistry();
 
   if (testFile) {
@@ -39,6 +44,10 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
   }
 
   let tests = getRegisteredTests();
+  if (tests.length === 0 && priorRegistry.length > 0) {
+    restoreRegistry(priorRegistry);
+    tests = getRegisteredTests();
+  }
   if (tests.length === 0) {
     const source = testFile || 'discovered files';
     throw new Error(`No tests registered in ${source}. Did you call abTest()?`);
