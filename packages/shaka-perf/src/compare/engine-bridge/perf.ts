@@ -5,6 +5,8 @@ import * as crypto from 'crypto';
 import { runCompare as runBenchCompare, type ICompareFlags } from '../../bench/cli/commands/compare';
 import type { PerfConfig, SharedConfig } from '../config';
 
+const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
+
 export interface PerfBridgeOptions {
   controlURL: string;
   experimentURL: string;
@@ -54,8 +56,8 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     sampleTimeout: perfConfig.sampleTimeout ?? 120,
     regressionThresholdStat: perfConfig.regressionThresholdStat ?? 'estimator',
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
-    parallelism: perfConfig.parallelism ?? 1,
-    samplingMode: perfConfig.samplingMode ?? 'sequential',
+    parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,
+    samplingMode: perfConfig.samplingMode ?? 'simultaneous',
     config: lhConfigPath ?? undefined,
   };
 

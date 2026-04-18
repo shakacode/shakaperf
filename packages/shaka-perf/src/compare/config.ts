@@ -1,5 +1,8 @@
+import * as os from 'node:os';
 import { z } from 'zod';
 import { TwinServersConfigSchema } from '../twin-servers/types';
+
+const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 const ViewportSchema = z.object({
   label: z.string(),
@@ -32,8 +35,7 @@ export const SharedConfigSchema = z
     testPathPattern: z.string().optional(),
     filter: z.string().optional(),
     resultsFolder: z.string().default('compare-results'),
-  })
-  .partial();
+  });
 
 export const VisregConfigSchema = z
   .object({
@@ -54,8 +56,7 @@ export const VisregConfigSchema = z
       args: ['--no-sandbox'],
     }),
     resembleOutputOptions: ResembleOutputOptionsSchema.optional(),
-  })
-  .partial();
+  });
 
 export const PerfConfigSchema = z
   .object({
@@ -67,14 +68,13 @@ export const PerfConfigSchema = z
       .default('estimator'),
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
-      .default('sequential'),
-    parallelism: z.number().int().positive().default(1),
+      .default('simultaneous'),
+    parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
     sampleTimeout: z.number().int().positive().default(120000),
     lhConfigPath: z.string().optional(),
     lighthouseConfig: z.record(z.unknown()).optional(),
     plotTitle: z.string().optional(),
-  })
-  .partial();
+  });
 
 export const AbTestsConfigSchema = z.object({
   shared: SharedConfigSchema.optional().default({}),
