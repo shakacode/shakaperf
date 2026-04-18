@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { createBenchCommands } from './bench/cli/program';
 import { createVisregCommands } from './visreg/cli/program';
 import { createTwinServersCommands } from './twin-servers/program';
+import { createCompareCommand } from './compare/cli/program';
 
 const { version } = require('../package.json');
 
@@ -14,6 +15,7 @@ program
   .version(`shaka-perf v${version}`, '--version', 'Show version');
 
 for (const cmd of [
+  createCompareCommand(),
   ...createBenchCommands(),
   ...createVisregCommands(),
   ...createTwinServersCommands(),

@@ -48,3 +48,6 @@ yarn-debug.log*
 ssr-generated
 
 bundle-size-diffs/*
+
+# shaka-perf compare output
+compare-results/

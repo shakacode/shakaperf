@@ -19,10 +19,17 @@ yarn build      # Build all packages (tsc)
 ### shaka-perf CLI
 
 ```bash
-shaka-perf perf-compare        # Performance benchmarking
-shaka-perf visreg-compare       # Visual regression testing
+shaka-perf compare              # Unified visreg + perf comparison + single-file HTML report
+shaka-perf perf-compare         # (legacy) Performance benchmarking
+shaka-perf visreg-compare       # (legacy) Visual regression testing
 shaka-perf twins-build          # Docker A/B testing infrastructure
 ```
+
+The unified `compare` command reads `abtests.config.ts` (sections: `shared`,
+`visreg`, `perf`, `twinServers`). Use `--categories visreg,perf` to control
+what runs. Output is a single self-contained `compare-results/report.html`
+the React shell lives at `packages/shaka-perf/report-shell/` (Vite +
+vite-plugin-singlefile, all assets inlined as base64).
 
 ## Code Conventions
 

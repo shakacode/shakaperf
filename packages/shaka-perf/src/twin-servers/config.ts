@@ -1,10 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadConfigFile, findConfigFile as sharedFindConfigFile } from 'shaka-shared';
+import {
+  loadConfigFile,
+  findConfigFile as sharedFindConfigFile,
+  findAbTestsConfig,
+  loadAbTestsConfig,
+} from 'shaka-shared';
 import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
 
-const CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
+const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
 // At runtime __dirname is dist/twin-servers/, so go up two levels to package root
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
@@ -14,10 +19,21 @@ export function defineConfig(config: TwinServersConfigInput): TwinServersConfigI
 }
 
 export function findConfigFile(cwd?: string): string | null {
-  return sharedFindConfigFile(CONFIG_FILENAMES, cwd);
+  return findAbTestsConfig(cwd) ?? sharedFindConfigFile(LEGACY_CONFIG_FILENAMES, cwd);
 }
 
 export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
+  const basename = path.basename(configPath);
+  if (basename.startsWith('abtests.config.')) {
+    const raw = await loadAbTestsConfig(configPath);
+    const slice = (raw as { twinServers?: unknown }).twinServers;
+    if (!slice) {
+      throw new Error(
+        `${configPath} has no \`twinServers\` section. Add one or use a legacy twin-servers.config.ts.`,
+      );
+    }
+    return slice as TwinServersConfig;
+  }
   return loadConfigFile(configPath) as Promise<TwinServersConfig>;
 }
 

@@ -4,6 +4,9 @@
 # TypeScript build output
 dist/
 
+# Vite report-shell build output
+report-shell/dist/
+
 compare/config.js
 compare/output/control_screenshot/
 compare/output/experiment_screenshot/

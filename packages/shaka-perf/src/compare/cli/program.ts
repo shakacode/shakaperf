@@ -1,0 +1,42 @@
+import { Command } from 'commander';
+import { addCompareOptions } from 'shaka-shared';
+import { runCompare } from '../run';
+import type { Category } from '../report/types';
+
+const VALID_CATEGORIES: Category[] = ['visreg', 'perf'];
+
+function parseCategories(value: string): Category[] {
+  const parts = value.split(',').map((p) => p.trim()).filter(Boolean);
+  for (const p of parts) {
+    if (!VALID_CATEGORIES.includes(p as Category)) {
+      throw new Error(`Unknown category "${p}". Valid: ${VALID_CATEGORIES.join(', ')}`);
+    }
+  }
+  return parts as Category[];
+}
+
+export function createCompareCommand(): Command {
+  const cmd = new Command('compare')
+    .description('Run visreg + perf comparison and produce a single self-contained HTML report')
+    .option(
+      '--categories <list>',
+      `Comma-separated list of categories to run (${VALID_CATEGORIES.join(', ')})`,
+      parseCategories,
+      VALID_CATEGORIES,
+    )
+    .option('--config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
+    .action(async function (this: Command) {
+      const opts = this.opts();
+      const reportPath = await runCompare({
+        configPath: opts.config,
+        categories: opts.categories,
+        testPathPattern: opts.testPathPattern,
+        filter: opts.filter,
+        controlURL: opts.controlURL,
+        experimentURL: opts.experimentURL,
+      });
+      console.log(`\nReport: ${reportPath}`);
+    });
+  addCompareOptions(cmd);
+  return cmd;
+}
