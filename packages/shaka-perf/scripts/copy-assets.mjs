@@ -10,8 +10,6 @@ const assets = [
   ['src/visreg/capture/ab-tests', 'dist/visreg/capture/ab-tests'],
   ['src/visreg/capture/cookies', 'dist/visreg/capture/cookies'],
   ['src/visreg/capture/helpers/imageStub.jpg', 'dist/visreg/capture/helpers/imageStub.jpg'],
-  // Bench static assets
-  ['src/bench/cli/static', 'dist/bench/cli/static'],
   // Pre-built single-file React report (Vite output)
   ['report-shell/dist/index.html', 'dist/report-shell/index.html'],
 ];

@@ -29,7 +29,6 @@ import {
   timestamp,
 } from "../../helpers/utils";
 import { runAnalyze } from "./analyze";
-import { runReport } from "./report";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -246,13 +245,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       });
     }
 
-    // if we want to run the CompareReport without calling a separate command
-    if (!compareFlags.skipReport) {
-      await runReport({
-        resultsFolder: testResultsFolder,
-        pValueThreshold: compareFlags.pValueThreshold,
-      });
-    }
   }
 
   // List all generated artifacts per test

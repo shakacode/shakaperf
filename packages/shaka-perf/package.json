@@ -8,7 +8,6 @@
   "files": [
     "dist",
     "templates",
-    "compare/output",
     "tb-schema.json"
   ],
   "exports": {
@@ -130,9 +129,6 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.6",
-    "@babel/preset-env": "^7.23.6",
-    "@babel/preset-react": "^7.23.3",
     "@jest/globals": "^30.0.0",
     "@types/d3-array": "~2.12.1",
     "@types/d3-hierarchy": "^3.1.0",
@@ -152,11 +148,6 @@
     "@types/react-dom": "^19.0.0",
     "@types/temp": "^0.9.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "assert": "^2.1.0",
-    "babel-loader": "^9.1.3",
-    "backstop-twentytwenty": "^1.1.0",
-    "diff": "^3.5.0",
-    "file-loader": "^6.2.0",
     "jest": "^30.0.0",
     "jest-junit": "^16.0.0",
     "react": "^19.0.0",
