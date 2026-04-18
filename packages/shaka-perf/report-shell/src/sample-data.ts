@@ -49,6 +49,8 @@ export const SAMPLE_DATA: ReportData = {
               { label: 'duration', controlMs: 1240, experimentMs: 1480, pValue: 0.012, hlDiffMs: 240, significant: true },
               { label: 'fcp', controlMs: 580, experimentMs: 620, pValue: 0.18, hlDiffMs: 40, significant: false },
             ],
+            regressedMetrics: ['duration'],
+            improvedMetrics: [],
             controlLighthouseHref: '#',
             experimentLighthouseHref: '#',
             timelineHref: '#',
@@ -75,6 +77,8 @@ export const SAMPLE_DATA: ReportData = {
             metrics: [
               { label: 'duration', controlMs: 1020, experimentMs: 880, pValue: 0.008, hlDiffMs: -140, significant: true },
             ],
+            regressedMetrics: [],
+            improvedMetrics: ['duration'],
             controlLighthouseHref: '#',
             experimentLighthouseHref: '#',
             timelineHref: '#',
@@ -95,7 +99,7 @@ export const SAMPLE_DATA: ReportData = {
       durationMs: 9_400,
       categories: [
         { category: 'visreg', status: 'no_difference', visreg: [] },
-        { category: 'perf', status: 'no_difference', perf: { metrics: [], controlLighthouseHref: null, experimentLighthouseHref: null, timelineHref: null, diffHrefs: [] } },
+        { category: 'perf', status: 'no_difference', perf: { metrics: [], regressedMetrics: [], improvedMetrics: [], controlLighthouseHref: null, experimentLighthouseHref: null, timelineHref: null, diffHrefs: [] } },
       ],
     },
   ],

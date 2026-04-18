@@ -24,6 +24,8 @@ export interface PerfMetric {
 
 export interface PerfArtifact {
   metrics: PerfMetric[];
+  regressedMetrics: string[];
+  improvedMetrics: string[];
   controlLighthouseHref: string | null;
   experimentLighthouseHref: string | null;
   timelineHref: string | null;

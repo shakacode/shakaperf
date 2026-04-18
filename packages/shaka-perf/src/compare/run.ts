@@ -45,6 +45,8 @@ const EMPTY_PERF_CATEGORY: CategoryResult = {
   status: 'no_difference',
   perf: {
     metrics: [],
+    regressedMetrics: [],
+    improvedMetrics: [],
     controlLighthouseHref: null,
     experimentLighthouseHref: null,
     timelineHref: null,

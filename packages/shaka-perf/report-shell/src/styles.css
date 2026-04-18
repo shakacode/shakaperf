@@ -327,13 +327,28 @@ input {
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   padding: 3px 8px;
   font-size: 10px;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
   border: 1px solid currentColor;
   white-space: nowrap;
+  max-width: 100%;
+}
+
+.pill__label {
+  text-transform: uppercase;
+}
+
+.pill__sep {
+  text-transform: uppercase;
+  white-space: pre;
+}
+
+.pill__detail {
+  text-transform: none;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pill--regression {

@@ -52,6 +52,8 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
   const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug } = opts;
 
   const metrics: PerfMetric[] = [];
+  const regressedMetrics: string[] = [];
+  const improvedMetrics: string[] = [];
   let status: Status = 'no_difference';
   const regressionThreshold = perfConfig.regressionThreshold ?? 0;
 
@@ -83,10 +85,12 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
         });
 
         if (entry.isSignificant && Number.isFinite(hlDiffMs)) {
-          if (hlDiffMs > regressionThreshold && status !== 'regression') {
+          if (hlDiffMs > regressionThreshold) {
+            regressedMetrics.push(entry.phaseName);
             status = 'regression';
-          } else if (hlDiffMs < -regressionThreshold && status === 'no_difference') {
-            status = 'improvement';
+          } else if (hlDiffMs < -regressionThreshold) {
+            improvedMetrics.push(entry.phaseName);
+            if (status === 'no_difference') status = 'improvement';
           }
         }
       }
@@ -115,6 +119,8 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
 
   const perf: PerfArtifact = {
     metrics,
+    regressedMetrics,
+    improvedMetrics,
     controlLighthouseHref: rel(controlLh),
     experimentLighthouseHref: rel(experimentLh),
     timelineHref: rel(timeline),

@@ -9,9 +9,9 @@ import { TestCard } from './components/TestCard';
 const VISIBLE_BY_DEFAULT: Status[] = ['regression', 'visual_change', 'improvement'];
 const SECTION_ORDER: Status[] = ['regression', 'visual_change', 'improvement', 'no_difference'];
 const SECTION_TITLE: Record<Status, string> = {
-  regression: 'regressions',
+  regression: 'performance regressions',
   visual_change: 'visual changes',
-  improvement: 'improvements',
+  improvement: 'performance improvements',
   no_difference: 'no difference',
 };
 const ZERO_COUNTS: Record<Status, number> = {

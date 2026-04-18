@@ -2,9 +2,9 @@ import type { Status } from '../types';
 
 const ORDER: Status[] = ['regression', 'visual_change', 'improvement', 'no_difference'];
 const LABEL: Record<Status, string> = {
-  regression: 'regressions',
-  visual_change: 'visual',
-  improvement: 'improvements',
+  regression: 'performance regressions',
+  visual_change: 'visual changes',
+  improvement: 'performance improvements',
   no_difference: 'no diff',
 };
 
