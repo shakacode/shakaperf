@@ -81,6 +81,7 @@ export interface AbTestDefinition {
   file: string | null;
   line: number | null;
   options: AbTestOptions;
+  testTypes: TestType[] | null;
   testFn: (context: TestFnContext) => Promise<void>;
 }
 
@@ -90,6 +91,7 @@ export function abTest(
   name: string,
   config: {
     startingPath: string;
+    testTypes?: TestType[];
     options?: AbTestOptions;
   },
   testFn: (context: TestFnContext) => Promise<void>
@@ -118,6 +120,7 @@ export function abTest(
     file,
     line,
     options: config.options ?? {},
+    testTypes: config.testTypes ?? null,
     testFn,
   });
 }

@@ -2,7 +2,7 @@ import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import pMap from 'p-map';
-import { loadTests } from 'shaka-shared';
+import { loadTests, TestType } from 'shaka-shared';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
@@ -49,6 +49,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const tests = await loadTests({
     testPathPattern,
     filter,
+    testType: TestType.VisualRegression,
     log: function (msg) { logger.log(msg); },
   });
 

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { clearRegistry, getRegisteredTests, restoreRegistry } from './ab-test-registry';
+import { clearRegistry, getRegisteredTests, restoreRegistry, TestType } from './ab-test-registry';
 import type { AbTestDefinition } from './ab-test-registry';
 import { loadTestFile } from './load-test-file';
 import { findTestFiles } from './discover-test-files';
@@ -13,6 +13,7 @@ export interface LoadTestsOptions {
    * to an existing abtest file, discovery is skipped and only that file is loaded.
    */
   filter?: string;
+  testType?: TestType;
   log?: (message: string) => void;
 }
 
@@ -34,7 +35,7 @@ function resolveFilterAsTestFile(filter: string): string | null {
  * Throws if no files are found or no tests are registered.
  */
 export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestDefinition[]> {
-  const { testPathPattern, filter, log } = options;
+  const { testPathPattern, filter, testType, log } = options;
 
   const filterAsFile = filter ? resolveFilterAsTestFile(filter) : null;
 
@@ -74,6 +75,14 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
   if (tests.length === 0) {
     const source = filterAsFile ?? 'discovered files';
     throw new Error(`No tests registered in ${source}. Did you call abTest()?`);
+  }
+
+  if (testType) {
+    const totalCount = tests.length;
+    tests = tests.filter(t => t.testTypes === null || t.testTypes.includes(testType));
+    if (log && tests.length !== totalCount) {
+      log(`Selected ${tests.length} of ${totalCount} test(s) for test type "${testType}".`);
+    }
   }
 
   if (filter && !filterAsFile) {
