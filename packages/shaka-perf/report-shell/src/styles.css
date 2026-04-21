@@ -14,10 +14,12 @@
   --visual_change: #c57900;
   --improvement: #137333;
   --no_difference: #8a93a0;
+  --error: #6d28d9;
 
   --regression-tint: rgba(217, 48, 37, 0.08);
   --visual_change-tint: rgba(197, 121, 0, 0.08);
   --improvement-tint: rgba(19, 115, 51, 0.08);
+  --error-tint: rgba(109, 40, 217, 0.1);
 
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono",
     Menlo, Consolas, monospace;
@@ -283,6 +285,9 @@ input {
   }
 }
 
+.card[data-status="error"] {
+  border-left: 3px solid var(--error);
+}
 .card[data-status="regression"] {
   border-left: 3px solid var(--regression);
 }
@@ -358,6 +363,10 @@ input {
   text-overflow: ellipsis;
 }
 
+.pill--error {
+  color: var(--error);
+  background: var(--error-tint);
+}
 .pill--regression {
   color: var(--regression);
   background: var(--regression-tint);
@@ -753,8 +762,8 @@ input {
 .error-banner {
   margin: 24px 0 0;
   padding: 16px 20px;
-  border-left: 3px solid var(--regression);
-  background: var(--regression-tint);
+  border-left: 3px solid var(--error);
+  background: var(--error-tint);
   color: var(--fg);
 }
 
@@ -762,7 +771,7 @@ input {
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--regression);
+  color: var(--error);
   margin-bottom: 8px;
 }
 
@@ -780,8 +789,8 @@ input {
   gap: 8px;
   padding: 8px 10px;
   margin-bottom: 12px;
-  border: 1px solid var(--regression);
-  background: var(--regression-tint);
+  border: 1px solid var(--error);
+  background: var(--error-tint);
   color: var(--fg);
   font-size: 11px;
   line-height: 1.4;
@@ -789,7 +798,7 @@ input {
 }
 
 .slot-error__prefix {
-  color: var(--regression);
+  color: var(--error);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 10px;

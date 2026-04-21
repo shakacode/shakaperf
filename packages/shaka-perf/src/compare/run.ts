@@ -62,6 +62,10 @@ const EMPTY_VISREG_CATEGORY: CategoryResult = {
 };
 
 function combineStatus(perCategory: CategoryResult[]): Status {
+  // Error wins over signed signals: a test whose measurement failed cannot
+  // truthfully claim a regression or improvement — surface the failure first
+  // so the card styling and status filter show it as `error`.
+  if (perCategory.some((c) => c.error)) return 'error';
   if (perCategory.some((c) => c.status === 'regression')) return 'regression';
   if (perCategory.some((c) => c.status === 'visual_change')) return 'visual_change';
   if (perCategory.some((c) => c.status === 'improvement')) return 'improvement';

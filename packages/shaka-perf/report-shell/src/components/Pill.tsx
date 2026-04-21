@@ -1,6 +1,7 @@
 import type { Status } from '../types';
 
 const STATUS_LABEL: Record<Status, string> = {
+  error: 'errored',
   regression: 'regressed',
   visual_change: 'visual change',
   improvement: 'improved',

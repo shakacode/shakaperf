@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CategoryResult, Status, TestResult } from '../types';
+import type { Status, TestResult } from '../types';
 import { Pill } from './Pill';
 import { CategorySlot } from './CategorySlot';
 
@@ -8,23 +8,29 @@ interface PillSpec {
   detail?: string;
 }
 
-function perfDetailFor(c: CategoryResult): string | undefined {
-  if (c.category !== 'perf' || !c.perf) return undefined;
-  const metrics =
-    c.status === 'regression'
-      ? c.perf.regressedMetrics
-      : c.status === 'improvement'
-        ? c.perf.improvedMetrics
-        : [];
-  return metrics.length > 0 ? metrics.join(', ') : undefined;
-}
-
 function pillsForTest(test: TestResult): PillSpec[] {
-  // One pill per category that moved off `no_difference`. A test with
-  // visreg=visual_change AND perf=improvement shows both pills.
-  const pills = test.categories
-    .filter((c) => c.status !== 'no_difference')
-    .map<PillSpec>((c) => ({ status: c.status, detail: perfDetailFor(c) }));
+  // A single test can emit several pills at once: each category that errored
+  // contributes an `errored` pill, and each perf category contributes a
+  // separate `regressed` / `improved` pill when its metric set is non-empty —
+  // the two are not mutually exclusive. Visreg contributes a `visual change`
+  // pill when its pairs actually mismatched.
+  const pills: PillSpec[] = [];
+  for (const c of test.categories) {
+    if (c.error) {
+      pills.push({ status: 'error', detail: c.category });
+    }
+    if (c.category === 'perf' && c.perf) {
+      if (c.perf.regressedMetrics.length > 0) {
+        pills.push({ status: 'regression', detail: c.perf.regressedMetrics.join(', ') });
+      }
+      if (c.perf.improvedMetrics.length > 0) {
+        pills.push({ status: 'improvement', detail: c.perf.improvedMetrics.join(', ') });
+      }
+    }
+    if (c.category === 'visreg' && c.status === 'visual_change') {
+      pills.push({ status: 'visual_change' });
+    }
+  }
   return pills.length > 0 ? pills : [{ status: 'no_difference' }];
 }
 

@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export type Status = 'regression' | 'visual_change' | 'improvement' | 'no_difference';
+export type Status =
+  | 'error'
+  | 'regression'
+  | 'visual_change'
+  | 'improvement'
+  | 'no_difference';
 
 export type Category = 'visreg' | 'perf';
 
