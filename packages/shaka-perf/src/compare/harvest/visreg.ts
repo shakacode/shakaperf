@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { embedAsBase64 } from 'shaka-shared';
-import type { CategoryResult, VisregArtifact } from '../report/types';
+import type { CategoryResult, VisregArtifact } from '../report';
 
 interface VisregPair {
   reference?: string;

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { CategoryResult, PerfArtifact, PerfMetric, Status } from '../report/types';
+import type { CategoryResult, PerfArtifact, PerfMetric, Status } from '../report';
 import type { PerfConfig } from '../config';
 
 export function slugifyForBench(name: string): string {

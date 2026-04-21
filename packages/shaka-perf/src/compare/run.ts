@@ -8,14 +8,14 @@ import {
   type AbTestDefinition,
 } from 'shaka-shared';
 import { parseAbTestsConfig, type AbTestsConfig, type VisregConfig, type PerfConfig } from './config';
-import { writeReport } from './report/render';
-import type {
-  Category,
-  CategoryResult,
-  ReportData,
-  Status,
-  TestResult,
-} from './report/types';
+import {
+  writeReport,
+  type Category,
+  type CategoryResult,
+  type ReportData,
+  type Status,
+  type TestResult,
+} from './report';
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { harvestVisreg } from './harvest/visreg';

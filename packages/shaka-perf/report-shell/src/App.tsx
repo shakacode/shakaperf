@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ReportData, Status, TestResult } from './types';
+import { STATUS_LABEL, STATUS_ORDER } from './labels';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { StatusFilter } from './components/StatusFilter';
@@ -8,13 +9,6 @@ import { TestCard } from './components/TestCard';
 import { ErrorBanner } from './components/ErrorBanner';
 
 const VISIBLE_BY_DEFAULT: Status[] = ['regression', 'visual_change', 'improvement'];
-const SECTION_ORDER: Status[] = ['regression', 'visual_change', 'improvement', 'no_difference'];
-const SECTION_TITLE: Record<Status, string> = {
-  regression: 'performance regressions',
-  visual_change: 'visual changes',
-  improvement: 'performance improvements',
-  no_difference: 'no difference',
-};
 const ZERO_COUNTS: Record<Status, number> = {
   regression: 0,
   visual_change: 0,
@@ -58,7 +52,7 @@ export function App({ data }: { data: ReportData }) {
     return out;
   }, [data.tests, active, query]);
 
-  const visibleTotal = SECTION_ORDER.reduce((sum, s) => sum + grouped[s].length, 0);
+  const visibleTotal = STATUS_ORDER.reduce((sum, s) => sum + grouped[s].length, 0);
 
   const toggleStatus = (status: Status) => {
     setActive((prev) => {
@@ -83,11 +77,11 @@ export function App({ data }: { data: ReportData }) {
       {visibleTotal === 0 ? (
         <div className="empty">no tests match current filter</div>
       ) : (
-        SECTION_ORDER.map((status) => {
+        STATUS_ORDER.map((status) => {
           const tests = grouped[status];
           if (tests.length === 0) return null;
           return (
-            <Section key={status} title={SECTION_TITLE[status]} count={tests.length}>
+            <Section key={status} title={STATUS_LABEL[status]} count={tests.length}>
               <div className="grid">
                 {tests.map((t, idx) => (
                   <TestCard key={t.id} test={t} animationDelayMs={Math.min(idx, 8) * 40} />

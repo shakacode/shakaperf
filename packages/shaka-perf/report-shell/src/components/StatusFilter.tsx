@@ -1,12 +1,5 @@
 import type { Status } from '../types';
-
-const ORDER: Status[] = ['regression', 'visual_change', 'improvement', 'no_difference'];
-const LABEL: Record<Status, string> = {
-  regression: 'performance regressions',
-  visual_change: 'visual changes',
-  improvement: 'performance improvements',
-  no_difference: 'no diff',
-};
+import { STATUS_LABEL, STATUS_ORDER } from '../labels';
 
 interface Props {
   active: Set<Status>;
@@ -17,14 +10,14 @@ interface Props {
 export function StatusFilter({ active, counts, onToggle }: Props) {
   return (
     <div className="filterbar">
-      {ORDER.map((status) => (
+      {STATUS_ORDER.map((status) => (
         <button
           key={status}
           type="button"
           data-active={active.has(status) ? 'true' : 'false'}
           onClick={() => onToggle(status)}
         >
-          {LABEL[status]} · {counts[status]}
+          {STATUS_LABEL[status]} · {counts[status]}
         </button>
       ))}
     </div>

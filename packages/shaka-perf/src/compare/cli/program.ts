@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { addCompareOptions } from 'shaka-shared';
 import { runCompare } from '../run';
-import type { Category } from '../report/types';
+import type { Category } from '../report';
 
 const VALID_CATEGORIES: Category[] = ['visreg', 'perf'];
 
