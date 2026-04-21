@@ -61,7 +61,7 @@ function createReporter(): Reporter {
   return new Reporter({ verbosity });
 }
 
-function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>): BaselineStorage {
+function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>, reporter: Reporter): BaselineStorage {
   return new BaselineStorage({
     s3Bucket: resolvedConfig.storage.s3Bucket,
     s3Prefix: resolvedConfig.storage.s3Prefix,
@@ -71,6 +71,7 @@ function createStorage(resolvedConfig: ReturnType<typeof resolveConfig>): Baseli
     awsSecretAccessKey: resolvedConfig.storage.awsSecretAccessKey,
     baselineDir: resolvedConfig.baselineDir,
     mainCommitsToCheck: resolvedConfig.storage.mainCommitsToCheck,
+    reporter,
   });
 }
 
@@ -126,19 +127,21 @@ Command options:
   compare:
       --no-html-diffs    Skip HTML diff generation
 
-Examples:
-  # Auto-discovers bundle-size.config.ts in current directory
-  shaka-bundle-size download-main-branch-stats
-  shaka-bundle-size compare
+Typical CI workflow:
+  1. shaka-bundle-size download-main-branch-stats   # Download baseline from S3
+  2. shaka-bundle-size generate-stats               # Generate current stats
+  3. shaka-bundle-size compare                      # Compare current vs baseline
 
+Main branch (after merge):
+  1. shaka-bundle-size generate-stats               # Generate stats
+  2. shaka-bundle-size upload-main-branch-stats      # Upload to S3
+
+Examples:
   # Specify config explicitly
   shaka-bundle-size -c admin.bundle-size.config.ts compare
 
   # Download from specific commit
   shaka-bundle-size download-main-branch-stats --commit abc1234
-
-  # Main branch: upload new baseline after merge
-  shaka-bundle-size upload-main-branch-stats
 
   # Upload baseline for specific commit
   shaka-bundle-size upload-main-branch-stats --commit abc1234
@@ -156,9 +159,10 @@ program
     try {
       const { resolvedConfig } = await getResolvedConfig();
       const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
+      const storage = createStorage(resolvedConfig, reporter);
 
       reporter.info('Downloading main branch baseline from S3...');
+      reporter.verbose(`Baseline directory: ${resolvedConfig.baselineDir}`);
       const commit = opts.commit
         ? await storage.downloadForCommit(opts.commit)
         : await storage.download();
@@ -177,15 +181,14 @@ program
   });
 
 program
-  .command('upload-main-branch-stats')
-  .description('Generate and upload baseline for current commit')
-  .option('--commit <sha>', 'Specific commit SHA')
-  .action(async (opts) => {
+  .command('generate-stats')
+  .description('Generate current stats (baseline config and extended stats)')
+  .action(async () => {
     try {
       const { resolvedConfig } = await getResolvedConfig();
       const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
 
       // Generate extended stats first (needed for source maps)
       if (resolvedConfig.generateSourceMaps) {
@@ -193,23 +196,42 @@ program
         const extendedStatsGenerator = new ExtendedStatsGenerator({
           bundlesDir,
           bundleNamePrefix: resolvedConfig.bundleNamePrefix,
+          reporter,
         });
 
-        const extendedStatsPath = extendedStatsGenerator.generate();
+        const extendedStatsResult = extendedStatsGenerator.generate();
 
-        if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
-          reporter.warning(`Cannot generate source maps: webpack stats not found at ${webpackStatsPath}`);
+        if ('error' in extendedStatsResult) {
+          reporter.warning(`Cannot generate source maps: ${extendedStatsResult.message}`);
         }
       }
 
-      checker.updateBaseline();
-      reporter.success('Generated current stats.');
+      fs.mkdirSync(currentDir, { recursive: true });
+      checker.generateCurrentStatsTo(currentDir);
+      reporter.success(`Stats generated to ${currentDir}`);
+      process.exit(0);
+    } catch (error) {
+      console.error(colorize.red(`Error generating stats: ${(error as Error).message}`));
+      process.exit(2);
+    }
+  });
 
+program
+  .command('upload-main-branch-stats')
+  .description('Upload current stats to S3 for current commit')
+  .option('--commit <sha>', 'Specific commit SHA')
+  .action(async (opts) => {
+    try {
+      const { resolvedConfig } = await getResolvedConfig();
+      const reporter = createReporter();
+      const storage = createStorage(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
+
+      reporter.info('Uploading current stats to S3...');
       const commit = opts.commit
-        ? await storage.uploadForCommit(opts.commit)
-        : await storage.upload();
-      reporter.success(`Uploaded baseline to S3 for commit ${commit.substring(0, 7)}`);
+        ? await storage.uploadForCommit(opts.commit, currentDir)
+        : await storage.upload(currentDir);
+      reporter.success(`Uploaded stats to S3 for commit ${commit.substring(0, 7)}`);
       process.exit(0);
     } catch (error) {
       console.error(colorize.red(`Error uploading baseline: ${(error as Error).message}`));
@@ -244,43 +266,25 @@ program
 
 program
   .command('compare', { isDefault: true })
-  .description('Generate current stats and compare against baseline')
+  .description('Compare current stats against downloaded baseline')
   .option('--no-html-diffs', 'Skip HTML diff generation')
   .action(async (opts) => {
     try {
       const { resolvedConfig, configPath } = await getResolvedConfig();
       const reporter = createReporter();
-      const storage = createStorage(resolvedConfig);
+      const storage = createStorage(resolvedConfig, reporter);
       const checker = new BundleSizeChecker(resolvedConfig, reporter);
+      const currentDir = resolvedConfig.htmlDiffs.currentDir;
 
-      const result = checker.check();
+      const result = checker.checkFromFiles(currentDir);
 
       if (opts.htmlDiffs && resolvedConfig.htmlDiffs.enabled) {
-        const bundlesDir = path.dirname(resolvedConfig.statsFile);
-        const extendedStatsGenerator = new ExtendedStatsGenerator({
-          bundlesDir,
-          bundleNamePrefix: resolvedConfig.bundleNamePrefix,
+        checker.generateHtmlDiffs({
+          controlDir: resolvedConfig.baselineDir,
+          currentDir,
+          outputDir: resolvedConfig.htmlDiffs.outputDir,
+          metadata: getCiMetadata(storage),
         });
-
-        const extendedStatsPath = extendedStatsGenerator.generate();
-
-        if (!extendedStatsPath) {
-          const webpackStatsPath = extendedStatsGenerator.getWebpackStatsPath();
-          const expectedPath = extendedStatsGenerator.getExtendedStatsPath();
-          reporter.error(`Cannot generate HTML diffs: failed to create ${expectedPath}`);
-          reporter.error(`Webpack stats not found at ${webpackStatsPath}`);
-        } else {
-          const currentDir = resolvedConfig.htmlDiffs.currentDir;
-          fs.mkdirSync(currentDir, { recursive: true });
-          checker.generateCurrentStatsTo(currentDir);
-
-          checker.generateHtmlDiffs({
-            controlDir: resolvedConfig.baselineDir,
-            currentDir,
-            outputDir: resolvedConfig.htmlDiffs.outputDir,
-            metadata: getCiMetadata(storage),
-          });
-        }
       }
 
       if (result.passed) {

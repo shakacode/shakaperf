@@ -45,13 +45,16 @@ describe('ExtendedStatsGenerator', () => {
   });
 
   describe('generate', () => {
-    it('returns null when webpack stats file does not exist', () => {
+    it('returns stats-not-found error when webpack stats file does not exist', () => {
       const gen = new ExtendedStatsGenerator({ bundlesDir: tmpDir });
       const result = gen.generate();
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        error: 'stats-not-found',
+        message: expect.stringContaining('Webpack stats not found'),
+      });
     });
 
-    it('returns extended stats path on success', () => {
+    it('returns path on success', () => {
       const { execSync } = require('child_process');
       execSync.mockImplementation(() => '');
 
@@ -60,10 +63,10 @@ describe('ExtendedStatsGenerator', () => {
 
       const gen = new ExtendedStatsGenerator({ bundlesDir: tmpDir });
       const result = gen.generate();
-      expect(result).toBe(path.join(tmpDir, 'bundlesize-extended-stats.json'));
+      expect(result).toEqual({ path: path.join(tmpDir, 'bundlesize-extended-stats.json') });
     });
 
-    it('returns null when execSync throws', () => {
+    it('returns analyzer-failed error when execSync throws', () => {
       const { execSync } = require('child_process');
       execSync.mockImplementation(() => { throw new Error('command failed'); });
 
@@ -71,7 +74,10 @@ describe('ExtendedStatsGenerator', () => {
 
       const gen = new ExtendedStatsGenerator({ bundlesDir: tmpDir });
       const result = gen.generate();
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        error: 'analyzer-failed',
+        message: expect.stringContaining('webpack-bundle-analyzer failed'),
+      });
     });
 
     it('uses correct command with bundleNamePrefix', () => {

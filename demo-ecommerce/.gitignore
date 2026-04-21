@@ -43,6 +43,9 @@
 yarn-debug.log*
 .yarn-integrity
 
+# SWC wasmtime AOT cache for SWC plugins (machine-specific)
+/.swc
+
 # Generated React on Rails packs
 **/generated/**
 ssr-generated
