@@ -6,22 +6,35 @@ import type { CategoryResult, VisregArtifact } from '../report';
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
+function readPngDims(absPath: string): { w: number; h: number } | null {
+  try {
+    const png = PNG.sync.read(fs.readFileSync(absPath));
+    return { w: png.width, h: png.height };
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Scan a pixelmatch-generated diff PNG for the first contiguous block of
- * non-grayscale (i.e. highlighted) pixels. Matching pixels are rendered
- * grayscale by pixelmatch; diff pixels are red, AA pixels are yellow —
- * both satisfy r!==g || g!==b.
+ * Scan a pixelmatch-generated diff PNG for the span of highlighted pixels.
+ * Matching pixels are rendered grayscale; diff pixels are red, AA pixels
+ * are yellow — both satisfy r!==g || g!==b.
  *
- * Returns the bounding box of that first block in source-image pixels, or
- * `null` if the PNG can't be read / contains no diff pixels. A small vertical
- * gap (<=8 rows of no-diff pixels) is tolerated before the block closes, so
- * that a single button or heading with internal whitespace is captured as
- * one region.
+ * We use the full `[first_diff_row, last_diff_row]` span (not just the
+ * first contiguous block) because pixelmatch pads the shorter source to
+ * `max(control, experiment)`: if layout shifts push e.g. the footer lower
+ * in one screenshot, the "same" altered content shows up at different Y
+ * coordinates in the two sources, and we need the crop to cover both so
+ * the text is visible in every panel of the triplet.
  */
-function computeDiffBbox(absPath: string): DiffBbox | null {
+function computeDiffBbox(
+  diffPath: string,
+  controlDims: { w: number; h: number } | null,
+  experimentDims: { w: number; h: number } | null,
+): DiffBbox | null {
   let png: PNG;
   try {
-    png = PNG.sync.read(fs.readFileSync(absPath));
+    png = PNG.sync.read(fs.readFileSync(diffPath));
   } catch {
     return null;
   }
@@ -32,49 +45,46 @@ function computeDiffBbox(absPath: string): DiffBbox | null {
     data[i] !== data[i + 1] || data[i + 1] !== data[i + 2];
 
   let y0 = -1;
-  outer: for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (isDiffPixel((y * width + x) * 4)) {
-        y0 = y;
-        break outer;
-      }
-    }
-  }
-  if (y0 < 0) return null;
-
+  let y1 = -1;
   let minX = width;
   let maxX = 0;
-  let y1 = y0;
-  let gap = 0;
-  for (let y = y0; y < height; y++) {
-    let foundInRow = false;
+  for (let y = 0; y < height; y++) {
+    let rowHasDiff = false;
     for (let x = 0; x < width; x++) {
       if (isDiffPixel((y * width + x) * 4)) {
-        foundInRow = true;
+        rowHasDiff = true;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
       }
     }
-    if (foundInRow) {
+    if (rowHasDiff) {
+      if (y0 < 0) y0 = y;
       y1 = y;
-      gap = 0;
-    } else if (++gap > 8) {
-      break;
     }
   }
+  if (y0 < 0) return null;
 
   const rawW = Math.max(1, maxX - minX + 1);
   const rawH = Math.max(1, y1 - y0 + 1);
+
+  // 5px gutter on top/left/right (not bottom) so the cropped region isn't
+  // flush against the edge of the first diff pixel — gives the thumbnail
+  // a bit of breathing room without including a whole new line below.
+  const PAD = 5;
+  const padTop = Math.min(PAD, y0);
+  const padLeft = Math.min(PAD, minX);
+  const padRight = Math.min(PAD, width - (maxX + 1));
+
+  let cropX = minX - padLeft;
+  let cropY = y0 - padTop;
+  let cropW = rawW + padLeft + padRight;
+  let cropH = rawH + padTop;
 
   // A footer-style one-line diff would otherwise render as a 200-px-wide,
   // 6-px-tall strip — useless at thumbnail size. Clamp the crop aspect ratio
   // to at most 4:1 (wide:tall) and 1:4 (tall:wide) by padding the short axis
   // around the diff, staying inside the source image.
   const MAX_RATIO = 4;
-  let cropX = minX;
-  let cropY = y0;
-  let cropW = rawW;
-  let cropH = rawH;
   if (cropW / cropH > MAX_RATIO) {
     const desiredH = Math.ceil(cropW / MAX_RATIO);
     const extra = desiredH - cropH;
@@ -93,7 +103,9 @@ function computeDiffBbox(absPath: string): DiffBbox | null {
     w: cropW,
     h: cropH,
     imgW: width,
-    imgH: height,
+    controlImgH: controlDims?.h ?? height,
+    experimentImgH: experimentDims?.h ?? height,
+    diffImgH: height,
   };
 }
 
@@ -163,8 +175,14 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
     // Only the pixelmatch PNG has the red/yellow highlight semantics the bbox
     // scanner relies on — resemble's overlay is full-opacity colored so the
     // grayscale detector would misclassify it.
+    const controlDims = pair.reference ? readPngDims(resolveUnderBase(htmlReportDir, pair.reference)) : null;
+    const experimentDims = pair.test ? readPngDims(resolveUnderBase(htmlReportDir, pair.test)) : null;
     const diffBbox = pair.pixelmatchDiffImage
-      ? computeDiffBbox(resolveUnderBase(htmlReportDir, pair.pixelmatchDiffImage))
+      ? computeDiffBbox(
+          resolveUnderBase(htmlReportDir, pair.pixelmatchDiffImage),
+          controlDims,
+          experimentDims,
+        )
       : null;
     const artifact: VisregArtifact = {
       viewportLabel: pair.viewportLabel ?? '',

@@ -18,11 +18,14 @@ function CardHead({ row }: RowProps) {
 }
 
 /**
- * Consumed by CSS inside `.visreg-card__images--crop` to scale+offset the
- * image inside its container so the first-diff bbox fills the card.
- * Scaling via CSS vars + calc keeps all three triplet images in sync.
+ * Consumed by CSS inside `.visreg-card__images--crop` to scale+offset each
+ * image inside its container so the first-diff bbox fills the card. The
+ * crop geometry (x/y/w/h, imgW) is shared across the triplet, but each
+ * <img> gets its own --img-h — pixelmatch pads to `max(control, experiment)`
+ * so the three images often differ in natural height, and the Y offset has
+ * to reference each image's real height to land on the same source pixels.
  */
-function cropVarsFor(row: VisregArtifact): CSSProperties | undefined {
+function tripletVarsFor(row: VisregArtifact): CSSProperties | undefined {
   const b = row.diffBbox;
   if (!b) return undefined;
   return {
@@ -31,27 +34,46 @@ function cropVarsFor(row: VisregArtifact): CSSProperties | undefined {
     ['--crop-w' as string]: b.w,
     ['--crop-h' as string]: b.h,
     ['--img-w' as string]: b.imgW,
-    ['--img-h' as string]: b.imgH,
   };
 }
 
+function imgVarsFor(imgH: number): CSSProperties {
+  return { ['--img-h' as string]: imgH };
+}
+
 function DiffCard({ row }: RowProps) {
-  const style = cropVarsFor(row);
-  const cls = style
+  const tripletStyle = tripletVarsFor(row);
+  const cls = tripletStyle
     ? 'visreg-card__images visreg-card__images--triplet visreg-card__images--crop'
     : 'visreg-card__images visreg-card__images--triplet';
+  const bbox = row.diffBbox;
   return (
     <div className="visreg-card visreg-card--diff">
       <CardHead row={row} />
-      <div className={cls} style={style}>
+      <div className={cls} style={tripletStyle}>
         <div className="visreg-card__img" data-kind="control">
-          <img src={row.controlImage} alt="control" loading="lazy" />
+          <img
+            src={row.controlImage}
+            alt="control"
+            loading="lazy"
+            style={bbox ? imgVarsFor(bbox.controlImgH) : undefined}
+          />
         </div>
         <div className="visreg-card__img" data-kind="experiment">
-          <img src={row.experimentImage} alt="experiment" loading="lazy" />
+          <img
+            src={row.experimentImage}
+            alt="experiment"
+            loading="lazy"
+            style={bbox ? imgVarsFor(bbox.experimentImgH) : undefined}
+          />
         </div>
         <div className="visreg-card__img" data-kind="diff">
-          <img src={row.diffImage!} alt="diff" loading="lazy" />
+          <img
+            src={row.diffImage!}
+            alt="diff"
+            loading="lazy"
+            style={bbox ? imgVarsFor(bbox.diffImgH) : undefined}
+          />
         </div>
       </div>
     </div>
@@ -71,13 +93,32 @@ function NoDiffCard({ row }: RowProps) {
   );
 }
 
+// Group rows for the same selector side-by-side across devices. Sort by
+// selector first, then by the test's viewport order (phone → tablet → desktop
+// in most configs) so the grid reads left-to-right as "narrower → wider".
+function sortBySelectorThenViewport(rows: VisregArtifact[]): VisregArtifact[] {
+  // Preserve first-seen viewport order instead of alphabetising (alphabetical
+  // would put "desktop" before "phone", inverting the usual narrow→wide read).
+  const viewportOrder = new Map<string, number>();
+  for (const r of rows) {
+    if (!viewportOrder.has(r.viewportLabel)) {
+      viewportOrder.set(r.viewportLabel, viewportOrder.size);
+    }
+  }
+  return [...rows].sort((a, b) => {
+    if (a.selector !== b.selector) return a.selector.localeCompare(b.selector);
+    return (viewportOrder.get(a.viewportLabel) ?? 0) - (viewportOrder.get(b.viewportLabel) ?? 0);
+  });
+}
+
 export function VisregSlot({ rows = EMPTY }: { rows?: VisregArtifact[] }) {
   if (rows.length === 0) {
     return <div className="empty" style={{ padding: '20px 0' }}>no visreg artifacts</div>;
   }
 
-  const diffRows = rows.filter((r) => r.diffImage !== null);
-  const noDiffRows = rows.filter((r) => r.diffImage === null);
+  const sorted = sortBySelectorThenViewport(rows);
+  const diffRows = sorted.filter((r) => r.diffImage !== null);
+  const noDiffRows = sorted.filter((r) => r.diffImage === null);
 
   return (
     <div className="visreg">

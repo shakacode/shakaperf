@@ -534,10 +534,13 @@ input {
   display: block;
 }
 
-/* Diff triplet with bbox: aspect-ratio + scale/offset via calc() so the
-   first-diff region fills each of the three sub-images identically. The
-   same --crop-* / --img-* vars drive control, experiment and diff so they
-   stay pixel-locked. */
+/* Diff triplet with bbox: aspect-ratio + scale/offset so the first-diff
+   region fills each sub-image identically. `--crop-*` and `--img-w` are
+   shared across the triplet; each <img> carries its OWN `--img-h` because
+   pixelmatch pads to max(control, experiment) and the three source images
+   can have different natural heights. The image renders at `height: auto`
+   so it keeps its real intrinsic aspect, and we scale it via `width:` and
+   position it via `transform: translate` in % of the image's own box. */
 .visreg-card__images--crop .visreg-card__img {
   aspect-ratio: calc(var(--crop-w) / var(--crop-h));
   position: relative;
@@ -546,11 +549,15 @@ input {
 
 .visreg-card__images--crop .visreg-card__img img {
   position: absolute;
+  top: 0;
+  left: 0;
   width: calc(100% * var(--img-w) / var(--crop-w));
-  height: calc(100% * var(--img-h) / var(--crop-h));
-  left: calc(-100% * var(--crop-x) / var(--crop-w));
-  top: calc(-100% * var(--crop-y) / var(--crop-h));
-  object-fit: fill;
+  height: auto;
+  transform: translate(
+    calc(-100% * var(--crop-x) / var(--img-w)),
+    calc(-100% * var(--crop-y) / var(--img-h))
+  );
+  transform-origin: top left;
   display: block;
 }
 

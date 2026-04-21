@@ -18,8 +18,22 @@ export interface VisregArtifact {
    * Bounding box of the first visual difference in the pixelmatch diff PNG,
    * in source-image pixels. Used by the report to crop control/experiment/diff
    * thumbnails to the same segment so the regression is visible at a glance.
+   *
+   * `controlImgH` / `experimentImgH` / `diffImgH` capture each source image's
+   * natural height — pixelmatch's diff PNG is padded to `max(control, experiment)`,
+   * so they can differ, and the CSS cropper needs the real per-image height
+   * to position each image over the correct region.
    */
-  diffBbox: { x: number; y: number; w: number; h: number; imgW: number; imgH: number } | null;
+  diffBbox: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    imgW: number;
+    controlImgH: number;
+    experimentImgH: number;
+    diffImgH: number;
+  } | null;
 }
 
 export type PerfDirection = 'regression' | 'improvement' | 'none';
