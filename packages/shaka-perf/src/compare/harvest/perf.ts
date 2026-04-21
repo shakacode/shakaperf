@@ -60,6 +60,26 @@ export function slugifyForBench(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'test';
 }
 
+const ENGINE_ERROR_FILE = 'engine-error.txt';
+
+/**
+ * Returns the first line of `<perTestDir>/engine-error.txt` (written by bench's
+ * per-test try/catch when a measurement fails) so it can be surfaced as the
+ * perf card's `error` in place of real metrics. Returns null if the file is
+ * absent — the common case.
+ */
+export function readPerfEngineError(perTestDir: string): string | null {
+  const errPath = path.join(perTestDir, ENGINE_ERROR_FILE);
+  try {
+    const raw = fs.readFileSync(errPath, 'utf8').trim();
+    if (!raw) return null;
+    const firstLine = raw.split(/\r?\n/, 1)[0];
+    return firstLine || null;
+  } catch {
+    return null;
+  }
+}
+
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;

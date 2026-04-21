@@ -19,7 +19,7 @@ import {
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { harvestVisreg } from './harvest/visreg';
-import { harvestPerf, slugifyForBench } from './harvest/perf';
+import { harvestPerf, readPerfEngineError, slugifyForBench } from './harvest/perf';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -231,6 +231,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
   if (categories.includes('perf')) {
     const perTestDir = path.join(resultsRoot, slug);
     const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+    const perTestEngineError = readPerfEngineError(perTestDir);
     if (reportJsonExists) {
       perCategory.push(
         harvestPerf({
@@ -242,6 +243,11 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
           slug,
         }),
       );
+    } else if (perTestEngineError) {
+      perCategory.push({
+        ...EMPTY_PERF_CATEGORY,
+        error: `perf measurement failed: ${perTestEngineError}`,
+      });
     } else if (perfEngineFailed) {
       perCategory.push({
         ...EMPTY_PERF_CATEGORY,

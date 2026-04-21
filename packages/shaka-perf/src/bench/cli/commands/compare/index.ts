@@ -21,6 +21,8 @@ import {
   writeFileSync,
 } from "fs-extra";
 
+const ENGINE_ERROR_FILE = "engine-error.txt";
+
 import type { RegressionThresholdStat, SamplingMode } from "../../command-config/tb-config";
 import {
   chalkScheme,
@@ -128,6 +130,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
 
   let analyzedJSONString = "";
   const completedTests: TestInfo[] = [];
+  const failedTests: { name: string; reason: string }[] = [];
 
   for (const testDef of tests) {
     console.log(`\n${formatTestTitle(compareFlags.testFile!, testDef.name, testDef.line)}`);
@@ -141,131 +144,149 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       resultsFolder: testResultsFolder,
     };
 
-    const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
-      "control",
-      compareFlags.controlURL!,
-      testDef,
-      testOptions
-    );
-    const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
-      "experiment",
-      compareFlags.experimentURL!,
-      testDef,
-      testOptions
-    );
-
-    const sampleTimeout = compareFlags.sampleTimeout;
-
-    const startTime = timestamp();
-    const results = (
-      await run(
-        [control, experiment],
-        compareFlags.numberOfMeasurements as number,
-        (elapsed, completed, remaining, group, iteration) => {
-          if (completed > 0) {
-            const average = elapsed / completed;
-            const remainingSecs = Math.round((remaining * average) / 1000);
-            const remainingTime = secondsToTime(remainingSecs);
-            console.log(
-              "%s: %s %s remaining",
-              group.padStart(15),
-              iteration.toString().padStart(2),
-              `${remainingTime}`.padStart(10)
-            );
-          } else {
-            console.log(
-              "%s: %s",
-              group.padStart(15),
-              iteration.toString().padStart(2)
-            );
-          }
-        },
-        {
-          sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
-          parallelism: compareFlags.parallelism,
-          samplingMode: compareFlags.samplingMode,
-          durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
-        }
-      )
-    ).map(({ group, samples }) => {
-      const meta = samples.length > 0 ? samples[0].metadata : {};
-      return {
-        group,
-        set: group,
-        samples,
-        meta,
-      };
-    });
-    const endTime = timestamp();
-    if (!results[0].samples[0]) {
-      console.error(
-        `Could not sample from provided urls\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}.`
+    try {
+      const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
+        "control",
+        compareFlags.controlURL!,
+        testDef,
+        testOptions
       );
-      process.exit(2);
-    }
-    const abMeasurementsPath = `${testResultsFolder}/ab-measurements.json`;
-    generateHtmlDiffs({
-      testResultsFolder,
-      controlURL: compareFlags.controlURL!,
-      experimentURL: compareFlags.experimentURL!,
-    });
+      const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
+        "experiment",
+        compareFlags.experimentURL!,
+        testDef,
+        testOptions
+      );
 
-    // Generate timeline comparison from performance profiles
-    {
-      const files = readdirSync(testResultsFolder);
-      const controlHost = new URL(compareFlags.controlURL!).host.replace(':', '_');
-      const experimentHost = new URL(compareFlags.experimentURL!).host.replace(':', '_');
-      const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
-      const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
-      if (controlProfile && experimentProfile) {
-        generateTimelineComparison({
-          controlProfilePath: path.join(testResultsFolder, controlProfile),
-          experimentProfilePath: path.join(testResultsFolder, experimentProfile),
-          outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
-        });
-        generateTimelinePreviewSvg({
-          controlProfilePath: path.join(testResultsFolder, controlProfile),
-          experimentProfilePath: path.join(testResultsFolder, experimentProfile),
-          outputPath: path.join(testResultsFolder, 'timeline_preview.svg'),
-        });
-      }
-    }
+      const sampleTimeout = compareFlags.sampleTimeout;
 
-    writeFileSync(abMeasurementsPath, JSON.stringify(results));
-    completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
-
-    const duration = secondsToTime(durationInSec(endTime, startTime));
-    const actualMeasurements = results[0].samples.length;
-    const message = `${chalkScheme.blackBgGreen(
-      `    ${chalkScheme.white("SUCCESS")}    `
-    )} ${actualMeasurements} measurements took ${duration}`;
-
-    console.log(`\n${message}`);
-
-    // if the stdout analysis is not hidden show it
-    if (!compareFlags.hideAnalysis) {
-      analyzedJSONString = await runAnalyze(abMeasurementsPath, {
-        numberOfMeasurements: actualMeasurements,
-        regressionThreshold: compareFlags.regressionThreshold!,
-        regressionThresholdStat: compareFlags.regressionThresholdStat!,
-        pValueThreshold: compareFlags.pValueThreshold,
-        jsonReport: true,
+      const startTime = timestamp();
+      const results = (
+        await run(
+          [control, experiment],
+          compareFlags.numberOfMeasurements as number,
+          (elapsed, completed, remaining, group, iteration) => {
+            if (completed > 0) {
+              const average = elapsed / completed;
+              const remainingSecs = Math.round((remaining * average) / 1000);
+              const remainingTime = secondsToTime(remainingSecs);
+              console.log(
+                "%s: %s %s remaining",
+                group.padStart(15),
+                iteration.toString().padStart(2),
+                `${remainingTime}`.padStart(10)
+              );
+            } else {
+              console.log(
+                "%s: %s",
+                group.padStart(15),
+                iteration.toString().padStart(2)
+              );
+            }
+          },
+          {
+            sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
+            parallelism: compareFlags.parallelism,
+            samplingMode: compareFlags.samplingMode,
+            durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
+          }
+        )
+      ).map(({ group, samples }) => {
+        const meta = samples.length > 0 ? samples[0].metadata : {};
+        return {
+          group,
+          set: group,
+          samples,
+          meta,
+        };
       });
-    }
-
-    // Emit the legacy bench Handlebars+Chart.js HTML report alongside
-    // ab-measurements.json so the unified compare report can link to it.
-    if (!compareFlags.skipReport) {
-      try {
-        await runReport({
-          resultsFolder: testResultsFolder,
-          pValueThreshold: compareFlags.pValueThreshold,
-        });
-      } catch (err) {
-        console.error(`Failed to generate bench HTML report for ${testDef.name}:`, err);
+      const endTime = timestamp();
+      if (!results[0].samples[0]) {
+        throw new Error(
+          `No measurements were collected.\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}`
+        );
       }
-    }
+      const abMeasurementsPath = `${testResultsFolder}/ab-measurements.json`;
+      generateHtmlDiffs({
+        testResultsFolder,
+        controlURL: compareFlags.controlURL!,
+        experimentURL: compareFlags.experimentURL!,
+      });
 
+      // Generate timeline comparison from performance profiles
+      {
+        const files = readdirSync(testResultsFolder);
+        const controlHost = new URL(compareFlags.controlURL!).host.replace(':', '_');
+        const experimentHost = new URL(compareFlags.experimentURL!).host.replace(':', '_');
+        const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
+        const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
+        if (controlProfile && experimentProfile) {
+          generateTimelineComparison({
+            controlProfilePath: path.join(testResultsFolder, controlProfile),
+            experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+            outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
+          });
+          generateTimelinePreviewSvg({
+            controlProfilePath: path.join(testResultsFolder, controlProfile),
+            experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+            outputPath: path.join(testResultsFolder, 'timeline_preview.svg'),
+          });
+        }
+      }
+
+      writeFileSync(abMeasurementsPath, JSON.stringify(results));
+      completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
+
+      const duration = secondsToTime(durationInSec(endTime, startTime));
+      const actualMeasurements = results[0].samples.length;
+      const message = `${chalkScheme.blackBgGreen(
+        `    ${chalkScheme.white("SUCCESS")}    `
+      )} ${actualMeasurements} measurements took ${duration}`;
+
+      console.log(`\n${message}`);
+
+      // if the stdout analysis is not hidden show it
+      if (!compareFlags.hideAnalysis) {
+        analyzedJSONString = await runAnalyze(abMeasurementsPath, {
+          numberOfMeasurements: actualMeasurements,
+          regressionThreshold: compareFlags.regressionThreshold!,
+          regressionThresholdStat: compareFlags.regressionThresholdStat!,
+          pValueThreshold: compareFlags.pValueThreshold,
+          jsonReport: true,
+        });
+      }
+
+      // Emit the legacy bench Handlebars+Chart.js HTML report alongside
+      // ab-measurements.json so the unified compare report can link to it.
+      if (!compareFlags.skipReport) {
+        try {
+          await runReport({
+            resultsFolder: testResultsFolder,
+            pValueThreshold: compareFlags.pValueThreshold,
+          });
+        } catch (err) {
+          console.error(`Failed to generate bench HTML report for ${testDef.name}:`, err);
+        }
+      }
+    } catch (err) {
+      // Per-test failure: serialise the reason next to the (empty) per-test
+      // dir so the unified report harvester can surface it on the perf card,
+      // then keep going. The previous behaviour let one bad test tear down
+      // the whole run (and often crashed the process via a dying worker's
+      // closed IPC channel during dispose).
+      const error = err instanceof Error ? err : new Error(String(err));
+      const reason = error.stack ?? error.message;
+      try {
+        writeFileSync(path.join(testResultsFolder, ENGINE_ERROR_FILE), reason);
+      } catch (writeErr) {
+        console.error(`Could not write ${ENGINE_ERROR_FILE} for ${testDef.name}:`, writeErr);
+      }
+      const failBanner = `${chalkScheme.blackBgRed(
+        `    ${chalkScheme.white("FAILED")}     `
+      )} ${error.message}`;
+      console.log(`\n${failBanner}`);
+      failedTests.push({ name: testDef.name, reason: error.message });
+    }
   }
 
   // List all generated artifacts per test
@@ -273,6 +294,12 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   for (const test of completedTests) {
     console.log(`\n${formatTestTitle(test.testFile, test.name, test.line)}`);
     listArtifacts(test.resultsFolder, test.resultsFolder);
+  }
+  if (failedTests.length > 0) {
+    logHeading("Failed Tests", "alert");
+    for (const failed of failedTests) {
+      console.log(`  ${chalk.red(failed.name)} ${chalk.dim('—')} ${chalk.dim(failed.reason)}`);
+    }
   }
   console.log('');
 

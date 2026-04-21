@@ -25,11 +25,29 @@ interface DisposeMessage {
 type ParentMessage = SetupMessage | SampleMessage | DisposeMessage;
 
 function send(msg: object): void {
-  process.send!(msg);
+  try {
+    process.send!(msg);
+  } catch {
+    // Parent channel already closed — nothing we can do from here.
+  }
 }
 
 // Self-terminate if parent disconnects to prevent orphaned Chrome processes
 process.on('disconnect', () => process.exit(1));
+
+// Async CDP / puppeteer failures during a sample can surface as unhandled
+// rejections AFTER we've already returned a result or error for the current
+// iteration. Without these, a late rejection crashes the worker with a bare
+// stack trace on stderr — parent then hits ERR_IPC_CHANNEL_CLOSED on its next
+// send and the whole pipeline dies. Report what we can and exit cleanly so the
+// per-test try/catch upstream can record the failure and keep going.
+function reportFatal(err: unknown): void {
+  const error = err instanceof Error ? err : new Error(String(err));
+  send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+  process.exit(1);
+}
+process.on('unhandledRejection', reportFatal);
+process.on('uncaughtException', reportFatal);
 
 let sampler: BenchmarkSampler<NavigationSample>;
 

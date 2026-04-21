@@ -42,6 +42,19 @@ function waitForMessage(worker: ChildProcess): Promise<WorkerMessage> {
   });
 }
 
+function isWorkerAlive(worker: ChildProcess): boolean {
+  return worker.connected && worker.exitCode === null && worker.signalCode === null;
+}
+
+function safeSend(worker: ChildProcess, msg: object): boolean {
+  if (!isWorkerAlive(worker)) return false;
+  try {
+    return worker.send(msg);
+  } catch {
+    return false;
+  }
+}
+
 class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(private worker: ChildProcess) {}
 
@@ -50,7 +63,9 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
     isTrial: boolean,
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
-    this.worker.send({ type: 'sample', iteration, isTrial });
+    if (!safeSend(this.worker, { type: 'sample', iteration, isTrial })) {
+      throw new Error('lighthouse worker died before it could sample');
+    }
     const msg = await waitForMessage(this.worker);
     if (msg.type === 'error') {
       const err = new Error(msg.message);
@@ -61,7 +76,17 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   }
 
   async dispose(): Promise<void> {
-    this.worker.send({ type: 'dispose' });
+    if (!isWorkerAlive(this.worker)) {
+      if (!this.worker.killed && this.worker.exitCode === null) {
+        this.worker.kill('SIGTERM');
+      }
+      return;
+    }
+    const sent = safeSend(this.worker, { type: 'dispose' });
+    if (!sent) {
+      if (!this.worker.killed) this.worker.kill('SIGTERM');
+      return;
+    }
     await new Promise<void>((resolve) => {
       const timer = setTimeout(() => {
         if (!this.worker.killed) this.worker.kill('SIGTERM');
@@ -87,14 +112,20 @@ export default function createLighthouseBenchmark(
       const workerPath = join(__dirname, 'lighthouse-worker.js');
       const worker = fork(workerPath, [], { stdio: 'inherit' });
 
-      worker.send({
+      worker.on('error', (err) => {
+        console.error(`[lighthouse worker ${group}] ${err.message}`);
+      });
+
+      if (!safeSend(worker, {
         type: 'setup',
         testFile: testDef.file,
         testName: testDef.name,
         baseUrl,
         group,
         options,
-      });
+      })) {
+        throw new Error('lighthouse worker died before setup could be sent');
+      }
 
       const ready = await waitForMessage(worker);
       if (ready.type === 'error') {
