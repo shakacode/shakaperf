@@ -17,7 +17,7 @@ export function CategorySlot({ result, test }: { result: CategoryResult; test: T
         </div>
       ) : null}
       {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
-      {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} /> : null}
+      {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} test={test} /> : null}
     </div>
   );
 }

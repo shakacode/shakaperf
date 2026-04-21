@@ -490,6 +490,25 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
+/* Red "visual change" chip on the inner diff card's head — makes the
+   diff rows pop out from the adjacent no-diff grid. The outer test card
+   already carries a top-level "visual change" pill; this one scopes the
+   signal to the specific selector/viewport row that caused it. */
+.visreg-card__diff-chip {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+  justify-self: start;
+  margin-top: 4px;
+  padding: 2px 6px;
+  color: var(--regression);
+  background: var(--regression-tint);
+  border: 1px solid var(--regression);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .visreg-card__images {
   display: grid;
   grid-template-columns: 1fr;
@@ -581,6 +600,20 @@ input {
 .visreg-card__img[data-kind="diff"]::after {
   content: "diff";
 }
+
+/* A diff card is, by definition, showing a difference — style its triplet
+   labels as red pills (border + tinted background) so control/experiment/
+   diff read as regression-adjacent at a glance and match the visual weight
+   of the green "no diff" pill on matching rows. */
+.visreg-card--diff .visreg-card__img::after {
+  color: var(--regression);
+  background: var(--regression-tint);
+  padding: 2px 6px;
+  border: 1px solid var(--regression);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  text-shadow: none;
+}
 .visreg-card__img[data-kind="no-diff"]::after {
   content: "no diff";
   color: var(--improvement);
@@ -652,17 +685,33 @@ input {
   gap: 8px;
 }
 
-.artifact-links a {
+.artifact-links a,
+.artifact-links__btn {
   font-size: 10px;
+  font-family: inherit;
+  color: var(--fg);
+  background: transparent;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   padding: 4px 8px;
   border: 1px solid var(--border-strong);
-  border-bottom: 1px solid var(--border-strong);
+  cursor: pointer;
 }
 
-.artifact-links a:hover {
+.artifact-links a:hover,
+.artifact-links__btn:hover {
   background: var(--border);
+  color: #fff;
+}
+
+/* Iframe that renders a harvested performance artifact inline — fills the
+   whole dialog body so Lighthouse / timeline HTML reports have room to
+   breathe without extra chrome. */
+.artifact-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
 }
 
 .empty {
@@ -853,6 +902,13 @@ input {
 
 .visreg-dialog--single {
   grid-template-columns: 1fr;
+}
+
+/* Single-image view has no scrubber to sit adjacent to — center the
+   screenshot horizontally in the column so it doesn't drift to one edge
+   of a much wider dialog. */
+.visreg-dialog--single .visreg-dialog__img {
+  align-self: center;
 }
 
 .visreg-dialog__col {

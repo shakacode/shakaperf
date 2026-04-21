@@ -1,4 +1,7 @@
-import type { PerfArtifact, PerfMetric, PerfMetricGroup } from '../types';
+import { useState } from 'react';
+import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../types';
+import { Dialog } from './Dialog';
+import { TestMeta } from './TestMeta';
 
 const GROUP_LABEL: Record<PerfMetricGroup, string> = {
   vitals: 'vitals',
@@ -45,8 +48,24 @@ function PerfTable({ title, metrics }: { title: string; metrics: PerfMetric[] })
   );
 }
 
-export function PerfSlot({ perf }: { perf: PerfArtifact }) {
+interface ArtifactLink {
+  label: string;
+  href: string;
+}
+
+function artifactLinks(perf: PerfArtifact): ArtifactLink[] {
+  const links: ArtifactLink[] = [];
+  if (perf.benchReportHref) links.push({ label: 'bench report', href: perf.benchReportHref });
+  if (perf.controlLighthouseHref) links.push({ label: 'control lh', href: perf.controlLighthouseHref });
+  if (perf.experimentLighthouseHref) links.push({ label: 'experiment lh', href: perf.experimentLighthouseHref });
+  if (perf.timelineHref) links.push({ label: 'timeline', href: perf.timelineHref });
+  for (const link of perf.diffHrefs) links.push({ label: link.label, href: link.href });
+  return links;
+}
+
+export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult }) {
   const significant = perf.metrics.filter((m) => m.direction !== 'none');
+  const [openArtifact, setOpenArtifact] = useState<ArtifactLink | null>(null);
 
   const grouped: Record<PerfMetricGroup, PerfMetric[]> = {
     vitals: [],
@@ -54,12 +73,7 @@ export function PerfSlot({ perf }: { perf: PerfArtifact }) {
   };
   for (const m of significant) grouped[m.group].push(m);
 
-  const links: { label: string; href: string }[] = [];
-  if (perf.benchReportHref) links.push({ label: 'bench report', href: perf.benchReportHref });
-  if (perf.controlLighthouseHref) links.push({ label: 'control lh', href: perf.controlLighthouseHref });
-  if (perf.experimentLighthouseHref) links.push({ label: 'experiment lh', href: perf.experimentLighthouseHref });
-  if (perf.timelineHref) links.push({ label: 'timeline', href: perf.timelineHref });
-  for (const link of perf.diffHrefs) links.push({ label: link.label, href: link.href });
+  const links = artifactLinks(perf);
 
   const hasAny = significant.length > 0;
 
@@ -76,12 +90,48 @@ export function PerfSlot({ perf }: { perf: PerfArtifact }) {
       {links.length > 0 ? (
         <div className="artifact-links" style={{ marginTop: 12 }}>
           {links.map((link) => (
-            <a key={link.label} href={link.href} target="_blank" rel="noreferrer">
+            <button
+              key={link.label}
+              type="button"
+              className="artifact-links__btn"
+              onClick={() => setOpenArtifact(link)}
+            >
               {link.label}
-            </a>
+            </button>
           ))}
         </div>
       ) : null}
+
+      <Dialog
+        open={openArtifact !== null}
+        onClose={() => setOpenArtifact(null)}
+        title={
+          openArtifact ? (
+            <span className="ui-dialog__title-text">{openArtifact.label}</span>
+          ) : null
+        }
+        meta={
+          openArtifact ? (
+            <TestMeta
+              test={test}
+              extra={
+                <div>
+                  <dt>artifact</dt>
+                  <dd>{openArtifact.label}</dd>
+                </div>
+              }
+            />
+          ) : null
+        }
+      >
+        {openArtifact ? (
+          <iframe
+            className="artifact-frame"
+            src={openArtifact.href}
+            title={openArtifact.label}
+          />
+        ) : null}
+      </Dialog>
     </div>
   );
 }

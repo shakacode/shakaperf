@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import type { TestResult, VisregArtifact } from '../types';
 import { Dialog } from './Dialog';
 import { Scrubber } from './Scrubber';
+import { TestMeta } from './TestMeta';
 
 const EMPTY: VisregArtifact[] = [];
 
@@ -10,12 +11,13 @@ interface RowProps {
   onOpen: (row: VisregArtifact) => void;
 }
 
-function CardHead({ row }: { row: VisregArtifact }) {
+function CardHead({ row, showDiffChip }: { row: VisregArtifact; showDiffChip?: boolean }) {
   return (
     <div className="visreg-card__head">
       <span className="visreg-card__viewport">{row.viewportLabel}</span>
       <span className="visreg-card__selector">{row.selector}</span>
       <span className="visreg-card__pct">{row.misMatchPercentage.toFixed(2)}%</span>
+      {showDiffChip ? <span className="visreg-card__diff-chip">visual change</span> : null}
     </div>
   );
 }
@@ -52,7 +54,7 @@ function DiffCard({ row, onOpen }: RowProps) {
   const bbox = row.diffBbox;
   return (
     <div className="visreg-card visreg-card--diff">
-      <CardHead row={row} />
+      <CardHead row={row} showDiffChip />
       <button
         type="button"
         className={`${cls} visreg-card__images--clickable`}
@@ -191,49 +193,30 @@ function DialogBody({ row }: { row: VisregArtifact }) {
   );
 }
 
-function DialogMeta({ test, row }: { test: TestResult; row: VisregArtifact }) {
+function VisregDialogMeta({ test, row }: { test: TestResult; row: VisregArtifact }) {
   return (
-    <dl className="ui-dialog__meta">
-      <div>
-        <dt>test</dt>
-        <dd>{test.name}</dd>
-      </div>
-      <div>
-        <dt>file</dt>
-        <dd>{test.filePath}</dd>
-      </div>
-      <div>
-        <dt>viewport</dt>
-        <dd>{row.viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>selector</dt>
-        <dd className="ui-dialog__meta-break">{row.selector}</dd>
-      </div>
-      <div>
-        <dt>mismatch</dt>
-        <dd>
-          {row.misMatchPercentage.toFixed(2)}% · {row.diffPixels.toLocaleString()} px · threshold{' '}
-          {row.threshold.toFixed(2)}%
-        </dd>
-      </div>
-      <div>
-        <dt>control</dt>
-        <dd className="ui-dialog__meta-break">
-          <a href={test.controlUrl} target="_blank" rel="noreferrer">
-            {test.controlUrl}
-          </a>
-        </dd>
-      </div>
-      <div>
-        <dt>experiment</dt>
-        <dd className="ui-dialog__meta-break">
-          <a href={test.experimentUrl} target="_blank" rel="noreferrer">
-            {test.experimentUrl}
-          </a>
-        </dd>
-      </div>
-    </dl>
+    <TestMeta
+      test={test}
+      extra={
+        <>
+          <div>
+            <dt>viewport</dt>
+            <dd>{row.viewportLabel}</dd>
+          </div>
+          <div>
+            <dt>selector</dt>
+            <dd className="ui-dialog__meta-break">{row.selector}</dd>
+          </div>
+          <div>
+            <dt>mismatch</dt>
+            <dd>
+              {row.misMatchPercentage.toFixed(2)}% · {row.diffPixels.toLocaleString()} px ·
+              threshold {row.threshold.toFixed(2)}%
+            </dd>
+          </div>
+        </>
+      }
+    />
   );
 }
 
@@ -300,7 +283,7 @@ export function VisregSlot({ rows = EMPTY, test }: { rows?: VisregArtifact[]; te
             </>
           ) : null
         }
-        meta={openRow ? <DialogMeta test={test} row={openRow} /> : null}
+        meta={openRow ? <VisregDialogMeta test={test} row={openRow} /> : null}
       >
         {openRow ? <DialogBody row={openRow} /> : null}
       </Dialog>

@@ -152,9 +152,20 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
   const controlHost = urlHostSegment(controlURL);
   const experimentHost = urlHostSegment(experimentURL);
 
-  const rel = (name: string | null): string | null => {
+  // Inline artifact HTMLs as data URIs so the final report is a fully
+  // self-contained file — no sibling directories required, no broken links
+  // when clients open the report from a different path than where compare
+  // ran. `reportRoot` is still used to size the relative-path fallback if
+  // we later want to toggle back to external refs.
+  void reportRoot;
+  const inlineHtml = (name: string | null): string | null => {
     if (!name) return null;
-    return path.relative(reportRoot, path.join(perTestDir, name)) || name;
+    try {
+      const content = fs.readFileSync(path.join(perTestDir, name));
+      return `data:text/html;base64,${content.toString('base64')}`;
+    } catch {
+      return null;
+    }
   };
 
   const controlLh = files.find(
@@ -179,12 +190,12 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     metrics,
     regressedMetrics,
     improvedMetrics,
-    controlLighthouseHref: rel(controlLh),
-    experimentLighthouseHref: rel(experimentLh),
-    timelineHref: rel(timeline),
-    benchReportHref: rel(benchReport),
+    controlLighthouseHref: inlineHtml(controlLh),
+    experimentLighthouseHref: inlineHtml(experimentLh),
+    timelineHref: inlineHtml(timeline),
+    benchReportHref: inlineHtml(benchReport),
     diffHrefs: diffFiles
-      .map((f) => ({ label: prettyDiffLabel(f), href: rel(f) ?? f }))
+      .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))
       .filter((d): d is { label: string; href: string } => d.href != null),
   };
 
