@@ -61,6 +61,8 @@ export function slugifyForBench(name: string): string {
 }
 
 const ENGINE_ERROR_FILE = 'engine-error.txt';
+const ENGINE_LOG_FILE = 'engine-output.log';
+const MAX_LOG_BYTES = 512 * 1024;
 
 /**
  * Returns the first line of `<perTestDir>/engine-error.txt` (written by bench's
@@ -75,6 +77,36 @@ export function readPerfEngineError(perTestDir: string): string | null {
     if (!raw) return null;
     const firstLine = raw.split(/\r?\n/, 1)[0];
     return firstLine || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns the captured engine stdout/stderr transcript for a failed test so it
+ * can be embedded in the self-contained HTML report and opened via the error
+ * banner's "view logs" action. Also includes the full stack from
+ * `engine-error.txt` at the top — the log alone is the interleaved worker
+ * output, while the stack pinpoints where the throw came from.
+ * Truncates from the head if the combined payload is larger than
+ * `MAX_LOG_BYTES` so a multi-MB transcript doesn't balloon the report.
+ */
+export function readPerfEngineLog(perTestDir: string): string | null {
+  const stack = safeReadFile(path.join(perTestDir, ENGINE_ERROR_FILE));
+  const log = safeReadFile(path.join(perTestDir, ENGINE_LOG_FILE));
+  if (stack == null && log == null) return null;
+  const parts: string[] = [];
+  if (stack) parts.push('── error ──', stack.trim(), '');
+  if (log) parts.push('── engine output ──', log.trim());
+  const combined = parts.join('\n');
+  if (combined.length <= MAX_LOG_BYTES) return combined;
+  const head = '[… truncated; see the on-disk engine-output.log for the full transcript …]\n';
+  return head + combined.slice(combined.length - MAX_LOG_BYTES);
+}
+
+function safeReadFile(p: string): string | null {
+  try {
+    return fs.readFileSync(p, 'utf8');
   } catch {
     return null;
   }

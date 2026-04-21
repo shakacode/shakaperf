@@ -1,5 +1,7 @@
 import { fork, type ChildProcess } from 'node:child_process';
+import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
+import type { Readable, Writable } from 'node:stream';
 import type { RaceCancellation } from 'race-cancellation';
 
 import { Benchmark, BenchmarkSampler } from './run';
@@ -46,6 +48,33 @@ function isWorkerAlive(worker: ChildProcess): boolean {
   return worker.connected && worker.exitCode === null && worker.signalCode === null;
 }
 
+/**
+ * Split a piped child stdio stream into prefixed lines and tee each line to
+ * every provided sink. Line-buffered so the prefix always attaches to the
+ * start of a line (chunk boundaries are arbitrary). Any residual bytes after
+ * the last newline are flushed with the prefix on stream end.
+ */
+function teeLinePrefixed(src: Readable, prefix: string, sinks: Writable[]): void {
+  let buf = '';
+  src.setEncoding('utf8');
+  src.on('data', (chunk: string) => {
+    buf += chunk;
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      const out = `${prefix}${line}\n`;
+      for (const s of sinks) s.write(out);
+    }
+  });
+  src.on('end', () => {
+    if (buf.length > 0) {
+      const out = `${prefix}${buf}`;
+      for (const s of sinks) s.write(out);
+      buf = '';
+    }
+  });
+}
+
 function safeSend(worker: ChildProcess, msg: object): boolean {
   if (!isWorkerAlive(worker)) return false;
   try {
@@ -56,7 +85,10 @@ function safeSend(worker: ChildProcess, msg: object): boolean {
 }
 
 class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
-  constructor(private worker: ChildProcess) {}
+  constructor(
+    private worker: ChildProcess,
+    private logStream: WriteStream | null,
+  ) {}
 
   async sample(
     iteration: number,
@@ -76,27 +108,31 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   }
 
   async dispose(): Promise<void> {
-    if (!isWorkerAlive(this.worker)) {
-      if (!this.worker.killed && this.worker.exitCode === null) {
-        this.worker.kill('SIGTERM');
+    try {
+      if (!isWorkerAlive(this.worker)) {
+        if (!this.worker.killed && this.worker.exitCode === null) {
+          this.worker.kill('SIGTERM');
+        }
+        return;
       }
-      return;
-    }
-    const sent = safeSend(this.worker, { type: 'dispose' });
-    if (!sent) {
-      if (!this.worker.killed) this.worker.kill('SIGTERM');
-      return;
-    }
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
+      const sent = safeSend(this.worker, { type: 'dispose' });
+      if (!sent) {
         if (!this.worker.killed) this.worker.kill('SIGTERM');
-        resolve();
-      }, 5000);
-      this.worker.on('exit', () => {
-        clearTimeout(timer);
-        resolve();
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          if (!this.worker.killed) this.worker.kill('SIGTERM');
+          resolve();
+        }, 5000);
+        this.worker.on('exit', () => {
+          clearTimeout(timer);
+          resolve();
+        });
       });
-    });
+    } finally {
+      this.logStream?.end();
+    }
   }
 }
 
@@ -110,10 +146,28 @@ export default function createLighthouseBenchmark(
     group,
     async setup(_raceCancellation) {
       const workerPath = join(__dirname, 'lighthouse-worker.js');
-      const worker = fork(workerPath, [], { stdio: 'inherit' });
+      // When logFile is set we pipe stdio and tee to a file; otherwise inherit
+      // so the original terminal experience (colors, interleave) is preserved.
+      // fork() auto-adds the IPC channel when stdio is 'inherit'; with a
+      // custom array we must include 'ipc' explicitly.
+      const logFile = options.logFile;
+      const worker = logFile
+        ? fork(workerPath, [], { stdio: ['inherit', 'pipe', 'pipe', 'ipc'] })
+        : fork(workerPath, [], { stdio: 'inherit' });
+
+      let logStream: WriteStream | null = null;
+      if (logFile && worker.stdout && worker.stderr) {
+        logStream = createWriteStream(logFile, { flags: 'a' });
+        const prefix = `[${group}] `;
+        teeLinePrefixed(worker.stdout, prefix, [process.stdout, logStream]);
+        teeLinePrefixed(worker.stderr, prefix, [process.stderr, logStream]);
+      }
 
       worker.on('error', (err) => {
         console.error(`[lighthouse worker ${group}] ${err.message}`);
+      });
+      worker.on('exit', () => {
+        logStream?.end();
       });
 
       if (!safeSend(worker, {
@@ -124,15 +178,17 @@ export default function createLighthouseBenchmark(
         group,
         options,
       })) {
+        logStream?.end();
         throw new Error('lighthouse worker died before setup could be sent');
       }
 
       const ready = await waitForMessage(worker);
       if (ready.type === 'error') {
+        logStream?.end();
         throw new Error((ready as ErrorMessage).message);
       }
 
-      return new OOPLighthouseSampler(worker);
+      return new OOPLighthouseSampler(worker, logStream);
     }
   };
 }

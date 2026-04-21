@@ -805,6 +805,45 @@ input {
   flex-shrink: 0;
 }
 
+.slot-error__hint {
+  margin-left: auto;
+  color: var(--error);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* <button> override — reset the default button chrome so the clickable
+   slot-error looks identical to the div variant, then add a hover cue so
+   it reads as actionable. */
+.slot-error--clickable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  align-items: center;
+}
+
+.slot-error--clickable:hover {
+  background: color-mix(in srgb, var(--error) 14%, transparent);
+  color: var(--fg);
+}
+
+.error-log {
+  margin: 0;
+  padding: 16px 20px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg);
+  background: var(--bg-sunken);
+  flex: 1;
+  min-height: 0;
+}
+
 /* ───────── dialog (reusable) ───────── */
 
 .ui-dialog {

@@ -22,6 +22,7 @@ import {
 } from "fs-extra";
 
 const ENGINE_ERROR_FILE = "engine-error.txt";
+const ENGINE_LOG_FILE = "engine-output.log";
 
 import type { RegressionThresholdStat, SamplingMode } from "../../command-config/tb-config";
 import {
@@ -61,6 +62,8 @@ const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
   'report.html': 'Interactive HTML report with charts',
   'artifact-1.html': 'Bench HTML report (boxplots + phase charts)',
   'timeline_comparison.html': 'Visual timeline (control vs experiment)',
+  [ENGINE_ERROR_FILE]: 'Engine failure summary (machine-readable, for AI)',
+  [ENGINE_LOG_FILE]: 'Engine stdout/stderr transcript (for debugging failures)',
 };
 
 function describeArtifact(filename: string): string {
@@ -142,6 +145,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     const testOptions: Partial<LighthouseBenchmarkOptions> = {
       ...options,
       resultsFolder: testResultsFolder,
+      logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),
     };
 
     try {

@@ -82,6 +82,13 @@ export interface CategoryResult {
    * change the category status (still `no_difference` by default).
    */
   error?: string;
+  /**
+   * Full captured stdout/stderr transcript from the engine run that produced
+   * `error`, embedded so the report stays self-contained. Opened on click by
+   * the error surface in the card. Null / undefined when there's no log
+   * (e.g. engine never started) or no error at all.
+   */
+  errorLog?: string | null;
   visreg?: VisregArtifact[];
   perf?: PerfArtifact;
 }

@@ -50,6 +50,14 @@ export interface LighthouseBenchmarkOptions {
   resultsFolder?: string;
   lhConfigPath?: string;
   markers?: Marker[];
+  /**
+   * Absolute path to a file that should receive every line the worker prints
+   * to stdout/stderr during setup + sampling. Parent console output is
+   * unchanged; this captures a copy for artifact inspection (and, on failure,
+   * for the report's "view logs" surface). Each line is prefixed with the
+   * group name so control/experiment interleaves are untangled.
+   */
+  logFile?: string;
 }
 
 export interface PhaseSample {

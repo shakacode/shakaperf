@@ -19,7 +19,7 @@ import {
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { harvestVisreg } from './harvest/visreg';
-import { harvestPerf, readPerfEngineError, slugifyForBench } from './harvest/perf';
+import { harvestPerf, readPerfEngineError, readPerfEngineLog, slugifyForBench } from './harvest/perf';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -251,6 +251,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       perCategory.push({
         ...EMPTY_PERF_CATEGORY,
         error: `perf measurement failed: ${perTestEngineError}`,
+        errorLog: readPerfEngineLog(perTestDir),
       });
     } else if (perfEngineFailed) {
       perCategory.push({
