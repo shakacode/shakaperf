@@ -310,13 +310,13 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
+    background: #ffffff;
+    color: #1a1d22;
     padding: 20px;
   }
-  h1 { text-align: center; color: #fff; margin-bottom: 8px; font-size: 20px; }
+  h1 { text-align: center; color: #111; margin-bottom: 8px; font-size: 20px; }
   .controls { text-align: center; margin-bottom: 16px; }
-  .controls label { cursor: pointer; color: #aaa; font-size: 13px; margin: 0 12px; }
+  .controls label { cursor: pointer; color: #5a6470; font-size: 13px; margin: 0 12px; }
   .controls input[type="checkbox"] { margin-right: 4px; }
 
   .timeline-container {
@@ -334,7 +334,7 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #1a1a2e;
+    background: #ffffff;
   }
   .col-header {
     text-align: center;
@@ -344,9 +344,9 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     text-transform: uppercase;
     letter-spacing: 1px;
   }
-  .col-header.control { color: #60a5fa; grid-column: 2; }
-  .col-header.diff { color: #fb923c; grid-column: 3; }
-  .col-header.experiment { color: #f87171; grid-column: 4; }
+  .col-header.control { color: #2563eb; grid-column: 2; }
+  .col-header.diff { color: #c2410c; grid-column: 3; }
+  .col-header.experiment { color: #dc2626; grid-column: 4; }
 
   .screenshot-col {
     position: relative;
@@ -371,18 +371,18 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
     left: 0;
   }
   // .screenshot-col.diff .screenshot-entry { left: 50%; transform: translateX(-50%); }
-  .diff-entry img { border-color: #fb923c44; }
+  .diff-entry img { border-color: #c2410c66; }
   .screenshot-entry img {
     max-width: 100%;
     max-height: ${FRAME_HEIGHT}px;
-    border: 1px solid #333;
+    border: 1px solid #d1d5db;
     border-radius: 3px;
     display: block;
   }
   .screenshot-col.control .screenshot-entry img { margin-left: auto; }
   .screenshot-entry .ts-label {
     font-size: 10px;
-    color: #888;
+    color: #6b7280;
     font-family: 'SF Mono', Monaco, monospace;
   }
 
@@ -401,33 +401,33 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
   .events-col.control .event-marker .labels { text-align: right; }
   .events-col.experiment .event-marker .labels { text-align: left; }
   .event-marker .time {
-    color: #888;
+    color: #6b7280;
     font-family: 'SF Mono', Monaco, monospace;
     font-size: 10px;
     flex-shrink: 0;
     white-space: nowrap;
   }
-  .event-marker .paint { color: #4ade80; font-weight: bold; }
-  .event-marker .user-timing { color: #a78bfa; }
-  .event-marker .layout-shift { color: #fb923c; }
+  .event-marker .paint { color: #16a34a; font-weight: bold; }
+  .event-marker .user-timing { color: #7c3aed; }
+  .event-marker .layout-shift { color: #c2410c; }
   .event-marker .network-start { color: #6b7280; font-size: 10px; }
-  .event-marker .network-end { color: #4b5563; font-size: 10px; }
+  .event-marker .network-end { color: #9ca3af; font-size: 10px; }
   [data-key] { cursor: pointer; }
-  [data-key].highlight { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
+  [data-key].highlight { background: rgba(0, 0, 0, 0.08); border-radius: 2px; }
   .toast {
     position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: rgba(30, 30, 50, 0.95); color: #f0f0f0; padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.97); color: #1a1d22; padding: 12px 24px;
     border-radius: 10px; font-size: 13px; z-index: 100;
-    backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px); border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     animation: toast-in 0.25s ease-out forwards;
   }
   .toast.dismissing {
     animation: toast-out 0.3s ease-in forwards;
   }
-  .toast .toast-key { color: #f87171; font-weight: 600; }
-  .toast .toast-side { color: #60a5fa; font-weight: 600; }
-  .toast .toast-idx { color: #a78bfa; }
+  .toast .toast-key { color: #dc2626; font-weight: 600; }
+  .toast .toast-side { color: #2563eb; font-weight: 600; }
+  .toast .toast-idx { color: #7c3aed; }
   @keyframes toast-in { to { transform: translateX(-50%) translateY(0); opacity: 1; } }
   @keyframes toast-out { to { transform: translateX(-50%) translateY(-10px); opacity: 0; } }
 

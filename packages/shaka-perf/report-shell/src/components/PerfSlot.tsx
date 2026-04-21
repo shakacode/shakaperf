@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../types';
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
@@ -63,6 +63,50 @@ function artifactLinks(perf: PerfArtifact): ArtifactLink[] {
   return links;
 }
 
+/**
+ * Decode a `data:text/html;base64,...` URI to the raw HTML string so we can
+ * embed it via iframe `srcDoc`. data: iframes have an opaque origin — the
+ * parent can't read their contentDocument to measure content height, which
+ * blocks "auto-resize to fit content" (Lighthouse + bench reports overflow
+ * their iframe viewport otherwise and the bottom gets clipped). srcDoc
+ * iframes inherit the parent's origin, so contentDocument is readable.
+ */
+function dataUriToHtml(uri: string): string {
+  const marker = ';base64,';
+  const idx = uri.indexOf(marker);
+  if (idx < 0) return '';
+  try {
+    return atob(uri.slice(idx + marker.length));
+  } catch {
+    return '';
+  }
+}
+
+function ArtifactFrame({ href, label }: { href: string; label: string }) {
+  const ref = useRef<HTMLIFrameElement | null>(null);
+  const html = useMemo(() => dataUriToHtml(href), [href]);
+
+  const resize = () => {
+    const el = ref.current;
+    const doc = el?.contentDocument;
+    if (!el || !doc) return;
+    // scrollHeight on the documentElement covers the full content even when
+    // the body has margin collapse / flex layouts that undersize body.
+    const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
+    if (h > 0) el.style.height = `${h}px`;
+  };
+
+  return (
+    <iframe
+      ref={ref}
+      className="artifact-frame"
+      srcDoc={html}
+      title={label}
+      onLoad={resize}
+    />
+  );
+}
+
 export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult }) {
   const significant = perf.metrics.filter((m) => m.direction !== 'none');
   const [openArtifact, setOpenArtifact] = useState<ArtifactLink | null>(null);
@@ -125,11 +169,7 @@ export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult 
         }
       >
         {openArtifact ? (
-          <iframe
-            className="artifact-frame"
-            src={openArtifact.href}
-            title={openArtifact.label}
-          />
+          <ArtifactFrame href={openArtifact.href} label={openArtifact.label} />
         ) : null}
       </Dialog>
     </div>

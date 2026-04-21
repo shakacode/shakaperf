@@ -1,23 +1,23 @@
-/* terminal-brutalist · dark · all-mono */
+/* terminal-brutalist · light · all-mono */
 
 :root {
-  --bg: #0e0f12;
-  --bg-elevated: #15171c;
-  --bg-sunken: #0a0b0d;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --fg: #e7eaef;
-  --fg-muted: #8a93a0;
-  --fg-faint: #5a6470;
+  --bg: #ffffff;
+  --bg-elevated: #f7f8fa;
+  --bg-sunken: #eef0f4;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.18);
+  --fg: #1a1d22;
+  --fg-muted: #5a6470;
+  --fg-faint: #8a93a0;
 
-  --regression: #ff3b30;
-  --visual_change: #ffb800;
-  --improvement: #00d26a;
-  --no_difference: #5a6470;
+  --regression: #d93025;
+  --visual_change: #c57900;
+  --improvement: #137333;
+  --no_difference: #8a93a0;
 
-  --regression-tint: rgba(255, 59, 48, 0.08);
-  --visual_change-tint: rgba(255, 184, 0, 0.08);
-  --improvement-tint: rgba(0, 210, 106, 0.08);
+  --regression-tint: rgba(217, 48, 37, 0.08);
+  --visual_change-tint: rgba(197, 121, 0, 0.08);
+  --improvement-tint: rgba(19, 115, 51, 0.08);
 
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono",
     Menlo, Consolas, monospace;
@@ -46,8 +46,8 @@ body {
 body {
   /* dot-grid + faint vignette */
   background-image:
-    radial-gradient(circle at 50% 50%, transparent 0, rgba(0, 0, 0, 0.45) 100%),
-    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    radial-gradient(circle at 50% 50%, transparent 0, rgba(0, 0, 0, 0.06) 100%),
+    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 100% 100%, 24px 24px;
   background-attachment: fixed;
   min-height: 100vh;
@@ -84,9 +84,9 @@ button:hover {
 }
 
 button[data-active="true"] {
-  background: #fff;
+  background: var(--fg);
   color: var(--bg);
-  border-color: #fff;
+  border-color: var(--fg);
 }
 
 input {
@@ -116,7 +116,7 @@ input {
   background: linear-gradient(
     var(--bg) 0%,
     var(--bg) 80%,
-    rgba(14, 15, 18, 0) 100%
+    rgba(255, 255, 255, 0) 100%
   );
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
@@ -785,7 +785,7 @@ input {
 }
 
 .ui-dialog::backdrop {
-  background: rgba(5, 6, 8, 0.78);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
 }
 
@@ -880,23 +880,28 @@ input {
 .ui-dialog__body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  /* The body itself scrolls — children (iframe, visreg grid) render at
+     full content height and the dialog surface handles scrolling. This
+     prevents artifact HTMLs from being clipped when their internal height
+     exceeds the dialog viewport; `overflow: hidden` used to rely on each
+     child rendering its own scrollbar, which data: iframes handled badly. */
+  overflow: auto;
   display: flex;
+  flex-direction: column;
 }
 
 /* ───────── visreg dialog content ───────── */
 
-/* Single shared vertical scroll: both columns live inside one scroller so
-   dragging the vertical scrollbar moves scrubber and diff together. Headers
-   use position: sticky within the same scroller to stay pinned at the top. */
+/* Single shared vertical scroll: the dialog body is the scroll container,
+   so this grid just lays its columns out and lets content flow. Sticky
+   headers inside the columns anchor to the dialog body instead of this
+   grid, which keeps them visible while the scrubber/diff scroll past. */
 .visreg-dialog {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
   background: var(--border);
   width: 100%;
-  height: 100%;
-  overflow: auto;
   align-content: start;
 }
 
