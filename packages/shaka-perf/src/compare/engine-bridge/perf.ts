@@ -40,11 +40,11 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
   const flags: ICompareFlags = {
     // hideAnalysis:false is required for the bench runner to invoke
     // runAnalyze, which writes the per-test report.json (ICompareJSONResults)
-    // that our harvester consumes. skipReport:true still suppresses the
-    // legacy Handlebars artifact-N.html, which is superseded by the unified
-    // compare report.
+    // that our harvester consumes. skipReport:false asks bench to also
+    // emit the legacy Handlebars `artifact-N.html` so the unified report
+    // can link to it as a drill-down.
     hideAnalysis: false,
-    skipReport: true,
+    skipReport: false,
     numberOfMeasurements: perfConfig.numberOfMeasurements ?? 20,
     resultsFolder,
     controlURL,

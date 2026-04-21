@@ -14,15 +14,26 @@ export interface VisregArtifact {
   misMatchPercentage: number;
   diffPixels: number;
   threshold: number;
+  /**
+   * Bounding box of the first visual difference in the pixelmatch diff PNG,
+   * in source-image pixels. Used by the report to crop control/experiment/diff
+   * thumbnails to the same segment so the regression is visible at a glance.
+   */
+  diffBbox: { x: number; y: number; w: number; h: number; imgW: number; imgH: number } | null;
 }
+
+export type PerfDirection = 'regression' | 'improvement' | 'none';
+export type PerfMetricGroup = 'vitals' | 'diagnostics';
 
 export interface PerfMetric {
   label: string;
-  controlMs: number;
-  experimentMs: number;
+  group: PerfMetricGroup;
+  controlDisplay: string;
+  experimentDisplay: string;
+  deltaDisplay: string;
+  percentDisplay: string;
   pValue: number;
-  hlDiffMs: number;
-  significant: boolean;
+  direction: PerfDirection;
 }
 
 export interface PerfArtifact {
@@ -32,6 +43,7 @@ export interface PerfArtifact {
   controlLighthouseHref: string | null;
   experimentLighthouseHref: string | null;
   timelineHref: string | null;
+  benchReportHref: string | null;
   diffHrefs: { label: string; href: string }[];
 }
 

@@ -50,6 +50,7 @@ const EMPTY_PERF_CATEGORY: CategoryResult = {
     controlLighthouseHref: null,
     experimentLighthouseHref: null,
     timelineHref: null,
+    benchReportHref: null,
     diffHrefs: [],
   },
 };

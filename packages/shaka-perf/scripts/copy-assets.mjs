@@ -12,6 +12,8 @@ const assets = [
   ['src/visreg/capture/helpers/imageStub.jpg', 'dist/visreg/capture/helpers/imageStub.jpg'],
   // Pre-built single-file React report (Vite output)
   ['report-shell/dist/index.html', 'dist/report-shell/index.html'],
+  // Legacy bench HTML report templates (Handlebars + Chart.js assets)
+  ['src/bench/cli/static', 'dist/bench/cli/static'],
 ];
 
 for (const [src, dest] of assets) {

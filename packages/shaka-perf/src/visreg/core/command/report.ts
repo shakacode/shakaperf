@@ -102,6 +102,9 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       if (pair.diffImage) {
         pair.diffImage = path.relative(report, toAbsolute(pair.diffImage));
       }
+      if (pair.pixelmatchDiffImage) {
+        pair.pixelmatchDiffImage = path.relative(report, toAbsolute(pair.pixelmatchDiffImage));
+      }
       if (pair.errorScreenshot) {
         pair.errorScreenshot = path.relative(report, toAbsolute(pair.errorScreenshot));
       }

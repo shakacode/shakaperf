@@ -1,19 +1,36 @@
 import { useState } from 'react';
-import type { TestResult } from '../types';
+import type { CategoryResult, Status, TestResult } from '../types';
 import { Pill } from './Pill';
 import { CategorySlot } from './CategorySlot';
 
-function pillDetailFor(test: TestResult): string | undefined {
-  if (test.status !== 'regression' && test.status !== 'improvement') return undefined;
-  const perf = test.categories.find((c) => c.category === 'perf')?.perf;
-  if (!perf) return undefined;
-  const metrics = test.status === 'regression' ? perf.regressedMetrics : perf.improvedMetrics;
+interface PillSpec {
+  status: Status;
+  detail?: string;
+}
+
+function perfDetailFor(c: CategoryResult): string | undefined {
+  if (c.category !== 'perf' || !c.perf) return undefined;
+  const metrics =
+    c.status === 'regression'
+      ? c.perf.regressedMetrics
+      : c.status === 'improvement'
+        ? c.perf.improvedMetrics
+        : [];
   return metrics.length > 0 ? metrics.join(', ') : undefined;
+}
+
+function pillsForTest(test: TestResult): PillSpec[] {
+  // One pill per category that moved off `no_difference`. A test with
+  // visreg=visual_change AND perf=improvement shows both pills.
+  const pills = test.categories
+    .filter((c) => c.status !== 'no_difference')
+    .map<PillSpec>((c) => ({ status: c.status, detail: perfDetailFor(c) }));
+  return pills.length > 0 ? pills : [{ status: 'no_difference' }];
 }
 
 export function TestCard({ test, animationDelayMs }: { test: TestResult; animationDelayMs: number }) {
   const [codeOpen, setCodeOpen] = useState(false);
-  const pillDetail = pillDetailFor(test);
+  const pills = pillsForTest(test);
 
   return (
     <article
@@ -26,7 +43,11 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
           <h3 className="card__title">{test.name}</h3>
           <div className="card__path">{test.filePath}</div>
         </div>
-        <Pill status={test.status} detail={pillDetail} />
+        <div className="card__pills">
+          {pills.map((p, i) => (
+            <Pill key={`${p.status}-${i}`} status={p.status} detail={p.detail} />
+          ))}
+        </div>
       </div>
 
       <dl className="card__urls">

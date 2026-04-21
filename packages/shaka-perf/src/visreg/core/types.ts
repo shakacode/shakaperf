@@ -273,6 +273,7 @@ export interface TestPair {
   refIsBottomSeventyPercentWhite?: boolean;
   testIsBottomSeventyPercentWhite?: boolean;
   diffImage?: string;
+  pixelmatchDiffImage?: string;
   error?: string;
   engineErrorMsg?: string;
   errorScreenshot?: string;

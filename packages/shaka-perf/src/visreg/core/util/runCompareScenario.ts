@@ -253,11 +253,14 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
       writeFile(testPair.test, retryResult.testBuffer)
     ]);
 
-    // Save composite diff image if failed
-    if (!retryResult.pass && retryResult.compositeBuffer) {
-      const diffPath = testPair.test.replace(/\.png$/, '_composite_diff.png');
+    // Save pixelmatch diff PNG (transparent BG, red changed pixels) if failed.
+    // This becomes the diff thumbnail in the React report — clearer than the
+    // resemble failed_diff (which overlays diffs on top of the test image).
+    if (!retryResult.pass && retryResult.diffBuffer) {
+      const diffPath = testPair.test.replace(/\.png$/, '_pixelmatch_diff.png');
       ensureDirectoryPath(diffPath);
-      await writeFile(diffPath, retryResult.compositeBuffer);
+      await writeFile(diffPath, retryResult.diffBuffer);
+      testPair.pixelmatchDiffImage = diffPath;
     }
 
     if (retryResult.pass) {

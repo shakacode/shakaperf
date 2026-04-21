@@ -3,6 +3,8 @@ export type {
   Category,
   VisregArtifact,
   PerfMetric,
+  PerfMetricGroup,
+  PerfDirection,
   PerfArtifact,
   CategoryResult,
   TestResult,

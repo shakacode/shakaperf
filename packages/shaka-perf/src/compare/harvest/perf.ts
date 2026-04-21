@@ -1,7 +1,60 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { CategoryResult, PerfArtifact, PerfMetric, Status } from '../report';
+import type {
+  CategoryResult,
+  PerfArtifact,
+  PerfDirection,
+  PerfMetric,
+  PerfMetricGroup,
+  Status,
+} from '../report';
 import type { PerfConfig } from '../config';
+
+// Metrics where a bigger value is a better result (e.g. Lighthouse score).
+// Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
+const HIGHER_IS_BETTER = new Set(['lh score', 'lighthouse score']);
+
+function classifyGroup(heading: string | undefined): PerfMetricGroup {
+  return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
+}
+
+function parseEstimatorDelta(str: string): { value: number; unit: string } {
+  const m = str.match(/^(-?[\d.]+)(.*)$/);
+  if (!m) return { value: 0, unit: '' };
+  const value = parseFloat(m[1]);
+  return { value: Number.isFinite(value) ? value : 0, unit: m[2] };
+}
+
+function formatWithUnit(value: number, unit: string): string {
+  if (unit === 'ms' && Math.abs(value) >= 1000) return `${(value / 1000).toFixed(2)}s`;
+  if (unit === 'ms') return `${Math.round(value)}ms`;
+  return `${value}${unit}`;
+}
+
+function formatDeltaWithUnit(value: number, unit: string): string {
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${formatWithUnit(value, unit)}`;
+}
+
+function formatPercentDelta(percentMedian: number | undefined): string {
+  if (percentMedian == null || !Number.isFinite(percentMedian)) return '—';
+  const rounded = Math.abs(percentMedian) >= 10
+    ? Math.round(percentMedian)
+    : Math.round(percentMedian * 10) / 10;
+  const sign = rounded > 0 ? '+' : '';
+  return `${sign}${rounded}%`;
+}
+
+function classifyDirection(
+  phaseName: string,
+  deltaValue: number,
+  isSignificant: boolean,
+): PerfDirection {
+  if (!isSignificant || deltaValue === 0) return 'none';
+  const higherBetter = HIGHER_IS_BETTER.has(phaseName.toLowerCase());
+  if (higherBetter) return deltaValue > 0 ? 'improvement' : 'regression';
+  return deltaValue > 0 ? 'regression' : 'improvement';
+}
 
 export function slugifyForBench(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'test';
@@ -25,10 +78,10 @@ interface BenchJsonMetric {
   pValue: number;
   controlSevenFigureSummary?: BenchSevenFigureSummary;
   experimentSevenFigureSummary?: BenchSevenFigureSummary;
+  asPercent?: { percentMedian?: number };
 }
 
 interface BenchCompareJsonResults {
-  benchmarkTableData?: BenchJsonMetric[];
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
 }
@@ -55,43 +108,39 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
   const regressedMetrics: string[] = [];
   const improvedMetrics: string[] = [];
   let status: Status = 'no_difference';
-  const regressionThreshold = perfConfig.regressionThreshold ?? 0;
+  void perfConfig;
 
   const reportJsonPath = path.join(perTestDir, 'report.json');
   if (fs.existsSync(reportJsonPath)) {
     try {
       const raw = JSON.parse(fs.readFileSync(reportJsonPath, 'utf8')) as BenchCompareJsonResults;
       const allEntries = [
-        ...(raw.benchmarkTableData ?? []),
         ...(raw.vitalsTableData ?? []),
         ...(raw.diagnosticsTableData ?? []),
       ];
       for (const entry of allEntries) {
-        // bench's estimatorDelta is a unit-suffixed string ("14ms", "0KB",
-        // "0 count"). We only surface ms metrics in the unified report to
-        // keep PerfSlot's ms formatting honest.
-        if (!/ms\b/.test(entry.estimatorDelta)) continue;
+        const { value: deltaValue, unit } = parseEstimatorDelta(entry.estimatorDelta);
+        const controlValue = entry.controlSevenFigureSummary?.['50'] ?? 0;
+        const experimentValue = entry.experimentSevenFigureSummary?.['50'] ?? 0;
+        const direction = classifyDirection(entry.phaseName, deltaValue, entry.isSignificant);
 
-        const hlDiffMs = parseFloat(entry.estimatorDelta);
-        const controlMs = entry.controlSevenFigureSummary?.['50'] ?? 0;
-        const experimentMs = entry.experimentSevenFigureSummary?.['50'] ?? 0;
         metrics.push({
           label: entry.phaseName,
-          controlMs,
-          experimentMs,
-          hlDiffMs: Number.isFinite(hlDiffMs) ? hlDiffMs : 0,
+          group: classifyGroup(entry.heading),
+          controlDisplay: formatWithUnit(controlValue, unit),
+          experimentDisplay: formatWithUnit(experimentValue, unit),
+          deltaDisplay: formatDeltaWithUnit(deltaValue, unit),
+          percentDisplay: formatPercentDelta(entry.asPercent?.percentMedian),
           pValue: entry.pValue,
-          significant: entry.isSignificant,
+          direction,
         });
 
-        if (entry.isSignificant && Number.isFinite(hlDiffMs)) {
-          if (hlDiffMs > regressionThreshold) {
-            regressedMetrics.push(entry.phaseName);
-            status = 'regression';
-          } else if (hlDiffMs < -regressionThreshold) {
-            improvedMetrics.push(entry.phaseName);
-            if (status === 'no_difference') status = 'improvement';
-          }
+        if (direction === 'regression') {
+          regressedMetrics.push(entry.phaseName);
+          status = 'regression';
+        } else if (direction === 'improvement') {
+          improvedMetrics.push(entry.phaseName);
+          if (status === 'no_difference') status = 'improvement';
         }
       }
     } catch {
@@ -115,6 +164,15 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     (f) => f.startsWith(experimentHost) && f.endsWith('_lighthouse_report.html'),
   ) ?? null;
   const timeline = files.find((f) => f === 'timeline_comparison.html') ?? null;
+  // Legacy bench Handlebars report: `artifact-<n>.html`. Pick the highest-numbered
+  // one so re-runs into the same results folder surface the freshest render.
+  const benchReport = files
+    .filter((f) => /^artifact-\d+\.html$/.test(f))
+    .sort((a, b) => {
+      const na = parseInt(a.match(/\d+/)![0], 10);
+      const nb = parseInt(b.match(/\d+/)![0], 10);
+      return nb - na;
+    })[0] ?? null;
   const diffFiles = files.filter((f) => f.endsWith('.diff.html'));
 
   const perf: PerfArtifact = {
@@ -124,6 +182,7 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     controlLighthouseHref: rel(controlLh),
     experimentLighthouseHref: rel(experimentLh),
     timelineHref: rel(timeline),
+    benchReportHref: rel(benchReport),
     diffHrefs: diffFiles
       .map((f) => ({ label: prettyDiffLabel(f), href: rel(f) ?? f }))
       .filter((d): d is { label: string; href: string } => d.href != null),

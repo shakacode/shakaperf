@@ -324,6 +324,13 @@ input {
   word-break: break-all;
 }
 
+.card__pills {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -430,40 +437,124 @@ input {
 
 /* ───────── card slot content (visreg/perf-specific) ───────── */
 
-.viewport-row {
+.visreg {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.visreg__grid {
   display: grid;
-  grid-template-columns: auto 1fr 1fr 1fr;
-  gap: 8px;
-  padding: 10px 0;
-  border-top: 1px dashed var(--border);
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
 }
 
-.viewport-row__label {
-  font-size: 10px;
-  color: var(--fg-muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  align-self: center;
-  padding-right: 4px;
-}
-
-.viewport-row__img {
-  position: relative;
+.visreg-card {
+  display: flex;
+  flex-direction: column;
   background: var(--bg-sunken);
   border: 1px solid var(--border);
-  aspect-ratio: 4 / 3;
+  height: 100%;
+}
+
+.visreg-card__head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.visreg-card__viewport {
+  grid-column: 1;
+  color: var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+.visreg-card__selector {
+  grid-column: 1;
+  color: var(--fg-faint);
+  word-break: break-all;
+}
+
+.visreg-card__pct {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.visreg-card__images {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--border);
+  /* Pin to bottom so a wrapped selector in one card doesn't push its
+     screenshot below the baseline of sibling cards in the same grid row. */
+  margin-top: auto;
+}
+
+.visreg-card__images--triplet {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.visreg-card__img {
+  position: relative;
+  background: var(--bg-sunken);
   overflow: hidden;
 }
 
-.viewport-row__img img {
+/* No-diff thumbnail: fill the card width with the top of the page, natural
+   height (capped so a very tall phone screenshot doesn't dominate the grid). */
+.visreg-card--nodiff .visreg-card__img {
+  max-height: 260px;
+}
+
+.visreg-card--nodiff .visreg-card__img img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Diff triplet default (no bbox available): legacy cover-crop fallback. */
+.visreg-card--diff .visreg-card__img {
+  aspect-ratio: 4 / 3;
+}
+
+.visreg-card--diff .visreg-card__img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.viewport-row__img::after {
+/* Diff triplet with bbox: aspect-ratio + scale/offset via calc() so the
+   first-diff region fills each of the three sub-images identically. The
+   same --crop-* / --img-* vars drive control, experiment and diff so they
+   stay pixel-locked. */
+.visreg-card__images--crop .visreg-card__img {
+  aspect-ratio: calc(var(--crop-w) / var(--crop-h));
+  position: relative;
+  overflow: hidden;
+}
+
+.visreg-card__images--crop .visreg-card__img img {
+  position: absolute;
+  width: calc(100% * var(--img-w) / var(--crop-w));
+  height: calc(100% * var(--img-h) / var(--crop-h));
+  left: calc(-100% * var(--crop-x) / var(--crop-w));
+  top: calc(-100% * var(--crop-y) / var(--crop-h));
+  object-fit: fill;
+  display: block;
+}
+
+.visreg-card__img::after {
   position: absolute;
   bottom: 4px;
   left: 6px;
@@ -474,14 +565,42 @@ input {
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
 }
 
-.viewport-row__img[data-kind="control"]::after {
+.visreg-card__img[data-kind="control"]::after {
   content: "control";
 }
-.viewport-row__img[data-kind="experiment"]::after {
+.visreg-card__img[data-kind="experiment"]::after {
   content: "experiment";
 }
-.viewport-row__img[data-kind="diff"]::after {
+.visreg-card__img[data-kind="diff"]::after {
   content: "diff";
+}
+.visreg-card__img[data-kind="no-diff"]::after {
+  content: "no diff";
+  color: var(--improvement);
+  background: var(--improvement-tint);
+  padding: 2px 6px;
+  border: 1px solid var(--improvement);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.perf-section {
+  margin-top: 12px;
+}
+
+.perf-section:first-child {
+  margin-top: 0;
+}
+
+.perf-section__head {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 6px;
 }
 
 .metrics-table {

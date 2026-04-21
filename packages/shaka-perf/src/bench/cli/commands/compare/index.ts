@@ -29,6 +29,7 @@ import {
   timestamp,
 } from "../../helpers/utils";
 import { runAnalyze } from "./analyze";
+import { runReport } from "./report";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -55,6 +56,7 @@ const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
   'report.json': 'Statistical analysis (JSON)',
   'report.txt': 'Summary',
   'report.html': 'Interactive HTML report with charts',
+  'artifact-1.html': 'Bench HTML report (boxplots + phase charts)',
   'timeline_comparison.html': 'Visual timeline (control vs experiment)',
 };
 
@@ -243,6 +245,19 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         pValueThreshold: compareFlags.pValueThreshold,
         jsonReport: true,
       });
+    }
+
+    // Emit the legacy bench Handlebars+Chart.js HTML report alongside
+    // ab-measurements.json so the unified compare report can link to it.
+    if (!compareFlags.skipReport) {
+      try {
+        await runReport({
+          resultsFolder: testResultsFolder,
+          pValueThreshold: compareFlags.pValueThreshold,
+        });
+      } catch (err) {
+        console.error(`Failed to generate bench HTML report for ${testDef.name}:`, err);
+      }
     }
 
   }
