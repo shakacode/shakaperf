@@ -15,10 +15,25 @@ function readPngDims(absPath: string): { w: number; h: number } | null {
   }
 }
 
+interface DiffScan {
+  bbox: DiffBbox;
+  /**
+   * Count of "red" diff pixels (pixelmatch marks true diffs red, anti-
+   * aliasing yellow — we count only the red ones for the reported "diff
+   * pixels" number so it matches the user's mental model of "pixels that
+   * actually changed").
+   */
+  diffPixels: number;
+}
+
 /**
- * Scan a pixelmatch-generated diff PNG for the span of highlighted pixels.
+ * Scan a pixelmatch-generated diff PNG for the span of highlighted pixels
+ * and the count of red (true-diff) pixels.
+ *
  * Matching pixels are rendered grayscale; diff pixels are red, AA pixels
- * are yellow — both satisfy r!==g || g!==b.
+ * are yellow — both satisfy r!==g || g!==b (bbox uses that). For the pixel
+ * count we narrow to red only (g===0) so anti-aliased edges don't inflate
+ * the number.
  *
  * We use the full `[first_diff_row, last_diff_row]` span (not just the
  * first contiguous block) because pixelmatch pads the shorter source to
@@ -27,11 +42,11 @@ function readPngDims(absPath: string): { w: number; h: number } | null {
  * coordinates in the two sources, and we need the crop to cover both so
  * the text is visible in every panel of the triplet.
  */
-function computeDiffBbox(
+function scanDiffPng(
   diffPath: string,
   controlDims: { w: number; h: number } | null,
   experimentDims: { w: number; h: number } | null,
-): DiffBbox | null {
+): DiffScan | null {
   let png: PNG;
   try {
     png = PNG.sync.read(fs.readFileSync(diffPath));
@@ -41,20 +56,26 @@ function computeDiffBbox(
   const { data, width, height } = png;
   if (width === 0 || height === 0) return null;
 
-  const isDiffPixel = (i: number): boolean =>
+  const isHighlighted = (i: number): boolean =>
     data[i] !== data[i + 1] || data[i + 1] !== data[i + 2];
+  // pixelmatch renders true-diff pixels as (255, 0, 0); AA pixels are
+  // (255, 255, 0). r>0 && g===0 picks only the red ones.
+  const isRedDiff = (i: number): boolean => data[i] > 0 && data[i + 1] === 0;
 
   let y0 = -1;
   let y1 = -1;
   let minX = width;
   let maxX = 0;
+  let diffPixels = 0;
   for (let y = 0; y < height; y++) {
     let rowHasDiff = false;
     for (let x = 0; x < width; x++) {
-      if (isDiffPixel((y * width + x) * 4)) {
+      const i = (y * width + x) * 4;
+      if (isHighlighted(i)) {
         rowHasDiff = true;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
+        if (isRedDiff(i)) diffPixels++;
       }
     }
     if (rowHasDiff) {
@@ -98,14 +119,17 @@ function computeDiffBbox(
   }
 
   return {
-    x: cropX,
-    y: cropY,
-    w: cropW,
-    h: cropH,
-    imgW: width,
-    controlImgH: controlDims?.h ?? height,
-    experimentImgH: experimentDims?.h ?? height,
-    diffImgH: height,
+    bbox: {
+      x: cropX,
+      y: cropY,
+      w: cropW,
+      h: cropH,
+      imgW: width,
+      controlImgH: controlDims?.h ?? height,
+      experimentImgH: experimentDims?.h ?? height,
+      diffImgH: height,
+    },
+    diffPixels,
   };
 }
 
@@ -177,8 +201,8 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
     // grayscale detector would misclassify it.
     const controlDims = pair.reference ? readPngDims(resolveUnderBase(htmlReportDir, pair.reference)) : null;
     const experimentDims = pair.test ? readPngDims(resolveUnderBase(htmlReportDir, pair.test)) : null;
-    const diffBbox = pair.pixelmatchDiffImage
-      ? computeDiffBbox(
+    const scan = pair.pixelmatchDiffImage
+      ? scanDiffPng(
           resolveUnderBase(htmlReportDir, pair.pixelmatchDiffImage),
           controlDims,
           experimentDims,
@@ -191,9 +215,9 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
       experimentImage: toDataUri(htmlReportDir, pair.test),
       diffImage: diffSource ? toDataUri(htmlReportDir, diffSource) : null,
       misMatchPercentage,
-      diffPixels: 0,
+      diffPixels: scan?.diffPixels ?? 0,
       threshold,
-      diffBbox,
+      diffBbox: scan?.bbox ?? null,
     };
 
     // tag the "changed" bit onto the artifact via a sentinel so the grouping

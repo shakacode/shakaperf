@@ -1,4 +1,4 @@
-import type { CategoryResult } from '../types';
+import type { CategoryResult, TestResult } from '../types';
 import { VisregSlot } from './VisregSlot';
 import { PerfSlot } from './PerfSlot';
 
@@ -7,7 +7,7 @@ const LABEL = {
   perf: 'perf',
 } as const;
 
-export function CategorySlot({ result }: { result: CategoryResult }) {
+export function CategorySlot({ result, test }: { result: CategoryResult; test: TestResult }) {
   return (
     <div>
       {result.error ? (
@@ -16,7 +16,7 @@ export function CategorySlot({ result }: { result: CategoryResult }) {
           <span className="slot-error__message">{result.error}</span>
         </div>
       ) : null}
-      {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} /> : null}
+      {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
       {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} /> : null}
     </div>
   );

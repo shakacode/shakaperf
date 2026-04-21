@@ -71,7 +71,7 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
 
       <div className="card__body">
         {test.categories.map((c) => (
-          <CategorySlot key={c.category} result={c} />
+          <CategorySlot key={c.category} result={c} test={test} />
         ))}
 
         {test.code ? (

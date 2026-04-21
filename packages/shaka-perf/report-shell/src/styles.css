@@ -722,6 +722,375 @@ input {
   flex-shrink: 0;
 }
 
+/* ───────── dialog (reusable) ───────── */
+
+.ui-dialog {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  max-width: 95vw;
+  max-height: 95vh;
+  width: 95vw;
+  height: 95vh;
+}
+
+.ui-dialog::backdrop {
+  background: rgba(5, 6, 8, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.ui-dialog__surface {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.ui-dialog__title {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.ui-dialog__close {
+  border: 1px solid var(--border-strong);
+  padding: 2px 10px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--fg);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ui-dialog__close:hover {
+  background: var(--border);
+  color: #fff;
+}
+
+.ui-dialog__meta-wrap {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.ui-dialog__meta {
+  margin: 0;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 4px 20px;
+  font-size: 11px;
+}
+
+.ui-dialog__meta > div {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  align-items: baseline;
+}
+
+.ui-dialog__meta dt {
+  flex: 0 0 auto;
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10px;
+  margin: 0;
+}
+
+.ui-dialog__meta dd {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--fg);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-dialog__meta-break {
+  word-break: break-all;
+  white-space: normal;
+}
+
+.ui-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ───────── visreg dialog content ───────── */
+
+/* Single shared vertical scroll: both columns live inside one scroller so
+   dragging the vertical scrollbar moves scrubber and diff together. Headers
+   use position: sticky within the same scroller to stay pinned at the top. */
+.visreg-dialog {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  align-content: start;
+}
+
+.visreg-dialog--single {
+  grid-template-columns: 1fr;
+}
+
+.visreg-dialog__col {
+  background: var(--bg-sunken);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.visreg-dialog__col-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 12px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.visreg-dialog__img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  /* Opt out of the flex column's stretch alignment so the image renders at
+     its natural width (capped by max-width: 100%). Upscaling tiny phone
+     screenshots to a wide column produces blur; leaving the image at its
+     real size also makes browser zoom scale it down predictably. */
+  align-self: flex-start;
+}
+
+.visreg-dialog__tag {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.visreg-dialog__tag--muted {
+  color: var(--fg-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  word-break: break-all;
+  font-weight: 400;
+}
+
+/* ───────── scrubber ───────── */
+
+.scrubber {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  /* Pinned to the right edge of the scrubber column so it sits directly
+     next to the diff image when the column is wider than the screenshot's
+     natural width — comparisons read as a single side-by-side grid instead
+     of floating with a gap. */
+  align-self: flex-end;
+  overflow: hidden;
+  user-select: none;
+  touch-action: none;
+  cursor: ew-resize;
+  background: var(--bg-sunken);
+}
+
+/* When we know both source heights, render the scrubber as an aspect-ratio
+   box sized to imgW × max(controlH, experimentH). The taller image fits
+   naturally; the shorter one is placed at the top of .scrubber__control-
+   side and the remaining vertical space of that layer is a solid background
+   — so the divider's clip-path reveals either the experiment (base) or the
+   control image plus its padded region, without unpaired content leaking
+   through from the other side. Base goes absolute here (otherwise it would
+   drive the scrubber's height and fight the aspect-ratio). */
+.scrubber--boxed .scrubber__base {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.scrubber__base {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+/* Control-side layer: full scrubber rect, clipped to the left of the
+   divider. Contains the control image at the top and a solid-color region
+   below (painted by its own background). The painted region is what covers
+   experiment's tail when the divider is on the right — we never see the
+   bottom of experiment through a "control" lens. */
+.scrubber__control-side {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-sunken);
+  clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0);
+  pointer-events: none;
+}
+
+.scrubber__control-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scrubber__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--scrub-pos);
+  width: 2px;
+  background: #fff;
+  transform: translateX(-1px);
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.scrubber__handle-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.scrubber__handle-grip::before,
+.scrubber__handle-grip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  transform: translateY(-50%);
+}
+
+.scrubber__handle-grip::before {
+  left: 6px;
+  border-right: 6px solid var(--bg);
+}
+
+.scrubber__handle-grip::after {
+  right: 6px;
+  border-left: 6px solid var(--bg);
+}
+
+/* Sticky chip overlay that sits on TOP of the image. The row itself takes
+   zero layout height (so the scrubber starts at the same Y as the sticky
+   anchor), and its absolute children extend downward — chips render over
+   the first ~30px of the image. Width matches the scrubber below (via
+   `--scrub-w` inline CSS var) so the divider's position translates
+   directly to the chip clipping region. Two overlaid absolute regions
+   clip-path from opposite sides of the divider; the CONTROL chip lives
+   in the left region and fades away as the divider wipes over it,
+   EXPERIMENT mirrored. `top` matches the approximate col-head height. */
+.scrubber-chips {
+  position: sticky;
+  top: 28px;
+  z-index: 2;
+  width: var(--scrub-w, 100%);
+  max-width: 100%;
+  /* Match the scrubber below — pinned to the right edge of the column. */
+  align-self: flex-end;
+  height: 0;
+  pointer-events: none;
+}
+
+.scrubber-chips--spacer {
+  /* Filler in the diff column — no --scrub-w, no chip children; matches the
+     scrubber column's chip row height (0) so canvases align. */
+  width: 100%;
+  align-self: stretch;
+}
+
+.scrubber-chips__side {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.scrubber-chips__side--left {
+  /* Revealed on the left of the divider — same inset math as the scrubber's
+     control-side, so the CONTROL chip hides in lockstep with control itself. */
+  clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0);
+  justify-content: flex-start;
+}
+
+.scrubber-chips__side--right {
+  clip-path: inset(0 0 0 var(--scrub-pos));
+  justify-content: flex-end;
+}
+
+.scrubber-chip {
+  padding: 3px 10px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff;
+  /* Semi-transparent dark pill over the image; the image shows through. */
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+/* ───────── clickable triplet (opens dialog) ───────── */
+
+.visreg-card__images--clickable {
+  padding: 0;
+  border: none;
+  background: var(--border);
+  text-align: left;
+  cursor: zoom-in;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.visreg-card__images--clickable:hover {
+  background: var(--border-strong);
+}
+
 /* ───────── reduced motion ───────── */
 
 @media (prefers-reduced-motion: reduce) {
