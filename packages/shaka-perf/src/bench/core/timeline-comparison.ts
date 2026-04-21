@@ -584,3 +584,194 @@ export function generateTimelineComparison(options: GenerateTimelineComparisonOp
   const html = buildTimelineHtml(control, experiment, diffFrames);
   writeFileSync(options.outputPath, html);
 }
+
+/* ────────────────────────────────────────────────────────────────
+   SVG timeline preview
+   ──────────────────────────────────────────────────────────────── */
+
+interface TripletFrame {
+  timeMs: number;
+  controlUri: string;
+  experimentUri: string;
+  diffUri: string;
+  imgW: number;
+  imgH: number;
+}
+
+/**
+ * Walk control + experiment screenshots in time order. For each incoming
+ * frame, compare it pixel-by-pixel to the previous frame of the SAME side
+ * — if it's visually identical we don't emit anything (the triplet would
+ * duplicate the one we already emitted). Only when a side actually changes
+ * do we advance that side's "latest" pointer and, if both sides now have a
+ * frame, emit a new triplet (latest control, latest experiment, diff).
+ *
+ * Per-side dedup (vs. dedup on the diff image) makes sure every triplet
+ * is justified by an actual visual update on at least one side — e.g. a
+ * paint event on experiment produces a new triplet even if the diff vs
+ * control happens to match a previously-emitted diff by coincidence.
+ */
+function computeTripletFrames(control: ProfileData, experiment: ProfileData): TripletFrame[] {
+  type Entry = { timeMs: number; side: 'control' | 'experiment'; screenshot: Screenshot };
+  const entries: Entry[] = [
+    ...control.screenshots.map(s => ({ timeMs: s.timeMs, side: 'control' as const, screenshot: s })),
+    ...experiment.screenshots.map(s => ({ timeMs: s.timeMs, side: 'experiment' as const, screenshot: s })),
+  ];
+  entries.sort((a, b) => a.timeMs - b.timeMs);
+
+  type Decoded = { data: Uint8Array; w: number; h: number };
+  let latestControl: { screenshot: Screenshot; decoded: Decoded } | null = null;
+  let latestExperiment: { screenshot: Screenshot; decoded: Decoded } | null = null;
+  const out: TripletFrame[] = [];
+
+  for (const entry of entries) {
+    const raw = decodeJpeg(entry.screenshot.snapshot);
+    const curr: Decoded = { data: raw.data, w: raw.width, h: raw.height };
+
+    // Compare against previous frame of the SAME side. Identical or near-
+    // identical frames (common — the tracer emits many screenshots per
+    // second, and even when the page hasn't repainted the JPEG encoder
+    // produces slightly different bytes) don't justify a new triplet.
+    // A strict `count === 0` check fails here because per-pixel JPEG noise
+    // registers as a handful of "changed" pixels; use a fractional floor
+    // so we only treat meaningfully-changed frames as new.
+    const prev = entry.side === 'control' ? latestControl?.decoded : latestExperiment?.decoded;
+    if (prev && prev.w === curr.w && prev.h === curr.h) {
+      const diffCount = pixelmatch(prev.data, curr.data, null, curr.w, curr.h, { threshold: 0.3 });
+      const noiseFloor = Math.max(1, Math.floor(curr.w * curr.h * 0.001));
+      if (diffCount <= noiseFloor) continue;
+    }
+
+    if (entry.side === 'control') {
+      latestControl = { screenshot: entry.screenshot, decoded: curr };
+    } else {
+      latestExperiment = { screenshot: entry.screenshot, decoded: curr };
+    }
+
+    if (!latestControl || !latestExperiment) continue; // need both sides to form a triplet
+
+    const a = latestControl.decoded;
+    const b = latestExperiment.decoded;
+    if (a.w !== b.w || a.h !== b.h) continue;
+
+    const diffPixels = new Uint8Array(a.w * a.h * 4);
+    pixelmatch(a.data, b.data, diffPixels, a.w, a.h, { threshold: 0.3 });
+
+    out.push({
+      timeMs: entry.timeMs,
+      controlUri: latestControl.screenshot.dataUri,
+      experimentUri: latestExperiment.screenshot.dataUri,
+      diffUri: encodePngDataUri(diffPixels, a.w, a.h),
+      imgW: a.w,
+      imgH: a.h,
+    });
+  }
+
+  return out;
+}
+
+/** Pick `count` items spaced evenly across the full range, preserving
+ *  first and last. If `items.length <= count`, returns items unchanged. */
+function dropEvenly<T>(items: T[], count: number): T[] {
+  if (items.length <= count) return items;
+  if (count <= 1) return items.slice(0, 1);
+  const out: T[] = [];
+  for (let i = 0; i < count; i++) {
+    const idx = Math.round((i * (items.length - 1)) / (count - 1));
+    out.push(items[idx]);
+  }
+  return out;
+}
+
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export interface BuildTimelinePreviewOptions {
+  /** Maximum triplets to render; if more, they're dropped evenly. */
+  maxFrames?: number;
+  /** Total SVG width in CSS pixels. Images inside scale to fit. */
+  width?: number;
+}
+
+function buildTimelinePreviewSvg(triplets: TripletFrame[], opts: BuildTimelinePreviewOptions = {}): string {
+  const maxFrames = opts.maxFrames ?? 10;
+  const totalW = opts.width ?? 800;
+
+  const frames = dropEvenly(triplets, maxFrames);
+  if (frames.length === 0) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="40" viewBox="0 0 ${totalW} 40"><rect width="${totalW}" height="40" fill="#eef0f4"/><text x="${totalW / 2}" y="25" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#5a6470">no timeline frames</text></svg>`;
+  }
+
+  const LABEL_W = 18; // narrow left gutter — row labels are rotated 90°
+  const TS_H = 14;
+  const n = frames.length;
+  const gridW = totalW - LABEL_W;
+  const colW = Math.max(30, Math.floor(gridW / n));
+
+  // All frames share the same source resolution (enforced in computeTripletFrames).
+  const aspect = frames[0].imgH / frames[0].imgW;
+  const imgH = Math.max(20, Math.round(colW * aspect));
+  const cellH = imgH;
+  const totalH = cellH * 3 + TS_H;
+
+  const ROWS: Array<{ key: 'controlUri' | 'diffUri' | 'experimentUri'; label: string }> = [
+    { key: 'controlUri', label: 'CONTROL' },
+    { key: 'diffUri', label: 'DIFF' },
+    { key: 'experimentUri', label: 'EXPERIMENT' },
+  ];
+
+  const parts: string[] = [];
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}" role="img" aria-label="timeline preview"><rect width="${totalW}" height="${totalH}" fill="#ffffff"/>`);
+
+  // Row labels in the narrow left gutter, rotated -90° so they read bottom-
+  // to-top and fit in ~18px of width regardless of label length.
+  for (let r = 0; r < 3; r++) {
+    const midY = r * cellH + cellH / 2;
+    const labelX = LABEL_W / 2;
+    parts.push(`<text x="${labelX}" y="${midY}" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90 ${labelX} ${midY})" font-family="ui-monospace,monospace" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#1a1d22">${ROWS[r].label}</text>`);
+  }
+
+  // Frame grid — each column is a triplet stacked vertically; no gaps between
+  // cells, but a 1px border around every cell so the frames read as a grid.
+  const gridX0 = LABEL_W;
+  const BORDER = '#d1d5db';
+  for (let i = 0; i < n; i++) {
+    const t = frames[i];
+    const x = gridX0 + i * colW;
+    for (let r = 0; r < 3; r++) {
+      const y = r * cellH;
+      parts.push(`<image x="${x}" y="${y}" href="${t[ROWS[r].key]}" width="${colW}" height="${imgH}" preserveAspectRatio="xMidYMid slice"/>`);
+      parts.push(`<rect x="${x + 0.5}" y="${y + 0.5}" width="${colW - 1}" height="${imgH - 1}" fill="none" stroke="${BORDER}" stroke-width="1"/>`);
+    }
+    const tsY = 3 * cellH + TS_H - 2;
+    parts.push(`<text x="${x + colW / 2}" y="${tsY}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#5a6470">${escapeXml(formatMs(t.timeMs))}</text>`);
+  }
+
+  parts.push(`</svg>`);
+  return parts.join('\n');
+}
+
+export interface GenerateTimelinePreviewOptions {
+  controlProfilePath: string;
+  experimentProfilePath: string;
+  outputPath: string;
+  maxFrames?: number;
+  width?: number;
+}
+
+export function generateTimelinePreviewSvg(options: GenerateTimelinePreviewOptions): void {
+  const control = parseProfile(options.controlProfilePath);
+  const experiment = parseProfile(options.experimentProfilePath);
+  const triplets = computeTripletFrames(control, experiment);
+  const svg = buildTimelinePreviewSvg(triplets, {
+    maxFrames: options.maxFrames,
+    width: options.width,
+  });
+  writeFileSync(options.outputPath, svg);
+}
