@@ -315,30 +315,27 @@ export interface VisregTools {
 }
 
 // ── Global Visreg Config (visreg.config.ts — no scenarios) ──────────
-export interface VisregGlobalConfig {
+// Aliased onto the zod-derived `VisregConfig` from
+// `shaka-perf/compare` (the `visreg` slice of `abtests.config.ts`),
+// widened with visreg-engine-specific fields the engine code still
+// reads (paths, ci, report, debug flags, …). Kept as a public API for
+// the `shaka-perf/visreg` subpath.
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { VisregConfig as _VisregConfigSlice } from '../../compare/config';
+
+export type VisregGlobalConfig = Partial<_VisregConfigSlice> & {
   id?: string;
-  viewports: Viewport[];
   paths?: VisregPaths;
 
   readyEvent?: string;
   readyTimeout?: number;
 
   engine?: 'playwright' | null;
-  engineOptions?: EngineOptions;
 
   report?: string[];
   archiveReport?: boolean;
   scenarioLogsInReports?: boolean;
-
-  asyncCaptureLimit?: number;
-  asyncCompareLimit?: number;
-
-  defaultMisMatchThreshold?: number;
-  resembleOutputOptions?: ResembleOutputOptions;
-
-  compareRetries?: number;
-  compareRetryDelay?: number;
-  maxNumDiffPixels?: number;
 
   fileNameTemplate?: string;
   outputFormat?: string;
@@ -355,9 +352,7 @@ export interface VisregGlobalConfig {
   };
 
   useBoundingBoxViewportForSelectors?: boolean;
-
-  comparePixelmatchThreshold?: number;
-}
+};
 
 export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConfig {
   return config;

@@ -12,9 +12,9 @@ export const defaultFlagArgs: ITBConfig = {
   samplingMode: "simultaneous",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDefaultValue(key: string): any {
+export function getDefaultValue(key: string): unknown {
   if (key in defaultFlagArgs) {
     return defaultFlagArgs[key];
   }
+  return undefined;
 }
