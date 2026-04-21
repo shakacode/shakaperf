@@ -175,6 +175,7 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     (f) => f.startsWith(experimentHost) && f.endsWith('_lighthouse_report.html'),
   ) ?? null;
   const timeline = files.find((f) => f === 'timeline_comparison.html') ?? null;
+  const timelinePreview = files.find((f) => f === 'timeline_preview.svg') ?? null;
   // Legacy bench Handlebars report: `artifact-<n>.html`. Pick the highest-numbered
   // one so re-runs into the same results folder surface the freshest render.
   const benchReport = files
@@ -186,6 +187,21 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     })[0] ?? null;
   const diffFiles = files.filter((f) => f.endsWith('.diff.html'));
 
+  // Only inline the preview SVG when the test actually moved off
+  // `no_difference` — a flat row doesn't need the glanceable triplet grid,
+  // and the file can be multi-hundred-KB (10 embedded JPEGs + a PNG diff),
+  // so skipping it saves ~1 MB × (no-diff tests count) in the report.
+  const shouldIncludePreview = status !== 'no_difference';
+  const timelinePreviewSvg = shouldIncludePreview && timelinePreview
+    ? (() => {
+        try {
+          return fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
   const perf: PerfArtifact = {
     metrics,
     regressedMetrics,
@@ -193,6 +209,7 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
     controlLighthouseHref: inlineHtml(controlLh),
     experimentLighthouseHref: inlineHtml(experimentLh),
     timelineHref: inlineHtml(timeline),
+    timelinePreviewSvg,
     benchReportHref: inlineHtml(benchReport),
     diffHrefs: diffFiles
       .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))

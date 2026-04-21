@@ -53,12 +53,14 @@ interface ArtifactLink {
   href: string;
 }
 
-function artifactLinks(perf: PerfArtifact): ArtifactLink[] {
+function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] {
   const links: ArtifactLink[] = [];
   if (perf.benchReportHref) links.push({ label: 'bench report', href: perf.benchReportHref });
   if (perf.controlLighthouseHref) links.push({ label: 'control lh', href: perf.controlLighthouseHref });
   if (perf.experimentLighthouseHref) links.push({ label: 'experiment lh', href: perf.experimentLighthouseHref });
-  if (perf.timelineHref) links.push({ label: 'timeline', href: perf.timelineHref });
+  // When we have an inline preview SVG, the timeline is opened by clicking
+  // the preview itself — don't duplicate it as a plain button below.
+  if (perf.timelineHref && !hasPreview) links.push({ label: 'timeline', href: perf.timelineHref });
   for (const link of perf.diffHrefs) links.push({ label: link.label, href: link.href });
   return links;
 }
@@ -117,7 +119,8 @@ export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult 
   };
   for (const m of significant) grouped[m.group].push(m);
 
-  const links = artifactLinks(perf);
+  const hasPreview = perf.timelinePreviewSvg !== null && perf.timelineHref !== null;
+  const links = artifactLinks(perf, hasPreview);
 
   const hasAny = significant.length > 0;
 
@@ -130,6 +133,16 @@ export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult 
       ) : (
         <div className="empty" style={{ padding: '20px 0' }}>no perf regressions or improvements</div>
       )}
+
+      {hasPreview && perf.timelinePreviewSvg && perf.timelineHref ? (
+        <button
+          type="button"
+          className="timeline-preview"
+          onClick={() => setOpenArtifact({ label: 'timeline', href: perf.timelineHref! })}
+          aria-label="open timeline"
+          dangerouslySetInnerHTML={{ __html: perf.timelinePreviewSvg }}
+        />
+      ) : null}
 
       {links.length > 0 ? (
         <div className="artifact-links" style={{ marginTop: 12 }}>

@@ -57,6 +57,13 @@ export interface PerfArtifact {
   controlLighthouseHref: string | null;
   experimentLighthouseHref: string | null;
   timelineHref: string | null;
+  /**
+   * Inline SVG string for the timeline preview (3×N triplet grid). Only
+   * populated on tests whose perf status actually moved off `no_difference`
+   * — `no_difference` cards fall back to the plain "timeline" button in the
+   * artifact link row.
+   */
+  timelinePreviewSvg: string | null;
   benchReportHref: string | null;
   diffHrefs: { label: string; href: string }[];
 }

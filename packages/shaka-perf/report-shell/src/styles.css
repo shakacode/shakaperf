@@ -714,6 +714,31 @@ input {
   background: #fff;
 }
 
+/* Inline timeline preview — an SVG grid of control/diff/experiment triplets
+   rendered via dangerouslySetInnerHTML. Clickable; on hover we nudge the
+   border so it reads as actionable, and the cursor signals zoom-into the
+   full timeline. */
+.timeline-preview {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  cursor: zoom-in;
+}
+
+.timeline-preview:hover {
+  border-color: var(--fg-muted);
+  background: var(--bg-elevated);
+}
+
+.timeline-preview svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .empty {
   padding: 60px 0;
   text-align: center;

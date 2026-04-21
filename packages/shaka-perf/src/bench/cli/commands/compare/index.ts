@@ -10,6 +10,7 @@ import {
   createLighthouseBenchmark,
   generateHtmlDiffs,
   generateTimelineComparison,
+  generateTimelinePreviewSvg,
   LighthouseBenchmarkOptions,
   NavigationSample,
   run,
@@ -221,6 +222,11 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           controlProfilePath: path.join(testResultsFolder, controlProfile),
           experimentProfilePath: path.join(testResultsFolder, experimentProfile),
           outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
+        });
+        generateTimelinePreviewSvg({
+          controlProfilePath: path.join(testResultsFolder, controlProfile),
+          experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+          outputPath: path.join(testResultsFolder, 'timeline_preview.svg'),
         });
       }
     }
