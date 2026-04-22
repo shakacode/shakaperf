@@ -25,3 +25,7 @@ export type {
 } from './types';
 export { runAxe } from './runner';
 export type { RunAxeOptions, RunAxeResult } from './runner';
+export { createAxeCommand } from './cli/program';
+export type { CreateAxeCommandOptions } from './cli/program';
+export { runAxeCommand } from './cli/run';
+export type { RunAxeCommandOptions, RunAxeCommandResult } from './cli/run';
