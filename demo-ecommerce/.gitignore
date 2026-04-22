@@ -54,3 +54,7 @@ bundle-size-diffs/*
 
 # shaka-perf compare output
 compare-results/
+
+a11y-report/data/*.png
+a11y-report/data/*.md
+a11y-report/trace/*

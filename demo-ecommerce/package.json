@@ -18,10 +18,14 @@
     "bundle-size:compare": "shaka-bundle-size compare && shaka-bundle-size -c admin.bundle-size.config.ts compare",
     "bundle-size:upload": "shaka-bundle-size upload-main-branch-stats && shaka-bundle-size -c admin.bundle-size.config.ts upload-main-branch-stats",
     "typecheck": "tsc --noEmit",
-    "visreg:test": "shaka-perf visreg-compare",
-    "rebuild-deps": "yarn workspaces foreach -Apt --include 'packages/*' run build && yarn install"
+    "compare": "shaka-perf compare",
+    "rebuild-deps": "yarn workspaces foreach -Apt --include 'packages/*' run build && yarn install",
+    "test:a11y": "playwright test --config=playwright.a11y.config.ts",
+    "test:a11y:ui": "playwright test --config=playwright.a11y.config.ts --ui",
+    "test:a11y:report": "playwright show-report a11y-report"
   },
   "dependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@loadable/component": "^5.16.7",
@@ -42,6 +46,7 @@
   },
   "devDependencies": {
     "@loadable/webpack-plugin": "^5.15.2",
+    "@playwright/test": "^1.59.1",
     "@rspack/cli": "^1.3.12",
     "@rspack/plugin-react-refresh": "^1.3.12",
     "@swc/plugin-loadable-components": "10.0.0",
