@@ -1,11 +1,12 @@
 import chalk from 'chalk';
-import lighthouse, { type RunnerResult } from 'lighthouse';
+import type { RunnerResult } from 'lighthouse';
 import { writeFileSync } from 'node:fs';
 
 import type { Marker, PhaseSample } from './lighthouse-config';
 import { DEFAULT_MARKERS } from './lighthouse-config';
 import { extractRawTraceTimestamp } from './extract-markers';
 import { saveNetworkActivity, analyzeNetworkResources } from './network-activity';
+import { runPatchedLighthouse } from './patched-lighthouse';
 import { summarizePerformanceProfile } from './summarize-performance-profile';
 
 // Read console errors whitelist from environment variable.
@@ -20,7 +21,8 @@ export async function runLighthouse(
   lhSettings: any,
   resultsFolder: string,
   markers: Marker[] = DEFAULT_MARKERS,
-  saveArtifacts: boolean = true
+  saveArtifacts: boolean = true,
+  canStopTracking: Promise<unknown> = Promise.resolve(),
 ): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // 5 minutes
   const timeoutMs = 300000;
@@ -33,7 +35,7 @@ export async function runLighthouse(
   });
 
   const runnerResult = await Promise.race([
-    lighthouse(url, lhSettings),
+    runPatchedLighthouse(url, lhSettings, { canStopTracking }),
     timeoutPromise
   ]) as RunnerResult;
 

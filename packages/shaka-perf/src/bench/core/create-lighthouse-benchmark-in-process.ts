@@ -148,6 +148,15 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     try {
       const context = browser.contexts()[0];
 
+      // Keep Lighthouse measuring until the playwright testFn finishes.
+      // `canStopTracking` is resolved from testFn's `.finally(...)` below;
+      // until then, the patched Lighthouse (see ./patched-lighthouse/)
+      // keeps its driver attached so post-load interactions are captured.
+      let releaseTracking: () => void = () => {};
+      const canStopTracking = new Promise<void>((resolve) => {
+        releaseTracking = resolve;
+      });
+
       // Start Lighthouse — it navigates the page itself
       const lighthousePromise = runLighthouse(
         '',
@@ -155,7 +164,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         lhSettings,
         this.options.resultsFolder ?? './tracerbench-results',
         markers,
-        saveArtifacts
+        saveArtifacts,
+        canStopTracking,
       );
       // Prevent unhandled rejection if browser closes while lighthouse is still running
       lighthousePromise.catch((error) => { console.log(error); });
@@ -175,7 +185,11 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         },
         testType: TestType.Performance,
         annotate: () => {},
-      }).then(() => collectINP(page));
+      })
+        .then(() => collectINP(page))
+        // Release the tracking hold whether testFn succeeded or threw; otherwise
+        // Lighthouse gather would idle until maxWaitForLoadedMs on any test error.
+        .finally(() => releaseTracking());
 
       const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 

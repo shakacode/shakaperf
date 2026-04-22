@@ -14,6 +14,16 @@ const assets = [
   ['report-shell/dist/index.html', 'dist/report-shell/index.html'],
   // Legacy bench HTML report templates (Handlebars + Chart.js assets)
   ['src/bench/cli/static', 'dist/bench/cli/static'],
+  // patched-lighthouse/: the ESM loader hook (.mjs) and its unified-diff
+  // file. tsc copies neither, so we do it here.
+  [
+    'src/bench/core/patched-lighthouse/patch-loader.mjs',
+    'dist/bench/core/patched-lighthouse/patch-loader.mjs',
+  ],
+  [
+    'src/bench/core/patched-lighthouse/lighthouse.patch',
+    'dist/bench/core/patched-lighthouse/lighthouse.patch',
+  ],
 ];
 
 for (const [src, dest] of assets) {
