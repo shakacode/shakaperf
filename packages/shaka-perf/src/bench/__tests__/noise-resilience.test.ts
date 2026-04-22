@@ -247,7 +247,9 @@ function generateSummary(): string {
   return ['# Noise-Resilience Summary', '', headerLine, sepLine, ...dataLines, ''].join('\n');
 }
 
-describe('noise-resilience snapshot', () => {
+// Temporarily disabled: depends on fixtures under src/bench/testData/ that live
+// on the roman-kuksin/noise-resilient-perf-tests branch.
+describe.skip('noise-resilience snapshot', () => {
   for (const group of GROUPS) {
     describe(group.name, () => {
       const groupDir = path.join(TEST_DATA_DIR, group.name);

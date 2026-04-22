@@ -47,28 +47,28 @@ describe('defineVisregConfig', function () {
 
 describe('VISREG_DEFAULT_CONFIG', function () {
   it('should have three default viewports', function () {
-    assert.strictEqual(VISREG_DEFAULT_CONFIG.viewports.length, 3);
+    assert.strictEqual(VISREG_DEFAULT_CONFIG.viewports!.length, 3);
   });
 
   it('should include phone, tablet, and desktop viewports', function () {
-    const labels = VISREG_DEFAULT_CONFIG.viewports.map(function (v) { return v.label; });
+    const labels = VISREG_DEFAULT_CONFIG.viewports!.map(function (v) { return v.label; });
     assert.deepStrictEqual(labels, ['phone', 'tablet', 'desktop']);
   });
 
   it('should have correct phone viewport dimensions', function () {
-    const phone = VISREG_DEFAULT_CONFIG.viewports[0];
+    const phone = VISREG_DEFAULT_CONFIG.viewports![0];
     assert.strictEqual(phone.width, 375);
     assert.strictEqual(phone.height, 667);
   });
 
   it('should have correct tablet viewport dimensions', function () {
-    const tablet = VISREG_DEFAULT_CONFIG.viewports[1];
+    const tablet = VISREG_DEFAULT_CONFIG.viewports![1];
     assert.strictEqual(tablet.width, 768);
     assert.strictEqual(tablet.height, 1024);
   });
 
   it('should have correct desktop viewport dimensions', function () {
-    const desktop = VISREG_DEFAULT_CONFIG.viewports[2];
+    const desktop = VISREG_DEFAULT_CONFIG.viewports![2];
     assert.strictEqual(desktop.width, 1280);
     assert.strictEqual(desktop.height, 800);
   });
