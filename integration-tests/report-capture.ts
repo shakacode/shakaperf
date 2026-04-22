@@ -27,7 +27,12 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
 
   const shot = async (name: string) => {
     const file = path.join(shotDir, `${label}__${name}.png`);
-    await page.screenshot({ path: file, fullPage: true });
+    const openDialog = page.locator('dialog[open], .ui-dialog[aria-hidden="false"]').first();
+    if ((await openDialog.count()) > 0) {
+      await openDialog.screenshot({ path: file });
+    } else {
+      await page.screenshot({ path: file, fullPage: true });
+    }
   };
 
   await page.setViewportSize({ width: 1920, height: 1200 });
@@ -80,45 +85,49 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
     }
   }
 
-  // 05 — click each visreg image (triplet or no-diff) — opens scrubber dialog
-  const visregImages = page.locator('.visreg-card__images--clickable');
-  const nVisreg = await visregImages.count();
-  const visregShots = Math.min(nVisreg, maxPerKind);
-  for (let i = 0; i < visregShots; i++) {
-    await visregImages.nth(i).scrollIntoViewIfNeeded().catch(() => {});
-    await visregImages.nth(i).click().catch(() => {});
+  // 05 — open the scrubber dialog on one diff card and one no-diff card.
+  // All cards within a bucket render the same dialog shell, so one shot per
+  // bucket is enough signal.
+  const visregBuckets: Array<{ kind: string; selector: string }> = [
+    { kind: 'diff', selector: '.visreg-card--diff .visreg-card__images--clickable' },
+    { kind: 'nodiff', selector: '.visreg-card--nodiff .visreg-card__images--clickable' },
+  ];
+  for (const { kind, selector } of visregBuckets) {
+    const btn = page.locator(selector).first();
+    if ((await btn.count()) === 0) continue;
+    await btn.scrollIntoViewIfNeeded().catch(() => {});
+    await btn.click().catch(() => {});
     const dialogOk = await page.waitForSelector('dialog[open]', { timeout: 5000 }).then(() => true, () => false);
     if (dialogOk) {
       await page.waitForTimeout(800);
-      await shot(`05-visreg-${String(i).padStart(2, '0')}`);
+      await shot(`05-visreg-${kind}`);
       // Click the scrubber at 20% to move the divider — verifies pointer-driven
       // position update renders correctly without the default 50/50 split.
       const scrubber = page.locator('dialog[open] .scrubber').first();
-      if (await scrubber.count() > 0) {
+      if ((await scrubber.count()) > 0) {
         const box = await scrubber.boundingBox();
         if (box) {
           await scrubber.click({
             position: { x: Math.max(1, box.width * 0.2), y: box.height / 2 },
           }).catch(() => {});
           await page.waitForTimeout(200);
-          await shot(`05-visreg-${String(i).padStart(2, '0')}-scrubbed`);
+          await shot(`05-visreg-${kind}-scrubbed`);
         }
       }
       await closeDialog(page);
     }
   }
 
-  // 06 — timeline previews (shown when a perf metric moved)
-  const timelines = page.locator('.timeline-preview');
-  const nTimelines = await timelines.count();
-  const timelineShots = Math.min(nTimelines, maxPerKind);
-  for (let i = 0; i < timelineShots; i++) {
-    await timelines.nth(i).scrollIntoViewIfNeeded().catch(() => {});
-    await timelines.nth(i).click().catch(() => {});
+  // 06 — timeline preview (shown when a perf metric moved). All previews
+  // render the same dialog shell, so one shot is enough signal.
+  const firstTimeline = page.locator('.timeline-preview').first();
+  if ((await firstTimeline.count()) > 0) {
+    await firstTimeline.scrollIntoViewIfNeeded().catch(() => {});
+    await firstTimeline.click().catch(() => {});
     const dialogOk = await page.waitForSelector('dialog[open]', { timeout: 5000 }).then(() => true, () => false);
     if (dialogOk) {
       await page.waitForTimeout(1500);
-      await shot(`06-timeline-${String(i).padStart(2, '0')}`);
+      await shot('06-timeline');
       await closeDialog(page);
     }
   }

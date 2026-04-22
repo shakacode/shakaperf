@@ -202,7 +202,7 @@ program
         const extendedStatsResult = extendedStatsGenerator.generate();
 
         if ('error' in extendedStatsResult) {
-          reporter.warning(`Cannot generate source maps: ${extendedStatsResult.message}`);
+          throw new Error(`Cannot generate source maps: ${extendedStatsResult.message}`);
         }
       }
 
