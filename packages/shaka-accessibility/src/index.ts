@@ -23,3 +23,5 @@ export type {
   AxeViolation,
   AxeViolationNode,
 } from './types';
+export { runAxe } from './runner';
+export type { RunAxeOptions, RunAxeResult } from './runner';

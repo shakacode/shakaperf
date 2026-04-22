@@ -16,6 +16,7 @@ export interface Viewport {
 export enum TestType {
   VisualRegression = 'visual_regression',
   Performance = 'performance',
+  Accessibility = 'accessibility',
 }
 
 export interface TestFnContext {
