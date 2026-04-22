@@ -22,7 +22,7 @@ export async function runLighthouse(
   resultsFolder: string,
   markers: Marker[] = DEFAULT_MARKERS,
   saveArtifacts: boolean = true,
-  canStopTracking: Promise<unknown> = Promise.resolve(),
+  canStopTracking: Promise<void> = Promise.resolve(),
 ): Promise<{ phases: PhaseSample[], runnerResult: RunnerResult }> {
   // 5 minutes
   const timeoutMs = 300000;
@@ -34,13 +34,16 @@ export async function runLighthouse(
     }, timeoutMs);
   });
 
-  const runnerResult = await Promise.race([
-    runPatchedLighthouse(url, lhSettings, { canStopTracking }),
-    timeoutPromise
-  ]) as RunnerResult;
-
-  if (timeout) {
-    clearTimeout(timeout);
+  let runnerResult: RunnerResult;
+  try {
+    runnerResult = await Promise.race([
+      runPatchedLighthouse(url, lhSettings, { canStopTracking }),
+      timeoutPromise
+    ]) as RunnerResult;
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   }
 
   const parsedUrl = new URL(url);

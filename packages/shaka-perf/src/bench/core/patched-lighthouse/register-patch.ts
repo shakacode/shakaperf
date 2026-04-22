@@ -16,8 +16,6 @@ export function ensureLighthousePatchRegistered(): void {
   const g = globalThis as Record<string, unknown>;
   if (g[FLAG]) return;
 
-  // At runtime this file lives at dist/bench/core/patched-lighthouse/; the
-  // loader sits alongside it as patch-loader.mjs.
   const loaderPath = path.join(__dirname, 'patch-loader.mjs');
   register(pathToFileURL(loaderPath).href);
   g[FLAG] = true;

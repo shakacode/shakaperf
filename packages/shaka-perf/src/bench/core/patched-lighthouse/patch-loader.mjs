@@ -3,10 +3,8 @@
 // Node resolves that file. The consumer's `node_modules/lighthouse` stays
 // untouched on disk.
 //
-// Patch format: standard unified diff (the kind `patch-package` or
-// `git diff` emits). Keeping the change as a real `.patch` file rather
-// than a string-replace in JS keeps the delta human-readable and lets us
-// regenerate it with `yarn patch-package lighthouse` during dev.
+// Patch format: standard unified diff (git diff style), kept as a real
+// `.patch` file so the delta stays human-readable.
 //
 // The applied hunk teaches `waitForFullyLoaded` to also wait on
 // `globalThis.__shakaperfHoldGather`. shaka-perf's bench harness sets that
@@ -22,7 +20,7 @@ const TARGET_SUFFIX = '/lighthouse/core/gather/driver/wait-for-condition.js';
 const PATCH_PATH = fileURLToPath(new URL('./lighthouse.patch', import.meta.url));
 
 let cachedPatch = null;
-let warnedBadPatch = false;
+let loggedApply = false;
 
 function readPatch() {
   if (cachedPatch !== null) return cachedPatch;
@@ -41,15 +39,20 @@ export async function load(url, context, nextLoad) {
 
   const patched = applyPatch(original, readPatch());
   if (patched === false) {
-    if (!warnedBadPatch) {
-      warnedBadPatch = true;
-      console.warn(
-        '[shaka-perf] lighthouse.patch no longer applies to this lighthouse ' +
-          'version. Perf tests will run, but testFn interactions after load ' +
-          'will not be measured.',
-      );
-    }
-    return result;
+    // Fail loud on drift. A silent no-op would mean testFn interactions
+    // after load are excluded from the trace — invisible perf regression.
+    throw new Error(
+      '[shaka-perf] lighthouse.patch no longer applies to this lighthouse version. ' +
+        `Target file: ${TARGET_SUFFIX}. Regenerate the patch against the current ` +
+        'lighthouse source under packages/shaka-perf/src/bench/core/patched-lighthouse/.',
+    );
+  }
+
+  // Positive-confirmation log — absent in CI output means the loader never
+  // ran (e.g. Yarn PnP short-circuited downstream hooks).
+  if (!loggedApply) {
+    loggedApply = true;
+    console.log('[shaka-perf] lighthouse patched');
   }
 
   return { ...result, source: patched, shortCircuit: true };

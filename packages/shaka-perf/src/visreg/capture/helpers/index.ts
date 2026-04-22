@@ -6,6 +6,8 @@ export { waitForNoMutations } from './waitForNoMutations';
 export type { WaitForNoMutationsOptions } from './waitForNoMutations';
 export { waitForNetworkSettle } from './waitForNetworkSettle';
 export type { WaitForNetworkSettleOptions } from './waitForNetworkSettle';
+export { waitForFontsReady } from './waitForFontsReady';
+export type { WaitForFontsReadyOptions } from './waitForFontsReady';
 export { clickAndHoverHelper } from './clickAndHoverHelper';
 export { loadCookies } from './loadCookies';
 export { interceptImages } from './interceptImages';

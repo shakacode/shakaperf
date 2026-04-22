@@ -5,10 +5,10 @@ diff --git a/core/gather/driver/wait-for-condition.js b/core/gather/driver/wait-
 
    // Wait for all initial load promises. Resolves on cleanup function the clears load
    // timeout timer.
-+  // PATCH (shaka-perf): if a concurrent driver set globalThis.__shakaperfHoldGather
-+  // (typically the playwright testFn promise from create-lighthouse-benchmark-in-process),
-+  // wait on it too before declaring the page "fully loaded". Keeps the Lighthouse
-+  // driver attached and the trace accumulating until testFn finishes. maxWaitForLoadedMs
++  // PATCH (shaka-perf): if the shaka-perf bench harness set
++  // globalThis.__shakaperfHoldGather, wait on it too before declaring the page
++  // "fully loaded". Keeps the Lighthouse driver attached and the trace
++  // accumulating until the harness's testFn finishes. maxWaitForLoadedMs
 +  // remains the hard cap.
    /** @type {Promise<() => Promise<{timedOut: boolean}>>} */
    const loadPromise = Promise.all([

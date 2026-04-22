@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 
 import { waitForAllImages } from './waitForAllImages';
+import { waitForFontsReady } from './waitForFontsReady';
 import { waitForNoMutations } from './waitForNoMutations';
 import { waitForNetworkSettle } from './waitForNetworkSettle';
 
@@ -15,11 +16,11 @@ export interface WaitUntilPageSettledOptions {
 
 /**
  * Umbrella "page is settled" wait — runs `waitForAllImages`,
- * `waitForNoMutations`, and `waitForNetworkSettle` in parallel. Each
- * underlying helper swallows its own timeout, so this one always
- * resolves; composite outcome is summarised at the end.
+ * `waitForFontsReady`, `waitForNoMutations`, and `waitForNetworkSettle`
+ * in parallel. Each underlying helper swallows its own timeout, so this
+ * one always resolves; composite outcome is summarised at the end.
  *
- * Prefer calling the individual helpers when only one of the three
+ * Prefer calling the individual helpers when only one of the four
  * matters to the test (e.g. a modal interaction that only needs images
  * ready, not DOM-quiet).
  */
@@ -31,6 +32,7 @@ export async function waitUntilPageSettled(
   const start = Date.now();
   await Promise.all([
     waitForAllImages(page, options),
+    waitForFontsReady(page, options),
     waitForNoMutations(page, options),
     waitForNetworkSettle(page, options),
   ]);

@@ -24,7 +24,7 @@ export interface RunPatchedLighthouseOptions {
    * The Lighthouse `maxWaitForLoadedMs` setting (default 45 s) still caps
    * the wait — a never-resolving promise can't wedge the run forever.
    */
-  canStopTracking?: Promise<unknown>;
+  canStopTracking?: Promise<void>;
 }
 
 /**
@@ -40,6 +40,10 @@ export interface RunPatchedLighthouseOptions {
  *
  * Everything delayed-stop-related lives inside this folder — the caller
  * just hands over a promise.
+ *
+ * Not safe to call concurrently in the same process: the canStopTracking
+ * promise is advertised via a single `globalThis.__shakaperfHoldGather`
+ * slot, so overlapping calls will cross-contaminate each other's traces.
  */
 export async function runPatchedLighthouse(
   url: string,

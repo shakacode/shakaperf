@@ -138,9 +138,13 @@ export async function waitForNoMutations(
       );
     }
   } catch (err) {
-    console.warn(
-      `${LOG_PREFIX} failed for ${url}: ${(err as Error).message} — continuing anyway`,
-    );
+    if ((err as Error).name === 'TimeoutError') {
+      console.warn(
+        `${LOG_PREFIX} timed out for ${url}: ${(err as Error).message} — continuing anyway`,
+      );
+      return;
+    }
+    throw err;
   } finally {
     if (timer) clearTimeout(timer);
     page.off('console', onPageConsole);

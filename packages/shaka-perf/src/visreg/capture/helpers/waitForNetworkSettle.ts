@@ -22,9 +22,13 @@ export async function waitForNetworkSettle(
   try {
     await page.waitForLoadState('networkidle', { timeout });
     console.log(`${LOG_PREFIX} network idle for ${url} (${Date.now() - start} ms)`);
-  } catch {
-    console.warn(
-      `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — continuing anyway`,
-    );
+  } catch (err) {
+    if ((err as Error).name === 'TimeoutError') {
+      console.warn(
+        `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — continuing anyway`,
+      );
+      return;
+    }
+    throw err;
   }
 }

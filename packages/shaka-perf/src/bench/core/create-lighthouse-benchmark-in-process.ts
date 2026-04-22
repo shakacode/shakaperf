@@ -150,8 +150,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
       // Keep Lighthouse measuring until the playwright testFn finishes.
       // `canStopTracking` is resolved from testFn's `.finally(...)` below;
-      // until then, the patched Lighthouse (see ./patched-lighthouse/)
-      // keeps its driver attached so post-load interactions are captured.
+      // until then, the patched Lighthouse keeps its driver attached so
+      // post-load interactions are captured.
       let releaseTracking: () => void = () => {};
       const canStopTracking = new Promise<void>((resolve) => {
         releaseTracking = resolve;
@@ -167,8 +167,6 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         saveArtifacts,
         canStopTracking,
       );
-      // Prevent unhandled rejection if browser closes while lighthouse is still running
-      lighthousePromise.catch((error) => { console.log(error); });
 
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);

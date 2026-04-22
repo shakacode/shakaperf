@@ -83,8 +83,6 @@ export async function waitForAllImages(
       return;
     }
 
-    // Timeout path — enumerate still-pending images so the log points at
-    // the actual offender.
     const pending = await page
       .evaluate<ImageInfo[], boolean>((visibleOnly) => {
         const isVisible = (img: HTMLImageElement): boolean => {
@@ -110,7 +108,12 @@ export async function waitForAllImages(
             };
           });
       }, onlyVisible)
-      .catch(() => [] as ImageInfo[]);
+      .catch((err: Error) => {
+        console.warn(
+          `${LOG_PREFIX} could not enumerate pending images: ${err.message}`,
+        );
+        return [] as ImageInfo[];
+      });
 
     const scope = onlyVisible ? 'visible image(s)' : 'image(s)';
     console.warn(
@@ -129,9 +132,13 @@ export async function waitForAllImages(
       console.warn(`${LOG_PREFIX}   …and ${pending.length - 10} more`);
     }
   } catch (err) {
-    console.warn(
-      `${LOG_PREFIX} failed for ${url}: ${(err as Error).message} — continuing anyway`,
-    );
+    if ((err as Error).name === 'TimeoutError') {
+      console.warn(
+        `${LOG_PREFIX} timed out for ${url}: ${(err as Error).message} — continuing anyway`,
+      );
+      return;
+    }
+    throw err;
   } finally {
     if (timer) clearTimeout(timer);
   }
