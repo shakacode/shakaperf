@@ -8,7 +8,7 @@ parameters:
 orbs:
   node: circleci/node@7.2.1
   ruby: circleci/ruby@2.6.0
-  shaka-perf: ramez/shaka-perf@0.0.1
+  shaka-perf: ramez/shaka-perf@1.0.2
 
 executors:
   ruby-node-executor:
