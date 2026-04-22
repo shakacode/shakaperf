@@ -2,15 +2,16 @@ import { test } from './base-test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  ORIGINAL_REPO,
+  ORIGINAL_REPO, DEMO_CWD,
   loud, run, startServers, waitForPort,
 } from './helpers';
+import { captureReportScreenshots, prettifyJsonTree, screenshotAllHtml } from './report-capture';
 
-// Store bench results in the REAL repo so they persist and can be committed
-const BENCH_RESULTS_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
+const COMPARE_RESULTS_DIR = path.join(DEMO_CWD, 'compare-results');
+const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
 
-test('run shaka-perf perf-compare on twin servers @perf', async ({ page }) => {
-  test.setTimeout(20 * 60 * 1000);
+test('run shaka-perf compare --categories perf on twin servers @perf', async ({ page }) => {
+  test.setTimeout(25 * 60 * 1000);
 
   startServers();
   loud('Waiting for ports 3020 + 3030');
@@ -19,45 +20,51 @@ test('run shaka-perf perf-compare on twin servers @perf', async ({ page }) => {
     waitForPort(3030),
   ]);
 
-  // Run shaka-perf perf-compare with minimal measurements for speed
-  loud('Running shaka-perf perf-compare');
-  run(
-    [
-      'yarn shaka-perf perf-compare',
-      '--testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"',
-      '--parallelism 6',
-      '--numberOfMeasurements 18',
-      `--resultsFolder ${BENCH_RESULTS_DIR}`,
-    ].join(' '),
-    { timeout: 15 * 60 * 1000 },
-  );
-
-  // Results land in a per-test subdirectory; move them up for snapshot compatibility
-  const testSubdir = fs.readdirSync(BENCH_RESULTS_DIR, { withFileTypes: true })
-    .find(d => d.isDirectory());
-  if (testSubdir) {
-    const subPath = path.join(BENCH_RESULTS_DIR, testSubdir.name);
-    for (const file of fs.readdirSync(subPath)) {
-      fs.renameSync(path.join(subPath, file), path.join(BENCH_RESULTS_DIR, file));
+  loud('Running shaka-perf compare --categories perf');
+  // Expect a non-zero exit: the LazySection→div swap reliably regresses
+  // HomePage perf. We still need the artifacts, so swallow the throw and
+  // verify the report was produced below.
+  let perfFailed = false;
+  try {
+    run(
+      [
+        'yarn shaka-perf compare',
+        '--categories perf',
+        '--testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"',
+      ].join(' '),
+      { timeout: 20 * 60 * 1000 },
+    );
+  } catch (e) {
+    perfFailed = true;
+    if (e && typeof e === 'object') {
+      const err = e as { stderr?: Buffer; stdout?: Buffer };
+      if (err.stdout) console.log(err.stdout.toString());
+      if (err.stderr) console.log(err.stderr.toString());
     }
-    fs.rmdirSync(subPath);
   }
-
-  // Pretty-print JSON results for readable diffs
-  for (const file of ['ab-measurements.json', 'report.json', 'localhost_3020____performance_profile.json']) {
-    const filePath = path.join(BENCH_RESULTS_DIR, file);
-    const json = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + '\n');
+  if (!perfFailed) {
+    throw new Error('Expected shaka-perf compare --categories perf to exit non-zero (HomePage regression), but it exited 0');
   }
+  loud('Perf compare exited non-zero as expected (regression detected)');
 
-  // Screenshot HTML artifacts for visual diffing
-  const htmlFiles = fs.readdirSync(BENCH_RESULTS_DIR).filter(f => f.endsWith('.html'));
-  for (const file of htmlFiles) {
-    const filePath = path.join(BENCH_RESULTS_DIR, file);
-    const screenshotPath = filePath.replace(/\.html$/, '.screenshot.png');
-    await page.goto(`file://${filePath}`);
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-  }
+  // Replace snapshot dir with fresh compare-results output.
+  if (fs.existsSync(SNAPSHOT_DIR)) fs.rmSync(SNAPSHOT_DIR, { recursive: true, force: true });
+  fs.cpSync(COMPARE_RESULTS_DIR, SNAPSHOT_DIR, { recursive: true });
+  loud(`Copied compare-results to ${SNAPSHOT_DIR}`);
 
+  // Pretty-print JSON for readable diffs
+  prettifyJsonTree(SNAPSHOT_DIR);
+
+  // Screenshot every per-test HTML artifact (lighthouse reports, timeline
+  // comparison, network/profile diffs, legacy bench report).
+  await screenshotAllHtml(page, SNAPSHOT_DIR);
+
+  // Interact with the unified report.html and capture every distinct state
+  // (dialogs, expanded source, filtered grid, timeline preview, scrubber).
+  await captureReportScreenshots({
+    page,
+    reportHtmlPath: path.join(SNAPSHOT_DIR, 'report.html'),
+    outDir: SNAPSHOT_DIR,
+    label: 'perf',
+  });
 });

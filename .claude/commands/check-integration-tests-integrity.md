@@ -8,7 +8,14 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
 2. Collect results from all agents and compile into the output format at the bottom.
 
-3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff reports in the browser. If they agree, open both (bench and visreg) with `open <path>` via Bash. If they decline, just print the paths to the HTML reports.
+   The two timing-verdict agents (sections **Timing verdict · analyst A** and
+   **· analyst B**) are an intentional duplicate: both do the same analysis
+   independently as a cross-check. Compare their two verdicts. If they agree,
+   report that single verdict. If they disagree, re-read the numbers yourself
+   (load the two baseline logs via Read) and break the tie; flag the
+   disagreement in the output so the reader knows the signal was ambiguous.
+
+3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff report in the browser. If they agree, open `integration-tests/snapshots/screenshot-diff-report.html` with `open <path>` via Bash. If they decline, just print the path.
 
 ## Files
 
@@ -36,21 +43,22 @@ git diff -- integration-tests/snapshots/bench-results/report.txt 'integration-te
 
 Plain text summary. Numeric values are noise. Only flag: missing sections, structural changes, added/removed metric names.
 
-### Bench HTML screenshots
+### Report-drive-through screenshots
 
 ```bash
-yarn node integration-tests/compare-screenshots.mjs integration-tests/snapshots/bench-results
+yarn node integration-tests/compare-screenshots.mjs
 ```
 
-There will always be pixelmatch changes, that's OK. Ask devs to take a look at the report and make a decision.
+Single invocation, no args — the script walks only `<suite>/report-shots/*.png`
+under both `bench-results/` and `visreg-results/` (the deep-click captures that
+each spec's `captureReportScreenshots` pass takes while driving the unified
+compare `report.html` through its interactive states) and emits one combined
+report at `integration-tests/snapshots/screenshot-diff-report.html`. The
+superficial per-artifact `*.screenshot.png` files (lighthouse, timeline,
+diff HTMLs) are intentionally NOT diffed — their iframe-driven renders drift
+between runs and aren't the signal we care about.
 
-### Visreg HTML report screenshot
-
-```bash
-yarn node integration-tests/compare-screenshots.mjs integration-tests/snapshots/visreg-results
-```
-
-Unlike bench screenshots, visreg report screenshots should be nearly identical between runs. Flag any pixel differences — they likely indicate a real change in report content or layout.
+Parse the per-suite summary line the script prints (`<suite>: <total> total — <changed> changed, <identical> identical, <dim-shift> dim-shift, <new> new, <deleted> deleted`) and flag the `bench-results` and `visreg-results` counts separately. The report-shell is deterministic, so these shots should be nearly identical between runs; any non-trivial `changed` count is worth inspecting.
 
 ### Experiment server network_activity.txt
 
@@ -111,6 +119,55 @@ git diff -- integration-tests/snapshots/baseline-perf.log
 ```
 
 All timing values, hashes, sizes, sparklines, p-values, and line ordering between `[CONTROL]`/`[EXPERIMENT]` are noise. Only flag: `>>>` steps added/removed, new `Error:`/`FAIL` messages, test count changes, `Is Significant` flipping, or missing `SUCCESS`/docker steps.
+
+### Timing verdict · analyst A
+
+```bash
+git show HEAD:integration-tests/snapshots/baseline-twin-servers.log > /tmp/ic-old-twin.log 2>/dev/null; \
+git show HEAD:integration-tests/snapshots/baseline-visreg.log > /tmp/ic-old-visreg.log 2>/dev/null; \
+git show HEAD:integration-tests/snapshots/baseline-perf.log > /tmp/ic-old-perf.log 2>/dev/null; \
+echo '=== OLD twin ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-twin.log 2>/dev/null; \
+echo '=== NEW twin ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-twin-servers.log; \
+echo '=== OLD visreg ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-visreg.log 2>/dev/null; \
+echo '=== NEW visreg ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-visreg.log; \
+echo '=== OLD perf ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-perf.log 2>/dev/null; \
+echo '=== NEW perf ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-perf.log
+```
+
+Build a before/after timing comparison table from the command output above:
+
+- Rows: every stage/step that has a `⏱ <label>: <duration>s` marker, plus each
+  per-test `(<duration>s)` / `(<duration>m)` summary from Playwright, plus each
+  `run: yarn shaka-perf …` block's trailing `⏱ <duration>s`.
+- Columns: stage · OLD · NEW · Δ · Δ%.
+- Skip lines matching any of: `twins-build`, `docker build`, `Building both Docker images`, `Building both Docker containers`, `twins-start-containers` — docker layers use unpredictable caches, so their times don't reflect the code under test.
+
+Return a one-line verdict:
+
+- **"no regression"** — every remaining stage's Δ% is within ±25%, and no single test's wall-clock time increased by more than 2×.
+- **"regressed"** — otherwise. Name the worst 3 offenders with their OLD vs NEW numbers and Δ%.
+
+If either OLD log is missing (first run on this branch), report **"no baseline"** and do not build a table.
+
+### Timing verdict · analyst B
+
+```bash
+git show HEAD:integration-tests/snapshots/baseline-twin-servers.log > /tmp/ic-old-twin.log 2>/dev/null; \
+git show HEAD:integration-tests/snapshots/baseline-visreg.log > /tmp/ic-old-visreg.log 2>/dev/null; \
+git show HEAD:integration-tests/snapshots/baseline-perf.log > /tmp/ic-old-perf.log 2>/dev/null; \
+echo '=== OLD twin ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-twin.log 2>/dev/null; \
+echo '=== NEW twin ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-twin-servers.log; \
+echo '=== OLD visreg ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-visreg.log 2>/dev/null; \
+echo '=== NEW visreg ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-visreg.log; \
+echo '=== OLD perf ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-perf.log 2>/dev/null; \
+echo '=== NEW perf ==='; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-perf.log
+```
+
+Same rules as **analyst A** — intentionally run as a second independent agent so
+the orchestrator can cross-check its verdict. Build the table, apply the same
+docker-exclusion filter, and return the same one-line verdict (plus the three
+worst offenders if regressed). Do NOT look at analyst A's output — form an
+independent opinion.
 
 ## Output format
 

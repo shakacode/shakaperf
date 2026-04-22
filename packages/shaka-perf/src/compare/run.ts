@@ -81,7 +81,19 @@ async function loadConfig(opts: CompareRunOptions): Promise<AbTestsConfig> {
   return parseAbTestsConfig(raw);
 }
 
-export async function runCompare(opts: CompareRunOptions = {}): Promise<string> {
+export interface CompareRunResult {
+  reportPath: string;
+  /**
+   * Whether the run surfaced any failures (visreg mismatches, perf regressions,
+   * or engine errors). The CLI exits non-zero when true so CI pipelines treat
+   * the run as a failed assertion rather than a successful report.
+   */
+  hasFailures: boolean;
+  /** Human-readable summary of what failed — empty string when !hasFailures. */
+  failureSummary: string;
+}
+
+export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareRunResult> {
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
   const shared = config.shared ?? {};
@@ -198,7 +210,36 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<string> 
     path.join(resultsRoot, 'report.json'),
     JSON.stringify(data, null, 2),
   );
-  return reportPath;
+
+  return {
+    reportPath,
+    ...summarizeFailures(data),
+  };
+}
+
+function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {
+  let regressions = 0;
+  let visualChanges = 0;
+  let errors = 0;
+  for (const t of data.tests) {
+    // Visit every category directly — a single test can be both errored and
+    // visually changed (or regressed + improved across different metrics),
+    // and the combined `test.status` hides all but the top-ranked one.
+    for (const c of t.categories) {
+      if (c.error) errors++;
+      if (c.category === 'perf' && c.perf && c.perf.regressedMetrics.length > 0) regressions++;
+      if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
+    }
+  }
+  if (data.meta.errors.length > 0) errors += data.meta.errors.length;
+  const parts: string[] = [];
+  if (errors > 0) parts.push(`${errors} error${errors === 1 ? '' : 's'}`);
+  if (regressions > 0) parts.push(`${regressions} perf regression${regressions === 1 ? '' : 's'}`);
+  if (visualChanges > 0) parts.push(`${visualChanges} visreg mismatch${visualChanges === 1 ? '' : 'es'}`);
+  return {
+    hasFailures: parts.length > 0,
+    failureSummary: parts.join(', '),
+  };
 }
 
 interface BuildTestResultOpts {

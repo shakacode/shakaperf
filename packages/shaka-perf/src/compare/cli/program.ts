@@ -28,7 +28,7 @@ export function createCompareCommand(): Command {
     .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
     .action(async function (this: Command) {
       const opts = this.opts();
-      const reportPath = await runCompare({
+      const result = await runCompare({
         configPath: opts.config,
         categories: opts.categories,
         testPathPattern: opts.testPathPattern,
@@ -37,7 +37,11 @@ export function createCompareCommand(): Command {
         experimentURL: opts.experimentURL,
         skipEngines: opts.skipEngines === true,
       });
-      console.log(`\nReport: ${reportPath}`);
+      console.log(`\nReport: ${result.reportPath}`);
+      if (result.hasFailures) {
+        console.error(`\nFAILED: ${result.failureSummary}`);
+        process.exitCode = 1;
+      }
     });
   addCompareOptions(cmd);
   return cmd;
