@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Screenshot Diff Report</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; margin: 0; padding: 24px; }
+  h1 { margin: 0 0 12px; font-weight: 500; }
+  .top { display: flex; gap: 16px; align-items: baseline; margin-bottom: 24px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filters button { background: #2a2a4a; color: #eee; border: 1px solid #3a3a5a; border-radius: 16px; padding: 4px 12px; cursor: pointer; font: inherit; }
+  .filters button[data-active="true"] { background: #4a4a8a; border-color: #6a6aaa; }
+  .suite { margin-bottom: 40px; }
+  .suite__head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 16px; }
+  .suite__head h2 { margin: 0; font-weight: 500; }
+  .suite__stats { display: flex; gap: 12px; font-size: 13px; color: #aaa; }
+  .suite__stats .stat.changed { color: #ff9800; }
+  .suite__stats .stat.identical { color: #4caf50; }
+  .suite__stats .stat.warn { color: #ff9800; }
+  .suite__stats .stat.new { color: #2196f3; }
+  .suite__stats .stat.deleted { color: #f44336; }
+  .suite__cards { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; border-left: 4px solid #555; }
+  .card.ok { border-left-color: #4caf50; }
+  .card.mild { border-left-color: #ffc107; }
+  .card.warn { border-left-color: #ff9800; }
+  .card.deleted { border-left-color: #f44336; }
+  .card.new { border-left-color: #2196f3; }
+  .card h3 { font-size: 13px; margin: 0 0 10px; font-weight: 500; display: flex; gap: 12px; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+  .tag { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: #333; color: #fff; font-family: system-ui, sans-serif; letter-spacing: 0.5px; white-space: nowrap; }
+  .tag--ok { background: #2e7d32; }
+  .tag--mild { background: #b28900; }
+  .tag--warn { background: #e65100; }
+  .tag--deleted { background: #c62828; }
+  .tag--new { background: #1565c0; }
+  .images { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  figure { margin: 0; }
+  figcaption { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+  img { width: 100%; border: 1px solid #333; border-radius: 4px; background: #0e0e24; display: block; }
+  .card[data-hidden="true"] { display: none; }
+</style>
+</head><body>
+<h1>Screenshot Diff Report</h1>
+<div class="top">
+  <div class="filters">
+    <button data-filter="all" data-active="true">all</button>
+    <button data-filter="changed">changed only</button>
+    <button data-filter="identical">identical only</button>
+    <button data-filter="new">new</button>
+    <button data-filter="deleted">deleted</button>
+    <button data-filter="dim">dimension shifts</button>
+  </div>
+</div>
+<section class="suite" data-suite="bench-results">
+    <header class="suite__head">
+      <h2>bench-results</h2>
+      <div class="suite__stats">
+        <span>13 total</span>
+        <span class="stat changed">0 changed</span>
+        <span class="stat identical">0 identical</span>
+        
+        <span class="stat new">13 new</span>
+        
+      </div>
+    </header>
+    <div class="suite__cards">
+      <article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__01-overview.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__01-overview.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__02-all-statuses-toggled.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__02-all-statuses-toggled.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__03-sources-expanded.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__03-sources-expanded.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-00-bench_report.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-00-bench_report.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-01-control_lh.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-01-control_lh.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-02-experiment_lh.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-02-experiment_lh.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-03-diff.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-03-diff.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-04-bench_report.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-04-bench_report.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-05-control_lh.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-05-control_lh.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-06-experiment_lh.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-06-experiment_lh.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__04-artifact-07-diff.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__04-artifact-07-diff.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__06-timeline.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__06-timeline.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/bench-results/report-shots/perf__08-search-home.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="bench-results/report-shots/perf__08-search-home.png"></figure>
+      </div>
+    </article>
+    </div>
+  </section>
+<section class="suite" data-suite="visreg-results">
+    <header class="suite__head">
+      <h2>visreg-results</h2>
+      <div class="suite__stats">
+        <span>7 total</span>
+        <span class="stat changed">0 changed</span>
+        <span class="stat identical">0 identical</span>
+        
+        <span class="stat new">7 new</span>
+        
+      </div>
+    </header>
+    <div class="suite__cards">
+      <article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__01-overview.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__01-overview.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__02-all-statuses-toggled.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__02-all-statuses-toggled.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__03-sources-expanded.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__03-sources-expanded.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__05-visreg-diff-scrubbed.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__05-visreg-diff-scrubbed.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__05-visreg-diff.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__05-visreg-diff.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__05-visreg-nodiff.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__05-visreg-nodiff.png"></figure>
+      </div>
+    </article>
+<article class="card new" data-status="new">
+      <h3>integration-tests/snapshots/visreg-results/report-shots/visreg__08-search-home.png<span class="tag tag--new">NEW</span></h3>
+      <div class="images">
+        <figure><figcaption>Current</figcaption><img loading="lazy" src="visreg-results/report-shots/visreg__08-search-home.png"></figure>
+      </div>
+    </article>
+    </div>
+  </section>
+<script>
+  const buttons = document.querySelectorAll('.filters button');
+  const cards = document.querySelectorAll('.card');
+  buttons.forEach(b => b.addEventListener('click', () => {
+    buttons.forEach(x => x.dataset.active = 'false');
+    b.dataset.active = 'true';
+    const filter = b.dataset.filter;
+    cards.forEach(c => {
+      const s = c.dataset.status;
+      const hide = filter !== 'all' && s !== filter;
+      c.dataset.hidden = hide ? 'true' : 'false';
+    });
+  }));
+</script>
+</body></html>
