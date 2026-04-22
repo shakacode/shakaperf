@@ -215,9 +215,13 @@ workflows:
                 command: |
                   cd demo-ecommerce
                   yarn compare
+            # `compare` exits non-zero on any perf regression, visual
+            # mismatch, or engine error — upload the unified report and
+            # per-test artifacts anyway so we can inspect what happened.
             - store_artifacts:
                 path: demo-ecommerce/compare-results
                 destination: shaka-perf-compare-report
+                when: always
 
       # Update control commit SHA (only runs when all tests pass)
       - shaka-perf/update-control-commit-sha: &update-control-sha-job
