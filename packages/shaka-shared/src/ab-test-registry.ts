@@ -68,11 +68,26 @@ export interface AbTestVisregConfig {
   viewports?: Viewport[];
 }
 
+/**
+ * Per-test accessibility tuning. Defined structurally here (not imported from
+ * `shaka-accessibility`) to keep `shaka-shared` dependency-free — the axe
+ * package re-uses these same shapes via its own Zod schema.
+ */
+export interface AbTestAxeConfig {
+  viewports?: Viewport[];
+  tags?: string[];
+  disableRules?: string[];
+  includeRules?: string[];
+  /** Opt this test out of the axe run entirely. */
+  skip?: boolean;
+}
+
 export interface AbTestOptions {
   markers?: Marker[];
   lhConfigPath?: string;
   resultsFolder?: string;
   visreg?: AbTestVisregConfig;
+  axe?: AbTestAxeConfig;
 }
 
 export interface AbTestDefinition {
