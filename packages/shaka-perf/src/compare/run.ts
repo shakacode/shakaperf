@@ -25,7 +25,6 @@ export interface CompareRunOptions {
   cwd?: string;
   configPath?: string;
   categories?: Category[];
-  testFile?: string;
   testPathPattern?: string;
   filter?: string;
   controlURL?: string;
@@ -109,7 +108,6 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // engines also call loadTests() internally with the same inputs, producing
   // identical test selection.
   const tests = await loadTests({
-    testFile: opts.testFile,
     testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
     filter: opts.filter ?? shared.filter,
     log: (msg) => console.log(msg),
@@ -138,7 +136,6 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
           experimentURL,
           htmlReportDir,
           visregConfig,
-          testFile: opts.testFile,
           testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
           filter: opts.filter ?? shared.filter,
         });
@@ -148,7 +145,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         engineErrors.push(`visreg engine: ${message}`);
       }
     }
-    visregByLabel = harvestVisreg(htmlReportDir);
+    try {
+      visregByLabel = harvestVisreg(htmlReportDir);
+    } catch (err) {
+      const message = (err as Error).message || String(err);
+      console.error(`visreg harvest error: ${message}`);
+      engineErrors.push(`visreg harvest: ${message}`);
+    }
   }
 
   if (categories.includes('perf') && !opts.skipEngines) {
@@ -165,7 +168,6 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         resultsFolder: resultsRoot,
         perfConfig,
         sharedConfig: shared,
-        testFile: opts.testFile,
         testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
         filter: opts.filter ?? shared.filter,
       });
@@ -278,16 +280,25 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
     const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
     const perTestEngineError = readPerfEngineError(perTestDir);
     if (reportJsonExists) {
-      perCategory.push(
-        harvestPerf({
-          perTestDir,
-          controlURL,
-          experimentURL,
-          perfConfig,
-          reportRoot: resultsRoot,
-          slug,
-        }),
-      );
+      try {
+        perCategory.push(
+          harvestPerf({
+            perTestDir,
+            controlURL,
+            experimentURL,
+            perfConfig,
+            reportRoot: resultsRoot,
+            slug,
+          }),
+        );
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        perCategory.push({
+          ...EMPTY_PERF_CATEGORY,
+          error: `perf report unreadable: ${message}`,
+          errorLog: readPerfEngineLog(perTestDir),
+        });
+      }
     } else if (perTestEngineError) {
       perCategory.push({
         ...EMPTY_PERF_CATEGORY,

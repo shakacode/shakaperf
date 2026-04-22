@@ -15,7 +15,12 @@ function parseCategories(value: string): Category[] {
   return parts as Category[];
 }
 
-export function createCompareCommand(): Command {
+export interface CreateCompareCommandOptions {
+  controlURLDefault?: string;
+  experimentURLDefault?: string;
+}
+
+export function createCompareCommand(options: CreateCompareCommandOptions = {}): Command {
   const cmd = new Command('compare')
     .description('Run visreg + perf comparison and produce a single self-contained HTML report')
     .option(
@@ -24,7 +29,7 @@ export function createCompareCommand(): Command {
       parseCategories,
       VALID_CATEGORIES,
     )
-    .option('--config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
+    .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
     .action(async function (this: Command) {
       const opts = this.opts();
@@ -43,6 +48,9 @@ export function createCompareCommand(): Command {
         process.exitCode = 1;
       }
     });
-  addCompareOptions(cmd);
+  addCompareOptions(cmd, {
+    controlURL: options.controlURLDefault,
+    experimentURL: options.experimentURLDefault,
+  });
   return cmd;
 }

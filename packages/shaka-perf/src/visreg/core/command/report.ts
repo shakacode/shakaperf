@@ -242,17 +242,23 @@ function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
   });
 }
 
-export async function execute (config: RuntimeConfig) {
+export interface VisregCompareResult {
+  passed: number;
+  failed: number;
+}
+
+export async function execute (config: RuntimeConfig): Promise<VisregCompareResult> {
   const compareResult = await compare(config);
   if (!compareResult) {
     logger.error('Comparison failed, no report generated.');
-    return;
+    return { passed: 0, failed: 0 };
   }
   const report = compareResult as Reporter;
 
   const failed = report.failed();
+  const passed = report.passed();
   logger.log('Test completed...');
-  logger.log(chalk.green(report.passed() + ' Passed'));
+  logger.log(chalk.green(passed + ' Passed'));
   logger.log(chalk[(failed ? 'red' : 'green') as 'red' | 'green'](+failed + ' Failed'));
 
   const results = await writeReport(config, report);
@@ -271,7 +277,5 @@ export async function execute (config: RuntimeConfig) {
     logger.success('Report: ' + reportPath);
   }
 
-  if (failed) {
-    throw new Error('Mismatch errors found.');
-  }
+  return { passed, failed };
 }

@@ -195,8 +195,10 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
           if (status === 'no_difference') status = 'improvement';
         }
       }
-    } catch {
-      // report.json unreadable — leave metrics empty, status no_difference
+    } catch (err) {
+      throw new Error(
+        `perf report.json unreadable at ${reportJsonPath}: ${(err as Error).message}`,
+      );
     }
   }
 

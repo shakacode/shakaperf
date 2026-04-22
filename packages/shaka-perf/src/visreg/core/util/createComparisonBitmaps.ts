@@ -41,14 +41,12 @@ function ensureViewportLabel (config: { viewports?: Viewport[] }) {
 }
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {
-  const testFilePath = config.args.testFile as string | undefined;
   const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
   const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
 
   const filter = config.args.filter as string | undefined;
   const tests = await loadTests({
-    testFile: testFilePath,
     testPathPattern,
     filter,
     log: function (msg) { logger.log(msg); },

@@ -27,31 +27,36 @@ describe('loadTests', () => {
     }
   });
 
-  it('loads a specific test file via testFile option', async () => {
+  it('loads a specific test file when filter is a path to an abtest file', async () => {
     mkfile('my-test.abtest.js', `
       const { abTest } = require('${require.resolve('../ab-test-registry').replace(/\\/g, '\\\\')}');
       abTest('Specific test', { startingPath: '/page' }, async () => {});
     `);
 
-    const tests = await loadTests({ testFile: path.join(tmpDir, 'my-test.abtest.js') });
+    const tests = await loadTests({ filter: path.join(tmpDir, 'my-test.abtest.js') });
     expect(tests).toHaveLength(1);
     expect(tests[0].name).toBe('Specific test');
   });
 
-  it('throws when testFile has no registered tests', async () => {
+  it('throws when filter-as-file has no registered tests', async () => {
     mkfile('empty.abtest.js', '// no abTest calls');
 
     await expect(
-      loadTests({ testFile: path.join(tmpDir, 'empty.abtest.js') })
+      loadTests({ filter: path.join(tmpDir, 'empty.abtest.js') })
     ).rejects.toThrow(/No tests registered/);
   });
 
   it('throws when no .abtest files are discovered', async () => {
     mkfile('not-a-test.ts', 'export default {}');
 
-    await expect(
-      loadTests({ testFile: undefined })
-    ).rejects.toThrow(/No .abtest.ts or .abtest.js files found/);
+    // Run from a dir with no abtest files.
+    const origCwd = process.cwd();
+    process.chdir(tmpDir);
+    try {
+      await expect(loadTests()).rejects.toThrow(/No .abtest.ts or .abtest.js files found/);
+    } finally {
+      process.chdir(origCwd);
+    }
   });
 
   it('throws with pattern hint when testPathPattern matches nothing', async () => {
@@ -96,7 +101,7 @@ describe('loadTests', () => {
       abTest('New test', { startingPath: '/new' }, async () => {});
     `);
 
-    const tests = await loadTests({ testFile: path.join(tmpDir, 'new.abtest.js') });
+    const tests = await loadTests({ filter: path.join(tmpDir, 'new.abtest.js') });
     expect(tests).toHaveLength(1);
     expect(tests[0].name).toBe('New test');
   });

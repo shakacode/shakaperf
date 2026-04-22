@@ -5,7 +5,7 @@ export const defaultFlagArgs: ITBConfig = {
   numberOfMeasurements: 20,
   resultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
-  sampleTimeout: 30,
+  sampleTimeoutMs: 30_000,
   regressionThresholdStat: "estimator",
   pValueThreshold: 0.01,
   parallelism: 1,

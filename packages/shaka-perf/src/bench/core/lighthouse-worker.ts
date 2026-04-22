@@ -32,6 +32,15 @@ function send(msg: object): void {
   }
 }
 
+// Error payloads go to stderr first (captured by the parent's teeLinePrefixed
+// → engine-output.log → readPerfEngineLog → report error dialog) and only
+// then to IPC. Stderr is the canonical channel: even if IPC is dead (parent
+// crashed, channel closed mid-teardown) the stack survives on disk.
+function sendError(msg: { type: 'error'; message: string; stack: string }): void {
+  try { process.stderr.write(JSON.stringify(msg) + '\n'); } catch { /* stderr closed */ }
+  send(msg);
+}
+
 // Self-terminate if parent disconnects to prevent orphaned Chrome processes
 process.on('disconnect', () => process.exit(1));
 
@@ -43,7 +52,7 @@ process.on('disconnect', () => process.exit(1));
 // per-test try/catch upstream can record the failure and keep going.
 function reportFatal(err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
-  send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+  sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
   process.exit(1);
 }
 process.on('unhandledRejection', reportFatal);
@@ -58,7 +67,7 @@ process.on('message', async (msg: ParentMessage) => {
       const tests = getRegisteredTests();
       const testDef = tests.find((t) => t.name === msg.testName);
       if (!testDef) {
-        send({ type: 'error', message: `Test "${msg.testName}" not found in ${msg.testFile}`, stack: '' });
+        sendError({ type: 'error', message: `Test "${msg.testName}" not found in ${msg.testFile}`, stack: '' });
         process.exit(1);
         return;
       }
@@ -73,7 +82,7 @@ process.on('message', async (msg: ParentMessage) => {
       send({ type: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+      sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
       process.exit(1);
     }
   } else if (msg.type === 'sample') {
@@ -82,7 +91,7 @@ process.on('message', async (msg: ParentMessage) => {
       send({ type: 'result', sample });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+      sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
     }
   } else if (msg.type === 'dispose') {
     await sampler.dispose();

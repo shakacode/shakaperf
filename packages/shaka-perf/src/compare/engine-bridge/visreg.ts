@@ -10,7 +10,6 @@ export interface VisregBridgeOptions {
   experimentURL: string;
   htmlReportDir: string;
   visregConfig: VisregConfig;
-  testFile?: string;
   testPathPattern?: string;
   filter?: string;
 }
@@ -21,11 +20,12 @@ export interface VisregBridgeOptions {
  * slice, forcing `paths.htmlReport` so screenshots, report.json, etc. land
  * under the caller-specified directory.
  *
- * Visreg throws when any pair fails its threshold. We swallow that because
- * the caller still wants to harvest the report.json that was already written.
+ * Returns without throwing when the engine completes with threshold mismatches
+ * — the caller harvests the per-pair status from report.json. Real engine
+ * crashes (browser driver, CDP, missing config) still throw.
  */
-export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<{ failed: boolean }> {
-  const { controlURL, experimentURL, htmlReportDir, visregConfig, testFile, testPathPattern, filter } = opts;
+export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<void> {
+  const { controlURL, experimentURL, htmlReportDir, visregConfig, testPathPattern, filter } = opts;
 
   const configPath = writeTempVisregConfig(visregConfig, htmlReportDir);
 
@@ -34,16 +34,9 @@ export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<{ f
       config: configPath,
       controlURL,
       experimentURL,
-      testFile,
       testPathPattern,
       filter,
     });
-    return { failed: false };
-  } catch (err) {
-    if ((err as Error).message === 'Mismatch errors found.') {
-      return { failed: true };
-    }
-    throw err;
   } finally {
     fs.rmSync(configPath, { force: true });
   }

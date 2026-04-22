@@ -13,7 +13,6 @@ export interface PerfBridgeOptions {
   resultsFolder: string;
   perfConfig: PerfConfig;
   sharedConfig: SharedConfig;
-  testFile?: string;
   testPathPattern?: string;
   filter?: string;
 }
@@ -30,7 +29,6 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     experimentURL,
     resultsFolder,
     perfConfig,
-    testFile,
     testPathPattern,
     filter,
   } = opts;
@@ -49,11 +47,10 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     resultsFolder,
     controlURL,
     experimentURL,
-    testFile,
     testPathPattern,
     filter,
     regressionThreshold: perfConfig.regressionThreshold ?? 0,
-    sampleTimeout: perfConfig.sampleTimeout ?? 120,
+    sampleTimeoutMs: perfConfig.sampleTimeoutMs ?? 120_000,
     regressionThresholdStat: perfConfig.regressionThresholdStat ?? 'estimator',
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
     parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,

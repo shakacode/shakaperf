@@ -41,11 +41,10 @@ export interface ICompareFlags {
   resultsFolder: string;
   controlURL: string | undefined;
   experimentURL: string | undefined;
-  testFile: string | undefined;
   testPathPattern: string | undefined;
   filter: string | undefined;
   regressionThreshold?: number;
-  sampleTimeout: number;
+  sampleTimeoutMs: number;
   skipReport?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold: number;
@@ -97,13 +96,13 @@ function listArtifacts(dir: string, relativeBase: string): void {
 
 interface TestInfo {
   name: string;
-  testFile: string;
+  testFile: string | null;
   line: number | null;
   resultsFolder: string;
 }
 
-function formatTestTitle(testFile: string, name: string, line?: number | null): string {
-  const loc = line ? `${testFile}:${line}` : testFile;
+function formatTestTitle(testFile: string | null, name: string, line?: number | null): string {
+  const loc = testFile ? (line ? `${testFile}:${line}` : testFile) : '(unknown source)';
   return chalk.dim(loc) + chalk.bold.yellow(` ${name}`);
 }
 
@@ -117,7 +116,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     process.exit(2);
   }
   const tests = await loadTests({
-    testFile: compareFlags.testFile,
     testPathPattern: compareFlags.testPathPattern,
     filter: compareFlags.filter,
     log: (msg) => console.log(msg),
@@ -136,7 +134,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   const failedTests: { name: string; reason: string }[] = [];
 
   for (const testDef of tests) {
-    console.log(`\n${formatTestTitle(compareFlags.testFile!, testDef.name, testDef.line)}`);
+    console.log(`\n${formatTestTitle(testDef.file ?? null, testDef.name, testDef.line)}`);
 
     const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const testResultsFolder = `${resultsFolder}/${slug}`;
@@ -162,7 +160,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         testOptions
       );
 
-      const sampleTimeout = compareFlags.sampleTimeout;
+      const sampleTimeoutMs = compareFlags.sampleTimeoutMs;
 
       const startTime = timestamp();
       const results = (
@@ -189,7 +187,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
             }
           },
           {
-            sampleTimeoutMs: sampleTimeout && sampleTimeout * 1000,
+            sampleTimeoutMs,
             parallelism: compareFlags.parallelism,
             samplingMode: compareFlags.samplingMode,
             durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
@@ -239,7 +237,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       }
 
       writeFileSync(abMeasurementsPath, JSON.stringify(results));
-      completedTests.push({ name: testDef.name, testFile: compareFlags.testFile!, line: testDef.line, resultsFolder: testResultsFolder });
+      completedTests.push({ name: testDef.name, testFile: testDef.file ?? null, line: testDef.line, resultsFolder: testResultsFolder });
 
       const duration = secondsToTime(durationInSec(endTime, startTime));
       const actualMeasurements = results[0].samples.length;

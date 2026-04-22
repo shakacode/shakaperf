@@ -70,7 +70,7 @@ export const PerfConfigSchema = z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
     parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
-    sampleTimeout: z.number().int().positive().default(120000),
+    sampleTimeoutMs: z.number().int().positive().default(120000),
     lhConfigPath: z.string().optional(),
     lighthouseConfig: z.record(z.unknown()).optional(),
     plotTitle: z.string().optional(),

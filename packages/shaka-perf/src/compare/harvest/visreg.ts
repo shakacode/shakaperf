@@ -176,8 +176,10 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
   let report: VisregReport;
   try {
     report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as VisregReport;
-  } catch {
-    return out;
+  } catch (err) {
+    throw new Error(
+      `visreg report.json unreadable at ${reportPath}: ${(err as Error).message}`,
+    );
   }
 
   const byLabel = new Map<string, VisregArtifact[]>();
