@@ -56,5 +56,6 @@ bundle-size-diffs/*
 compare-results/
 
 a11y-report/data/*.png
-a11y-report/data/*.md
+# a11y-report/data/*.md
 a11y-report/trace/*
+a11y-report/index.html
