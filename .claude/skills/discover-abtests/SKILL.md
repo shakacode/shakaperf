@@ -10,6 +10,18 @@ Crawl a target site in Chrome, probe pages interactively to understand their beh
 
 The goal is to produce tests that _actually work_ — not just syntactically valid files. That's why each page is probed in the browser before writing any code: it avoids generating tests for interactions that don't exist, CSS overrides that don't work, or skeleton waits for elements that never appear.
 
+## No shortcuts under time pressure
+
+This skill takes a long time on large sites. That is expected and acceptable. **Do not invent "pragmatic" shortcuts to finish faster.** Specifically, do NOT:
+
+- Skip pages, or "representatively cover" pages that share a template, unless the dedup rules in Step A9 (`claimedSections`) explicitly tell you to. Templates render different data, and different data is exactly what visreg catches.
+- Pick a subset of "important" pages (homepage, search, etc.) and defer the rest. Every page in `pageList` from Phase 1 gets the full A→E loop.
+- Run full-file validation instead of `--filter` per-test validation in Step C "to save time on simple pages". The per-test loop exists because debugging one failing test inside a 10-test file run is dramatically slower than the time `--filter` "costs". There are no simple pages — assume nothing.
+- Skip A8 mobile probing, A5–A7 interaction probing, or the Step B coverage gate, on the grounds that the page "looks straightforward".
+- Announce a revised plan that trades thoroughness for speed. If the task is genuinely too large for one session, say so explicitly and ask the user how to scope it down — do not silently downgrade the methodology.
+
+If you catch yourself writing a message like "given the depth of this task, let me be pragmatic and..." — stop. That sentence is the anti-pattern. The methodology in this skill is the methodology. Follow it page by page, even if it takes many tool calls. The user would rather wait than get a half-probed result.
+
 ## Bundled resources
 
 | Path                         | When to use                                                                |
@@ -18,8 +30,10 @@ The goal is to produce tests that _actually work_ — not just syntactically val
 | `scripts/probe-lazy-load.js` | Run via `javascript_tool` to test whether scrolling triggers new content   |
 | `scripts/probe-sections.js`  | Run via `javascript_tool` on tall pages (>2000px) to score candidate CSS selectors for section-based testing |
 | `scripts/parse-report.py`    | Run after `compare` to summarize pass/fail, diff %, whitespace metrics, and engine errors |
-| `references/patterns.md`     | Read when writing `.abtest.ts` files — contains code patterns and selector strategy |
-| `references/api.md`          | Read when you need the full `abTest()` config API or helpers reference     |
+| `references/comment-schema.md`    | Read in Step B before writing the JSDoc block above each `abTest()` — defines the mandatory tag schema and shows the canonical example |
+| `references/selectors-strategy.md` | Read in Step A4 when picking CSS selectors for sections, or any time a selector produced a bad screenshot |
+| `references/patterns.md`          | Read in Step C when filling in test bodies — copy-paste-ready `abTest()` snippets, one per probing scenario |
+| `references/api.md`               | Read when you need the full `abTest()` config API or helpers reference |
 
 Read these files as needed rather than trying to keep the full details in mind. The patterns and API reference are too detailed to hold mentally — just load them.
 
@@ -58,17 +72,13 @@ Process the queue in BFS order, **up to `concurrency` pages in parallel**:
 3. For each: navigate, mark visited, run `scripts/extract-links.js` via `javascript_tool`. If `depth < crawlDepth`, enqueue new paths as `{ path, depth: depth + 1 }`.
 4. Close extra tabs after each batch.
 
-**Hard limits**: max 40 unique paths.
-
 Skip only these:
 
 - External URLs (different hostname)
 - Non-page paths: `tel:`, `mailto:`, anchors-only (`#section`)
-- Admin panels (e.g. `/admin` — but go to `/login` normally)
 - Auth callbacks (`/auth/callback`, `/oauth`)
 - API routes (`/api/`, `.json` endpoints)
 - Paginated duplicates (`/products?page=2` when `/products` is already queued)
-- Pages that require authentication — check by navigating; if it redirects to login, skip
 
 Do **not** skip pages just because they seem "boring" or static.
 
@@ -95,9 +105,9 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 
 **A3. CSS animation overrides** (if you see moving elements): inject via `javascript_tool` and screenshot to confirm it stopped. Only include in tests if the screenshot shows the element frozen.
 
-**A4. Page sections**: run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
+**A4. Page sections**: read `references/selectors-strategy.md` for the rules on what makes a good vs. bad selector and the two-strategy approach for tall pages. Then run `document.body.scrollHeight` (after real scrolling in A1). If >~2000px, use both strategies to find the best CSS selectors for section-based testing:
 
-**Strategy 1 — Algorithmic probe**: Run `scripts/probe-sections.js` via `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1000px tall are deprioritized so their children get picked instead.
+**Strategy 1 — Algorithmic probe**: Run `scripts/probe-sections.js` via `javascript_tool`. It walks the DOM from the layout root, scores elements by size (100-800px = best), width, depth, semantic class name, heading inclusion, content density, and uniqueness. Returns up to 15 scored candidates with overlap removed. Elements >1500px tall are deprioritized so their children get picked instead.
 
 **Strategy 2 — AI visual analysis**: Scroll through the page and identify the **natural visual sections** a user would recognize — hero, content blocks, sidebars, forms, navigation, footer. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show a recognizable, self-contained piece of UI?"
 
@@ -179,36 +189,21 @@ After completing desktop probing (A1-A7), resize the browser to phone width and 
   - Already claimed → exclude, record `{ selector, skippedOn, alreadyCoveredBy }`
 - **Product/detail pages**: only claim the unique top section (configurator, carousel). Don't claim shared lower sections (reviews, FAQ, footer).
 
-### Step B — Write TODO comments with all probing findings
+### Step B — Write the structured comment block for every planned test
 
-Read `references/patterns.md` before writing any test code — it has the correct pattern for each scenario.
+Read `references/comment-schema.md` before starting Step B — it defines the **mandatory comment schema** that every `.abtest.ts` file must follow, including the canonical example. The schema exists because the probing work in Step A produces a lot of context (why a viewport is restricted, what was tried inside a modal, what fields a form has and how to fill them) and that context is the audit trail for the test — losing it forces the next person to redo all the probing.
 
-Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write `abTest()` stubs with `// TODO:` comments describing each planned test. Document ALL findings from probing so nothing is lost:
+Create/open the `.abtest.ts` file for this page (e.g., `homepage.abtest.ts`). Write:
 
-```typescript
-import { abTest, TestType } from 'shaka-shared';
-import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
+1. **A file-level header block** (`/* ... */`) at the top summarizing cross-test findings: A1 lazy load, A2 loading indicators, A3 animations, A4 candidate sections, A8 mobile findings, and which shared sections this file claimed.
 
-// TODO: Hero section snapshot
-// - selector: [data-cy="hero"] or .hero-section
-// - wait for: .skeleton (found in A2) to disappear
-// - threshold: 0.05 (dynamic hero image)
-abTest('Homepage Hero', { startingPath: '/', options: { visreg: {} } }, async () => {});
+2. **A per-test JSDoc block** (`/** ... */`) directly above each `abTest()` call, with the structured `@`-tags from `references/comment-schema.md`. The test body itself is still a stub at this stage — `async () => {}` — you'll fill it in during Step C. The JSDoc block goes in _now_, while probing is fresh.
 
-// TODO: Click "Contact Us" button → modal opens
-// - confirmed in A6: clicking button.contact-cta opens modal .contact-modal
-// - inside modal (A7): form with name, email, message fields
-// - .contact-cta is display:none on phone viewport (A8)
-// - need desktop-only viewports
-abTest('Homepage Contact Modal', { startingPath: '/', options: { visreg: {} } }, async () => {});
+The tags `@section`, `@selector`, `@viewports`, `@waitFor`, `@threshold`, `@probed`, `@interactions`, and `@form` are **all mandatory in every block** — including trivial section snapshots that have no interactions and no forms. If probing found no interactions, write `@interactions No interactions found`. If there's no form, write `@form No form found`. The explicit "none" form is meaningful: it's evidence that probing happened and found nothing, rather than the agent silently skipping the check.
 
-// TODO: Fill contact form inside modal
-// - fields: input[name="name"], input[name="email"], textarea[name="message"]
-// - depends on: opening the modal first (chained interaction)
-abTest('Homepage Contact Form Fill', { startingPath: '/', options: { visreg: {} } }, async () => {});
-```
+See the canonical example in `references/comment-schema.md` for the exact layout.
 
-Before moving to Step C, verify every category below has at least one TODO stub (or an explicit "none found" note). This is a gate — do not proceed until you've checked each one:
+Before moving to Step C, verify every category below has at least one JSDoc-annotated `abTest()` stub (or, where applicable, an explicit "none found" note in the file header). This is a gate — do not proceed until you've checked each one:
 
 1. **Section snapshots** — hero, key content sections, footer (from A4)
 2. **Click interactions** — every button/tab confirmed working in A6 gets a test
@@ -232,9 +227,11 @@ Annotate waits, clicks, scrolls, fills, and state changes. Don't annotate every 
 
 ### Step C — Implement and validate tests one at a time
 
-Implement each TODO stub directly in the real `.abtest.ts` file, then validate it using `--filter` to run only that test by name:
+Read `references/patterns.md` before filling in any test bodies — it has copy-paste-ready `abTest()` snippets, one per probing scenario (simple snapshot, lazy load, modal, form fill, chained interaction, etc.). Pick the snippet that matches what you confirmed during probing.
 
-1. **Implement** the TODO stub — replace the empty `async () => {}` with the real test body
+Implement each stub directly in the real `.abtest.ts` file, then validate it using `--filter` to run only that test by name:
+
+1. **Implement** the stub — replace the empty `async () => {}` with the real test body, leaving the JSDoc block from Step B above it untouched
 2. **Run** with `--filter` to execute only this test (the filter is a regex matched against the test name):
 
    _Twin-server mode_:
@@ -248,8 +245,10 @@ Implement each TODO stub directly in the real `.abtest.ts` file, then validate i
    ```
 
 3. **Quick check**: read the screenshot to verify real content was captured (not blank)
-4. **If pass** → move on to the next TODO stub
-5. **If fail** → debug and fix (up to 3 attempts). If still failing, **comment out** the `abTest()` call (don't delete it) and add a `// TODO:` comment explaining what's broken and what was tried. This preserves the test code so it's easy to revisit later.
+4. **If pass** → move on to the next stub
+5. **If fail** → debug and fix (up to 3 attempts). **Keep using `--filter "<test name>"` on every retry** so you only re-run the one failing test instead of the whole file — the fast feedback loop is what makes 3 attempts realistic. If still failing after 3 attempts, **comment out** the `abTest()` call (don't delete it) and add a `// TODO:` comment explaining what's broken and what was tried. This preserves the test code so it's easy to revisit later.
+
+**Never delete the probing comment block.** When you implement a stub, the JSDoc block written in Step B (`@section`, `@selector`, `@viewports`, `@waitFor`, `@threshold`, `@probed`, `@interactions`, `@form`) must remain above the `abTest()` call, untouched. You may **add** to it — for example, append a new `@probed` line like `fixed: needed scrollIntoViewIfNeeded()` — but never strip a tag, never collapse the block, never replace it with a shorter summary. The comments are the audit trail explaining _why_ the test looks the way it does. Without them, the next person (or the next probing run) loses all the reasoning behind viewport restrictions, threshold choices, and selector decisions, and has to redo the probing from scratch. This rule applies on success, on failure (where the "comment out, don't delete" rule above already covers the code), and during Step E coverage iteration.
 
 **Important**: `shaka-perf visreg` must be run from the directory containing `visreg.config.ts`. If the user specified an app directory, `cd` there first.
 
