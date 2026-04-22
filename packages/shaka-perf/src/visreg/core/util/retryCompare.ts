@@ -1,5 +1,5 @@
 import { PNG } from 'pngjs';
-import { compareBuffers, createCompositeImage } from './compare/pixelmatch-inline';
+import { compareBuffers } from './compare/pixelmatch-inline';
 import defaultPreparePage from './preparePage';
 import createLogger from './logger';
 import type { PlaywrightPage, Scenario, Viewport, BrowserContext, DecoratedCompareConfig } from '../types';
@@ -163,21 +163,17 @@ export default async function retryCompare (options: RetryCompareOptions) {
     }
   }
 
-  // All retries exhausted — save composite diff image
+  // All retries exhausted — return the pixelmatch diff PNG so the caller can
+  // persist just-the-diff (transparent background, red changed pixels) as the
+  // thumbnail shown in the report.
   logger.log(`All ${maxRetries} retries exhausted for "${scenario.label}" [${selector}]. Least diff pixels: ${overallLeastDiff}`);
 
-  let compositeBuffer = null;
-  if (overallBestDiffPng) {
-    const refPng = PNG.sync.read(overallBestRef);
-    const testPng = PNG.sync.read(overallBestTest);
-    const compositePng = createCompositeImage([refPng, overallBestDiffPng, testPng]);
-    compositeBuffer = PNG.sync.write(compositePng, { filterType: 4 });
-  }
+  const diffBuffer = overallBestDiffPng ? PNG.sync.write(overallBestDiffPng, { filterType: 4 }) : null;
 
   return {
     pass: false,
     refBuffer: overallBestRef,
     testBuffer: overallBestTest,
-    compositeBuffer
+    diffBuffer
   };
 };

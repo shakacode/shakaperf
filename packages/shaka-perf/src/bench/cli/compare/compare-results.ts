@@ -26,7 +26,6 @@ export interface ICompareJSONResult {
 }
 
 export interface ICompareJSONResults {
-  benchmarkTableData: ICompareJSONResult[];
   vitalsTableData: ICompareJSONResult[];
   diagnosticsTableData: ICompareJSONResult[];
   areResultsSignificant: boolean;
@@ -51,10 +50,8 @@ type PhaseResultsFormatted = Array<
 
 // collect and analyze the data for the different phases for the experiment and control set and output the result to the console.
 export class CompareResults {
-  benchmarkTable = new TBTable("Initial Render");
   vitalsTable = new TBTable("LH & Vitals");
   diagnosticsTable = new TBTable("Diagnostics");
-  benchmarkTableData: ICompareJSONResult[];
   vitalsTableData: ICompareJSONResult[];
   diagnosticsTableData: ICompareJSONResult[];
   vitalsResultsFormatted: PhaseResultsFormatted = [];
@@ -73,10 +70,6 @@ export class CompareResults {
     this.numberOfMeasurements = numberOfMeasurements;
     this.regressionThreshold = regressionThreshold;
     this.regressionThresholdStat = regressionThresholdStat;
-    this.benchmarkTable.display.push({
-      stats: generateStats.durationSection.stats,
-      unit: generateStats.durationSection.unit,
-    });
 
     generateStats.vitalsSections.map((section) => {
       this.vitalsTable.display.push({ stats: section.stats, unit: section.unit });
@@ -88,19 +81,15 @@ export class CompareResults {
       this.diagnosticsResultsFormatted.push(section);
     });
 
-    this.benchmarkTableData = this.benchmarkTable.getData();
     this.vitalsTableData = this.vitalsTable.getData();
     this.diagnosticsTableData = this.diagnosticsTable.getData();
 
     // check if any result is significant on all tables
     // this statistic is from the confidence interval
-    this.areResultsSignificant = this.anyResultsSignificant(
-      this.benchmarkTable.isSigArray,
-      [
-        ...this.vitalsTable.isSigArray,
-        ...this.diagnosticsTable.isSigArray,
-      ]
-    );
+    this.areResultsSignificant = this.anyResultsSignificant([
+      ...this.vitalsTable.isSigArray,
+      ...this.diagnosticsTable.isSigArray,
+    ]);
 
     // if any result is significant and
     // below the set regression threshold
@@ -192,11 +181,8 @@ export class CompareResults {
     console.log(colored);
   }
 
-  public anyResultsSignificant(
-    benchmarkIsSigArray: boolean[],
-    phaseIsSigArray: boolean[]
-  ): boolean {
-    return benchmarkIsSigArray.includes(true) || phaseIsSigArray.includes(true);
+  public anyResultsSignificant(phaseIsSigArray: boolean[]): boolean {
+    return phaseIsSigArray.includes(true);
   }
 
   // if any phase of the experiment has regressed slower beyond the threshold limit returns false; otherwise true
@@ -205,9 +191,7 @@ export class CompareResults {
     const sigConfidenceIntervals: IConfidenceInterval[] = [];
     const sigDeltas: number[] = [];
     // all stats
-    const stats = this.benchmarkTable.display
-      .concat(this.vitalsTable.display)
-      .concat(this.diagnosticsTable.display);
+    const stats = this.vitalsTable.display.concat(this.diagnosticsTable.display);
 
     // only push statistics that are stat sig
     stats.map(({ stats: stat }) => {
@@ -265,7 +249,6 @@ export class CompareResults {
   // this is propogated as the default return all the way up to the Compare command directly
   public stringifyJSON(): string {
     const jsonResults: ICompareJSONResults = {
-      benchmarkTableData: this.benchmarkTableData,
       vitalsTableData: this.vitalsTableData,
       diagnosticsTableData: this.diagnosticsTableData,
       areResultsSignificant: this.areResultsSignificant,

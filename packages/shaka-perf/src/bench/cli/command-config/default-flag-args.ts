@@ -5,16 +5,16 @@ export const defaultFlagArgs: ITBConfig = {
   numberOfMeasurements: 20,
   resultsFolder: "./tracerbench-results",
   regressionThreshold: 50,
-  sampleTimeout: 30,
+  sampleTimeoutMs: 30_000,
   regressionThresholdStat: "estimator",
   pValueThreshold: 0.01,
   parallelism: 1,
   samplingMode: "simultaneous",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDefaultValue(key: string): any {
+export function getDefaultValue(key: string): unknown {
   if (key in defaultFlagArgs) {
     return defaultFlagArgs[key];
   }
+  return undefined;
 }

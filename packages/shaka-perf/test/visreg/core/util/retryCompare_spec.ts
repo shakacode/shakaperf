@@ -167,7 +167,7 @@ describe('retryCompare', function () {
     });
 
     assert.strictEqual(result.pass, false);
-    assert(result.compositeBuffer, 'Should have compositeBuffer on failure');
+    assert(!result.pass && result.diffBuffer, 'Should have diffBuffer on failure');
   });
 
   it('should respect scenario-level config overrides', async function () {

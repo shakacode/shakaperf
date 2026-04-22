@@ -107,14 +107,13 @@ function createConsumableHTML(
   const reportTitles = resolveTitles(tbConfig, version, plotTitle);
 
   const confidenceLevel = pValueThreshold != null ? 1 - pValueThreshold : undefined;
-  const { durationSection, subPhaseSections, vitalsSections, diagnosticsSections, cumulativeCharts } =
+  const { subPhaseSections, vitalsSections, diagnosticsSections, cumulativeCharts } =
     new GenerateStats(controlData, experimentData, reportTitles, confidenceLevel);
 
   const template = Handlebars.compile(REPORT_TEMPLATE_RAW);
 
   return template({
     cumulativeCharts,
-    durationSection,
     reportTitles,
     subPhaseSections,
     vitalsSections,

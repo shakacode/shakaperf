@@ -3,7 +3,30 @@
 # After running, use `git diff` to review changes to the baseline.
 #
 # Usage:
-#   ./integration-tests/run-integration-tests-and-compare-logs.sh [--perf] [--visreg] [--twin-servers]
+#   ./integration-tests/run-integration-tests-and-update-snapshot-logs.sh \
+#       [--perf] [--visreg] [--twin-servers]
+#
+# Output layout per suite (under integration-tests/snapshots/):
+#   - baseline-{perf,visreg,twin-servers}.log — the normalized Playwright log
+#   - bench-results/    — copy of demo-ecommerce/compare-results/ after @perf
+#   - visreg-results/   — copy of demo-ecommerce/compare-results/ after @visreg
+#       Each has:
+#         report.html / report.json         — the self-contained unified report
+#         report.screenshot.png             — full-page screenshot of report.html
+#         <slug>/…                          — per-test perf artifacts:
+#                                             lighthouse HTMLs, engine-output.log,
+#                                             timeline_comparison.html,
+#                                             timeline_preview.svg,
+#                                             diff.html  (single stacked diff
+#                                             with both network + profile),
+#                                             artifact-1.html (bench report)
+#         _visreg/html_report/…             — legacy visreg HTML report
+#                                             (control/experiment screenshots,
+#                                             per-pair failed_diff PNGs)
+#         report-shots/                     — deep-click screenshots taken by
+#                                             the spec: filter toggled, every
+#                                             artifact dialog, every visreg
+#                                             scrubber, timeline preview, etc.
 #
 # The output is automatically normalized to replace run-variable values
 # (timestamps, timings, home directory paths, docker ages) with stubs.
@@ -11,15 +34,36 @@
 # When reviewing the git diff, IGNORE differences in:
 #   - Webpack hashes (e.g. -fa6c2b68881f0c7d1717)
 #   - Git SHAs
+#   - Visreg run-ids in filenames (e.g. 01364522760_Homepage_…)
 #   - Ordering of [CONTROL] vs [EXPERIMENT] lines (parallel execution)
-#   - Asset sizes (e.g. "806 KiB")
-#   - Module counts
+#   - Asset sizes (e.g. "806 KiB") and module counts
+#   - report.json: meta.generatedAt, meta.durationMs
+#   - Embedded base64 data URIs inside report.html / report.json
+#   - Byte-level noise in report-shots/*.png — sub-pixel anti-aliasing and
+#     lazy-image timing drift between runs; only care about gross layout
+#     breakage (missing dialog, empty grid, blank iframe, etc.)
+#   - timeline_preview.svg coordinate jitter (re-measurement reorders samples)
 #
 # Focus on:
 #   - Test pass/fail status
 #   - Sequence of operations (>>> banners)
 #   - Error messages or new warnings
 #   - Missing or added steps
+#   - Counts surfaced in the CLI's FAILED summary
+#     (e.g. "1 perf regression, 3 visreg mismatches") — the compare CLI
+#     now exits non-zero when any test is errored / regressed / visually
+#     changed, so "FAILED:" lines in the log are expected on runs that
+#     still successfully produced the report.
+#   - New/removed files under the results dirs — the file layout is load-
+#     bearing for the unified compare report and per-test artifact links.
+#
+# Timing comparison: the `check-integration-tests-integrity` skill
+# (.claude/commands/check-integration-tests-integrity.md) spawns two
+# parallel subagents that each independently extract Playwright durations
+# from the old baseline vs. the new log and return a slowdown verdict;
+# the skill cross-checks the two verdicts. See that skill for the rules —
+# notably, docker build / twins-build times are excluded because their
+# duration depends on layer-cache hit rate, not the code under test.
 
 set -euo pipefail
 

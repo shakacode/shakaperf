@@ -4,7 +4,6 @@ export {
   defaultFlagArgs,
   runCompare,
   runAnalyze,
-  runReport,
 } from './bench/cli';
 export * from './bench/cli/helpers';
 export * from './bench/cli/compare';

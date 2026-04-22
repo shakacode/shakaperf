@@ -233,7 +233,7 @@
         "runtimeStats": {
             "type": "boolean"
         },
-        "sampleTimeout": {
+        "sampleTimeoutMs": {
             "type": "number"
         },
         "servers": {

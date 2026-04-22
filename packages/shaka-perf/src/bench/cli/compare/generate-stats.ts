@@ -14,7 +14,6 @@ export interface ParsedTitleConfigs {
 }
 
 export type Sample = {
-  duration: number;
   js: number;
   phases: Array<{
     phase: string;
@@ -94,7 +93,6 @@ export class GenerateStats {
   experimentData: ITracerBenchTraceResult;
   reportTitles: ParsedTitleConfigs;
   confidenceLevel?: number;
-  durationSection: HTMLSectionRenderData;
   subPhaseSections: HTMLSectionRenderData[];
   vitalsSections: HTMLSectionRenderData[];
   diagnosticsSections: HTMLSectionRenderData[];
@@ -110,12 +108,11 @@ export class GenerateStats {
     this.reportTitles = reportTitles;
     this.confidenceLevel = confidenceLevel;
 
-    const { durationSection, subPhaseSections } = this.generateData(
+    const { subPhaseSections } = this.generateData(
       this.controlData.samples,
       this.experimentData.samples,
       this.reportTitles
     );
-    this.durationSection = durationSection;
     this.subPhaseSections = subPhaseSections;
     this.vitalsSections = subPhaseSections.filter((s) => !isDiagnosticMetric(s.phase));
     this.diagnosticsSections = subPhaseSections
@@ -133,23 +130,13 @@ export class GenerateStats {
     experimentDataSamples: Sample[],
     reportTitles: ParsedTitleConfigs
   ): {
-    durationSection: HTMLSectionRenderData;
     subPhaseSections: HTMLSectionRenderData[];
   } {
     const valuesByPhaseControl = this.bucketPhaseValues(controlDataSamples);
     const valuesByPhaseExperiment = this.bucketPhaseValues(
       experimentDataSamples
     );
-    const subPhases = Object.keys(valuesByPhaseControl).filter(
-      (k) => k !== "duration"
-    );
-    const durationSection = this.formatPhaseData(
-      valuesByPhaseControl["duration"].values,
-      valuesByPhaseExperiment["duration"].values,
-      "duration",
-      "ms",
-      1
-    );
+    const subPhases = Object.keys(valuesByPhaseControl);
 
     const subPhaseSections: HTMLSectionRenderData[] = subPhases.map((phase) => {
       const controlValues = valuesByPhaseControl[phase];
@@ -166,10 +153,7 @@ export class GenerateStats {
       return renderDataForPhase as HTMLSectionRenderData;
     });
 
-    durationSection.servers = reportTitles.servers;
-
     return {
-      durationSection,
       subPhaseSections,
     };
   }
@@ -185,13 +169,9 @@ export class GenerateStats {
     samples: Sample[],
     valueGen: (a: ValueGen) => number = (a: ValueGen) => a.duration
   ): ValuesByPhase {
-    const buckets: ValuesByPhase = {
-      ["duration"]: { values: [], sign: 1, unit: "ms" },
-    };
+    const buckets: ValuesByPhase = {};
 
     samples.forEach((sample: Sample) => {
-      buckets["duration"].values.push(sample["duration"]);
-
       sample.phases.forEach((phaseData) => {
         const bucket = buckets[phaseData.phase] || {
           values: [],
@@ -308,9 +288,7 @@ export class GenerateStats {
       experimentDataSamples,
       cumulativeValueFunc
     );
-    const phases = Object.keys(valuesByPhaseControl).filter(
-      (k) => k !== "duration"
-    );
+    const phases = Object.keys(valuesByPhaseControl);
 
     const units = new Set<string>();
     phases.forEach((phase) => {

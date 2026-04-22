@@ -25,11 +25,38 @@ interface DisposeMessage {
 type ParentMessage = SetupMessage | SampleMessage | DisposeMessage;
 
 function send(msg: object): void {
-  process.send!(msg);
+  try {
+    process.send!(msg);
+  } catch {
+    // Parent channel already closed — nothing we can do from here.
+  }
+}
+
+// Error payloads go to stderr first (captured by the parent's teeLinePrefixed
+// → engine-output.log → readPerfEngineLog → report error dialog) and only
+// then to IPC. Stderr is the canonical channel: even if IPC is dead (parent
+// crashed, channel closed mid-teardown) the stack survives on disk.
+function sendError(msg: { type: 'error'; message: string; stack: string }): void {
+  try { process.stderr.write(JSON.stringify(msg) + '\n'); } catch { /* stderr closed */ }
+  send(msg);
 }
 
 // Self-terminate if parent disconnects to prevent orphaned Chrome processes
 process.on('disconnect', () => process.exit(1));
+
+// Async CDP / puppeteer failures during a sample can surface as unhandled
+// rejections AFTER we've already returned a result or error for the current
+// iteration. Without these, a late rejection crashes the worker with a bare
+// stack trace on stderr — parent then hits ERR_IPC_CHANNEL_CLOSED on its next
+// send and the whole pipeline dies. Report what we can and exit cleanly so the
+// per-test try/catch upstream can record the failure and keep going.
+function reportFatal(err: unknown): void {
+  const error = err instanceof Error ? err : new Error(String(err));
+  sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
+  process.exit(1);
+}
+process.on('unhandledRejection', reportFatal);
+process.on('uncaughtException', reportFatal);
 
 let sampler: BenchmarkSampler<NavigationSample>;
 
@@ -40,7 +67,7 @@ process.on('message', async (msg: ParentMessage) => {
       const tests = getRegisteredTests();
       const testDef = tests.find((t) => t.name === msg.testName);
       if (!testDef) {
-        send({ type: 'error', message: `Test "${msg.testName}" not found in ${msg.testFile}`, stack: '' });
+        sendError({ type: 'error', message: `Test "${msg.testName}" not found in ${msg.testFile}`, stack: '' });
         process.exit(1);
         return;
       }
@@ -55,7 +82,7 @@ process.on('message', async (msg: ParentMessage) => {
       send({ type: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+      sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
       process.exit(1);
     }
   } else if (msg.type === 'sample') {
@@ -64,7 +91,7 @@ process.on('message', async (msg: ParentMessage) => {
       send({ type: 'result', sample });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      send({ type: 'error', message: error.message, stack: error.stack ?? '' });
+      sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
     }
   } else if (msg.type === 'dispose') {
     await sampler.dispose();

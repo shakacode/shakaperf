@@ -8,7 +8,6 @@
   "files": [
     "dist",
     "templates",
-    "compare/output",
     "tb-schema.json"
   ],
   "exports": {
@@ -35,6 +34,10 @@
     "./twin-servers": {
       "types": "./dist/twin-servers/index.d.ts",
       "default": "./dist/twin-servers/index.js"
+    },
+    "./compare": {
+      "types": "./dist/compare/index.d.ts",
+      "default": "./dist/compare/index.js"
     }
   },
   "typesVersions": {
@@ -53,15 +56,18 @@
       ],
       "twin-servers": [
         "dist/twin-servers/index.d.ts"
+      ],
+      "compare": [
+        "dist/compare/index.d.ts"
       ]
     }
   },
   "scripts": {
-    "build": "tsc && node scripts/copy-assets.mjs",
+    "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
+    "build-report-shell": "vite build --config report-shell/vite.config.ts",
+    "dev-report-shell": "vite --config report-shell/vite.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "build-compare": "node -e \"const fs=require('fs');fs.copyFileSync(require.resolve('diverged/src/diverged.js'),'./compare/output/diverged.js');fs.copyFileSync(require.resolve('diff/dist/diff.js'),'./compare/output/diff.js')\" && webpack --config ./compare/webpack.config.cjs && node ./compare/build-html.mjs",
-    "dev-compare": "webpack-dev-server --config ./compare/webpack.config.cjs",
     "prepublishOnly": "yarn build"
   },
   "keywords": [
@@ -123,9 +129,6 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.6",
-    "@babel/preset-env": "^7.23.6",
-    "@babel/preset-react": "^7.23.3",
     "@jest/globals": "^30.0.0",
     "@types/d3-array": "~2.12.1",
     "@types/d3-hierarchy": "^3.1.0",
@@ -141,28 +144,17 @@
     "@types/object-hash": "^3.0.0",
     "@types/pixelmatch": "^5.2.0",
     "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/temp": "^0.9.0",
-    "assert": "^2.1.0",
-    "babel-loader": "^9.1.3",
-    "backstop-twentytwenty": "^1.1.0",
-    "diff": "^3.5.0",
-    "file-loader": "^6.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "jest": "^30.0.0",
     "jest-junit": "^16.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-modal": "^3.16.1",
-    "react-redux": "^9.0.4",
-    "react-sticky": "^6.0.3",
-    "react-toggle-button": "^2.2.0",
-    "react-visibility-sensor": "^5.1.1",
-    "redux": "^5.0.0",
-    "styled-components": "^6.1.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "ts-jest": "^29.2.0",
     "typescript": "^5.9.0",
-    "url-loader": "^4.1.1",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.1.0"
   }
 }

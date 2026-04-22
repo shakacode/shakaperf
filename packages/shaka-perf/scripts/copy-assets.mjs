@@ -10,9 +10,9 @@ const assets = [
   ['src/visreg/capture/ab-tests', 'dist/visreg/capture/ab-tests'],
   ['src/visreg/capture/cookies', 'dist/visreg/capture/cookies'],
   ['src/visreg/capture/helpers/imageStub.jpg', 'dist/visreg/capture/helpers/imageStub.jpg'],
-  // Visreg comparison UI (stays at package root, referenced via visregRoot/..)
-  ['compare/output', 'dist/compare/output'],
-  // Bench static assets
+  // Pre-built single-file React report (Vite output)
+  ['report-shell/dist/index.html', 'dist/report-shell/index.html'],
+  // Legacy bench HTML report templates (Handlebars + Chart.js assets)
   ['src/bench/cli/static', 'dist/bench/cli/static'],
 ];
 

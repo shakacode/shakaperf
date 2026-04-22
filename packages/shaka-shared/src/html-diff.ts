@@ -31,13 +31,19 @@ export function escapeHtml(str: string): string {
 export interface BuildDiffHtmlOptions {
   leftLabel?: string;
   rightLabel?: string;
+  /**
+   * When true, diff2html renders a clickable list of the files at the top —
+   * useful when `diffContent` is a concatenated multi-file unified diff so
+   * readers can jump to the section they care about.
+   */
+  drawFileList?: boolean;
 }
 
 export function buildDiffHtml(diffContent: string, title: string, options: BuildDiffHtmlOptions = {}): string {
-  const { leftLabel = 'Control', rightLabel = 'Experiment' } = options;
+  const { leftLabel = 'Control', rightLabel = 'Experiment', drawFileList = false } = options;
   const escapedDiff = JSON.stringify(diffContent);
   const config = JSON.stringify({
-    drawFileList: false,
+    drawFileList,
     matching: 'lines',
     outputFormat: 'side-by-side',
     synchronisedScroll: true,

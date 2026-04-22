@@ -129,3 +129,8 @@ export function getRegisteredTests(): AbTestDefinition[] {
 export function clearRegistry(): void {
   registry.length = 0;
 }
+
+export function restoreRegistry(previous: AbTestDefinition[]): void {
+  registry.length = 0;
+  for (const t of previous) registry.push(t);
+}

@@ -23,4 +23,11 @@ export { generateUnifiedDiff, escapeHtml, buildDiffHtml } from './html-diff';
 export type { BuildDiffHtmlOptions } from './html-diff';
 export { addCompareOptions, DEFAULT_CONTROL_URL, DEFAULT_EXPERIMENT_URL } from './compare-options';
 export type { CompareBaseOptions } from './compare-options';
+export {
+  ABTESTS_CONFIG_FILENAMES,
+  findAbTestsConfig,
+  loadAbTestsConfig,
+} from './abtests-config';
+export { readTestSource } from './read-test-source';
+export { embedAsBase64 } from './embed-asset';
 export { default as AnnotatedError } from './AnnotatedError';
