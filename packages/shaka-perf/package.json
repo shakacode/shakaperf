@@ -122,6 +122,7 @@
     "pngjs": "^7.0.0",
     "portfinder": "^1.0.32",
     "race-cancellation": "^0.4.1",
+    "shaka-accessibility": "workspace:^",
     "shaka-shared": "workspace:^",
     "temp": "^0.9.4",
     "tslib": "^2.2.0",

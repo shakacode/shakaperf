@@ -11527,7 +11527,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shaka-accessibility@workspace:packages/shaka-accessibility":
+"shaka-accessibility@workspace:^, shaka-accessibility@workspace:packages/shaka-accessibility":
   version: 0.0.0-use.local
   resolution: "shaka-accessibility@workspace:packages/shaka-accessibility"
   dependencies:
@@ -11623,6 +11623,7 @@ __metadata:
     race-cancellation: "npm:^0.4.1"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
+    shaka-accessibility: "workspace:^"
     shaka-shared: "workspace:^"
     temp: "npm:^0.9.4"
     ts-jest: "npm:^29.2.0"
