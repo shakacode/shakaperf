@@ -1,28 +1,61 @@
 {
   "name": "shaka-accessibility",
   "version": "0.0.1",
-  "description": "Accessibility testing",
+  "description": "Accessibility testing for shaka-perf — runs @axe-core/playwright against every ab-test on the experiment server",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/program.d.ts",
+      "default": "./dist/cli/program.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "cli": [
+        "dist/cli/program.d.ts"
+      ]
+    }
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "accessibility",
+    "axe",
+    "wcag",
+    "a11y",
     "testing"
   ],
-  "author": "",
+  "author": "ShakaCode",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/shakacode/shakaperf.git",
     "directory": "packages/shaka-accessibility"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.2",
+    "axe-core": "^4.11.0",
+    "commander": "^13.1.0",
+    "playwright": "^1.40.1",
+    "playwright-core": "^1.50.0",
+    "shaka-shared": "workspace:^",
+    "zod": "^3.24.0"
+  },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.3.3"
   }
 }

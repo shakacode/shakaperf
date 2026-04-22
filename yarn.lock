@@ -11531,7 +11531,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "shaka-accessibility@workspace:packages/shaka-accessibility"
   dependencies:
+    "@axe-core/playwright": "npm:^4.11.2"
+    "@types/node": "npm:^20.0.0"
+    axe-core: "npm:^4.11.0"
+    commander: "npm:^13.1.0"
+    playwright: "npm:^1.40.1"
+    playwright-core: "npm:^1.50.0"
+    shaka-shared: "workspace:^"
     typescript: "npm:^5.3.3"
+    zod: "npm:^3.24.0"
   languageName: unknown
   linkType: soft
 
