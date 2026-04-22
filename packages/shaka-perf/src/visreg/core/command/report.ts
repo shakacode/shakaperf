@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { copy, ensureDir } from 'fs-extra';
+import { ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
 import cloneDeep from 'lodash/cloneDeep.js';
@@ -26,22 +26,17 @@ function writeReport (config: RuntimeConfig, reporter: Reporter) {
     promises.push(writeJsonReport(config, reporter));
   }
 
-  promises.push(writeBrowserReport(config, reporter));
+  promises.push(writeReportJson(config, reporter));
 
   return allSettled(promises);
 }
 
-function archiveReport (config: RuntimeConfig) {
-  function toAbsolute (p: string) {
-    return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
-  }
-
-  const archivePath = toAbsolute(config.archivePath);
-
-  return copy(toAbsolute(config.htmlReportDir), archivePath);
-}
-
-async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
+// Writes <htmlReportDir>/report.json — the artifact the unified
+// `shaka-perf compare` harvester reads to surface visreg results in the
+// final report. The standalone visreg viewer (its index.html template
+// and JSONP shim) was removed when the unified compare report took over;
+// `htmlReportDir` is now pure scratch space for report.json + screenshots.
+async function writeReportJson (config: RuntimeConfig, reporter: Reporter) {
   const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
 
   let browserReporter = cloneDeep(reporter);
@@ -50,13 +45,8 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
     return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
   }
 
-  logger.log('Writing browser report');
+  logger.log('Writing report.json');
 
-  // The standalone visreg viewer (previously copied from
-  // `dist/compare/output/index.html`) was removed when the unified
-  // `shaka-perf compare` report took over display. `htmlReportDir` is now
-  // scratch space for report.json + screenshots consumed by the compare
-  // harvester, so we just ensure the directory exists.
   const htmlReportDir = toAbsolute(config.htmlReportDir);
   return mkdir(htmlReportDir, { recursive: true }).then(function () {
     // Slurp in logs
@@ -129,31 +119,12 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
       }
     }
 
-    const reportConfigFilename = toAbsolute(config.compareConfigFileName);
-    const jsonReport = JSON.stringify(browserReporter, null, 2);
-    const jsonpReport = `report(${jsonReport});`;
-
-    const jsonConfigWrite = writeFile(testReportJsonName, jsonReport).then(function () {
-      logger.log('Copied json report to: ' + testReportJsonName);
+    return writeFile(testReportJsonName, JSON.stringify(browserReporter, null, 2)).then(function () {
+      logger.log('Wrote report.json to: ' + testReportJsonName);
     }, function (err: unknown) {
-      logger.error('Failed json report copy to: ' + testReportJsonName);
+      logger.error('Failed writing report.json to: ' + testReportJsonName);
       throw err;
     });
-
-    const jsonpConfigWrite = writeFile(toAbsolute(reportConfigFilename), jsonpReport).then(function () {
-      logger.log('Copied jsonp report to: ' + reportConfigFilename);
-    }, function (err: unknown) {
-      logger.error('Failed jsonp report copy to: ' + reportConfigFilename);
-      throw err;
-    });
-
-    const promises = [jsonpConfigWrite, jsonConfigWrite];
-
-    return allSettled(promises);
-  }).then(async function () {
-    if (config.archiveReport) {
-      archiveReport(config);
-    }
   });
 }
 
@@ -272,11 +243,6 @@ export async function execute (config: RuntimeConfig): Promise<VisregCompareResu
 
   if (failed) {
     logger.error('*** Mismatch errors found ***');
-  }
-
-  if (config.report && config.report.indexOf('browser') > -1) {
-    const reportPath = path.resolve(config.compareReportURL);
-    logger.success('Report: ' + reportPath);
   }
 
   return { passed, failed };
