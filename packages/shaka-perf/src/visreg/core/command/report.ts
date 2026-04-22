@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { copy, ensureDir } from 'fs-extra';
 import chalk from 'chalk';
 import _ from 'lodash';
@@ -52,11 +52,13 @@ async function writeBrowserReport (config: RuntimeConfig, reporter: Reporter) {
 
   logger.log('Writing browser report');
 
-  // Copy the template index.html (has fonts, bundle, and licenses already inlined).
+  // The standalone visreg viewer (previously copied from
+  // `dist/compare/output/index.html`) was removed when the unified
+  // `shaka-perf compare` report took over display. `htmlReportDir` is now
+  // scratch space for report.json + screenshots consumed by the compare
+  // harvester, so we just ensure the directory exists.
   const htmlReportDir = toAbsolute(config.htmlReportDir);
-  return mkdir(htmlReportDir, { recursive: true }).then(() =>
-    copyFile(path.join(config.comparePath, 'index.html'), path.join(htmlReportDir, 'index.html'))
-  ).then(function () {
+  return mkdir(htmlReportDir, { recursive: true }).then(function () {
     // Slurp in logs
     const promises: Promise<unknown>[] = [];
     if (config.scenarioLogsInReports) {
