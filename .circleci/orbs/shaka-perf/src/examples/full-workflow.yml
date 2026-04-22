@@ -1,17 +1,19 @@
 description: |
-  Fully customized A/B performance testing workflow with monorepo structure,
-  custom health checks, resource classes, and additional setup steps.
+  Fully customized A/B performance + visual-regression workflow with monorepo
+  structure, custom health checks, resource classes, and additional setup
+  steps. Requires `abtests.config.ts` in the project root (see the shaka-perf
+  docs for its schema).
 
 usage:
   version: 2.1
 
   orbs:
-    twin-servers: shaka-perf/twin-servers@1.0.0
+    shaka-perf: shakacode/shaka-perf@1.0.0
 
   workflows:
     perf-test-full:
       jobs:
-        - twin-servers/build-experiment:
+        - shaka-perf/build-experiment:
             name: build-experiment-image
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
@@ -25,7 +27,7 @@ usage:
               branches:
                 ignore: main
 
-        - twin-servers/build-control:
+        - shaka-perf/build-control:
             name: build-control-image
             image-name: demo-ecommerce
             working-directory: demo-ecommerce
@@ -35,7 +37,7 @@ usage:
               branches:
                 ignore: main
 
-        - twin-servers/run-tests:
+        - shaka-perf/run-tests:
             name: performance-tests
             requires:
               - build-experiment-image
@@ -45,12 +47,15 @@ usage:
             control-health-url: 'http://localhost:3020/up'
             experiment-health-url: 'http://localhost:3030/up'
             health-timeout: '180s'
-            test-command: 'bundle exec rspec spec/performance --format json --out perf-results/results.json'
             post-steps:
               - run:
-                  name: Generate performance report
+                  name: Run shaka-perf compare
                   command: |
-                    echo "Generating performance comparison report..."
+                    cd demo-ecommerce
+                    yarn shaka-perf compare
+              - store_artifacts:
+                  path: demo-ecommerce/compare-results
+                  destination: shaka-perf-compare-report
             filters:
               branches:
                 ignore: main

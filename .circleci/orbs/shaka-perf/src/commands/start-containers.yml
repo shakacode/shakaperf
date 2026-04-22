@@ -5,7 +5,7 @@ parameters:
   working-directory:
     type: string
     default: '.'
-    description: 'Directory containing twin-servers.config.ts'
+    description: 'Directory containing abtests.config.ts'
   config-path:
     type: string
     default: ''

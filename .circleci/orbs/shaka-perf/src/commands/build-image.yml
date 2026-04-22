@@ -1,6 +1,6 @@
 description: |
-  Build a Docker image using shaka-perf twin-servers. Requires twin-servers.config.ts
-  in the working directory.
+  Build a Docker image using shaka-perf twin-servers. Requires abtests.config.ts
+  (with a `twinServers` slice) in the working directory.
 
 parameters:
   target:
@@ -10,7 +10,7 @@ parameters:
   working-directory:
     type: string
     default: '.'
-    description: 'Directory containing twin-servers.config.ts'
+    description: 'Directory containing abtests.config.ts'
   config-path:
     type: string
     default: ''

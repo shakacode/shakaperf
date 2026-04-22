@@ -186,8 +186,8 @@ workflows:
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
             - shaka-perf/download-control-commit-sha
 
-      - shaka-perf/run-tests: &shaka-visual-regression-job
-          name: scheduled-shaka-visual-regression
+      - shaka-perf/run-tests: &compare-tests-job
+          name: scheduled-compare-tests
           requires:
             - shaka-perf/build-experiment
             - shaka-perf/build-control
@@ -201,37 +201,13 @@ workflows:
           post-steps:
             - install-playwright
             - run:
-                name: Run shaka-perf visreg-compare
+                name: Run shaka-perf compare
                 command: |
                   cd demo-ecommerce
-                  yarn visreg:test
+                  yarn compare
             - store_artifacts:
-                path: demo-ecommerce/visreg_data/html_report
-                destination: shaka-perf-visreg-report
-            - store_test_results:
-                path: demo-ecommerce/visreg_data/ci_report
-
-      - shaka-perf/run-tests: &perf-tests-job
-          name: scheduled-perf-tests
-          requires:
-            - shaka-perf/build-experiment
-            - shaka-perf/build-control
-          resource-class: medium
-          working-directory: demo-ecommerce
-          cli-prefix: yarn
-          setup-steps:
-            - enable-corepack
-            - setup-yarn-and-build-packages
-          server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-          # TODO: Replace with actual performance test command (e.g., k6, Playwright, ab)
-          test-command: "mkdir -p /home/circleci/app/perf-results && echo 'Running performance tests...' > /home/circleci/app/perf-results/test-output.txt"
-          post-steps:
-            - run:
-                name: Collect results from both containers
-                command: |
-                  mkdir -p /tmp/perf-results
-                  cp -r ~/demo_ecommerce_control_docker_volume/perf-results /tmp/perf-results/control || true
-                  cp -r ~/demo_ecommerce_experiment_docker_volume/perf-results /tmp/perf-results/experiment || true
+                path: demo-ecommerce/compare-results
+                destination: shaka-perf-compare-report
 
       # Update control commit SHA (only runs when all tests pass)
       - shaka-perf/update-control-commit-sha: &update-control-sha-job
@@ -244,8 +220,7 @@ workflows:
                   echo "export AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}'" >> "$BASH_ENV" # Job expects these variables to be set
                   echo "export AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}'" >> "$BASH_ENV" # We can set it here or in CircleCI Env
           requires:
-            - scheduled-shaka-visual-regression
-            - scheduled-perf-tests
+            - scheduled-compare-tests
 
       # Approval path: if tests fail, approve to update control commit SHA anyway
       - approve-baseline-update:
@@ -281,15 +256,8 @@ workflows:
               ignore: main
 
       - shaka-perf/run-tests:
-          <<: *shaka-visual-regression-job
-          name: shaka-visual-regression
-          filters:
-            branches:
-              ignore: main
-
-      - shaka-perf/run-tests:
-          <<: *perf-tests-job
-          name: perf-tests
+          <<: *compare-tests-job
+          name: compare-tests
           filters:
             branches:
               ignore: main
