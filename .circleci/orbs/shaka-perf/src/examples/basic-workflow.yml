@@ -1,34 +1,42 @@
 description: |
-  Basic A/B performance testing workflow for a Rails application.
-  Shows minimal configuration needed to run twin server tests.
+  Basic A/B performance + visual-regression workflow for a Rails application.
+  Shows the minimal configuration needed to run twin-server tests and produce
+  a unified `shaka-perf compare` report. Requires `abtests.config.ts` in the
+  project root (see the shaka-perf docs for its schema).
 
 usage:
   version: 2.1
 
   orbs:
-    twin-servers: shaka-perf/twin-servers@1.0.0
+    shaka-perf: shakacode/shaka-perf@1.0.0
 
   workflows:
     perf-test:
       jobs:
-        - twin-servers/build-experiment:
+        - shaka-perf/build-experiment:
             image-name: my-rails-app
             filters:
               branches:
                 ignore: main
 
-        - twin-servers/build-control:
+        - shaka-perf/build-control:
             image-name: my-rails-app
             filters:
               branches:
                 ignore: main
 
-        - twin-servers/run-tests:
+        - shaka-perf/run-tests:
             requires:
-              - twin-servers/build-experiment
-              - twin-servers/build-control
+              - shaka-perf/build-experiment
+              - shaka-perf/build-control
             server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
-            test-command: 'bundle exec rake perf:benchmark'
+            post-steps:
+              - run:
+                  name: Run shaka-perf compare
+                  command: npx shaka-perf compare
+              - store_artifacts:
+                  path: compare-results
+                  destination: shaka-perf-compare-report
             filters:
               branches:
                 ignore: main

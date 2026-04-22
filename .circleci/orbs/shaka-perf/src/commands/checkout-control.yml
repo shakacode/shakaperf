@@ -17,7 +17,7 @@ parameters:
   working-directory:
     type: string
     default: '.'
-    description: 'Directory containing twin-servers.config.ts'
+    description: 'Directory containing abtests.config.ts'
   cli-prefix:
     type: string
     default: 'npx'

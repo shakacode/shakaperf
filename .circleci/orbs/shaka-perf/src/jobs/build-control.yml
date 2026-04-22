@@ -22,7 +22,7 @@ parameters:
   working-directory:
     type: string
     default: '.'
-    description: 'Directory containing twin-servers.config.ts'
+    description: 'Directory containing abtests.config.ts'
   image-name:
     type: string
     description: 'Docker image name'
