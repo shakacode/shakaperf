@@ -11,22 +11,24 @@ export const DEFAULT_MARKERS: Marker[] = [
 ];
 
 import type { Flags } from 'lighthouse/types/externs.js';
-import type { Viewport, FormFactor } from 'shaka-shared';
+import type { Viewport } from 'shaka-shared';
 
 export type LighthouseConfig = Flags;
 
-export function defineConfig(config: LighthouseConfig): LighthouseConfig {
+/**
+ * Lighthouse config minus the viewport-owning fields. `Viewport` is the
+ * single source of truth for `formFactor` / `screenEmulation`, so these
+ * fields are stripped from any config that could otherwise set them
+ * (defaults, user overrides) — the compiler rejects the conflict instead
+ * of runtime catching it.
+ */
+export type PerfLighthouseConfig = Omit<LighthouseConfig, 'formFactor' | 'screenEmulation'>;
+
+export function defineConfig(config: PerfLighthouseConfig): PerfLighthouseConfig {
   return config;
 }
 
-export const DEFAULT_LH_CONFIG: LighthouseConfig = {
-  formFactor: 'mobile',
-  screenEmulation: {
-    mobile: true,
-    width: 390,
-    height: 844,
-    deviceScaleFactor: 3,
-  },
+export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
   throttling: {
     rttMs: 300,
     throughputKbps: 700,
@@ -42,31 +44,28 @@ export const DEFAULT_LH_CONFIG: LighthouseConfig = {
 };
 
 /**
- * Builds a Lighthouse `settings` object for the given viewport. The base is
- * `DEFAULT_LH_CONFIG` so desktop and mobile passes share the same throttling,
- * logging, and category selection — a delta between them reflects the form
- * factor, not the measurement setup. `userOverrides` (from
- * `perf.lighthouseConfig`) is layered on top of defaults but BELOW the
- * viewport-derived `formFactor` and `screenEmulation`, so the per-pass
- * viewport selection always wins for the fields it owns.
+ * Builds the viewport-specific Lighthouse overlay written to the temp file
+ * consumed by the bench worker: user overrides (from `perf.lighthouseConfig`,
+ * which can't carry viewport options by type) plus the viewport's
+ * `formFactor` / `screenEmulation` on top.
+ *
+ * `DEFAULT_LH_CONFIG` is intentionally NOT spread in here —
+ * `create-lighthouse-benchmark-in-process.ts` already layers those defaults
+ * under the loaded user config, so repeating them at the bridge layer would
+ * be dead work.
  */
 export function lhConfigForViewport(
   viewport: Viewport,
-  userOverrides: Record<string, unknown> = {},
+  userOverrides: PerfLighthouseConfig = {},
 ): LighthouseConfig {
-  const formFactor: FormFactor =
-    viewport.formFactor ?? (viewport.width >= 1024 ? 'desktop' : 'mobile');
-  const deviceScaleFactor =
-    viewport.deviceScaleFactor ?? (formFactor === 'mobile' ? 3 : 1);
   return {
-    ...DEFAULT_LH_CONFIG,
     ...userOverrides,
-    formFactor,
+    formFactor: viewport.formFactor,
     screenEmulation: {
-      mobile: formFactor === 'mobile',
+      mobile: viewport.formFactor === 'mobile',
       width: viewport.width,
       height: viewport.height,
-      deviceScaleFactor,
+      deviceScaleFactor: viewport.deviceScaleFactor,
       disabled: false,
     },
   };

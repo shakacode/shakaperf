@@ -1,13 +1,13 @@
 import type { Page as PlaywrightPage, BrowserContext, Browser } from 'playwright';
+import type { Viewport as SharedViewport } from 'shaka-shared';
 
 export type { PlaywrightPage, BrowserContext, Browser };
 
 // ── Viewport ────────────────────────────────────────────────────────
-export interface Viewport {
-  label: string;
-  name?: string;
-  width: number;
-  height: number;
+// Extends shaka-shared so the same object survives the trip into
+// TestFnContext (which the user's test function receives) without
+// losing `formFactor` / `deviceScaleFactor`.
+export interface Viewport extends SharedViewport {
   vIndex?: number;
   viewport?: { width: number; height: number };
 }
@@ -361,9 +361,9 @@ export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConf
 
 export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
   viewports: [
-    { label: 'phone', width: 375, height: 667 },
-    { label: 'tablet', width: 768, height: 1024 },
-    { label: 'desktop', width: 1280, height: 800 },
+    { label: 'phone', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 },
+    { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 },
+    { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 },
   ],
   paths: {
     htmlReport: 'visreg_data/html_report',

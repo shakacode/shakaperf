@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Category, Status, TestResult } from '../types';
+import type { Status, TestResult } from '../types';
 import { Pill } from './Pill';
 import { CategorySlot } from './CategorySlot';
 
@@ -8,48 +8,41 @@ interface PillSpec {
   detail?: string;
 }
 
-/**
- * Map of category → number of CategoryResults of that category in the test.
- * Used to decide whether to surface a card's `label` (e.g. "mobile" /
- * "desktop") in the UI: the producer always sets the label so React keys are
- * unambiguous, but it's only meaningful to display when the same category
- * has multiple instances on one card.
- */
-function countByCategory(test: TestResult): Map<Category, number> {
-  const counts = new Map<Category, number>();
-  for (const c of test.categories) {
-    counts.set(c.category, (counts.get(c.category) ?? 0) + 1);
-  }
-  return counts;
-}
-
-function pillsForTest(test: TestResult, categoryCounts: Map<Category, number>): PillSpec[] {
+function pillsForTest(test: TestResult): PillSpec[] {
   // A single test can emit several pills at once: each category that errored
-  // contributes an `errored` pill, and each perf category contributes a
-  // separate `regressed` / `improved` pill when its metric set is non-empty —
-  // the two are not mutually exclusive. Visreg contributes a `visual change`
-  // pill when its pairs actually mismatched.
+  // contributes an `error` pill, each perf viewport contributes a separate
+  // `regressed` / `improved` pill when its metric set is non-empty — so
+  // regressions and improvements can coexist, and mobile + desktop runs each
+  // get their own pill prefixed with the viewport label. Visreg contributes
+  // a `visual change` pill when its pairs actually mismatched.
   const pills: PillSpec[] = [];
   for (const c of test.categories) {
-    // When multiple perf passes run (mobile + desktop), the category label
-    // disambiguates the pill so "regressed: FCP" becomes "mobile · FCP".
-    const showLabel = (categoryCounts.get(c.category) ?? 0) > 1;
-    const prefix = showLabel && c.label ? `${c.label} · ` : '';
     if (c.error) {
-      pills.push({ status: 'error', detail: `${prefix}${c.category}` });
+      pills.push({ status: 'error', detail: c.category });
     }
-    if (c.category === 'perf' && c.perf) {
-      if (c.perf.regressedMetrics.length > 0) {
-        pills.push({
-          status: 'regression',
-          detail: `${prefix}${c.perf.regressedMetrics.join(', ')}`,
-        });
-      }
-      if (c.perf.improvedMetrics.length > 0) {
-        pills.push({
-          status: 'improvement',
-          detail: `${prefix}${c.perf.improvedMetrics.join(', ')}`,
-        });
+    if (c.category === 'perf') {
+      const perfs = c.perfs ?? [];
+      // Prefix the viewport only when there's more than one to disambiguate —
+      // a single-viewport test reads cleanly as "regressed: FCP".
+      const multi = perfs.length > 1;
+      for (const p of perfs) {
+        const prefix = multi ? `${p.viewportLabel} · ` : '';
+        if (p.error) {
+          pills.push({ status: 'error', detail: `${prefix}perf` });
+          continue;
+        }
+        if (p.regressedMetrics.length > 0) {
+          pills.push({
+            status: 'regression',
+            detail: `${prefix}${p.regressedMetrics.join(', ')}`,
+          });
+        }
+        if (p.improvedMetrics.length > 0) {
+          pills.push({
+            status: 'improvement',
+            detail: `${prefix}${p.improvedMetrics.join(', ')}`,
+          });
+        }
       }
     }
     if (c.category === 'visreg' && c.status === 'visual_change') {
@@ -61,8 +54,7 @@ function pillsForTest(test: TestResult, categoryCounts: Map<Category, number>): 
 
 export function TestCard({ test, animationDelayMs }: { test: TestResult; animationDelayMs: number }) {
   const [codeOpen, setCodeOpen] = useState(false);
-  const categoryCounts = countByCategory(test);
-  const pills = pillsForTest(test, categoryCounts);
+  const pills = pillsForTest(test);
 
   return (
     <article
@@ -102,13 +94,8 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
       </dl>
 
       <div className="card__body">
-        {test.categories.map((c, idx) => (
-          <CategorySlot
-            key={`${c.category}-${c.label ?? idx}`}
-            result={c}
-            test={test}
-            showLabel={(categoryCounts.get(c.category) ?? 0) > 1}
-          />
+        {test.categories.map((c) => (
+          <CategorySlot key={c.category} result={c} test={test} />
         ))}
 
         {test.code ? (

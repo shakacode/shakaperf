@@ -180,6 +180,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           label: lhSettings.formFactor ?? 'default',
           width: lhSettings.screenEmulation?.width ?? 0,
           height: lhSettings.screenEmulation?.height ?? 0,
+          formFactor: lhSettings.formFactor,
+          deviceScaleFactor: lhSettings.screenEmulation?.deviceScaleFactor,
         },
         testType: TestType.Performance,
         annotate: () => {},

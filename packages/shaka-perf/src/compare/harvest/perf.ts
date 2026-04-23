@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
-  CategoryResult,
   PerfArtifact,
   PerfDirection,
   PerfMetric,
@@ -145,16 +144,18 @@ export interface HarvestPerfOptions {
   perfConfig: PerfConfig;
   reportRoot: string;
   slug: string;
+  viewportLabel: string;
 }
 
 /**
  * Reads bench's per-test `<slug>/report.json` (shape: ICompareJSONResults)
- * plus sibling artifact files, and emits a CategoryResult with metrics +
- * relative artifact hrefs (relative to `reportRoot` which is where
- * `compare-results/report.html` will live).
+ * plus sibling artifact files, and emits one PerfArtifact tagged with
+ * `viewportLabel`. Callers that measured N viewports call this N times and
+ * collect the results into a single `CategoryResult.perfs` array — the same
+ * shape visreg uses for its per-viewport pairs.
  */
-export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
-  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug } = opts;
+export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
+  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
 
   const metrics: PerfMetric[] = [];
   const regressedMetrics: string[] = [];
@@ -258,7 +259,12 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       })()
     : null;
 
-  const perf: PerfArtifact = {
+  // Ensure the slug is referenced even if perTestDir never existed (e.g.
+  // the viewport's bench run errored before writing report.json).
+  void slug;
+
+  return {
+    viewportLabel,
     metrics,
     regressedMetrics,
     improvedMetrics,
@@ -271,13 +277,21 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))
       .filter((d): d is { label: string; href: string } => d.href != null),
   };
+}
 
-  // Ensure the slug survives even if perTestDir never existed (e.g. perf was
-  // skipped for this test because the engine errored). We still emit an empty
-  // category so the card shows "no perf metrics".
-  void slug;
-
-  return { category: 'perf', status, perf };
+/**
+ * Derives a category-level status from an array of per-viewport perf
+ * artifacts — `regression` wins over `improvement` wins over `no_difference`.
+ * Used by the compare runner when aggregating multi-viewport perfs into a
+ * single `CategoryResult`.
+ */
+export function statusFromPerfs(perfs: PerfArtifact[]): Status {
+  let status: Status = 'no_difference';
+  for (const p of perfs) {
+    if (p.regressedMetrics.length > 0) return 'regression';
+    if (p.improvedMetrics.length > 0) status = 'improvement';
+  }
+  return status;
 }
 
 function safeReaddir(dir: string): string[] {

@@ -30,9 +30,12 @@ function testStatuses(test: TestResult): Status[] {
   let hasVisual = false;
   for (const c of test.categories) {
     if (c.error) hasError = true;
-    if (c.category === 'perf' && c.perf) {
-      if (c.perf.regressedMetrics.length > 0) hasRegression = true;
-      if (c.perf.improvedMetrics.length > 0) hasImprovement = true;
+    if (c.category === 'perf') {
+      for (const p of c.perfs ?? []) {
+        if (p.error) hasError = true;
+        if (p.regressedMetrics.length > 0) hasRegression = true;
+        if (p.improvedMetrics.length > 0) hasImprovement = true;
+      }
     }
     if (c.category === 'visreg' && c.status === 'visual_change') hasVisual = true;
   }

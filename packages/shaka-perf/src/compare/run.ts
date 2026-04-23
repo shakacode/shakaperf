@@ -18,6 +18,7 @@ import {
   writeReport,
   type Category,
   type CategoryResult,
+  type PerfArtifact,
   type ReportData,
   type Status,
   type TestResult,
@@ -25,7 +26,13 @@ import {
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { harvestVisreg } from './harvest/visreg';
-import { harvestPerf, readPerfEngineError, readPerfEngineLog, slugifyForBench } from './harvest/perf';
+import {
+  harvestPerf,
+  readPerfEngineError,
+  readPerfEngineLog,
+  slugifyForBench,
+  statusFromPerfs,
+} from './harvest/perf';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -65,10 +72,9 @@ function perfViewportsForTest(test: AbTestDefinition, perfConfig: PerfConfig): V
   return override && override.length > 0 ? override : perfConfig.viewports;
 }
 
-const EMPTY_PERF_CATEGORY: CategoryResult = {
-  category: 'perf',
-  status: 'no_difference',
-  perf: {
+function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
+  return {
+    viewportLabel,
     metrics: [],
     regressedMetrics: [],
     improvedMetrics: [],
@@ -78,19 +84,27 @@ const EMPTY_PERF_CATEGORY: CategoryResult = {
     timelinePreviewSvg: null,
     benchReportHref: null,
     diffHrefs: [],
-  },
-};
+  };
+}
+
 const EMPTY_VISREG_CATEGORY: CategoryResult = {
   category: 'visreg',
   status: 'no_difference',
   visreg: [],
 };
 
+function hasPerfError(perCategory: CategoryResult[]): boolean {
+  // Per-viewport perf failures live on individual PerfArtifacts (so one bad
+  // viewport doesn't erase another's metrics); surface them here so a test
+  // with any measurement failure still gets the `error` status at the top.
+  return perCategory.some((c) => c.perfs?.some((p) => p.error));
+}
+
 function combineStatus(perCategory: CategoryResult[]): Status {
   // Error wins over signed signals: a test whose measurement failed cannot
   // truthfully claim a regression or improvement — surface the failure first
   // so the card styling and status filter show it as `error`.
-  if (perCategory.some((c) => c.error)) return 'error';
+  if (perCategory.some((c) => c.error) || hasPerfError(perCategory)) return 'error';
   if (perCategory.some((c) => c.status === 'regression')) return 'regression';
   if (perCategory.some((c) => c.status === 'visual_change')) return 'visual_change';
   if (perCategory.some((c) => c.status === 'improvement')) return 'improvement';
@@ -277,7 +291,15 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     // and the combined `test.status` hides all but the top-ranked one.
     for (const c of t.categories) {
       if (c.error) errors++;
-      if (c.category === 'perf' && c.perf && c.perf.regressedMetrics.length > 0) regressions++;
+      if (c.category === 'perf') {
+        // One perf card carries N viewports; count each viewport's regressions
+        // and per-viewport errors separately so multi-viewport failures land
+        // in the summary line with the right count.
+        for (const p of c.perfs ?? []) {
+          if (p.error) errors++;
+          if (p.regressedMetrics.length > 0) regressions++;
+        }
+      }
       if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
     }
   }
@@ -324,55 +346,57 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
     }
   }
   if (categories.includes('perf')) {
-    // One perf card per viewport this test was measured at. `label` is set
-    // unconditionally so the React key is always unambiguous; the renderer
-    // decides whether to display the heading/pill prefix based on sibling
-    // count (only multi-viewport tests get the visible label).
+    // One PerfArtifact per viewport this test was measured at, collected
+    // into a single `CategoryResult.perfs` — mirrors how visreg packs N
+    // per-viewport pairs into one `CategoryResult.visreg`.
+    const perfs: PerfArtifact[] = [];
     for (const viewport of perfViewportsForTest(test, perfConfig)) {
       const perfRoot = perfRootFor(resultsRoot, viewport);
       const perTestDir = path.join(perfRoot, slug);
       const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
       const perTestEngineError = readPerfEngineError(perTestDir);
-      const label = viewport.label;
+      const viewportLabel = viewport.label;
       if (reportJsonExists) {
         try {
-          perCategory.push({
-            ...harvestPerf({
+          perfs.push(
+            harvestPerf({
               perTestDir,
               controlURL,
               experimentURL,
               perfConfig,
               reportRoot: resultsRoot,
               slug,
+              viewportLabel,
             }),
-            label,
-          });
+          );
         } catch (err) {
           const message = (err as Error).message || String(err);
-          perCategory.push({
-            ...EMPTY_PERF_CATEGORY,
-            label,
+          perfs.push({
+            ...emptyPerfArtifact(viewportLabel),
             error: `perf report unreadable: ${message}`,
             errorLog: readPerfEngineLog(perTestDir),
           });
         }
       } else if (perTestEngineError) {
-        perCategory.push({
-          ...EMPTY_PERF_CATEGORY,
-          label,
+        perfs.push({
+          ...emptyPerfArtifact(viewportLabel),
           error: `perf measurement failed: ${perTestEngineError}`,
           errorLog: readPerfEngineLog(perTestDir),
         });
       } else if (perfEngineFailed) {
-        perCategory.push({
-          ...EMPTY_PERF_CATEGORY,
-          label,
+        perfs.push({
+          ...emptyPerfArtifact(viewportLabel),
           error: 'perf engine aborted before measuring this test — see the error banner above',
         });
       } else {
-        perCategory.push({ ...EMPTY_PERF_CATEGORY, label });
+        perfs.push(emptyPerfArtifact(viewportLabel));
       }
     }
+    perCategory.push({
+      category: 'perf',
+      status: statusFromPerfs(perfs),
+      perfs,
+    });
   }
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';

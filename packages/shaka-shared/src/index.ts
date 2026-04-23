@@ -3,6 +3,9 @@ export {
   getRegisteredTests,
   clearRegistry,
   TestType,
+  PHONE_VIEWPORT,
+  TABLET_VIEWPORT,
+  DESKTOP_VIEWPORT,
 } from './ab-test-registry';
 export type {
   AbTestDefinition,

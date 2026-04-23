@@ -43,7 +43,7 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     filter,
   } = opts;
 
-  const lhConfigPath = await resolveLighthouseConfigPath(perfConfig, viewport);
+  const lhConfigPath = await writeLighthouseConfigFile(perfConfig, viewport);
 
   const flags: ICompareFlags = {
     // hideAnalysis:false is required for the bench runner to invoke
@@ -65,32 +65,21 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
     parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,
     samplingMode: perfConfig.samplingMode ?? 'simultaneous',
-    config: lhConfigPath ?? undefined,
+    config: lhConfigPath,
   };
 
   try {
     await runBenchCompare(flags);
   } finally {
-    if (lhConfigPath && lhConfigPath.startsWith(os.tmpdir())) {
-      fs.rmSync(lhConfigPath, { force: true });
-    }
+    fs.rmSync(lhConfigPath, { force: true });
   }
 }
 
-async function resolveLighthouseConfigPath(
+async function writeLighthouseConfigFile(
   perfConfig: PerfConfig,
   viewport: Viewport,
-): Promise<string | null> {
-  // When the user pins an `lhConfigPath`, their file is authoritative — we
-  // don't splice in the viewport-derived config. The user is responsible for
-  // setting formFactor/screenEmulation in their own file.
-  if (perfConfig.lhConfigPath) {
-    return path.resolve(perfConfig.lhConfigPath);
-  }
-  const merged = lhConfigForViewport(
-    viewport,
-    perfConfig.lighthouseConfig as Record<string, unknown> | undefined,
-  );
+): Promise<string> {
+  const merged = lhConfigForViewport(viewport, perfConfig.lighthouseConfig);
   const hash = crypto.randomBytes(6).toString('hex');
   const tempPath = path.join(os.tmpdir(), `shaka-perf-lh-${hash}.js`);
   const body = `module.exports = ${JSON.stringify(merged, null, 2)};\n`;

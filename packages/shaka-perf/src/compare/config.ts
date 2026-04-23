@@ -1,7 +1,13 @@
 import * as os from 'node:os';
 import { z } from 'zod';
-import type { Viewport } from 'shaka-shared';
+import {
+  DESKTOP_VIEWPORT,
+  PHONE_VIEWPORT,
+  TABLET_VIEWPORT,
+  type Viewport,
+} from 'shaka-shared';
 import { TwinServersConfigSchema } from '../twin-servers/types';
+import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 
 const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
@@ -10,30 +16,11 @@ export const ViewportSchema: z.ZodType<Viewport> = z.object({
   name: z.string().optional(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
-  formFactor: z.enum(['mobile', 'desktop']).optional(),
-  deviceScaleFactor: z.number().positive().optional(),
+  formFactor: z.enum(['mobile', 'desktop']),
+  deviceScaleFactor: z.number().positive(),
 });
 
 export type { Viewport };
-
-// Named viewport singletons so visreg and perf share the exact same device
-// dimensions by default — a desktop perf regression reporting "1280×800"
-// matches the desktop visreg card captured at the same pixel budget.
-export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 667 };
-export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024 };
-export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800 };
-
-// Declared as non-empty tuples so `z.array(...).nonempty().default(...)`
-// type-checks — Zod's non-empty array contract is a `[T, ...T[]]` shape.
-export const DEFAULT_VISREG_VIEWPORTS: [Viewport, ...Viewport[]] = [
-  DESKTOP_VIEWPORT,
-  TABLET_VIEWPORT,
-  PHONE_VIEWPORT,
-];
-export const DEFAULT_PERF_VIEWPORTS: [Viewport, ...Viewport[]] = [
-  DESKTOP_VIEWPORT,
-  PHONE_VIEWPORT,
-];
 
 const EngineOptionsSchema = z
   .object({
@@ -63,7 +50,13 @@ export const SharedConfigSchema = z
 
 export const VisregConfigSchema = z
   .object({
-    viewports: z.array(ViewportSchema).nonempty().default(DEFAULT_VISREG_VIEWPORTS),
+    // Tuple cast so `nonempty().default(...)` type-checks — Zod's non-empty
+    // array contract is a `[T, ...T[]]` shape.
+    viewports: z.array(ViewportSchema).nonempty().default([
+      DESKTOP_VIEWPORT,
+      TABLET_VIEWPORT,
+      PHONE_VIEWPORT,
+    ] as [Viewport, ...Viewport[]]),
     defaultMisMatchThreshold: z.number().nonnegative().default(0.1),
     compareRetries: z.number().int().nonnegative().default(2),
     compareRetryDelay: z.number().int().nonnegative().default(500),
@@ -92,17 +85,27 @@ export const PerfConfigSchema = z
     parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
     sampleTimeoutMs: z.number().int().positive().default(120000),
     /**
-     * Viewports measured for every perf test. Each entry drives a separate
-     * Lighthouse pass whose screenEmulation (width/height/deviceScaleFactor)
-     * and form factor are derived from the viewport. Default measures
-     * desktop + phone so device-specific regressions are not missed.
+     * Viewports measured for every perf test. The sole source of
+     * truth for Lighthouse's `formFactor` / `screenEmulation` — those
+     * fields in `lighthouseConfig` would be overwritten by the per-
+     * viewport overlay, so don't bother setting them there. Default
+     * measures desktop + phone so device-specific regressions are not
+     * missed.
      *
      * Per-test override available via `abTest(…, { options: { perf: {
      * viewports: [...] } } }, …)`.
      */
-    viewports: z.array(ViewportSchema).nonempty().default(DEFAULT_PERF_VIEWPORTS),
-    lhConfigPath: z.string().optional(),
-    lighthouseConfig: z.record(z.unknown()).optional(),
+    viewports: z.array(ViewportSchema).nonempty().default([
+      DESKTOP_VIEWPORT,
+      PHONE_VIEWPORT,
+    ] as [Viewport, ...Viewport[]]),
+    // Runtime is a loose record; the TS type narrows it to
+    // `PerfLighthouseConfig` so `formFactor` / `screenEmulation` can't be
+    // set here — viewports own those, and a compile error beats a runtime
+    // surprise.
+    lighthouseConfig: z
+      .record(z.unknown())
+      .optional() as z.ZodType<PerfLighthouseConfig | undefined>,
     plotTitle: z.string().optional(),
   });
 

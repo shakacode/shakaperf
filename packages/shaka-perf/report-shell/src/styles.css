@@ -379,23 +379,20 @@ input {
   gap: 16px;
 }
 
-/* Heading used when a card carries multiple CategoryResults of the same
-   category — e.g. mobile and desktop perf passes. */
-.category-slot__label {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--border);
+/* Per-viewport separator inside a perf slot — only shown when a test was
+   measured at 2+ viewports, so single-viewport runs stay clean. */
+.perf-slot__viewport + .perf-slot__viewport {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.perf-slot__viewport-head {
   margin-bottom: 8px;
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.category-slot__label-category {
-  color: var(--fg-muted);
-}
-.category-slot__label-variant {
+.perf-slot__viewport-label {
   color: var(--fg);
   font-weight: 700;
 }

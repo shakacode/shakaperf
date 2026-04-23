@@ -14,18 +14,25 @@ export interface Viewport {
   width: number;
   height: number;
   /**
-   * Override for the Lighthouse form factor when this viewport drives a
-   * perf run. If unset, shaka-perf infers it from `width` (>=1024 →
-   * desktop, else mobile). Visreg ignores this field.
+   * Drives Lighthouse's `formFactor` and `screenEmulation.mobile` when this
+   * viewport feeds a perf run. Visreg ignores this field.
    */
-  formFactor?: FormFactor;
+  formFactor: FormFactor;
   /**
-   * Device scale factor used by Lighthouse's `screenEmulation` when this
-   * viewport drives a perf run. Defaults to 3 for mobile form factors and
-   * 1 for desktop. Visreg ignores this field.
+   * Device pixel ratio fed to Lighthouse's
+   * `screenEmulation.deviceScaleFactor` when this viewport feeds a perf run.
+   * Visreg ignores this field.
    */
-  deviceScaleFactor?: number;
+  deviceScaleFactor: number;
 }
+
+// Named singletons so visreg and perf share the exact same device dimensions
+// by default — a desktop perf regression reporting "1280×800" matches the
+// desktop visreg card captured at the same pixel budget. User configs can
+// import these from `shaka-shared` to reference the canonical objects.
+export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
 export enum TestType {
   VisualRegression = 'visual_regression',
@@ -93,7 +100,6 @@ export interface AbTestPerfConfig {
 
 export interface AbTestOptions {
   markers?: Marker[];
-  lhConfigPath?: string;
   resultsFolder?: string;
   visreg?: AbTestVisregConfig;
   perf?: AbTestPerfConfig;

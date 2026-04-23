@@ -167,7 +167,7 @@ describe('ab-test-registry', () => {
               readyTimeout: 10000,
               delay: 200,
               cookiePath: 'cookies.json',
-              viewports: [{ label: 'mobile', width: 375, height: 667 }],
+              viewports: [{ label: 'mobile', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 }],
             },
           },
         },
@@ -179,7 +179,7 @@ describe('ab-test-registry', () => {
       expect(visreg.selectors).toEqual(['[data-cy="hero"]']);
       expect(visreg.misMatchThreshold).toBe(0.1);
       expect(visreg.readyEvent).toBe('app:ready');
-      expect(visreg.viewports).toEqual([{ label: 'mobile', width: 375, height: 667 }]);
+      expect(visreg.viewports).toEqual([{ label: 'mobile', width: 375, height: 667, isMobile: true, dpr: 3 }]);
     });
   });
 });
