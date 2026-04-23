@@ -6,8 +6,8 @@ abTest('Homepage', {
   options: {
     visreg: {
       selectors: [
-        '[data-cy="hero-section"]',
         '[data-cy="features-section"]',
+        '[data-cy="hero-section"]',
         'document',
       ],
       delay: 50,
