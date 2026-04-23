@@ -8,6 +8,25 @@ interface PillSpec {
   detail?: string;
 }
 
+const MAX_A11Y_PILL_RULES = 3;
+
+function topA11yRuleIds(scans: NonNullable<TestResult['categories'][number]['axe']>['scans']): string[] {
+  // Collect (ruleId → max nodes across viewports) so the pill always surfaces
+  // the noisiest rules rather than scan order, then cap at a few so long tail
+  // of rules doesn't overflow the card head.
+  const byRule = new Map<string, number>();
+  for (const scan of scans) {
+    for (const v of scan.violations) {
+      const prev = byRule.get(v.ruleId) ?? 0;
+      if (v.nodes.length > prev) byRule.set(v.ruleId, v.nodes.length);
+    }
+  }
+  const sorted = [...byRule.entries()].sort((a, b) => b[1] - a[1]);
+  const picked = sorted.slice(0, MAX_A11Y_PILL_RULES).map(([id]) => id);
+  const leftover = sorted.length - picked.length;
+  return leftover > 0 ? [...picked, `+${leftover} more`] : picked;
+}
+
 function pillsForTest(test: TestResult): PillSpec[] {
   // A single test can emit several pills at once: each category that errored
   // contributes an `errored` pill, and each perf category contributes a
@@ -29,6 +48,12 @@ function pillsForTest(test: TestResult): PillSpec[] {
     }
     if (c.category === 'visreg' && c.status === 'visual_change') {
       pills.push({ status: 'visual_change' });
+    }
+    if (c.category === 'axe' && c.axe && !c.axe.skipped && c.axe.totalViolations > 0) {
+      pills.push({
+        status: 'a11y_violation',
+        detail: topA11yRuleIds(c.axe.scans).join(', '),
+      });
     }
   }
   return pills.length > 0 ? pills : [{ status: 'no_difference' }];

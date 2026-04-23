@@ -5,10 +5,11 @@ export type Status =
   | 'error'
   | 'regression'
   | 'visual_change'
+  | 'a11y_violation'
   | 'improvement'
   | 'no_difference';
 
-export type Category = 'visreg' | 'perf';
+export type Category = 'visreg' | 'perf' | 'axe';
 
 export interface VisregArtifact {
   viewportLabel: string;
@@ -73,6 +74,46 @@ export interface PerfArtifact {
   diffHrefs: { label: string; href: string }[];
 }
 
+export interface AxeViolationNodeArtifact {
+  /**
+   * Axe returns target as `string | string[]` per node, wrapped in an outer
+   * array when the failing element lives inside an iframe/shadow root. We
+   * preserve that nesting verbatim so the report can render breadcrumbs.
+   */
+  target: Array<string | string[]>;
+  /** Truncated to 500 chars per node for report size — see requirement 4.2. */
+  html: string;
+  /** Truncated to 2000 chars per node — see requirement 4.2. */
+  failureSummary: string;
+}
+
+export interface AxeViolationArtifact {
+  ruleId: string;
+  impact: 'minor' | 'moderate' | 'serious' | 'critical' | null;
+  help: string;
+  helpUrl: string;
+  nodes: AxeViolationNodeArtifact[];
+}
+
+export interface AxeScanArtifact {
+  viewportLabel: string;
+  url: string;
+  violations: AxeViolationArtifact[];
+}
+
+export interface AxeArtifact {
+  scans: AxeScanArtifact[];
+  /** Sum of `violations[].length` across every scan. */
+  totalViolations: number;
+  /** True when the test opted out via `options.axe.skip`. */
+  skipped: boolean;
+  effectiveConfig: {
+    tags: string[];
+    disableRules: string[];
+    includeRules: string[] | null;
+  };
+}
+
 export interface CategoryResult {
   category: Category;
   status: Status;
@@ -91,6 +132,7 @@ export interface CategoryResult {
   errorLog?: string | null;
   visreg?: VisregArtifact[];
   perf?: PerfArtifact;
+  axe?: AxeArtifact;
 }
 
 export interface TestResult {

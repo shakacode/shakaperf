@@ -5,6 +5,7 @@ export {
   TestType,
 } from './ab-test-registry';
 export type {
+  AbTestAxeConfig,
   AbTestDefinition,
   AbTestOptions,
   AbTestVisregConfig,

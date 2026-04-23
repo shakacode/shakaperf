@@ -1,5 +1,6 @@
 import * as os from 'node:os';
 import { z } from 'zod';
+import { AxeGlobalConfigSchema } from 'shaka-accessibility';
 import { TwinServersConfigSchema } from '../twin-servers/types';
 
 const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
@@ -80,6 +81,10 @@ export const AbTestsConfigSchema = z.object({
   shared: SharedConfigSchema.optional().default({}),
   visreg: VisregConfigSchema.optional().default({}),
   perf: PerfConfigSchema.optional().default({}),
+  // Re-exported from shaka-accessibility so the `axe` block in
+  // `abtests.config.ts` parses once and is consumed by both the standalone
+  // `shaka-perf axe` command and `shaka-perf compare --categories axe`.
+  axe: AxeGlobalConfigSchema.optional().default({}),
   twinServers: TwinServersConfigSchema.optional(),
 });
 
@@ -89,6 +94,7 @@ export type AbTestsConfig = z.infer<typeof AbTestsConfigSchema>;
 export type SharedConfig = z.infer<typeof SharedConfigSchema>;
 export type VisregConfig = z.infer<typeof VisregConfigSchema>;
 export type PerfConfig = z.infer<typeof PerfConfigSchema>;
+export type AxeConfig = z.infer<typeof AxeGlobalConfigSchema>;
 
 export function defineConfig(config: AbTestsConfigInput): AbTestsConfigInput {
   return config;

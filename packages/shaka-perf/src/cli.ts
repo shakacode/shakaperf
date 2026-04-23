@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { createAxeCommand } from 'shaka-accessibility/cli';
 import {
   DEFAULT_CONTROL_URL,
   DEFAULT_EXPERIMENT_URL,
@@ -78,8 +79,11 @@ async function main(): Promise<void> {
     controlURLDefault: defaults.controlURL,
     experimentURLDefault: defaults.experimentURL,
   });
+  const axeCmd = createAxeCommand({
+    experimentURLDefault: defaults.experimentURL,
+  });
 
-  for (const cmd of [compareCmd, ...createTwinServersCommands()]) {
+  for (const cmd of [compareCmd, axeCmd, ...createTwinServersCommands()]) {
     program.addCommand(cmd);
   }
 

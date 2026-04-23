@@ -3,7 +3,7 @@ import { addCompareOptions } from 'shaka-shared';
 import { runCompare } from '../run';
 import type { Category } from '../report';
 
-const VALID_CATEGORIES: Category[] = ['visreg', 'perf'];
+const VALID_CATEGORIES: Category[] = ['visreg', 'perf', 'axe'];
 
 function parseCategories(value: string): Category[] {
   const parts = value.split(',').map((p) => p.trim()).filter(Boolean);
@@ -22,7 +22,7 @@ export interface CreateCompareCommandOptions {
 
 export function createCompareCommand(options: CreateCompareCommandOptions = {}): Command {
   const cmd = new Command('compare')
-    .description('Run visreg + perf comparison and produce a single self-contained HTML report')
+    .description('Run visreg + perf + a11y comparison and produce a single self-contained HTML report')
     .option(
       '--categories <list>',
       `Comma-separated list of categories to run (${VALID_CATEGORIES.join(', ')})`,
@@ -30,7 +30,7 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
       VALID_CATEGORIES,
     )
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
-    .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
+    .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg, perf, or axe', false)
     .action(async function (this: Command) {
       const opts = this.opts();
       const result = await runCompare({

@@ -4,6 +4,7 @@ const STATUS_LABEL: Record<Status, string> = {
   error: 'errored',
   regression: 'regressed',
   visual_change: 'visual change',
+  a11y_violation: 'a11y',
   improvement: 'improved',
   no_difference: 'no diff',
 };
