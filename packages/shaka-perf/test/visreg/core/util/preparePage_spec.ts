@@ -45,6 +45,7 @@ describe('preparePage', function () {
     file: null,
     line: null,
     options: {},
+    testTypes: null,
     testFn: async function () {},
   };
 
