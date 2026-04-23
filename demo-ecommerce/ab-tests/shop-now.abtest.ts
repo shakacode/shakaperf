@@ -3,6 +3,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click Shop Now on the homepage', {
   startingPath: '/',
+  testTypes: [TestType.Performance],
   options: {
     visreg: {
       misMatchThreshold: 0.1,
@@ -16,8 +17,4 @@ abTest('Click Shop Now on the homepage', {
   await page.click('text=Shop Now');
   annotate('Wait for navigation to products page');
   await page.waitForURL('**/products');
-  if (testType === TestType.VisualRegression) {
-    annotate('Wait for products page to settle');
-    await waitUntilPageSettled(page);
-  }
 });

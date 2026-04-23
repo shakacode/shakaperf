@@ -3,6 +3,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
+  testTypes: [TestType.VisualRegression],
   options: {
     visreg: {
       delay: 50,
@@ -31,7 +32,7 @@ abTest('Admin Dashboard - Cookie Login', {
 });
 
 abTest('Admin Orders - Form Login Interaction', {
-  startingPath: '/admin/orders',
+  startingPath: '/admin/login',
   options: {
     visreg: {
       delay: 50,
@@ -56,8 +57,8 @@ abTest('Admin Orders - Form Login Interaction', {
     throw new Error('Admin login interaction did not navigate away from /admin/login.');
   }
 
-  annotate('Navigate to admin orders page');
-  await page.goto(new URL(scenario.startingPath, url).href);
+  annotate('Click on the Orders list item to navigate to admin orders page');
+  await page.locator('span.MuiTypography-root:has-text("Orders")').click();
   annotate('Wait for orders page to settle');
   await waitUntilPageSettled(page);
 });
