@@ -535,13 +535,13 @@ input {
    so it keeps its real intrinsic aspect, and we scale it via `width:` and
    position it via `transform: translate` in % of the image's own box.
 
-   `max-height` caps extremely tall crops (narrow-wide bboxes in phone
-   screenshots); the aspect-ratio yields to max-height and the absolute-
-   positioned image just gets its bottom clipped — the important part of
-   the diff sits at the top of the crop region. */
+   `--crop-h` is set to a large sentinel (see `tripletVarsFor`), so the
+   aspect-ratio wants a very tall container; `max-height` then clips the
+   triplet to a fixed vertical budget. The image is anchored at the top
+   of the first diff, so only the far-below content is clipped. */
 .visreg-card__images--crop .visreg-card__img {
   aspect-ratio: calc(var(--crop-w) / var(--crop-h));
-  max-height: 320px;
+  max-height: 500px;
   position: relative;
   overflow: hidden;
 }

@@ -22,6 +22,12 @@ function CardHead({ row, showDiffChip }: { row: VisregArtifact; showDiffChip?: b
   );
 }
 
+// Horizontal padding around the first-diff bbox so the crop shows a bit of
+// surrounding context on either side of the change. The Y axis is not
+// padded: the crop anchors at the *top* of the first diff per the product
+// spec, and vertical extent is controlled by CSS `max-height` clipping.
+const CROP_PAD_PX = 5;
+
 /**
  * Consumed by CSS inside `.visreg-card__images--crop` to scale+offset each
  * image inside its container so the first-diff bbox fills the card. The
@@ -29,15 +35,22 @@ function CardHead({ row, showDiffChip }: { row: VisregArtifact; showDiffChip?: b
  * <img> gets its own --img-h — pixelmatch pads to `max(control, experiment)`
  * so the three images often differ in natural height, and the Y offset has
  * to reference each image's real height to land on the same source pixels.
+ *
+ * `--crop-h` is intentionally set to a very large value so the card's
+ * `aspect-ratio` resolves to a super-tall container; the CSS `max-height`
+ * then clips it to a fixed pixel budget, giving us "scale to diff width,
+ * then show up to N vertical pixels from the top of the diff downward".
  */
 function tripletVarsFor(row: VisregArtifact): CSSProperties | undefined {
   const b = row.diffBbox;
   if (!b) return undefined;
+  const cropX = Math.max(0, b.x - CROP_PAD_PX);
+  const cropW = Math.min(b.imgW - cropX, b.w + CROP_PAD_PX * 2);
   return {
-    ['--crop-x' as string]: b.x,
+    ['--crop-x' as string]: cropX,
     ['--crop-y' as string]: b.y,
-    ['--crop-w' as string]: b.w,
-    ['--crop-h' as string]: b.h,
+    ['--crop-w' as string]: cropW,
+    ['--crop-h' as string]: 10000,
     ['--img-w' as string]: b.imgW,
   };
 }
