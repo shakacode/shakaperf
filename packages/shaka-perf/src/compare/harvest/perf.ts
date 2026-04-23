@@ -239,10 +239,9 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       const nb = parseInt(b.match(/\d+/)![0], 10);
       return nb - na;
     })[0] ?? null;
-  // bench now emits a single stacked diff.html per test (was per-artifact
-  // `*.diff.html` — network + profile). Keep the array shape and legacy-name
-  // fallback so old snapshots and mid-migration runs both work.
-  const diffFiles = files.filter((f) => f === 'diff.html' || f.endsWith('.diff.html'));
+  // bench emits one `<artifact>.diff.html` per txt pair (network_activity,
+  // performance_profile.summary, …) so each gets its own button in the report.
+  const diffFiles = files.filter((f) => f.endsWith('.diff.html')).sort();
 
   // Only inline the preview SVG when the test actually moved off
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
@@ -298,13 +297,8 @@ function urlHostSegment(url: string): string {
 }
 
 function prettyDiffLabel(filename: string): string {
-  if (filename === 'diff.html') return 'diff';
   const base = filename.replace(/\.diff\.html$/, '');
-  // Legacy-name fallback: bench named per-artifact diff files
-  // "network_activity.diff.html" / "performance_profile.summary.diff.html"
-  // (optionally prefixed with "<slug>__"). Strip the prefix before labeling.
-  const stripped = base.replace(/^[^_]+__/, '');
-  if (stripped === 'network_activity') return 'network diff';
-  if (stripped === 'performance_profile.summary') return 'profile diff';
-  return `${stripped.replace(/_/g, ' ')} diff`;
+  if (base === 'network_activity') return 'network diff';
+  if (base === 'performance_profile.summary') return 'profile diff';
+  return `${base.replace(/_/g, ' ')} diff`;
 }

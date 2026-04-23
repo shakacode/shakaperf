@@ -14,28 +14,25 @@ export interface GenerateHtmlDiffsOptions {
 }
 
 /**
- * Builds a single diff.html that stacks every control/experiment .txt pair
- * found in `testResultsFolder` as separate file sections. Diff2Html renders
- * each pair as a collapsible panel, so reviewers see network_activity +
- * performance_profile.summary (and any future text artifacts) in one place.
- *
- * Returns the written path, or null when no pair produced a diff.
+ * Emits one `<artifact>.diff.html` per control/experiment .txt pair — keeps
+ * network_activity and performance_profile.summary diffs as separate artifacts
+ * so the report can surface a dedicated button for each.
  */
-export function generateHtmlDiffs(options: GenerateHtmlDiffsOptions): string | null {
+export function generateHtmlDiffs(options: GenerateHtmlDiffsOptions): string[] {
   const { testResultsFolder, controlURL, experimentURL } = options;
 
   const controlPattern = hostPatternFromUrl(controlURL);
   const experimentPattern = hostPatternFromUrl(experimentURL);
 
   if (!existsSync(testResultsFolder)) {
-    return null;
+    return [];
   }
 
   const allFiles = readdirSync(testResultsFolder);
   const txtFiles = allFiles.filter((f) => f.endsWith('.txt')).sort();
   const controlFiles = txtFiles.filter((f) => f.startsWith(controlPattern));
 
-  const sections: string[] = [];
+  const generatedFiles: string[] = [];
   for (const controlFile of controlFiles) {
     const experimentFile = controlFile.replace(controlPattern, experimentPattern);
     const controlPath = path.join(testResultsFolder, controlFile);
@@ -43,20 +40,19 @@ export function generateHtmlDiffs(options: GenerateHtmlDiffsOptions): string | n
     if (!existsSync(experimentPath)) continue;
     const diffContent = generateUnifiedDiff(controlPath, experimentPath);
     if (!diffContent) continue;
-    sections.push(diffContent);
+
+    const artifactSuffix = controlFile
+      .replace(controlPattern, '')
+      .replace(/^_+/, '')
+      .replace(/\.txt$/, '');
+    const title = artifactSuffix.replace(/_/g, ' ');
+    const outputPath = path.join(testResultsFolder, `${artifactSuffix}.diff.html`);
+
+    const html = buildDiffHtml(diffContent, title);
+    writeFileSync(outputPath, html, 'utf8');
+    generatedFiles.push(outputPath);
+    console.log(`HTML diff: ${outputPath}`);
   }
 
-  if (sections.length === 0) {
-    return null;
-  }
-
-  const outputPath = path.join(testResultsFolder, 'diff.html');
-  // Multiple diff blocks concatenated produce a valid multi-file unified diff;
-  // Diff2Html renders each "--- / +++" block as its own file panel.
-  const html = buildDiffHtml(sections.join('\n'), 'Control vs experiment', {
-    drawFileList: true,
-  });
-  writeFileSync(outputPath, html, 'utf8');
-  console.log(`HTML diff: ${outputPath}`);
-  return outputPath;
+  return generatedFiles;
 }
