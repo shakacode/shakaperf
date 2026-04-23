@@ -48,11 +48,10 @@ describe('core report', function () {
     report = require('../../../../src/visreg/core/command/report') as unknown as typeof report;
   });
 
-  it('should generate two json reports and a default browser report when config.report specifies json', function () {
+  it('should generate the compare json and report.json when config.report specifies json', function () {
     return report.execute(config).then(() => {
-      expect(writeFileStub).toHaveBeenCalledTimes(3);
+      expect(writeFileStub).toHaveBeenCalledTimes(2);
       expect(writeFileStub).toHaveBeenCalledWith('/compareJson', expect.anything());
-      expect(writeFileStub).toHaveBeenCalledWith('/compareConfig', expect.anything());
       expect(writeFileStub).toHaveBeenCalledWith('/html_report/report.json', expect.anything());
     });
   });

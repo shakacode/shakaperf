@@ -1,10 +1,13 @@
 description: |
-  Scheduled A/B performance testing workflow that runs on a cron schedule (e.g. nightly).
-  Uses an S3-stored control commit SHA as the control point instead of git merge-base.
+  Scheduled A/B performance + visual-regression workflow that runs on a cron
+  schedule (e.g. nightly). Uses an S3-stored control commit SHA as the control
+  point instead of git merge-base.
 
   When tests pass, the control automatically advances to the current HEAD.
   When tests fail, you can click the "approve-control-update" approval job in
   CircleCI to acknowledge the regression and advance the control anyway.
+
+  Requires `abtests.config.ts` in the project root.
 
   ## CircleCI Setup
 
@@ -40,7 +43,7 @@ usage:
       default: false
 
   orbs:
-    twin-servers: shaka-perf/twin-servers@1.0.3
+    shaka-perf: shakacode/shaka-perf@1.0.0
 
   workflows:
     # Guard your normal workflows so they don't run on scheduled triggers
@@ -55,7 +58,7 @@ usage:
     scheduled-perf-tests:
       when: << pipeline.parameters.run-scheduled-perf-tests >>
       jobs:
-        - twin-servers/build-experiment:
+        - shaka-perf/build-experiment:
             image-name: my-app
             working-directory: my-app
             setup-steps:
@@ -63,7 +66,7 @@ usage:
                   name: Install dependencies
                   command: npm install
 
-        - twin-servers/build-control:
+        - shaka-perf/build-control:
             image-name: my-app
             working-directory: my-app
             setup-steps:
@@ -74,18 +77,27 @@ usage:
                   name: Set S3 environment variables
                   command: |
                     echo 'export S3_BUCKET=my-perf-control-bucket' >> "$BASH_ENV"
-              - twin-servers/download-control-commit-sha
+              - shaka-perf/download-control-commit-sha
 
-        - twin-servers/run-tests:
+        - shaka-perf/run-tests:
             name: scheduled-perf-tests
             requires:
-              - twin-servers/build-experiment
-              - twin-servers/build-control
+              - shaka-perf/build-experiment
+              - shaka-perf/build-control
+            working-directory: my-app
             server-command: 'npm start'
-            test-command: 'npm run perf:test'
+            post-steps:
+              - run:
+                  name: Run shaka-perf compare
+                  command: |
+                    cd my-app
+                    npx shaka-perf compare
+              - store_artifacts:
+                  path: my-app/compare-results
+                  destination: shaka-perf-compare-report
 
         # Auto-advance control when all tests pass
-        - twin-servers/update-control-commit-sha:
+        - shaka-perf/update-control-commit-sha:
             requires:
               - scheduled-perf-tests
 
@@ -93,10 +105,10 @@ usage:
         - approve-control-update:
             type: approval
             requires:
-              - twin-servers/build-experiment
-              - twin-servers/build-control
+              - shaka-perf/build-experiment
+              - shaka-perf/build-control
 
-        - twin-servers/update-control-commit-sha:
+        - shaka-perf/update-control-commit-sha:
             name: force-update-control
             requires:
               - approve-control-update

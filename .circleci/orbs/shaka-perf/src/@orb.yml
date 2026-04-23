@@ -1,10 +1,13 @@
 version: 2.1
 
 description: |
-  A/B performance testing infrastructure for comparing Docker-based application
-  versions. Builds twin Docker images (control from merge-base, experiment from
-  current branch) and runs comparative performance tests using the shaka-perf
-  npm package (twin-servers subcommand).
+  A/B performance and visual-regression testing infrastructure for comparing
+  Docker-based application versions. Builds twin Docker images (control from
+  merge-base, experiment from current branch) via the shaka-perf npm package's
+  `twins-*` command family, then drives the unified `shaka-perf compare`
+  command as a post-step to produce a single self-contained HTML report
+  covering both visreg and perf results. Requires `abtests.config.ts` in the
+  consumer project.
 
 display:
   source_url: https://github.com/shakacode/shakaperf/

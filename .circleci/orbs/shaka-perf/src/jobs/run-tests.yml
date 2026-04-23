@@ -14,7 +14,7 @@ parameters:
   working-directory:
     type: string
     default: '.'
-    description: 'Directory containing twin-servers.config.ts'
+    description: 'Directory containing abtests.config.ts'
   server-command:
     type: string
     description: 'Command to start the server in each container'
