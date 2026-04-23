@@ -2,12 +2,14 @@ import { useState } from 'react';
 import type { CategoryResult, TestResult } from '../types';
 import { VisregSlot } from './VisregSlot';
 import { PerfSlot } from './PerfSlot';
+import { AxeSlot } from './AxeSlot';
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
 
 const LABEL = {
   visreg: 'visreg',
   perf: 'perf',
+  axe: 'a11y',
 } as const;
 
 /**
@@ -68,11 +70,17 @@ function SlotError({
 }
 
 export function CategorySlot({ result, test }: { result: CategoryResult; test: TestResult }) {
+  // Skipped a11y scans hide their slot entirely per requirement 3.10 —
+  // not even the engine-error surface (there can't be one for a skip).
+  if (result.category === 'axe' && result.axe?.skipped && !result.error) {
+    return null;
+  }
   return (
     <div>
       {result.error ? <SlotError result={result} test={test} /> : null}
       {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
       {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} test={test} /> : null}
+      {result.category === 'axe' && result.axe ? <AxeSlot axe={result.axe} /> : null}
     </div>
   );
 }

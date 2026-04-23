@@ -8,11 +8,18 @@ import { Section } from './components/Section';
 import { TestCard } from './components/TestCard';
 import { ErrorBanner } from './components/ErrorBanner';
 
-const VISIBLE_BY_DEFAULT: Status[] = ['error', 'regression', 'visual_change', 'improvement'];
+const VISIBLE_BY_DEFAULT: Status[] = [
+  'error',
+  'regression',
+  'visual_change',
+  'a11y_violation',
+  'improvement',
+];
 const ZERO_COUNTS: Record<Status, number> = {
   error: 0,
   regression: 0,
   visual_change: 0,
+  a11y_violation: 0,
   improvement: 0,
   no_difference: 0,
 };
@@ -29,6 +36,7 @@ function testStatuses(test: TestResult): Status[] {
   let hasRegression = false;
   let hasImprovement = false;
   let hasVisual = false;
+  let hasA11y = false;
   for (const c of test.categories) {
     if (c.error) hasError = true;
     if (c.category === 'perf' && c.perf) {
@@ -36,11 +44,15 @@ function testStatuses(test: TestResult): Status[] {
       if (c.perf.improvedMetrics.length > 0) hasImprovement = true;
     }
     if (c.category === 'visreg' && c.status === 'visual_change') hasVisual = true;
+    if (c.category === 'axe' && c.axe && !c.axe.skipped && c.axe.totalViolations > 0) {
+      hasA11y = true;
+    }
   }
   const out: Status[] = [];
   if (hasError) out.push('error');
   if (hasRegression) out.push('regression');
   if (hasVisual) out.push('visual_change');
+  if (hasA11y) out.push('a11y_violation');
   if (hasImprovement) out.push('improvement');
   if (out.length === 0) out.push('no_difference');
   return out;
@@ -80,6 +92,7 @@ export function App({ data }: { data: ReportData }) {
       error: [],
       regression: [],
       visual_change: [],
+      a11y_violation: [],
       improvement: [],
       no_difference: [],
     };
