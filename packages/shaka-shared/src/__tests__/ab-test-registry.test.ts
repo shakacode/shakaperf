@@ -167,19 +167,20 @@ describe('ab-test-registry', () => {
               readyTimeout: 10000,
               delay: 200,
               cookiePath: 'cookies.json',
-              viewports: [{ label: 'mobile', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 }],
             },
+            viewports: ['desktop'],
           },
         },
         async () => {},
       );
 
       const tests = getRegisteredTests();
-      const visreg = tests[0].options.visreg!;
+      const stored = tests[0].options;
+      const visreg = stored.visreg!;
       expect(visreg.selectors).toEqual(['[data-cy="hero"]']);
       expect(visreg.misMatchThreshold).toBe(0.1);
       expect(visreg.readyEvent).toBe('app:ready');
-      expect(visreg.viewports).toEqual([{ label: 'mobile', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 }]);
+      expect(stored.viewports).toEqual(['desktop']);
     });
   });
 });

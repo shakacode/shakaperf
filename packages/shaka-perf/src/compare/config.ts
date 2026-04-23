@@ -19,6 +19,62 @@ export const ViewportSchema: z.ZodType<Viewport> = z.object({
   deviceScaleFactor: z.number().positive(),
 });
 
+/**
+ * A non-empty array of full-definition viewports with unique labels. Label
+ * uniqueness is load-bearing: every per-viewport concept in the runner
+ * (bucket Map keys, `perf-<label>` subdirs, VisregArtifact.viewportLabel,
+ * test-level narrowing references) keys off `viewport.label`, so a
+ * duplicate would silently collapse runs and clobber artifacts.
+ */
+function viewportArray(defaults: [Viewport, ...Viewport[]]) {
+  return z
+    .array(ViewportSchema)
+    .nonempty()
+    .superRefine((arr, ctx) => {
+      const seen = new Set<string>();
+      const duplicates = new Set<string>();
+      for (const v of arr) {
+        if (seen.has(v.label)) duplicates.add(v.label);
+        seen.add(v.label);
+      }
+      if (duplicates.size > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `duplicate viewport label(s): ${[...duplicates].join(', ')}`,
+        });
+      }
+    })
+    .default(defaults);
+}
+
+/**
+ * A non-empty array of viewport LABELS (strings). Used by `visreg.viewports`
+ * and `perf.viewports`, which reference the full definitions in
+ * `shared.viewports`. Label-set existence (every label must be defined in
+ * shared) is validated at the root schema level — we can't refine there
+ * without cross-schema access.
+ */
+function viewportLabelArray(defaults: [string, ...string[]]) {
+  return z
+    .array(z.string())
+    .nonempty()
+    .superRefine((arr, ctx) => {
+      const seen = new Set<string>();
+      const duplicates = new Set<string>();
+      for (const l of arr) {
+        if (seen.has(l)) duplicates.add(l);
+        seen.add(l);
+      }
+      if (duplicates.size > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `duplicate viewport label(s): ${[...duplicates].join(', ')}`,
+        });
+      }
+    })
+    .default(defaults);
+}
+
 export type { Viewport };
 
 const EngineOptionsSchema = z
@@ -45,17 +101,23 @@ export const SharedConfigSchema = z
     testPathPattern: z.string().optional(),
     filter: z.string().optional(),
     resultsFolder: z.string().default('compare-results'),
+    /**
+     * Full-definition viewports (label + dimensions + formFactor + DPR).
+     * Single source of truth; `visreg.viewports` and `perf.viewports`
+     * reference these by label, and per-test `options.viewports` narrows
+     * which labels a given test runs at.
+     */
+    viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
   });
 
 export const VisregConfigSchema = z
   .object({
-    // Tuple cast so `nonempty().default(...)` type-checks — Zod's non-empty
-    // array contract is a `[T, ...T[]]` shape.
-    viewports: z.array(ViewportSchema).nonempty().default([
-      DESKTOP_VIEWPORT,
-      TABLET_VIEWPORT,
-      PHONE_VIEWPORT,
-    ] as [Viewport, ...Viewport[]]),
+    /**
+     * Labels (from `shared.viewports`) that visreg runs at. Default matches
+     * the three canonical devices; narrow here to skip specific breakpoints
+     * for all tests, or narrow per-test via `options.viewports`.
+     */
+    viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
     defaultMisMatchThreshold: z.number().nonnegative().default(0.1),
     compareRetries: z.number().int().nonnegative().default(2),
     compareRetryDelay: z.number().int().nonnegative().default(500),
@@ -84,20 +146,12 @@ export const PerfConfigSchema = z
     parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
     sampleTimeoutMs: z.number().int().positive().default(120000),
     /**
-     * Viewports measured for every perf test. The sole source of
-     * truth for Lighthouse's `formFactor` / `screenEmulation` — those
-     * fields in `lighthouseConfig` would be overwritten by the per-
-     * viewport overlay, so don't bother setting them there. Default
-     * measures desktop + phone so device-specific regressions are not
-     * missed.
-     *
-     * Per-test override available via `abTest(…, { options: { perf: {
-     * viewports: [...] } } }, …)`.
+     * Labels (from `shared.viewports`) that perf runs at. Default is
+     * desktop + phone so device-specific regressions aren't missed.
+     * Narrow here to skip breakpoints for all tests, or per-test via
+     * `options.viewports`.
      */
-    viewports: z.array(ViewportSchema).nonempty().default([
-      DESKTOP_VIEWPORT,
-      PHONE_VIEWPORT,
-    ] as [Viewport, ...Viewport[]]),
+    viewports: viewportLabelArray(['desktop', 'phone']),
     // Runtime is a loose record; the TS type narrows it to
     // `PerfLighthouseConfig` so `formFactor` / `screenEmulation` can't be
     // set here — viewports own those, and a compile error beats a runtime
@@ -108,19 +162,54 @@ export const PerfConfigSchema = z
     plotTitle: z.string().optional(),
   });
 
-export const AbTestsConfigSchema = z.object({
-  shared: SharedConfigSchema.optional().default({}),
-  visreg: VisregConfigSchema.optional().default({}),
-  perf: PerfConfigSchema.optional().default({}),
-  twinServers: TwinServersConfigSchema.optional(),
-});
+export const AbTestsConfigSchema = z
+  .object({
+    shared: SharedConfigSchema.optional().default({}),
+    visreg: VisregConfigSchema.optional().default({}),
+    perf: PerfConfigSchema.optional().default({}),
+    twinServers: TwinServersConfigSchema.optional(),
+  })
+  .superRefine((cfg, ctx) => {
+    // Cross-schema: every category's viewport label must be defined in
+    // `shared.viewports`. Catches typos ("dekstop") and wrong references
+    // at parse time rather than "no viewport matched" at run time.
+    const knownLabels = new Set(cfg.shared.viewports.map((v) => v.label));
+    for (const category of ['visreg', 'perf'] as const) {
+      for (const label of cfg[category].viewports) {
+        if (!knownLabels.has(label)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [category, 'viewports'],
+            message:
+              `unknown viewport label "${label}" — ` +
+              `define it in shared.viewports or drop it here. ` +
+              `Known: ${[...knownLabels].join(', ')}`,
+          });
+        }
+      }
+    }
+  });
+
+// Zod's inferred shape: category viewports are string[]. We resolve these
+// into full Viewport[] in `parseAbTestsConfig` so downstream code receives
+// the same rich objects it did before the label-indirection refactor.
+type AbTestsConfigParsed = z.infer<typeof AbTestsConfigSchema>;
 
 export type AbTestsConfigInput = z.input<typeof AbTestsConfigSchema>;
-export type AbTestsConfig = z.infer<typeof AbTestsConfigSchema>;
 
 export type SharedConfig = z.infer<typeof SharedConfigSchema>;
-export type VisregConfig = z.infer<typeof VisregConfigSchema>;
-export type PerfConfig = z.infer<typeof PerfConfigSchema>;
+export type VisregConfig = Omit<z.infer<typeof VisregConfigSchema>, 'viewports'> & {
+  viewports: Viewport[];
+};
+export type PerfConfig = Omit<z.infer<typeof PerfConfigSchema>, 'viewports'> & {
+  viewports: Viewport[];
+};
+export interface AbTestsConfig {
+  shared: SharedConfig;
+  visreg: VisregConfig;
+  perf: PerfConfig;
+  twinServers?: AbTestsConfigParsed['twinServers'];
+}
 
 export function defineConfig(config: AbTestsConfigInput): AbTestsConfigInput {
   return config;
@@ -133,5 +222,14 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     const where = first.path.join('.');
     throw new Error(where ? `${where}: ${first.message}` : first.message);
   }
-  return result.data;
+  const parsed = result.data;
+  const byLabel = new Map(parsed.shared.viewports.map((v) => [v.label, v]));
+  const resolve = (labels: string[]): Viewport[] =>
+    labels.map((l) => byLabel.get(l)!); // safe: root superRefine validated membership
+  return {
+    shared: parsed.shared,
+    visreg: { ...parsed.visreg, viewports: resolve(parsed.visreg.viewports) },
+    perf: { ...parsed.perf, viewports: resolve(parsed.perf.viewports) },
+    twinServers: parsed.twinServers,
+  };
 }

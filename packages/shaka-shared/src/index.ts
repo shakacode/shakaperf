@@ -11,7 +11,6 @@ export type {
   AbTestDefinition,
   AbTestOptions,
   AbTestVisregConfig,
-  AbTestPerfConfig,
   TestFnContext,
   Marker,
   Viewport,

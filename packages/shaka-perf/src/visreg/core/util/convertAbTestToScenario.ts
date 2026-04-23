@@ -46,7 +46,11 @@ export function convertAbTestToScenario(
 
   if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
   if (visreg.onBefore) scenario.onBefore = visreg.onBefore;
-  if (visreg.viewports) scenario.viewports = visreg.viewports;
+  // Per-test viewport narrowing moved to top-level `options.viewports`
+  // (label-based, shared across categories). The compare runner intersects
+  // it with `visreg.viewports` at harvest time and emits a `skipped`
+  // CategoryResult on empty overlap; the engine keeps running at the
+  // global viewport list.
 
   return scenario;
 }

@@ -6,7 +6,17 @@ export type Status =
   | 'regression'
   | 'visual_change'
   | 'improvement'
-  | 'no_difference';
+  | 'no_difference'
+  /**
+   * Category was skipped for this test because the intersection of
+   * `options.viewports` (test narrow) and the category's own `viewports`
+   * is empty — e.g. a test tagged `viewports: ['desktop']` against
+   * `perf.viewports: ['phone']` produces no perf work. Rendered as a
+   * small "skipped by viewport filter" banner; does not propagate to the
+   * test-level status (a skipped perf category doesn't override a visreg
+   * change).
+   */
+  | 'skipped';
 
 export type Category = 'visreg' | 'perf';
 
@@ -107,6 +117,13 @@ export interface CategoryResult {
    * produced `error`, embedded so the report stays self-contained.
    */
   errorLog?: string | null;
+  /**
+   * Explanation shown when `status === 'skipped'`, e.g. "skipped: test's
+   * viewport narrow ['desktop'] matches no perf viewport". Not an `error`
+   * because skipping is intentional and must not promote the test-level
+   * status to `error`.
+   */
+  skipReason?: string;
   visreg?: VisregArtifact[];
   /**
    * One entry per viewport this test was measured at. Always an array

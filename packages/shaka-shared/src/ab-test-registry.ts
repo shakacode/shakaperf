@@ -83,25 +83,23 @@ export interface AbTestVisregConfig {
 
   // Lifecycle hook — runs before page navigation
   onBefore?: (context: TestFnContext) => Promise<void>;
-
-  // Viewport override
-  viewports?: Viewport[];
-}
-
-export interface AbTestPerfConfig {
-  /**
-   * Overrides the global `perf.viewports` default for this single test —
-   * e.g. a dashboard screen that only makes sense at desktop widths can
-   * set `viewports: [desktopViewport]` and skip the phone pass.
-   */
-  viewports?: Viewport[];
 }
 
 export interface AbTestOptions {
   markers?: Marker[];
   resultsFolder?: string;
   visreg?: AbTestVisregConfig;
-  perf?: AbTestPerfConfig;
+  /**
+   * Narrows which viewports this test runs at (applies to every category).
+   * References labels from `shared.viewports`; the intersection with each
+   * category's `viewports` list is what actually executes. If the
+   * intersection is empty for a category, the test is skipped there with
+   * a visible "skipped by viewport filter" marker on the report card.
+   *
+   * Example: test dashboards only render usefully at desktop widths —
+   * `options: { viewports: ['desktop'] }` skips the phone/tablet passes.
+   */
+  viewports?: string[];
 }
 
 export interface AbTestDefinition {

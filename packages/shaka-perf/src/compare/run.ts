@@ -63,13 +63,23 @@ function perfRootFor(resultsRoot: string, viewport: Viewport): string {
 }
 
 /**
- * Viewports a single perf test should be measured at. `options.perf.viewports`
- * overrides the global `perfConfig.viewports` default when present and
- * non-empty.
+ * Resolves the viewports a single test should run at for a given category.
+ * Returns the intersection of the category's `viewports` and the test's
+ * `options.viewports` narrow (if any). An empty result means the category
+ * is SKIPPED for this test — callers surface it as `status: 'skipped'`.
+ *
+ * Config-level viewports are validated by Zod; per-test `options.viewports`
+ * bypasses Zod (plain-TS test files) so unknown labels are silently
+ * ignored here — they just won't intersect with anything.
  */
-function perfViewportsForTest(test: AbTestDefinition, perfConfig: PerfConfig): Viewport[] {
-  const override = test.options.perf?.viewports;
-  return override && override.length > 0 ? override : perfConfig.viewports;
+function resolveViewportsForTest(
+  test: AbTestDefinition,
+  categoryViewports: Viewport[],
+): Viewport[] {
+  const narrow = test.options.viewports;
+  if (!narrow || narrow.length === 0) return categoryViewports;
+  const narrowSet = new Set(narrow);
+  return categoryViewports.filter((v) => narrowSet.has(v.label));
 }
 
 function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
@@ -135,13 +145,11 @@ export interface CompareRunResult {
 export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareRunResult> {
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
-  const shared = config.shared ?? {};
-  const visregConfig: VisregConfig = config.visreg ?? {};
-  const perfConfig: PerfConfig = config.perf ?? {};
+  const { shared, visreg: visregConfig, perf: perfConfig } = config;
 
-  const controlURL = opts.controlURL ?? shared.controlURL ?? 'http://localhost:3020';
-  const experimentURL = opts.experimentURL ?? shared.experimentURL ?? 'http://localhost:3030';
-  const resultsRoot = path.resolve(cwd, shared.resultsFolder ?? 'compare-results');
+  const controlURL = opts.controlURL ?? shared.controlURL;
+  const experimentURL = opts.experimentURL ?? shared.experimentURL;
+  const resultsRoot = path.resolve(cwd, shared.resultsFolder);
   const categories = opts.categories ?? DEFAULT_CATEGORIES;
 
   // Load tests once up-front so we know the full set before delegating; both
@@ -194,12 +202,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  // Bucket tests by the perf viewport they asked for — global default or
-  // a per-test override. Each bucket becomes one bench pass; a test that
-  // wants both desktop and phone shows up in both buckets.
+  // Bucket tests by the perf viewport they resolved to (category viewports ∩
+  // test narrow). Each bucket becomes one bench pass. A test whose narrow
+  // excludes every perf viewport contributes to no bucket and is marked
+  // skipped at report time.
   const perfBuckets = new Map<string, { viewport: Viewport; tests: AbTestDefinition[] }>();
   for (const test of tests) {
-    for (const viewport of perfViewportsForTest(test, perfConfig)) {
+    for (const viewport of resolveViewportsForTest(test, perfConfig.viewports)) {
       const bucket = perfBuckets.get(viewport.label);
       if (bucket) bucket.tests.push(test);
       else perfBuckets.set(viewport.label, { viewport, tests: [test] });
@@ -253,6 +262,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       cwd,
       controlURL,
       experimentURL,
+      visregConfig,
       perfConfig,
       resultsRoot,
       categories,
@@ -325,6 +335,7 @@ interface BuildTestResultOpts {
   cwd: string;
   controlURL: string;
   experimentURL: string;
+  visregConfig: VisregConfig;
   perfConfig: PerfConfig;
   resultsRoot: string;
   categories: Category[];
@@ -332,31 +343,57 @@ interface BuildTestResultOpts {
   perfEngineFailed: boolean;
 }
 
+function skippedCategory(category: Category, narrow: string[] | undefined): CategoryResult {
+  const detail = narrow && narrow.length > 0 ? ` [${narrow.join(', ')}]` : '';
+  return {
+    category,
+    status: 'skipped',
+    skipReason: `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`,
+    ...(category === 'visreg' ? { visreg: [] } : { perfs: [] }),
+  };
+}
+
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
+  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
 
   if (categories.includes('visreg')) {
-    const visregResult = visregByLabel.get(test.name);
-    if (visregResult) {
-      perCategory.push(visregResult);
+    const resolved = resolveViewportsForTest(test, visregConfig.viewports);
+    if (resolved.length === 0) {
+      perCategory.push(skippedCategory('visreg', test.options.viewports));
     } else {
-      // Visreg engine ran but this test has no pairs in the manifest —
-      // commonly means the engine aborted before capturing this test.
-      perCategory.push({
-        ...EMPTY_VISREG_CATEGORY,
-        error: 'visreg did not produce artifacts for this test',
-      });
+      const visregResult = visregByLabel.get(test.name);
+      if (visregResult) {
+        // If the test narrows viewports, filter the engine's artifacts to
+        // only the ones the test actually asked for — the engine runs every
+        // `visreg.viewports` label globally (no per-test narrowing in the
+        // engine layer), so excess pairs come back that this test didn't
+        // want. Narrow empty-intersection is already handled above.
+        const allowed = new Set(resolved.map((v) => v.label));
+        const filtered = (visregResult.visreg ?? []).filter((a) => allowed.has(a.viewportLabel));
+        perCategory.push({ ...visregResult, visreg: filtered });
+      } else {
+        // Visreg engine ran but this test has no pairs in the manifest —
+        // commonly means the engine aborted before capturing this test.
+        perCategory.push({
+          ...EMPTY_VISREG_CATEGORY,
+          error: 'visreg did not produce artifacts for this test',
+        });
+      }
     }
   }
   if (categories.includes('perf')) {
+    const resolved = resolveViewportsForTest(test, perfConfig.viewports);
+    if (resolved.length === 0) {
+      perCategory.push(skippedCategory('perf', test.options.viewports));
+    } else {
     // One PerfArtifact per viewport this test was measured at, collected
     // into a single `CategoryResult.perfs` — mirrors how visreg packs N
     // per-viewport pairs into one `CategoryResult.visreg`.
     const perfs: PerfArtifact[] = [];
-    for (const viewport of perfViewportsForTest(test, perfConfig)) {
+    for (const viewport of resolved) {
       const perfRoot = perfRootFor(resultsRoot, viewport);
       const perTestDir = path.join(perfRoot, slug);
       const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
@@ -403,6 +440,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       status: statusFromPerfs(perfs),
       perfs,
     });
+    }
   }
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
