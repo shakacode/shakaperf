@@ -101,6 +101,43 @@ describe('ab-test-registry', () => {
     });
   });
 
+  describe('testTypes option', () => {
+    it('defaults testTypes to null when not provided', () => {
+      abTest('No testTypes', { startingPath: '/' }, async () => {});
+
+      const tests = getRegisteredTests();
+      expect(tests[0].testTypes).toBeNull();
+    });
+
+    it('preserves testTypes when provided', () => {
+      abTest(
+        'Visreg only',
+        { startingPath: '/', testTypes: [TestType.VisualRegression] },
+        async () => {},
+      );
+
+      const tests = getRegisteredTests();
+      expect(tests[0].testTypes).toEqual([TestType.VisualRegression]);
+    });
+
+    it('accepts multiple testTypes', () => {
+      abTest(
+        'Both types',
+        {
+          startingPath: '/',
+          testTypes: [TestType.VisualRegression, TestType.Performance],
+        },
+        async () => {},
+      );
+
+      const tests = getRegisteredTests();
+      expect(tests[0].testTypes).toEqual([
+        TestType.VisualRegression,
+        TestType.Performance,
+      ]);
+    });
+  });
+
   describe('TestType enum', () => {
     it('should have VisualRegression value', () => {
       expect(TestType.VisualRegression).toBe('visual_regression');

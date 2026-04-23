@@ -40,7 +40,7 @@ export const SharedConfigSchema = z
 export const VisregConfigSchema = z
   .object({
     viewports: z.array(ViewportSchema).default([
-      { label: 'phone', width: 375, height: 667 },
+      { label: 'mobile', width: 375, height: 667 },
       { label: 'tablet', width: 768, height: 1024 },
       { label: 'desktop', width: 1280, height: 800 },
     ]),

@@ -5,6 +5,13 @@ const PAGE_SETTLE_TIMEOUT_MS = 30000;
 const SKELETON_SELECTOR = '';
 const SPINNER_SELECTOR = '';
 
+// Perf tests run this helper inside a page that Lighthouse may tear down
+// mid-gather — treat those races as "settled or gone" rather than a failure.
+function isPageClosedError(err: unknown): boolean {
+  const msg = (err as Error)?.message ?? '';
+  return /Target (?:page, context or browser has been )?closed|Execution context was destroyed|Protocol error .*: Target closed/i.test(msg);
+}
+
 /**
  * Wait until the page has settled - DOM mutations stopped, network idle, fonts loaded, images rendered.
  * Adapted from helper.ts waitUntilPageSettled for visual regression context.
@@ -129,10 +136,18 @@ export async function waitUntilPageSettled(page: Page): Promise<void> {
     .catch(() => console.warn('Network idle timeout - continuing anyway'));
 
   // Race all conditions against a timeout
-  const pageSettled = Promise.all([networkIdle, fontsReady, imagesLoaded, mutationsStopped]).then(() => {
-    console.log(`Page ${url} has settled`);
-    return true;
-  });
+  const pageSettled = Promise.all([networkIdle, fontsReady, imagesLoaded, mutationsStopped])
+    .then(() => {
+      console.log(`Page ${url} has settled`);
+      return true;
+    })
+    .catch((err) => {
+      if (isPageClosedError(err)) {
+        console.log(`Page ${url} closed during settle — treating as settled`);
+        return true;
+      }
+      throw err;
+    });
 
   const timeout = new Promise<boolean>((resolve) => {
     const timeoutId = setTimeout(() => {

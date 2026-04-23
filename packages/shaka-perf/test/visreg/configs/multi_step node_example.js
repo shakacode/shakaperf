@@ -22,7 +22,7 @@ runner('test')
 /**
  * run this to approve changes from the previous run.
  */
-function approveChanges () {
+function approveChanges() {
   console.log('Looks like there were some changes detected since last run.');
   runner('approve', {
     config: {
@@ -41,7 +41,7 @@ const exampleConfig = {
     id: 'explicity_defined',
     viewports: [
       {
-        label: 'phone',
+        label: 'mobile',
         width: 320,
         height: 480
       },

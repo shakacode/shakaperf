@@ -148,6 +148,9 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     try {
       const context = browser.contexts()[0];
 
+      // Clear cookies before each sample so every measurement is a cold load.
+      await context.clearCookies();
+
       // Start Lighthouse — it navigates the page itself
       const lighthousePromise = runLighthouse(
         '',

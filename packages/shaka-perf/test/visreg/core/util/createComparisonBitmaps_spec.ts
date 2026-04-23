@@ -18,7 +18,7 @@ describe('createComparisonBitmaps', function () {
       experimentURL: 'http://localhost:3030',
       _loadedVisregConfig: {
         viewports: [
-          { label: 'phone', width: 320, height: 480 },
+          { label: 'mobile', width: 320, height: 480 },
           { label: 'tablet', width: 1024, height: 768 },
         ],
         engineOptions: { browser: 'chromium' },
@@ -197,7 +197,7 @@ describe('createComparisonBitmaps', function () {
         ...mockConfig.args,
         _loadedVisregConfig: {
           viewports: [
-            { name: 'phone', width: 320, height: 480 },
+            { name: 'mobile', width: 320, height: 480 },
             { width: 1024, height: 768 },
           ],
           engineOptions: { browser: 'chromium' },
@@ -211,7 +211,7 @@ describe('createComparisonBitmaps', function () {
     assert(capturedConfig, 'Should have captured config');
     const viewports = capturedConfig.viewports as Array<{ label?: string }>;
     assert(viewports[0].label, 'First viewport should have label');
-    assert.strictEqual(viewports[0].label, 'phone', 'Should use name as label');
+    assert.strictEqual(viewports[0].label, 'mobile', 'Should use name as label');
     assert(viewports[1].label, 'Second viewport should have label');
     assert.strictEqual(viewports[1].label, 'viewport_1', 'Should generate label from index');
   });

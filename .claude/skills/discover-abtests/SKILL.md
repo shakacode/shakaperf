@@ -144,9 +144,9 @@ For every confirmed interaction, plan a test. For every form found, plan **three
 
 This applies to inline forms too (forms that are already visible on the page without clicking anything). A booking form with date pickers and guest selectors, a search form with filters, a contact form — these all need fill tests. The filled state of a form is valuable test coverage because it exercises input rendering, validation UI, and date/number formatting.
 
-**A8. Check responsive behavior** — this step is **mandatory**, not optional. Without it you'll write tests that fail on phone (selector doesn't exist) or miss mobile-only UI entirely. Every page gets A8, no exceptions.
+**A8. Check responsive behavior** — this step is **mandatory**, not optional. Without it you'll write tests that fail on mobile (selector doesn't exist) or miss mobile-only UI entirely. Every page gets A8, no exceptions.
 
-After completing desktop probing (A1-A7), resize the browser to phone width and re-probe:
+After completing desktop probing (A1-A7), resize the browser to mobile width and re-probe:
 
 1. Resize to 375×667 via `mcp__claude-in-chrome__resize_window`
 2. Take a screenshot and scroll through the mobile layout — visually note what's different from desktop (stacked columns, hidden sidebars, hamburger menus, mobile-specific UI)
@@ -157,8 +157,8 @@ After completing desktop probing (A1-A7), resize the browser to phone width and 
    el ? { display: getComputedStyle(el).display, height: el.getBoundingClientRect().height } : 'NOT FOUND'
    ```
 5. Compare desktop vs mobile sections:
-   - **Desktop selector hidden/absent on mobile** → restrict that test to `viewports: [tablet, desktop]` or `[desktop]`. Check if there's a mobile-specific replacement (e.g., `.mobile-nav` replaces `.nav-tabs`). If a replacement exists, plan a phone-only test for it.
-   - **New element on mobile not seen on desktop** → plan a phone-only test for it
+   - **Desktop selector hidden/absent on mobile** → restrict that test to `viewports: [tablet, desktop]` or `[desktop]`. Check if there's a mobile-specific replacement (e.g., `.mobile-nav` replaces `.nav-tabs`). If a replacement exists, plan a mobile-only test for it.
+   - **New element on mobile not seen on desktop** → plan a mobile-only test for it
    - **Same selector, different dimensions** → note for threshold adjustment
 6. Check interactive elements at mobile width — buttons/menus that appear only on mobile (hamburger menu, mobile filters, etc.)
 7. Resize back to desktop width when done
@@ -198,7 +198,7 @@ abTest('Homepage Hero', { startingPath: '/', options: { visreg: {} } }, async ()
 // TODO: Click "Contact Us" button → modal opens
 // - confirmed in A6: clicking button.contact-cta opens modal .contact-modal
 // - inside modal (A7): form with name, email, message fields
-// - .contact-cta is display:none on phone viewport (A8)
+// - .contact-cta is display:none on mobile viewport (A8)
 // - need desktop-only viewports
 abTest('Homepage Contact Modal', { startingPath: '/', options: { visreg: {} } }, async () => {});
 
@@ -214,7 +214,7 @@ Before moving to Step C, verify every category below has at least one TODO stub 
 2. **Click interactions** — every button/tab confirmed working in A6 gets a test
 3. **Modals/drawers** — every modal opened in A6-A7 gets a "click to open" snapshot test
 4. **Form fills** — every form on the page (inline or inside modals) gets a test that fills ALL its inputs and captures the populated state. This means: text fields get filled, dates get selected, number fields get incremented, dropdowns get opened and a value selected, checkboxes get checked. If a form has a submit button, there should also be a test that fills the form and then clicks submit. A booking form without a "fill dates and guests" test is a coverage gap.
-5. **Viewport-specific from A8** — any desktop-only selectors must have `viewports` restricting them away from phone. Any mobile-only elements found in A8 get a phone-only test. If A8 found no mobile-specific elements, write "A8: no mobile-specific elements found" as a comment in the file.
+5. **Viewport-specific from A8** — any desktop-only selectors must have `viewports` restricting them away from mobile. Any mobile-only elements found in A8 get a mobile-only test. If A8 found no mobile-specific elements, write "A8: no mobile-specific elements found" as a comment in the file.
 
 ### Threshold guidance
 
@@ -349,7 +349,7 @@ The "Coverage decisions" section is important — it makes deduplication reasoni
 | ------------------ | ----- | --------------- | ---------------------------------- |
 | homepage.abtest.ts | 2     | PASS            |                                    |
 | cart.abtest.ts     | 1     | PASS (A/B diff) | Experiment has new checkout button |
-| products.abtest.ts | 1     | NEEDS REVIEW    | Selector timeout on phone viewport |
+| products.abtest.ts | 1     | NEEDS REVIEW    | Selector timeout on mobile viewport |
 
 Statuses:
 

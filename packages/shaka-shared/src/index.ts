@@ -2,6 +2,7 @@ export {
   abTest,
   getRegisteredTests,
   clearRegistry,
+  testRunsForType,
   TestType,
 } from './ab-test-registry';
 export type {

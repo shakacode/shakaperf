@@ -9,7 +9,7 @@ export default defineConfig({
 
   visreg: {
     viewports: [
-      { label: 'phone', width: 375, height: 667 },
+      { label: 'mobile', width: 375, height: 667 },
       { label: 'tablet', width: 768, height: 1024 },
       { label: 'desktop', width: 1280, height: 800 },
     ],
@@ -25,6 +25,7 @@ export default defineConfig({
   },
 
   perf: {
+    numberOfMeasurements: 2, // in real apps you should run ~20 measurements
     lighthouseConfig: {
       formFactor: 'mobile',
       screenEmulation: {

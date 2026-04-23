@@ -111,7 +111,7 @@ import { defineVisregConfig } from 'shaka-perf/visreg';
 export default defineVisregConfig({
   id: 'my_app',
   viewports: [
-    { label: 'phone', width: 375, height: 667 },
+    { label: 'mobile', width: 375, height: 667 },
     { label: 'tablet', width: 768, height: 1024 },
     { label: 'desktop', width: 1280, height: 800 },
   ],

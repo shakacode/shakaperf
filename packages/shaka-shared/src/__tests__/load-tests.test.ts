@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadTests } from '../load-tests';
-import { clearRegistry, getRegisteredTests } from '../ab-test-registry';
+import { clearRegistry, getRegisteredTests, TestType } from '../ab-test-registry';
 
 describe('loadTests', () => {
   const tmpDir = path.join(__dirname, 'tmp-load-tests');
@@ -88,6 +88,35 @@ describe('loadTests', () => {
 
     expect(messages.length).toBeGreaterThan(0);
     expect(messages[0]).toContain('Discovered');
+  });
+
+  it('filters out tests whose testTypes does not include the requested testType', async () => {
+    const registryPath = require.resolve('../ab-test-registry').replace(/\\/g, '\\\\');
+    mkfile('mixed.abtest.js', `
+      const { abTest, TestType } = require('${registryPath}');
+      abTest('Visreg only', { startingPath: '/a', testTypes: [TestType.VisualRegression] }, async () => {});
+      abTest('Perf only', { startingPath: '/b', testTypes: [TestType.Performance] }, async () => {});
+      abTest('No testTypes', { startingPath: '/c' }, async () => {});
+    `);
+
+    const tests = await loadTests({
+      filter: path.join(tmpDir, 'mixed.abtest.js'),
+      testType: TestType.VisualRegression,
+    });
+
+    expect(tests.map(t => t.name)).toEqual(['Visreg only', 'No testTypes']);
+  });
+
+  it('does not filter by testType when testType option is omitted', async () => {
+    const registryPath = require.resolve('../ab-test-registry').replace(/\\/g, '\\\\');
+    mkfile('all.abtest.js', `
+      const { abTest, TestType } = require('${registryPath}');
+      abTest('Visreg only', { startingPath: '/a', testTypes: [TestType.VisualRegression] }, async () => {});
+      abTest('Perf only', { startingPath: '/b', testTypes: [TestType.Performance] }, async () => {});
+    `);
+
+    const tests = await loadTests({ filter: path.join(tmpDir, 'all.abtest.js') });
+    expect(tests).toHaveLength(2);
   });
 
   it('clears registry before loading', async () => {
