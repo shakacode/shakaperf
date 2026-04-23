@@ -179,7 +179,7 @@ describe('ab-test-registry', () => {
       expect(visreg.selectors).toEqual(['[data-cy="hero"]']);
       expect(visreg.misMatchThreshold).toBe(0.1);
       expect(visreg.readyEvent).toBe('app:ready');
-      expect(visreg.viewports).toEqual([{ label: 'mobile', width: 375, height: 667, isMobile: true, dpr: 3 }]);
+      expect(visreg.viewports).toEqual([{ label: 'mobile', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 }]);
     });
   });
 });
