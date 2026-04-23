@@ -1,6 +1,6 @@
 {
   "name": "shaka-perf",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Frontend performance testing toolkit for web applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
