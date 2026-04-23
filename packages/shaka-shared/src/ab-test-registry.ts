@@ -10,7 +10,6 @@ export type FormFactor = 'mobile' | 'desktop';
 
 export interface Viewport {
   label: string;
-  name?: string;
   width: number;
   height: number;
   /**

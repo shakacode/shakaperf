@@ -103,10 +103,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     config.paths = {};
   }
 
-  if (typeof viewport.label !== 'string') {
-    viewport.label = viewport.name || '';
-  }
-
   config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
   config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;

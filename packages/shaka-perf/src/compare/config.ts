@@ -13,7 +13,6 @@ const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
-  name: z.string().optional(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   formFactor: z.enum(['mobile', 'desktop']),

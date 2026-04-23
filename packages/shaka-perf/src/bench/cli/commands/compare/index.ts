@@ -15,7 +15,7 @@ import {
   NavigationSample,
   run,
 } from "../../../core";
-import { loadTests } from "shaka-shared";
+import { loadTests, type Viewport } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -52,6 +52,8 @@ export interface ICompareFlags {
   samplingMode: SamplingMode;
   duration?: number;
   config?: string;
+  /** Viewport this pass measures — propagated into the sampler's TestFnContext. */
+  viewport: Viewport;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
@@ -124,7 +126,8 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   mkdirpSync(compareFlags.resultsFolder!);
 
   const resultsFolder = compareFlags.resultsFolder;
-  const options: Partial<LighthouseBenchmarkOptions> = {
+  const options: LighthouseBenchmarkOptions = {
+    viewport: compareFlags.viewport,
     resultsFolder,
     lhConfigPath: compareFlags.config,
   };
@@ -140,7 +143,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     const testResultsFolder = `${resultsFolder}/${slug}`;
     mkdirpSync(testResultsFolder);
 
-    const testOptions: Partial<LighthouseBenchmarkOptions> = {
+    const testOptions: LighthouseBenchmarkOptions = {
       ...options,
       resultsFolder: testResultsFolder,
       logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),

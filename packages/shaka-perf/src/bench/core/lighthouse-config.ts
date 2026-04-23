@@ -78,6 +78,13 @@ export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
 }
 
 export interface LighthouseBenchmarkOptions {
+  /**
+   * Viewport being measured. Sole source of truth for the sampler's
+   * `TestFnContext.viewport`; Lighthouse's `formFactor` / `screenEmulation`
+   * are lowered from this via `lhConfigForViewport` at the bridge layer.
+   * Required — every call site knows which viewport it's driving.
+   */
+  viewport: Viewport;
   resultsFolder?: string;
   lhConfigPath?: string;
   markers?: Marker[];

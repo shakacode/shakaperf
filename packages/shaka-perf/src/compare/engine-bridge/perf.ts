@@ -71,6 +71,7 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,
     samplingMode: perfConfig.samplingMode ?? 'simultaneous',
     config: lhConfigPath,
+    viewport,
   };
 
   try {

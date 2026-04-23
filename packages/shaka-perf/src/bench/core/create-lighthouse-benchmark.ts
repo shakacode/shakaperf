@@ -140,7 +140,7 @@ export default function createLighthouseBenchmark(
   group: string,
   baseUrl: string,
   testDef: AbTestDefinition,
-  options: Partial<LighthouseBenchmarkOptions> = {}
+  options: LighthouseBenchmarkOptions
 ): Benchmark<NavigationSample> {
   return {
     group,

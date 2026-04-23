@@ -31,15 +31,6 @@ const logger = createLogger('compare');
 
 const CONCURRENCY_DEFAULT = 10;
 
-function ensureViewportLabel (config: { viewports?: Viewport[] }) {
-  if (!Array.isArray(config.viewports)) return;
-  config.viewports.forEach(function (viewport: Viewport, index: number) {
-    if (!viewport.label) {
-      viewport.label = viewport.name || ('viewport_' + index);
-    }
-  });
-}
-
 async function decorateConfigForTestFile (config: RuntimeConfig) {
   const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
@@ -67,7 +58,6 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
     scenarios,
   };
-  ensureViewportLabel(configJSON as { viewports?: Viewport[] });
 
   if ((configJSON as Record<string, unknown>).dynamicTestId) {
     console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-perf visreg will run in dynamic-test mode.');

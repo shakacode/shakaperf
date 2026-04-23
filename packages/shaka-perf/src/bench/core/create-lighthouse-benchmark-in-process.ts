@@ -21,7 +21,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private baseUrl: string,
     private testDef: AbTestDefinition,
-    private options: Partial<LighthouseBenchmarkOptions>
+    private options: LighthouseBenchmarkOptions
   ) {}
 
   async setupBrowser(): Promise<void> {
@@ -176,13 +176,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         browserContext: context,
         isReference: false,
         scenario: this.testDef,
-        viewport: {
-          label: lhSettings.formFactor ?? 'default',
-          width: lhSettings.screenEmulation?.width ?? 0,
-          height: lhSettings.screenEmulation?.height ?? 0,
-          formFactor: lhSettings.formFactor,
-          deviceScaleFactor: lhSettings.screenEmulation?.deviceScaleFactor,
-        },
+        viewport: this.options.viewport,
         testType: TestType.Performance,
         annotate: () => {},
       })
@@ -229,7 +223,7 @@ export default function createLighthouseBenchmark(
   group: string,
   baseUrl: string,
   testDef: AbTestDefinition,
-  options: Partial<LighthouseBenchmarkOptions> = {}
+  options: LighthouseBenchmarkOptions
 ): Benchmark<NavigationSample> {
   return {
     group,
