@@ -12,12 +12,8 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 - [Getting Started](#getting-started)
   - [Initializing Your Project](#initializing-your-project)
 - [Configuration](#configuration)
-  - [Required Properties](#required-properties)
   - [Example Config](#example-config)
-  - [JS Config Files](#js-config-files)
   - [Scenario Properties](#scenario-properties)
-  - [Global Scenario Defaults](#global-scenario-defaults)
-  - [Setting Directory Paths](#setting-directory-paths)
   - [Changing Screenshot Filename Formats](#changing-screenshot-filename-formats)
 - [Advanced Scenarios](#advanced-scenarios)
   - [Click and Hover Interactions](#click-and-hover-interactions)
@@ -90,19 +86,9 @@ shaka-perf init
 
 `shaka-perf compare` reads `abtests.config.ts` from the current working directory (or the path passed to `--config`). Visual-regression settings live on the `visreg` slice; see `shaka-perf init` for a commented template with every default spelled out.
 
-### Required Properties
+Every field on the `visreg` slice has a default, so a minimal config is just `defineConfig({})`. Scenarios come from `abTest(...)` calls discovered under `ab-tests/` — control and experiment URLs come from `shared.controlURL` / `shared.experimentURL`, not from individual scenarios.
 
-- **`id`** — Used for screenshot naming. Set this property when sharing reference files with teammates — otherwise omit and shaka-perf visreg will auto-generate one for you.
-- **`viewports`** — An array of screen size objects your DOM will be tested against. Add as many as you like — but add at least one.
-- **`scenarios`** — Your test cases. The important sub properties are:
-  - **`scenarios[n].label`** — Required. Also used for screenshot naming.
-  - **`scenarios[n].url`** — Required. The URL of your app state (what you're testing). Can be absolute or relative to your current working directory.
-  - **`scenarios[n].referenceUrl`** — Required. The baseline URL to compare against (e.g. production or control server).
-
-> [!TIP]
-> No other scenario properties are required. Other properties can just be added as necessary.
-
-Pass a `--filter=<scenarioLabelRegex>` argument to just run scenarios matching your scenario label.
+Pass `--filter=<testNameRegex>` to run only tests whose name matches your regex.
 
 ### Example Config
 
@@ -133,22 +119,18 @@ Scenarios are defined as standalone `*.abtest.ts` files in an `ab-tests/` direct
 
 ### Scenario Properties
 
-Scenario properties, [which may be global](#global-scenario-defaults), are **processed sequentially in the following order:**
+Per-test visreg options go under `options.visreg` on each `abTest(...)` call. The full set — processed sequentially in the order listed:
 
 | Property                | Description                                                                                                                                         |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `label`                 | [required] Tag saved with your reference images                                                                                                     |
 | `onBefore`              | Lifecycle hook — runs before page navigation. Use to set up cookies, auth state, etc.                                                               |
 | `cookiePath`            | Import cookies in JSON format (see [Setting Cookies](#setting-cookies))                                                                             |
-| `url`                   | [required] The URL of your app state                                                                                                                |
-| `referenceUrl`          | Specify a different state or environment for reference (required for compare)                                                                       |
 | `readyEvent`            | Wait until this string has been logged to the console                                                                                               |
 | `readySelector`         | Wait until this selector exists before continuing                                                                                                   |
 | `readyTimeout`          | Timeout for readyEvent and readySelector (default: 30000ms)                                                                                         |
 | `delay`                 | Wait for x milliseconds                                                                                                                             |
 | `hideSelectors`         | Array of selectors set to `visibility: hidden`                                                                                                      |
 | `removeSelectors`       | Array of selectors set to `display: none`                                                                                                           |
-| `keyPressSelectors`     | Array of `{selector, keyPress}` objects — simulates multiple sequential keypress interactions                                                       |
 | `hoverSelector`         | Move the pointer over the specified DOM element prior to the screenshot                                                                             |
 | `hoverSelectors`        | Array of selectors — simulates multiple sequential hover interactions                                                                               |
 | `clickSelector`         | Click the specified DOM element prior to the screenshot                                                                                             |
@@ -159,44 +141,8 @@ Scenario properties, [which may be global](#global-scenario-defaults), are **pro
 | `selectorExpansion`     | See [Targeting Elements](#targeting-elements) below                                                                                                 |
 | `misMatchThreshold`     | Percentage of different pixels allowed to pass (default: 0.1)                                                                                       |
 | `requireSameDimensions` | If true, any change in selector size triggers a test failure (default: true)                                                                        |
-| `viewports`             | Override root-level viewports for this scenario                                                                                                     |
-| `gotoParameters`        | Settings passed to Playwright's `page.goto(url, parameters)`                                                                                        |
 
-### Global Scenario Defaults
-
-You can include any of the above properties at the "global" level in the `scenarioDefaults` configuration object.
-
-```ts
-{
-  scenarioDefaults: {
-    cookiePath: 'visreg_data/cookies/cookies.json',
-    delay: 0,
-    misMatchThreshold: 0.1,
-    requireSameDimensions: true,
-  },
-  scenarios: [/* ... */],
-}
-```
-
-> [!IMPORTANT]
-> Global configuration is overridden at the scenario level. A scenario with `selectors: []` set as an empty array will yield zero selectors — `scenarioDefaults.selectors` will NOT be used as a fallback. `scenario.selectors` takes precedence.
-
-### Setting Directory Paths
-
-By default, `shaka-perf visreg` saves generated resources into the `visreg_data` directory in parallel with your config file. The location of the various resource types are configurable so they can easily be moved inside or outside your source control or file sharing environment.
-
-Control and experiment screenshots are always stored inside the HTML report directory (`html_report/control_screenshot` and `html_report/experiment_screenshot`).
-
-> [!TIP]
-> These file paths are relative to your current working directory.
-
-```ts
-paths: {
-  htmlReport: 'visreg_data/html_report',
-  jsonReport: 'visreg_data/json_report',
-  ciReport: 'visreg_data/ci_report',
-}
-```
+Narrow which viewports a single test runs at via `options.viewports` (sibling of `options.visreg`) — it's shared with perf and intersects with `visreg.viewports` in `abtests.config.ts`.
 
 ### Changing Screenshot Filename Formats
 
@@ -449,7 +395,7 @@ Set `scenarioLogsInReports: true` at the config root to include browser console 
 
 ### Capturing Screens in Parallel
 
-Default: 10 concurrent captures. Adjust with:
+Default: 2 concurrent captures. Adjust with:
 
 ```ts
 asyncCaptureLimit: 5
@@ -457,10 +403,10 @@ asyncCaptureLimit: 5
 
 ### Comparing Screens in Parallel
 
-Default: 50 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
+Default: 4 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
 
 ```ts
-asyncCompareLimit: 100
+asyncCompareLimit: 16
 ```
 
 ## Resemble.js Output Options

@@ -38,7 +38,9 @@ export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<voi
       filter,
     });
   } finally {
-    fs.rmSync(configPath, { force: true });
+    // Swallow cleanup errors so a failing tmp-file unlink (EPERM/EBUSY on
+    // locked filesystems) can't shadow a primary engine error.
+    try { fs.rmSync(configPath, { force: true }); } catch { /* noop */ }
   }
 }
 
