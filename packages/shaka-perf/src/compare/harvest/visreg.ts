@@ -183,6 +183,7 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
   }
 
   const byLabel = new Map<string, VisregArtifact[]>();
+  const errorsByLabel = new Map<string, string[]>();
   for (const entry of report.tests ?? []) {
     const pair = entry.pair;
     const label = pair.label;
@@ -192,12 +193,25 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
     // number so the React renderer can format it.
     const misMatchPercentage = coerceNumber(pair.diff?.misMatchPercentage);
     const threshold = pair.misMatchThreshold ?? 0.1;
-    const hasError = Boolean(pair.error ?? pair.engineErrorMsg);
-    const changed = hasError || misMatchPercentage > threshold;
+    const pairErrorMsg = pair.error ?? pair.engineErrorMsg ?? null;
+    if (pairErrorMsg) {
+      const list = errorsByLabel.get(label) ?? [];
+      list.push(`[${pair.viewportLabel ?? '?'}] ${pairErrorMsg}`);
+      errorsByLabel.set(label, list);
+    }
 
     // Prefer the pixelmatch diff (transparent BG, red changed pixels — clear
     // at thumbnail size). Fall back to resemble's failed_diff overlay.
     const diffSource = pair.pixelmatchDiffImage ?? pair.diffImage ?? null;
+    // `changed` drives the test-level `visual_change` pill; the per-row diff
+    // chip in VisregSlot keys off `diffImage !== null`. Derive both from the
+    // same signal — the presence of a diff PNG — so the pill never
+    // disagrees with the chip it sits above. Per-pair errors (selector not
+    // found, reference missing, engine crash on one viewport) used to
+    // bubble into `changed` too, which surfaced them as a phantom
+    // `visual_change` pill without any visible chip; they now flow through
+    // `category.error` instead so they show up as an error banner + pill.
+    const changed = diffSource !== null;
     // Only the pixelmatch PNG has the red/yellow highlight semantics the bbox
     // scanner relies on — resemble's overlay is full-opacity colored so the
     // grayscale detector would misclassify it.
@@ -239,11 +253,18 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
     for (const a of artifacts) {
       delete (a as VisregArtifact & { _changed?: boolean })._changed;
     }
-    out.set(label, {
+    const pairErrors = errorsByLabel.get(label);
+    const result: CategoryResult = {
       category: 'visreg',
       status: anyChanged ? 'visual_change' : 'no_difference',
       visreg: artifacts,
-    });
+    };
+    if (pairErrors && pairErrors.length > 0) {
+      result.error = pairErrors.length === 1
+        ? pairErrors[0]
+        : `${pairErrors.length} pair(s) errored: ${pairErrors.join('; ')}`;
+    }
+    out.set(label, result);
   }
   return out;
 }
