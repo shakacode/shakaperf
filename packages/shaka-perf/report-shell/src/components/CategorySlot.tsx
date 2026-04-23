@@ -68,6 +68,14 @@ function SlotError({
 }
 
 export function CategorySlot({ result, test }: { result: CategoryResult; test: TestResult }) {
+  if (result.skipped) {
+    return (
+      <div className="slot-skipped" role="note">
+        <span className="slot-skipped__prefix">{LABEL[result.category]} ·</span>
+        <span className="slot-skipped__message">skipped for this test (testTypes)</span>
+      </div>
+    );
+  }
   return (
     <div>
       {result.error ? <SlotError result={result} test={test} /> : null}

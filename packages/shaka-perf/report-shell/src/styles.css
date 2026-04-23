@@ -831,6 +831,26 @@ input {
   color: var(--fg);
 }
 
+.slot-skipped {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--border-strong);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.slot-skipped__prefix {
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
 .error-log {
   margin: 0;
   padding: 16px 20px;
