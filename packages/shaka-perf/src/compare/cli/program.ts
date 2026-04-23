@@ -3,7 +3,7 @@ import { addCompareOptions } from 'shaka-shared';
 import { runCompare } from '../run';
 import type { Category } from '../report';
 
-const VALID_CATEGORIES: Category[] = ['visreg', 'perf'];
+const VALID_CATEGORIES: Category[] = ['visreg', 'perf', 'axe'];
 
 function parseCategories(value: string): Category[] {
   const parts = value.split(',').map((p) => p.trim()).filter(Boolean);

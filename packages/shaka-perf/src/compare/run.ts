@@ -7,7 +7,7 @@ import {
   readTestSource,
   type AbTestDefinition,
 } from 'shaka-shared';
-import { parseAbTestsConfig, type AbTestsConfig, type VisregConfig, type PerfConfig } from './config';
+import { parseAbTestsConfig, type AbTestsConfig, type AxeConfig, type VisregConfig, type PerfConfig } from './config';
 import {
   writeReport,
   type Category,
@@ -18,8 +18,10 @@ import {
 } from './report';
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
+import { invokeAxeEngine } from './engine-bridge/axe';
 import { harvestVisreg } from './harvest/visreg';
 import { harvestPerf, readPerfEngineError, readPerfEngineLog, slugifyForBench } from './harvest/perf';
+import { harvestAxe, readAxeEngineError, readAxeEngineLog } from './harvest/axe';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -37,7 +39,7 @@ export interface CompareRunOptions {
   skipEngines?: boolean;
 }
 
-const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
+const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf', 'axe'];
 const VISREG_SUBDIR = '_visreg/html_report';
 const EMPTY_PERF_CATEGORY: CategoryResult = {
   category: 'perf',
@@ -58,6 +60,10 @@ const EMPTY_VISREG_CATEGORY: CategoryResult = {
   category: 'visreg',
   status: 'no_difference',
   visreg: [],
+};
+const EMPTY_AXE_CATEGORY: CategoryResult = {
+  category: 'axe',
+  status: 'no_difference',
 };
 
 function combineStatus(perCategory: CategoryResult[]): Status {
@@ -103,6 +109,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   const shared = config.shared ?? {};
   const visregConfig: VisregConfig = config.visreg ?? {};
   const perfConfig: PerfConfig = config.perf ?? {};
+  const axeConfig: AxeConfig = config.axe;
 
   const controlURL = opts.controlURL ?? shared.controlURL ?? 'http://localhost:3020';
   const experimentURL = opts.experimentURL ?? shared.experimentURL ?? 'http://localhost:3030';
@@ -127,6 +134,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   const startedAt = Date.now();
   const engineErrors: string[] = [];
   let perfEngineFailed = false;
+  let axeEngineFailed = false;
 
   // Run the engines sequentially (each launches its own browser).
   let visregByLabel = new Map<string, CategoryResult>();
@@ -184,6 +192,30 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
+  if (categories.includes('axe') && !opts.skipEngines) {
+    console.log('\n>>> axe');
+    try {
+      const result = await invokeAxeEngine({
+        experimentURL,
+        resultsFolder: resultsRoot,
+        axeConfig,
+        tests,
+        log: (msg) => console.log(msg),
+      });
+      if (result.fatalLaunchError) {
+        // Browser never launched at all — downstream harvest will hit zero
+        // artifacts and we want the top banner to explain why.
+        engineErrors.push(`axe engine: ${result.fatalLaunchError}`);
+        axeEngineFailed = true;
+      }
+    } catch (err) {
+      const message = (err as Error).message || String(err);
+      console.error(`axe engine error: ${message}`);
+      engineErrors.push(`axe engine: ${message}`);
+      axeEngineFailed = true;
+    }
+  }
+
   const testResults: TestResult[] = tests.map((test) =>
     buildTestResult({
       test,
@@ -195,6 +227,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       categories,
       visregByLabel,
       perfEngineFailed,
+      axeEngineFailed,
     }),
   );
 
@@ -227,6 +260,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {
   let regressions = 0;
   let visualChanges = 0;
+  let a11yViolations = 0;
   let errors = 0;
   for (const t of data.tests) {
     // Visit every category directly — a single test can be both errored and
@@ -236,6 +270,7 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
       if (c.error) errors++;
       if (c.category === 'perf' && c.perf && c.perf.regressedMetrics.length > 0) regressions++;
       if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
+      if (c.category === 'axe' && c.axe) a11yViolations += c.axe.totalViolations;
     }
   }
   if (data.meta.errors.length > 0) errors += data.meta.errors.length;
@@ -243,6 +278,7 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   if (errors > 0) parts.push(`${errors} error${errors === 1 ? '' : 's'}`);
   if (regressions > 0) parts.push(`${regressions} perf regression${regressions === 1 ? '' : 's'}`);
   if (visualChanges > 0) parts.push(`${visualChanges} visreg mismatch${visualChanges === 1 ? '' : 'es'}`);
+  if (a11yViolations > 0) parts.push(`${a11yViolations} a11y violation${a11yViolations === 1 ? '' : 's'}`);
   return {
     hasFailures: parts.length > 0,
     failureSummary: parts.join(', '),
@@ -259,10 +295,11 @@ interface BuildTestResultOpts {
   categories: Category[];
   visregByLabel: Map<string, CategoryResult>;
   perfEngineFailed: boolean;
+  axeEngineFailed: boolean;
 }
 
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
+  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed, axeEngineFailed } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
@@ -317,6 +354,36 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       });
     } else {
       perCategory.push(EMPTY_PERF_CATEGORY);
+    }
+  }
+  if (categories.includes('axe')) {
+    const perTestDir = path.join(resultsRoot, slug);
+    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'axe-report.json'));
+    const perTestEngineError = readAxeEngineError(perTestDir);
+    if (reportJsonExists) {
+      try {
+        perCategory.push(harvestAxe({ perTestDir }));
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        perCategory.push({
+          ...EMPTY_AXE_CATEGORY,
+          error: `axe report unreadable: ${message}`,
+          errorLog: readAxeEngineLog(perTestDir),
+        });
+      }
+    } else if (perTestEngineError) {
+      perCategory.push({
+        ...EMPTY_AXE_CATEGORY,
+        error: `axe scan failed: ${perTestEngineError}`,
+        errorLog: readAxeEngineLog(perTestDir),
+      });
+    } else if (axeEngineFailed) {
+      perCategory.push({
+        ...EMPTY_AXE_CATEGORY,
+        error: 'axe engine aborted before scanning this test — see the error banner above',
+      });
+    } else {
+      perCategory.push(EMPTY_AXE_CATEGORY);
     }
   }
 
