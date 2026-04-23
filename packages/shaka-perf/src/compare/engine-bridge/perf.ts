@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { runCompare as runBenchCompare, type ICompareFlags } from '../../bench/cli/commands/compare';
 import { lhConfigForViewport } from '../../bench/core/lighthouse-config';
+import { ensureLighthousePatchRegistered } from '../../bench/core/patched-lighthouse/register-patch';
 import type { PerfConfig, SharedConfig, Viewport } from '../config';
 
 const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
@@ -42,6 +43,10 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     testPathPattern,
     filter,
   } = opts;
+
+  // Announce the Lighthouse patch once per invocation in the main process;
+  // forked workers inherit `SHAKA_PERF_PATCH_ANNOUNCED` and stay quiet.
+  ensureLighthousePatchRegistered();
 
   const lhConfigPath = await writeLighthouseConfigFile(perfConfig, viewport);
 

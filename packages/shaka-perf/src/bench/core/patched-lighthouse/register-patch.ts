@@ -11,6 +11,9 @@ import { pathToFileURL } from 'node:url';
  * Requires Node >= 20.6 (see shaka-perf package.json `engines`).
  */
 const FLAG = '__shakaperfPatchRegistered';
+// Inherited by forked workers so they skip the announcement — one line per
+// `shaka-perf compare` invocation instead of one per worker × test × viewport.
+const ANNOUNCE_ENV = 'SHAKA_PERF_PATCH_ANNOUNCED';
 
 export function ensureLighthousePatchRegistered(): void {
   const g = globalThis as Record<string, unknown>;
@@ -19,4 +22,9 @@ export function ensureLighthousePatchRegistered(): void {
   const loaderPath = path.join(__dirname, 'patch-loader.mjs');
   register(pathToFileURL(loaderPath).href);
   g[FLAG] = true;
+
+  if (!process.env[ANNOUNCE_ENV]) {
+    console.log('[shaka-perf] lighthouse patched');
+    process.env[ANNOUNCE_ENV] = '1';
+  }
 }

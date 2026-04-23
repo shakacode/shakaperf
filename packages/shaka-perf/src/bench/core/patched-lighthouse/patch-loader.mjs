@@ -20,7 +20,6 @@ const TARGET_SUFFIX = '/lighthouse/core/gather/driver/wait-for-condition.js';
 const PATCH_PATH = fileURLToPath(new URL('./lighthouse.patch', import.meta.url));
 
 let cachedPatch = null;
-let loggedApply = false;
 
 function readPatch() {
   if (cachedPatch !== null) return cachedPatch;
@@ -48,12 +47,8 @@ export async function load(url, context, nextLoad) {
     );
   }
 
-  // Positive-confirmation log — absent in CI output means the loader never
-  // ran (e.g. Yarn PnP short-circuited downstream hooks).
-  if (!loggedApply) {
-    loggedApply = true;
-    console.log('[shaka-perf] lighthouse patched');
-  }
-
+  // The per-invocation announcement lives in `ensureLighthousePatchRegistered`
+  // (main process) so one perf run prints one "[shaka-perf] lighthouse patched"
+  // line instead of one per forked worker × test × viewport.
   return { ...result, source: patched, shortCircuit: true };
 }
