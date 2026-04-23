@@ -25,6 +25,7 @@ export default defineConfig({
   },
 
   perf: {
+    numberOfMeasurements: 2, // in real apps you should run ~20 measurements
     lighthouseConfig: {
       formFactor: 'mobile',
       screenEmulation: {
