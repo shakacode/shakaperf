@@ -8,7 +8,12 @@ export type {
   LighthouseBenchmarkOptions,
   LighthouseConfig,
 } from './lighthouse-config';
-export { defineConfig, DEFAULT_LH_CONFIG, DEFAULT_MARKERS } from './lighthouse-config';
+export {
+  defineConfig,
+  DEFAULT_LH_CONFIG,
+  DEFAULT_MARKERS,
+  lhConfigForViewport,
+} from './lighthouse-config';
 export { default as run } from './run';
 export type {
   Benchmark,

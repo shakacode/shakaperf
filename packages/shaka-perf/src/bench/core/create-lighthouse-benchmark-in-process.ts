@@ -21,7 +21,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private baseUrl: string,
     private testDef: AbTestDefinition,
-    private options: Partial<LighthouseBenchmarkOptions>
+    private options: LighthouseBenchmarkOptions
   ) {}
 
   async setupBrowser(): Promise<void> {
@@ -149,7 +149,19 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       const context = browser.contexts()[0];
 
       // Clear cookies before each sample so every measurement is a cold load.
+      // The userDataDir is reused across samples in a sampler, so cookies set
+      // by one sample (e.g. an auth cookie after a login testFn) would leak
+      // into the next and break subsequent measurements.
       await context.clearCookies();
+
+      // Keep Lighthouse measuring until the playwright testFn finishes.
+      // `canStopTracking` is resolved from testFn's `.finally(...)` below;
+      // until then, the patched Lighthouse keeps its driver attached so
+      // post-load interactions are captured.
+      let releaseTracking: () => void = () => {};
+      const canStopTracking = new Promise<void>((resolve) => {
+        releaseTracking = resolve;
+      });
 
       // Start Lighthouse — it navigates the page itself
       const lighthousePromise = runLighthouse(
@@ -158,10 +170,9 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         lhSettings,
         this.options.resultsFolder ?? './tracerbench-results',
         markers,
-        saveArtifacts
+        saveArtifacts,
+        canStopTracking,
       );
-      // Prevent unhandled rejection if browser closes while lighthouse is still running
-      lighthousePromise.catch((error) => { console.log(error); });
 
       // Wait for the page to appear at the target URL, then run the Playwright test
       const page = await this.waitForPage(context, url);
@@ -171,14 +182,14 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         browserContext: context,
         isReference: false,
         scenario: this.testDef,
-        viewport: {
-          label: lhSettings.formFactor ?? 'default',
-          width: lhSettings.screenEmulation?.width ?? 0,
-          height: lhSettings.screenEmulation?.height ?? 0,
-        },
+        viewport: this.options.viewport,
         testType: TestType.Performance,
         annotate: () => {},
-      }).then(() => collectINP(page));
+      })
+        .then(() => collectINP(page))
+        // Release the tracking hold whether testFn succeeded or threw; otherwise
+        // Lighthouse gather would idle until maxWaitForLoadedMs on any test error.
+        .finally(() => releaseTracking());
 
       const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
 
@@ -218,7 +229,7 @@ export default function createLighthouseBenchmark(
   group: string,
   baseUrl: string,
   testDef: AbTestDefinition,
-  options: Partial<LighthouseBenchmarkOptions> = {}
+  options: LighthouseBenchmarkOptions
 ): Benchmark<NavigationSample> {
   return {
     group,

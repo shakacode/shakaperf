@@ -3,6 +3,13 @@ import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../t
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
 
+const LOG_UNAVAILABLE_MESSAGE =
+  'engine log not found on disk — the bench worker may have been killed ' +
+  'before it could flush stderr, or the results folder was wiped between ' +
+  'measurement and report generation.';
+
+const EMPTY: PerfArtifact[] = [];
+
 const GROUP_LABEL: Record<PerfMetricGroup, string> = {
   vitals: 'vitals',
   diagnostics: 'diagnostics',
@@ -109,9 +116,53 @@ function ArtifactFrame({ href, label }: { href: string; label: string }) {
   );
 }
 
-export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult }) {
+/**
+ * Body of a single per-viewport perf row: metric tables, timeline preview,
+ * artifact buttons. `onOpen` bubbles the artifact click up to the enclosing
+ * PerfSlot so one dialog instance is shared across all viewports on the card.
+ */
+function PerfError({ perf, test }: { perf: PerfArtifact; test: TestResult }) {
+  const [open, setOpen] = useState(false);
+  // Always render as a button even when the log is missing — clicking shows a
+  // clear "log unavailable" message so the missing artifact is visible instead
+  // of being silently swallowed by a non-clickable div.
+  const logBody = perf.errorLog && perf.errorLog.length > 0
+    ? perf.errorLog
+    : LOG_UNAVAILABLE_MESSAGE;
+  return (
+    <>
+      <button
+        type="button"
+        className="slot-error slot-error--clickable"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+      >
+        <span className="slot-error__prefix">perf ·</span>
+        <span className="slot-error__message">{perf.error}</span>
+        <span className="slot-error__hint">view logs →</span>
+      </button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={<span className="ui-dialog__title-text">perf · measurement logs</span>}
+        meta={<TestMeta test={test} />}
+      >
+        <pre className="error-log">{logBody}</pre>
+      </Dialog>
+    </>
+  );
+}
+
+function PerfBody({
+  perf,
+  test,
+  onOpen,
+}: {
+  perf: PerfArtifact;
+  test: TestResult;
+  onOpen: (link: ArtifactLink) => void;
+}) {
   const significant = perf.metrics.filter((m) => m.direction !== 'none');
-  const [openArtifact, setOpenArtifact] = useState<ArtifactLink | null>(null);
 
   const grouped: Record<PerfMetricGroup, PerfMetric[]> = {
     vitals: [],
@@ -126,19 +177,20 @@ export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult 
 
   return (
     <div>
+      {perf.error ? <PerfError perf={perf} test={test} /> : null}
       {hasAny ? (
         GROUP_ORDER.filter((g) => grouped[g].length > 0).map((g) => (
           <PerfTable key={g} title={GROUP_LABEL[g]} metrics={grouped[g]} />
         ))
-      ) : (
+      ) : !perf.error ? (
         <div className="empty" style={{ padding: '20px 0' }}>no perf regressions or improvements</div>
-      )}
+      ) : null}
 
       {hasPreview && perf.timelinePreviewSvg && perf.timelineHref ? (
         <button
           type="button"
           className="timeline-preview"
-          onClick={() => setOpenArtifact({ label: 'timeline', href: perf.timelineHref! })}
+          onClick={() => onOpen({ label: 'timeline', href: perf.timelineHref! })}
           aria-label="open timeline"
           dangerouslySetInnerHTML={{ __html: perf.timelinePreviewSvg }}
         />
@@ -151,13 +203,41 @@ export function PerfSlot({ perf, test }: { perf: PerfArtifact; test: TestResult 
               key={link.label}
               type="button"
               className="artifact-links__btn"
-              onClick={() => setOpenArtifact(link)}
+              onClick={() => onOpen(link)}
             >
               {link.label}
             </button>
           ))}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export function PerfSlot({ perfs = EMPTY, test }: { perfs?: PerfArtifact[]; test: TestResult }) {
+  const [openArtifact, setOpenArtifact] = useState<ArtifactLink | null>(null);
+
+  if (perfs.length === 0) {
+    return <div className="empty" style={{ padding: '20px 0' }}>no perf artifacts</div>;
+  }
+
+  // Only show per-viewport headers when this test was measured at more than
+  // one viewport — single-viewport tests (the common case) read cleanly as
+  // just the metrics table without a redundant "desktop" label above it.
+  const multi = perfs.length > 1;
+
+  return (
+    <div className="perf-slot">
+      {perfs.map((perf) => (
+        <div key={perf.viewportLabel} className="perf-slot__viewport">
+          {multi ? (
+            <div className="perf-slot__viewport-head">
+              <span className="perf-slot__viewport-label">{perf.viewportLabel}</span>
+            </div>
+          ) : null}
+          <PerfBody perf={perf} test={test} onOpen={setOpenArtifact} />
+        </div>
+      ))}
 
       <Dialog
         open={openArtifact !== null}

@@ -4571,6 +4571,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/diff@npm:^5.2.3":
+  version: 5.2.3
+  resolution: "@types/diff@npm:5.2.3"
+  checksum: 10c0/dd2e99e272a7023f3e5c71099599553c7d6c9a6b9d67f202b593b8d59b0528361eba39a8674ab18eba76217b6bad8f1a09417a9a571daaf7c0f49d67d4f305e2
+  languageName: node
+  linkType: hard
+
 "@types/estree@npm:1.0.8":
   version: 1.0.8
   resolution: "@types/estree@npm:1.0.8"
@@ -6725,6 +6732,13 @@ __metadata:
   version: 3.5.1
   resolution: "diff@npm:3.5.1"
   checksum: 10c0/28913ba64929561bd91e9aad8b6d5a2766d3c75451b8a2f7b2c0aa19f7edd32842da92ae23ae418a57362cc7a8673a26a9441d6ad896b0c64faf0a54c7ccffe6
+  languageName: node
+  linkType: hard
+
+"diff@npm:^5.2.0":
+  version: 5.2.2
+  resolution: "diff@npm:5.2.2"
+  checksum: 10c0/52da594c54e9033423da26984b1449ae6accd782d5afc4431c9a192a8507ddc83120fe8f925d7220b9da5b5963c7b6f5e46add3660a00cb36df7a13420a09d4b
   languageName: node
   linkType: hard
 
@@ -11513,6 +11527,7 @@ __metadata:
     "@types/d3-hierarchy": "npm:^3.1.0"
     "@types/d3-scale": "npm:~3.0.0"
     "@types/debug": "npm:^4.1.7"
+    "@types/diff": "npm:^5.2.3"
     "@types/fs-extra": "npm:^11.0.0"
     "@types/html-minifier-terser": "npm:^7.0.0"
     "@types/jest": "npm:^29.5.11"
@@ -11534,6 +11549,7 @@ __metadata:
     d3-hierarchy: "npm:^3.0.1"
     d3-scale: "npm:~3.3.0"
     debug: "npm:^4.3.1"
+    diff: "npm:^5.2.0"
     diverged: "npm:^0.1.3"
     dotenv: "npm:^16.0.0"
     fs-extra: "npm:^11.2.0"

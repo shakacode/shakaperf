@@ -56,7 +56,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
         browserContext: browserOrContext,
         isReference,
         scenario: scenario._testDef!,
-        viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+        viewport,
         testType: TestType.VisualRegression,
         annotate,
       });
@@ -152,7 +152,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
         browserContext: browserOrContext,
         isReference,
         scenario: scenario._testDef!,
-        viewport: { label: viewport.label, width: viewport.width, height: viewport.height },
+        viewport,
         testType: TestType.VisualRegression,
         annotate,
       });

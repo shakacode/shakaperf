@@ -3,7 +3,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { runCompare as runBenchCompare, type ICompareFlags } from '../../bench/cli/commands/compare';
-import type { PerfConfig, SharedConfig } from '../config';
+import { lhConfigForViewport } from '../../bench/core/lighthouse-config';
+import { ensureLighthousePatchRegistered } from '../../bench/core/patched-lighthouse/register-patch';
+import type { PerfConfig, SharedConfig, Viewport } from '../config';
 
 const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
@@ -13,6 +15,14 @@ export interface PerfBridgeOptions {
   resultsFolder: string;
   perfConfig: PerfConfig;
   sharedConfig: SharedConfig;
+  /**
+   * Viewport this pass measures. The bench worker receives a Lighthouse
+   * config whose `formFactor` and `screenEmulation` are derived from this
+   * viewport; user-provided `perf.lighthouseConfig` fills in everything
+   * else (throttling, categories, etc.) but cannot override the
+   * viewport-owned fields.
+   */
+  viewport: Viewport;
   testPathPattern?: string;
   filter?: string;
 }
@@ -29,11 +39,16 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     experimentURL,
     resultsFolder,
     perfConfig,
+    viewport,
     testPathPattern,
     filter,
   } = opts;
 
-  const lhConfigPath = await resolveLighthouseConfigPath(perfConfig);
+  // Announce the Lighthouse patch once per invocation in the main process;
+  // forked workers inherit `SHAKA_PERF_PATCH_ANNOUNCED` and stay quiet.
+  ensureLighthousePatchRegistered();
+
+  const lhConfigPath = await writeLighthouseConfigFile(perfConfig, viewport);
 
   const flags: ICompareFlags = {
     // hideAnalysis:false is required for the bench runner to invoke
@@ -55,28 +70,25 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
     parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,
     samplingMode: perfConfig.samplingMode ?? 'simultaneous',
-    config: lhConfigPath ?? undefined,
+    config: lhConfigPath,
+    viewport,
   };
 
   try {
     await runBenchCompare(flags);
   } finally {
-    if (lhConfigPath && lhConfigPath.startsWith(os.tmpdir())) {
-      fs.rmSync(lhConfigPath, { force: true });
-    }
+    fs.rmSync(lhConfigPath, { force: true });
   }
 }
 
-async function resolveLighthouseConfigPath(perfConfig: PerfConfig): Promise<string | null> {
-  if (perfConfig.lhConfigPath) {
-    return path.resolve(perfConfig.lhConfigPath);
-  }
-  if (!perfConfig.lighthouseConfig) {
-    return null;
-  }
+async function writeLighthouseConfigFile(
+  perfConfig: PerfConfig,
+  viewport: Viewport,
+): Promise<string> {
+  const merged = lhConfigForViewport(viewport, perfConfig.lighthouseConfig);
   const hash = crypto.randomBytes(6).toString('hex');
   const tempPath = path.join(os.tmpdir(), `shaka-perf-lh-${hash}.js`);
-  const body = `module.exports = ${JSON.stringify(perfConfig.lighthouseConfig, null, 2)};\n`;
+  const body = `module.exports = ${JSON.stringify(merged, null, 2)};\n`;
   fs.writeFileSync(tempPath, body);
   return tempPath;
 }

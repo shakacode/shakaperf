@@ -9,11 +9,18 @@ import {
   TestType,
   type AbTestDefinition,
 } from 'shaka-shared';
-import { parseAbTestsConfig, type AbTestsConfig, type VisregConfig, type PerfConfig } from './config';
+import {
+  parseAbTestsConfig,
+  type AbTestsConfig,
+  type Viewport,
+  type VisregConfig,
+  type PerfConfig,
+} from './config';
 import {
   writeReport,
   type Category,
   type CategoryResult,
+  type PerfArtifact,
   type ReportData,
   type Status,
   type TestResult,
@@ -21,7 +28,12 @@ import {
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { harvestVisreg } from './harvest/visreg';
-import { harvestPerf, readPerfEngineError, readPerfEngineLog, slugifyForBench } from './harvest/perf';
+import {
+  harvestPerf,
+  readPerfEngineError,
+  readPerfEngineLog,
+  slugifyForBench,
+} from './harvest/perf';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -41,10 +53,39 @@ export interface CompareRunOptions {
 
 const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
 const VISREG_SUBDIR = '_visreg/html_report';
-const EMPTY_PERF_CATEGORY: CategoryResult = {
-  category: 'perf',
-  status: 'no_difference',
-  perf: {
+
+/**
+ * Per-viewport subfolder under `resultsRoot` where the bench engine writes
+ * its per-test artifacts for that pass. Keeping each pass in its own subtree
+ * means a second viewport's run doesn't clobber the first one's reports.
+ */
+function perfRootFor(resultsRoot: string, viewport: Viewport): string {
+  return path.join(resultsRoot, `perf-${viewport.label}`);
+}
+
+/**
+ * Resolves the viewports a single test should run at for a given category.
+ * Returns the intersection of the category's `viewports` and the test's
+ * `options.viewports` narrow (if any). An empty result means the category
+ * is SKIPPED for this test — callers surface it as `status: 'skipped'`.
+ *
+ * Config-level viewports are validated by Zod; per-test `options.viewports`
+ * bypasses Zod (plain-TS test files) so unknown labels are silently
+ * ignored here — they just won't intersect with anything.
+ */
+function resolveViewportsForTest(
+  test: AbTestDefinition,
+  categoryViewports: Viewport[],
+): Viewport[] {
+  const narrow = test.options.viewports;
+  if (!narrow || narrow.length === 0) return categoryViewports;
+  const narrowSet = new Set(narrow);
+  return categoryViewports.filter((v) => narrowSet.has(v.label));
+}
+
+function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
+  return {
+    viewportLabel,
     metrics: [],
     regressedMetrics: [],
     improvedMetrics: [],
@@ -54,8 +95,9 @@ const EMPTY_PERF_CATEGORY: CategoryResult = {
     timelinePreviewSvg: null,
     benchReportHref: null,
     diffHrefs: [],
-  },
-};
+  };
+}
+
 const EMPTY_VISREG_CATEGORY: CategoryResult = {
   category: 'visreg',
   status: 'no_difference',
@@ -63,16 +105,20 @@ const EMPTY_VISREG_CATEGORY: CategoryResult = {
 };
 
 function combineStatus(perCategory: CategoryResult[]): Status {
-  // Skipped categories are treated as absent — a test opted out of a type
-  // shouldn't drag the overall status.
-  const live = perCategory.filter((c) => !c.skipped);
+  // Skipped categories (viewport-filter narrow or testTypes opt-out) have
+  // `status === 'skipped'` — none of the status checks below match them,
+  // so they naturally don't drag the combined status.
+  //
   // Error wins over signed signals: a test whose measurement failed cannot
   // truthfully claim a regression or improvement — surface the failure first
-  // so the card styling and status filter show it as `error`.
-  if (live.some((c) => c.error)) return 'error';
-  if (live.some((c) => c.status === 'regression')) return 'regression';
-  if (live.some((c) => c.status === 'visual_change')) return 'visual_change';
-  if (live.some((c) => c.status === 'improvement')) return 'improvement';
+  // so the card styling and status filter show it as `error`. The perf
+  // CategoryResult already folds per-viewport errors into its own
+  // `c.status === 'error'`, so the single check covers both category-wide
+  // visreg errors and per-viewport perf errors.
+  if (perCategory.some((c) => c.error || c.status === 'error')) return 'error';
+  if (perCategory.some((c) => c.status === 'regression')) return 'regression';
+  if (perCategory.some((c) => c.status === 'visual_change')) return 'visual_change';
+  if (perCategory.some((c) => c.status === 'improvement')) return 'improvement';
   return 'no_difference';
 }
 
@@ -100,13 +146,11 @@ export interface CompareRunResult {
 export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareRunResult> {
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
-  const shared = config.shared ?? {};
-  const visregConfig: VisregConfig = config.visreg ?? {};
-  const perfConfig: PerfConfig = config.perf ?? {};
+  const { shared, visreg: visregConfig, perf: perfConfig } = config;
 
-  const controlURL = opts.controlURL ?? shared.controlURL ?? 'http://localhost:3020';
-  const experimentURL = opts.experimentURL ?? shared.experimentURL ?? 'http://localhost:3030';
-  const resultsRoot = path.resolve(cwd, shared.resultsFolder ?? 'compare-results');
+  const controlURL = opts.controlURL ?? shared.controlURL;
+  const experimentURL = opts.experimentURL ?? shared.experimentURL;
+  const resultsRoot = path.resolve(cwd, shared.resultsFolder);
   const categories = opts.categories ?? DEFAULT_CATEGORIES;
 
   // Load tests once up-front so we know the full set before delegating; both
@@ -126,7 +170,9 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
-  let perfEngineFailed = false;
+  // Per-label: one viewport's bench throw must not attribute "engine aborted"
+  // to tests in another viewport's bucket that ran cleanly.
+  const perfEngineFailedByLabel = new Set<string>();
 
   // Run the engines sequentially (each launches its own browser).
   let visregByLabel = new Map<string, CategoryResult>();
@@ -159,28 +205,57 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.skipEngines) {
-    console.log('\n>>> perf');
-    // Pre-create each per-test dir so the bench engine's internal readdirSync
-    // calls never ENOENT before a test has any profile files written.
-    for (const test of tests) {
-      fs.mkdirSync(path.join(resultsRoot, slugifyForBench(test.name)), { recursive: true });
+  // Bucket tests by the perf viewport they resolved to (category viewports ∩
+  // test narrow). Each bucket becomes one bench pass. A test whose narrow
+  // excludes every perf viewport contributes to no bucket and is marked
+  // skipped at report time.
+  const perfBuckets = new Map<string, { viewport: Viewport; tests: AbTestDefinition[] }>();
+  for (const test of tests) {
+    for (const viewport of resolveViewportsForTest(test, perfConfig.viewports)) {
+      const bucket = perfBuckets.get(viewport.label);
+      if (bucket) bucket.tests.push(test);
+      else perfBuckets.set(viewport.label, { viewport, tests: [test] });
     }
-    try {
-      await invokePerfEngine({
-        controlURL,
-        experimentURL,
-        resultsFolder: resultsRoot,
-        perfConfig,
-        sharedConfig: shared,
-        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-        filter: opts.filter ?? shared.filter,
-      });
-    } catch (err) {
-      const message = (err as Error).message || String(err);
-      console.error(`perf engine error: ${message}`);
-      engineErrors.push(`perf engine: ${message}`);
-      perfEngineFailed = true;
+  }
+
+  if (categories.includes('perf') && !opts.skipEngines) {
+    for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
+      // Buckets are seeded on first insert (see perfBuckets construction
+      // above), so an empty bucket is unreachable today. Guard anyway: an
+      // empty `filter` would be falsy in `load-tests.ts`'s `if (filter)`
+      // check and silently fall back to running every discovered test at
+      // this viewport.
+      if (bucketTests.length === 0) continue;
+      console.log(`\n>>> perf · ${viewport.label}`);
+      const perfRoot = perfRootFor(resultsRoot, viewport);
+      // Pre-create each per-test dir so the bench engine's internal readdirSync
+      // calls never ENOENT before a test has any profile files written.
+      for (const test of bucketTests) {
+        fs.mkdirSync(path.join(perfRoot, slugifyForBench(test.name)), { recursive: true });
+      }
+      // Anchored regex-per-name joined with commas (bench treats commas as
+      // OR, full regex per piece) restricts the pass to exactly these
+      // tests even when the user's global filter would pull in more.
+      const filter = bucketTests
+        .map((t) => `^${t.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+        .join(',');
+      try {
+        await invokePerfEngine({
+          controlURL,
+          experimentURL,
+          resultsFolder: perfRoot,
+          perfConfig,
+          sharedConfig: shared,
+          viewport,
+          testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+          filter,
+        });
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        console.error(`perf engine error (${viewport.label}): ${message}`);
+        engineErrors.push(`perf engine (${viewport.label}): ${message}`);
+        perfEngineFailedByLabel.add(viewport.label);
+      }
     }
   }
 
@@ -190,11 +265,12 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       cwd,
       controlURL,
       experimentURL,
+      visregConfig,
       perfConfig,
       resultsRoot,
       categories,
       visregByLabel,
-      perfEngineFailed,
+      perfEngineFailedByLabel,
     }),
   );
 
@@ -233,9 +309,17 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     // visually changed (or regressed + improved across different metrics),
     // and the combined `test.status` hides all but the top-ranked one.
     for (const c of t.categories) {
-      if (c.skipped) continue;
+      if (c.status === 'skipped') continue;
       if (c.error) errors++;
-      if (c.category === 'perf' && c.perf && c.perf.regressedMetrics.length > 0) regressions++;
+      if (c.category === 'perf') {
+        // One perf card carries N viewports; count each viewport's regressions
+        // and per-viewport errors separately so multi-viewport failures land
+        // in the summary line with the right count.
+        for (const p of c.perfs ?? []) {
+          if (p.error) errors++;
+          if (p.regressedMetrics.length > 0) regressions++;
+        }
+      }
       if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
     }
   }
@@ -255,76 +339,150 @@ interface BuildTestResultOpts {
   cwd: string;
   controlURL: string;
   experimentURL: string;
+  visregConfig: VisregConfig;
   perfConfig: PerfConfig;
   resultsRoot: string;
   categories: Category[];
   visregByLabel: Map<string, CategoryResult>;
-  perfEngineFailed: boolean;
+  /** Set of viewport labels whose bench pass threw — used to distinguish
+   *  "this test's viewport had an engine failure" from "this test happens to
+   *  be missing report.json in an otherwise healthy viewport's subtree". */
+  perfEngineFailedByLabel: Set<string>;
 }
 
+function skippedCategory(
+  category: Category,
+  skipReason: string,
+): CategoryResult {
+  return {
+    category,
+    status: 'skipped',
+    skipReason,
+    ...(category === 'visreg' ? { visreg: [] } : { perfs: [] }),
+  };
+}
+
+function viewportFilterSkipReason(category: Category, narrow: string[] | undefined): string {
+  const detail = narrow && narrow.length > 0 ? ` [${narrow.join(', ')}]` : '';
+  return `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`;
+}
+
+const TEST_TYPE_FOR_CATEGORY = {
+  visreg: TestType.VisualRegression,
+  perf: TestType.Performance,
+} as const;
+
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
+  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
 
   if (categories.includes('visreg')) {
-    if (!testRunsForType(test, TestType.VisualRegression)) {
-      perCategory.push({ ...EMPTY_VISREG_CATEGORY, skipped: true });
+    if (!testRunsForType(test, TEST_TYPE_FOR_CATEGORY.visreg)) {
+      perCategory.push(
+        skippedCategory('visreg', 'skipped: test opted out of visreg via testTypes'),
+      );
     } else {
-      const visregResult = visregByLabel.get(test.name);
-      if (visregResult) {
-        perCategory.push(visregResult);
+      const resolved = resolveViewportsForTest(test, visregConfig.viewports);
+      if (resolved.length === 0) {
+        perCategory.push(
+          skippedCategory('visreg', viewportFilterSkipReason('visreg', test.options.viewports)),
+        );
       } else {
-        // Visreg engine ran but this test has no pairs in the manifest —
-        // commonly means the engine aborted before capturing this test.
-        perCategory.push({
-          ...EMPTY_VISREG_CATEGORY,
-          error: 'visreg did not produce artifacts for this test',
-        });
+        const visregResult = visregByLabel.get(test.name);
+        if (visregResult) {
+          // If the test narrows viewports, filter the engine's artifacts to
+          // only the ones the test actually asked for — the engine runs every
+          // `visreg.viewports` label globally (no per-test narrowing in the
+          // engine layer), so excess pairs come back that this test didn't
+          // want. Narrow empty-intersection is already handled above.
+          const allowed = new Set(resolved.map((v) => v.label));
+          const filtered = (visregResult.visreg ?? []).filter((a) => allowed.has(a.viewportLabel));
+          perCategory.push({ ...visregResult, visreg: filtered });
+        } else {
+          // Visreg engine ran but this test has no pairs in the manifest —
+          // commonly means the engine aborted before capturing this test.
+          perCategory.push({
+            ...EMPTY_VISREG_CATEGORY,
+            error: 'visreg did not produce artifacts for this test',
+          });
+        }
       }
     }
   }
   if (categories.includes('perf')) {
-    if (!testRunsForType(test, TestType.Performance)) {
-      perCategory.push({ ...EMPTY_PERF_CATEGORY, skipped: true });
+    if (!testRunsForType(test, TEST_TYPE_FOR_CATEGORY.perf)) {
+      perCategory.push(
+        skippedCategory('perf', 'skipped: test opted out of perf via testTypes'),
+      );
     } else {
-      const perTestDir = path.join(resultsRoot, slug);
-      const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
-      const perTestEngineError = readPerfEngineError(perTestDir);
-      if (reportJsonExists) {
-        try {
-          perCategory.push(
-            harvestPerf({
-              perTestDir,
-              controlURL,
-              experimentURL,
-              perfConfig,
-              reportRoot: resultsRoot,
-              slug,
-            }),
-          );
-        } catch (err) {
-          const message = (err as Error).message || String(err);
-          perCategory.push({
-            ...EMPTY_PERF_CATEGORY,
-            error: `perf report unreadable: ${message}`,
-            errorLog: readPerfEngineLog(perTestDir),
-          });
-        }
-      } else if (perTestEngineError) {
-        perCategory.push({
-          ...EMPTY_PERF_CATEGORY,
-          error: `perf measurement failed: ${perTestEngineError}`,
-          errorLog: readPerfEngineLog(perTestDir),
-        });
-      } else if (perfEngineFailed) {
-        perCategory.push({
-          ...EMPTY_PERF_CATEGORY,
-          error: 'perf engine aborted before measuring this test — see the error banner above',
-        });
+      const resolved = resolveViewportsForTest(test, perfConfig.viewports);
+      if (resolved.length === 0) {
+        perCategory.push(
+          skippedCategory('perf', viewportFilterSkipReason('perf', test.options.viewports)),
+        );
       } else {
-        perCategory.push(EMPTY_PERF_CATEGORY);
+        // One PerfArtifact per viewport this test was measured at, collected
+        // into a single `CategoryResult.perfs` — mirrors how visreg packs N
+        // per-viewport pairs into one `CategoryResult.visreg`.
+        const perfs: PerfArtifact[] = [];
+        for (const viewport of resolved) {
+          const perfRoot = perfRootFor(resultsRoot, viewport);
+          const perTestDir = path.join(perfRoot, slug);
+          const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+          const perTestEngineError = readPerfEngineError(perTestDir);
+          const viewportLabel = viewport.label;
+          if (reportJsonExists) {
+            try {
+              perfs.push(
+                harvestPerf({
+                  perTestDir,
+                  controlURL,
+                  experimentURL,
+                  perfConfig,
+                  reportRoot: resultsRoot,
+                  slug,
+                  viewportLabel,
+                }),
+              );
+            } catch (err) {
+              const message = (err as Error).message || String(err);
+              perfs.push({
+                ...emptyPerfArtifact(viewportLabel),
+                error: `perf report unreadable: ${message}`,
+                errorLog: readPerfEngineLog(perTestDir),
+              });
+            }
+          } else if (perTestEngineError) {
+            perfs.push({
+              ...emptyPerfArtifact(viewportLabel),
+              error: `perf measurement failed: ${perTestEngineError}`,
+              errorLog: readPerfEngineLog(perTestDir),
+            });
+          } else if (perfEngineFailedByLabel.has(viewportLabel)) {
+            perfs.push({
+              ...emptyPerfArtifact(viewportLabel),
+              error: `perf engine aborted before measuring this test at ${viewportLabel} — see the error banner above`,
+            });
+          } else {
+            perfs.push(emptyPerfArtifact(viewportLabel));
+          }
+        }
+        // Per-viewport statuses fold into the category status with error first
+        // (any viewport errored → the whole category reads as error, so it stays
+        // in sync with `test.status`), then regression, then improvement, else
+        // no_difference. Full pass per level — we can't break on regression
+        // because a later viewport might carry an error that should outrank it.
+        let perfStatus: Status = 'no_difference';
+        if (perfs.some((p) => p.error)) perfStatus = 'error';
+        else if (perfs.some((p) => p.regressedMetrics.length > 0)) perfStatus = 'regression';
+        else if (perfs.some((p) => p.improvedMetrics.length > 0)) perfStatus = 'improvement';
+        perCategory.push({
+          category: 'perf',
+          status: perfStatus,
+          perfs,
+        });
       }
     }
   }

@@ -37,7 +37,6 @@ describe('convertAbTestToScenario', function () {
           maxNumDiffPixels: 10,
           delay: 100,
           hideSelectors: ['.cookie-banner'],
-          viewports: [{ label: 'mobile', width: 375, height: 667 }],
         },
       },
     };
@@ -49,7 +48,40 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.maxNumDiffPixels, 10);
     assert.strictEqual(scenario.delay, 100);
     assert.deepStrictEqual(scenario.hideSelectors, ['.cookie-banner']);
-    assert.deepStrictEqual(scenario.viewports, [{ label: 'mobile', width: 375, height: 667 }]);
+  });
+
+  it('should narrow scenario.viewports to the labels in options.viewports', function () {
+    const phone = { label: 'phone', width: 375, height: 667, formFactor: 'mobile' as const, deviceScaleFactor: 3 };
+    const tablet = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile' as const, deviceScaleFactor: 3 };
+    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
+    const def: AbTestDefinition = {
+      ...baseDef,
+      options: { viewports: ['phone'] },
+    };
+
+    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment', [desktop, tablet, phone]);
+
+    assert.deepStrictEqual(scenario.viewports, [phone]);
+  });
+
+  it('should leave scenario.viewports unset when options.viewports is omitted', function () {
+    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
+
+    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment', [desktop]);
+
+    assert.strictEqual(scenario.viewports, undefined);
+  });
+
+  it('should leave scenario.viewports unset when the narrow matches no category viewports', function () {
+    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
+    const def: AbTestDefinition = {
+      ...baseDef,
+      options: { viewports: ['phone'] },
+    };
+
+    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment', [desktop]);
+
+    assert.strictEqual(scenario.viewports, undefined);
   });
 
   it('should attach testFn as _testFn on the scenario', function () {

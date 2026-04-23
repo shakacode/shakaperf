@@ -1,6 +1,6 @@
 import { loadTestFile, getRegisteredTests } from 'shaka-shared';
 import type { BenchmarkSampler } from './run';
-import type { NavigationSample } from './lighthouse-config';
+import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
 import createLighthouseBenchmarkInProcess from './create-lighthouse-benchmark-in-process';
 
 interface SetupMessage {
@@ -9,7 +9,7 @@ interface SetupMessage {
   testName: string;
   baseUrl: string;
   group: string;
-  options: Record<string, unknown>;
+  options: LighthouseBenchmarkOptions;
 }
 
 interface SampleMessage {

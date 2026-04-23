@@ -67,12 +67,20 @@ function SlotError({
   );
 }
 
-export function CategorySlot({ result, test }: { result: CategoryResult; test: TestResult }) {
-  if (result.skipped) {
+export function CategorySlot({
+  result,
+  test,
+}: {
+  result: CategoryResult;
+  test: TestResult;
+}) {
+  if (result.status === 'skipped') {
     return (
       <div className="slot-skipped" role="note">
         <span className="slot-skipped__prefix">{LABEL[result.category]} ·</span>
-        <span className="slot-skipped__message">skipped for this test (testTypes)</span>
+        <span className="slot-skipped__message">
+          {result.skipReason ?? 'skipped'}
+        </span>
       </div>
     );
   }
@@ -80,7 +88,7 @@ export function CategorySlot({ result, test }: { result: CategoryResult; test: T
     <div>
       {result.error ? <SlotError result={result} test={test} /> : null}
       {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
-      {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} test={test} /> : null}
+      {result.category === 'perf' ? <PerfSlot perfs={result.perfs ?? []} test={test} /> : null}
     </div>
   );
 }

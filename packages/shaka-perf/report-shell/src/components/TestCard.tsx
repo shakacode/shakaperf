@@ -10,21 +10,39 @@ interface PillSpec {
 
 function pillsForTest(test: TestResult): PillSpec[] {
   // A single test can emit several pills at once: each category that errored
-  // contributes an `errored` pill, and each perf category contributes a
-  // separate `regressed` / `improved` pill when its metric set is non-empty —
-  // the two are not mutually exclusive. Visreg contributes a `visual change`
-  // pill when its pairs actually mismatched.
+  // contributes an `error` pill, each perf viewport contributes a separate
+  // `regressed` / `improved` pill when its metric set is non-empty — so
+  // regressions and improvements can coexist, and mobile + desktop runs each
+  // get their own pill prefixed with the viewport label. Visreg contributes
+  // a `visual change` pill when its pairs actually mismatched.
   const pills: PillSpec[] = [];
   for (const c of test.categories) {
     if (c.error) {
       pills.push({ status: 'error', detail: c.category });
     }
-    if (c.category === 'perf' && c.perf) {
-      if (c.perf.regressedMetrics.length > 0) {
-        pills.push({ status: 'regression', detail: c.perf.regressedMetrics.join(', ') });
-      }
-      if (c.perf.improvedMetrics.length > 0) {
-        pills.push({ status: 'improvement', detail: c.perf.improvedMetrics.join(', ') });
+    if (c.category === 'perf') {
+      const perfs = c.perfs ?? [];
+      // Prefix the viewport only when there's more than one to disambiguate —
+      // a single-viewport test reads cleanly as "regressed: FCP".
+      const multi = perfs.length > 1;
+      for (const p of perfs) {
+        const prefix = multi ? `${p.viewportLabel} · ` : '';
+        if (p.error) {
+          pills.push({ status: 'error', detail: `${prefix}perf` });
+          continue;
+        }
+        if (p.regressedMetrics.length > 0) {
+          pills.push({
+            status: 'regression',
+            detail: `${prefix}${p.regressedMetrics.join(', ')}`,
+          });
+        }
+        if (p.improvedMetrics.length > 0) {
+          pills.push({
+            status: 'improvement',
+            detail: `${prefix}${p.improvedMetrics.join(', ')}`,
+          });
+        }
       }
     }
     if (c.category === 'visreg' && c.status === 'visual_change') {

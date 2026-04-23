@@ -8,11 +8,8 @@ export default defineConfig({
   },
 
   visreg: {
-    viewports: [
-      { label: 'mobile', width: 375, height: 667 },
-      { label: 'tablet', width: 768, height: 1024 },
-      { label: 'desktop', width: 1280, height: 800 },
-    ],
+    // viewports default to ['desktop', 'tablet', 'phone'] — full defs live
+    // in shared.viewports (also defaulted).
     engineOptions: {
       browser: 'chromium',
       args: ['--no-sandbox'],
@@ -25,15 +22,11 @@ export default defineConfig({
   },
 
   perf: {
-    numberOfMeasurements: 2, // in real apps you should run ~20 measurements
+    // viewports default to ['desktop', 'phone']. `formFactor` and
+    // `screenEmulation` are NOT set here — the viewport referenced from
+    // shared.viewports owns them; the runner lowers them via
+    // lhConfigForViewport.
     lighthouseConfig: {
-      formFactor: 'mobile',
-      screenEmulation: {
-        mobile: true,
-        width: 390,
-        height: 844,
-        deviceScaleFactor: 3,
-      },
       throttling: {
         rttMs: 300,
         throughputKbps: 700,

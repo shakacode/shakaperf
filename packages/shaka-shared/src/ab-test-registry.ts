@@ -6,12 +6,32 @@ export interface Marker {
   label: string;
 }
 
+export type FormFactor = 'mobile' | 'desktop';
+
 export interface Viewport {
   label: string;
-  name?: string;
   width: number;
   height: number;
+  /**
+   * Drives Lighthouse's `formFactor` and `screenEmulation.mobile` when this
+   * viewport feeds a perf run. Visreg ignores this field.
+   */
+  formFactor: FormFactor;
+  /**
+   * Device pixel ratio fed to Lighthouse's
+   * `screenEmulation.deviceScaleFactor` when this viewport feeds a perf run.
+   * Visreg ignores this field.
+   */
+  deviceScaleFactor: number;
 }
+
+// Named singletons so visreg and perf share the exact same device dimensions
+// by default — a desktop perf regression reporting "1280×800" matches the
+// desktop visreg card captured at the same pixel budget. User configs can
+// import these from `shaka-shared` to reference the canonical objects.
+export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 667, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
 export enum TestType {
   VisualRegression = 'visual_regression',
@@ -64,16 +84,23 @@ export interface AbTestVisregConfig {
 
   // Lifecycle hook — runs before page navigation
   onBefore?: (context: TestFnContext) => Promise<void>;
-
-  // Viewport override
-  viewports?: Viewport[];
 }
 
 export interface AbTestOptions {
   markers?: Marker[];
-  lhConfigPath?: string;
   resultsFolder?: string;
   visreg?: AbTestVisregConfig;
+  /**
+   * Narrows which viewports this test runs at (applies to every category).
+   * References labels from `shared.viewports`; the intersection with each
+   * category's `viewports` list is what actually executes. If the
+   * intersection is empty for a category, the test is skipped there with
+   * a visible "skipped by viewport filter" marker on the report card.
+   *
+   * Example: test dashboards only render usefully at desktop widths —
+   * `options: { viewports: ['desktop'] }` skips the phone/tablet passes.
+   */
+  viewports?: string[];
 }
 
 export interface AbTestDefinition {

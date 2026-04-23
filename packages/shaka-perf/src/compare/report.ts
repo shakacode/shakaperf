@@ -6,7 +6,17 @@ export type Status =
   | 'regression'
   | 'visual_change'
   | 'improvement'
-  | 'no_difference';
+  | 'no_difference'
+  /**
+   * Category was skipped for this test because the intersection of
+   * `options.viewports` (test narrow) and the category's own `viewports`
+   * is empty — e.g. a test tagged `viewports: ['desktop']` against
+   * `perf.viewports: ['phone']` produces no perf work. Rendered as a
+   * small "skipped by viewport filter" banner; does not propagate to the
+   * test-level status (a skipped perf category doesn't override a visreg
+   * change).
+   */
+  | 'skipped';
 
 export type Category = 'visreg' | 'perf';
 
@@ -56,6 +66,25 @@ export interface PerfMetric {
 }
 
 export interface PerfArtifact {
+  /**
+   * Identifier of the viewport this measurement was taken at (matching the
+   * viewport's `label`, e.g. "desktop" / "phone"). Mirrors
+   * `VisregArtifact.viewportLabel` so per-viewport perf rows render the
+   * same way visreg rows do.
+   */
+  viewportLabel: string;
+  /**
+   * Per-viewport measurement failure, e.g. "perf engine aborted before
+   * measuring this test". Set when this specific viewport's Lighthouse
+   * pass failed while other viewports on the same test may have succeeded.
+   */
+  error?: string;
+  /**
+   * Captured stdout/stderr transcript for the failed per-viewport run,
+   * embedded so the report stays self-contained. Opened via the error
+   * banner's "view logs" action.
+   */
+  errorLog?: string | null;
   metrics: PerfMetric[];
   regressedMetrics: string[];
   improvedMetrics: string[];
@@ -64,9 +93,9 @@ export interface PerfArtifact {
   timelineHref: string | null;
   /**
    * Inline SVG string for the timeline preview (3×N triplet grid). Only
-   * populated on tests whose perf status actually moved off `no_difference`
-   * — `no_difference` cards fall back to the plain "timeline" button in the
-   * artifact link row.
+   * populated on viewports whose perf status actually moved off
+   * `no_difference` — `no_difference` rows fall back to the plain
+   * "timeline" button in the artifact link row.
    */
   timelinePreviewSvg: string | null;
   benchReportHref: string | null;
@@ -77,26 +106,31 @@ export interface CategoryResult {
   category: Category;
   status: Status;
   /**
-   * True when this test opted out of this category via `testTypes`. The
-   * UI renders a neutral "skipped" chip and `summarizeFailures` /
-   * `combineStatus` treat the category as absent.
-   */
-  skipped?: boolean;
-  /**
-   * Non-fatal error message to surface in the report card — e.g. "perf
-   * engine aborted before this test ran". Presence of `error` does NOT
-   * change the category status (still `no_difference` by default).
+   * Non-fatal category-wide error to surface as a banner above the per-
+   * viewport cards — e.g. the visreg engine aborted before producing any
+   * pairs. Per-viewport perf errors live on the individual `PerfArtifact`
+   * so one failed viewport doesn't erase the others' results.
    */
   error?: string;
   /**
-   * Full captured stdout/stderr transcript from the engine run that produced
-   * `error`, embedded so the report stays self-contained. Opened on click by
-   * the error surface in the card. Null / undefined when there's no log
-   * (e.g. engine never started) or no error at all.
+   * Full captured stdout/stderr transcript from the engine run that
+   * produced `error`, embedded so the report stays self-contained.
    */
   errorLog?: string | null;
+  /**
+   * Explanation shown when `status === 'skipped'`, e.g. "skipped: test's
+   * viewport narrow ['desktop'] matches no perf viewport". Not an `error`
+   * because skipping is intentional and must not promote the test-level
+   * status to `error`.
+   */
+  skipReason?: string;
   visreg?: VisregArtifact[];
-  perf?: PerfArtifact;
+  /**
+   * One entry per viewport this test was measured at. Always an array
+   * even when a single viewport is configured, mirroring
+   * `visreg: VisregArtifact[]`.
+   */
+  perfs?: PerfArtifact[];
 }
 
 export interface TestResult {

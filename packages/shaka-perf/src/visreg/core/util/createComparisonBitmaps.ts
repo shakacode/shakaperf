@@ -31,15 +31,6 @@ const logger = createLogger('compare');
 
 const CONCURRENCY_DEFAULT = 10;
 
-function ensureViewportLabel (config: { viewports?: Viewport[] }) {
-  if (!Array.isArray(config.viewports)) return;
-  config.viewports.forEach(function (viewport: Viewport, index: number) {
-    if (!viewport.label) {
-      viewport.label = viewport.name || ('viewport_' + index);
-    }
-  });
-}
-
 async function decorateConfigForTestFile (config: RuntimeConfig) {
   const testPathPattern = config.args.testPathPattern as string | undefined;
   const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
@@ -57,9 +48,13 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   // Retrieve it for viewports/engineOptions which aren't on RuntimeConfig.
   const globalConfig = (config.args._loadedVisregConfig as Partial<VisregGlobalConfig>) || {};
 
-  // Convert AbTestDefinitions to Scenarios
+  // Convert AbTestDefinitions to Scenarios — pass the resolved category
+  // viewports so per-test `options.viewports` can narrow `scenario.viewports`
+  // before the engine iterates. Without this, `options.viewports: ['phone']`
+  // would still run desktop/tablet and only get filtered at harvest time.
+  const categoryViewports = globalConfig.viewports ?? [];
   const scenarios = tests.map(function (t) {
-    return convertAbTestToScenario(t, controlURL, experimentURL);
+    return convertAbTestToScenario(t, controlURL, experimentURL, categoryViewports);
   });
 
   const configJSON: Record<string, unknown> = {
@@ -68,7 +63,6 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
     scenarios,
   };
-  ensureViewportLabel(configJSON as { viewports?: Viewport[] });
 
   if ((configJSON as Record<string, unknown>).dynamicTestId) {
     console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-perf visreg will run in dynamic-test mode.');

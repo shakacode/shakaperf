@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { ReportData, Status, TestResult } from './types';
-import { STATUS_LABEL, STATUS_ORDER } from './labels';
+import { STATUS_ORDER } from './labels';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { StatusFilter } from './components/StatusFilter';
-import { Section } from './components/Section';
 import { TestCard } from './components/TestCard';
 import { ErrorBanner } from './components/ErrorBanner';
 
@@ -21,8 +20,8 @@ const ZERO_COUNTS: Record<Status, number> = {
  * A test can be both regressed AND improved (different metrics move in
  * opposite directions), or errored AND visually changed (perf measurement
  * failed while visreg succeeded). Return every status that applies so the
- * test appears under each matching section and contributes to each matching
- * filter count.
+ * test contributes to each matching filter count and stays visible when
+ * any of those filters is active.
  */
 function testStatuses(test: TestResult): Status[] {
   let hasError = false;
@@ -31,9 +30,12 @@ function testStatuses(test: TestResult): Status[] {
   let hasVisual = false;
   for (const c of test.categories) {
     if (c.error) hasError = true;
-    if (c.category === 'perf' && c.perf) {
-      if (c.perf.regressedMetrics.length > 0) hasRegression = true;
-      if (c.perf.improvedMetrics.length > 0) hasImprovement = true;
+    if (c.category === 'perf') {
+      for (const p of c.perfs ?? []) {
+        if (p.error) hasError = true;
+        if (p.regressedMetrics.length > 0) hasRegression = true;
+        if (p.improvedMetrics.length > 0) hasImprovement = true;
+      }
     }
     if (c.category === 'visreg' && c.status === 'visual_change') hasVisual = true;
   }
@@ -75,26 +77,27 @@ export function App({ data }: { data: ReportData }) {
     return out;
   }, [data.tests, statusesByTest]);
 
-  const grouped = useMemo(() => {
-    const out: Record<Status, TestResult[]> = {
-      error: [],
-      regression: [],
-      visual_change: [],
-      improvement: [],
-      no_difference: [],
-    };
+  // One flat list, deduplicated — a test that is both regression and
+  // visual_change appears once, not twice. Sort by its highest-priority
+  // status so cards pack greedily into the responsive grid without being
+  // split by section dividers.
+  const visibleTests = useMemo(() => {
+    const priority = (s: Status) => STATUS_ORDER.indexOf(s);
+    const primary = (statuses: Status[]) =>
+      statuses.reduce(
+        (best, s) => (priority(s) < priority(best) ? s : best),
+        statuses[0] ?? 'no_difference',
+      );
+    const out: { test: TestResult; primary: Status }[] = [];
     for (const t of data.tests) {
       if (!matchesQuery(t, query)) continue;
       const statuses = statusesByTest.get(t.id) ?? [];
-      for (const s of statuses) {
-        if (!active.has(s)) continue;
-        out[s].push(t);
-      }
+      if (!statuses.some((s) => active.has(s))) continue;
+      out.push({ test: t, primary: primary(statuses) });
     }
+    out.sort((a, b) => priority(a.primary) - priority(b.primary));
     return out;
   }, [data.tests, active, query, statusesByTest]);
-
-  const visibleTotal = STATUS_ORDER.reduce((sum, s) => sum + grouped[s].length, 0);
 
   const toggleStatus = (status: Status) => {
     setActive((prev) => {
@@ -116,26 +119,18 @@ export function App({ data }: { data: ReportData }) {
         <StatusFilter active={active} counts={counts} onToggle={toggleStatus} />
       </div>
 
-      {visibleTotal === 0 ? (
+      {visibleTests.length === 0 ? (
         <div className="empty">no tests match current filter</div>
       ) : (
-        STATUS_ORDER.map((status) => {
-          const tests = grouped[status];
-          if (tests.length === 0) return null;
-          return (
-            <Section key={status} title={STATUS_LABEL[status]} count={tests.length}>
-              <div className="grid">
-                {tests.map((t, idx) => (
-                  <TestCard
-                    key={`${status}-${t.id}`}
-                    test={t}
-                    animationDelayMs={Math.min(idx, 8) * 40}
-                  />
-                ))}
-              </div>
-            </Section>
-          );
-        })
+        <div className="grid">
+          {visibleTests.map(({ test }, idx) => (
+            <TestCard
+              key={test.id}
+              test={test}
+              animationDelayMs={Math.min(idx, 8) * 40}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

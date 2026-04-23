@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
-  CategoryResult,
   PerfArtifact,
   PerfDirection,
   PerfMetric,
@@ -145,16 +144,18 @@ export interface HarvestPerfOptions {
   perfConfig: PerfConfig;
   reportRoot: string;
   slug: string;
+  viewportLabel: string;
 }
 
 /**
  * Reads bench's per-test `<slug>/report.json` (shape: ICompareJSONResults)
- * plus sibling artifact files, and emits a CategoryResult with metrics +
- * relative artifact hrefs (relative to `reportRoot` which is where
- * `compare-results/report.html` will live).
+ * plus sibling artifact files, and emits one PerfArtifact tagged with
+ * `viewportLabel`. Callers that measured N viewports call this N times and
+ * collect the results into a single `CategoryResult.perfs` array — the same
+ * shape visreg uses for its per-viewport pairs.
  */
-export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
-  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug } = opts;
+export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
+  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
 
   const metrics: PerfMetric[] = [];
   const regressedMetrics: string[] = [];
@@ -239,10 +240,9 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       const nb = parseInt(b.match(/\d+/)![0], 10);
       return nb - na;
     })[0] ?? null;
-  // bench now emits a single stacked diff.html per test (was per-artifact
-  // `*.diff.html` — network + profile). Keep the array shape and legacy-name
-  // fallback so old snapshots and mid-migration runs both work.
-  const diffFiles = files.filter((f) => f === 'diff.html' || f.endsWith('.diff.html'));
+  // bench emits one `<artifact>.diff.html` per txt pair (network_activity,
+  // performance_profile.summary, …) so each gets its own button in the report.
+  const diffFiles = files.filter((f) => f.endsWith('.diff.html')).sort();
 
   // Only inline the preview SVG when the test actually moved off
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
@@ -259,7 +259,12 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       })()
     : null;
 
-  const perf: PerfArtifact = {
+  // Ensure the slug is referenced even if perTestDir never existed (e.g.
+  // the viewport's bench run errored before writing report.json).
+  void slug;
+
+  return {
+    viewportLabel,
     metrics,
     regressedMetrics,
     improvedMetrics,
@@ -272,13 +277,6 @@ export function harvestPerf(opts: HarvestPerfOptions): CategoryResult {
       .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))
       .filter((d): d is { label: string; href: string } => d.href != null),
   };
-
-  // Ensure the slug survives even if perTestDir never existed (e.g. perf was
-  // skipped for this test because the engine errored). We still emit an empty
-  // category so the card shows "no perf metrics".
-  void slug;
-
-  return { category: 'perf', status, perf };
 }
 
 function safeReaddir(dir: string): string[] {
@@ -298,13 +296,8 @@ function urlHostSegment(url: string): string {
 }
 
 function prettyDiffLabel(filename: string): string {
-  if (filename === 'diff.html') return 'diff';
   const base = filename.replace(/\.diff\.html$/, '');
-  // Legacy-name fallback: bench named per-artifact diff files
-  // "network_activity.diff.html" / "performance_profile.summary.diff.html"
-  // (optionally prefixed with "<slug>__"). Strip the prefix before labeling.
-  const stripped = base.replace(/^[^_]+__/, '');
-  if (stripped === 'network_activity') return 'network diff';
-  if (stripped === 'performance_profile.summary') return 'profile diff';
-  return `${stripped.replace(/_/g, ' ')} diff`;
+  if (base === 'network_activity') return 'network diff';
+  if (base === 'performance_profile.summary') return 'profile diff';
+  return `${base.replace(/_/g, ' ')} diff`;
 }

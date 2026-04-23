@@ -1,10 +1,11 @@
-import type { AbTestDefinition } from 'shaka-shared';
-import type { Scenario } from '../types';
+import type { AbTestDefinition, Viewport as SharedViewport } from 'shaka-shared';
+import type { Scenario, Viewport } from '../types';
 
 export function convertAbTestToScenario(
   testDef: AbTestDefinition,
   controlURL: string,
-  experimentURL: string
+  experimentURL: string,
+  categoryViewports: SharedViewport[] = [],
 ): Scenario {
   const visreg = testDef.options.visreg ?? {};
 
@@ -46,7 +47,26 @@ export function convertAbTestToScenario(
 
   if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
   if (visreg.onBefore) scenario.onBefore = visreg.onBefore;
-  if (visreg.viewports) scenario.viewports = visreg.viewports;
+
+  // Per-test viewport narrowing from top-level `options.viewports`
+  // (label-based, shared across categories). When set, we filter the
+  // category's resolved viewports to the labeled subset and pass the
+  // full Viewport objects down as `scenario.viewports` so the engine
+  // only runs the ones this test actually wants — mirroring how perf's
+  // `perfBuckets` narrow the bench pass. The compare runner also
+  // filters at harvest time as defence-in-depth.
+  //
+  // Unknown labels are dropped silently (no `shared.viewports` cross-
+  // check is possible here — Zod validates config-level labels, but
+  // per-test `options.viewports` lives on a plain TS test file).
+  const narrow = testDef.options.viewports;
+  if (narrow && narrow.length > 0 && categoryViewports.length > 0) {
+    const narrowSet = new Set(narrow);
+    const filtered = categoryViewports.filter((v) => narrowSet.has(v.label));
+    if (filtered.length > 0) {
+      scenario.viewports = filtered as Viewport[];
+    }
+  }
 
   return scenario;
 }

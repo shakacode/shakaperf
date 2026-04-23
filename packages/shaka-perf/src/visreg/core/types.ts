@@ -1,13 +1,13 @@
 import type { Page as PlaywrightPage, BrowserContext, Browser } from 'playwright';
+import { PHONE_VIEWPORT, TABLET_VIEWPORT, DESKTOP_VIEWPORT, type Viewport as SharedViewport } from 'shaka-shared';
 
 export type { PlaywrightPage, BrowserContext, Browser };
 
 // ── Viewport ────────────────────────────────────────────────────────
-export interface Viewport {
-  label: string;
-  name?: string;
-  width: number;
-  height: number;
+// Extends shaka-shared so the same object survives the trip into
+// TestFnContext (which the user's test function receives) without
+// losing `formFactor` / `deviceScaleFactor`.
+export interface Viewport extends SharedViewport {
   vIndex?: number;
   viewport?: { width: number; height: number };
 }
@@ -352,11 +352,11 @@ export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConf
 }
 
 export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
-  viewports: [
-    { label: 'mobile', width: 375, height: 667 },
-    { label: 'tablet', width: 768, height: 1024 },
-    { label: 'desktop', width: 1280, height: 800 },
-  ],
+  // Canonical viewport singletons live in shaka-shared so visreg and perf
+  // reference the exact same device dimensions — a desktop visreg capture
+  // and a desktop perf run measure 1280×800, not two close-but-different
+  // sizes that would muddle A/B comparisons.
+  viewports: [PHONE_VIEWPORT, TABLET_VIEWPORT, DESKTOP_VIEWPORT],
   paths: {
     htmlReport: 'visreg_data/html_report',
     ciReport: 'visreg_data/ci_report',

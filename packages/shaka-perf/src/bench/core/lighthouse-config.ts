@@ -11,21 +11,25 @@ export const DEFAULT_MARKERS: Marker[] = [
 ];
 
 import type { Flags } from 'lighthouse/types/externs.js';
+import type { Viewport } from 'shaka-shared';
 
 export type LighthouseConfig = Flags;
 
-export function defineConfig(config: LighthouseConfig): LighthouseConfig {
+/**
+ * Lighthouse config minus the viewport-owning fields. `Viewport` is the
+ * single source of truth for `formFactor` / `screenEmulation` (lowered
+ * via `lhConfigForViewport`); stripping them here means TypeScript
+ * flags any attempt to set them in `lighthouseConfig`. Users must have
+ * their `abtests.config.ts` included in their tsconfig for this check
+ * to fire (IDE per-file checking works regardless).
+ */
+export type PerfLighthouseConfig = Omit<LighthouseConfig, 'formFactor' | 'screenEmulation'>;
+
+export function defineConfig(config: PerfLighthouseConfig): PerfLighthouseConfig {
   return config;
 }
 
-export const DEFAULT_LH_CONFIG: LighthouseConfig = {
-  formFactor: 'mobile',
-  screenEmulation: {
-    mobile: true,
-    width: 390,
-    height: 844,
-    deviceScaleFactor: 3,
-  },
+export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
   throttling: {
     rttMs: 300,
     throughputKbps: 700,
@@ -40,6 +44,34 @@ export const DEFAULT_LH_CONFIG: LighthouseConfig = {
   onlyCategories: ['performance'],
 };
 
+/**
+ * Builds the viewport-specific Lighthouse overlay written to the temp file
+ * consumed by the bench worker: user overrides (from `perf.lighthouseConfig`,
+ * which can't carry viewport options by type) plus the viewport's
+ * `formFactor` / `screenEmulation` on top.
+ *
+ * `DEFAULT_LH_CONFIG` is intentionally NOT spread in here —
+ * `create-lighthouse-benchmark-in-process.ts` already layers those defaults
+ * under the loaded user config, so repeating them at the bridge layer would
+ * be dead work.
+ */
+export function lhConfigForViewport(
+  viewport: Viewport,
+  userOverrides: PerfLighthouseConfig = {},
+): LighthouseConfig {
+  return {
+    ...userOverrides,
+    formFactor: viewport.formFactor,
+    screenEmulation: {
+      mobile: viewport.formFactor === 'mobile',
+      width: viewport.width,
+      height: viewport.height,
+      deviceScaleFactor: viewport.deviceScaleFactor,
+      disabled: false,
+    },
+  };
+}
+
 export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
   return lhSettings.throttlingMethod === 'simulate'
     ? (lhSettings.throttling?.cpuSlowdownMultiplier ?? 1)
@@ -47,6 +79,13 @@ export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
 }
 
 export interface LighthouseBenchmarkOptions {
+  /**
+   * Viewport being measured. Sole source of truth for the sampler's
+   * `TestFnContext.viewport`; Lighthouse's `formFactor` / `screenEmulation`
+   * are lowered from this via `lhConfigForViewport` at the bridge layer.
+   * Required — every call site knows which viewport it's driving.
+   */
+  viewport: Viewport;
   resultsFolder?: string;
   lhConfigPath?: string;
   markers?: Marker[];

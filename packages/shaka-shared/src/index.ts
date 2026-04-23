@@ -4,6 +4,9 @@ export {
   clearRegistry,
   testRunsForType,
   TestType,
+  PHONE_VIEWPORT,
+  TABLET_VIEWPORT,
+  DESKTOP_VIEWPORT,
 } from './ab-test-registry';
 export type {
   AbTestDefinition,
@@ -12,6 +15,7 @@ export type {
   TestFnContext,
   Marker,
   Viewport,
+  FormFactor,
 } from './ab-test-registry';
 export { loadConfigFile } from './load-config-file';
 export { loadTestFile } from './load-test-file';

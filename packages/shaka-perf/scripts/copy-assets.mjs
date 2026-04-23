@@ -1,4 +1,4 @@
-import { cpSync, rmSync } from 'node:fs';
+import { cpSync, rmSync, statSync } from 'node:fs';
 
 // Clean stale compiled files from template directories before copying source .ts files
 rmSync('dist/visreg/capture/ab-tests', { recursive: true, force: true });
@@ -14,10 +14,36 @@ const assets = [
   ['report-shell/dist/index.html', 'dist/report-shell/index.html'],
   // Legacy bench HTML report templates (Handlebars + Chart.js assets)
   ['src/bench/cli/static', 'dist/bench/cli/static'],
+  [
+    'src/bench/core/patched-lighthouse/patch-loader.mjs',
+    'dist/bench/core/patched-lighthouse/patch-loader.mjs',
+  ],
+  [
+    'src/bench/core/patched-lighthouse/lighthouse.patch',
+    'dist/bench/core/patched-lighthouse/lighthouse.patch',
+  ],
 ];
 
 for (const [src, dest] of assets) {
   cpSync(src, dest, { recursive: true });
+}
+
+// Postcondition: every declared asset must now exist at its dest. Fail loud
+// at build time rather than as a cryptic runtime ENOENT later.
+const missing = assets.filter(([, dest]) => {
+  try {
+    statSync(dest);
+    return false;
+  } catch {
+    return true;
+  }
+});
+if (missing.length > 0) {
+  console.error('Assets failed to copy:');
+  for (const [src, dest] of missing) {
+    console.error(`  ${src} → ${dest}`);
+  }
+  process.exit(1);
 }
 
 console.log('Assets copied to dist/');

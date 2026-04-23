@@ -9,6 +9,7 @@ import {
 } from 'shaka-shared';
 import { createTwinServersCommands } from './twin-servers/program';
 import { createCompareCommand } from './compare/cli/program';
+import { createInitCommand } from './compare/cli/init';
 import { parseAbTestsConfig } from './compare/config';
 
 const { version } = require('../package.json');
@@ -79,7 +80,7 @@ async function main(): Promise<void> {
     experimentURLDefault: defaults.experimentURL,
   });
 
-  for (const cmd of [compareCmd, ...createTwinServersCommands()]) {
+  for (const cmd of [createInitCommand(), compareCmd, ...createTwinServersCommands()]) {
     program.addCommand(cmd);
   }
 
