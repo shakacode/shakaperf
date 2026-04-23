@@ -58,9 +58,16 @@ abTest('Click Reviews on Product Detail', {
       maxNumDiffPixels: 5,
     },
   },
-}, async ({ page }) => {
-  await page.waitForSelector('[data-cy="product-actions-desktop"]');
-  await page.click('[data-cy="product-actions-desktop"] >> text=Reviews');
+}, async ({ page, viewport }) => {
+  if (viewport.label === 'mobile') {
+    // TODO: visreg should fail if we comment out this if
+    // if says no diff
+    await page.waitForSelector('[data-cy="product-actions-mobile"]');
+    await page.click('[data-cy="product-actions-mobile"] >> text=Reviews');
+  } else {
+    await page.waitForSelector('[data-cy="product-actions-desktop"]');
+    await page.click('[data-cy="product-actions-desktop"] >> text=Reviews');
+  }
   await page.waitForURL('**/products/1/reviews');
   await waitUntilPageSettled(page);
 });
