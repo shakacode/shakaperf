@@ -171,11 +171,23 @@ independent opinion.
 
 ## Output format
 
+Always render the full timing comparison table (not just the verdict). Use the
+table produced by analyst A and/or B verbatim — one row per stage, columns
+`Stage | OLD | NEW | Δ | Δ%`. If analysts disagree on the verdict, note the
+disagreement above the table.
+
 ```
 ## Integration Tests Integrity Check
 
 ### Summary
 [One sentence: "All changes are expected variance" or "Found N potential issues"]
+
+### Timing Comparison
+
+[If "no baseline", say so and skip the table. Otherwise render one table per
+baseline log (twin-servers, visreg, perf) with columns Stage | OLD | NEW | Δ | Δ%.]
+
+**Verdict:** no regression | regressed — [worst 3 offenders if regressed]
 
 ### File-by-file Analysis
 
