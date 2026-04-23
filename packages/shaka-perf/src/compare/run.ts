@@ -169,7 +169,9 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
-  let perfEngineFailed = false;
+  // Per-label: one viewport's bench throw must not attribute "engine aborted"
+  // to tests in another viewport's bucket that ran cleanly.
+  const perfEngineFailedByLabel = new Set<string>();
 
   // Run the engines sequentially (each launches its own browser).
   let visregByLabel = new Map<string, CategoryResult>();
@@ -251,7 +253,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         const message = (err as Error).message || String(err);
         console.error(`perf engine error (${viewport.label}): ${message}`);
         engineErrors.push(`perf engine (${viewport.label}): ${message}`);
-        perfEngineFailed = true;
+        perfEngineFailedByLabel.add(viewport.label);
       }
     }
   }
@@ -267,7 +269,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       resultsRoot,
       categories,
       visregByLabel,
-      perfEngineFailed,
+      perfEngineFailedByLabel,
     }),
   );
 
@@ -340,7 +342,10 @@ interface BuildTestResultOpts {
   resultsRoot: string;
   categories: Category[];
   visregByLabel: Map<string, CategoryResult>;
-  perfEngineFailed: boolean;
+  /** Set of viewport labels whose bench pass threw — used to distinguish
+   *  "this test's viewport had an engine failure" from "this test happens to
+   *  be missing report.json in an otherwise healthy viewport's subtree". */
+  perfEngineFailedByLabel: Set<string>;
 }
 
 function skippedCategory(category: Category, narrow: string[] | undefined): CategoryResult {
@@ -354,7 +359,7 @@ function skippedCategory(category: Category, narrow: string[] | undefined): Cate
 }
 
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailed } = opts;
+  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
@@ -426,10 +431,10 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
           error: `perf measurement failed: ${perTestEngineError}`,
           errorLog: readPerfEngineLog(perTestDir),
         });
-      } else if (perfEngineFailed) {
+      } else if (perfEngineFailedByLabel.has(viewportLabel)) {
         perfs.push({
           ...emptyPerfArtifact(viewportLabel),
-          error: 'perf engine aborted before measuring this test — see the error banner above',
+          error: `perf engine aborted before measuring this test at ${viewportLabel} — see the error banner above`,
         });
       } else {
         perfs.push(emptyPerfArtifact(viewportLabel));
