@@ -20,6 +20,7 @@
   },
   "include": [
     "app/javascript/**/*",
+    "abtests.config.ts",
     "admin.bundle-size.config.ts",
     "twin-servers.config.ts"
   ],

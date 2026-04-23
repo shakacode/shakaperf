@@ -17,10 +17,11 @@ export type LighthouseConfig = Flags;
 
 /**
  * Lighthouse config minus the viewport-owning fields. `Viewport` is the
- * single source of truth for `formFactor` / `screenEmulation`, so these
- * fields are stripped from any config that could otherwise set them
- * (defaults, user overrides) — the compiler rejects the conflict instead
- * of runtime catching it.
+ * single source of truth for `formFactor` / `screenEmulation` (lowered
+ * via `lhConfigForViewport`); stripping them here means TypeScript
+ * flags any attempt to set them in `lighthouseConfig`. Users must have
+ * their `abtests.config.ts` included in their tsconfig for this check
+ * to fire (IDE per-file checking works regardless).
  */
 export type PerfLighthouseConfig = Omit<LighthouseConfig, 'formFactor' | 'screenEmulation'>;
 

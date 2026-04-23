@@ -152,10 +152,11 @@ export const PerfConfigSchema = z
      * `options.viewports`.
      */
     viewports: viewportLabelArray(['desktop', 'phone']),
-    // Runtime is a loose record; the TS type narrows it to
-    // `PerfLighthouseConfig` so `formFactor` / `screenEmulation` can't be
-    // set here — viewports own those, and a compile error beats a runtime
-    // surprise.
+    // Runtime is a loose record (LH's flag surface drifts across versions);
+    // the TS cast narrows to `PerfLighthouseConfig` so `formFactor` /
+    // `screenEmulation` are compile-time errors — the user's `.ts` config
+    // must be covered by their tsconfig for this to fire in CI (IDEs do
+    // per-file checking regardless).
     lighthouseConfig: z
       .record(z.unknown())
       .optional() as z.ZodType<PerfLighthouseConfig | undefined>,
