@@ -2,12 +2,21 @@ import type { RunnerResult } from 'lighthouse';
 
 import { ensureLighthousePatchRegistered } from './register-patch';
 
-// Must precede the `lighthouse` import below: registration side-effect
-// installs the ESM loader hook that rewrites wait-for-condition.js in
-// memory. In CJS emit, `require()` statements run in source order.
+// Loader hook has to be in place before Lighthouse's module graph loads.
+// Registering here (module init) makes any later `await import('lighthouse')`
+// pick up the patched `wait-for-condition.js`.
 ensureLighthousePatchRegistered();
 
-import lighthouse from 'lighthouse';
+// Lighthouse v12+ is ESM-only. TypeScript's CJS emit would rewrite a
+// top-level `import lighthouse from 'lighthouse'` into a plain `require()`,
+// which throws ERR_REQUIRE_ESM at module load — even on code paths that
+// never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
+// at call-time keeps the CLI's other commands usable when Lighthouse isn't
+// needed.
+async function loadLighthouse(): Promise<(typeof import('lighthouse'))['default']> {
+  const mod = await import('lighthouse');
+  return mod.default;
+}
 
 const HOLD_GATHER_FLAG = '__shakaperfHoldGather';
 
@@ -55,6 +64,7 @@ export async function runPatchedLighthouse(
   const previous = g[HOLD_GATHER_FLAG];
   g[HOLD_GATHER_FLAG] = canStopTracking;
   try {
+    const lighthouse = await loadLighthouse();
     const result = (await lighthouse(url, settings as never)) as RunnerResult;
     return result;
   } finally {
