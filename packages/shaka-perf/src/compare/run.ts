@@ -7,7 +7,13 @@ import {
   readTestSource,
   type AbTestDefinition,
 } from 'shaka-shared';
-import { parseAbTestsConfig, type AbTestsConfig, type VisregConfig, type PerfConfig } from './config';
+import {
+  parseAbTestsConfig,
+  type AbTestsConfig,
+  type Viewport,
+  type VisregConfig,
+  type PerfConfig,
+} from './config';
 import {
   writeReport,
   type Category,
@@ -39,6 +45,26 @@ export interface CompareRunOptions {
 
 const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
 const VISREG_SUBDIR = '_visreg/html_report';
+
+/**
+ * Per-viewport subfolder under `resultsRoot` where the bench engine writes
+ * its per-test artifacts for that pass. Keeping each pass in its own subtree
+ * means a second viewport's run doesn't clobber the first one's reports.
+ */
+function perfRootFor(resultsRoot: string, viewport: Viewport): string {
+  return path.join(resultsRoot, `perf-${viewport.label}`);
+}
+
+/**
+ * Viewports a single perf test should be measured at. `options.perf.viewports`
+ * overrides the global `perfConfig.viewports` default when present and
+ * non-empty.
+ */
+function perfViewportsForTest(test: AbTestDefinition, perfConfig: PerfConfig): Viewport[] {
+  const override = test.options.perf?.viewports;
+  return override && override.length > 0 ? override : perfConfig.viewports;
+}
+
 const EMPTY_PERF_CATEGORY: CategoryResult = {
   category: 'perf',
   status: 'no_difference',
@@ -154,28 +180,50 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.skipEngines) {
-    console.log('\n>>> perf');
-    // Pre-create each per-test dir so the bench engine's internal readdirSync
-    // calls never ENOENT before a test has any profile files written.
-    for (const test of tests) {
-      fs.mkdirSync(path.join(resultsRoot, slugifyForBench(test.name)), { recursive: true });
+  // Bucket tests by the perf viewport they asked for — global default or
+  // a per-test override. Each bucket becomes one bench pass; a test that
+  // wants both desktop and phone shows up in both buckets.
+  const perfBuckets = new Map<string, { viewport: Viewport; tests: AbTestDefinition[] }>();
+  for (const test of tests) {
+    for (const viewport of perfViewportsForTest(test, perfConfig)) {
+      const bucket = perfBuckets.get(viewport.label);
+      if (bucket) bucket.tests.push(test);
+      else perfBuckets.set(viewport.label, { viewport, tests: [test] });
     }
-    try {
-      await invokePerfEngine({
-        controlURL,
-        experimentURL,
-        resultsFolder: resultsRoot,
-        perfConfig,
-        sharedConfig: shared,
-        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-        filter: opts.filter ?? shared.filter,
-      });
-    } catch (err) {
-      const message = (err as Error).message || String(err);
-      console.error(`perf engine error: ${message}`);
-      engineErrors.push(`perf engine: ${message}`);
-      perfEngineFailed = true;
+  }
+
+  if (categories.includes('perf') && !opts.skipEngines) {
+    for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
+      console.log(`\n>>> perf · ${viewport.label}`);
+      const perfRoot = perfRootFor(resultsRoot, viewport);
+      // Pre-create each per-test dir so the bench engine's internal readdirSync
+      // calls never ENOENT before a test has any profile files written.
+      for (const test of bucketTests) {
+        fs.mkdirSync(path.join(perfRoot, slugifyForBench(test.name)), { recursive: true });
+      }
+      // Anchored regex-per-name joined with commas (bench treats commas as
+      // OR, full regex per piece) restricts the pass to exactly these
+      // tests even when the user's global filter would pull in more.
+      const filter = bucketTests
+        .map((t) => `^${t.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+        .join(',');
+      try {
+        await invokePerfEngine({
+          controlURL,
+          experimentURL,
+          resultsFolder: perfRoot,
+          perfConfig,
+          sharedConfig: shared,
+          viewport,
+          testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+          filter,
+        });
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        console.error(`perf engine error (${viewport.label}): ${message}`);
+        engineErrors.push(`perf engine (${viewport.label}): ${message}`);
+        perfEngineFailed = true;
+      }
     }
   }
 
@@ -276,42 +324,54 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
     }
   }
   if (categories.includes('perf')) {
-    const perTestDir = path.join(resultsRoot, slug);
-    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
-    const perTestEngineError = readPerfEngineError(perTestDir);
-    if (reportJsonExists) {
-      try {
-        perCategory.push(
-          harvestPerf({
-            perTestDir,
-            controlURL,
-            experimentURL,
-            perfConfig,
-            reportRoot: resultsRoot,
-            slug,
-          }),
-        );
-      } catch (err) {
-        const message = (err as Error).message || String(err);
+    // One perf card per viewport this test was measured at. `label` is set
+    // unconditionally so the React key is always unambiguous; the renderer
+    // decides whether to display the heading/pill prefix based on sibling
+    // count (only multi-viewport tests get the visible label).
+    for (const viewport of perfViewportsForTest(test, perfConfig)) {
+      const perfRoot = perfRootFor(resultsRoot, viewport);
+      const perTestDir = path.join(perfRoot, slug);
+      const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+      const perTestEngineError = readPerfEngineError(perTestDir);
+      const label = viewport.label;
+      if (reportJsonExists) {
+        try {
+          perCategory.push({
+            ...harvestPerf({
+              perTestDir,
+              controlURL,
+              experimentURL,
+              perfConfig,
+              reportRoot: resultsRoot,
+              slug,
+            }),
+            label,
+          });
+        } catch (err) {
+          const message = (err as Error).message || String(err);
+          perCategory.push({
+            ...EMPTY_PERF_CATEGORY,
+            label,
+            error: `perf report unreadable: ${message}`,
+            errorLog: readPerfEngineLog(perTestDir),
+          });
+        }
+      } else if (perTestEngineError) {
         perCategory.push({
           ...EMPTY_PERF_CATEGORY,
-          error: `perf report unreadable: ${message}`,
+          label,
+          error: `perf measurement failed: ${perTestEngineError}`,
           errorLog: readPerfEngineLog(perTestDir),
         });
+      } else if (perfEngineFailed) {
+        perCategory.push({
+          ...EMPTY_PERF_CATEGORY,
+          label,
+          error: 'perf engine aborted before measuring this test — see the error banner above',
+        });
+      } else {
+        perCategory.push({ ...EMPTY_PERF_CATEGORY, label });
       }
-    } else if (perTestEngineError) {
-      perCategory.push({
-        ...EMPTY_PERF_CATEGORY,
-        error: `perf measurement failed: ${perTestEngineError}`,
-        errorLog: readPerfEngineLog(perTestDir),
-      });
-    } else if (perfEngineFailed) {
-      perCategory.push({
-        ...EMPTY_PERF_CATEGORY,
-        error: 'perf engine aborted before measuring this test — see the error banner above',
-      });
-    } else {
-      perCategory.push(EMPTY_PERF_CATEGORY);
     }
   }
 

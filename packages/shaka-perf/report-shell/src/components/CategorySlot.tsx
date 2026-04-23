@@ -67,9 +67,23 @@ function SlotError({
   );
 }
 
-export function CategorySlot({ result, test }: { result: CategoryResult; test: TestResult }) {
+export function CategorySlot({
+  result,
+  test,
+  showLabel,
+}: {
+  result: CategoryResult;
+  test: TestResult;
+  showLabel: boolean;
+}) {
   return (
     <div>
+      {showLabel && result.label ? (
+        <div className="category-slot__label">
+          <span className="category-slot__label-category">{LABEL[result.category]}</span>
+          <span className="category-slot__label-variant">{result.label}</span>
+        </div>
+      ) : null}
       {result.error ? <SlotError result={result} test={test} /> : null}
       {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
       {result.category === 'perf' && result.perf ? <PerfSlot perf={result.perf} test={test} /> : null}

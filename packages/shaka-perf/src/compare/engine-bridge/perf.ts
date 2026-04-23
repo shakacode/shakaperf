@@ -3,7 +3,8 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { runCompare as runBenchCompare, type ICompareFlags } from '../../bench/cli/commands/compare';
-import type { PerfConfig, SharedConfig } from '../config';
+import { lhConfigForViewport } from '../../bench/core/lighthouse-config';
+import type { PerfConfig, SharedConfig, Viewport } from '../config';
 
 const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
@@ -13,6 +14,14 @@ export interface PerfBridgeOptions {
   resultsFolder: string;
   perfConfig: PerfConfig;
   sharedConfig: SharedConfig;
+  /**
+   * Viewport this pass measures. The bench worker receives a Lighthouse
+   * config whose `formFactor` and `screenEmulation` are derived from this
+   * viewport; user-provided `perf.lighthouseConfig` fills in everything
+   * else (throttling, categories, etc.) but cannot override the
+   * viewport-owned fields.
+   */
+  viewport: Viewport;
   testPathPattern?: string;
   filter?: string;
 }
@@ -29,11 +38,12 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     experimentURL,
     resultsFolder,
     perfConfig,
+    viewport,
     testPathPattern,
     filter,
   } = opts;
 
-  const lhConfigPath = await resolveLighthouseConfigPath(perfConfig);
+  const lhConfigPath = await resolveLighthouseConfigPath(perfConfig, viewport);
 
   const flags: ICompareFlags = {
     // hideAnalysis:false is required for the bench runner to invoke
@@ -67,16 +77,23 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
   }
 }
 
-async function resolveLighthouseConfigPath(perfConfig: PerfConfig): Promise<string | null> {
+async function resolveLighthouseConfigPath(
+  perfConfig: PerfConfig,
+  viewport: Viewport,
+): Promise<string | null> {
+  // When the user pins an `lhConfigPath`, their file is authoritative — we
+  // don't splice in the viewport-derived config. The user is responsible for
+  // setting formFactor/screenEmulation in their own file.
   if (perfConfig.lhConfigPath) {
     return path.resolve(perfConfig.lhConfigPath);
   }
-  if (!perfConfig.lighthouseConfig) {
-    return null;
-  }
+  const merged = lhConfigForViewport(
+    viewport,
+    perfConfig.lighthouseConfig as Record<string, unknown> | undefined,
+  );
   const hash = crypto.randomBytes(6).toString('hex');
   const tempPath = path.join(os.tmpdir(), `shaka-perf-lh-${hash}.js`);
-  const body = `module.exports = ${JSON.stringify(perfConfig.lighthouseConfig, null, 2)};\n`;
+  const body = `module.exports = ${JSON.stringify(merged, null, 2)};\n`;
   fs.writeFileSync(tempPath, body);
   return tempPath;
 }

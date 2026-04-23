@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Status, TestResult } from '../types';
+import type { Category, Status, TestResult } from '../types';
 import { Pill } from './Pill';
 import { CategorySlot } from './CategorySlot';
 
@@ -8,7 +8,22 @@ interface PillSpec {
   detail?: string;
 }
 
-function pillsForTest(test: TestResult): PillSpec[] {
+/**
+ * Map of category → number of CategoryResults of that category in the test.
+ * Used to decide whether to surface a card's `label` (e.g. "mobile" /
+ * "desktop") in the UI: the producer always sets the label so React keys are
+ * unambiguous, but it's only meaningful to display when the same category
+ * has multiple instances on one card.
+ */
+function countByCategory(test: TestResult): Map<Category, number> {
+  const counts = new Map<Category, number>();
+  for (const c of test.categories) {
+    counts.set(c.category, (counts.get(c.category) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function pillsForTest(test: TestResult, categoryCounts: Map<Category, number>): PillSpec[] {
   // A single test can emit several pills at once: each category that errored
   // contributes an `errored` pill, and each perf category contributes a
   // separate `regressed` / `improved` pill when its metric set is non-empty —
@@ -16,15 +31,25 @@ function pillsForTest(test: TestResult): PillSpec[] {
   // pill when its pairs actually mismatched.
   const pills: PillSpec[] = [];
   for (const c of test.categories) {
+    // When multiple perf passes run (mobile + desktop), the category label
+    // disambiguates the pill so "regressed: FCP" becomes "mobile · FCP".
+    const showLabel = (categoryCounts.get(c.category) ?? 0) > 1;
+    const prefix = showLabel && c.label ? `${c.label} · ` : '';
     if (c.error) {
-      pills.push({ status: 'error', detail: c.category });
+      pills.push({ status: 'error', detail: `${prefix}${c.category}` });
     }
     if (c.category === 'perf' && c.perf) {
       if (c.perf.regressedMetrics.length > 0) {
-        pills.push({ status: 'regression', detail: c.perf.regressedMetrics.join(', ') });
+        pills.push({
+          status: 'regression',
+          detail: `${prefix}${c.perf.regressedMetrics.join(', ')}`,
+        });
       }
       if (c.perf.improvedMetrics.length > 0) {
-        pills.push({ status: 'improvement', detail: c.perf.improvedMetrics.join(', ') });
+        pills.push({
+          status: 'improvement',
+          detail: `${prefix}${c.perf.improvedMetrics.join(', ')}`,
+        });
       }
     }
     if (c.category === 'visreg' && c.status === 'visual_change') {
@@ -36,7 +61,8 @@ function pillsForTest(test: TestResult): PillSpec[] {
 
 export function TestCard({ test, animationDelayMs }: { test: TestResult; animationDelayMs: number }) {
   const [codeOpen, setCodeOpen] = useState(false);
-  const pills = pillsForTest(test);
+  const categoryCounts = countByCategory(test);
+  const pills = pillsForTest(test, categoryCounts);
 
   return (
     <article
@@ -76,8 +102,13 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
       </dl>
 
       <div className="card__body">
-        {test.categories.map((c) => (
-          <CategorySlot key={c.category} result={c} test={test} />
+        {test.categories.map((c, idx) => (
+          <CategorySlot
+            key={`${c.category}-${c.label ?? idx}`}
+            result={c}
+            test={test}
+            showLabel={(categoryCounts.get(c.category) ?? 0) > 1}
+          />
         ))}
 
         {test.code ? (

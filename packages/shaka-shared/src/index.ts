@@ -8,9 +8,11 @@ export type {
   AbTestDefinition,
   AbTestOptions,
   AbTestVisregConfig,
+  AbTestPerfConfig,
   TestFnContext,
   Marker,
   Viewport,
+  FormFactor,
 } from './ab-test-registry';
 export { loadConfigFile } from './load-config-file';
 export { loadTestFile } from './load-test-file';

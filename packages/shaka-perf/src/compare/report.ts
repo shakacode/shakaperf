@@ -77,6 +77,14 @@ export interface CategoryResult {
   category: Category;
   status: Status;
   /**
+   * Identifier for the source viewport when a category produces one
+   * CategoryResult per viewport — always set for perf cards (matching the
+   * viewport's `label`, e.g. "desktop" / "phone"). The renderer only
+   * surfaces it visually when the test has more than one card in the same
+   * category, so single-viewport tests stay unlabeled in the UI.
+   */
+  label?: string;
+  /**
    * Non-fatal error message to surface in the report card — e.g. "perf
    * engine aborted before this test ran". Presence of `error` does NOT
    * change the category status (still `no_difference` by default).

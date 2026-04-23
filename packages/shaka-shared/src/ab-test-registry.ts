@@ -6,11 +6,25 @@ export interface Marker {
   label: string;
 }
 
+export type FormFactor = 'mobile' | 'desktop';
+
 export interface Viewport {
   label: string;
   name?: string;
   width: number;
   height: number;
+  /**
+   * Override for the Lighthouse form factor when this viewport drives a
+   * perf run. If unset, shaka-perf infers it from `width` (>=1024 →
+   * desktop, else mobile). Visreg ignores this field.
+   */
+  formFactor?: FormFactor;
+  /**
+   * Device scale factor used by Lighthouse's `screenEmulation` when this
+   * viewport drives a perf run. Defaults to 3 for mobile form factors and
+   * 1 for desktop. Visreg ignores this field.
+   */
+  deviceScaleFactor?: number;
 }
 
 export enum TestType {
@@ -68,11 +82,21 @@ export interface AbTestVisregConfig {
   viewports?: Viewport[];
 }
 
+export interface AbTestPerfConfig {
+  /**
+   * Overrides the global `perf.viewports` default for this single test —
+   * e.g. a dashboard screen that only makes sense at desktop widths can
+   * set `viewports: [desktopViewport]` and skip the phone pass.
+   */
+  viewports?: Viewport[];
+}
+
 export interface AbTestOptions {
   markers?: Marker[];
   lhConfigPath?: string;
   resultsFolder?: string;
   visreg?: AbTestVisregConfig;
+  perf?: AbTestPerfConfig;
 }
 
 export interface AbTestDefinition {

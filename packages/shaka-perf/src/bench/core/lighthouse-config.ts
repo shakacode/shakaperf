@@ -11,6 +11,7 @@ export const DEFAULT_MARKERS: Marker[] = [
 ];
 
 import type { Flags } from 'lighthouse/types/externs.js';
+import type { Viewport, FormFactor } from 'shaka-shared';
 
 export type LighthouseConfig = Flags;
 
@@ -39,6 +40,37 @@ export const DEFAULT_LH_CONFIG: LighthouseConfig = {
   output: 'html',
   onlyCategories: ['performance'],
 };
+
+/**
+ * Builds a Lighthouse `settings` object for the given viewport. The base is
+ * `DEFAULT_LH_CONFIG` so desktop and mobile passes share the same throttling,
+ * logging, and category selection — a delta between them reflects the form
+ * factor, not the measurement setup. `userOverrides` (from
+ * `perf.lighthouseConfig`) is layered on top of defaults but BELOW the
+ * viewport-derived `formFactor` and `screenEmulation`, so the per-pass
+ * viewport selection always wins for the fields it owns.
+ */
+export function lhConfigForViewport(
+  viewport: Viewport,
+  userOverrides: Record<string, unknown> = {},
+): LighthouseConfig {
+  const formFactor: FormFactor =
+    viewport.formFactor ?? (viewport.width >= 1024 ? 'desktop' : 'mobile');
+  const deviceScaleFactor =
+    viewport.deviceScaleFactor ?? (formFactor === 'mobile' ? 3 : 1);
+  return {
+    ...DEFAULT_LH_CONFIG,
+    ...userOverrides,
+    formFactor,
+    screenEmulation: {
+      mobile: formFactor === 'mobile',
+      width: viewport.width,
+      height: viewport.height,
+      deviceScaleFactor,
+      disabled: false,
+    },
+  };
+}
 
 export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
   return lhSettings.throttlingMethod === 'simulate'
