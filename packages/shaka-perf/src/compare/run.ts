@@ -5,6 +5,8 @@ import {
   findAbTestsConfig,
   loadAbTestsConfig,
   readTestSource,
+  testRunsForType,
+  TestType,
   type AbTestDefinition,
 } from 'shaka-shared';
 import { parseAbTestsConfig, type AbTestsConfig, type VisregConfig, type PerfConfig } from './config';
@@ -61,13 +63,16 @@ const EMPTY_VISREG_CATEGORY: CategoryResult = {
 };
 
 function combineStatus(perCategory: CategoryResult[]): Status {
+  // Skipped categories are treated as absent — a test opted out of a type
+  // shouldn't drag the overall status.
+  const live = perCategory.filter((c) => !c.skipped);
   // Error wins over signed signals: a test whose measurement failed cannot
   // truthfully claim a regression or improvement — surface the failure first
   // so the card styling and status filter show it as `error`.
-  if (perCategory.some((c) => c.error)) return 'error';
-  if (perCategory.some((c) => c.status === 'regression')) return 'regression';
-  if (perCategory.some((c) => c.status === 'visual_change')) return 'visual_change';
-  if (perCategory.some((c) => c.status === 'improvement')) return 'improvement';
+  if (live.some((c) => c.error)) return 'error';
+  if (live.some((c) => c.status === 'regression')) return 'regression';
+  if (live.some((c) => c.status === 'visual_change')) return 'visual_change';
+  if (live.some((c) => c.status === 'improvement')) return 'improvement';
   return 'no_difference';
 }
 
@@ -228,6 +233,7 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     // visually changed (or regressed + improved across different metrics),
     // and the combined `test.status` hides all but the top-ranked one.
     for (const c of t.categories) {
+      if (c.skipped) continue;
       if (c.error) errors++;
       if (c.category === 'perf' && c.perf && c.perf.regressedMetrics.length > 0) regressions++;
       if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
@@ -263,55 +269,63 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
   const perCategory: CategoryResult[] = [];
 
   if (categories.includes('visreg')) {
-    const visregResult = visregByLabel.get(test.name);
-    if (visregResult) {
-      perCategory.push(visregResult);
+    if (!testRunsForType(test, TestType.VisualRegression)) {
+      perCategory.push({ ...EMPTY_VISREG_CATEGORY, skipped: true });
     } else {
-      // Visreg engine ran but this test has no pairs in the manifest —
-      // commonly means the engine aborted before capturing this test.
-      perCategory.push({
-        ...EMPTY_VISREG_CATEGORY,
-        error: 'visreg did not produce artifacts for this test',
-      });
+      const visregResult = visregByLabel.get(test.name);
+      if (visregResult) {
+        perCategory.push(visregResult);
+      } else {
+        // Visreg engine ran but this test has no pairs in the manifest —
+        // commonly means the engine aborted before capturing this test.
+        perCategory.push({
+          ...EMPTY_VISREG_CATEGORY,
+          error: 'visreg did not produce artifacts for this test',
+        });
+      }
     }
   }
   if (categories.includes('perf')) {
-    const perTestDir = path.join(resultsRoot, slug);
-    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
-    const perTestEngineError = readPerfEngineError(perTestDir);
-    if (reportJsonExists) {
-      try {
-        perCategory.push(
-          harvestPerf({
-            perTestDir,
-            controlURL,
-            experimentURL,
-            perfConfig,
-            reportRoot: resultsRoot,
-            slug,
-          }),
-        );
-      } catch (err) {
-        const message = (err as Error).message || String(err);
+    if (!testRunsForType(test, TestType.Performance)) {
+      perCategory.push({ ...EMPTY_PERF_CATEGORY, skipped: true });
+    } else {
+      const perTestDir = path.join(resultsRoot, slug);
+      const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+      const perTestEngineError = readPerfEngineError(perTestDir);
+      if (reportJsonExists) {
+        try {
+          perCategory.push(
+            harvestPerf({
+              perTestDir,
+              controlURL,
+              experimentURL,
+              perfConfig,
+              reportRoot: resultsRoot,
+              slug,
+            }),
+          );
+        } catch (err) {
+          const message = (err as Error).message || String(err);
+          perCategory.push({
+            ...EMPTY_PERF_CATEGORY,
+            error: `perf report unreadable: ${message}`,
+            errorLog: readPerfEngineLog(perTestDir),
+          });
+        }
+      } else if (perTestEngineError) {
         perCategory.push({
           ...EMPTY_PERF_CATEGORY,
-          error: `perf report unreadable: ${message}`,
+          error: `perf measurement failed: ${perTestEngineError}`,
           errorLog: readPerfEngineLog(perTestDir),
         });
+      } else if (perfEngineFailed) {
+        perCategory.push({
+          ...EMPTY_PERF_CATEGORY,
+          error: 'perf engine aborted before measuring this test — see the error banner above',
+        });
+      } else {
+        perCategory.push(EMPTY_PERF_CATEGORY);
       }
-    } else if (perTestEngineError) {
-      perCategory.push({
-        ...EMPTY_PERF_CATEGORY,
-        error: `perf measurement failed: ${perTestEngineError}`,
-        errorLog: readPerfEngineLog(perTestDir),
-      });
-    } else if (perfEngineFailed) {
-      perCategory.push({
-        ...EMPTY_PERF_CATEGORY,
-        error: 'perf engine aborted before measuring this test — see the error banner above',
-      });
-    } else {
-      perCategory.push(EMPTY_PERF_CATEGORY);
     }
   }
 
