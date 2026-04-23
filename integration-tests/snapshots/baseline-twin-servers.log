@@ -1,15 +1,15 @@
 
 >>> Copying current directory as experiment repo
 
-  ⏱ rsync experiment: 4.9s
-[main f7c4efa] integration test snapshot
- 114 files changed, 1 insertion(+), 14927 deletions(-)
+  ⏱ rsync experiment: 2.8s
+[roman-kuksin/update-integration-tests-snapshots bf3a164] integration test snapshot
+ 116 files changed, 265 insertions(+), 19062 deletions(-)
  delete mode 100644 integration-tests/snapshots/baseline-perf.log
  delete mode 100644 integration-tests/snapshots/baseline-visreg.log
+ delete mode 100644 integration-tests/snapshots/bench-results/ab-measurements.json
  delete mode 100644 integration-tests/snapshots/bench-results/artifact-1.screenshot.png
- delete mode 100644 integration-tests/snapshots/bench-results/compare.json
+ delete mode 100644 integration-tests/snapshots/bench-results/homepage/ab-measurements.json
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/artifact-1.html
- delete mode 100644 integration-tests/snapshots/bench-results/homepage/compare.json
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____lighthouse_report.html
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____network_activity.txt
  delete mode 100644 integration-tests/snapshots/bench-results/homepage/localhost_3020____performance_profile.json
@@ -34,6 +34,7 @@
  delete mode 100644 integration-tests/snapshots/bench-results/report.json
  delete mode 100644 integration-tests/snapshots/bench-results/report.txt
  delete mode 100644 integration-tests/snapshots/bench-results/timeline_comparison.screenshot.png
+ create mode 100644 integration-tests/snapshots/screenshot-diff-report.html
  delete mode 100644 integration-tests/snapshots/visreg-results/html-report.screenshot.png
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/config.js
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/control_screenshot/demo-ecommerce_Admin_Dashboard_-_Cookie_Login_0_document_0_phone.png
@@ -117,20 +118,20 @@
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/index.html
  delete mode 100644 integration-tests/snapshots/visreg-results/html_report/report.json
  delete mode 100644 integration-tests/snapshots/visreg-results/xunit.xml
-  ⏱ git commit experiment: 1.6s
+  ⏱ git commit experiment: 0.4s
 
 >>> Copying experiment repo as control
 
-  ⏱ rsync control: 3.0s
+  ⏱ rsync control: 2.7s
 
 >>> Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage
 
 
 >>> Injecting broken selector into experiment products.abtest.ts
 
-[main 233a6e7] integration test snapshot
+[roman-kuksin/update-integration-tests-snapshots 5cb619c] integration test snapshot
  2 files changed, 4 insertions(+), 4 deletions(-)
-  ⏱ git commit experiment changes: 0.1s
+  ⏱ git commit experiment changes: 0.0s
 
 >>> Installing dependencies in temp clone
 
@@ -138,7 +139,8 @@
 ➤ YN0000: ┌ Resolution step
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: ┌ Post-resolution validation
-➤ YN0060: │ react is listed by your project with version 18.3.1 (p95122b), which doesn't satisfy what react-motion (via react-toggle-button) and other dependencies request (but they have non-overlapping ranges!).
+➤ YN0002: │ demo-ecommerce@workspace:demo-ecommerce doesn't provide webpack (pd58a92), requested by @loadable/webpack-plugin and other dependencies.
+➤ YN0002: │ shaka-perf@workspace:packages/shaka-perf doesn't provide rollup (pbd0523), requested by vite-plugin-singlefile.
 ➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
 ➤ YN0000: └ Completed
 ➤ YN0000: ┌ Fetch step
@@ -148,17 +150,29 @@
 ➤ YN0008: │ shakaperf@workspace:. must be rebuilt because its dependency tree changed
 ➤ YN0007: │ esbuild@npm:0.27.2 must be built because it never has been before or the last one failed
 ➤ YN0007: │ unrs-resolver@npm:1.11.1 must be built because it never has been before or the last one failed
-➤ YN0007: │ core-js-pure@npm:3.47.0 must be built because it never has been before or the last one failed
+➤ YN0007: │ esbuild@npm:0.25.12 must be built because it never has been before or the last one failed
 ➤ YN0000: │ [Warning] The runtime detected new information in a PnP file; reloading the API instance (/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/.pnp.cjs)
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: · Done with warnings in <TIMING>
-  ⏱ yarn install: 4.4s
+  ⏱ yarn install: 3.9s
 
 >>> Building packages in temp clone
 
+vite v6.4.2 building for production...
+transforming...
+✓ 43 modules transformed.
+rendering chunks...
+[plugin vite:singlefile] 
+
+[plugin vite:singlefile] Inlining: index-Cg3w_fmf.js
+[plugin vite:singlefile] Inlining: style-Xyci7plZ.css
+computing gzip size...
+dist/index.html  231.44 kB │ gzip: 70.19 kB
+✓ built in 486ms
 Assets copied to dist/
+The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
 Done in <TIMING>
-  ⏱ yarn build: 5.8s
+  ⏱ yarn build: 7.8s
 
 >>> run: yarn shaka-perf twins-build
 
@@ -177,8 +191,8 @@ Building both Docker images in parallel...
 Docker image(s) built successfully!
 
 Images created:
-  - demo-ecommerce:experiment (current branch: main)
-  - demo-ecommerce:control (baseline branch: main)
+  - demo-ecommerce:experiment (current branch: roman-kuksin/update-integration-tests-snapshots)
+  - demo-ecommerce:control (baseline branch: roman-kuksin/update-integration-tests-snapshots)
 
 Bind-mount directories:
   - Control: /home/<USER>/demo_ecommerce_control_docker_volume
@@ -188,7 +202,7 @@ Next steps:
   yarn shaka-perf twins-start-containers
 
 
-  ⏱ 7.5s
+  ⏱ 109.4s
 
 >>> run: yarn shaka-perf twins-start-containers
 
@@ -221,22 +235,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
-[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
 [EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
+[CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
 [CONTROL]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
-[EXPERIMENT]	Created 10 products
 
 Both servers are ready!
 
@@ -262,7 +276,7 @@ Next steps:
       yarn shaka-perf twins-stop-containers
 
 
-  ⏱ 44.2s
+  ⏱ 22.2s
 
 Running 2 tests using 1 worker
 
@@ -281,14 +295,14 @@ Running 2 tests using 1 worker
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 2.4s
+  ⏱ 2.0s
 
 >>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 2.3s
+  ⏱ 2.1s
 
 >>> Waiting for ports 3020 + 3030
 
@@ -329,7 +343,7 @@ Summary:
 Successfully synced changes to experiment
 Files synced to: /home/<USER>/demo_ecommerce_experiment_docker_volume
 
-  ⏱ 2.1s
+  ⏱ 1.9s
 
 >>> run: yarn shaka-perf twins-run-cmd-parallel -- bundle exec rake assets:precompile
 
@@ -343,89 +357,98 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	using yarn@4.12.0 to manage dependencies and scripts in package.json
+[CONTROL]	D, [<TIMESTAMP> #<PID>] DEBUG -- : Everything's up-to-date. Nothing to do
 [EXPERIMENT]	using yarn@4.12.0 to manage dependencies and scripts in package.json
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Running precompile hook: bin/shakapacker-precompile-hook
-[CONTROL]	D, [<TIMESTAMP> #<PID>] DEBUG -- : Everything's up-to-date. Nothing to do
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Precompile hook completed successfully
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : 🔄 Running React on Rails precompile hook...
 [EXPERIMENT]	
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Compiling...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : Compiled all packs in /home/<USER>/app/demo-ecommerce/public/packs
-[EXPERIMENT]	W, [<TIMESTAMP> #<PID>]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
-[EXPERIMENT]	   Add to config/shakapacker.yml:
-[EXPERIMENT]	     private_output_path: ssr-generated
-[EXPERIMENT]	   Run: rails react_on_rails:doctor to validate your configuration
+[EXPERIMENT]	W, [<TIMESTAMP> #<PID>]  WARN -- : ⚠️  DEPRECATION WARNING: Using webpack config file for Rspack assets bundler.
+[EXPERIMENT]	   Please create config/rspack/rspack.config.js and migrate your configuration.
+[EXPERIMENT]	   Using: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
 [EXPERIMENT]	
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
-[EXPERIMENT]	[Shakapacker] Found Webpack config: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Rspack config in: /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.ts, /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.js
+[EXPERIMENT]	[Shakapacker] Rspack config not found, checking for webpack config fallback...
 [EXPERIMENT]	[Shakapacker] Preparing environment for assets bundler execution...
-[EXPERIMENT]	[Shakapacker] Base command: yarn exec webpack
-[EXPERIMENT]	[Shakapacker] Adding config file: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
-[EXPERIMENT]	[Shakapacker] Final command: yarn exec webpack --config /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
+[EXPERIMENT]	[Shakapacker] Base command: yarn exec rspack
+[EXPERIMENT]	[Shakapacker] Adding config file: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
+[EXPERIMENT]	[Shakapacker] Final command: yarn exec rspack --config /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
 [EXPERIMENT]	[Shakapacker] Working directory: /home/<USER>/app/demo-ecommerce
-[EXPERIMENT]	Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
+[EXPERIMENT]	Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/rspack/production.js
 [EXPERIMENT]	[React on Rails] Creating both client and server bundles.
-[EXPERIMENT]	assets by status 829 KiB [cached] 18 assets
-[EXPERIMENT]	assets by path . 52.5 KiB
-[EXPERIMENT]	  assets by path js/*.js 13.3 KiB
-[EXPERIMENT]	    asset js/pages-HomePage-7a62adb74ed6464db537.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
-[EXPERIMENT]	    asset js/runtime-38def35b79a52c6e280f.js 3.9 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
-[EXPERIMENT]	  assets by path *.json 39.2 KiB
-[EXPERIMENT]	    asset app-loadable-stats.json 26.2 KiB [emitted] [compared for emit] 2 related assets
-[EXPERIMENT]	    asset manifest.json 13 KiB [emitted] 2 related assets
-[EXPERIMENT]	Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
-[EXPERIMENT]	Entrypoint client [big] 630 KiB (3.02 MiB) = js/runtime-38def35b79a52c6e280f.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-560e9de0f2343612a003.js 10 KiB 5 auxiliary assets
-[EXPERIMENT]	Entrypoint server [big] 629 KiB (3.02 MiB) = js/runtime-38def35b79a52c6e280f.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-575498abfc1e10427a7b.js 9.68 KiB 4 auxiliary assets
-[EXPERIMENT]	orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11516 modules
-[EXPERIMENT]	runtime modules 9.23 KiB 13 modules
-[EXPERIMENT]	cacheable modules 2.58 MiB (javascript) 49 bytes (css/mini-extract)
-[EXPERIMENT]	  modules by path ../.yarn/__virtual__/ 2.36 MiB 174 modules
-[EXPERIMENT]	  modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
-[EXPERIMENT]	  modules by path ./app/javascript/ 144 KiB (javascript) 49 bytes (css/mini-extract)
-[EXPERIMENT]	    modules by path ./app/javascript/components/ 83.4 KiB 11 modules
-[EXPERIMENT]	    modules by path ./app/javascript/packs/*.tsx 56.1 KiB 3 modules
-[EXPERIMENT]	    modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
-[EXPERIMENT]	    css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+[EXPERIMENT]	assets by status 2.65 MiB [cached] 102 assets
+[EXPERIMENT]	assets by path . 121 KiB
+[EXPERIMENT]	  assets by info 29.4 KiB [immutable]
+[EXPERIMENT]	    assets by path js/*.gz 6.88 KiB 2 assets
+[EXPERIMENT]	    assets by path js/*.js 16.5 KiB 2 assets
+[EXPERIMENT]	    assets by path js/*.br 6.02 KiB
+[EXPERIMENT]	      asset js/pages-HomePage-569ef2fa055fb416.chunk.js.br 4.28 KiB [emitted] [immutable]
+[EXPERIMENT]	      asset js/runtime-b583014dc3470ce3.js.br 1.74 KiB [emitted] [immutable]
+[EXPERIMENT]	  asset app-loadable-stats.json 65 KiB [emitted]
+[EXPERIMENT]	  asset js/pages-HomePage-569ef2fa055fb416.chunk.js.map.gz 8.79 KiB [emitted]
+[EXPERIMENT]	  asset js/pages-HomePage-569ef2fa055fb416.chunk.js.map.br 7.61 KiB [emitted]
+[EXPERIMENT]	  asset js/runtime-b583014dc3470ce3.js.map.gz 5.44 KiB [emitted]
+[EXPERIMENT]	  asset js/runtime-b583014dc3470ce3.js.map.br 4.78 KiB [emitted]
+[EXPERIMENT]	Entrypoint admin [big] 693 KiB = js/runtime-b583014dc3470ce3.js 3.94 KiB js/995-71f09de28c17aa51.js 9.3 KiB js/962-5ac88121bf468d95.js 587 KiB js/850-da02f5d4321703de.js 50.8 KiB js/457-31c047a11e5bff55.js 12.2 KiB js/723-e20be48946d887ab.js 7.2 KiB js/504-866dfa0b0880d1c4.js 12.6 KiB js/admin-b46aba42e7038c0a.js 10.7 KiB css/admin-ef46db37.css 0 bytes + 9 assets
+[EXPERIMENT]	Entrypoint client [big] 625 KiB = js/runtime-b583014dc3470ce3.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/client-2f1e1c35ddd426ea.js 1.99 KiB css/client-ef46db37.css 0 bytes + 6 assets
+[EXPERIMENT]	Entrypoint server [big] 623 KiB = js/runtime-b583014dc3470ce3.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/server-be2063557da5ccce.js 301 bytes
+[EXPERIMENT]	orphan modules 2.72 MiB (javascript) 1.31 KiB (runtime) [orphan] 788 modules
+[EXPERIMENT]	runtime modules 9.03 KiB 13 modules
+[EXPERIMENT]	cacheable modules 2.71 MiB (javascript) 49 bytes (css/mini-extract)
+[EXPERIMENT]	  built modules 1.63 MiB (javascript) 49 bytes (css/mini-extract) [built]
+[EXPERIMENT]	    modules by path ../.yarn/__virtual__/ 1.5 MiB 123 modules
+[EXPERIMENT]	    modules by path ../../.yarn/berry/cache/ 41.1 KiB 16 modules
+[EXPERIMENT]	    modules by path ./app/javascript/ 93.4 KiB (javascript) 49 bytes (css/mini-extract)
+[EXPERIMENT]	      modules by path ./app/javascript/components/ 59.4 KiB 9 modules
+[EXPERIMENT]	      modules by path ./app/javascript/packs/*.tsx 3.76 KiB 2 modules
+[EXPERIMENT]	      modules by path ./app/javascript/hooks/ 30.3 KiB 2 modules
+[EXPERIMENT]	      css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+[EXPERIMENT]	  + 74 modules
 [EXPERIMENT]	
-[EXPERIMENT]	WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
-[EXPERIMENT]	This can impact web performance.
-[EXPERIMENT]	Assets: 
-[EXPERIMENT]	  js/192-b63cfebd9a83a6087244.js (599 KiB)
-[EXPERIMENT]	  js/192-b63cfebd9a83a6087244.js.map.gz (710 KiB)
-[EXPERIMENT]	  js/192-b63cfebd9a83a6087244.js.map.br (515 KiB)
+[EXPERIMENT]	WARNING in ⚠ asset size limit: The following asset(s) exceed the recommended size limit (244.141 KiB). This can impact web performance.
+[EXPERIMENT]	  │ Assets:
+[EXPERIMENT]	  │   js/962-5ac88121bf468d95.js.map.gz (595.265 KiB)
+[EXPERIMENT]	  │   js/962-5ac88121bf468d95.js.map.br (427.823 KiB)
+[EXPERIMENT]	  │   js/962-5ac88121bf468d95.js (586.577 KiB)
 [EXPERIMENT]	
-[EXPERIMENT]	WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
-[EXPERIMENT]	Entrypoints:
-[EXPERIMENT]	  admin (704 KiB)
-[EXPERIMENT]	      js/runtime-38def35b79a52c6e280f.js
-[EXPERIMENT]	      js/719-f34241d7c2d17031511d.js
-[EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
-[EXPERIMENT]	      js/905-dcf07c7ad76793afd2b3.js
-[EXPERIMENT]	      js/165-a84e39f36532b79695dd.js
-[EXPERIMENT]	      js/704-96835d695da6c934bc93.js
-[EXPERIMENT]	      css/admin-72e38325.css
-[EXPERIMENT]	      js/admin-ccef6ceeb8074cc18895.js
-[EXPERIMENT]	  client (630 KiB)
-[EXPERIMENT]	      js/runtime-38def35b79a52c6e280f.js
-[EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
-[EXPERIMENT]	      js/148-7088267baa9e2e0c2764.js
-[EXPERIMENT]	      css/client-72e38325.css
-[EXPERIMENT]	      js/client-560e9de0f2343612a003.js
-[EXPERIMENT]	  server (629 KiB)
-[EXPERIMENT]	      js/runtime-38def35b79a52c6e280f.js
-[EXPERIMENT]	      js/192-b63cfebd9a83a6087244.js
-[EXPERIMENT]	      js/148-7088267baa9e2e0c2764.js
-[EXPERIMENT]	      js/server-575498abfc1e10427a7b.js
+[EXPERIMENT]	WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244.141 KiB). This can impact web performance.
+[EXPERIMENT]	  │ Entrypoints:
+[EXPERIMENT]	  │   admin (693.371 KiB)
+[EXPERIMENT]	  │       js/runtime-b583014dc3470ce3.js
+[EXPERIMENT]	  │       js/995-71f09de28c17aa51.js
+[EXPERIMENT]	  │       js/962-5ac88121bf468d95.js
+[EXPERIMENT]	  │       js/850-da02f5d4321703de.js
+[EXPERIMENT]	  │       js/457-31c047a11e5bff55.js
+[EXPERIMENT]	  │       js/723-e20be48946d887ab.js
+[EXPERIMENT]	  │       js/504-866dfa0b0880d1c4.js
+[EXPERIMENT]	  │       js/admin-b46aba42e7038c0a.js
+[EXPERIMENT]	  │       css/admin-ef46db37.css
+[EXPERIMENT]	  │   client (625.031 KiB)
+[EXPERIMENT]	  │       js/runtime-b583014dc3470ce3.js
+[EXPERIMENT]	  │       js/962-5ac88121bf468d95.js
+[EXPERIMENT]	  │       js/316-7fef233677fe3459.js
+[EXPERIMENT]	  │       js/605-f37279adf78bfea3.js
+[EXPERIMENT]	  │       js/client-2f1e1c35ddd426ea.js
+[EXPERIMENT]	  │       css/client-ef46db37.css
+[EXPERIMENT]	  │   server (623.336 KiB)
+[EXPERIMENT]	  │       js/runtime-b583014dc3470ce3.js
+[EXPERIMENT]	  │       js/962-5ac88121bf468d95.js
+[EXPERIMENT]	  │       js/316-7fef233677fe3459.js
+[EXPERIMENT]	  │       js/605-f37279adf78bfea3.js
+[EXPERIMENT]	  │       js/server-be2063557da5ccce.js
 [EXPERIMENT]	
-[EXPERIMENT]	webpack 5.104.1 compiled with 2 warnings in <TIMING> ms
+[EXPERIMENT]	Rspack 1.7.11 compiled with 2 warnings in 4.33 s
 [EXPERIMENT]	
-[EXPERIMENT]	asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
-[EXPERIMENT]	./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
-[EXPERIMENT]	webpack 5.104.1 compiled successfully in <TIMING> ms
-[EXPERIMENT]	[Shakapacker] Completed webpack build in <TIMING>s (<TIMING>s)
+[EXPERIMENT]	assets by status 2.75 KiB [cached] 4 assets
+[EXPERIMENT]	runtime modules 107 bytes 2 modules
+[EXPERIMENT]	./app/javascript/packs/server-bundle.js 227 bytes [built] [code generated]
+[EXPERIMENT]	Rspack 1.7.11 compiled successfully in <TIMING> ms
+[EXPERIMENT]	[Shakapacker] Completed rspack build in <TIMING>s (<TIMING>s)
 [EXPERIMENT]	
 
-  ⏱ 48.5s
+  ⏱ 12.4s
 
 >>> Starting puma in both containers
 
@@ -435,19 +458,19 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 3.4s
+  ⏱ 2.0s
 
 >>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 3.2s
+  ⏱ 2.1s
 
 >>> Waiting for ports 3020 + 3030
 
-  ⏱ waitForPort(3030): 2.0s
   ⏱ waitForPort(3020): 2.0s
+  ⏱ waitForPort(3030): 2.0s
 
 >>> Verifying control (3020) still has "Discover Your Style"
 
@@ -486,22 +509,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
-[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 
 Both servers are ready!
 
@@ -527,15 +550,15 @@ Next steps:
       yarn shaka-perf twins-stop-containers
 
 
-  ⏱ 60.6s
+  ⏱ 20.2s
 
 >>> Resetting git changes in temp clone
 
 Updated 1 path from the index
   ⏱ git checkout experiment: 0.0s
-Updated 565 paths from the index
-  ⏱ git checkout control: 0.2s
-  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge @twin-servers (<TIMING>m)
+Updated 539 paths from the index
+  ⏱ git checkout control: 0.1s
+  ✓  1 integration-tests/twin-servers.spec.ts:14:5 › modify experiment, rebuild, and verify servers diverge @twin-servers (<TIMING>s)
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -560,7 +583,7 @@ Updated 565 paths from the index
 Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
 
-  ⏱ 4.9s
+  ⏱ 1.9s
 
 >>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec rake assets:precompile"
 
@@ -575,81 +598,90 @@ I, [<TIMESTAMP> #<PID>]  INFO -- : 🔄 Running React on Rails precompile hook..
 
 I, [<TIMESTAMP> #<PID>]  INFO -- : Compiling...
 I, [<TIMESTAMP> #<PID>]  INFO -- : Compiled all packs in /home/<USER>/app/demo-ecommerce/public/packs
-W, [<TIMESTAMP> #<PID>]  WARN -- : ⚠️  Shakapacker 9.0+ detected but private_output_path not configured in shakapacker.yml
-   Add to config/shakapacker.yml:
-     private_output_path: ssr-generated
-   Run: rails react_on_rails:doctor to validate your configuration
+W, [<TIMESTAMP> #<PID>]  WARN -- : ⚠️  DEPRECATION WARNING: Using webpack config file for Rspack assets bundler.
+   Please create config/rspack/rspack.config.js and migrate your configuration.
+   Using: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
 
-I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Webpack config in: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.ts, /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
-[Shakapacker] Found Webpack config: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
+I, [<TIMESTAMP> #<PID>]  INFO -- : [Shakapacker] Looking for Rspack config in: /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.ts, /home/<USER>/app/demo-ecommerce/config/rspack/rspack.config.js
+[Shakapacker] Rspack config not found, checking for webpack config fallback...
 [Shakapacker] Preparing environment for assets bundler execution...
-[Shakapacker] Base command: yarn exec webpack
-[Shakapacker] Adding config file: /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
-[Shakapacker] Final command: yarn exec webpack --config /home/<USER>/app/demo-ecommerce/config/webpack/webpack.config.js
+[Shakapacker] Base command: yarn exec rspack
+[Shakapacker] Adding config file: /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
+[Shakapacker] Final command: yarn exec rspack --config /home/<USER>/app/demo-ecommerce/config/rspack/webpack.config.js
 [Shakapacker] Working directory: /home/<USER>/app/demo-ecommerce
-Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/webpack/production.js
+Loading ENV specific webpack configuration file /home/<USER>/app/demo-ecommerce/config/rspack/production.js
 [React on Rails] Creating both client and server bundles.
-assets by status 829 KiB [cached] 18 assets
-assets by path . 52.5 KiB
-  assets by path js/*.js 13.3 KiB
-    asset js/pages-HomePage-43b8d11c6c681f7ecd15.chunk.js 9.43 KiB [emitted] [immutable] [minimized] (name: pages-HomePage) 3 related assets
-    asset js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB [emitted] [immutable] [minimized] (name: runtime) 3 related assets
-  assets by path *.json 39.2 KiB
-    asset app-loadable-stats.json 26.2 KiB [emitted] [compared for emit] 2 related assets
-    asset manifest.json 13 KiB [emitted] 2 related assets
-Entrypoint admin [big] 704 KiB (3.43 MiB) = 8 assets 8 auxiliary assets
-Entrypoint client [big] 630 KiB (3.02 MiB) = js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB css/client-72e38325.css 97 bytes js/client-560e9de0f2343612a003.js 10 KiB 5 auxiliary assets
-Entrypoint server [big] 629 KiB (3.02 MiB) = js/runtime-b9c068cc1a52a2df18b4.js 3.9 KiB js/192-b63cfebd9a83a6087244.js 599 KiB js/148-7088267baa9e2e0c2764.js 16.9 KiB js/server-575498abfc1e10427a7b.js 9.68 KiB 4 auxiliary assets
-orphan modules 7.49 MiB (javascript) 997 bytes (runtime) [orphan] 11516 modules
-runtime modules 9.23 KiB 13 modules
-cacheable modules 2.58 MiB (javascript) 49 bytes (css/mini-extract)
-  modules by path ../.yarn/__virtual__/ 2.36 MiB 174 modules
-  modules by path ../../.yarn/berry/cache/ 84.1 KiB 19 modules
-  modules by path ./app/javascript/ 144 KiB (javascript) 49 bytes (css/mini-extract)
-    modules by path ./app/javascript/components/ 83.4 KiB 11 modules
-    modules by path ./app/javascript/packs/*.tsx 56.1 KiB 3 modules
-    modules by path ./app/javascript/hooks/ 4.19 KiB 2 modules
-    css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+assets by status 2.65 MiB [cached] 102 assets
+assets by path . 121 KiB
+  assets by info 29.4 KiB [immutable]
+    assets by path js/*.gz 6.88 KiB 2 assets
+    assets by path js/*.js 16.5 KiB 2 assets
+    assets by path js/*.br 6.03 KiB
+      asset js/pages-HomePage-38c60c40dcc98697.chunk.js.br 4.3 KiB [emitted] [immutable]
+      asset js/runtime-2278927b7bb040f3.js.br 1.74 KiB [emitted] [immutable]
+  asset app-loadable-stats.json 65 KiB [emitted]
+  asset js/pages-HomePage-38c60c40dcc98697.chunk.js.map.gz 8.81 KiB [emitted]
+  asset js/pages-HomePage-38c60c40dcc98697.chunk.js.map.br 7.61 KiB [emitted]
+  asset js/runtime-2278927b7bb040f3.js.map.gz 5.44 KiB [emitted]
+  asset js/runtime-2278927b7bb040f3.js.map.br 4.78 KiB [emitted]
+Entrypoint admin [big] 693 KiB = js/runtime-2278927b7bb040f3.js 3.94 KiB js/995-71f09de28c17aa51.js 9.3 KiB js/962-5ac88121bf468d95.js 587 KiB js/850-da02f5d4321703de.js 50.8 KiB js/457-31c047a11e5bff55.js 12.2 KiB js/723-e20be48946d887ab.js 7.2 KiB js/504-866dfa0b0880d1c4.js 12.6 KiB js/admin-b46aba42e7038c0a.js 10.7 KiB css/admin-ef46db37.css 0 bytes + 9 assets
+Entrypoint client [big] 625 KiB = js/runtime-2278927b7bb040f3.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/client-2f1e1c35ddd426ea.js 1.99 KiB css/client-ef46db37.css 0 bytes + 6 assets
+Entrypoint server [big] 623 KiB = js/runtime-2278927b7bb040f3.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/server-be2063557da5ccce.js 301 bytes
+orphan modules 2.72 MiB (javascript) 786 bytes (runtime) [orphan] 786 modules
+runtime modules 9.58 KiB 15 modules
+cacheable modules 2.71 MiB (javascript) 49 bytes (css/mini-extract)
+  built modules 1.63 MiB (javascript) 49 bytes (css/mini-extract) [built]
+    modules by path ../.yarn/__virtual__/ 1.5 MiB 123 modules
+    modules by path ../../.yarn/berry/cache/ 41.1 KiB 16 modules
+    modules by path ./app/javascript/ 93.4 KiB (javascript) 49 bytes (css/mini-extract)
+      modules by path ./app/javascript/components/ 59.4 KiB 9 modules
+      modules by path ./app/javascript/packs/*.tsx 3.76 KiB 2 modules
+      modules by path ./app/javascript/hooks/ 30.3 KiB 2 modules
+      css ../.yarn/__virtual__/css-loader-virtual-dcbc39f71d/2/.yarn/berry/cache/css-loader-npm-7.1.2-7540f12884-10c0.zip/node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[2].use[1]!./app/javascript/stylesheets/application.css 49 bytes [built] [code generated]
+  + 74 modules
 
-WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
-This can impact web performance.
-Assets: 
-  js/192-b63cfebd9a83a6087244.js (599 KiB)
-  js/192-b63cfebd9a83a6087244.js.map.gz (710 KiB)
-  js/192-b63cfebd9a83a6087244.js.map.br (515 KiB)
+WARNING in ⚠ asset size limit: The following asset(s) exceed the recommended size limit (244.141 KiB). This can impact web performance.
+  │ Assets:
+  │   js/962-5ac88121bf468d95.js.map.gz (595.265 KiB)
+  │   js/962-5ac88121bf468d95.js.map.br (427.823 KiB)
+  │   js/962-5ac88121bf468d95.js (586.577 KiB)
 
-WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
-Entrypoints:
-  admin (704 KiB)
-      js/runtime-b9c068cc1a52a2df18b4.js
-      js/719-f34241d7c2d17031511d.js
-      js/192-b63cfebd9a83a6087244.js
-      js/905-dcf07c7ad76793afd2b3.js
-      js/165-a84e39f36532b79695dd.js
-      js/704-96835d695da6c934bc93.js
-      css/admin-72e38325.css
-      js/admin-ccef6ceeb8074cc18895.js
-  client (630 KiB)
-      js/runtime-b9c068cc1a52a2df18b4.js
-      js/192-b63cfebd9a83a6087244.js
-      js/148-7088267baa9e2e0c2764.js
-      css/client-72e38325.css
-      js/client-560e9de0f2343612a003.js
-  server (629 KiB)
-      js/runtime-b9c068cc1a52a2df18b4.js
-      js/192-b63cfebd9a83a6087244.js
-      js/148-7088267baa9e2e0c2764.js
-      js/server-575498abfc1e10427a7b.js
+WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244.141 KiB). This can impact web performance.
+  │ Entrypoints:
+  │   admin (693.371 KiB)
+  │       js/runtime-2278927b7bb040f3.js
+  │       js/995-71f09de28c17aa51.js
+  │       js/962-5ac88121bf468d95.js
+  │       js/850-da02f5d4321703de.js
+  │       js/457-31c047a11e5bff55.js
+  │       js/723-e20be48946d887ab.js
+  │       js/504-866dfa0b0880d1c4.js
+  │       js/admin-b46aba42e7038c0a.js
+  │       css/admin-ef46db37.css
+  │   client (625.031 KiB)
+  │       js/runtime-2278927b7bb040f3.js
+  │       js/962-5ac88121bf468d95.js
+  │       js/316-7fef233677fe3459.js
+  │       js/605-f37279adf78bfea3.js
+  │       js/client-2f1e1c35ddd426ea.js
+  │       css/client-ef46db37.css
+  │   server (623.336 KiB)
+  │       js/runtime-2278927b7bb040f3.js
+  │       js/962-5ac88121bf468d95.js
+  │       js/316-7fef233677fe3459.js
+  │       js/605-f37279adf78bfea3.js
+  │       js/server-be2063557da5ccce.js
 
-webpack 5.104.1 compiled with 2 warnings in <TIMING> ms
+Rspack 1.7.11 compiled with 2 warnings in 4.11 s
 
-asset server-bundle.js 1.34 KiB [compared for emit] (name: server-bundle) 2 related assets
-./app/javascript/packs/server-bundle.js 226 bytes [built] [code generated]
-webpack 5.104.1 compiled successfully in <TIMING> ms
-[Shakapacker] Completed webpack build in <TIMING>s (<TIMING>s)
+assets by status 2.75 KiB [cached] 4 assets
+runtime modules 107 bytes 2 modules
+./app/javascript/packs/server-bundle.js 227 bytes [built] [code generated]
+Rspack 1.7.11 compiled successfully in <TIMING> ms
+[Shakapacker] Completed rspack build in <TIMING>s (<TIMING>s)
 
 
-  ⏱ 31.4s
+  ⏱ 8.8s
 
 >>> Starting puma in both containers
 
@@ -659,14 +691,14 @@ webpack 5.104.1 compiled successfully in <TIMING> ms
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 2.4s
+  ⏱ 2.0s
 
 >>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 2.9s
+  ⏱ 2.0s
 
 >>> Waiting for ports 3020 + 3030
 
@@ -710,22 +742,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
-[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 
 Both servers are ready!
 
@@ -751,15 +783,15 @@ Next steps:
       yarn shaka-perf twins-stop-containers
 
 
-  ⏱ 37.1s
+  ⏱ 21.2s
 
 >>> Resetting git changes in temp clone
 
 Updated 0 paths from the index
   ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
-  ⏱ git checkout control: 0.2s
-  ✓  2 integration-tests/twin-servers.spec.ts:71:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>m)
+  ⏱ git checkout control: 0.1s
+  ✓  2 integration-tests/twin-servers.spec.ts:71:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>s)
 Skipping teardown (SKIP_TEARDOWN=1)
 
   2 passed (<TIMING>m)

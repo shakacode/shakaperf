@@ -1,1 +1,5576 @@
-[{"group":"experiment","set":"experiment","samples":[{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1888859.2,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1931921.254765375,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5973288.8,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":1511714.8000000003,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":70000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.416015625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":49,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.494140625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":1201999.9999999998,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":4612000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1900092.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1900092.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5734185.799999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":989546.4499999998,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":49000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":246.79296875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":54,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":16,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":1.8388671875,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":1,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.486328125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":803999.9999999998,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":5304000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1890766,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1890766,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5881531.999999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":976000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":28000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":246.802734375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":53,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":16,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":1.8388671875,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":1,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.49609375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":642000.0000000005,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":4044000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808786.0999999999,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808786.0999999999,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5436572.199999998,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":952000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":43000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.6650390625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":55.00000000000001,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.478515625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":619999.9999999998,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2214000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1940424,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1940424,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5683983,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":709000.0000000009,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":20000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.404296875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":57.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.482421875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":648000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":3462000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1875910.0000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1875910.0000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5214899.200000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":706000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":18000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.41796875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.49609375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":614000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2014000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1827017.1,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1827017.1,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5510034.2,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":854508.5499999996,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":74000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5029296875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":56.00000000000001,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.494140625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":838000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":3340000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1817453.9,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1817453.9,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5441907.800000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":716000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":14000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.51953125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.490234375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":576000.0000000002,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1772000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1810067.9000000004,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1810067.9000000004,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5433212.550000002,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":707000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":22000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.6689453125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.482421875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":610000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2208000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808855.3999999997,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808855.3999999997,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5157540.499999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":742192.3999999999,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":61000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5869140625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.490234375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":668000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2782000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1813008.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1813008.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5434079.749999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":849000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":17000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.736328125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":56.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.482421875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":696000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1498000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1811040.7,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1811040.7,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5441081.399999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":715999.9999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":19000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5869140625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.490234375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":645999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1618000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808219.3000000003,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808219.3000000003,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5375438.6000000015,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":829000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":53000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5927734375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":56.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.494140625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":589999.9999999998,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2534000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1827398.2000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1827398.2000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5401796.399999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":828999.9999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":29000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5166015625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":56.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.484375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":756000.0000000002,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2102000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1807194.8000000003,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1807194.8000000003,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5471389.6,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":761000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":10000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5263671875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":57.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.494140625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":746000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1296000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1815946.4999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1815946.4999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5325209.749999998,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":579999.9999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":36000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.6142578125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":62,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.517578125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":772000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1994000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1816742.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1816742.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5316485.000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":749000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":34000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.5654296875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.490234375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":758000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2170000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808610.7999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808610.7999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5512322.600000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":803000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":9.4665,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":11000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":244.6552734375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":56.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":15,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.1396484375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4921875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":660000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1686000,"sign":1,"start":0,"unit":"ms"}]}],"meta":{}},{"group":"control","set":"control","samples":[{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1861428.8,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":2049113.5506675655,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5599143.199999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":1301642.7999999996,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":192000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4091796875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":52,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4892578125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":1270000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":6720000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1914743.2,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1914743.2,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5460114.800000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":827685.8000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":52000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":166.26171875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":57.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":12,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":1.8388671875,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":1,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.5029296875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":690000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":4876000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1841857.9,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1841857.9,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5280786.850000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":1166964.4750000006,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":65000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":166.251953125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":54,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":12,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":1.8388671875,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":1,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4931640625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":888000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2588000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1811186.6,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1811186.6,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5531373.2,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":799999.9999999991,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":38000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4111328125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":57.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4912109375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":751999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2440000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1885095.9,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1885095.9,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5185643.850000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":668000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":18000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4091796875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":62,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4892578125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":567999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2104000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1919653.5,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1919653.5,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5620307.000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":668000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":33000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4169921875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4970703125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":582000.0000000005,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":3514000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1813996.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1813996.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5093995.350000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":826000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":4.619199999999999,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":94000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4111328125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4912109375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":940000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":3568000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1813652.2,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1813652.2,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5354304.400000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":620000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":4.619199999999999,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":13000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4189453125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":63,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4990234375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":594000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1906000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1812389.2000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1812389.2000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5436778.399999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":700999.9999999995,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":29000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4169921875,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4970703125,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":661999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1618000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808254.1,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808254.1,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5191381.15,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":785000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":64000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4111328125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4912109375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":674000.0000000002,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2754000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1811703.3,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1811703.3,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5348406.6,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":610000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":21000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4052734375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":63,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4853515625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":707999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1578000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1823516.5000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1823516.5000000002,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5448032.999999999,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":649000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":4.619199999999999,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":22000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4130859375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":62,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4931640625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":604000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2166000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808487.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808487.9000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5466975.8,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":740000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":68000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4150390625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4951171875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":640000,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2596000.0000000005,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1821431,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1821431,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5455862.000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":703000.0000000005,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":37000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4150390625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":60,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.4951171875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":791999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2032000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1815610.9999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1815610.9999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5440222.000000001,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":687000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":20000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4228515625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":61,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.5029296875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":662000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2064000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1812195.6,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1812195.6,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5527391.2,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":761000.0000000009,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":30000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4306640625,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.5107421875,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":671999.9999999999,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2720000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1823231.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1823231.4999999998,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5412463,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":829000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":40000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4208984375,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":57.99999999999999,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.5009765625,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":860000.0000000002,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":2396000,"sign":1,"start":0,"unit":"ms"}]},{"metadata":{},"duration":0,"phases":[{"phase":"FCP","duration":1808348,"start":0,"sign":1,"unit":"ms"},{"phase":"speed-index","duration":1808348,"start":0,"sign":1,"unit":"ms"},{"phase":"LCP","duration":5491696,"start":0,"sign":1,"unit":"ms"},{"phase":"TBT","duration":746000,"start":0,"sign":1,"unit":"ms"},{"phase":"CLS","duration":7.342600000000001,"start":0,"sign":1,"unit":"/100"},{"phase":"TTFB","duration":15000,"start":0,"sign":1,"unit":"ms"},{"phase":"downloads","duration":164.4267578125,"sign":1,"start":0,"unit":"KB"},{"phase":"LH Score","duration":59,"sign":-1,"start":0,"unit":"/100"},{"phase":"downloads-count","duration":11,"start":0,"sign":1,"unit":""},{"phase":"js","duration":156.3037109375,"start":0,"sign":1,"unit":"KB"},{"phase":"js-count","duration":6,"start":0,"sign":1,"unit":""},{"phase":"images","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"images-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"fonts","duration":0,"start":0,"sign":1,"unit":"KB"},{"phase":"fonts-count","duration":0,"start":0,"sign":1,"unit":""},{"phase":"early-downloads","duration":153.5068359375,"start":0,"sign":1,"unit":"KB"},{"phase":"early-downloads-count","duration":7,"start":0,"sign":1,"unit":""},{"phase":"hydration","duration":644000.0000000001,"sign":1,"start":0,"unit":"ms"},{"phase":"hydration-start","duration":1484000,"sign":1,"start":0,"unit":"ms"}]}],"meta":{}}]
+[
+  {
+    "group": "control",
+    "set": "control",
+    "samples": [
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1833510.6999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1833510.6999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5503021.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 716000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 60000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.69140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.666015625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 830000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3010000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1823542.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1823542.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5664085.800000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 877000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 7000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 166.5361328125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 13,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 1.8388671875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 1,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.671875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 996000.0000000002,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1770000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1811623.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811623.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5546246.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 918500.0000000005,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 30000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.6875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.662109375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 914000.0000000002,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2792000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1810157.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1810157.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5395314.8,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 664000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 7000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.69921875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 62,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.673828125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 682000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1576000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1826250.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1826250.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5411376.350000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 897562.7250000007,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 93000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.6953125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.669921875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 713999.9999999998,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 4520000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1813938.5999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1813938.5999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5386877.199999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 651000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 40000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.703125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.677734375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 603999.9999999998,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2460000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1833148.2999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1833148.2999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5355722.45,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 844287.0750000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 53000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.708984375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.68359375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 905999.9999999998,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3208000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1811090.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811090.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5382180.8,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 637999.9999999991,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 12000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.689453125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 63,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.6640625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 585999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1204000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1810048.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1810048.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5861097.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1113000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 22000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.693359375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 54,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.66796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 1090000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1680000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1809237.7000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809237.7000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5060856.55,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 653000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 7000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.69140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 63,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.666015625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 582000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1402000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1828366.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1828366.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5552732.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 920000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 34000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.697265625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.671875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 660000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2666000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1807523.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1807523.4000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5397046.8,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 671000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 8000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.69140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.666015625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 587999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1618000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1886482.5999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1886482.5999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5742965.199999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 822999.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 60000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.693359375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.66796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 807999.9999999995,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3246000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1807614.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1807614.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5391228.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 665000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 12000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.69140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.666015625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 637999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1966000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1809001.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809001.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5461003.199999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 726000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 23000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.6953125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.669921875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 651999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2178000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1815748.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1815748.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5300496.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 556000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 4.619199999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 10000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.693359375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 65,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.66796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 610000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1326000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1831326.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1831326.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5738653.8,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 983336.55,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 56000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.697265625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 55.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.671875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 857999.9999999995,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3356000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1807330.8000000003,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1807330.8000000003,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5467661.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 738999.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 16000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.693359375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.66796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 774000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1460000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1810164.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1810164.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5562328.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 871582.0499999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 43000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.6953125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.669921875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 683999.9999999998,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2900000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1808838.2000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1808838.2000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5459676.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 731000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 7.342600000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 5000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 164.68359375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 12,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.6220703125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.658203125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 686000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1212000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      }
+    ],
+    "meta": {}
+  },
+  {
+    "group": "experiment",
+    "set": "experiment",
+    "samples": [
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1828398.7000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1828398.7000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5490797.399999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1066000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 54000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.638671875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 54,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 820000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3266000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1813772.1,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1813772.1,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5551544.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 822000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 14000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 247.015625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 17,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 1.8388671875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 1,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.677734375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 511999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1454000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1813708,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1813708,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5633416.000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1020000.0000000005,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 20000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.9033203125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 54,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 820000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1762000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1809967.9999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809967.9999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5289936.000000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 574000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 11.4929,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 15000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.6435546875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 62,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.69140625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 676000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1456000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1813026.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1813026.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5430566.899999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1179000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 95000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.814453125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 53,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 861999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3646000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1816044.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1816044.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5396144.299999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 670000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 55000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.900390625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 60,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.681640625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 590000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2726000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1824992.1999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1824992.1999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5548008.9,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 937000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 49000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.7509765625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 55.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.69140625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 754000.0000000002,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2922000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1812341.3,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1812341.3,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5251682.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 514000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 11.4929,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 13000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.91015625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 63,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.693359375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 587999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1214000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1817357.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1817357.4,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5614714.800000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1055000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 16000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.87890625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.6796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 534000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2106000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1809717.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1809717.2,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5341520.899999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 627999.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 49000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.6494140625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 61,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.673828125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 623999.9999999998,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2210000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1824470.8999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1824470.8999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5698987.55,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 919000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 39000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.716796875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 55.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.67578125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 866000.0000000002,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2632000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1812237.1999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1812237.1999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5371504.399999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 654000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 6000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 245.056640625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 60,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 627999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1538000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1826210.5999999996,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1826210.5999999996,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5781475.699999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1062000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 54000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 245.080078125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 55.00000000000001,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 648000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 3540000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1808646.6999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1808646.6999999997,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5351293.3999999985,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 641999.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 11.4929,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 10000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.72265625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.681640625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 608000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1150000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1818645.8000000003,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1818645.8000000003,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5484320.099999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 824000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 21000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.6337890625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.681640625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 728000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2548000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1811055.4999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811055.4999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5392188.249999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 679999.9999999995,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 14000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.74609375,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 60,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.685546875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 600000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1380000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1815123.5000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1815123.5000000002,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5561246.999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 1018000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 56000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.7294921875,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 54,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.689453125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 778000.0000000001,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2764000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1810413.7999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1810413.7999999998,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5511827.600000001,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 796000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 16000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.890625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 56.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.693359375,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 791999.9999999999,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 1728000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1813533.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1813533.6,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5472109.199999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 750000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 42000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.9853515625,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 57.99999999999999,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.6796875,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 714000.0000000002,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2502000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      },
+      {
+        "metadata": {},
+        "duration": 0,
+        "phases": [
+          {
+            "phase": "FCP",
+            "duration": 1811842.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "speed-index",
+            "duration": 1811842.0999999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "LCP",
+            "duration": 5420684.199999999,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "TBT",
+            "duration": 699000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "CLS",
+            "duration": 9.4665,
+            "start": 0,
+            "sign": 1,
+            "unit": "/100"
+          },
+          {
+            "phase": "TTFB",
+            "duration": 40000,
+            "start": 0,
+            "sign": 1,
+            "unit": "ms"
+          },
+          {
+            "phase": "downloads",
+            "duration": 244.8330078125,
+            "sign": 1,
+            "start": 0,
+            "unit": "KB"
+          },
+          {
+            "phase": "LH Score",
+            "duration": 59,
+            "sign": -1,
+            "start": 0,
+            "unit": "/100"
+          },
+          {
+            "phase": "downloads-count",
+            "duration": 16,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "js",
+            "duration": 156.4111328125,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "js-count",
+            "duration": 7,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "images",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "images-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "fonts",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "fonts-count",
+            "duration": 0,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "early-downloads",
+            "duration": 152.681640625,
+            "start": 0,
+            "sign": 1,
+            "unit": "KB"
+          },
+          {
+            "phase": "early-downloads-count",
+            "duration": 8,
+            "start": 0,
+            "sign": 1,
+            "unit": ""
+          },
+          {
+            "phase": "hydration",
+            "duration": 595999.9999999997,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          },
+          {
+            "phase": "hydration-start",
+            "duration": 2408000,
+            "sign": 1,
+            "start": 0,
+            "unit": "ms"
+          }
+        ]
+      }
+    ],
+    "meta": {}
+  }
+]
