@@ -112,10 +112,8 @@ abTest('Click [Button] on [Page]', {
   await page.click('text=Button Text');
   annotate('waiting for navigation to expected path');
   await page.waitForURL('**/expected-path');
-  if (testType === TestType.VisualRegression) {
-    annotate('waiting for page to settle after navigation');
-    await waitUntilPageSettled(page);
-  }
+  annotate('waiting for page to settle after navigation');
+  await waitUntilPageSettled(page);
 });
 ```
 
@@ -145,7 +143,7 @@ If there's no footer, use the last visible section or `page.locator('body > *:la
 
 ## Viewport-conditional selectors (element hidden on some viewports)
 
-Use when a selector only exists on certain viewports (e.g. `display: none` on mobile). The `viewport` labels come from `visreg.config.ts` (e.g. `'phone'`, `'tablet'`, `'desktop'`).
+Use when a selector only exists on certain viewports (e.g. `display: none` on mobile). The `viewport` labels come from `visreg.config.ts` (e.g. `'mobile'`, `'tablet'`, `'desktop'`).
 
 ### Preferred: split into separate tests with `viewports` override
 
@@ -155,7 +153,7 @@ Write separate `abTest()` calls scoped to specific viewports via the `viewports`
 import { abTest } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
-// Desktop/tablet only — .map-container is display:none on phone
+// Desktop/tablet only — .map-container is display:none on mobile
 abTest('Homepage Map Section', {
   startingPath: '/',
   options: {
@@ -173,14 +171,14 @@ abTest('Homepage Map Section', {
   await waitUntilPageSettled(page);
 });
 
-// Phone only — .mobile-featured-grid replaces the desktop grid
+// mobile only — .mobile-featured-grid replaces the desktop grid
 abTest('Homepage Mobile Featured', {
   startingPath: '/',
   options: {
     visreg: {
       selectors: ['.mobile-featured-grid'],
       misMatchThreshold: 0.05,
-      viewports: [{ label: 'phone', width: 375, height: 667 }],
+      viewports: [{ label: 'mobile', width: 375, height: 667 }],
     },
   },
 }, async ({ page, annotate }) => {
@@ -200,7 +198,7 @@ abTest('Search Results', {
     visreg: { misMatchThreshold: 0.05, delay: 100 },
   },
 }, async ({ page, viewport, annotate }) => {
-  if (viewport.label === 'phone') {
+  if (viewport.label === 'mobile') {
     annotate('waiting for mobile results list');
     await page.waitForSelector('.mobile-results', { state: 'visible' });
   } else {
@@ -475,9 +473,7 @@ abTest('Click [CTA] on [Page]', {
   annotate('waiting for navigation');
   await page.waitForURL('**/destination');
   // For slow pages: await page.waitForURL('**/destination', { waitUntil: 'commit' });
-  if (testType === TestType.VisualRegression) {
-    annotate('waiting for destination page to settle');
-    await waitUntilPageSettled(page);
-  }
+  annotate('waiting for destination page to settle');
+  await waitUntilPageSettled(page);
 });
 ```

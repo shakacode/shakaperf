@@ -46,7 +46,7 @@ const exampleConfig = {
     id: argsOptions.testLabel,
     viewports: [
       {
-        label: 'phone',
+        label: 'mobile',
         width: 320,
         height: 480
       },
@@ -75,11 +75,11 @@ const exampleConfig = {
   }
 };
 
-function approve () {
+function approve() {
   runner('approve', exampleConfig);
 }
 
-function main () {
+function main() {
   runner('test', exampleConfig).then(
     () => {
       console.log('No changes found.');

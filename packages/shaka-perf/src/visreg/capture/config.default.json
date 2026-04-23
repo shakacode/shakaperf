@@ -2,7 +2,7 @@
   "id": "visreg_default",
   "viewports": [
     {
-      "label": "phone",
+      "label": "mobile",
       "width": 320,
       "height": 480
     },

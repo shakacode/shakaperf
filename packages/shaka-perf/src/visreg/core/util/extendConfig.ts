@@ -19,7 +19,7 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   htmlReport(config, userConfig);
   screenshotPaths(config);
   jsonReport(config, userConfig);
-  comparePaths(config);
+  tempCompareConfigPath(config);
   captureConfigPaths(config);
 
   config.id = userConfig.id;
@@ -65,19 +65,19 @@ function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<s
   }
 }
 
+// `htmlReportDir` is the scratch directory the visreg engine writes
+// `report.json` and screenshot PNGs into. The standalone visreg viewer
+// (its index.html template, JSONP shim, and reports archive) was removed
+// when the unified `shaka-perf compare` report took over display, so this
+// is no longer a user-facing report directory — just an intermediate
+// staging area the compare harvester reads from.
 function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   const baseDir = config._runBaseDir!;
   config.htmlReportDir = path.join(baseDir, 'html_report');
-  config.archivePath = path.join(baseDir, 'reports');
-  config.archiveReport = userConfig.archiveReport === undefined ? false : userConfig.archiveReport;
 
   if (userConfig.paths) {
     config.htmlReportDir = userConfig.paths.htmlReport || config.htmlReportDir;
-    config.archivePath = userConfig.paths.reportsArchive || config.archivePath;
   }
-
-  config.compareConfigFileName = path.join(config.htmlReportDir!, 'config.js');
-  config.compareReportURL = path.join(config.htmlReportDir!, 'index.html');
 }
 
 function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
@@ -89,9 +89,7 @@ function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | 
   config.compareJsonFileName = path.join(config.jsonReportDir!, 'jsonReport.json');
 }
 
-function comparePaths (config: Partial<RuntimeConfig>) {
-  // visregRoot is dist/visreg/, compare/output is at dist/../compare/output
-  config.comparePath = path.join(config.visregRoot!, '..', 'compare', 'output');
+function tempCompareConfigPath (config: Partial<RuntimeConfig>) {
   config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
 }
 

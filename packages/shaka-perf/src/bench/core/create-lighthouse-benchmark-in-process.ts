@@ -148,6 +148,12 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     try {
       const context = browser.contexts()[0];
 
+      // Clear cookies before each sample so every measurement is a cold load.
+      // The userDataDir is reused across samples in a sampler, so cookies set
+      // by one sample (e.g. an auth cookie after a login testFn) would leak
+      // into the next and break subsequent measurements.
+      await context.clearCookies();
+
       // Keep Lighthouse measuring until the playwright testFn finishes.
       // `canStopTracking` is resolved from testFn's `.finally(...)` below;
       // until then, the patched Lighthouse keeps its driver attached so

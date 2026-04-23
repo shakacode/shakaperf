@@ -15,7 +15,7 @@ import {
   NavigationSample,
   run,
 } from "../../../core";
-import { loadTests, type Viewport } from "shaka-shared";
+import { loadTests, TestType, type Viewport } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -120,6 +120,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   const tests = await loadTests({
     testPathPattern: compareFlags.testPathPattern,
     filter: compareFlags.filter,
+    testType: TestType.Performance,
     log: (msg) => console.log(msg),
   });
 

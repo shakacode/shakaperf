@@ -2,6 +2,7 @@ export {
   abTest,
   getRegisteredTests,
   clearRegistry,
+  testRunsForType,
   TestType,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,

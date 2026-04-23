@@ -36,9 +36,6 @@ export default async function (command: string, options?: Record<string, unknown
         testSuiteName: 'shaka-perf-visreg'
     },
     htmlReportDir: '/path/to/project/visreg_data/html_report',
-    compareConfigFileName: '/path/to/project/visreg_data/html_report/config.js',
-    compareReportURL: '/path/to/project/visreg_data/html_report/index.html',
-    comparePath: '/path/to/shaka-perf/compare/output',
     id: undefined,
     engine: null,
     report: [ 'browser' ],

@@ -126,7 +126,6 @@ export interface VisregPaths {
   htmlReport?: string;
   ciReport?: string;
   jsonReport?: string;
-  reportsArchive?: string;
 }
 
 // ── User Config ───────────────────────────────────────────────────
@@ -144,7 +143,6 @@ export interface VisregConfig {
   engineOptions?: EngineOptions;
 
   report?: string[];
-  archiveReport?: boolean;
   scenarioLogsInReports?: boolean;
 
   asyncCaptureLimit?: number;
@@ -190,22 +188,17 @@ export interface RuntimeConfig {
   ciReportDir: string;
   htmlReportDir: string;
   jsonReportDir: string;
-  compareConfigFileName: string;
-  compareReportURL: string;
   compareJsonFileName: string;
-  comparePath: string;
   tempCompareConfigFileName: string;
 
   captureConfigFileName: string;
   captureConfigFileNameDefault: string;
-  archivePath: string;
 
   ciReport: CIReport;
 
   id?: string;
   engine: string | null;
   report: string[];
-  archiveReport: boolean;
   defaultMisMatchThreshold: number;
   defaultRequireSameDimensions?: boolean;
   debug: boolean;
@@ -335,7 +328,6 @@ export type VisregGlobalConfig = Partial<_VisregConfigSlice> & {
   engine?: 'playwright' | null;
 
   report?: string[];
-  archiveReport?: boolean;
   scenarioLogsInReports?: boolean;
 
   fileNameTemplate?: string;

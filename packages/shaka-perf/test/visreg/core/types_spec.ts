@@ -6,7 +6,7 @@ describe('defineVisregConfig', function () {
   it('should return the config object unchanged', function () {
     const config: VisregGlobalConfig = {
       viewports: [
-        { label: 'phone', width: 375, height: 667 },
+        { label: 'mobile', width: 375, height: 667 },
       ],
     };
 
@@ -50,15 +50,15 @@ describe('VISREG_DEFAULT_CONFIG', function () {
     assert.strictEqual(VISREG_DEFAULT_CONFIG.viewports!.length, 3);
   });
 
-  it('should include phone, tablet, and desktop viewports', function () {
+  it('should include mobile, tablet, and desktop viewports', function () {
     const labels = VISREG_DEFAULT_CONFIG.viewports!.map(function (v) { return v.label; });
-    assert.deepStrictEqual(labels, ['phone', 'tablet', 'desktop']);
+    assert.deepStrictEqual(labels, ['mobile', 'tablet', 'desktop']);
   });
 
-  it('should have correct phone viewport dimensions', function () {
-    const phone = VISREG_DEFAULT_CONFIG.viewports![0];
-    assert.strictEqual(phone.width, 375);
-    assert.strictEqual(phone.height, 667);
+  it('should have correct mobile viewport dimensions', function () {
+    const mobile = VISREG_DEFAULT_CONFIG.viewports![0];
+    assert.strictEqual(mobile.width, 375);
+    assert.strictEqual(mobile.height, 667);
   });
 
   it('should have correct tablet viewport dimensions', function () {

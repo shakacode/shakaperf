@@ -1,8 +1,9 @@
-import { abTest } from 'shaka-shared';
+import { abTest, TestType } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Products List', {
   startingPath: '/products',
+  testTypes: [TestType.VisualRegression],
   options: {
     visreg: {
       delay: 50,

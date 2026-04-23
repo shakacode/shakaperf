@@ -36,6 +36,7 @@ export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, heigh
 export enum TestType {
   VisualRegression = 'visual_regression',
   Performance = 'performance',
+  Accessibility = 'accessibility',
 }
 
 export interface TestFnContext {
@@ -108,6 +109,7 @@ export interface AbTestDefinition {
   file: string | null;
   line: number | null;
   options: AbTestOptions;
+  testTypes: TestType[] | null;
   testFn: (context: TestFnContext) => Promise<void>;
 }
 
@@ -117,6 +119,7 @@ export function abTest(
   name: string,
   config: {
     startingPath: string;
+    testTypes?: TestType[];
     options?: AbTestOptions;
   },
   testFn: (context: TestFnContext) => Promise<void>
@@ -145,8 +148,13 @@ export function abTest(
     file,
     line,
     options: config.options ?? {},
+    testTypes: config.testTypes ?? null,
     testFn,
   });
+}
+
+export function testRunsForType(test: AbTestDefinition, type: TestType): boolean {
+  return test.testTypes === null || test.testTypes.includes(type);
 }
 
 export function getRegisteredTests(): AbTestDefinition[] {

@@ -6,7 +6,7 @@ module.exports = {
   id: `${ENGINE}_visreg_features`,
   viewports: [
     {
-      label: 'phone',
+      label: 'mobile',
       width: 320,
       height: 480
     },

@@ -14,6 +14,13 @@ export interface WaitUntilPageSettledOptions {
   quietMs?: number;
 }
 
+// Perf tests run this helper inside a page that Lighthouse may tear down
+// mid-gather — treat those races as "settled or gone" rather than a failure.
+function isPageClosedError(err: unknown): boolean {
+  const msg = (err as Error)?.message ?? '';
+  return /Target (?:page, context or browser has been )?closed|Execution context was destroyed|Protocol error .*: Target closed/i.test(msg);
+}
+
 /**
  * Umbrella "page is settled" wait — runs `waitForAllImages`,
  * `waitForFontsReady`, `waitForNoMutations`, and `waitForNetworkSettle`
@@ -30,11 +37,19 @@ export async function waitUntilPageSettled(
 ): Promise<void> {
   const url = page.url();
   const start = Date.now();
-  await Promise.all([
-    waitForAllImages(page, options),
-    waitForFontsReady(page, options),
-    waitForNoMutations(page, options),
-    waitForNetworkSettle(page, options),
-  ]);
-  console.log(`${LOG_PREFIX} all checks complete for ${url} (${Date.now() - start} ms)`);
+  try {
+    await Promise.all([
+      waitForAllImages(page, options),
+      waitForFontsReady(page, options),
+      waitForNoMutations(page, options),
+      waitForNetworkSettle(page, options),
+    ]);
+    console.log(`${LOG_PREFIX} all checks complete for ${url} (${Date.now() - start} ms)`);
+  } catch (err) {
+    if (isPageClosedError(err)) {
+      console.log(`${LOG_PREFIX} ${url} closed during settle — treating as settled`);
+      return;
+    }
+    throw err;
+  }
 }

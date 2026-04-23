@@ -2,7 +2,7 @@ module.exports = {
   id: 'playwright_visreg_features',
   viewports: [
     {
-      label: 'phone',
+      label: 'mobile',
       width: 320,
       height: 480
     },
