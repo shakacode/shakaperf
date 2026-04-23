@@ -77,6 +77,12 @@ export interface CategoryResult {
   category: Category;
   status: Status;
   /**
+   * True when this test opted out of this category via `testTypes`. The
+   * UI renders a neutral "skipped" chip and `summarizeFailures` /
+   * `combineStatus` treat the category as absent.
+   */
+  skipped?: boolean;
+  /**
    * Non-fatal error message to surface in the report card — e.g. "perf
    * engine aborted before this test ran". Presence of `error` does NOT
    * change the category status (still `no_difference` by default).
