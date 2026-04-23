@@ -221,11 +221,11 @@ function VisregDialogMeta({ test, row }: { test: TestResult; row: VisregArtifact
 }
 
 // Group rows for the same selector side-by-side across devices. Sort by
-// selector first, then by the test's viewport order (phone → tablet → desktop
+// selector first, then by the test's viewport order (mobile → tablet → desktop
 // in most configs) so the grid reads left-to-right as "narrower → wider".
 function sortBySelectorThenViewport(rows: VisregArtifact[]): VisregArtifact[] {
   // Preserve first-seen viewport order instead of alphabetising (alphabetical
-  // would put "desktop" before "phone", inverting the usual narrow→wide read).
+  // would put "desktop" before "mobile", inverting the usual narrow→wide read).
   const viewportOrder = new Map<string, number>();
   for (const r of rows) {
     if (!viewportOrder.has(r.viewportLabel)) {

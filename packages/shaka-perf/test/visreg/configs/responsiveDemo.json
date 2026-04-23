@@ -2,7 +2,7 @@
   "id": "responsiveDemoPage",
   "viewports": [
     {
-      "label": "phone",
+      "label": "mobile",
       "width": 320,
       "height": 480
     },
@@ -29,7 +29,7 @@
       "selectors": [],
       "selectorExpansion": true,
       "expect": 0,
-      "misMatchThreshold" : 0.1,
+      "misMatchThreshold": 0.1,
       "requireSameDimensions": true
     }
   ],
@@ -37,10 +37,14 @@
     "htmlReport": "visreg_data/html_report",
     "ciReport": "visreg_data/ci_report"
   },
-  "report": ["browser"],
+  "report": [
+    "browser"
+  ],
   "engine": "playwright",
   "engineOptions": {
-    "args": ["--no-sandbox"]
+    "args": [
+      "--no-sandbox"
+    ]
   },
   "asyncCaptureLimit": 5,
   "asyncCompareLimit": 50,
