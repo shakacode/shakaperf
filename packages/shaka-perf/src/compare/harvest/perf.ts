@@ -279,21 +279,6 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   };
 }
 
-/**
- * Derives a category-level status from an array of per-viewport perf
- * artifacts — `regression` wins over `improvement` wins over `no_difference`.
- * Used by the compare runner when aggregating multi-viewport perfs into a
- * single `CategoryResult`.
- */
-export function statusFromPerfs(perfs: PerfArtifact[]): Status {
-  let status: Status = 'no_difference';
-  for (const p of perfs) {
-    if (p.regressedMetrics.length > 0) return 'regression';
-    if (p.improvedMetrics.length > 0) status = 'improvement';
-  }
-  return status;
-}
-
 function safeReaddir(dir: string): string[] {
   try {
     return fs.readdirSync(dir);

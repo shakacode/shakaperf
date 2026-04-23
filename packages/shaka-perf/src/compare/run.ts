@@ -31,7 +31,6 @@ import {
   readPerfEngineError,
   readPerfEngineLog,
   slugifyForBench,
-  statusFromPerfs,
 } from './harvest/perf';
 
 export interface CompareRunOptions {
@@ -103,18 +102,14 @@ const EMPTY_VISREG_CATEGORY: CategoryResult = {
   visreg: [],
 };
 
-function hasPerfError(perCategory: CategoryResult[]): boolean {
-  // Per-viewport perf failures live on individual PerfArtifacts (so one bad
-  // viewport doesn't erase another's metrics); surface them here so a test
-  // with any measurement failure still gets the `error` status at the top.
-  return perCategory.some((c) => c.perfs?.some((p) => p.error));
-}
-
 function combineStatus(perCategory: CategoryResult[]): Status {
   // Error wins over signed signals: a test whose measurement failed cannot
   // truthfully claim a regression or improvement — surface the failure first
-  // so the card styling and status filter show it as `error`.
-  if (perCategory.some((c) => c.error) || hasPerfError(perCategory)) return 'error';
+  // so the card styling and status filter show it as `error`. The perf
+  // CategoryResult already folds per-viewport errors into its own
+  // `c.status === 'error'`, so the single check covers both category-wide
+  // visreg errors and per-viewport perf errors.
+  if (perCategory.some((c) => c.error || c.status === 'error')) return 'error';
   if (perCategory.some((c) => c.status === 'regression')) return 'regression';
   if (perCategory.some((c) => c.status === 'visual_change')) return 'visual_change';
   if (perCategory.some((c) => c.status === 'improvement')) return 'improvement';
@@ -440,9 +435,18 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
         perfs.push(emptyPerfArtifact(viewportLabel));
       }
     }
+    // Per-viewport statuses fold into the category status with error first
+    // (any viewport errored → the whole category reads as error, so it stays
+    // in sync with `test.status`), then regression, then improvement, else
+    // no_difference. Full pass per level — we can't break on regression
+    // because a later viewport might carry an error that should outrank it.
+    let perfStatus: Status = 'no_difference';
+    if (perfs.some((p) => p.error)) perfStatus = 'error';
+    else if (perfs.some((p) => p.regressedMetrics.length > 0)) perfStatus = 'regression';
+    else if (perfs.some((p) => p.improvedMetrics.length > 0)) perfStatus = 'improvement';
     perCategory.push({
       category: 'perf',
-      status: statusFromPerfs(perfs),
+      status: perfStatus,
       perfs,
     });
     }
