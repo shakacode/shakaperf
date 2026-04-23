@@ -25,10 +25,6 @@ export type LighthouseConfig = Flags;
  */
 export type PerfLighthouseConfig = Omit<LighthouseConfig, 'formFactor' | 'screenEmulation'>;
 
-export function defineConfig(config: PerfLighthouseConfig): PerfLighthouseConfig {
-  return config;
-}
-
 export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
   throttling: {
     rttMs: 300,

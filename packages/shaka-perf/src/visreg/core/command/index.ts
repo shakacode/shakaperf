@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import createLogger from '../util/logger';
-import * as init from './init';
 import * as report from './report';
 import * as compare from './compare';
 import * as version from './version';
@@ -17,11 +16,10 @@ const logger = createLogger('COMMAND');
  * The execute function should not have much logic
  */
 
-const commandModules: Record<string, { execute: (config: RuntimeConfig) => any }> = { init, report, compare, version };
+const commandModules: Record<string, { execute: (config: RuntimeConfig) => any }> = { report, compare, version };
 
 /* Each and every command defined, including commands used in before/after */
 const commandNames = [
-  'init',
   'report',
   'compare',
   'version'
@@ -29,7 +27,6 @@ const commandNames = [
 
 /* Commands that are only exposed to higher levels */
 const exposedCommandNames = [
-  'init',
   'compare',
   'version'
 ];

@@ -12,8 +12,6 @@
     "dist",
     "node_modules",
     "compare",
-    "test",
-    "src/visreg/capture/ab-tests",
-    "src/visreg/capture/config.default.ts"
+    "test"
   ]
 }

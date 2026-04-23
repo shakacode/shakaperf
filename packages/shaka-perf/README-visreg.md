@@ -44,20 +44,20 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 ## Commands
 
 ```bash
-# Initialize a new project with boilerplate config
-shaka-perf visreg-init
+# Scaffold abtests.config.ts (one config drives perf + visreg + twin-servers)
+shaka-perf init
 
-# Compare screenshots between a reference URL and test URL side-by-side
-shaka-perf visreg-compare --config visreg.config.ts
+# Run the unified compare, narrowed to visreg only
+shaka-perf compare --categories visreg
 ```
 
 ### compare
 
-The main workflow. Captures screenshots from both a reference URL and test URL for each scenario, compares them pixel-by-pixel, and generates a report showing any visual differences. Supports retry logic for flaky comparisons.
+The main workflow. Captures screenshots from both control and experiment URLs for every registered `abTest` scenario at every viewport, compares them pixel-by-pixel, and folds the results into a single-file HTML report (`compare-results/report.html`) alongside the perf results. Supports retry logic for flaky comparisons.
 
-Each scenario requires a `referenceUrl` (your baseline, e.g. production) and a `url` (what you're testing, e.g. staging).
+Each scenario is an `abTest()` registered under `ab-tests/`. The unified `abtests.config.ts` provides `shared.controlURL` and `shared.experimentURL` (defaults: `:3020` / `:3030`), so individual tests don't need their own URLs.
 
-Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
+Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 
 > [!TIP]
 > The `--filter` argument is a useful shortcut for re-running a single test or just the failed tests.
@@ -65,29 +65,30 @@ Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 <!-- -->
 
 > [!WARNING]
-> `compare` wipes the `htmlReport` directory (default: `visreg_data/html_report`) at the start of every run, so the output always reflects only the current run. Screenshots for tests that were renamed or removed since the previous run will NOT linger. Do not point `paths.htmlReport` at a directory containing files you care about.
+> `compare` wipes `shared.resultsFolder` (default: `compare-results/`) at the start of every run, so the output always reflects only the current run. Tests that were renamed or removed since the previous run won't linger. Do not point it at a directory containing files you care about.
 
 ### CLI Options
 
 ```
---config <path>     Config file path (default: visreg.config.ts)
---filter <regex>    Filter scenarios by label
--h, --help          Display usage
+-c, --config <path>    Path to abtests.config.ts (default: auto-discovered)
+--categories <list>    Comma-separated subset: visreg,perf (default: both)
+--filter <regex>       Filter tests by name
+-h, --help             Display usage
 ```
 
 ## Getting Started
 
 ### Initializing Your Project
 
-`shaka-perf visreg-init` creates a default configuration file and project scaffolding in your current working directory. Note: this will overwrite any existing files.
+`shaka-perf init` scaffolds a fully-annotated `abtests.config.ts` in the current working directory. It will refuse to overwrite an existing config unless you pass `--force`.
 
 ```sh
-shaka-perf visreg-init
+shaka-perf init
 ```
 
 ## Configuration
 
-By default, `shaka-perf visreg` looks for `visreg.config.ts` in your current working directory. Use `--config=<path>` to specify a different config file.
+`shaka-perf compare` reads `abtests.config.ts` from the current working directory (or the path passed to `--config`). Visual-regression settings live on the `visreg` slice; see `shaka-perf init` for a commented template with every default spelled out.
 
 ### Required Properties
 
@@ -105,38 +106,30 @@ Pass a `--filter=<scenarioLabelRegex>` argument to just run scenarios matching y
 
 ### Example Config
 
-```ts
-import { defineVisregConfig } from 'shaka-perf/visreg';
+Visreg has no standalone config file any more — visual-regression settings live in the `visreg` slice of `abtests.config.ts`:
 
-export default defineVisregConfig({
-  id: 'my_app',
-  viewports: [
-    { label: 'mobile', width: 375, height: 667 },
-    { label: 'tablet', width: 768, height: 1024 },
-    { label: 'desktop', width: 1280, height: 800 },
-  ],
-  paths: {
-    htmlReport: 'visreg_data/html_report',
-    ciReport: 'visreg_data/ci_report',
+```ts
+import { defineConfig } from 'shaka-perf/compare';
+
+export default defineConfig({
+  visreg: {
+    viewports: ['desktop', 'tablet', 'phone'],
+    engineOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+    },
+    asyncCaptureLimit: 5,
+    compareRetries: 2,
+    compareRetryDelay: 500,
+    maxNumDiffPixels: 50,
+    defaultMisMatchThreshold: 0.1,
   },
-  report: ['browser', 'CI'],
-  engineOptions: {
-    browser: 'chromium',
-    args: ['--no-sandbox'],
-  },
-  asyncCaptureLimit: 5,
-  compareRetries: 5,
-  compareRetryDelay: 1000,
-  maxNumDiffPixels: 50,
-  defaultMisMatchThreshold: 0.1,
 });
 ```
 
-Scenarios are typically defined as standalone `*.abtest.ts` files in an `ab-tests/` directory rather than inline in the config — this lets you co-locate test definitions with the features they cover. See the [shaka-shared `abTest()` registry](../shaka-shared/) for how to author them.
+Run `shaka-perf init` to scaffold a fully-commented `abtests.config.ts` with every default listed.
 
-### JS Config Files
-
-JS config files (`visreg.config.js`) are also supported. Use `module.exports` instead of `export default`.
+Scenarios are defined as standalone `*.abtest.ts` files in an `ab-tests/` directory — this lets you co-locate test definitions with the features they cover. See the [shaka-shared `abTest()` registry](../shaka-shared/) for how to author them.
 
 ### Scenario Properties
 
@@ -512,19 +505,19 @@ visreg_data/html_report/
 ## Programmatic Usage
 
 ```ts
-import runner from 'shaka-perf/visreg';
+import { runCompare } from 'shaka-perf/compare';
 
-// Basic usage
-await runner('compare', { config: 'visreg.config.ts' });
+// Basic usage — reads abtests.config.ts from the current working directory
+await runCompare({ categories: ['visreg'] });
 
 // With filter
-await runner('compare', {
-  filter: 'someScenarioLabelAsRegExString',
-  config: 'visreg.config.ts',
+await runCompare({
+  categories: ['visreg'],
+  filter: 'Homepage',
 });
 ```
 
-The runner returns a promise — resolves on success, rejects on failure. When run via CLI, `shaka-perf visreg` returns exit code 0 on success and 1 on failure, making it easy to integrate into build pipelines.
+`runCompare` returns `{ reportPath, hasFailures, failureSummary }`. When run via CLI, `shaka-perf compare` exits non-zero on regressions or engine errors so CI treats the run as a failed assertion.
 
 ## Integration with twin-servers
 

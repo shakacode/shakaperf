@@ -2,38 +2,46 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { loadConfigFile } from 'shaka-shared';
 import extendConfig from './extendConfig';
-import { VISREG_DEFAULT_CONFIG } from '../types';
-import type { RuntimeConfig, VisregGlobalConfig } from '../types';
+import type { RuntimeConfig, VisregEngineInputConfig } from '../types';
 
 function projectPath (_config: Partial<RuntimeConfig>) {
   return process.cwd();
 }
 
+/**
+ * Resolve and load the engine-input config the compare runner wrote to
+ * a temp file. No legacy `visreg.config.ts` fallback — `abtests.config.ts`
+ * is the only user-facing visreg config now, and the compare runner
+ * always hands this path through.
+ */
 async function loadProjectConfig (options: Record<string, any> | undefined, config: Partial<RuntimeConfig>) {
   const customTestReportFileName = options && (options.testReportFileName || null);
   if (customTestReportFileName) {
     config.testReportFileName = options.testReportFileName || null;
   }
 
-  // Resolve config file path
   const customConfigPath = options && (options.configFilePath || options.configPath || options.config);
-  const configPath = customConfigPath
-    ? (path.isAbsolute(customConfigPath) ? customConfigPath : path.join(config.projectPath!, customConfigPath))
-    : path.join(config.projectPath!, 'visreg.config.ts');
+  if (!customConfigPath) {
+    throw new Error(
+      'visreg engine: no config path provided. The unified compare runner ' +
+      '(shaka-perf compare) writes a temp config and passes its path via ' +
+      '--config — call the engine through that entry point.',
+    );
+  }
+  const configPath = path.isAbsolute(customConfigPath)
+    ? customConfigPath
+    : path.join(config.projectPath!, customConfigPath);
+
+  if (!existsSync(configPath)) {
+    throw new Error(`visreg engine: config not found at ${configPath}`);
+  }
 
   config.configFileName = configPath;
 
-  // Load visreg config (or use defaults) so that extendConfig receives
-  // real values for paths, retries, viewports, etc.
-  if (existsSync(configPath)) {
-    const globalConfig = await loadConfigFile(configPath) as unknown as VisregGlobalConfig;
-    const { scenarios: _scenarios, ...configWithoutScenarios } = globalConfig as any;
-    if (options) options._loadedVisregConfig = configWithoutScenarios;
-    return configWithoutScenarios;
-  }
-  const defaults = { ...VISREG_DEFAULT_CONFIG };
-  if (options) options._loadedVisregConfig = defaults;
-  return defaults;
+  const loaded = await loadConfigFile(configPath) as unknown as VisregEngineInputConfig;
+  const { scenarios: _scenarios, ...configWithoutScenarios } = loaded as any;
+  if (options) options._loadedVisregConfig = configWithoutScenarios;
+  return configWithoutScenarios;
 }
 
 async function makeConfig (_command: string, options?: Record<string, any>) {

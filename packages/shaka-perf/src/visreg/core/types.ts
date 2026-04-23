@@ -1,5 +1,5 @@
 import type { Page as PlaywrightPage, BrowserContext, Browser } from 'playwright';
-import { PHONE_VIEWPORT, TABLET_VIEWPORT, DESKTOP_VIEWPORT, type Viewport as SharedViewport } from 'shaka-shared';
+import type { Viewport as SharedViewport } from 'shaka-shared';
 
 export type { PlaywrightPage, BrowserContext, Browser };
 
@@ -191,9 +191,6 @@ export interface RuntimeConfig {
   compareJsonFileName: string;
   tempCompareConfigFileName: string;
 
-  captureConfigFileName: string;
-  captureConfigFileNameDefault: string;
-
   ciReport: CIReport;
 
   id?: string;
@@ -308,17 +305,18 @@ export interface VisregTools {
   _consoleLogger?: string;
 }
 
-// ── Global Visreg Config (visreg.config.ts — no scenarios) ──────────
-// Aliased onto the zod-derived `VisregConfig` from
-// `shaka-perf/compare` (the `visreg` slice of `abtests.config.ts`),
-// widened with visreg-engine-specific fields the engine code still
-// reads (paths, ci, report, debug flags, …). Kept as a public API for
-// the `shaka-perf/visreg` subpath.
+// ── Engine Input Config ─────────────────────────────────────────────
+// What the compare runner's engine-bridge writes into a temp `.js`
+// file for the visreg engine to pick up. Structurally the `visreg`
+// slice of the unified `abtests.config.ts` (from `shaka-perf/compare`)
+// plus a small set of visreg-engine-specific fields the engine still
+// reads (paths, ci, debug flags, …). This is an internal plumbing
+// type — not a user-authored config.
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { VisregConfig as _VisregConfigSlice } from '../../compare/config';
 
-export type VisregGlobalConfig = Partial<_VisregConfigSlice> & {
+export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
   id?: string;
   paths?: VisregPaths;
 
@@ -345,30 +343,4 @@ export type VisregGlobalConfig = Partial<_VisregConfigSlice> & {
   };
 
   useBoundingBoxViewportForSelectors?: boolean;
-};
-
-export function defineVisregConfig(config: VisregGlobalConfig): VisregGlobalConfig {
-  return config;
-}
-
-export const VISREG_DEFAULT_CONFIG: VisregGlobalConfig = {
-  // Canonical viewport singletons live in shaka-shared so visreg and perf
-  // reference the exact same device dimensions — a desktop visreg capture
-  // and a desktop perf run measure 1280×800, not two close-but-different
-  // sizes that would muddle A/B comparisons.
-  viewports: [PHONE_VIEWPORT, TABLET_VIEWPORT, DESKTOP_VIEWPORT],
-  paths: {
-    htmlReport: 'visreg_data/html_report',
-    ciReport: 'visreg_data/ci_report',
-  },
-  report: ['browser', 'CI'],
-  engineOptions: {
-    browser: 'chromium',
-    args: ['--no-sandbox'],
-  },
-  asyncCaptureLimit: 5,
-  compareRetries: 5,
-  compareRetryDelay: 1000,
-  maxNumDiffPixels: 50,
-  defaultMisMatchThreshold: 0.1,
 };
