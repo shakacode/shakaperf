@@ -274,7 +274,11 @@ input {
   padding: 18px 20px 14px;
   border-bottom: 1px solid var(--border);
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* Cap the pills column at ~half the card and give both cells `min-width: 0`
+     so `.pill__detail`'s `text-overflow: ellipsis` can kick in. Without the
+     cap, a long detail (`white-space: nowrap`) pushes the `auto` column wide
+     enough to overflow the card's own width. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 50%);
   gap: 8px 16px;
   align-items: start;
 }
@@ -553,13 +557,12 @@ input {
    so it keeps its real intrinsic aspect, and we scale it via `width:` and
    position it via `transform: translate` in % of the image's own box.
 
-   `--crop-h` is set to a large sentinel (see `tripletVarsFor`), so the
-   aspect-ratio wants a very tall container; `max-height` then clips the
-   triplet to a fixed vertical budget. The image is anchored at the top
-   of the first diff, so only the far-below content is clipped. */
+   `aspect-ratio` sizes the container to the real bbox; `max-height: 500px`
+   clips tall narrow diffs. The image is anchored at the top of the first
+   diff, so only content below the bbox gets clipped. */
 .visreg-card__images--crop .visreg-card__img {
   aspect-ratio: calc(var(--crop-w) / var(--crop-h));
-  max-height: 500px;
+  max-height: 300px;
   position: relative;
   overflow: hidden;
 }

@@ -3,6 +3,11 @@ import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../t
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
 
+const LOG_UNAVAILABLE_MESSAGE =
+  'engine log not found on disk — the bench worker may have been killed ' +
+  'before it could flush stderr, or the results folder was wiped between ' +
+  'measurement and report generation.';
+
 const EMPTY: PerfArtifact[] = [];
 
 const GROUP_LABEL: Record<PerfMetricGroup, string> = {
@@ -116,11 +121,45 @@ function ArtifactFrame({ href, label }: { href: string; label: string }) {
  * artifact buttons. `onOpen` bubbles the artifact click up to the enclosing
  * PerfSlot so one dialog instance is shared across all viewports on the card.
  */
+function PerfError({ perf, test }: { perf: PerfArtifact; test: TestResult }) {
+  const [open, setOpen] = useState(false);
+  // Always render as a button even when the log is missing — clicking shows a
+  // clear "log unavailable" message so the missing artifact is visible instead
+  // of being silently swallowed by a non-clickable div.
+  const logBody = perf.errorLog && perf.errorLog.length > 0
+    ? perf.errorLog
+    : LOG_UNAVAILABLE_MESSAGE;
+  return (
+    <>
+      <button
+        type="button"
+        className="slot-error slot-error--clickable"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+      >
+        <span className="slot-error__prefix">perf ·</span>
+        <span className="slot-error__message">{perf.error}</span>
+        <span className="slot-error__hint">view logs →</span>
+      </button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={<span className="ui-dialog__title-text">perf · measurement logs</span>}
+        meta={<TestMeta test={test} />}
+      >
+        <pre className="error-log">{logBody}</pre>
+      </Dialog>
+    </>
+  );
+}
+
 function PerfBody({
   perf,
+  test,
   onOpen,
 }: {
   perf: PerfArtifact;
+  test: TestResult;
   onOpen: (link: ArtifactLink) => void;
 }) {
   const significant = perf.metrics.filter((m) => m.direction !== 'none');
@@ -138,12 +177,7 @@ function PerfBody({
 
   return (
     <div>
-      {perf.error ? (
-        <div className="slot-error" role="alert">
-          <span className="slot-error__prefix">perf ·</span>
-          <span className="slot-error__message">{perf.error}</span>
-        </div>
-      ) : null}
+      {perf.error ? <PerfError perf={perf} test={test} /> : null}
       {hasAny ? (
         GROUP_ORDER.filter((g) => grouped[g].length > 0).map((g) => (
           <PerfTable key={g} title={GROUP_LABEL[g]} metrics={grouped[g]} />
@@ -201,7 +235,7 @@ export function PerfSlot({ perfs = EMPTY, test }: { perfs?: PerfArtifact[]; test
               <span className="perf-slot__viewport-label">{perf.viewportLabel}</span>
             </div>
           ) : null}
-          <PerfBody perf={perf} onOpen={setOpenArtifact} />
+          <PerfBody perf={perf} test={test} onOpen={setOpenArtifact} />
         </div>
       ))}
 
