@@ -206,60 +206,16 @@ input {
   gap: 6px;
 }
 
-/* ───────── section headers ───────── */
-
-.section {
-  margin-top: 48px;
-}
-
-.section__head {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
-}
-
-.section__head h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.section__count {
-  font-size: 11px;
-  color: var(--fg-muted);
-  letter-spacing: 0.08em;
-}
-
-.section__rule {
-  flex: 1;
-  border-bottom: 1px dashed var(--border);
-  align-self: center;
-  margin-bottom: 4px;
-}
-
-/* ───────── grid ───────── */
+/* ───────── grid ─────────
+   One greedy flow — no section dividers. `auto-fill` + a min-width of
+   420px per card lets the grid add as many columns as the viewport can
+   fit (4+ on wide monitors) instead of stopping at a fixed breakpoint. */
 
 .grid {
   display: grid;
   gap: 20px;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1800px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  margin-top: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
 }
 
 /* ───────── card ───────── */
