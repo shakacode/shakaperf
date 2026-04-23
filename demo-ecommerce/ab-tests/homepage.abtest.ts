@@ -16,8 +16,5 @@ abTest('Homepage', {
   },
 }, async ({ page, annotate, testType }) => {
   annotate('Wait for homepage to settle');
-
-  if (testType === TestType.VisualRegression) {
-    await waitUntilPageSettled(page);
-  }
+  await waitUntilPageSettled(page);
 });
