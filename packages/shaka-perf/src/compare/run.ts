@@ -208,6 +208,12 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
   if (categories.includes('perf') && !opts.skipEngines) {
     for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
+      // Buckets are seeded on first insert (see perfBuckets construction
+      // above), so an empty bucket is unreachable today. Guard anyway: an
+      // empty `filter` would be falsy in `load-tests.ts`'s `if (filter)`
+      // check and silently fall back to running every discovered test at
+      // this viewport.
+      if (bucketTests.length === 0) continue;
       console.log(`\n>>> perf · ${viewport.label}`);
       const perfRoot = perfRootFor(resultsRoot, viewport);
       // Pre-create each per-test dir so the bench engine's internal readdirSync
