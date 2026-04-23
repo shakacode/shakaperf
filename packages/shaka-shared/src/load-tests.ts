@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { clearRegistry, getRegisteredTests, restoreRegistry, TestType } from './ab-test-registry';
+import { clearRegistry, getRegisteredTests, restoreRegistry, testRunsForType, TestType } from './ab-test-registry';
 import type { AbTestDefinition } from './ab-test-registry';
 import { loadTestFile } from './load-test-file';
 import { findTestFiles } from './discover-test-files';
@@ -79,7 +79,7 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
 
   if (testType) {
     const totalCount = tests.length;
-    tests = tests.filter(t => t.testTypes === null || t.testTypes.includes(testType));
+    tests = tests.filter(t => testRunsForType(t, testType));
     if (log && tests.length !== totalCount) {
       log(`Selected ${tests.length} of ${totalCount} test(s) for test type "${testType}".`);
     }

@@ -16,6 +16,7 @@ export interface Viewport {
 export enum TestType {
   VisualRegression = 'visual_regression',
   Performance = 'performance',
+  Accessibility = 'accessibility',
 }
 
 export interface TestFnContext {
@@ -123,6 +124,10 @@ export function abTest(
     testTypes: config.testTypes ?? null,
     testFn,
   });
+}
+
+export function testRunsForType(test: AbTestDefinition, type: TestType): boolean {
+  return test.testTypes === null || test.testTypes.includes(type);
 }
 
 export function getRegisteredTests(): AbTestDefinition[] {
