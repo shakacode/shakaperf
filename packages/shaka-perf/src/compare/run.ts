@@ -46,9 +46,27 @@ export interface CompareRunOptions {
   /**
    * Re-harvest + re-render the HTML report from whatever artifacts already
    * live in `compare-results/`, skipping the visreg and perf engine runs.
-   * Useful when iterating on report/harvest code.
+   * Useful when iterating on report/harvest code and as the final assembly
+   * step in sharded CI runs where shards produced artifacts with
+   * `skipReport: true`.
    */
-  skipEngines?: boolean;
+  reportOnly?: boolean;
+  /**
+   * Run both engines normally, but don't produce the top-level
+   * `report.html` / `report.json`. Intended for CI shards that measure a
+   * subset of tests and leave final report assembly to a downstream
+   * `reportOnly` run over merged artifacts. Engine errors are persisted
+   * to `<resultsRoot>/.shaka-engine-errors.json` so the assembler can
+   * surface them even though nothing was held in memory across processes.
+   */
+  skipReport?: boolean;
+}
+
+const ENGINE_ERRORS_FILE = '.shaka-engine-errors.json';
+
+interface PersistedEngineErrors {
+  engineErrors: string[];
+  perfEngineFailedByLabel: string[];
 }
 
 const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
@@ -144,6 +162,9 @@ export interface CompareRunResult {
 }
 
 export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareRunResult> {
+  if (opts.skipReport && opts.reportOnly) {
+    throw new Error('--skip-report and --report-only are mutually exclusive');
+  }
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
   const { shared, visreg: visregConfig, perf: perfConfig } = config;
@@ -162,11 +183,12 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     log: (msg) => console.log(msg),
   });
 
-  if (!opts.skipEngines) {
-    // Wipe stale artifacts so the harvester never reads last run's files.
-    fs.rmSync(resultsRoot, { recursive: true, force: true });
-    fs.mkdirSync(resultsRoot, { recursive: true });
-  }
+  // Ensure the results root exists without wiping prior artifacts. CI shards
+  // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
+  // earlier per-test dirs being present; local iterative runs rely on the
+  // harvester only looking up artifacts by test slug, so stale sibling dirs
+  // from deleted tests are harmless noise.
+  if (!opts.reportOnly) fs.mkdirSync(resultsRoot, { recursive: true });
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
@@ -174,12 +196,25 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // to tests in another viewport's bucket that ran cleanly.
   const perfEngineFailedByLabel = new Set<string>();
 
+  // Under reportOnly, rehydrate the in-memory error state from whatever the
+  // measuring process(es) persisted. Missing file = no prior errors (either
+  // we're in a fresh workspace or the measuring process finished cleanly).
+  if (opts.reportOnly) {
+    const persisted = readPersistedEngineErrors(resultsRoot);
+    if (persisted) {
+      engineErrors.push(...persisted.engineErrors);
+      for (const label of persisted.perfEngineFailedByLabel) {
+        perfEngineFailedByLabel.add(label);
+      }
+    }
+  }
+
   // Run the engines sequentially (each launches its own browser).
   let visregByLabel = new Map<string, CategoryResult>();
   const htmlReportDir = path.join(resultsRoot, VISREG_SUBDIR);
 
   if (categories.includes('visreg')) {
-    if (!opts.skipEngines) {
+    if (!opts.reportOnly) {
       console.log('\n>>> visreg');
       try {
         await invokeVisregEngine({
@@ -219,7 +254,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.skipEngines) {
+  if (categories.includes('perf') && !opts.reportOnly) {
     for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
       // Buckets are seeded on first insert (see perfBuckets construction
       // above), so an empty bucket is unreachable today. Guard anyway: an
@@ -289,6 +324,22 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     tests: testResults,
   };
 
+  // Under skipReport the shard produces no top-level artifacts — only the
+  // per-test engine output already written by the bridges. Its engine errors
+  // are serialised to disk so the downstream reportOnly assembly can surface
+  // them in meta.errors; without this, a shard's "visreg engine: timeout"
+  // banner would silently disappear at merge time.
+  if (opts.skipReport) {
+    writePersistedEngineErrors(resultsRoot, {
+      engineErrors,
+      perfEngineFailedByLabel: [...perfEngineFailedByLabel],
+    });
+    return {
+      reportPath: '',
+      ...summarizeFailures(data),
+    };
+  }
+
   const reportPath = writeReport(data, resultsRoot);
   fs.writeFileSync(
     path.join(resultsRoot, 'report.json'),
@@ -299,6 +350,29 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     reportPath,
     ...summarizeFailures(data),
   };
+}
+
+function readPersistedEngineErrors(resultsRoot: string): PersistedEngineErrors | null {
+  const p = path.join(resultsRoot, ENGINE_ERRORS_FILE);
+  try {
+    const raw = fs.readFileSync(p, 'utf8');
+    const parsed = JSON.parse(raw) as Partial<PersistedEngineErrors>;
+    return {
+      engineErrors: Array.isArray(parsed.engineErrors) ? parsed.engineErrors : [],
+      perfEngineFailedByLabel: Array.isArray(parsed.perfEngineFailedByLabel)
+        ? parsed.perfEngineFailedByLabel
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedEngineErrors(resultsRoot: string, payload: PersistedEngineErrors): void {
+  fs.writeFileSync(
+    path.join(resultsRoot, ENGINE_ERRORS_FILE),
+    JSON.stringify(payload, null, 2),
+  );
 }
 
 function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {

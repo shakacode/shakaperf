@@ -30,7 +30,8 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
       VALID_CATEGORIES,
     )
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
-    .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
+    .option('--report-only', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf. Complements --skip-report for sharded CI assembly.', false)
+    .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
     .action(async function (this: Command) {
       const opts = this.opts();
       const result = await runCompare({
@@ -40,9 +41,14 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
         filter: opts.filter,
         controlURL: opts.controlURL,
         experimentURL: opts.experimentURL,
-        skipEngines: opts.skipEngines === true,
+        reportOnly: opts.reportOnly === true,
+        skipReport: opts.skipReport === true,
       });
-      console.log(`\nReport: ${result.reportPath}`);
+      if (result.reportPath) {
+        console.log(`\nReport: ${result.reportPath}`);
+      } else {
+        console.log('\n--skip-report set: engine artifacts written, top-level report skipped.');
+      }
       if (result.hasFailures) {
         console.error(`\nFAILED: ${result.failureSummary}`);
         process.exitCode = 1;
