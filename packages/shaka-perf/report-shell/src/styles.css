@@ -298,6 +298,63 @@ input {
   word-break: break-all;
 }
 
+/* Freshness line under the test path: "updated 2d 5h ago". Muted and a bit
+   dimmer than the path so it reads as supplementary metadata — useful for
+   spotting stale measurements in a report assembled from multiple shards
+   that ran at different times. */
+.card__measured-at {
+  font-size: 10px;
+  color: var(--fg-muted);
+  opacity: 0.7;
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Tail card under --report-only that lists tests with no on-disk
+   artifacts. Sits in a single grid cell like every other card — no
+   `grid-column` override, no width tricks — so it reads as "another
+   card, but this one is a summary". */
+
+/* Description row sits between `.card__head` and the test list so it
+   spans the full card width. Lives outside the head grid on purpose —
+   `.card__head` reserves up to 50% for pills, which would clamp the
+   summary to half-width and force mid-word breaks in a narrow card. */
+.missing-artifacts__summary {
+  padding: 10px 20px;
+  font-size: 11px;
+  color: var(--fg-muted);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+}
+.missing-artifacts__list {
+  margin: 0;
+  padding: 6px 20px 14px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.missing-artifacts__item {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.missing-artifacts__item:first-child {
+  border-top: none;
+}
+.missing-artifacts__name {
+  font-weight: 600;
+  word-break: break-word;
+}
+.missing-artifacts__path {
+  font-size: 10px;
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
 .card__pills {
   display: flex;
   flex-direction: column;

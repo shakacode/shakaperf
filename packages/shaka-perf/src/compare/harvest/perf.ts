@@ -59,58 +59,6 @@ export function slugifyForBench(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'test';
 }
 
-const ENGINE_ERROR_FILE = 'engine-error.txt';
-const ENGINE_LOG_FILE = 'engine-output.log';
-const MAX_LOG_BYTES = 512 * 1024;
-
-/**
- * Returns the first line of `<perTestDir>/engine-error.txt` (written by bench's
- * per-test try/catch when a measurement fails) so it can be surfaced as the
- * perf card's `error` in place of real metrics. Returns null if the file is
- * absent — the common case.
- */
-export function readPerfEngineError(perTestDir: string): string | null {
-  const errPath = path.join(perTestDir, ENGINE_ERROR_FILE);
-  try {
-    const raw = fs.readFileSync(errPath, 'utf8').trim();
-    if (!raw) return null;
-    const firstLine = raw.split(/\r?\n/, 1)[0];
-    return firstLine || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Returns the captured engine stdout/stderr transcript for a failed test so it
- * can be embedded in the self-contained HTML report and opened via the error
- * banner's "view logs" action. Also includes the full stack from
- * `engine-error.txt` at the top — the log alone is the interleaved worker
- * output, while the stack pinpoints where the throw came from.
- * Truncates from the head if the combined payload is larger than
- * `MAX_LOG_BYTES` so a multi-MB transcript doesn't balloon the report.
- */
-export function readPerfEngineLog(perTestDir: string): string | null {
-  const stack = safeReadFile(path.join(perTestDir, ENGINE_ERROR_FILE));
-  const log = safeReadFile(path.join(perTestDir, ENGINE_LOG_FILE));
-  if (stack == null && log == null) return null;
-  const parts: string[] = [];
-  if (stack) parts.push('── error ──', stack.trim(), '');
-  if (log) parts.push('── engine output ──', log.trim());
-  const combined = parts.join('\n');
-  if (combined.length <= MAX_LOG_BYTES) return combined;
-  const head = '[… truncated; see the on-disk engine-output.log for the full transcript …]\n';
-  return head + combined.slice(combined.length - MAX_LOG_BYTES);
-}
-
-function safeReadFile(p: string): string | null {
-  try {
-    return fs.readFileSync(p, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;
@@ -132,9 +80,18 @@ interface BenchJsonMetric {
   asPercent?: { percentMedian?: number };
 }
 
+/**
+ * Shape of the per-test `report.json` written by the bench engine. Since we
+ * folded engine-error.txt + engine-output.log into this file, the harvester
+ * reads everything (metrics AND failure state) from a single source. Both
+ * engine fields are optional — a clean run leaves them unset; a partial run
+ * may have engineOutput only; a pre-measurement failure sets both.
+ */
 interface BenchCompareJsonResults {
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
+  engineError?: string;
+  engineOutput?: string;
 }
 
 export interface HarvestPerfOptions {
@@ -164,9 +121,13 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   void perfConfig;
 
   const reportJsonPath = path.join(perTestDir, 'report.json');
+  let engineError: string | null = null;
+  let engineOutput: string | null = null;
   if (fs.existsSync(reportJsonPath)) {
     try {
       const raw = JSON.parse(fs.readFileSync(reportJsonPath, 'utf8')) as BenchCompareJsonResults;
+      engineError = raw.engineError ?? null;
+      engineOutput = raw.engineOutput ?? null;
       const allEntries = [
         ...(raw.vitalsTableData ?? []),
         ...(raw.diagnosticsTableData ?? []),
@@ -271,11 +232,20 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // the viewport's bench run errored before writing report.json).
   void slug;
 
+  // A per-test report.json carrying engineError means the bench wrote a
+  // failure shell: no metrics, but the error short-message + full transcript
+  // are captured inline. Surface them as the PerfArtifact's user-facing
+  // `error` / `errorLog` so the report UI shows the same banner it would
+  // have shown when we kept engine-error.txt / engine-output.log on disk.
+  const errorPrefix = engineError ? `perf measurement failed: ${engineError}` : undefined;
+
   return {
     viewportLabel,
     metrics,
     regressedMetrics,
     improvedMetrics,
+    ...(errorPrefix ? { error: errorPrefix } : {}),
+    ...(engineOutput ? { errorLog: engineOutput } : {}),
     controlLighthouseHref: inlineHtml(controlLh),
     experimentLighthouseHref: inlineHtml(experimentLh),
     timelineHref: relativeHref(timeline),

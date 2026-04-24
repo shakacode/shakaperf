@@ -151,6 +151,15 @@ export interface TestResult {
   code: string | null;
   status: Status;
   durationMs: number;
+  /**
+   * Epoch-ms timestamp of the freshest per-test artifact file on disk
+   * (across perf + visreg, across viewports). Null when nothing was
+   * measured for this test — typically because it's a shard that didn't
+   * include it, or because `--report-only` was run against a tree missing
+   * this test's directory. Rendered as "updated N d H h ago" on each card
+   * so stale measurements are visible at a glance in merged reports.
+   */
+  measuredAt: number | null;
   categories: CategoryResult[];
 }
 
@@ -167,6 +176,14 @@ export interface ReportMeta {
    * of the report. Per-test / per-category errors go on CategoryResult.
    */
   errors: string[];
+  /**
+   * Set when this report was produced by `shaka-perf compare --report-only`,
+   * i.e. rebuilt from existing artifacts without re-running engines. The
+   * shell uses this to bucket tests that have no on-disk artifacts
+   * (`measuredAt === null`) into a single summary card at the end of the
+   * grid instead of rendering them as empty individual cards.
+   */
+  reportOnly: boolean;
 }
 
 export interface ReportData {

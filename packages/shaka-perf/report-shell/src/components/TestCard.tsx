@@ -3,6 +3,28 @@ import type { Status, TestResult } from '../types';
 import { Pill } from './Pill';
 import { CategorySlot } from './CategorySlot';
 
+// Full-word units so "12m" isn't mistaken for "12 months" — especially
+// relevant in merged --report-only views where artifacts can be weeks old.
+function pluralize(n: number, unit: string): string {
+  return `${n} ${unit}${n === 1 ? '' : 's'}`;
+}
+
+function formatMeasuredAt(measuredAt: number | null): string | null {
+  if (measuredAt == null) return 'never measured';
+  const diffMs = Date.now() - measuredAt;
+  if (diffMs < 0) return 'just now';
+  const totalHours = Math.floor(diffMs / (60 * 60 * 1000));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (diffMs < 60 * 60 * 1000) {
+    const mins = Math.max(1, Math.floor(diffMs / (60 * 1000)));
+    return `${pluralize(mins, 'minute')} ago`;
+  }
+  if (days === 0) return `${pluralize(hours, 'hour')} ago`;
+  if (hours === 0) return `${pluralize(days, 'day')} ago`;
+  return `${pluralize(days, 'day')} ${pluralize(hours, 'hour')} ago`;
+}
+
 interface PillSpec {
   status: Status;
   detail?: string;
@@ -66,6 +88,9 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
         <div>
           <h3 className="card__title">{test.name}</h3>
           <div className="card__path">{test.filePath}</div>
+          <div className="card__measured-at" title="mtime of the freshest per-test artifact on disk">
+            updated {formatMeasuredAt(test.measuredAt)}
+          </div>
         </div>
         <div className="card__pills">
           {pills.map((p, i) => (
