@@ -55,7 +55,7 @@ describe('preparePage', function () {
     selectors: ['document'],
   };
 
-  const baseViewport = { label: 'desktop', width: 1280, height: 800 };
+  const baseViewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
   const baseConfig = {} as import('../../../../src/visreg/core/types').VisregConfig;
   const baseBrowserContext = {} as import('../../../../src/visreg/core/types').BrowserContext;
 
@@ -135,7 +135,7 @@ describe('preparePage', function () {
       const callArgs = testFn.mock.calls[0] as unknown[];
       const context = callArgs[0] as Record<string, unknown>;
       assert.strictEqual(context.scenario, baseTestDef);
-      assert.deepStrictEqual(context.viewport, { label: 'desktop', width: 1280, height: 800 });
+      assert.deepStrictEqual(context.viewport, baseViewport);
       assert.strictEqual(context.testType, TestType.VisualRegression);
     });
 

@@ -1,15 +1,11 @@
 import path from 'node:path';
 import temp from 'temp';
-import fs from 'node:fs';
-import hash from 'object-hash';
-import os from 'node:os';
 import { getGitRunId } from './gitRunId';
 import type { RuntimeConfig, VisregConfig } from '../types';
 
 // At runtime this file is at dist/visreg/core/util/, package.json is 4 levels up
 const packageJson = require('../../../../package.json');
 const { version } = packageJson;
-const tmpdir = os.tmpdir();
 
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   const runId = userConfig.dynamicTestId || getGitRunId();
@@ -20,7 +16,6 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   screenshotPaths(config);
   jsonReport(config, userConfig);
   tempCompareConfigPath(config);
-  captureConfigPaths(config);
 
   config.id = userConfig.id;
   config.engine = userConfig.engine || null;
@@ -91,16 +86,6 @@ function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | 
 
 function tempCompareConfigPath (config: Partial<RuntimeConfig>) {
   config.tempCompareConfigFileName = temp.path({ suffix: '.json' });
-}
-
-function captureConfigPaths (config: Partial<RuntimeConfig>) {
-  const captureDir = path.join(tmpdir, 'capture');
-  if (!fs.existsSync(captureDir)) {
-    fs.mkdirSync(captureDir);
-  }
-  const configHash = hash(config);
-  config.captureConfigFileName = path.join(tmpdir, 'capture', configHash + '.json');
-  config.captureConfigFileNameDefault = path.join(config.visregRoot!, 'capture', 'config.default.ts');
 }
 
 export default extendConfig;

@@ -60,8 +60,9 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     const { defaultConfig } = await import('lighthouse');
     const defaultMobileSettings = defaultConfig?.settings;
     // CPU slowdown default: 20x locally, 6x on CI (CI machines are already slow).
-    // User's bench.config.ts (applied via lhConfigPath in sample()) fully
-    // overrides throttling — the demo's 1x takes effect through that path.
+    // User's `perf.lighthouseConfig` from `abtests.config.ts` (written to
+    // a temp file by the compare bridge, path passed via lhConfigPath)
+    // fully overrides throttling — the demo's 1x takes effect this way.
     return {
       ...defaultMobileSettings,
       ...DEFAULT_LH_CONFIG,

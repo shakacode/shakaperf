@@ -192,32 +192,6 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(scenarioCount, 2, 'Should only process filtered scenarios');
   });
 
-  it('should ensure viewport labels exist', async function () {
-    const configWithUnlabeledViewports = {
-      ...mockConfig,
-      args: {
-        ...mockConfig.args,
-        _loadedVisregConfig: {
-          viewports: [
-            { name: 'mobile', width: 320, height: 480 },
-            { width: 1024, height: 768 },
-          ],
-          engineOptions: { browser: 'chromium' },
-        },
-      },
-    };
-
-    const createComparisonBitmaps = createModule();
-    await createComparisonBitmaps(configWithUnlabeledViewports);
-
-    assert(capturedConfig, 'Should have captured config');
-    const viewports = capturedConfig.viewports as Array<{ label?: string }>;
-    assert(viewports[0].label, 'First viewport should have label');
-    assert.strictEqual(viewports[0].label, 'mobile', 'Should use name as label');
-    assert(viewports[1].label, 'Second viewport should have label');
-    assert.strictEqual(viewports[1].label, 'viewport_1', 'Should generate label from index');
-  });
-
   it('should load scenarios from testFile and convert via registry', async function () {
     const mockTestFn = async function () {};
 

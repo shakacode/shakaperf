@@ -12,12 +12,8 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 - [Getting Started](#getting-started)
   - [Initializing Your Project](#initializing-your-project)
 - [Configuration](#configuration)
-  - [Required Properties](#required-properties)
   - [Example Config](#example-config)
-  - [JS Config Files](#js-config-files)
   - [Scenario Properties](#scenario-properties)
-  - [Global Scenario Defaults](#global-scenario-defaults)
-  - [Setting Directory Paths](#setting-directory-paths)
   - [Changing Screenshot Filename Formats](#changing-screenshot-filename-formats)
 - [Advanced Scenarios](#advanced-scenarios)
   - [Click and Hover Interactions](#click-and-hover-interactions)
@@ -44,20 +40,20 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 ## Commands
 
 ```bash
-# Initialize a new project with boilerplate config
-shaka-perf visreg-init
+# Scaffold abtests.config.ts (one config drives perf + visreg + twin-servers)
+shaka-perf init
 
-# Compare screenshots between a reference URL and test URL side-by-side
-shaka-perf visreg-compare --config visreg.config.ts
+# Run the unified compare, narrowed to visreg only
+shaka-perf compare --categories visreg
 ```
 
 ### compare
 
-The main workflow. Captures screenshots from both a reference URL and test URL for each scenario, compares them pixel-by-pixel, and generates a report showing any visual differences. Supports retry logic for flaky comparisons.
+The main workflow. Captures screenshots from both control and experiment URLs for every registered `abTest` scenario at every viewport, compares them pixel-by-pixel, and folds the results into a single-file HTML report (`compare-results/report.html`) alongside the perf results. Supports retry logic for flaky comparisons.
 
-Each scenario requires a `referenceUrl` (your baseline, e.g. production) and a `url` (what you're testing, e.g. staging).
+Each scenario is an `abTest()` registered under `ab-tests/`. The unified `abtests.config.ts` provides `shared.controlURL` and `shared.experimentURL` (defaults: `:3020` / `:3030`), so individual tests don't need their own URLs.
 
-Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
+Pass `--filter=<testNameRegex>` to run only tests matching your regex.
 
 > [!TIP]
 > The `--filter` argument is a useful shortcut for re-running a single test or just the failed tests.
@@ -65,97 +61,76 @@ Pass `--filter=<scenarioLabelRegex>` to run only scenarios matching your regex.
 <!-- -->
 
 > [!WARNING]
-> `compare` wipes the `htmlReport` directory (default: `visreg_data/html_report`) at the start of every run, so the output always reflects only the current run. Screenshots for tests that were renamed or removed since the previous run will NOT linger. Do not point `paths.htmlReport` at a directory containing files you care about.
+> `compare` wipes `shared.resultsFolder` (default: `compare-results/`) at the start of every run, so the output always reflects only the current run. Tests that were renamed or removed since the previous run won't linger. Do not point it at a directory containing files you care about.
 
 ### CLI Options
 
 ```
---config <path>     Config file path (default: visreg.config.ts)
---filter <regex>    Filter scenarios by label
--h, --help          Display usage
+-c, --config <path>    Path to abtests.config.ts (default: auto-discovered)
+--categories <list>    Comma-separated subset: visreg,perf (default: both)
+--filter <regex>       Filter tests by name
+-h, --help             Display usage
 ```
 
 ## Getting Started
 
 ### Initializing Your Project
 
-`shaka-perf visreg-init` creates a default configuration file and project scaffolding in your current working directory. Note: this will overwrite any existing files.
+`shaka-perf init` scaffolds a fully-annotated `abtests.config.ts` in the current working directory. It will refuse to overwrite an existing config unless you pass `--force`.
 
 ```sh
-shaka-perf visreg-init
+shaka-perf init
 ```
 
 ## Configuration
 
-By default, `shaka-perf visreg` looks for `visreg.config.ts` in your current working directory. Use `--config=<path>` to specify a different config file.
+`shaka-perf compare` reads `abtests.config.ts` from the current working directory (or the path passed to `--config`). Visual-regression settings live on the `visreg` slice; see `shaka-perf init` for a commented template with every default spelled out.
 
-### Required Properties
+Every field on the `visreg` slice has a default, so a minimal config is just `defineConfig({})`. Scenarios come from `abTest(...)` calls discovered under `ab-tests/` — control and experiment URLs come from `shared.controlURL` / `shared.experimentURL`, not from individual scenarios.
 
-- **`id`** — Used for screenshot naming. Set this property when sharing reference files with teammates — otherwise omit and shaka-perf visreg will auto-generate one for you.
-- **`viewports`** — An array of screen size objects your DOM will be tested against. Add as many as you like — but add at least one.
-- **`scenarios`** — Your test cases. The important sub properties are:
-  - **`scenarios[n].label`** — Required. Also used for screenshot naming.
-  - **`scenarios[n].url`** — Required. The URL of your app state (what you're testing). Can be absolute or relative to your current working directory.
-  - **`scenarios[n].referenceUrl`** — Required. The baseline URL to compare against (e.g. production or control server).
-
-> [!TIP]
-> No other scenario properties are required. Other properties can just be added as necessary.
-
-Pass a `--filter=<scenarioLabelRegex>` argument to just run scenarios matching your scenario label.
+Pass `--filter=<testNameRegex>` to run only tests whose name matches your regex.
 
 ### Example Config
 
-```ts
-import { defineVisregConfig } from 'shaka-perf/visreg';
+Visreg has no standalone config file any more — visual-regression settings live in the `visreg` slice of `abtests.config.ts`:
 
-export default defineVisregConfig({
-  id: 'my_app',
-  viewports: [
-    { label: 'mobile', width: 375, height: 667 },
-    { label: 'tablet', width: 768, height: 1024 },
-    { label: 'desktop', width: 1280, height: 800 },
-  ],
-  paths: {
-    htmlReport: 'visreg_data/html_report',
-    ciReport: 'visreg_data/ci_report',
+```ts
+import { defineConfig } from 'shaka-perf/compare';
+
+export default defineConfig({
+  visreg: {
+    viewports: ['desktop', 'tablet', 'phone'],
+    engineOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+    },
+    asyncCaptureLimit: 5,
+    compareRetries: 2,
+    compareRetryDelay: 500,
+    maxNumDiffPixels: 50,
+    defaultMisMatchThreshold: 0.1,
   },
-  report: ['browser', 'CI'],
-  engineOptions: {
-    browser: 'chromium',
-    args: ['--no-sandbox'],
-  },
-  asyncCaptureLimit: 5,
-  compareRetries: 5,
-  compareRetryDelay: 1000,
-  maxNumDiffPixels: 50,
-  defaultMisMatchThreshold: 0.1,
 });
 ```
 
-Scenarios are typically defined as standalone `*.abtest.ts` files in an `ab-tests/` directory rather than inline in the config — this lets you co-locate test definitions with the features they cover. See the [shaka-shared `abTest()` registry](../shaka-shared/) for how to author them.
+Run `shaka-perf init` to scaffold a fully-commented `abtests.config.ts` with every default listed.
 
-### JS Config Files
-
-JS config files (`visreg.config.js`) are also supported. Use `module.exports` instead of `export default`.
+Scenarios are defined as standalone `*.abtest.ts` files in an `ab-tests/` directory — this lets you co-locate test definitions with the features they cover. See the [shaka-shared `abTest()` registry](../shaka-shared/) for how to author them.
 
 ### Scenario Properties
 
-Scenario properties, [which may be global](#global-scenario-defaults), are **processed sequentially in the following order:**
+Per-test visreg options go under `options.visreg` on each `abTest(...)` call. The full set — processed sequentially in the order listed:
 
 | Property                | Description                                                                                                                                         |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `label`                 | [required] Tag saved with your reference images                                                                                                     |
 | `onBefore`              | Lifecycle hook — runs before page navigation. Use to set up cookies, auth state, etc.                                                               |
 | `cookiePath`            | Import cookies in JSON format (see [Setting Cookies](#setting-cookies))                                                                             |
-| `url`                   | [required] The URL of your app state                                                                                                                |
-| `referenceUrl`          | Specify a different state or environment for reference (required for compare)                                                                       |
 | `readyEvent`            | Wait until this string has been logged to the console                                                                                               |
 | `readySelector`         | Wait until this selector exists before continuing                                                                                                   |
 | `readyTimeout`          | Timeout for readyEvent and readySelector (default: 30000ms)                                                                                         |
 | `delay`                 | Wait for x milliseconds                                                                                                                             |
 | `hideSelectors`         | Array of selectors set to `visibility: hidden`                                                                                                      |
 | `removeSelectors`       | Array of selectors set to `display: none`                                                                                                           |
-| `keyPressSelectors`     | Array of `{selector, keyPress}` objects — simulates multiple sequential keypress interactions                                                       |
 | `hoverSelector`         | Move the pointer over the specified DOM element prior to the screenshot                                                                             |
 | `hoverSelectors`        | Array of selectors — simulates multiple sequential hover interactions                                                                               |
 | `clickSelector`         | Click the specified DOM element prior to the screenshot                                                                                             |
@@ -166,44 +141,8 @@ Scenario properties, [which may be global](#global-scenario-defaults), are **pro
 | `selectorExpansion`     | See [Targeting Elements](#targeting-elements) below                                                                                                 |
 | `misMatchThreshold`     | Percentage of different pixels allowed to pass (default: 0.1)                                                                                       |
 | `requireSameDimensions` | If true, any change in selector size triggers a test failure (default: true)                                                                        |
-| `viewports`             | Override root-level viewports for this scenario                                                                                                     |
-| `gotoParameters`        | Settings passed to Playwright's `page.goto(url, parameters)`                                                                                        |
 
-### Global Scenario Defaults
-
-You can include any of the above properties at the "global" level in the `scenarioDefaults` configuration object.
-
-```ts
-{
-  scenarioDefaults: {
-    cookiePath: 'visreg_data/cookies/cookies.json',
-    delay: 0,
-    misMatchThreshold: 0.1,
-    requireSameDimensions: true,
-  },
-  scenarios: [/* ... */],
-}
-```
-
-> [!IMPORTANT]
-> Global configuration is overridden at the scenario level. A scenario with `selectors: []` set as an empty array will yield zero selectors — `scenarioDefaults.selectors` will NOT be used as a fallback. `scenario.selectors` takes precedence.
-
-### Setting Directory Paths
-
-By default, `shaka-perf visreg` saves generated resources into the `visreg_data` directory in parallel with your config file. The location of the various resource types are configurable so they can easily be moved inside or outside your source control or file sharing environment.
-
-Control and experiment screenshots are always stored inside the HTML report directory (`html_report/control_screenshot` and `html_report/experiment_screenshot`).
-
-> [!TIP]
-> These file paths are relative to your current working directory.
-
-```ts
-paths: {
-  htmlReport: 'visreg_data/html_report',
-  jsonReport: 'visreg_data/json_report',
-  ciReport: 'visreg_data/ci_report',
-}
-```
+Narrow which viewports a single test runs at via `options.viewports` (sibling of `options.visreg`) — it's shared with perf and intersects with `visreg.viewports` in `abtests.config.ts`.
 
 ### Changing Screenshot Filename Formats
 
@@ -456,7 +395,7 @@ Set `scenarioLogsInReports: true` at the config root to include browser console 
 
 ### Capturing Screens in Parallel
 
-Default: 10 concurrent captures. Adjust with:
+Default: 2 concurrent captures. Adjust with:
 
 ```ts
 asyncCaptureLimit: 5
@@ -464,10 +403,10 @@ asyncCaptureLimit: 5
 
 ### Comparing Screens in Parallel
 
-Default: 50 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
+Default: 4 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
 
 ```ts
-asyncCompareLimit: 100
+asyncCompareLimit: 16
 ```
 
 ## Resemble.js Output Options
@@ -512,19 +451,19 @@ visreg_data/html_report/
 ## Programmatic Usage
 
 ```ts
-import runner from 'shaka-perf/visreg';
+import { runCompare } from 'shaka-perf/compare';
 
-// Basic usage
-await runner('compare', { config: 'visreg.config.ts' });
+// Basic usage — reads abtests.config.ts from the current working directory
+await runCompare({ categories: ['visreg'] });
 
 // With filter
-await runner('compare', {
-  filter: 'someScenarioLabelAsRegExString',
-  config: 'visreg.config.ts',
+await runCompare({
+  categories: ['visreg'],
+  filter: 'Homepage',
 });
 ```
 
-The runner returns a promise — resolves on success, rejects on failure. When run via CLI, `shaka-perf visreg` returns exit code 0 on success and 1 on failure, making it easy to integrate into build pipelines.
+`runCompare` returns `{ reportPath, hasFailures, failureSummary }`. When run via CLI, `shaka-perf compare` exits non-zero on regressions or engine errors so CI treats the run as a failed assertion.
 
 ## Integration with twin-servers
 

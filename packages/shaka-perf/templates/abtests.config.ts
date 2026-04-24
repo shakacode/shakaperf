@@ -1,27 +1,36 @@
 import { defineConfig } from 'shaka-perf/compare';
+import { DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 
-/**
- * `shaka-perf compare` reads this file. See README + SETUP-twin-servers.md
- * for the full surface; the defaults below are tuned for a local two-server
- * setup where control serves on :3020 and experiment on :3030.
- */
 export default defineConfig({
   shared: {
     controlURL: 'http://localhost:3020',
     experimentURL: 'http://localhost:3030',
     resultsFolder: 'compare-results',
+    viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
   },
 
-  // Visreg's built-in viewports are `[desktop, tablet, phone]`. Override the
-  // list here, or per-test via `abTest(name, { options: { visreg: {
-  // viewports: [...] } } }, …)`.
-  visreg: {},
+  visreg: {
+    viewports: ['desktop', 'tablet', 'phone'],
+    defaultMisMatchThreshold: 0.1,
+    compareRetries: 2,
+    compareRetryDelay: 500,
+    maxNumDiffPixels: 50,
+    comparePixelmatchThreshold: 0.1,
+    asyncCaptureLimit: 2,
+    asyncCompareLimit: 4,
+    engineOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+    },
+  },
 
-  // Perf's built-in viewports are `[desktop, phone]`. Each viewport drives a
-  // separate Lighthouse pass; form factor + screenEmulation are derived from
-  // `width` / `height`. Override per-test via `abTest(name, { options: {
-  // perf: { viewports: [...] } } }, …)`.
   perf: {
     numberOfMeasurements: 20,
+    regressionThreshold: 0.1,
+    pValueThreshold: 0.05,
+    regressionThresholdStat: 'estimator',
+    samplingMode: 'simultaneous',
+    sampleTimeoutMs: 120_000,
+    viewports: ['desktop', 'phone'],
   },
 });

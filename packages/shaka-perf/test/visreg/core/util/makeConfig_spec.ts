@@ -1,23 +1,28 @@
 import assert from 'node:assert';
+import path from 'node:path';
+
 import makeConfig from '../../../../src/visreg/core/util/makeConfig';
 
-describe('make config', function () {
-  it('should pass the filter arg correctly', async function () {
-    const actualConfig = await makeConfig('init', { filter: true });
-    assert.strictEqual(actualConfig.args!.filter, true);
+describe('makeConfig', function () {
+  it('throws when no config path is provided', async function () {
+    await assert.rejects(
+      makeConfig('compare', {}),
+      /no config path provided/,
+    );
   });
 
-  it('should work without an option param', async function () {
-    const actualConfig = await makeConfig('init');
-    assert.deepStrictEqual(actualConfig.args!, {});
+  it('throws when options is omitted entirely', async function () {
+    await assert.rejects(
+      makeConfig('compare'),
+      /no config path provided/,
+    );
   });
 
-  it('should skip loading config file when testFile is provided', async function () {
-    const actualConfig = await makeConfig('compare', {
-      testFile: './ab-tests/shop-now.abtest.ts',
-      config: 'visreg.config.ts',
-    });
-    // Should not throw even though visreg.config.ts doesn't exist on disk
-    assert.strictEqual(actualConfig.args!.testFile, './ab-tests/shop-now.abtest.ts');
+  it('throws when the supplied config path does not exist', async function () {
+    const missing = path.join(__dirname, 'this-file-does-not-exist.js');
+    await assert.rejects(
+      makeConfig('compare', { config: missing }),
+      new RegExp(`config not found at ${missing.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+    );
   });
 });

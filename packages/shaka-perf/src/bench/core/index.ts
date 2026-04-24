@@ -9,7 +9,6 @@ export type {
   LighthouseConfig,
 } from './lighthouse-config';
 export {
-  defineConfig,
   DEFAULT_LH_CONFIG,
   DEFAULT_MARKERS,
   lhConfigForViewport,

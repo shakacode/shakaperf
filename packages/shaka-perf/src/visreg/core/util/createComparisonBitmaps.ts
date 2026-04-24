@@ -9,7 +9,7 @@ import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario } from './convertAbTestToScenario';
 import createLogger from './logger';
 import { installTestNamePrefix, runWithTestName, registerTestNames } from './testContext';
-import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregGlobalConfig, TestPair, Browser } from '../types';
+import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -44,9 +44,10 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     log: function (msg) { logger.log(msg); },
   });
 
-  // Global config was already loaded in makeConfig and passed through extendConfig.
-  // Retrieve it for viewports/engineOptions which aren't on RuntimeConfig.
-  const globalConfig = (config.args._loadedVisregConfig as Partial<VisregGlobalConfig>) || {};
+  // Engine-input config was loaded in makeConfig and stashed on
+  // `config.args._loadedVisregConfig`. Retrieve it for viewports /
+  // engineOptions / etc. which aren't part of RuntimeConfig.
+  const globalConfig = (config.args._loadedVisregConfig as Partial<VisregEngineInputConfig>) || {};
 
   // Convert AbTestDefinitions to Scenarios — pass the resolved category
   // viewports so per-test `options.viewports` can narrow `scenario.viewports`
