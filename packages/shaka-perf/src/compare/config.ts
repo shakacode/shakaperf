@@ -9,7 +9,10 @@ import {
 import { TwinServersConfigSchema } from '../twin-servers/types';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 
-const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
+// Halve the core count so a full compare run (parallel visreg browsers +
+// Lighthouse workers) has headroom for the two dockerized app stacks we're
+// measuring and any system noise. Users can override via `shared.parallelism`.
+const DEFAULT_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
@@ -108,6 +111,23 @@ export const SharedConfigSchema = z
      * which labels a given test runs at.
      */
     viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
+    /**
+     * Cross-engine concurrency budget. Used for the bench worker pool and
+     * for visreg's parallel capture + pixel-compare limits — both engines
+     * share a single pool of CPU cores, so exposing one knob lets users
+     * tune overall load without juggling engine-specific fields. Defaults
+     * to half the core count.
+     */
+    parallelism: z.number().int().positive().default(DEFAULT_PARALLELISM),
+    /**
+     * Cross-engine retry policy for transient failures. Perf retries a
+     * Lighthouse sample (the Chrome subprocess is recycled between tries);
+     * visreg retries a mismatched screenshot-pair comparison. `retries`
+     * is the number of additional attempts after the first failure;
+     * `retryDelay` is the ms between them.
+     */
+    retries: z.number().int().nonnegative().default(2),
+    retryDelay: z.number().int().nonnegative().default(1000),
   });
 
 export const VisregConfigSchema = z
@@ -119,12 +139,8 @@ export const VisregConfigSchema = z
      */
     viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
     defaultMisMatchThreshold: z.number().nonnegative().default(0.1),
-    compareRetries: z.number().int().nonnegative().default(2),
-    compareRetryDelay: z.number().int().nonnegative().default(500),
     maxNumDiffPixels: z.number().int().nonnegative().default(50),
     comparePixelmatchThreshold: z.number().nonnegative().default(0.1),
-    asyncCaptureLimit: z.number().int().positive().default(2),
-    asyncCompareLimit: z.number().int().positive().default(4),
     engineOptions: EngineOptionsSchema.default({
       browser: 'chromium',
       args: ['--no-sandbox'],
@@ -143,7 +159,6 @@ export const PerfConfigSchema = z
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
-    parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
     sampleTimeoutMs: z.number().int().positive().default(120000),
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is

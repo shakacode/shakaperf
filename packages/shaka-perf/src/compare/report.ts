@@ -90,6 +90,14 @@ export interface PerfArtifact {
   improvedMetrics: string[];
   controlLighthouseHref: string | null;
   experimentLighthouseHref: string | null;
+  /**
+   * Relative URL (from the report.html's directory) to the timeline comparison
+   * HTML — e.g. `perf-desktop/homepage/timeline_comparison.html`. Unlike the
+   * other artifact hrefs this is NOT a base64 data URI: the timeline is too
+   * big to inline (multi-MB per test), so the dialog lazy-loads it from disk
+   * via an iframe and falls back to a "only available locally" message when
+   * the file isn't present alongside the report.
+   */
   timelineHref: string | null;
   /**
    * Inline SVG string for the timeline preview (3×N triplet grid). Only

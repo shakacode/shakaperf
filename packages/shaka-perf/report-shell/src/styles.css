@@ -715,6 +715,27 @@ input {
   background: #fff;
 }
 
+/* Shown in place of the timeline iframe when the `timeline_comparison.html`
+   file can't be loaded — typically because the report HTML has been copied
+   or emailed somewhere without its sibling perf-<viewport> directory. Huge,
+   centered letters so there's no ambiguity about what the viewer is seeing. */
+.timeline-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 24px;
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  background: var(--bg-elevated);
+  border: 1px dashed var(--border-strong);
+}
+
 /* Inline timeline preview — an SVG grid of control/diff/experiment triplets
    rendered via dangerouslySetInnerHTML. Clickable; on hover we nudge the
    border so it reads as actionable, and the cursor signals zoom-into the

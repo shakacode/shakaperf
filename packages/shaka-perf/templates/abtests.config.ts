@@ -12,12 +12,8 @@ export default defineConfig({
   visreg: {
     viewports: ['desktop', 'tablet', 'phone'],
     defaultMisMatchThreshold: 0.1,
-    compareRetries: 2,
-    compareRetryDelay: 500,
     maxNumDiffPixels: 50,
     comparePixelmatchThreshold: 0.1,
-    asyncCaptureLimit: 2,
-    asyncCompareLimit: 4,
     engineOptions: {
       browser: 'chromium',
       args: ['--no-sandbox'],

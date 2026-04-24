@@ -207,12 +207,14 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   const controlHost = urlHostSegment(controlURL);
   const experimentHost = urlHostSegment(experimentURL);
 
-  // Inline artifact HTMLs as data URIs so the final report is a fully
-  // self-contained file — no sibling directories required, no broken links
-  // when clients open the report from a different path than where compare
-  // ran. `reportRoot` is still used to size the relative-path fallback if
-  // we later want to toggle back to external refs.
-  void reportRoot;
+  // Inline most artifact HTMLs as data URIs so the report stays self-contained
+  // when emailed or uploaded somewhere without its sibling directories. The
+  // exception is `timeline_comparison.html` — it can be multi-MB (dozens of
+  // base64 screenshots + diff PNGs) and, with N tests × M viewports, the
+  // inlined report balloons to tens of MB. Timeline is referenced by relative
+  // path instead and rendered in an iframe at dialog-open time; when the
+  // viewer doesn't have the perf results directory alongside the report, the
+  // dialog falls back to a "timeline only available locally" message.
   const inlineHtml = (name: string | null): string | null => {
     if (!name) return null;
     try {
@@ -221,6 +223,12 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
     } catch {
       return null;
     }
+  };
+
+  const relativeHref = (name: string | null): string | null => {
+    if (!name) return null;
+    const abs = path.join(perTestDir, name);
+    return path.relative(reportRoot, abs).split(path.sep).join('/');
   };
 
   const controlLh = files.find(
@@ -270,7 +278,7 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
     improvedMetrics,
     controlLighthouseHref: inlineHtml(controlLh),
     experimentLighthouseHref: inlineHtml(experimentLh),
-    timelineHref: inlineHtml(timeline),
+    timelineHref: relativeHref(timeline),
     timelinePreviewSvg,
     benchReportHref: inlineHtml(benchReport),
     diffHrefs: diffFiles

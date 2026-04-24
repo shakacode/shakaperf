@@ -187,6 +187,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
           experimentURL,
           htmlReportDir,
           visregConfig,
+          sharedConfig: shared,
           testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
           filter: opts.filter ?? shared.filter,
         });

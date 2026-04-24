@@ -50,6 +50,13 @@ export interface ICompareFlags {
   pValueThreshold: number;
   parallelism: number;
   samplingMode: SamplingMode;
+  /**
+   * Number of additional attempts (beyond the first) the Lighthouse sampler
+   * makes when a sample throws before giving up on that iteration. `retryDelay`
+   * is the ms between attempts. Sourced from `shared.retries` / `shared.retryDelay`.
+   */
+  retries?: number;
+  retryDelay?: number;
   duration?: number;
   config?: string;
   /** Viewport this pass measures — propagated into the sampler's TestFnContext. */
@@ -131,6 +138,8 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     viewport: compareFlags.viewport,
     resultsFolder,
     lhConfigPath: compareFlags.config,
+    retries: compareFlags.retries,
+    retryDelay: compareFlags.retryDelay,
   };
 
   let analyzedJSONString = "";

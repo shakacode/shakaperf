@@ -3,13 +3,20 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import visregRunner from '../../visreg/core/runner';
-import type { VisregConfig } from '../config';
+import type { SharedConfig, VisregConfig } from '../config';
 
 export interface VisregBridgeOptions {
   controlURL: string;
   experimentURL: string;
   htmlReportDir: string;
   visregConfig: VisregConfig;
+  /**
+   * Cross-engine knobs (parallelism, retries, retryDelay) that visreg lowers
+   * into its legacy runtime-config field names (`asyncCaptureLimit`,
+   * `asyncCompareLimit`, `compareRetries`, `compareRetryDelay`). Sourced by
+   * the caller from `abtests.config.ts` `shared.*`.
+   */
+  sharedConfig: SharedConfig;
   testPathPattern?: string;
   filter?: string;
 }
@@ -25,9 +32,9 @@ export interface VisregBridgeOptions {
  * crashes (browser driver, CDP, missing config) still throw.
  */
 export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<void> {
-  const { controlURL, experimentURL, htmlReportDir, visregConfig, testPathPattern, filter } = opts;
+  const { controlURL, experimentURL, htmlReportDir, visregConfig, sharedConfig, testPathPattern, filter } = opts;
 
-  const configPath = writeTempVisregConfig(visregConfig, htmlReportDir);
+  const configPath = writeTempVisregConfig(visregConfig, sharedConfig, htmlReportDir);
 
   try {
     await visregRunner('compare', {
@@ -44,9 +51,21 @@ export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<voi
   }
 }
 
-function writeTempVisregConfig(visregConfig: VisregConfig, htmlReportDir: string): string {
+function writeTempVisregConfig(
+  visregConfig: VisregConfig,
+  sharedConfig: SharedConfig,
+  htmlReportDir: string,
+): string {
   const payload = {
     ...visregConfig,
+    // Lower the cross-engine `shared.parallelism` + retry policy into the
+    // legacy visreg runtime-config field names. `asyncCaptureLimit` bounds
+    // concurrent browser captures; `asyncCompareLimit` bounds concurrent
+    // pixel comparisons. Both map cleanly onto a single "cpu budget" knob.
+    asyncCaptureLimit: sharedConfig.parallelism,
+    asyncCompareLimit: sharedConfig.parallelism,
+    compareRetries: sharedConfig.retries,
+    compareRetryDelay: sharedConfig.retryDelay,
     paths: {
       htmlReport: htmlReportDir,
     },

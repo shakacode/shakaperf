@@ -58,7 +58,20 @@ function PerfTable({ title, metrics }: { title: string; metrics: PerfMetric[] })
 interface ArtifactLink {
   label: string;
   href: string;
+  /**
+   * `'data-uri'` (default) — base64 data: URI decoded and embedded via
+   * iframe `srcDoc`. `'relative'` — plain relative path, loaded lazily via
+   * iframe `src`. Only the timeline uses `'relative'` today; the timeline
+   * HTML is too big to inline, so the report references the on-disk file
+   * instead and shows a fallback message when it's missing.
+   */
+  kind?: 'data-uri' | 'relative';
 }
+
+const TIMELINE_FALLBACK_MESSAGE =
+  'TIMELINE COMPARISON IS ONLY AVAILABLE WHEN RUNNING PERFORMANCE TESTS LOCALLY';
+
+const TIMELINE_DOC_TITLE = 'Timeline Comparison: Control vs Experiment';
 
 function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] {
   const links: ArtifactLink[] = [];
@@ -67,7 +80,9 @@ function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] 
   if (perf.experimentLighthouseHref) links.push({ label: 'experiment lh', href: perf.experimentLighthouseHref });
   // When we have an inline preview SVG, the timeline is opened by clicking
   // the preview itself — don't duplicate it as a plain button below.
-  if (perf.timelineHref && !hasPreview) links.push({ label: 'timeline', href: perf.timelineHref });
+  if (perf.timelineHref && !hasPreview) {
+    links.push({ label: 'timeline', href: perf.timelineHref, kind: 'relative' });
+  }
   for (const link of perf.diffHrefs) links.push({ label: link.label, href: link.href });
   return links;
 }
@@ -91,18 +106,23 @@ function dataUriToHtml(uri: string): string {
   }
 }
 
+// Resize the iframe so its height matches the content — otherwise Lighthouse
+// and bench reports overflow and the bottom gets clipped. scrollHeight on the
+// documentElement covers the full content even when the body has margin
+// collapse / flex layouts that undersize body.
+function fitIframeToContent(el: HTMLIFrameElement): void {
+  const doc = el.contentDocument;
+  if (!doc) return;
+  const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
+  if (h > 0) el.style.height = `${h}px`;
+}
+
 function ArtifactFrame({ href, label }: { href: string; label: string }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const html = useMemo(() => dataUriToHtml(href), [href]);
 
-  const resize = () => {
-    const el = ref.current;
-    const doc = el?.contentDocument;
-    if (!el || !doc) return;
-    // scrollHeight on the documentElement covers the full content even when
-    // the body has margin collapse / flex layouts that undersize body.
-    const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
-    if (h > 0) el.style.height = `${h}px`;
+  const onLoad = () => {
+    if (ref.current) fitIframeToContent(ref.current);
   };
 
   return (
@@ -111,7 +131,45 @@ function ArtifactFrame({ href, label }: { href: string; label: string }) {
       className="artifact-frame"
       srcDoc={html}
       title={label}
-      onLoad={resize}
+      onLoad={onLoad}
+    />
+  );
+}
+
+/**
+ * Lazy-loads the timeline HTML from its on-disk relative URL instead of
+ * inlining it. On load we probe `contentDocument.title` — when the report
+ * has been copied somewhere without its sibling `perf-<viewport>` dirs
+ * the browser either 404s or falls back to an error page whose title
+ * doesn't match, and we swap the iframe for a huge-letters fallback.
+ * Cross-origin sandboxing would also null out `contentDocument`; we treat
+ * that as a miss too since we can't prove the timeline actually rendered.
+ */
+function TimelineFrame({ href, label }: { href: string; label: string }) {
+  const ref = useRef<HTMLIFrameElement | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  const onLoad = () => {
+    const el = ref.current;
+    if (!el || el.contentDocument?.title !== TIMELINE_DOC_TITLE) {
+      setMissing(true);
+      return;
+    }
+    fitIframeToContent(el);
+  };
+
+  if (missing) {
+    return <div className="timeline-missing">{TIMELINE_FALLBACK_MESSAGE}</div>;
+  }
+
+  return (
+    <iframe
+      ref={ref}
+      className="artifact-frame"
+      src={href}
+      title={label}
+      loading="lazy"
+      onLoad={onLoad}
     />
   );
 }
@@ -190,7 +248,7 @@ function PerfBody({
         <button
           type="button"
           className="timeline-preview"
-          onClick={() => onOpen({ label: 'timeline', href: perf.timelineHref! })}
+          onClick={() => onOpen({ label: 'timeline', href: perf.timelineHref!, kind: 'relative' })}
           aria-label="open timeline"
           dangerouslySetInnerHTML={{ __html: perf.timelinePreviewSvg }}
         />
@@ -262,7 +320,18 @@ export function PerfSlot({ perfs = EMPTY, test }: { perfs?: PerfArtifact[]; test
         }
       >
         {openArtifact ? (
-          <ArtifactFrame href={openArtifact.href} label={openArtifact.label} />
+          openArtifact.kind === 'relative' ? (
+            // Key on href so switching between per-viewport timelines while
+            // the dialog stays open remounts the frame and re-probes the
+            // on-disk file — otherwise a prior "missing" status would stick.
+            <TimelineFrame
+              key={openArtifact.href}
+              href={openArtifact.href}
+              label={openArtifact.label}
+            />
+          ) : (
+            <ArtifactFrame href={openArtifact.href} label={openArtifact.label} />
+          )
         ) : null}
       </Dialog>
     </div>

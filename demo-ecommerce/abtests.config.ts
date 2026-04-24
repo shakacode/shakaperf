@@ -5,6 +5,7 @@ export default defineConfig({
     controlURL: 'http://localhost:3020',
     experimentURL: 'http://localhost:3030',
     resultsFolder: 'compare-results',
+    retries: 1
   },
 
   visreg: {
@@ -14,9 +15,6 @@ export default defineConfig({
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
-    asyncCaptureLimit: 5,
-    compareRetries: 2,
-    compareRetryDelay: 1000,
     maxNumDiffPixels: 50,
     defaultMisMatchThreshold: 0.1,
   },
@@ -40,6 +38,7 @@ export default defineConfig({
       output: 'html',
       onlyCategories: ['performance'],
     },
+    viewports: ['phone'],
   },
 
   twinServers: {
