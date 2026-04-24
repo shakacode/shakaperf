@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../types';
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
@@ -71,7 +71,17 @@ interface ArtifactLink {
 const TIMELINE_FALLBACK_MESSAGE =
   'TIMELINE COMPARISON IS ONLY AVAILABLE WHEN RUNNING PERFORMANCE TESTS LOCALLY';
 
-const TIMELINE_DOC_TITLE = 'Timeline Comparison: Control vs Experiment';
+// Matches the literal string the timeline HTML posts up via `window.parent
+// .postMessage(...)` at the end of its boot script — see
+// `timeline-comparison.ts`. Using a literal rather than a structured payload
+// keeps the handshake minimal and easy to eyeball in DevTools.
+const TIMELINE_READY_MESSAGE = 'shaka-timeline-loaded';
+
+// How long to wait for the timeline's ready ping before giving up. Timelines
+// render dozens of base64-encoded JPEGs, and first paint over file:// can be
+// slow on underpowered machines — 4s leaves headroom without stalling the
+// fallback indefinitely when the file is genuinely missing.
+const TIMELINE_READY_TIMEOUT_MS = 4000;
 
 function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] {
   const links: ArtifactLink[] = [];
@@ -138,25 +148,39 @@ function ArtifactFrame({ href, label }: { href: string; label: string }) {
 
 /**
  * Lazy-loads the timeline HTML from its on-disk relative URL instead of
- * inlining it. On load we probe `contentDocument.title` — when the report
- * has been copied somewhere without its sibling `perf-<viewport>` dirs
- * the browser either 404s or falls back to an error page whose title
- * doesn't match, and we swap the iframe for a huge-letters fallback.
- * Cross-origin sandboxing would also null out `contentDocument`; we treat
- * that as a miss too since we can't prove the timeline actually rendered.
+ * inlining it. Detection needs to work under Chrome's file:// sandbox,
+ * where every file URL is its own origin and `iframe.contentDocument`
+ * is unreadable from the parent — so we can't sniff the loaded page
+ * directly. Instead the timeline HTML itself pings the parent via
+ * `window.parent.postMessage('shaka-timeline-loaded', '*')` on boot;
+ * we listen for that message, and if it never arrives within the
+ * timeout we show the huge-letters "timeline only available locally"
+ * fallback.
  */
 function TimelineFrame({ href, label }: { href: string; label: string }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const [missing, setMissing] = useState(false);
 
-  const onLoad = () => {
-    const el = ref.current;
-    if (!el || el.contentDocument?.title !== TIMELINE_DOC_TITLE) {
-      setMissing(true);
-      return;
-    }
-    fitIframeToContent(el);
-  };
+  useEffect(() => {
+    let loaded = false;
+    const onMessage = (ev: MessageEvent) => {
+      // `ev.source` is the iframe's window on successful load; guard on it
+      // so an unrelated postMessage from elsewhere on the page can't
+      // mis-signal a successful timeline render.
+      if (ev.data === TIMELINE_READY_MESSAGE && ev.source === ref.current?.contentWindow) {
+        loaded = true;
+        if (ref.current) fitIframeToContent(ref.current);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    const timer = window.setTimeout(() => {
+      if (!loaded) setMissing(true);
+    }, TIMELINE_READY_TIMEOUT_MS);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.clearTimeout(timer);
+    };
+  }, [href]);
 
   if (missing) {
     return <div className="timeline-missing">{TIMELINE_FALLBACK_MESSAGE}</div>;
@@ -169,7 +193,6 @@ function TimelineFrame({ href, label }: { href: string; label: string }) {
       src={href}
       title={label}
       loading="lazy"
-      onLoad={onLoad}
     />
   );
 }
