@@ -21,7 +21,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private baseUrl: string,
     private testDef: AbTestDefinition,
-    private options: LighthouseBenchmarkOptions
+    private options: LighthouseBenchmarkOptions,
+    private group: string = 'experiment',
   ) {}
 
   async setupBrowser(): Promise<void> {
@@ -86,7 +87,10 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     }
 
     const base = new URL(this.baseUrl);
-    const parsed = new URL(this.testDef.startingPath, base);
+    const path = this.group === 'experiment' && this.testDef.experimentPathOverride
+      ? this.testDef.experimentPathOverride
+      : this.testDef.startingPath;
+    const parsed = new URL(path, base);
     // Preserve query params from baseUrl (e.g. ?hydration_delay=1000)
     for (const [key, value] of base.searchParams) {
       if (!parsed.searchParams.has(key)) {
@@ -234,7 +238,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
-      const sampler = new LighthouseSampler(baseUrl, testDef, options);
+      const sampler = new LighthouseSampler(baseUrl, testDef, options, group);
       await sampler.setupBrowser();
       return sampler;
     }
