@@ -22,7 +22,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     private baseUrl: string,
     private testDef: AbTestDefinition,
     private options: LighthouseBenchmarkOptions,
-    private group: string = 'experiment',
+    private group: string,
   ) {}
 
   async setupBrowser(): Promise<void> {
