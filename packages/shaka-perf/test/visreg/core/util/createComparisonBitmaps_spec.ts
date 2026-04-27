@@ -63,7 +63,6 @@ describe('createComparisonBitmaps', function () {
         }
         return Promise.resolve(result);
       },
-      TestType: { VisualRegression: 'visual_regression', Performance: 'performance', Accessibility: 'accessibility' },
     }));
 
     const runCompareScenarioMock = overrides?.runCompareScenario || {
@@ -126,7 +125,6 @@ describe('createComparisonBitmaps', function () {
     const noTestsError = new Error('No tests registered in /dummy/test.abtest.ts. Did you call abTest()?');
     jest.mock('shaka-shared', () => ({
       loadTests: function () { return Promise.reject(noTestsError); },
-      TestType: { VisualRegression: 'visual_regression', Performance: 'performance', Accessibility: 'accessibility' },
     }));
 
     jest.mock('node:fs/promises', () => ({
@@ -301,7 +299,6 @@ describe('createComparisonBitmaps', function () {
     const noFilesError = new Error('No .abtest.ts or .abtest.js files found. Use --testFile to specify a file directly.');
     jest.mock('shaka-shared', () => ({
       loadTests: function () { return Promise.reject(noFilesError); },
-      TestType: { VisualRegression: 'visual_regression', Performance: 'performance', Accessibility: 'accessibility' },
     }));
 
     jest.mock('node:fs/promises', () => ({

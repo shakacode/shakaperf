@@ -1,18 +1,20 @@
 import { Command } from 'commander';
-import { addCompareOptions } from 'shaka-shared';
+import { addCompareOptions, type TestType } from 'shaka-shared';
 import { runCompare } from '../run';
-import type { Category } from '../report';
 
-const VALID_CATEGORIES: Category[] = ['visreg', 'perf'];
+// Restricted to the test types compare actually has a harvester for.
+// `TestType` itself is broader (`'accessibility'` is in the union but
+// has no CategoryDef yet) — extend this list when a harvester lands.
+const VALID_CATEGORIES: TestType[] = ['visreg', 'perf'];
 
-function parseCategories(value: string): Category[] {
+function parseCategories(value: string): TestType[] {
   const parts = value.split(',').map((p) => p.trim()).filter(Boolean);
   for (const p of parts) {
-    if (!VALID_CATEGORIES.includes(p as Category)) {
+    if (!VALID_CATEGORIES.includes(p as TestType)) {
       throw new Error(`Unknown category "${p}". Valid: ${VALID_CATEGORIES.join(', ')}`);
     }
   }
-  return parts as Category[];
+  return parts as TestType[];
 }
 
 export interface CreateCompareCommandOptions {

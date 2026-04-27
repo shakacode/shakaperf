@@ -2,8 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PNG } from 'pngjs';
 import { embedAsBase64 } from 'shaka-shared';
-import type { VisregArtifact } from '../report';
-import type { Viewport } from '../config';
+import type { CategoryResult, VisregArtifact } from '../report';
+import type { AbTestsConfig, Viewport } from '../config';
+import type { CategoryDef, HarvestContext } from '../category-def';
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
@@ -174,7 +175,7 @@ export interface HarvestVisregOptions {
  * Compact result of reading one test's visreg output at one viewport.
  * The assembler in `run.ts` stitches these together across viewports into
  * a single `CategoryResult` per test, mirroring how perf merges N per-
- * viewport `PerfArtifact` objects into `CategoryResult.perfs`.
+ * viewport `PerfArtifact` objects into its `artifacts` array.
  */
 export interface HarvestedVisreg {
   artifacts: VisregArtifact[];
@@ -281,3 +282,49 @@ function toDataUri(baseDir: string, relOrAbs?: string | null): string {
   if (!relOrAbs) return '';
   return embedAsBase64(resolveUnderBase(baseDir, relOrAbs)) ?? '';
 }
+
+function harvestVisregCategory(ctx: HarvestContext): CategoryResult | null {
+  const { slug, viewports, resultsRoot } = ctx;
+  const artifacts: VisregArtifact[] = [];
+  const viewportErrors: string[] = [];
+  const viewportLogs: string[] = [];
+  let anyChange = false;
+  let anyHarvested = false;
+
+  for (const viewport of viewports) {
+    const harvested = harvestVisreg({ resultsRoot, slug, viewport });
+    if (!harvested) continue;
+    anyHarvested = true;
+    artifacts.push(...harvested.artifacts);
+    if (harvested.hasChange) anyChange = true;
+    if (harvested.engineError) {
+      viewportErrors.push(`[${viewport.label}] ${harvested.engineError}`);
+    }
+    if (harvested.engineOutput) {
+      viewportLogs.push(`── ${viewport.label} ──\n${harvested.engineOutput}`);
+    }
+  }
+
+  if (!anyHarvested) return null;
+
+  const error = viewportErrors.length === 0
+    ? undefined
+    : viewportErrors.length === 1
+      ? viewportErrors[0]
+      : `${viewportErrors.length} viewport(s) errored: ${viewportErrors.join('; ')}`;
+  const errorLog = viewportLogs.length === 0 ? undefined : viewportLogs.join('\n\n');
+
+  return {
+    testType: 'visreg',
+    status: anyChange ? 'visual_change' : 'no_difference',
+    artifacts,
+    ...(error ? { error } : {}),
+    ...(errorLog ? { errorLog } : {}),
+  };
+}
+
+export const visregCategoryDef: CategoryDef = {
+  testType: 'visreg',
+  viewports: (config: AbTestsConfig) => config.visreg.viewports,
+  harvest: harvestVisregCategory,
+};

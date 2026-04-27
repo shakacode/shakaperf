@@ -1,13 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
+  CategoryResult,
   PerfArtifact,
   PerfDirection,
   PerfMetric,
   PerfMetricGroup,
   Status,
 } from '../report';
-import type { PerfConfig } from '../config';
+import type { AbTestsConfig, PerfConfig, Viewport } from '../config';
+import type { CategoryDef, HarvestContext } from '../category-def';
 
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
@@ -108,8 +110,8 @@ export interface HarvestPerfOptions {
  * Reads bench's per-test `<slug>/report.json` (shape: ICompareJSONResults)
  * plus sibling artifact files, and emits one PerfArtifact tagged with
  * `viewportLabel`. Callers that measured N viewports call this N times and
- * collect the results into a single `CategoryResult.perfs` array — the same
- * shape visreg uses for its per-viewport pairs.
+ * collect the results into a single perf `CategoryResult.artifacts` array —
+ * the same shape visreg uses for its per-viewport pairs.
  */
 export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
@@ -279,3 +281,89 @@ function prettyDiffLabel(filename: string): string {
   if (base === 'performance_profile.summary') return 'profile diff';
   return `${base.replace(/_/g, ' ')} diff`;
 }
+
+function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
+  return {
+    viewportLabel,
+    metrics: [],
+    regressedMetrics: [],
+    improvedMetrics: [],
+    controlLighthouseHref: null,
+    experimentLighthouseHref: null,
+    timelineHref: null,
+    timelinePreviewSvg: null,
+    benchReportHref: null,
+    diffHrefs: [],
+  };
+}
+
+function perfRootFor(resultsRoot: string, viewport: Viewport): string {
+  return path.join(resultsRoot, `perf-${viewport.label}`);
+}
+
+function harvestPerfCategory(ctx: HarvestContext): CategoryResult | null {
+  const { slug, viewports, resultsRoot, controlURL, experimentURL, config, perfEngineFailedByLabel } = ctx;
+  const artifacts: PerfArtifact[] = [];
+  let anyHarvested = false;
+
+  for (const viewport of viewports) {
+    const perTestDir = path.join(perfRootFor(resultsRoot, viewport), slug);
+    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+    const viewportLabel = viewport.label;
+    // report.json is now present on both success and failure — the bench
+    // test loop folds `engineError` / `engineOutput` into a minimal
+    // report.json when the measurement throws, so the harvester is the
+    // single place per-viewport status is decided (metrics-or-error).
+    if (reportJsonExists) {
+      anyHarvested = true;
+      try {
+        artifacts.push(
+          harvestPerf({
+            perTestDir,
+            controlURL,
+            experimentURL,
+            perfConfig: config.perf,
+            reportRoot: resultsRoot,
+            slug,
+            viewportLabel,
+          }),
+        );
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        artifacts.push({
+          ...emptyPerfArtifact(viewportLabel),
+          error: `perf report unreadable: ${message}`,
+        });
+      }
+    } else if (perfEngineFailedByLabel.has(viewportLabel)) {
+      anyHarvested = true;
+      artifacts.push({
+        ...emptyPerfArtifact(viewportLabel),
+        error: `perf engine aborted before measuring this test at ${viewportLabel} — see the error banner above`,
+      });
+    }
+    // else: silently skip this viewport in the per-viewport artifacts
+    // list. The test-level "did not produce artifacts" signal is
+    // emitted once at the category level when NO viewport yielded data.
+  }
+
+  if (!anyHarvested) return null;
+
+  // Per-viewport statuses fold into the category status with error first
+  // (any viewport errored → the whole category reads as error, so it stays
+  // in sync with `test.status`), then regression, then improvement, else
+  // no_difference. Full pass per level — we can't break on regression
+  // because a later viewport might carry an error that should outrank it.
+  let status: Status = 'no_difference';
+  if (artifacts.some((p) => p.error)) status = 'error';
+  else if (artifacts.some((p) => p.regressedMetrics.length > 0)) status = 'regression';
+  else if (artifacts.some((p) => p.improvedMetrics.length > 0)) status = 'improvement';
+
+  return { testType: 'perf', status, artifacts };
+}
+
+export const perfCategoryDef: CategoryDef = {
+  testType: 'perf',
+  viewports: (config: AbTestsConfig) => config.perf.viewports,
+  harvest: harvestPerfCategory,
+};

@@ -40,10 +40,10 @@ function pillsForTest(test: TestResult): PillSpec[] {
   const pills: PillSpec[] = [];
   for (const c of test.categories) {
     if (c.error) {
-      pills.push({ status: 'error', detail: c.category });
+      pills.push({ status: 'error', detail: c.testType });
     }
-    if (c.category === 'perf') {
-      const perfs = c.perfs ?? [];
+    if (c.testType === 'perf') {
+      const perfs = c.artifacts;
       // Prefix the viewport only when there's more than one to disambiguate —
       // a single-viewport test reads cleanly as "regressed: FCP".
       const multi = perfs.length > 1;
@@ -67,7 +67,7 @@ function pillsForTest(test: TestResult): PillSpec[] {
         }
       }
     }
-    if (c.category === 'visreg' && c.status === 'visual_change') {
+    if (c.testType === 'visreg' && c.status === 'visual_change') {
       pills.push({ status: 'visual_change' });
     }
   }
@@ -120,7 +120,7 @@ export function TestCard({ test, animationDelayMs }: { test: TestResult; animati
 
       <div className="card__body">
         {test.categories.map((c) => (
-          <CategorySlot key={c.category} result={c} test={test} />
+          <CategorySlot key={c.testType} result={c} test={test} />
         ))}
 
         {test.code ? (

@@ -3,7 +3,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click Shop Now on the homepage', {
   startingPath: '/',
-  testTypes: [TestType.Performance],
+  testTypes: ['perf'],
   options: {
     visreg: {
       misMatchThreshold: 0.1,

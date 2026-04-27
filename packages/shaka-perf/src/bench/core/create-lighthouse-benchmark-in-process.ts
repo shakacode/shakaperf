@@ -185,7 +185,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         isReference: false,
         scenario: this.testDef,
         viewport: this.options.viewport,
-        testType: TestType.Performance,
+        testType: 'perf',
         annotate: () => {},
       })
         .then(() => collectINP(page))

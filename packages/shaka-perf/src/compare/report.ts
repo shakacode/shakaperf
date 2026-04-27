@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import type { TestType } from 'shaka-shared';
 
 export type Status =
   | 'error'
@@ -17,8 +18,6 @@ export type Status =
    * change).
    */
   | 'skipped';
-
-export type Category = 'visreg' | 'perf';
 
 export interface VisregArtifact {
   viewportLabel: string;
@@ -110,8 +109,7 @@ export interface PerfArtifact {
   diffHrefs: { label: string; href: string }[];
 }
 
-export interface CategoryResult {
-  category: Category;
+interface CategoryResultBase {
   status: Status;
   /**
    * Non-fatal category-wide error to surface as a banner above the per-
@@ -120,10 +118,8 @@ export interface CategoryResult {
    * so one failed viewport doesn't erase the others' results.
    */
   error?: string;
-  /**
-   * Full captured stdout/stderr transcript from the engine run that
-   * produced `error`, embedded so the report stays self-contained.
-   */
+  /** Full captured stdout/stderr transcript from the engine run that
+   *  produced `error`, embedded so the report stays self-contained. */
   errorLog?: string | null;
   /**
    * Explanation shown when `status === 'skipped'`, e.g. "skipped: test's
@@ -132,14 +128,17 @@ export interface CategoryResult {
    * status to `error`.
    */
   skipReason?: string;
-  visreg?: VisregArtifact[];
-  /**
-   * One entry per viewport this test was measured at. Always an array
-   * even when a single viewport is configured, mirroring
-   * `visreg: VisregArtifact[]`.
-   */
-  perfs?: PerfArtifact[];
 }
+
+/**
+ * One category's result for one test. The discriminated union links
+ * `testType` to the right `artifacts` element type — TS narrows
+ * `c.artifacts` to `PerfArtifact[]` inside `if (c.testType === 'perf')`
+ * (and vice versa) without any extra type machinery.
+ */
+export type CategoryResult =
+  | (CategoryResultBase & { testType: 'visreg'; artifacts: VisregArtifact[] })
+  | (CategoryResultBase & { testType: 'perf'; artifacts: PerfArtifact[] });
 
 export interface TestResult {
   id: string;
@@ -170,7 +169,7 @@ export interface ReportMeta {
   experimentUrl: string;
   durationMs: number;
   cwd: string;
-  categories: Category[];
+  categories: TestType[];
   /**
    * Engine-level (cross-cutting) errors to show as a banner at the top
    * of the report. Per-test / per-category errors go on CategoryResult.

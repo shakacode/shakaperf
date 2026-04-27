@@ -201,7 +201,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   const tests = await loadTests({
     testPathPattern: compareFlags.testPathPattern,
     filter: compareFlags.filter,
-    testType: TestType.Performance,
+    testType: 'perf',
     log: (msg) => console.log(msg),
   });
 

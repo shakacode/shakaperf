@@ -3,7 +3,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
-  testTypes: [TestType.VisualRegression],
+  testTypes: ['visreg'],
   options: {
     visreg: {
       delay: 50,
@@ -12,7 +12,7 @@ abTest('Admin Dashboard - Cookie Login', {
     },
   },
 }, async ({ page, annotate, testType }) => {
-  if (testType !== TestType.VisualRegression) {
+  if (testType !== 'visreg') {
     return
   }
   annotate('Wait for page to fully load with cookie auth');

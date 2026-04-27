@@ -57,7 +57,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
         isReference,
         scenario: scenario._testDef!,
         viewport,
-        testType: TestType.VisualRegression,
+        testType: 'visreg',
         annotate,
       });
     } catch (err: unknown) {
@@ -153,7 +153,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
         isReference,
         scenario: scenario._testDef!,
         viewport,
-        testType: TestType.VisualRegression,
+        testType: 'visreg',
         annotate,
       });
     } catch (err: unknown) {

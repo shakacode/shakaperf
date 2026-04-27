@@ -31,14 +31,14 @@ function testStatuses(test: TestResult): Status[] {
   let hasVisual = false;
   for (const c of test.categories) {
     if (c.error) hasError = true;
-    if (c.category === 'perf') {
-      for (const p of c.perfs ?? []) {
+    if (c.testType === 'perf') {
+      for (const p of c.artifacts) {
         if (p.error) hasError = true;
         if (p.regressedMetrics.length > 0) hasRegression = true;
         if (p.improvedMetrics.length > 0) hasImprovement = true;
       }
     }
-    if (c.category === 'visreg' && c.status === 'visual_change') hasVisual = true;
+    if (c.testType === 'visreg' && c.status === 'visual_change') hasVisual = true;
   }
   const out: Status[] = [];
   if (hasError) out.push('error');
