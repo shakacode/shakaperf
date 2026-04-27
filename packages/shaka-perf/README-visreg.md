@@ -309,7 +309,7 @@ abTest('Authenticated dashboard', {
 });
 ```
 
-The `onBefore` hook receives a `TestFnContext` with `page`, `browserContext`, `isReference`, `scenario`, `viewport`, and `testType`.
+The `onBefore` hook receives a `TestFnContext` with `page`, `browserContext`, `isControl`, `scenario`, `viewport`, and `testType`.
 
 The visreg helpers (`shaka-perf/visreg/helpers`) include:
 

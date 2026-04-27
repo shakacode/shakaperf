@@ -42,7 +42,7 @@ export enum TestType {
 export interface TestFnContext {
   page: Page;
   browserContext: BrowserContext;
-  isReference: boolean;
+  isControl: boolean;
   scenario: AbTestDefinition;
   viewport: Viewport;
   testType: TestType;
