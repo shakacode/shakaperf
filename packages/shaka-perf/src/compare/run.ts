@@ -203,7 +203,15 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // earlier per-test dirs being present; local iterative runs rely on the
   // harvester only looking up artifacts by test slug, so stale sibling dirs
   // from deleted tests are harmless noise.
-  if (!opts.reportOnly) fs.mkdirSync(resultsRoot, { recursive: true });
+  if (!opts.reportOnly) {
+    fs.mkdirSync(resultsRoot, { recursive: true });
+    // Persisted engine errors belong to exactly one measurement pass. Any file
+    // lingering from a prior `--skip-report` run would be read by a later
+    // `--report-only` assembler as if it were ours — either surfacing stale
+    // errors or (after this run finishes without `--skip-report`) sticking
+    // around to poison the next assembly. Nuke it before engines start.
+    fs.rmSync(path.join(resultsRoot, ENGINE_ERRORS_FILE), { force: true });
+  }
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
@@ -212,10 +220,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   const perfEngineFailedByLabel = new Set<string>();
 
   // Under reportOnly, rehydrate the in-memory error state from whatever the
-  // measuring process(es) persisted. Missing file = no prior errors (either
-  // we're in a fresh workspace or the measuring process finished cleanly).
+  // measuring process(es) persisted. A genuinely missing file means the
+  // measuring process finished cleanly; a parse failure means the file was
+  // truncated by a crashed shard — readPersistedEngineErrors surfaces that
+  // as a synthetic entry rather than swallowing it into a green report.
   if (opts.reportOnly) {
-    const persisted = readPersistedEngineErrors(resultsRoot);
+    const { persisted, readError } = readPersistedEngineErrors(resultsRoot);
+    if (readError) engineErrors.push(readError);
     if (persisted) {
       engineErrors.push(...persisted.engineErrors);
       for (const label of persisted.perfEngineFailedByLabel) {
@@ -357,27 +368,54 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   };
 }
 
-function readPersistedEngineErrors(resultsRoot: string): PersistedEngineErrors | null {
+interface ReadPersistedResult {
+  persisted: PersistedEngineErrors | null;
+  /** Surfaced to the user as a top-level banner when the file exists but
+   *  can't be parsed — a truncated JSON from a crashed shard must not be
+   *  swallowed into a green report. */
+  readError: string | null;
+}
+
+function readPersistedEngineErrors(resultsRoot: string): ReadPersistedResult {
   const p = path.join(resultsRoot, ENGINE_ERRORS_FILE);
+  let raw: string;
   try {
-    const raw = fs.readFileSync(p, 'utf8');
+    raw = fs.readFileSync(p, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { persisted: null, readError: null };
+    }
+    return {
+      persisted: null,
+      readError: `persisted engine errors unreadable at ${p}: ${(err as Error).message}`,
+    };
+  }
+  try {
     const parsed = JSON.parse(raw) as Partial<PersistedEngineErrors>;
     return {
-      engineErrors: Array.isArray(parsed.engineErrors) ? parsed.engineErrors : [],
-      perfEngineFailedByLabel: Array.isArray(parsed.perfEngineFailedByLabel)
-        ? parsed.perfEngineFailedByLabel
-        : [],
+      persisted: {
+        engineErrors: Array.isArray(parsed.engineErrors) ? parsed.engineErrors : [],
+        perfEngineFailedByLabel: Array.isArray(parsed.perfEngineFailedByLabel)
+          ? parsed.perfEngineFailedByLabel
+          : [],
+      },
+      readError: null,
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return {
+      persisted: null,
+      readError: `persisted engine errors corrupted at ${p}: ${(err as Error).message}`,
+    };
   }
 }
 
 function writePersistedEngineErrors(resultsRoot: string, payload: PersistedEngineErrors): void {
-  fs.writeFileSync(
-    path.join(resultsRoot, ENGINE_ERRORS_FILE),
-    JSON.stringify(payload, null, 2),
-  );
+  // Write via tmp + rename so a crashed shard can't leave a truncated JSON
+  // that the assembler would later read as authoritative.
+  const finalPath = path.join(resultsRoot, ENGINE_ERRORS_FILE);
+  const tmpPath = `${finalPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
+  fs.renameSync(tmpPath, finalPath);
 }
 
 function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {
