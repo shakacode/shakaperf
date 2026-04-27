@@ -70,7 +70,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   }
 
   configJSON.env = cloneDeep(config);
-  configJSON.isReference = false;
+  configJSON.isControl = false;
   configJSON.isCompare = true;
   configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
   configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;

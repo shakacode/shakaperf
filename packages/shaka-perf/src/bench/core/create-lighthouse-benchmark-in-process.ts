@@ -185,7 +185,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       const playwrightPromise = this.testDef.testFn({
         page,
         browserContext: context,
-        isReference: false,
+        isControl: this.group === 'control',
         scenario: this.testDef,
         viewport: this.options.viewport,
         testType: TestType.Performance,
