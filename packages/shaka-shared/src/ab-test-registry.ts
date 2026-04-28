@@ -38,7 +38,7 @@ export type TestType = 'perf' | 'visreg' | 'accessibility';
 export interface TestFnContext {
   page: Page;
   browserContext: BrowserContext;
-  isReference: boolean;
+  isControl: boolean;
   scenario: AbTestDefinition;
   viewport: Viewport;
   testType: TestType;
@@ -102,6 +102,13 @@ export interface AbTestOptions {
 export interface AbTestDefinition {
   name: string;
   startingPath: string;
+  /**
+   * If set, the experiment side benches/visregs against this path instead
+   * of `startingPath`. Use when a route was renamed between control and
+   * experiment (e.g. control = `/cart`, experiment = `/basket`). Control
+   * always uses `startingPath`.
+   */
+  experimentPathOverride?: string;
   file: string | null;
   line: number | null;
   options: AbTestOptions;
@@ -115,6 +122,7 @@ export function abTest(
   name: string,
   config: {
     startingPath: string;
+    experimentPathOverride?: string;
     testTypes?: TestType[];
     options?: AbTestOptions;
   },
@@ -141,6 +149,7 @@ export function abTest(
   registry.push({
     name,
     startingPath: config.startingPath,
+    experimentPathOverride: config.experimentPathOverride,
     file,
     line,
     options: config.options ?? {},

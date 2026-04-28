@@ -38,7 +38,7 @@ function translateUrl (url: string) {
  *
  * Shared by runCompareScenario (compare) and runPlaywright.
  */
-async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isReference: boolean, browserOrContext: BrowserContext) {
+async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: VisregConfig, isControl: boolean, browserOrContext: BrowserContext) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
   // --- BEFORE: LOAD COOKIES ---
@@ -54,7 +54,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
       await scenario.onBefore({
         page,
         browserContext: browserOrContext,
-        isReference,
+        isControl,
         scenario: scenario._testDef!,
         viewport,
         testType: 'visreg',
@@ -150,7 +150,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
       await scenario._testFn({
         page,
         browserContext: browserOrContext,
-        isReference,
+        isControl,
         scenario: scenario._testDef!,
         viewport,
         testType: 'visreg',

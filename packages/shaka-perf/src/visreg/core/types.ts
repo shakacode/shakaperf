@@ -210,7 +210,7 @@ export interface RuntimeConfig {
   maxNumDiffPixels: number;
 
   _runBaseDir: string;
-  isReference?: boolean;
+  isControl?: boolean;
 }
 
 // ── Decorated Compare Config (internal, used during compare) ─────
@@ -221,7 +221,7 @@ export interface DecoratedCompareConfig extends VisregConfig {
   _outputFileFormatSuffix: string;
   _configId: string;
   env: RuntimeConfig;
-  isReference: boolean;
+  isControl: boolean;
   isCompare: boolean;
   paths: VisregPaths;
   defaultMisMatchThreshold: number;

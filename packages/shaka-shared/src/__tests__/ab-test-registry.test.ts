@@ -141,7 +141,7 @@ describe('ab-test-registry', () => {
         // Verify all context properties are accessible
         expect(ctx.page).toBeDefined();
         expect(ctx.browserContext).toBeDefined();
-        expect(typeof ctx.isReference).toBe('boolean');
+        expect(typeof ctx.isControl).toBe('boolean');
         expect(ctx.scenario).toBeDefined();
         expect(ctx.viewport).toBeDefined();
         expect(ctx.testType).toBeDefined();

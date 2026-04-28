@@ -116,7 +116,7 @@ describe('createComparisonBitmaps', function () {
 
     assert(capturedConfig, 'Should have captured config');
     assert.strictEqual(capturedConfig.isCompare, true, 'Should set isCompare to true');
-    assert.strictEqual(capturedConfig.isReference, false, 'Should set isReference to false');
+    assert.strictEqual(capturedConfig.isControl, false, 'Should set isControl to false');
   });
 
   it('should throw error when no tests registered', async function () {
