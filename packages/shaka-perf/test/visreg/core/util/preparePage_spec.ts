@@ -103,7 +103,7 @@ describe('preparePage', function () {
       assert.strictEqual(testFn.mock.calls.length, 1);
     });
 
-    it('should pass page, browserContext, and isReference to testFn', async function () {
+    it('should pass page, browserContext, and isControl to testFn', async function () {
       const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
@@ -118,7 +118,7 @@ describe('preparePage', function () {
       const context = callArgs[0] as Record<string, unknown>;
       assert.strictEqual(context.page, page);
       assert.strictEqual(context.browserContext, baseBrowserContext);
-      assert.strictEqual(context.isReference, true);
+      assert.strictEqual(context.isControl, true);
     });
 
     it('should pass scenario (testDef), viewport, and testType to testFn', async function () {
@@ -136,10 +136,10 @@ describe('preparePage', function () {
       const context = callArgs[0] as Record<string, unknown>;
       assert.strictEqual(context.scenario, baseTestDef);
       assert.deepStrictEqual(context.viewport, baseViewport);
-      assert.strictEqual(context.testType, TestType.VisualRegression);
+      assert.strictEqual(context.testType, 'visreg');
     });
 
-    it('should call testFn with isReference=false for experiment page', async function () {
+    it('should call testFn with isControl=false for experiment page', async function () {
       const testFn = jest.fn().mockResolvedValue(undefined);
       const page = makePage();
       const scenario = {
@@ -152,7 +152,7 @@ describe('preparePage', function () {
 
       const callArgs = testFn.mock.calls[0] as unknown[];
       const context = callArgs[0] as Record<string, unknown>;
-      assert.strictEqual(context.isReference, false);
+      assert.strictEqual(context.isControl, false);
     });
 
     it('should skip default onReady behavior when _testFn is present', async function () {

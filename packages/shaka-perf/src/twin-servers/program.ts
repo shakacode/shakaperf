@@ -241,8 +241,8 @@ To get the correct arguments:
     .description('Forward CI ports to localhost')
     .argument('<port>', 'SSH port')
     .argument('<host>', 'SSH host')
-    .argument('[controlPort]', 'Control port (default: from twin-servers config, fallback 3020)')
-    .argument('[experimentPort]', 'Experiment port (default: from twin-servers config, fallback 3030)')
+    .argument('[controlPort]', 'Control port (default: from twin-servers config)')
+    .argument('[experimentPort]', 'Experiment port (default: from twin-servers config)')
     .addHelpText('after', SSH_HINT)
     .action(wrapAction(async function(this: Command, port, host, controlPort, experimentPort) {
       const { resolvedConfig } = await getResolvedConfig(this);

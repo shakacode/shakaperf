@@ -7,8 +7,6 @@ import { lhConfigForViewport } from '../../bench/core/lighthouse-config';
 import { ensureLighthousePatchRegistered } from '../../bench/core/patched-lighthouse/register-patch';
 import type { PerfConfig, SharedConfig, Viewport } from '../config';
 
-const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
-
 export interface PerfBridgeOptions {
   controlURL: string;
   experimentURL: string;
@@ -39,6 +37,7 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     experimentURL,
     resultsFolder,
     perfConfig,
+    sharedConfig,
     viewport,
     testPathPattern,
     filter,
@@ -68,8 +67,10 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     sampleTimeoutMs: perfConfig.sampleTimeoutMs ?? 120_000,
     regressionThresholdStat: perfConfig.regressionThresholdStat ?? 'estimator',
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
-    parallelism: perfConfig.parallelism ?? DEFAULT_PERF_PARALLELISM,
+    parallelism: sharedConfig.parallelism,
     samplingMode: perfConfig.samplingMode ?? 'simultaneous',
+    retries: sharedConfig.retries,
+    retryDelay: sharedConfig.retryDelay,
     config: lhConfigPath,
     viewport,
   };

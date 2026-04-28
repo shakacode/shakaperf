@@ -24,7 +24,10 @@ export function ensureLighthousePatchRegistered(): void {
   g[FLAG] = true;
 
   if (!process.env[ANNOUNCE_ENV]) {
-    console.log('[shaka-perf] lighthouse patched');
+    // console.warn (stderr) — advisory notice, not an error. Keeps the banner
+    // out of `$(shaka-perf …)` command substitution, which only captures stdout
+    // (e.g. CI's `DOCKERFILE=$(shaka-perf twins-get-config dockerfile)`).
+    console.warn('[shaka-perf] lighthouse patched');
     process.env[ANNOUNCE_ENV] = '1';
   }
 }

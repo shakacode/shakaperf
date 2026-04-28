@@ -10,13 +10,13 @@ const CAROUSEL_PAUSE_CSS = `
 
 abTest('Carousel Demo - Without stubbing or overriding CSS', {
   startingPath: '/carousel-demo',
-  testTypes: [TestType.Performance],
+  testTypes: ['perf'],
 }, async () => {});
 
 
 abTest('Carousel Demo - Pause With Override CSS', {
   startingPath: '/carousel-demo',
-  testTypes: [TestType.VisualRegression],
+  testTypes: ['visreg'],
   options: {
     visreg: {
       delay: 50,
@@ -36,7 +36,7 @@ abTest('Carousel Demo - Pause With Override CSS', {
 
 abTest('Carousel Demo - Stub Slider Images', {
   startingPath: '/carousel-demo',
-  testTypes: [TestType.VisualRegression],
+  testTypes: ['visreg'],
   options: {
     visreg: {
       delay: 50,

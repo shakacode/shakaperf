@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PerfArtifact, PerfMetric, PerfMetricGroup, TestResult } from '../types';
 import { Dialog } from './Dialog';
 import { TestMeta } from './TestMeta';
@@ -58,7 +58,30 @@ function PerfTable({ title, metrics }: { title: string; metrics: PerfMetric[] })
 interface ArtifactLink {
   label: string;
   href: string;
+  /**
+   * `'data-uri'` (default) — base64 data: URI decoded and embedded via
+   * iframe `srcDoc`. `'relative'` — plain relative path, loaded lazily via
+   * iframe `src`. Only the timeline uses `'relative'` today; the timeline
+   * HTML is too big to inline, so the report references the on-disk file
+   * instead and shows a fallback message when it's missing.
+   */
+  kind?: 'data-uri' | 'relative';
 }
+
+const TIMELINE_FALLBACK_MESSAGE =
+  'TIMELINE COMPARISON IS ONLY AVAILABLE WHEN RUNNING PERFORMANCE TESTS LOCALLY';
+
+// Matches the literal string the timeline HTML posts up via `window.parent
+// .postMessage(...)` at the end of its boot script — see
+// `timeline-comparison.ts`. Using a literal rather than a structured payload
+// keeps the handshake minimal and easy to eyeball in DevTools.
+const TIMELINE_READY_MESSAGE = 'shaka-timeline-loaded';
+
+// How long to wait for the timeline's ready ping before giving up. Timelines
+// render dozens of base64-encoded JPEGs, and first paint over file:// can be
+// slow on underpowered machines — 4s leaves headroom without stalling the
+// fallback indefinitely when the file is genuinely missing.
+const TIMELINE_READY_TIMEOUT_MS = 4000;
 
 function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] {
   const links: ArtifactLink[] = [];
@@ -67,7 +90,9 @@ function artifactLinks(perf: PerfArtifact, hasPreview: boolean): ArtifactLink[] 
   if (perf.experimentLighthouseHref) links.push({ label: 'experiment lh', href: perf.experimentLighthouseHref });
   // When we have an inline preview SVG, the timeline is opened by clicking
   // the preview itself — don't duplicate it as a plain button below.
-  if (perf.timelineHref && !hasPreview) links.push({ label: 'timeline', href: perf.timelineHref });
+  if (perf.timelineHref && !hasPreview) {
+    links.push({ label: 'timeline', href: perf.timelineHref, kind: 'relative' });
+  }
   for (const link of perf.diffHrefs) links.push({ label: link.label, href: link.href });
   return links;
 }
@@ -91,18 +116,23 @@ function dataUriToHtml(uri: string): string {
   }
 }
 
+// Resize the iframe so its height matches the content — otherwise Lighthouse
+// and bench reports overflow and the bottom gets clipped. scrollHeight on the
+// documentElement covers the full content even when the body has margin
+// collapse / flex layouts that undersize body.
+function fitIframeToContent(el: HTMLIFrameElement): void {
+  const doc = el.contentDocument;
+  if (!doc) return;
+  const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
+  if (h > 0) el.style.height = `${h}px`;
+}
+
 function ArtifactFrame({ href, label }: { href: string; label: string }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const html = useMemo(() => dataUriToHtml(href), [href]);
 
-  const resize = () => {
-    const el = ref.current;
-    const doc = el?.contentDocument;
-    if (!el || !doc) return;
-    // scrollHeight on the documentElement covers the full content even when
-    // the body has margin collapse / flex layouts that undersize body.
-    const h = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight ?? 0);
-    if (h > 0) el.style.height = `${h}px`;
+  const onLoad = () => {
+    if (ref.current) fitIframeToContent(ref.current);
   };
 
   return (
@@ -111,7 +141,58 @@ function ArtifactFrame({ href, label }: { href: string; label: string }) {
       className="artifact-frame"
       srcDoc={html}
       title={label}
-      onLoad={resize}
+      onLoad={onLoad}
+    />
+  );
+}
+
+/**
+ * Lazy-loads the timeline HTML from its on-disk relative URL instead of
+ * inlining it. Detection needs to work under Chrome's file:// sandbox,
+ * where every file URL is its own origin and `iframe.contentDocument`
+ * is unreadable from the parent — so we can't sniff the loaded page
+ * directly. Instead the timeline HTML itself pings the parent via
+ * `window.parent.postMessage('shaka-timeline-loaded', '*')` on boot;
+ * we listen for that message, and if it never arrives within the
+ * timeout we show the huge-letters "timeline only available locally"
+ * fallback.
+ */
+function TimelineFrame({ href, label }: { href: string; label: string }) {
+  const ref = useRef<HTMLIFrameElement | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let loaded = false;
+    const onMessage = (ev: MessageEvent) => {
+      // `ev.source` is the iframe's window on successful load; guard on it
+      // so an unrelated postMessage from elsewhere on the page can't
+      // mis-signal a successful timeline render.
+      if (ev.data === TIMELINE_READY_MESSAGE && ev.source === ref.current?.contentWindow) {
+        loaded = true;
+        if (ref.current) fitIframeToContent(ref.current);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    const timer = window.setTimeout(() => {
+      if (!loaded) setMissing(true);
+    }, TIMELINE_READY_TIMEOUT_MS);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.clearTimeout(timer);
+    };
+  }, [href]);
+
+  if (missing) {
+    return <div className="timeline-missing">{TIMELINE_FALLBACK_MESSAGE}</div>;
+  }
+
+  return (
+    <iframe
+      ref={ref}
+      className="artifact-frame"
+      src={href}
+      title={label}
+      loading="lazy"
     />
   );
 }
@@ -190,7 +271,7 @@ function PerfBody({
         <button
           type="button"
           className="timeline-preview"
-          onClick={() => onOpen({ label: 'timeline', href: perf.timelineHref! })}
+          onClick={() => onOpen({ label: 'timeline', href: perf.timelineHref!, kind: 'relative' })}
           aria-label="open timeline"
           dangerouslySetInnerHTML={{ __html: perf.timelinePreviewSvg }}
         />
@@ -262,7 +343,18 @@ export function PerfSlot({ perfs = EMPTY, test }: { perfs?: PerfArtifact[]; test
         }
       >
         {openArtifact ? (
-          <ArtifactFrame href={openArtifact.href} label={openArtifact.label} />
+          openArtifact.kind === 'relative' ? (
+            // Key on href so switching between per-viewport timelines while
+            // the dialog stays open remounts the frame and re-probes the
+            // on-disk file — otherwise a prior "missing" status would stick.
+            <TimelineFrame
+              key={openArtifact.href}
+              href={openArtifact.href}
+              label={openArtifact.label}
+            />
+          ) : (
+            <ArtifactFrame href={openArtifact.href} label={openArtifact.label} />
+          )
         ) : null}
       </Dialog>
     </div>

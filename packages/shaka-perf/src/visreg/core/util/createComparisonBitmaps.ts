@@ -46,7 +46,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const tests = await loadTests({
     testPathPattern,
     filter,
-    testType: TestType.VisualRegression,
+    testType: 'visreg',
     log: function (msg) { logger.log(msg); },
   });
 
@@ -76,7 +76,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   }
 
   configJSON.env = cloneDeep(config);
-  configJSON.isReference = false;
+  configJSON.isControl = false;
   configJSON.isCompare = true;
   configJSON.paths = (configJSON.paths as Record<string, unknown>) || {};
   configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;

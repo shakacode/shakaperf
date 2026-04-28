@@ -566,6 +566,16 @@ function buildTimelineHtml(control: ProfileData, experiment: ProfileData, diffFr
       });
     })();
   </script>
+  <script>
+    // Ping the parent compare-report so it knows the timeline rendered.
+    // Chrome treats every file:// URL as a unique origin, which makes
+    // contentDocument unreadable from the parent iframe even when the
+    // file loads successfully — postMessage works cross-origin and is
+    // the only reliable signal under that sandbox.
+    if (window.parent && window.parent !== window) {
+      try { window.parent.postMessage('shaka-timeline-loaded', '*'); } catch (e) {}
+    }
+  </script>
 </body>
 </html>`;
 }

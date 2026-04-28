@@ -1,6 +1,6 @@
+export type { TestType } from 'shaka-shared';
 export type {
   Status,
-  Category,
   VisregArtifact,
   PerfMetric,
   PerfMetricGroup,

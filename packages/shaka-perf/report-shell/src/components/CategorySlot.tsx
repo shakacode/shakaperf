@@ -27,7 +27,7 @@ function SlotError({
   const hasLog = typeof result.errorLog === 'string' && result.errorLog.length > 0;
   const body = (
     <>
-      <span className="slot-error__prefix">{LABEL[result.category]} ·</span>
+      <span className="slot-error__prefix">{LABEL[result.testType]} ·</span>
       <span className="slot-error__message">{result.error}</span>
       {hasLog ? <span className="slot-error__hint">view logs →</span> : null}
     </>
@@ -56,7 +56,7 @@ function SlotError({
         onClose={() => setOpen(false)}
         title={
           <span className="ui-dialog__title-text">
-            {LABEL[result.category]} · measurement logs
+            {LABEL[result.testType]} · measurement logs
           </span>
         }
         meta={<TestMeta test={test} />}
@@ -77,7 +77,7 @@ export function CategorySlot({
   if (result.status === 'skipped') {
     return (
       <div className="slot-skipped" role="note">
-        <span className="slot-skipped__prefix">{LABEL[result.category]} ·</span>
+        <span className="slot-skipped__prefix">{LABEL[result.testType]} ·</span>
         <span className="slot-skipped__message">
           {result.skipReason ?? 'skipped'}
         </span>
@@ -87,8 +87,8 @@ export function CategorySlot({
   return (
     <div>
       {result.error ? <SlotError result={result} test={test} /> : null}
-      {result.category === 'visreg' ? <VisregSlot rows={result.visreg ?? []} test={test} /> : null}
-      {result.category === 'perf' ? <PerfSlot perfs={result.perfs ?? []} test={test} /> : null}
+      {result.testType === 'visreg' ? <VisregSlot rows={result.artifacts} test={test} /> : null}
+      {result.testType === 'perf' ? <PerfSlot perfs={result.artifacts} test={test} /> : null}
     </div>
   );
 }

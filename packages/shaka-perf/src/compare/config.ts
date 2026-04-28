@@ -1,29 +1,18 @@
-import * as path from 'node:path';
+import * as os from 'node:os';
 import { z } from 'zod';
 import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
-  findAbTestsConfig,
-  loadAbTestsConfig,
   type Viewport,
 } from 'shaka-shared';
 import { TwinServersConfigSchema } from '../twin-servers/types';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
 
-// Bundled `init` template — same file `shaka-perf init` copies into the user's
-// project. Acts as the implicit default when no `abtests.config.ts` is found,
-// so the runtime and the CLI's `--help` pre-scan agree on the effective
-// defaults. At runtime __dirname is dist/compare/, so two levels up lands at
-// the package root (templates/ ships with the npm tarball via package.json
-// `files`).
-const BUNDLED_TEMPLATE_PATH = path.resolve(
-  __dirname,
-  '..',
-  '..',
-  'templates',
-  'abtests.config.ts',
-);
+// Halve the core count so a full compare run (parallel visreg browsers +
+// Lighthouse workers) has headroom for the two dockerized app stacks we're
+// measuring and any system noise. Users can override via `shared.parallelism`.
+const DEFAULT_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
@@ -110,8 +99,8 @@ const ResembleOutputOptionsSchema = z
 
 export const SharedConfigSchema = z
   .object({
-    controlURL: z.string().url(),
-    experimentURL: z.string().url(),
+    controlURL: z.string().url().default('http://localhost:3020'),
+    experimentURL: z.string().url().default('http://localhost:3030'),
     testPathPattern: z.string().optional(),
     filter: z.string().optional(),
     resultsFolder: z.string().default('compare-results'),
@@ -122,6 +111,23 @@ export const SharedConfigSchema = z
      * which labels a given test runs at.
      */
     viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
+    /**
+     * Cross-engine concurrency budget. Used for the bench worker pool and
+     * for visreg's parallel capture + pixel-compare limits — both engines
+     * share a single pool of CPU cores, so exposing one knob lets users
+     * tune overall load without juggling engine-specific fields. Defaults
+     * to half the core count.
+     */
+    parallelism: z.number().int().positive().default(DEFAULT_PARALLELISM),
+    /**
+     * Cross-engine retry policy for transient failures. Perf retries a
+     * Lighthouse sample (the Chrome subprocess is recycled between tries);
+     * visreg retries a mismatched screenshot-pair comparison. `retries`
+     * is the number of additional attempts after the first failure;
+     * `retryDelay` is the ms between them.
+     */
+    retries: z.number().int().nonnegative().default(2),
+    retryDelay: z.number().int().nonnegative().default(1000),
   });
 
 export const VisregConfigSchema = z
@@ -133,12 +139,8 @@ export const VisregConfigSchema = z
      */
     viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
     defaultMisMatchThreshold: z.number().nonnegative().default(0.1),
-    compareRetries: z.number().int().nonnegative().default(2),
-    compareRetryDelay: z.number().int().nonnegative().default(500),
     maxNumDiffPixels: z.number().int().nonnegative().default(50),
     comparePixelmatchThreshold: z.number().nonnegative().default(0.1),
-    asyncCaptureLimit: z.number().int().positive().default(2),
-    asyncCompareLimit: z.number().int().positive().default(4),
     engineOptions: EngineOptionsSchema.default({
       browser: 'chromium',
       args: ['--no-sandbox'],
@@ -157,7 +159,6 @@ export const PerfConfigSchema = z
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
-    parallelism: z.number().int().positive(),
     sampleTimeoutMs: z.number().int().positive().default(120000),
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is
@@ -179,9 +180,9 @@ export const PerfConfigSchema = z
 
 export const AbTestsConfigSchema = z
   .object({
-    shared: SharedConfigSchema,
+    shared: SharedConfigSchema.optional().default({}),
     visreg: VisregConfigSchema.optional().default({}),
-    perf: PerfConfigSchema,
+    perf: PerfConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),
   })
   .superRefine((cfg, ctx) => {
@@ -246,63 +247,5 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     visreg: { ...parsed.visreg, viewports: resolve(parsed.visreg.viewports) },
     perf: { ...parsed.perf, viewports: resolve(parsed.perf.viewports) },
     twinServers: parsed.twinServers,
-  };
-}
-
-export interface ResolveAbTestsConfigOptions {
-  /** Explicit path; skips the cwd-based lookup. */
-  configPath?: string;
-  /** Working directory for the lookup. Defaults to process.cwd(). */
-  cwd?: string;
-  /**
-   * If true, swallow load/parse errors from the user's config and fall back
-   * to the bundled template (with a console.warn breadcrumb). The CLI's
-   * `--help` pre-scan uses this so a broken user config doesn't block
-   * `shaka-perf compare --help`. Real runs (`runCompare`) leave it false so
-   * a bad config fails loudly instead of silently switching to defaults.
-   */
-  fallbackOnError?: boolean;
-}
-
-export interface ResolvedAbTestsConfig {
-  /** Path that was actually loaded — user's config, or the bundled template. */
-  configPath: string;
-  /** True when no user config was found (or load failed and we fell back). */
-  usedBundledTemplate: boolean;
-  config: AbTestsConfig;
-}
-
-/**
- * Single source of truth for "which abtests.config.ts does shaka-perf use".
- * Both `runCompare`'s loadConfig and the CLI's `--help` pre-scan call this so
- * the runtime config and the CLI defaults can never disagree.
- */
-export async function resolveAbTestsConfig(
-  opts: ResolveAbTestsConfigOptions = {},
-): Promise<ResolvedAbTestsConfig> {
-  const userPath = opts.configPath ?? findAbTestsConfig(opts.cwd);
-
-  if (userPath) {
-    try {
-      const raw = await loadAbTestsConfig(userPath);
-      return {
-        configPath: userPath,
-        usedBundledTemplate: false,
-        config: parseAbTestsConfig(raw),
-      };
-    } catch (err) {
-      if (!opts.fallbackOnError) throw err;
-      console.warn(
-        `shaka-perf: failed to load ${userPath} — falling back to the bundled init template. ` +
-          `(${(err as Error).message})`,
-      );
-    }
-  }
-
-  const raw = await loadAbTestsConfig(BUNDLED_TEMPLATE_PATH);
-  return {
-    configPath: BUNDLED_TEMPLATE_PATH,
-    usedBundledTemplate: true,
-    config: parseAbTestsConfig(raw),
   };
 }

@@ -21,7 +21,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private baseUrl: string,
     private testDef: AbTestDefinition,
-    private options: LighthouseBenchmarkOptions
+    private options: LighthouseBenchmarkOptions,
+    private group: string,
   ) {}
 
   async setupBrowser(): Promise<void> {
@@ -87,7 +88,10 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     }
 
     const base = new URL(this.baseUrl);
-    const parsed = new URL(this.testDef.startingPath, base);
+    const path = this.group === 'experiment' && this.testDef.experimentPathOverride
+      ? this.testDef.experimentPathOverride
+      : this.testDef.startingPath;
+    const parsed = new URL(path, base);
     // Preserve query params from baseUrl (e.g. ?hydration_delay=1000)
     for (const [key, value] of base.searchParams) {
       if (!parsed.searchParams.has(key)) {
@@ -98,7 +102,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     const markers = this.testDef.options.markers ?? this.options.markers;
 
     let lastError: Error | null = null;
-    const maxRetries = 3;
+    const maxRetries = this.options.retries ?? 2;
+    const retryDelay = this.options.retryDelay ?? 1000;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {
         const saveArtifacts = iteration === 1;
@@ -119,10 +124,10 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           console.log(chalk.red(lastError.message), lastError.stack);
           console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
           await this.killBrowser();
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
           await this.setupBrowser();
           lhSettings.port = this.chrome!.port;
-          await new Promise((resolve) => setTimeout(resolve, 3000));
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
         } else {
           throw new Error(
             `Failed after ${maxRetries + 1} attempts. Last error: ${
@@ -181,10 +186,10 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       const playwrightPromise = this.testDef.testFn({
         page,
         browserContext: context,
-        isReference: false,
+        isControl: this.group === 'control',
         scenario: this.testDef,
         viewport: this.options.viewport,
-        testType: TestType.Performance,
+        testType: 'perf',
         annotate: () => {},
       })
         .then(() => collectINP(page))
@@ -235,7 +240,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
-      const sampler = new LighthouseSampler(baseUrl, testDef, options);
+      const sampler = new LighthouseSampler(baseUrl, testDef, options, group);
       await sampler.setupBrowser();
       return sampler;
     }

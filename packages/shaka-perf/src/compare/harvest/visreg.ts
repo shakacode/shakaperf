@@ -3,6 +3,8 @@ import * as path from 'path';
 import { PNG } from 'pngjs';
 import { embedAsBase64 } from 'shaka-shared';
 import type { CategoryResult, VisregArtifact } from '../report';
+import type { AbTestsConfig, Viewport } from '../config';
+import type { CategoryDef, HarvestContext } from '../category-def';
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
@@ -34,13 +36,6 @@ interface DiffScan {
  * are yellow — both satisfy r!==g || g!==b (bbox uses that). For the pixel
  * count we narrow to red only (g===0) so anti-aliased edges don't inflate
  * the number.
- *
- * We use the full `[first_diff_row, last_diff_row]` span (not just the
- * first contiguous block) because pixelmatch pads the shorter source to
- * `max(control, experiment)`: if layout shifts push e.g. the footer lower
- * in one screenshot, the "same" altered content shows up at different Y
- * coordinates in the two sources, and we need the crop to cover both so
- * the text is visible in every panel of the triplet.
  */
 function scanDiffPng(
   diffPath: string,
@@ -89,8 +84,7 @@ function scanDiffPng(
   const rawH = Math.max(1, y1 - y0 + 1);
 
   // 5px gutter on top/left/right (not bottom) so the cropped region isn't
-  // flush against the edge of the first diff pixel — gives the thumbnail
-  // a bit of breathing room without including a whole new line below.
+  // flush against the edge of the first diff pixel.
   const PAD = 5;
   const padTop = Math.min(PAD, y0);
   const padLeft = Math.min(PAD, minX);
@@ -101,10 +95,9 @@ function scanDiffPng(
   let cropW = rawW + padLeft + padRight;
   let cropH = rawH + padTop;
 
-  // A footer-style one-line diff would otherwise render as a 200-px-wide,
-  // 6-px-tall strip — useless at thumbnail size. Clamp the crop aspect ratio
-  // to at most 4:1 (wide:tall) and 1:4 (tall:wide) by padding the short axis
-  // around the diff, staying inside the source image.
+  // Clamp crop aspect ratio to at most 4:1 (wide:tall) and 1:4 (tall:wide)
+  // so a one-line footer diff doesn't render as a useless strip at
+  // thumbnail size.
   const MAX_RATIO = 4;
   if (cropW / cropH > MAX_RATIO) {
     const desiredH = Math.ceil(cropW / MAX_RATIO);
@@ -150,6 +143,19 @@ interface VisregPair {
   engineErrorMsg?: string | null;
 }
 
+interface VisregPerTestReport {
+  testSuite?: string;
+  tests?: Array<{ pair: VisregPair; status?: string }>;
+  /**
+   * Unified engine-error payload written by the bridge reslicer —
+   * short message + full transcript of pair-level errors. Perf writes
+   * the same shape via `foldEngineArtifactsIntoReport`. Reading one
+   * shape = one dialog in the UI.
+   */
+  engineError?: string;
+  engineOutput?: string;
+}
+
 function coerceNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (typeof value === 'string') {
@@ -159,114 +165,113 @@ function coerceNumber(value: unknown): number {
   return 0;
 }
 
-interface VisregReport {
-  testSuite?: string;
-  tests?: Array<{ pair: VisregPair; status?: string }>;
+export interface HarvestVisregOptions {
+  resultsRoot: string;
+  slug: string;
+  viewport: Viewport;
 }
 
 /**
- * Groups visreg pairs from <htmlReportDir>/report.json by scenario label
- * (which matches the abTest() name used by convertAbTestToScenario).
+ * Compact result of reading one test's visreg output at one viewport.
+ * The assembler in `run.ts` stitches these together across viewports into
+ * a single `CategoryResult` per test, mirroring how perf merges N per-
+ * viewport `PerfArtifact` objects into its `artifacts` array.
  */
-export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult> {
-  const reportPath = path.join(htmlReportDir, 'report.json');
-  const out = new Map<string, CategoryResult>();
-  if (!fs.existsSync(reportPath)) return out;
+export interface HarvestedVisreg {
+  artifacts: VisregArtifact[];
+  /** Any pair in this viewport had a pixel diff PNG (→ visual change). */
+  hasChange: boolean;
+  /**
+   * Short, one-line engine error message for this viewport (or null).
+   * Mirrors `PerfArtifact.error`; the shared `SlotError` component
+   * renders this as a clickable banner.
+   */
+  engineError: string | null;
+  /**
+   * Full engine transcript for the "view logs" dialog — a pair-by-pair
+   * error dump assembled by the bridge reslicer. Same dialog is opened
+   * for perf's stdout/stderr transcript.
+   */
+  engineOutput: string | null;
+}
 
-  let report: VisregReport;
+function visregRootFor(resultsRoot: string, viewportLabel: string): string {
+  return path.join(resultsRoot, `visreg-${viewportLabel}`);
+}
+
+/**
+ * Reads the per-test visreg report.json for a single (slug, viewport) and
+ * returns harvested artifacts. Returns null if no report.json exists for
+ * that pair — typically means the test wasn't measured at this viewport
+ * (either the shard didn't run it or visreg filtered it out).
+ */
+export function harvestVisreg(opts: HarvestVisregOptions): HarvestedVisreg | null {
+  const { resultsRoot, slug, viewport } = opts;
+  const perTestDir = path.join(visregRootFor(resultsRoot, viewport.label), slug);
+  const reportPath = path.join(perTestDir, 'report.json');
+  if (!fs.existsSync(reportPath)) return null;
+
+  let report: VisregPerTestReport;
   try {
-    report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as VisregReport;
+    report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as VisregPerTestReport;
   } catch (err) {
     throw new Error(
       `visreg report.json unreadable at ${reportPath}: ${(err as Error).message}`,
     );
   }
 
-  const byLabel = new Map<string, VisregArtifact[]>();
-  const errorsByLabel = new Map<string, string[]>();
+  const artifacts: VisregArtifact[] = [];
+  let hasChange = false;
+
   for (const entry of report.tests ?? []) {
     const pair = entry.pair;
-    const label = pair.label;
-    if (!label) continue;
-
     // visreg serialises misMatchPercentage as a string ("0.00") — coerce to
     // number so the React renderer can format it.
     const misMatchPercentage = coerceNumber(pair.diff?.misMatchPercentage);
     const threshold = pair.misMatchThreshold ?? 0.1;
-    const pairErrorMsg = pair.error ?? pair.engineErrorMsg ?? null;
-    if (pairErrorMsg) {
-      const list = errorsByLabel.get(label) ?? [];
-      list.push(`[${pair.viewportLabel ?? '?'}] ${pairErrorMsg}`);
-      errorsByLabel.set(label, list);
-    }
 
     // Prefer the pixelmatch diff (transparent BG, red changed pixels — clear
     // at thumbnail size). Fall back to resemble's failed_diff overlay.
     const diffSource = pair.pixelmatchDiffImage ?? pair.diffImage ?? null;
-    // `changed` drives the test-level `visual_change` pill; the per-row diff
-    // chip in VisregSlot keys off `diffImage !== null`. Derive both from the
-    // same signal — the presence of a diff PNG — so the pill never
-    // disagrees with the chip it sits above. Per-pair errors (selector not
-    // found, reference missing, engine crash on one viewport) used to
-    // bubble into `changed` too, which surfaced them as a phantom
-    // `visual_change` pill without any visible chip; they now flow through
-    // `category.error` instead so they show up as an error banner + pill.
+    // `changed` drives the test-level `visual_change` pill; per-pair errors
+    // flow through the shared engineError/engineOutput fields at the
+    // top of the report instead, so they surface as an error banner + pill
+    // rather than a phantom change chip.
     const changed = diffSource !== null;
-    // Only the pixelmatch PNG has the red/yellow highlight semantics the bbox
-    // scanner relies on — resemble's overlay is full-opacity colored so the
-    // grayscale detector would misclassify it.
-    const controlDims = pair.reference ? readPngDims(resolveUnderBase(htmlReportDir, pair.reference)) : null;
-    const experimentDims = pair.test ? readPngDims(resolveUnderBase(htmlReportDir, pair.test)) : null;
+    if (changed) hasChange = true;
+
+    // Only the pixelmatch PNG has the red/yellow highlight semantics the
+    // bbox scanner relies on — resemble's overlay is full-opacity colored
+    // so the grayscale detector would misclassify it.
+    const controlDims = pair.reference ? readPngDims(resolveUnderBase(perTestDir, pair.reference)) : null;
+    const experimentDims = pair.test ? readPngDims(resolveUnderBase(perTestDir, pair.test)) : null;
     const scan = pair.pixelmatchDiffImage
       ? scanDiffPng(
-          resolveUnderBase(htmlReportDir, pair.pixelmatchDiffImage),
+          resolveUnderBase(perTestDir, pair.pixelmatchDiffImage),
           controlDims,
           experimentDims,
         )
       : null;
-    const artifact: VisregArtifact = {
-      viewportLabel: pair.viewportLabel ?? '',
+
+    artifacts.push({
+      viewportLabel: pair.viewportLabel ?? viewport.label,
       selector: pair.selector ?? 'document',
-      controlImage: toDataUri(htmlReportDir, pair.reference),
-      experimentImage: toDataUri(htmlReportDir, pair.test),
-      diffImage: diffSource ? toDataUri(htmlReportDir, diffSource) : null,
+      controlImage: toDataUri(perTestDir, pair.reference),
+      experimentImage: toDataUri(perTestDir, pair.test),
+      diffImage: diffSource ? toDataUri(perTestDir, diffSource) : null,
       misMatchPercentage,
       diffPixels: scan?.diffPixels ?? 0,
       threshold,
       diffBbox: scan?.bbox ?? null,
-    };
-
-    // tag the "changed" bit onto the artifact via a sentinel so the grouping
-    // step below can compute category status without re-reading pair.error
-    (artifact as VisregArtifact & { _changed?: boolean })._changed = changed;
-
-    const list = byLabel.get(label) ?? [];
-    list.push(artifact);
-    byLabel.set(label, list);
+    });
   }
 
-  for (const [label, artifacts] of byLabel) {
-    const anyChanged = artifacts.some(
-      (a) => (a as VisregArtifact & { _changed?: boolean })._changed,
-    );
-    // scrub the sentinel before emitting
-    for (const a of artifacts) {
-      delete (a as VisregArtifact & { _changed?: boolean })._changed;
-    }
-    const pairErrors = errorsByLabel.get(label);
-    const result: CategoryResult = {
-      category: 'visreg',
-      status: anyChanged ? 'visual_change' : 'no_difference',
-      visreg: artifacts,
-    };
-    if (pairErrors && pairErrors.length > 0) {
-      result.error = pairErrors.length === 1
-        ? pairErrors[0]
-        : `${pairErrors.length} pair(s) errored: ${pairErrors.join('; ')}`;
-    }
-    out.set(label, result);
-  }
-  return out;
+  return {
+    artifacts,
+    hasChange,
+    engineError: report.engineError ?? null,
+    engineOutput: report.engineOutput ?? null,
+  };
 }
 
 function resolveUnderBase(baseDir: string, relOrAbs: string): string {
@@ -277,3 +282,49 @@ function toDataUri(baseDir: string, relOrAbs?: string | null): string {
   if (!relOrAbs) return '';
   return embedAsBase64(resolveUnderBase(baseDir, relOrAbs)) ?? '';
 }
+
+function harvestVisregCategory(ctx: HarvestContext): CategoryResult | null {
+  const { slug, viewports, resultsRoot } = ctx;
+  const artifacts: VisregArtifact[] = [];
+  const viewportErrors: string[] = [];
+  const viewportLogs: string[] = [];
+  let anyChange = false;
+  let anyHarvested = false;
+
+  for (const viewport of viewports) {
+    const harvested = harvestVisreg({ resultsRoot, slug, viewport });
+    if (!harvested) continue;
+    anyHarvested = true;
+    artifacts.push(...harvested.artifacts);
+    if (harvested.hasChange) anyChange = true;
+    if (harvested.engineError) {
+      viewportErrors.push(`[${viewport.label}] ${harvested.engineError}`);
+    }
+    if (harvested.engineOutput) {
+      viewportLogs.push(`── ${viewport.label} ──\n${harvested.engineOutput}`);
+    }
+  }
+
+  if (!anyHarvested) return null;
+
+  const error = viewportErrors.length === 0
+    ? undefined
+    : viewportErrors.length === 1
+      ? viewportErrors[0]
+      : `${viewportErrors.length} viewport(s) errored: ${viewportErrors.join('; ')}`;
+  const errorLog = viewportLogs.length === 0 ? undefined : viewportLogs.join('\n\n');
+
+  return {
+    testType: 'visreg',
+    status: anyChange ? 'visual_change' : 'no_difference',
+    artifacts,
+    ...(error ? { error } : {}),
+    ...(errorLog ? { errorLog } : {}),
+  };
+}
+
+export const visregCategoryDef: CategoryDef = {
+  testType: 'visreg',
+  viewports: (config: AbTestsConfig) => config.visreg.viewports,
+  harvest: harvestVisregCategory,
+};

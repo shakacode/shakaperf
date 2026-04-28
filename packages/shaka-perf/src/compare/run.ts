@@ -1,42 +1,36 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import {
   loadTests,
+  findAbTestsConfig,
+  loadAbTestsConfig,
   readTestSource,
   testRunsForType,
-  TestType,
   type AbTestDefinition,
+  type TestType,
 } from 'shaka-shared';
 import {
-  resolveAbTestsConfig,
+  parseAbTestsConfig,
   type AbTestsConfig,
   type Viewport,
-  type VisregConfig,
-  type PerfConfig,
 } from './config';
 import {
   writeReport,
-  type Category,
   type CategoryResult,
-  type PerfArtifact,
   type ReportData,
   type Status,
   type TestResult,
 } from './report';
 import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
-import { harvestVisreg } from './harvest/visreg';
-import {
-  harvestPerf,
-  readPerfEngineError,
-  readPerfEngineLog,
-  slugifyForBench,
-} from './harvest/perf';
+import { slugifyForBench } from './harvest/perf';
+import { CATEGORY_DEFS } from './categories';
 
 export interface CompareRunOptions {
   cwd?: string;
   configPath?: string;
-  categories?: Category[];
+  categories?: TestType[];
   testPathPattern?: string;
   filter?: string;
   controlURL?: string;
@@ -44,13 +38,53 @@ export interface CompareRunOptions {
   /**
    * Re-harvest + re-render the HTML report from whatever artifacts already
    * live in `compare-results/`, skipping the visreg and perf engine runs.
-   * Useful when iterating on report/harvest code.
+   * Useful when iterating on report/harvest code and as the final assembly
+   * step in sharded CI runs where shards produced artifacts with
+   * `skipReport: true`.
    */
-  skipEngines?: boolean;
+  reportOnly?: boolean;
+  /**
+   * Run both engines normally, but don't produce the top-level
+   * `report.html` / `report.json`. Intended for CI shards that measure a
+   * subset of tests and leave final report assembly to a downstream
+   * `reportOnly` run over merged artifacts. Each shard persists its engine
+   * errors to its own `.shaka-engine-errors-<shardKey>.json` (keyed by
+   * filter + testPathPattern + categories), so disjoint shards coexist
+   * and the assembler globs+merges them all.
+   */
+  skipReport?: boolean;
 }
 
-const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
-const VISREG_SUBDIR = '_visreg/html_report';
+// Per-shard persisted engine-errors files. Format: <prefix><shardKey><suffix>.
+// One file per shard identity — re-running the same shard overwrites its
+// own file; disjoint shards write to disjoint paths and coexist on a shared
+// resultsRoot. The assembler globs all of them at --report-only time.
+const ENGINE_ERRORS_PREFIX = '.shaka-engine-errors-';
+const ENGINE_ERRORS_SUFFIX = '.json';
+
+interface PersistedEngineErrors {
+  engineErrors: string[];
+  perfEngineFailedByLabel: string[];
+}
+
+/**
+ * Stable hash of what makes this run's measurement scope distinct from
+ * another shard's: filters/patterns narrow the test set, categories pick
+ * which engines run. Two shards that hash to the same key are measuring
+ * the same thing — re-running them must overwrite the same persisted file
+ * rather than accumulate stale errors.
+ */
+function shardKey(
+  testPathPattern: string | undefined,
+  filter: string | undefined,
+  categories: TestType[],
+): string {
+  const sortedCategories = [...categories].sort().join(',');
+  const input = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedCategories}`;
+  return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
+}
+
+const DEFAULT_CATEGORIES: TestType[] = ['visreg', 'perf'];
 
 /**
  * Per-viewport subfolder under `resultsRoot` where the bench engine writes
@@ -81,26 +115,26 @@ function resolveViewportsForTest(
   return categoryViewports.filter((v) => narrowSet.has(v.label));
 }
 
-function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
-  return {
-    viewportLabel,
-    metrics: [],
-    regressedMetrics: [],
-    improvedMetrics: [],
-    controlLighthouseHref: null,
-    experimentLighthouseHref: null,
-    timelineHref: null,
-    timelinePreviewSvg: null,
-    benchReportHref: null,
-    diffHrefs: [],
-  };
+/**
+ * Shared empty-category result for a test that has no on-disk artifacts
+ * for this category at any resolved viewport. Perf and visreg both read
+ * per-(viewport, slug) `report.json` files now; when the harvester finds
+ * none of them, the resulting CategoryResult carries the same error
+ * message regardless of which engine was missing so the report surface
+ * is consistent. Matches `missingArtifactsErrorMessage(category)` so the
+ * text is composed in one place.
+ */
+function missingArtifactsCategory(category: TestType): CategoryResult {
+  const error = missingArtifactsErrorMessage(category);
+  if (category === 'perf') {
+    return { testType: 'perf', status: 'no_difference', artifacts: [], error };
+  }
+  return { testType: 'visreg', status: 'no_difference', artifacts: [], error };
 }
 
-const EMPTY_VISREG_CATEGORY: CategoryResult = {
-  category: 'visreg',
-  status: 'no_difference',
-  visreg: [],
-};
+function missingArtifactsErrorMessage(category: TestType): string {
+  return `${category} did not produce artifacts for this test`;
+}
 
 function combineStatus(perCategory: CategoryResult[]): Status {
   // Skipped categories (viewport-filter narrow or testTypes opt-out) have
@@ -121,11 +155,12 @@ function combineStatus(perCategory: CategoryResult[]): Status {
 }
 
 async function loadConfig(opts: CompareRunOptions): Promise<AbTestsConfig> {
-  const { config } = await resolveAbTestsConfig({
-    configPath: opts.configPath,
-    cwd: opts.cwd,
-  });
-  return config;
+  const configPath = opts.configPath ?? findAbTestsConfig(opts.cwd);
+  if (!configPath) {
+    return parseAbTestsConfig({});
+  }
+  const raw = await loadAbTestsConfig(configPath);
+  return parseAbTestsConfig(raw);
 }
 
 export interface CompareRunResult {
@@ -141,6 +176,9 @@ export interface CompareRunResult {
 }
 
 export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareRunResult> {
+  if (opts.skipReport && opts.reportOnly) {
+    throw new Error('--skip-report and --report-only are mutually exclusive');
+  }
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
   const { shared, visreg: visregConfig, perf: perfConfig } = config;
@@ -153,16 +191,35 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // Load tests once up-front so we know the full set before delegating; both
   // engines also call loadTests() internally with the same inputs, producing
   // identical test selection.
+  //
+  // `--report-only` intentionally ignores filters. Shards may have measured
+  // disjoint subsets via --filter/--testPathPattern; the assembly step needs
+  // the full test set so it can fold every shard's artifacts into one report.
+  // Any narrowing here would silently drop results the shards already wrote
+  // to disk.
   const tests = await loadTests({
-    testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-    filter: opts.filter ?? shared.filter,
+    testPathPattern: opts.reportOnly ? undefined : (opts.testPathPattern ?? shared.testPathPattern),
+    filter: opts.reportOnly ? undefined : (opts.filter ?? shared.filter),
     log: (msg) => console.log(msg),
   });
 
-  if (!opts.skipEngines) {
-    // Wipe stale artifacts so the harvester never reads last run's files.
-    fs.rmSync(resultsRoot, { recursive: true, force: true });
+  // Ensure the results root exists without wiping prior artifacts. CI shards
+  // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
+  // earlier per-test dirs being present; local iterative runs rely on the
+  // harvester only looking up artifacts by test slug, so stale sibling dirs
+  // from deleted tests are harmless noise.
+  if (!opts.reportOnly) {
     fs.mkdirSync(resultsRoot, { recursive: true });
+    // Persisted engine-error files belong to a sharded measurement pass.
+    // Under `--skip-report` we let other shards' files persist alongside
+    // ours (write goes to a shard-keyed path; same-shard re-runs overwrite).
+    // A non-shard run (no `--skip-report`, no `--report-only`) is the user
+    // returning to local-iteration mode — wipe any leftover shard files so
+    // a subsequent `--report-only` can't pick up stale errors from a prior
+    // shard pass against the same dir.
+    if (!opts.skipReport) {
+      wipePersistedEngineErrors(resultsRoot);
+    }
   }
 
   const startedAt = Date.now();
@@ -171,34 +228,41 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // to tests in another viewport's bucket that ran cleanly.
   const perfEngineFailedByLabel = new Set<string>();
 
-  // Run the engines sequentially (each launches its own browser).
-  let visregByLabel = new Map<string, CategoryResult>();
-  const htmlReportDir = path.join(resultsRoot, VISREG_SUBDIR);
-
-  if (categories.includes('visreg')) {
-    if (!opts.skipEngines) {
-      console.log('\n>>> visreg');
-      try {
-        await invokeVisregEngine({
-          controlURL,
-          experimentURL,
-          htmlReportDir,
-          visregConfig,
-          testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-          filter: opts.filter ?? shared.filter,
-        });
-      } catch (err) {
-        const message = (err as Error).message || String(err);
-        console.error(`visreg engine error: ${message}`);
-        engineErrors.push(`visreg engine: ${message}`);
+  // Under reportOnly, rehydrate the in-memory error state from whatever the
+  // measuring process(es) persisted. A genuinely missing file means the
+  // measuring process finished cleanly; a parse failure means the file was
+  // truncated by a crashed shard — readPersistedEngineErrors surfaces that
+  // as a synthetic entry rather than swallowing it into a green report.
+  if (opts.reportOnly) {
+    const { persisted, readError } = readPersistedEngineErrors(resultsRoot);
+    if (readError) engineErrors.push(readError);
+    if (persisted) {
+      engineErrors.push(...persisted.engineErrors);
+      for (const label of persisted.perfEngineFailedByLabel) {
+        perfEngineFailedByLabel.add(label);
       }
     }
+  }
+
+  // Run the engines sequentially (each launches its own browser). Visreg
+  // is now harvested per-test inside `buildTestResult`, mirroring perf —
+  // this block only drives the engine invocation.
+  if (categories.includes('visreg') && !opts.reportOnly) {
+    console.log('\n>>> visreg');
     try {
-      visregByLabel = harvestVisreg(htmlReportDir);
+      await invokeVisregEngine({
+        controlURL,
+        experimentURL,
+        resultsRoot,
+        visregConfig,
+        sharedConfig: shared,
+        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+        filter: opts.filter ?? shared.filter,
+      });
     } catch (err) {
       const message = (err as Error).message || String(err);
-      console.error(`visreg harvest error: ${message}`);
-      engineErrors.push(`visreg harvest: ${message}`);
+      console.error(`visreg engine error: ${message}`);
+      engineErrors.push(`visreg engine: ${message}`);
     }
   }
 
@@ -215,7 +279,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.skipEngines) {
+  if (categories.includes('perf') && !opts.reportOnly) {
     for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
       // Buckets are seeded on first insert (see perfBuckets construction
       // above), so an empty bucket is unreachable today. Guard anyway: an
@@ -262,11 +326,9 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       cwd,
       controlURL,
       experimentURL,
-      visregConfig,
-      perfConfig,
+      config,
       resultsRoot,
       categories,
-      visregByLabel,
       perfEngineFailedByLabel,
     }),
   );
@@ -281,9 +343,31 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       cwd,
       categories,
       errors: engineErrors,
+      reportOnly: opts.reportOnly === true,
     },
     tests: testResults,
   };
+
+  // Under skipReport the shard produces no top-level artifacts — only the
+  // per-test engine output already written by the bridges. Its engine errors
+  // are serialised to disk so the downstream reportOnly assembly can surface
+  // them in meta.errors; without this, a shard's "visreg engine: timeout"
+  // banner would silently disappear at merge time.
+  if (opts.skipReport) {
+    const key = shardKey(
+      opts.testPathPattern ?? shared.testPathPattern,
+      opts.filter ?? shared.filter,
+      categories,
+    );
+    writePersistedEngineErrors(resultsRoot, key, {
+      engineErrors,
+      perfEngineFailedByLabel: [...perfEngineFailedByLabel],
+    });
+    return {
+      reportPath: '',
+      ...summarizeFailures(data),
+    };
+  }
 
   const reportPath = writeReport(data, resultsRoot);
   fs.writeFileSync(
@@ -297,6 +381,85 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   };
 }
 
+interface ReadPersistedResult {
+  persisted: PersistedEngineErrors | null;
+  /** Surfaced to the user as a top-level banner when at least one shard
+   *  file exists but can't be parsed — a truncated JSON from a crashed
+   *  shard must not be swallowed into a green report. Reports the first
+   *  unreadable / corrupt file; subsequent files still get parsed and
+   *  merged into `persisted` so one bad shard doesn't drop the others. */
+  readError: string | null;
+}
+
+function listPersistedEngineErrorFiles(resultsRoot: string): string[] {
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(resultsRoot);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
+  }
+  return entries
+    .filter((e) => e.startsWith(ENGINE_ERRORS_PREFIX) && e.endsWith(ENGINE_ERRORS_SUFFIX))
+    .map((e) => path.join(resultsRoot, e));
+}
+
+function readPersistedEngineErrors(resultsRoot: string): ReadPersistedResult {
+  const files = listPersistedEngineErrorFiles(resultsRoot);
+  if (files.length === 0) return { persisted: null, readError: null };
+
+  const engineErrors: string[] = [];
+  const labels = new Set<string>();
+  let firstReadError: string | null = null;
+
+  for (const p of files) {
+    let raw: string;
+    try {
+      raw = fs.readFileSync(p, 'utf8');
+    } catch (err) {
+      const msg = `persisted engine errors unreadable at ${p}: ${(err as Error).message}`;
+      if (!firstReadError) firstReadError = msg;
+      continue;
+    }
+    let parsed: Partial<PersistedEngineErrors>;
+    try {
+      parsed = JSON.parse(raw) as Partial<PersistedEngineErrors>;
+    } catch (err) {
+      const msg = `persisted engine errors corrupted at ${p}: ${(err as Error).message}`;
+      if (!firstReadError) firstReadError = msg;
+      continue;
+    }
+    if (Array.isArray(parsed.engineErrors)) engineErrors.push(...parsed.engineErrors);
+    if (Array.isArray(parsed.perfEngineFailedByLabel)) {
+      for (const label of parsed.perfEngineFailedByLabel) labels.add(label);
+    }
+  }
+
+  return {
+    persisted: { engineErrors, perfEngineFailedByLabel: [...labels] },
+    readError: firstReadError,
+  };
+}
+
+function writePersistedEngineErrors(
+  resultsRoot: string,
+  key: string,
+  payload: PersistedEngineErrors,
+): void {
+  // Write via tmp + rename so a crashed shard can't leave a truncated JSON
+  // that the assembler would later read as authoritative.
+  const finalPath = path.join(resultsRoot, `${ENGINE_ERRORS_PREFIX}${key}${ENGINE_ERRORS_SUFFIX}`);
+  const tmpPath = `${finalPath}.${process.pid}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
+  fs.renameSync(tmpPath, finalPath);
+}
+
+function wipePersistedEngineErrors(resultsRoot: string): void {
+  for (const p of listPersistedEngineErrorFiles(resultsRoot)) {
+    fs.rmSync(p, { force: true });
+  }
+}
+
 function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {
   let regressions = 0;
   let visualChanges = 0;
@@ -308,16 +471,16 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     for (const c of t.categories) {
       if (c.status === 'skipped') continue;
       if (c.error) errors++;
-      if (c.category === 'perf') {
+      if (c.testType === 'perf') {
         // One perf card carries N viewports; count each viewport's regressions
         // and per-viewport errors separately so multi-viewport failures land
         // in the summary line with the right count.
-        for (const p of c.perfs ?? []) {
+        for (const p of c.artifacts) {
           if (p.error) errors++;
           if (p.regressedMetrics.length > 0) regressions++;
         }
       }
-      if (c.category === 'visreg' && c.status === 'visual_change') visualChanges++;
+      if (c.testType === 'visreg' && c.status === 'visual_change') visualChanges++;
     }
   }
   if (data.meta.errors.length > 0) errors += data.meta.errors.length;
@@ -336,152 +499,56 @@ interface BuildTestResultOpts {
   cwd: string;
   controlURL: string;
   experimentURL: string;
-  visregConfig: VisregConfig;
-  perfConfig: PerfConfig;
+  config: AbTestsConfig;
   resultsRoot: string;
-  categories: Category[];
-  visregByLabel: Map<string, CategoryResult>;
+  categories: TestType[];
   /** Set of viewport labels whose bench pass threw — used to distinguish
    *  "this test's viewport had an engine failure" from "this test happens to
    *  be missing report.json in an otherwise healthy viewport's subtree". */
   perfEngineFailedByLabel: Set<string>;
 }
 
-function skippedCategory(
-  category: Category,
-  skipReason: string,
-): CategoryResult {
-  return {
-    category,
-    status: 'skipped',
-    skipReason,
-    ...(category === 'visreg' ? { visreg: [] } : { perfs: [] }),
-  };
+function skippedCategory(category: TestType, skipReason: string): CategoryResult {
+  if (category === 'perf') {
+    return { testType: 'perf', status: 'skipped', skipReason, artifacts: [] };
+  }
+  return { testType: 'visreg', status: 'skipped', skipReason, artifacts: [] };
 }
 
-function viewportFilterSkipReason(category: Category, narrow: string[] | undefined): string {
+function viewportFilterSkipReason(category: TestType, narrow: string[] | undefined): string {
   const detail = narrow && narrow.length > 0 ? ` [${narrow.join(', ')}]` : '';
   return `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`;
 }
 
-const TEST_TYPE_FOR_CATEGORY = {
-  visreg: TestType.VisualRegression,
-  perf: TestType.Performance,
-} as const;
-
 function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel } = opts;
+  const { test, cwd, controlURL, experimentURL, config, resultsRoot, categories, perfEngineFailedByLabel } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
-
-  if (categories.includes('visreg')) {
-    if (!testRunsForType(test, TEST_TYPE_FOR_CATEGORY.visreg)) {
-      perCategory.push(
-        skippedCategory('visreg', 'skipped: test opted out of visreg via testTypes'),
-      );
-    } else {
-      const resolved = resolveViewportsForTest(test, visregConfig.viewports);
-      if (resolved.length === 0) {
-        perCategory.push(
-          skippedCategory('visreg', viewportFilterSkipReason('visreg', test.options.viewports)),
-        );
-      } else {
-        const visregResult = visregByLabel.get(test.name);
-        if (visregResult) {
-          // If the test narrows viewports, filter the engine's artifacts to
-          // only the ones the test actually asked for — the engine runs every
-          // `visreg.viewports` label globally (no per-test narrowing in the
-          // engine layer), so excess pairs come back that this test didn't
-          // want. Narrow empty-intersection is already handled above.
-          const allowed = new Set(resolved.map((v) => v.label));
-          const filtered = (visregResult.visreg ?? []).filter((a) => allowed.has(a.viewportLabel));
-          perCategory.push({ ...visregResult, visreg: filtered });
-        } else {
-          // Visreg engine ran but this test has no pairs in the manifest —
-          // commonly means the engine aborted before capturing this test.
-          perCategory.push({
-            ...EMPTY_VISREG_CATEGORY,
-            error: 'visreg did not produce artifacts for this test',
-          });
-        }
-      }
+  for (const testType of categories) {
+    const def = CATEGORY_DEFS[testType];
+    // Listed in `categories` but no harvester registered (e.g. accessibility
+    // is in the TestType union but compare doesn't ship a CategoryDef yet).
+    if (!def) continue;
+    if (!testRunsForType(test, def.testType)) {
+      perCategory.push(skippedCategory(testType, `skipped: test opted out of ${testType} via testTypes`));
+      continue;
     }
-  }
-  if (categories.includes('perf')) {
-    if (!testRunsForType(test, TEST_TYPE_FOR_CATEGORY.perf)) {
-      perCategory.push(
-        skippedCategory('perf', 'skipped: test opted out of perf via testTypes'),
-      );
-    } else {
-      const resolved = resolveViewportsForTest(test, perfConfig.viewports);
-      if (resolved.length === 0) {
-        perCategory.push(
-          skippedCategory('perf', viewportFilterSkipReason('perf', test.options.viewports)),
-        );
-      } else {
-        // One PerfArtifact per viewport this test was measured at, collected
-        // into a single `CategoryResult.perfs` — mirrors how visreg packs N
-        // per-viewport pairs into one `CategoryResult.visreg`.
-        const perfs: PerfArtifact[] = [];
-        for (const viewport of resolved) {
-          const perfRoot = perfRootFor(resultsRoot, viewport);
-          const perTestDir = path.join(perfRoot, slug);
-          const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
-          const perTestEngineError = readPerfEngineError(perTestDir);
-          const viewportLabel = viewport.label;
-          if (reportJsonExists) {
-            try {
-              perfs.push(
-                harvestPerf({
-                  perTestDir,
-                  controlURL,
-                  experimentURL,
-                  perfConfig,
-                  reportRoot: resultsRoot,
-                  slug,
-                  viewportLabel,
-                }),
-              );
-            } catch (err) {
-              const message = (err as Error).message || String(err);
-              perfs.push({
-                ...emptyPerfArtifact(viewportLabel),
-                error: `perf report unreadable: ${message}`,
-                errorLog: readPerfEngineLog(perTestDir),
-              });
-            }
-          } else if (perTestEngineError) {
-            perfs.push({
-              ...emptyPerfArtifact(viewportLabel),
-              error: `perf measurement failed: ${perTestEngineError}`,
-              errorLog: readPerfEngineLog(perTestDir),
-            });
-          } else if (perfEngineFailedByLabel.has(viewportLabel)) {
-            perfs.push({
-              ...emptyPerfArtifact(viewportLabel),
-              error: `perf engine aborted before measuring this test at ${viewportLabel} — see the error banner above`,
-            });
-          } else {
-            perfs.push(emptyPerfArtifact(viewportLabel));
-          }
-        }
-        // Per-viewport statuses fold into the category status with error first
-        // (any viewport errored → the whole category reads as error, so it stays
-        // in sync with `test.status`), then regression, then improvement, else
-        // no_difference. Full pass per level — we can't break on regression
-        // because a later viewport might carry an error that should outrank it.
-        let perfStatus: Status = 'no_difference';
-        if (perfs.some((p) => p.error)) perfStatus = 'error';
-        else if (perfs.some((p) => p.regressedMetrics.length > 0)) perfStatus = 'regression';
-        else if (perfs.some((p) => p.improvedMetrics.length > 0)) perfStatus = 'improvement';
-        perCategory.push({
-          category: 'perf',
-          status: perfStatus,
-          perfs,
-        });
-      }
+    const viewports = resolveViewportsForTest(test, def.viewports(config));
+    if (viewports.length === 0) {
+      perCategory.push(skippedCategory(testType, viewportFilterSkipReason(testType, test.options.viewports)));
+      continue;
     }
+    perCategory.push(def.harvest({
+      test,
+      slug,
+      viewports,
+      resultsRoot,
+      controlURL,
+      experimentURL,
+      config,
+      perfEngineFailedByLabel,
+    }) ?? missingArtifactsCategory(testType));
   }
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
@@ -491,10 +558,39 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
     filePath: relFilePath,
     startingPath: test.startingPath,
     controlUrl: new URL(test.startingPath, controlURL).href,
-    experimentUrl: new URL(test.startingPath, experimentURL).href,
+    experimentUrl: new URL(test.experimentPathOverride ?? test.startingPath, experimentURL).href,
     code: readTestSource(test.file, test.line),
     status: combineStatus(perCategory),
     durationMs: 0,
+    measuredAt: freshestArtifactMtime(resultsRoot, slug, config),
     categories: perCategory,
   };
+}
+
+/**
+ * Walks the on-disk report.json files for this test across all perf/visreg
+ * viewports and returns the freshest mtime (epoch ms), or null if no
+ * report.json exists anywhere. Used to render "updated N d H h ago" on each
+ * card so that, in a merged --report-only assembly, shards run at different
+ * times read clearly as different freshness.
+ */
+function freshestArtifactMtime(
+  resultsRoot: string,
+  slug: string,
+  config: AbTestsConfig,
+): number | null {
+  let freshest = 0;
+  const consider = (absPath: string): void => {
+    try {
+      const m = fs.statSync(absPath).mtimeMs;
+      if (m > freshest) freshest = m;
+    } catch { /* missing: test wasn't measured at this viewport */ }
+  };
+  for (const [testType, def] of Object.entries(CATEGORY_DEFS)) {
+    if (!def) continue;
+    for (const vp of def.viewports(config)) {
+      consider(path.join(resultsRoot, `${testType}-${vp.label}`, slug, 'report.json'));
+    }
+  }
+  return freshest > 0 ? freshest : null;
 }

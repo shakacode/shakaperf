@@ -1,4 +1,3 @@
-import * as os from 'node:os';
 import { defineConfig } from 'shaka-perf/compare';
 
 const DEFAULT_CONTROL_PORT = 3060;
@@ -25,7 +24,6 @@ export default defineConfig({
   },
 
   perf: {
-    parallelism: Math.max(1, Math.floor(os.cpus().length / 2)),
     // viewports default to ['desktop', 'phone']. `formFactor` and
     // `screenEmulation` are NOT set here — the viewport referenced from
     // shared.viewports owns them; the runner lowers them via

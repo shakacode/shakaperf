@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import * as path from "node:path";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
 
 import chalk from "chalk";
 import {
@@ -21,6 +21,11 @@ import {
   writeFileSync,
 } from "fs-extra";
 
+// Scratch files the bench worker writes during a run; both are folded into
+// the per-test report.json at the end and then deleted so the on-disk layout
+// matches visreg's (all per-test state inside one JSON). The composing +
+// truncation helper lives in `compare/engine-error.ts` and is shared with
+// the visreg bridge, so both engines produce the same payload shape.
 const ENGINE_ERROR_FILE = "engine-error.txt";
 const ENGINE_LOG_FILE = "engine-output.log";
 
@@ -32,6 +37,7 @@ import {
   secondsToTime,
   timestamp,
 } from "../../helpers/utils";
+import { composeEngineErrorPayload } from "../../../../compare/engine-error";
 import { runAnalyze } from "./analyze";
 import { runReport } from "./report";
 
@@ -50,6 +56,13 @@ export interface ICompareFlags {
   pValueThreshold: number;
   parallelism: number;
   samplingMode: SamplingMode;
+  /**
+   * Number of additional attempts (beyond the first) the Lighthouse sampler
+   * makes when a sample throws before giving up on that iteration. `retryDelay`
+   * is the ms between attempts. Sourced from `shared.retries` / `shared.retryDelay`.
+   */
+  retries?: number;
+  retryDelay?: number;
   duration?: number;
   config?: string;
   /** Viewport this pass measures — propagated into the sampler's TestFnContext. */
@@ -58,13 +71,11 @@ export interface ICompareFlags {
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
   'ab-measurements.json': 'Raw measurement samples',
-  'report.json': 'Statistical analysis (JSON)',
+  'report.json': 'Statistical analysis + folded engine error/output (JSON)',
   'report.txt': 'Summary',
   'report.html': 'Interactive HTML report with charts',
   'artifact-1.html': 'Bench HTML report (boxplots + phase charts)',
   'timeline_comparison.html': 'Visual timeline (control vs experiment)',
-  [ENGINE_ERROR_FILE]: 'Engine failure summary (machine-readable, for AI)',
-  [ENGINE_LOG_FILE]: 'Engine stdout/stderr transcript (for debugging failures)',
 };
 
 function describeArtifact(filename: string): string {
@@ -103,6 +114,76 @@ interface TestInfo {
   resultsFolder: string;
 }
 
+function tryUnlink(p: string): void {
+  try { unlinkSync(p); } catch { /* missing / locked — not worth surfacing */ }
+}
+
+/**
+ * Fold engine-error.txt + engine-output.log into the per-test report.json
+ * and delete the two scratch files.
+ *
+ * `overrideStack` is supplied on the failure path (the test's try/catch
+ * hasn't written engine-error.txt yet and we don't want a transient file
+ * just to read it back); on the success path it's null and the helper
+ * still runs to absorb whatever the worker logged during measurement.
+ *
+ * Never throws — a bad report.json is replaced rather than left half-merged.
+ */
+function foldEngineArtifactsIntoReport(
+  testResultsFolder: string,
+  overrideStack: string | null,
+): void {
+  const errPath = path.join(testResultsFolder, ENGINE_ERROR_FILE);
+  const logPath = path.join(testResultsFolder, ENGINE_LOG_FILE);
+  const reportPath = path.join(testResultsFolder, 'report.json');
+
+  let stack: string | null = overrideStack;
+  if (!stack) {
+    try {
+      const raw = readFileSync(errPath, 'utf8').trim();
+      if (raw) stack = raw;
+    } catch { /* no error file */ }
+  }
+
+  let log: string | null = null;
+  try {
+    const raw = readFileSync(logPath, 'utf8').trim();
+    if (raw) log = raw;
+  } catch { /* no log file */ }
+
+  const shortMessage = stack ? stack.split(/\r?\n/, 1)[0] || null : null;
+  const transcript = stack || log
+    ? [
+        ...(stack ? ['── error ──', stack, ''] : []),
+        ...(log ? ['── engine output ──', log] : []),
+      ].join('\n')
+    : null;
+  const payload = composeEngineErrorPayload(shortMessage, transcript);
+
+  if (!payload.engineError && !payload.engineOutput) {
+    tryUnlink(errPath);
+    tryUnlink(logPath);
+    return;
+  }
+
+  let report: Record<string, unknown> = {};
+  try {
+    report = JSON.parse(readFileSync(reportPath, 'utf8')) as Record<string, unknown>;
+  } catch { /* no prior report.json (failure before analyze) — start fresh */ }
+
+  Object.assign(report, payload);
+
+  try {
+    writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  } catch (err) {
+    console.error(`Failed to fold engine artifacts into ${reportPath}:`, err);
+    return;
+  }
+
+  tryUnlink(errPath);
+  tryUnlink(logPath);
+}
+
 function formatTestTitle(testFile: string | null, name: string, line?: number | null): string {
   const loc = testFile ? (line ? `${testFile}:${line}` : testFile) : '(unknown source)';
   return chalk.dim(loc) + chalk.bold.yellow(` ${name}`);
@@ -120,7 +201,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   const tests = await loadTests({
     testPathPattern: compareFlags.testPathPattern,
     filter: compareFlags.filter,
-    testType: TestType.Performance,
+    testType: 'perf',
     log: (msg) => console.log(msg),
   });
 
@@ -131,6 +212,8 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     viewport: compareFlags.viewport,
     resultsFolder,
     lhConfigPath: compareFlags.config,
+    retries: compareFlags.retries,
+    retryDelay: compareFlags.retryDelay,
   };
 
   let analyzedJSONString = "";
@@ -274,19 +357,19 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           console.error(`Failed to generate bench HTML report for ${testDef.name}:`, err);
         }
       }
+
+      // Absorb the run's engine-output.log transcript into report.json so
+      // the on-disk layout is symmetric with visreg (one JSON holds all
+      // per-test state — error, log, metrics).
+      foldEngineArtifactsIntoReport(testResultsFolder, null);
     } catch (err) {
-      // Per-test failure: serialise the reason next to the (empty) per-test
-      // dir so the unified report harvester can surface it on the perf card,
-      // then keep going. The previous behaviour let one bad test tear down
-      // the whole run (and often crashed the process via a dying worker's
-      // closed IPC channel during dispose).
+      // Per-test failure: fold the error stack + any partial engine log
+      // directly into report.json. Previously we wrote engine-error.txt
+      // here and let the harvester pick it up; now the harvester reads
+      // from report.json only, so we skip the intermediate file.
       const error = err instanceof Error ? err : new Error(String(err));
       const reason = error.stack ?? error.message;
-      try {
-        writeFileSync(path.join(testResultsFolder, ENGINE_ERROR_FILE), reason);
-      } catch (writeErr) {
-        console.error(`Could not write ${ENGINE_ERROR_FILE} for ${testDef.name}:`, writeErr);
-      }
+      foldEngineArtifactsIntoReport(testResultsFolder, reason);
       const failBanner = `${chalkScheme.blackBgRed(
         `    ${chalkScheme.white("FAILED")}     `
       )} ${error.message}`;

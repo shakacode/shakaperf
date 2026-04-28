@@ -33,16 +33,12 @@ export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 66
 export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
-export enum TestType {
-  VisualRegression = 'visual_regression',
-  Performance = 'performance',
-  Accessibility = 'accessibility',
-}
+export type TestType = 'perf' | 'visreg' | 'accessibility';
 
 export interface TestFnContext {
   page: Page;
   browserContext: BrowserContext;
-  isReference: boolean;
+  isControl: boolean;
   scenario: AbTestDefinition;
   viewport: Viewport;
   testType: TestType;
@@ -106,6 +102,13 @@ export interface AbTestOptions {
 export interface AbTestDefinition {
   name: string;
   startingPath: string;
+  /**
+   * If set, the experiment side benches/visregs against this path instead
+   * of `startingPath`. Use when a route was renamed between control and
+   * experiment (e.g. control = `/cart`, experiment = `/basket`). Control
+   * always uses `startingPath`.
+   */
+  experimentPathOverride?: string;
   file: string | null;
   line: number | null;
   options: AbTestOptions;
@@ -119,6 +122,7 @@ export function abTest(
   name: string,
   config: {
     startingPath: string;
+    experimentPathOverride?: string;
     testTypes?: TestType[];
     options?: AbTestOptions;
   },
@@ -145,6 +149,7 @@ export function abTest(
   registry.push({
     name,
     startingPath: config.startingPath,
+    experimentPathOverride: config.experimentPathOverride,
     file,
     line,
     options: config.options ?? {},
