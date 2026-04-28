@@ -558,7 +558,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
     filePath: relFilePath,
     startingPath: test.startingPath,
     controlUrl: new URL(test.startingPath, controlURL).href,
-    experimentUrl: new URL(test.startingPath, experimentURL).href,
+    experimentUrl: new URL(test.experimentPathOverride ?? test.startingPath, experimentURL).href,
     code: readTestSource(test.file, test.line),
     status: combineStatus(perCategory),
     durationMs: 0,
