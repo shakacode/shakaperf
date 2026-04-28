@@ -112,12 +112,12 @@ describe('ab-test-registry', () => {
     it('preserves testTypes when provided', () => {
       abTest(
         'Visreg only',
-        { startingPath: '/', testTypes: [TestType.VisualRegression] },
+        { startingPath: '/', testTypes: ['visreg'] },
         async () => {},
       );
 
       const tests = getRegisteredTests();
-      expect(tests[0].testTypes).toEqual([TestType.VisualRegression]);
+      expect(tests[0].testTypes).toEqual(['visreg']);
     });
 
     it('accepts multiple testTypes', () => {
@@ -125,26 +125,13 @@ describe('ab-test-registry', () => {
         'Both types',
         {
           startingPath: '/',
-          testTypes: [TestType.VisualRegression, TestType.Performance],
+          testTypes: ['visreg', 'perf'],
         },
         async () => {},
       );
 
       const tests = getRegisteredTests();
-      expect(tests[0].testTypes).toEqual([
-        TestType.VisualRegression,
-        TestType.Performance,
-      ]);
-    });
-  });
-
-  describe('TestType enum', () => {
-    it('should have VisualRegression value', () => {
-      expect(TestType.VisualRegression).toBe('visual_regression');
-    });
-
-    it('should have Performance value', () => {
-      expect(TestType.Performance).toBe('performance');
+      expect(tests[0].testTypes).toEqual(['visreg', 'perf']);
     });
   });
 

@@ -16,7 +16,7 @@ abTest('Product Detail', {
 
 abTest('Product Detail - Desktop Actions', {
   startingPath: '/products/1',
-  testTypes: [TestType.VisualRegression],
+  testTypes: ['visreg'],
   options: {
     visreg: {
       selectors: ['[data-cy="product-actions-desktop"]'],

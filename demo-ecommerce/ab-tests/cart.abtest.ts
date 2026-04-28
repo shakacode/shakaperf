@@ -3,7 +3,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Cart', {
   startingPath: '/cart',
-  testTypes: [TestType.VisualRegression],
+  testTypes: ['visreg'],
   options: {
     visreg: {
       delay: 50,

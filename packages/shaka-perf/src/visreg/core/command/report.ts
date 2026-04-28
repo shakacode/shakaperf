@@ -1,218 +1,121 @@
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { ensureDir } from 'fs-extra';
+import * as fs from 'node:fs';
 import chalk from 'chalk';
-import _ from 'lodash';
-import cloneDeep from 'lodash/cloneDeep.js';
-import builder from 'junit-report-builder';
-import allSettled from '../util/allSettled';
 import createLogger from '../util/logger';
 import compare from '../util/compare/index';
-import type { RuntimeConfig } from '../types';
+import { composeEngineErrorPayload } from '../../../compare/engine-error';
+import { slugifyForBench } from '../../../compare/harvest/perf';
+import type { RuntimeConfig, TestPair } from '../types';
 import type Reporter from '../util/Reporter';
 import type { Test } from '../util/Reporter';
 
 const logger = createLogger('report');
 
-function writeReport (config: RuntimeConfig, reporter: Reporter) {
-  const promises = [];
+const PNG_FIELDS = ['reference', 'test', 'pixelmatchDiffImage', 'diffImage', 'errorScreenshot'] as const;
+type PngField = typeof PNG_FIELDS[number];
 
-  if (config.report && config.report.indexOf('CI') > -1 && config.ciReport.format === 'junit') {
-    promises.push(writeJunitReport(config, reporter));
+/**
+ * Writes per-test report.json files directly under
+ * `<htmlReportDir>/visreg-<viewport>/<slug>/`, mirroring the layout perf
+ * writes under `<htmlReportDir>/perf-<viewport>/<slug>/`. Each per-test
+ * report carries the unified `engineError` / `engineOutput` payload that
+ * the compare harvester reads from one shape across both engines.
+ *
+ * PNGs captured by the engine into `<htmlReportDir>/{control,experiment}_screenshot/`
+ * are moved into the per-test dirs as part of this writer; no monolithic
+ * intermediate report.json is produced.
+ */
+function writePerTestReports(config: RuntimeConfig, reporter: Reporter): void {
+  const htmlReportDir = toAbsolute(config, config.htmlReportDir);
+  fs.mkdirSync(htmlReportDir, { recursive: true });
+
+  const buckets = bucketTests(reporter);
+
+  for (const [key, tests] of buckets) {
+    const sep = key.indexOf('\0');
+    const slug = key.slice(0, sep);
+    const viewport = key.slice(sep + 1);
+    const destDir = path.join(htmlReportDir, `visreg-${viewport}`, slug);
+    fs.mkdirSync(destDir, { recursive: true });
+
+    const movedTests = tests.map((t) => moveAndRewritePngs(t, destDir));
+
+    const engineErrors: Array<{ selector: string; msg: string }> = [];
+    for (const t of movedTests) {
+      const msg = (t.pair.error as string | undefined) ?? (t.pair.engineErrorMsg as string | undefined);
+      if (msg) engineErrors.push({ selector: String(t.pair.selector ?? '(unknown selector)'), msg });
+    }
+    const shortMessage = engineErrors.length === 0
+      ? null
+      : engineErrors.length === 1
+        ? engineErrors[0].msg
+        : `${engineErrors.length} pair(s) errored`;
+    const transcript = engineErrors.length === 0
+      ? null
+      : engineErrors.map((e) => `── ${e.selector} ──\n${e.msg}`).join('\n\n');
+
+    const perTestReport = {
+      ...composeEngineErrorPayload(shortMessage, transcript),
+      testSuite: reporter.testSuite,
+      tests: movedTests,
+    };
+    fs.writeFileSync(
+      path.join(destDir, 'report.json'),
+      JSON.stringify(perTestReport, null, 2),
+    );
   }
 
-  if (config.report && config.report.indexOf('json') > -1) {
-    promises.push(writeJsonReport(config, reporter));
-  }
+  // The flat capture dirs are now empty (or hold only PNGs whose pair was
+  // skipped/ignored). Either way they're internal scratch; delete so the
+  // results tree contains only the per-test layout.
+  fs.rmSync(path.join(htmlReportDir, 'control_screenshot'), { recursive: true, force: true });
+  fs.rmSync(path.join(htmlReportDir, 'experiment_screenshot'), { recursive: true, force: true });
 
-  promises.push(writeReportJson(config, reporter));
-
-  return allSettled(promises);
+  logger.log(`Wrote per-test visreg reports under ${htmlReportDir}/visreg-*/`);
 }
 
-// Writes <htmlReportDir>/report.json — the artifact the unified
-// `shaka-perf compare` harvester reads to surface visreg results in the
-// final report. The standalone visreg viewer (its index.html template
-// and JSONP shim) was removed when the unified compare report took over;
-// `htmlReportDir` is now pure scratch space for report.json + screenshots.
-async function writeReportJson (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
-
-  let browserReporter = cloneDeep(reporter);
-
-  function toAbsolute (p: string) {
-    return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
+function bucketTests(reporter: Reporter): Map<string, Test[]> {
+  const buckets = new Map<string, Test[]>();
+  for (const t of reporter.tests) {
+    const label = t.pair.label;
+    const viewport = t.pair.viewportLabel;
+    if (!label || !viewport) continue;
+    const key = `${slugifyForBench(label)}\0${viewport}`;
+    const list = buckets.get(key) ?? [];
+    list.push(t);
+    buckets.set(key, list);
   }
-
-  logger.log('Writing report.json');
-
-  const htmlReportDir = toAbsolute(config.htmlReportDir);
-  return mkdir(htmlReportDir, { recursive: true }).then(function () {
-    // Slurp in logs
-    const promises: Promise<unknown>[] = [];
-    if (config.scenarioLogsInReports) {
-      _.forEach(browserReporter.tests, (test: Test) => {
-        const pair = test.pair;
-        const referenceLog = toAbsolute(pair.referenceLog!);
-        const testLog = toAbsolute(pair.testLog!);
-
-        const report = toAbsolute(config.htmlReportDir);
-        pair.referenceLog = path.relative(report, referenceLog);
-        pair.testLog = path.relative(report, testLog);
-
-        const referencePromise = readFile(referenceLog).catch(function (_e: unknown) {
-          logger.log(`Ignoring error reading reference log: ${referenceLog}`);
-          delete pair.referenceLog;
-          // remove non-existing log paths
-        });
-        const testPromise = readFile(testLog).catch(function (_e: unknown) {
-          logger.log(`Ignoring error reading test log: ${testLog}`);
-          delete pair.testLog;
-          // remove non-existing log paths
-        });
-        promises.push(referencePromise, testPromise);
-      });
-      return Promise.all(promises);
-    } else {
-      // don't pass log paths to client
-      _.forEach(browserReporter.tests, (test: Test) => {
-        const pair = test.pair;
-        delete pair.referenceLog;
-        delete pair.testLog;
-      });
-      return Promise.resolve([] as void[]);
-    }
-  }).then(function () {
-    // Fixing URLs in the configuration
-    _.forEach(browserReporter.tests, (test: Test) => {
-      const report = toAbsolute(config.htmlReportDir);
-      const pair = test.pair;
-      pair.reference = path.relative(report, toAbsolute(pair.reference));
-      pair.test = path.relative(report, toAbsolute(pair.test));
-
-      if (pair.diffImage) {
-        pair.diffImage = path.relative(report, toAbsolute(pair.diffImage));
-      }
-      if (pair.pixelmatchDiffImage) {
-        pair.pixelmatchDiffImage = path.relative(report, toAbsolute(pair.pixelmatchDiffImage));
-      }
-      if (pair.errorScreenshot) {
-        pair.errorScreenshot = path.relative(report, toAbsolute(pair.errorScreenshot));
-      }
-    });
-
-    const testReportJsonName = toAbsolute(config.htmlReportDir + '/report.json');
-
-    // If this is a dynamic test then we assume browserReporter has one scenario with one or more viewport variants.
-    // This scenario with all viewport variants will be appended to any existing report.
-    if (testConfig.dynamicTestId) {
-      try {
-        console.log('Attempting to open: ', testReportJsonName);
-        const testReportJson = JSON.parse(readFileSync(testReportJsonName, 'utf8'));
-        const scenarioFileNames = browserReporter.tests.map((test: Test) => test.pair.fileName);
-        testReportJson.tests = testReportJson.tests.filter((test: Test) => !scenarioFileNames.includes(test.pair.fileName));
-        browserReporter.tests.map((test: Test) => testReportJson.tests.push(test));
-        browserReporter = testReportJson;
-      } catch (err) {
-        console.log('Creating new report.');
-      }
-    }
-
-    return writeFile(testReportJsonName, JSON.stringify(browserReporter, null, 2)).then(function () {
-      logger.log('Wrote report.json to: ' + testReportJsonName);
-    }, function (err: unknown) {
-      logger.error('Failed writing report.json to: ' + testReportJsonName);
-      throw err;
-    });
-  });
+  return buckets;
 }
 
-function writeJunitReport (config: RuntimeConfig, reporter: Reporter) {
-  logger.log('Writing jUnit Report');
+function moveAndRewritePngs(t: Test, destDir: string): { pair: TestPair; status: string } {
+  const pair: TestPair = { ...t.pair };
+  for (const field of PNG_FIELDS) {
+    const src = (pair as unknown as Record<PngField, unknown>)[field];
+    if (typeof src !== 'string' || src.length === 0) continue;
+    if (!path.isAbsolute(src)) continue;
 
-  const suite = builder.testSuite()
-    .name(reporter.testSuite);
-
-  _.forEach(reporter.tests, (test: Test) => {
-    const testCase = suite.testCase()
-      .className(test.pair.selector)
-      .name(' ›› ' + test.pair.label);
-
-    if (!test.passed()) {
-      const error = 'Design deviation ›› ' + test.pair.label + ' (' + test.pair.selector + ') component';
-      testCase.failure(error);
-      testCase.error(error);
-    }
-  });
-
-  return new Promise(function (resolve, reject) {
-    let testReportFilename = config.testReportFileName || config.ciReport.testReportFileName;
-    testReportFilename = testReportFilename.replace(/\.xml$/, '') + '.xml';
-    const destination = path.join(config.ciReportDir, testReportFilename);
-
+    // The engine's filename template doesn't include control/experiment, so
+    // `pair.reference` and `pair.test` share a basename — what disambiguates
+    // them is their parent dir (`control_screenshot/` vs `experiment_screenshot/`).
+    // Preserve that dir under destDir so both PNGs land at distinct paths.
+    const parentName = path.basename(path.dirname(src));
+    const relPath = path.join(parentName, path.basename(src));
+    const destAbs = path.join(destDir, relPath);
+    fs.mkdirSync(path.dirname(destAbs), { recursive: true });
     try {
-      builder.writeTo(destination);
-      logger.success('jUnit report written to: ' + destination);
-
-      resolve(undefined);
-    } catch (e) {
-      return reject(e);
+      fs.renameSync(src, destAbs);
+    } catch {
+      // Already moved (sibling pair shared the ref PNG) or source missing —
+      // harvester resolves under destDir either way.
     }
-  });
+    (pair as unknown as Record<PngField, unknown>)[field] = relPath;
+  }
+  return { pair, status: t.status };
 }
 
-function writeJsonReport (config: RuntimeConfig, reporter: Reporter) {
-  const testConfig = (config.args._loadedVisregConfig as Record<string, unknown>) || {};
-
-  let jsonReporter = cloneDeep(reporter);
-
-  function toAbsolute (p: string) {
-    return (path.isAbsolute(p)) ? p : path.join(config.projectPath, p);
-  }
-
-  logger.log('Writing json report');
-  return ensureDir(toAbsolute(config.jsonReportDir)).then(function () {
-    logger.log('Resources copied');
-
-    // Fixing URLs in the configuration
-    const report = toAbsolute(config.jsonReportDir);
-    _.forEach(jsonReporter.tests, (test: Test) => {
-      const pair = test.pair;
-      pair.reference = path.relative(report, toAbsolute(pair.reference));
-      pair.test = path.relative(report, toAbsolute(pair.test));
-      pair.referenceLog = path.relative(report, toAbsolute(pair.referenceLog!));
-      pair.testLog = path.relative(report, toAbsolute(pair.testLog!));
-
-      if (pair.diffImage) {
-        pair.diffImage = path.relative(report, toAbsolute(pair.diffImage));
-      }
-    });
-
-    const jsonReportFileName = toAbsolute(config.compareJsonFileName);
-
-    // If this is a dynamic test then we assume jsonReporter has one scenario with one or more viewport variants.
-    // This scenario with all viewport variants will be appended to any existing report.
-    if (testConfig.dynamicTestId) {
-      try {
-        console.log('Attempting to open: ', jsonReportFileName);
-        const jsonReportJson = JSON.parse(readFileSync(jsonReportFileName, 'utf8'));
-        const scenarioFileNames = jsonReporter.tests.map((test: Test) => test.pair.fileName);
-        jsonReportJson.tests = jsonReportJson.tests.filter((test: Test) => !scenarioFileNames.includes(test.pair.fileName));
-        jsonReporter.tests.map((test: Test) => jsonReportJson.tests.push(test));
-        jsonReporter = jsonReportJson;
-      } catch (err) {
-        console.log('Creating new report.');
-      }
-    }
-
-    return writeFile(jsonReportFileName, JSON.stringify(jsonReporter, null, 2)).then(function () {
-      logger.log('Wrote Json report to: ' + jsonReportFileName);
-    }, function (err: unknown) {
-      logger.error('Failed writing Json report to: ' + jsonReportFileName);
-      throw err;
-    });
-  });
+function toAbsolute(config: RuntimeConfig, p: string): string {
+  return path.isAbsolute(p) ? p : path.join(config.projectPath, p);
 }
 
 export interface VisregCompareResult {
@@ -220,7 +123,7 @@ export interface VisregCompareResult {
   failed: number;
 }
 
-export async function execute (config: RuntimeConfig): Promise<VisregCompareResult> {
+export async function execute(config: RuntimeConfig): Promise<VisregCompareResult> {
   const compareResult = await compare(config);
   if (!compareResult) {
     logger.error('Comparison failed, no report generated.');
@@ -234,12 +137,7 @@ export async function execute (config: RuntimeConfig): Promise<VisregCompareResu
   logger.log(chalk.green(passed + ' Passed'));
   logger.log(chalk[(failed ? 'red' : 'green') as 'red' | 'green'](+failed + ' Failed'));
 
-  const results = await writeReport(config, report);
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].state !== 'fulfilled') {
-      logger.error('Failed writing report with error: ' + (results[i] as { state: string; reason?: unknown }).reason);
-    }
-  }
+  writePerTestReports(config, report);
 
   if (failed) {
     logger.error('*** Mismatch errors found ***');

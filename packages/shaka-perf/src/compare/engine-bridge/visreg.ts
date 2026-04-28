@@ -3,31 +3,42 @@ import * as os from 'os';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import visregRunner from '../../visreg/core/runner';
-import type { VisregConfig } from '../config';
+import type { SharedConfig, VisregConfig } from '../config';
 
 export interface VisregBridgeOptions {
   controlURL: string;
   experimentURL: string;
-  htmlReportDir: string;
+  /**
+   * Root of the unified compare-results tree. The visreg engine writes
+   * its per-test layout (`visreg-<viewport>/<slug>/report.json`) directly
+   * under this root, mirroring the perf engine's `perf-<viewport>/<slug>/`.
+   */
+  resultsRoot: string;
   visregConfig: VisregConfig;
+  /**
+   * Cross-engine knobs (parallelism, retries, retryDelay) that visreg lowers
+   * into its legacy runtime-config field names (`asyncCaptureLimit`,
+   * `asyncCompareLimit`, `compareRetries`, `compareRetryDelay`). Sourced by
+   * the caller from `abtests.config.ts` `shared.*`.
+   */
+  sharedConfig: SharedConfig;
   testPathPattern?: string;
   filter?: string;
 }
 
 /**
- * Invokes the visreg engine (same entry that powers `visreg-compare`) with
- * a temp config file synthesised from the unified abtests.config.ts `visreg`
- * slice, forcing `paths.htmlReport` so screenshots, report.json, etc. land
- * under the caller-specified directory.
+ * Invokes the visreg engine into the unified results root. The engine
+ * writes per-test reports directly — no scratch dir, no reslicer.
  *
  * Returns without throwing when the engine completes with threshold mismatches
- * — the caller harvests the per-pair status from report.json. Real engine
- * crashes (browser driver, CDP, missing config) still throw.
+ * — the caller harvests the per-pair status from per-test report.json files.
+ * Real engine crashes (browser driver, CDP, missing config) still throw.
  */
 export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<void> {
-  const { controlURL, experimentURL, htmlReportDir, visregConfig, testPathPattern, filter } = opts;
+  const { controlURL, experimentURL, resultsRoot, visregConfig, sharedConfig, testPathPattern, filter } = opts;
 
-  const configPath = writeTempVisregConfig(visregConfig, htmlReportDir);
+  fs.mkdirSync(resultsRoot, { recursive: true });
+  const configPath = writeTempVisregConfig(visregConfig, sharedConfig, resultsRoot);
 
   try {
     await visregRunner('compare', {
@@ -44,9 +55,21 @@ export async function invokeVisregEngine(opts: VisregBridgeOptions): Promise<voi
   }
 }
 
-function writeTempVisregConfig(visregConfig: VisregConfig, htmlReportDir: string): string {
+function writeTempVisregConfig(
+  visregConfig: VisregConfig,
+  sharedConfig: SharedConfig,
+  htmlReportDir: string,
+): string {
   const payload = {
     ...visregConfig,
+    // Lower the cross-engine `shared.parallelism` + retry policy into the
+    // legacy visreg runtime-config field names. `asyncCaptureLimit` bounds
+    // concurrent browser captures; `asyncCompareLimit` bounds concurrent
+    // pixel comparisons. Both map cleanly onto a single "cpu budget" knob.
+    asyncCaptureLimit: sharedConfig.parallelism,
+    asyncCompareLimit: sharedConfig.parallelism,
+    compareRetries: sharedConfig.retries,
+    compareRetryDelay: sharedConfig.retryDelay,
     paths: {
       htmlReport: htmlReportDir,
     },

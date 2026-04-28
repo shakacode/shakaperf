@@ -1,13 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
+  CategoryResult,
   PerfArtifact,
   PerfDirection,
   PerfMetric,
   PerfMetricGroup,
   Status,
 } from '../report';
-import type { PerfConfig } from '../config';
+import type { AbTestsConfig, PerfConfig, Viewport } from '../config';
+import type { CategoryDef, HarvestContext } from '../category-def';
 
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
@@ -59,58 +61,6 @@ export function slugifyForBench(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'test';
 }
 
-const ENGINE_ERROR_FILE = 'engine-error.txt';
-const ENGINE_LOG_FILE = 'engine-output.log';
-const MAX_LOG_BYTES = 512 * 1024;
-
-/**
- * Returns the first line of `<perTestDir>/engine-error.txt` (written by bench's
- * per-test try/catch when a measurement fails) so it can be surfaced as the
- * perf card's `error` in place of real metrics. Returns null if the file is
- * absent — the common case.
- */
-export function readPerfEngineError(perTestDir: string): string | null {
-  const errPath = path.join(perTestDir, ENGINE_ERROR_FILE);
-  try {
-    const raw = fs.readFileSync(errPath, 'utf8').trim();
-    if (!raw) return null;
-    const firstLine = raw.split(/\r?\n/, 1)[0];
-    return firstLine || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Returns the captured engine stdout/stderr transcript for a failed test so it
- * can be embedded in the self-contained HTML report and opened via the error
- * banner's "view logs" action. Also includes the full stack from
- * `engine-error.txt` at the top — the log alone is the interleaved worker
- * output, while the stack pinpoints where the throw came from.
- * Truncates from the head if the combined payload is larger than
- * `MAX_LOG_BYTES` so a multi-MB transcript doesn't balloon the report.
- */
-export function readPerfEngineLog(perTestDir: string): string | null {
-  const stack = safeReadFile(path.join(perTestDir, ENGINE_ERROR_FILE));
-  const log = safeReadFile(path.join(perTestDir, ENGINE_LOG_FILE));
-  if (stack == null && log == null) return null;
-  const parts: string[] = [];
-  if (stack) parts.push('── error ──', stack.trim(), '');
-  if (log) parts.push('── engine output ──', log.trim());
-  const combined = parts.join('\n');
-  if (combined.length <= MAX_LOG_BYTES) return combined;
-  const head = '[… truncated; see the on-disk engine-output.log for the full transcript …]\n';
-  return head + combined.slice(combined.length - MAX_LOG_BYTES);
-}
-
-function safeReadFile(p: string): string | null {
-  try {
-    return fs.readFileSync(p, 'utf8');
-  } catch {
-    return null;
-  }
-}
-
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;
@@ -132,9 +82,18 @@ interface BenchJsonMetric {
   asPercent?: { percentMedian?: number };
 }
 
+/**
+ * Shape of the per-test `report.json` written by the bench engine. Since we
+ * folded engine-error.txt + engine-output.log into this file, the harvester
+ * reads everything (metrics AND failure state) from a single source. Both
+ * engine fields are optional — a clean run leaves them unset; a partial run
+ * may have engineOutput only; a pre-measurement failure sets both.
+ */
 interface BenchCompareJsonResults {
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
+  engineError?: string;
+  engineOutput?: string;
 }
 
 export interface HarvestPerfOptions {
@@ -151,8 +110,8 @@ export interface HarvestPerfOptions {
  * Reads bench's per-test `<slug>/report.json` (shape: ICompareJSONResults)
  * plus sibling artifact files, and emits one PerfArtifact tagged with
  * `viewportLabel`. Callers that measured N viewports call this N times and
- * collect the results into a single `CategoryResult.perfs` array — the same
- * shape visreg uses for its per-viewport pairs.
+ * collect the results into a single perf `CategoryResult.artifacts` array —
+ * the same shape visreg uses for its per-viewport pairs.
  */
 export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
@@ -164,9 +123,13 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   void perfConfig;
 
   const reportJsonPath = path.join(perTestDir, 'report.json');
+  let engineError: string | null = null;
+  let engineOutput: string | null = null;
   if (fs.existsSync(reportJsonPath)) {
     try {
       const raw = JSON.parse(fs.readFileSync(reportJsonPath, 'utf8')) as BenchCompareJsonResults;
+      engineError = raw.engineError ?? null;
+      engineOutput = raw.engineOutput ?? null;
       const allEntries = [
         ...(raw.vitalsTableData ?? []),
         ...(raw.diagnosticsTableData ?? []),
@@ -207,12 +170,14 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   const controlHost = urlHostSegment(controlURL);
   const experimentHost = urlHostSegment(experimentURL);
 
-  // Inline artifact HTMLs as data URIs so the final report is a fully
-  // self-contained file — no sibling directories required, no broken links
-  // when clients open the report from a different path than where compare
-  // ran. `reportRoot` is still used to size the relative-path fallback if
-  // we later want to toggle back to external refs.
-  void reportRoot;
+  // Inline most artifact HTMLs as data URIs so the report stays self-contained
+  // when emailed or uploaded somewhere without its sibling directories. The
+  // exception is `timeline_comparison.html` — it can be multi-MB (dozens of
+  // base64 screenshots + diff PNGs) and, with N tests × M viewports, the
+  // inlined report balloons to tens of MB. Timeline is referenced by relative
+  // path instead and rendered in an iframe at dialog-open time; when the
+  // viewer doesn't have the perf results directory alongside the report, the
+  // dialog falls back to a "timeline only available locally" message.
   const inlineHtml = (name: string | null): string | null => {
     if (!name) return null;
     try {
@@ -221,6 +186,12 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
     } catch {
       return null;
     }
+  };
+
+  const relativeHref = (name: string | null): string | null => {
+    if (!name) return null;
+    const abs = path.join(perTestDir, name);
+    return path.relative(reportRoot, abs).split(path.sep).join('/');
   };
 
   const controlLh = files.find(
@@ -263,14 +234,23 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // the viewport's bench run errored before writing report.json).
   void slug;
 
+  // A per-test report.json carrying engineError means the bench wrote a
+  // failure shell: no metrics, but the error short-message + full transcript
+  // are captured inline. Surface them as the PerfArtifact's user-facing
+  // `error` / `errorLog` so the report UI shows the same banner it would
+  // have shown when we kept engine-error.txt / engine-output.log on disk.
+  const errorPrefix = engineError ? `perf measurement failed: ${engineError}` : undefined;
+
   return {
     viewportLabel,
     metrics,
     regressedMetrics,
     improvedMetrics,
+    ...(errorPrefix ? { error: errorPrefix } : {}),
+    ...(engineOutput ? { errorLog: engineOutput } : {}),
     controlLighthouseHref: inlineHtml(controlLh),
     experimentLighthouseHref: inlineHtml(experimentLh),
-    timelineHref: inlineHtml(timeline),
+    timelineHref: relativeHref(timeline),
     timelinePreviewSvg,
     benchReportHref: inlineHtml(benchReport),
     diffHrefs: diffFiles
@@ -301,3 +281,89 @@ function prettyDiffLabel(filename: string): string {
   if (base === 'performance_profile.summary') return 'profile diff';
   return `${base.replace(/_/g, ' ')} diff`;
 }
+
+function emptyPerfArtifact(viewportLabel: string): PerfArtifact {
+  return {
+    viewportLabel,
+    metrics: [],
+    regressedMetrics: [],
+    improvedMetrics: [],
+    controlLighthouseHref: null,
+    experimentLighthouseHref: null,
+    timelineHref: null,
+    timelinePreviewSvg: null,
+    benchReportHref: null,
+    diffHrefs: [],
+  };
+}
+
+function perfRootFor(resultsRoot: string, viewport: Viewport): string {
+  return path.join(resultsRoot, `perf-${viewport.label}`);
+}
+
+function harvestPerfCategory(ctx: HarvestContext): CategoryResult | null {
+  const { slug, viewports, resultsRoot, controlURL, experimentURL, config, perfEngineFailedByLabel } = ctx;
+  const artifacts: PerfArtifact[] = [];
+  let anyHarvested = false;
+
+  for (const viewport of viewports) {
+    const perTestDir = path.join(perfRootFor(resultsRoot, viewport), slug);
+    const reportJsonExists = fs.existsSync(path.join(perTestDir, 'report.json'));
+    const viewportLabel = viewport.label;
+    // report.json is now present on both success and failure — the bench
+    // test loop folds `engineError` / `engineOutput` into a minimal
+    // report.json when the measurement throws, so the harvester is the
+    // single place per-viewport status is decided (metrics-or-error).
+    if (reportJsonExists) {
+      anyHarvested = true;
+      try {
+        artifacts.push(
+          harvestPerf({
+            perTestDir,
+            controlURL,
+            experimentURL,
+            perfConfig: config.perf,
+            reportRoot: resultsRoot,
+            slug,
+            viewportLabel,
+          }),
+        );
+      } catch (err) {
+        const message = (err as Error).message || String(err);
+        artifacts.push({
+          ...emptyPerfArtifact(viewportLabel),
+          error: `perf report unreadable: ${message}`,
+        });
+      }
+    } else if (perfEngineFailedByLabel.has(viewportLabel)) {
+      anyHarvested = true;
+      artifacts.push({
+        ...emptyPerfArtifact(viewportLabel),
+        error: `perf engine aborted before measuring this test at ${viewportLabel} — see the error banner above`,
+      });
+    }
+    // else: silently skip this viewport in the per-viewport artifacts
+    // list. The test-level "did not produce artifacts" signal is
+    // emitted once at the category level when NO viewport yielded data.
+  }
+
+  if (!anyHarvested) return null;
+
+  // Per-viewport statuses fold into the category status with error first
+  // (any viewport errored → the whole category reads as error, so it stays
+  // in sync with `test.status`), then regression, then improvement, else
+  // no_difference. Full pass per level — we can't break on regression
+  // because a later viewport might carry an error that should outrank it.
+  let status: Status = 'no_difference';
+  if (artifacts.some((p) => p.error)) status = 'error';
+  else if (artifacts.some((p) => p.regressedMetrics.length > 0)) status = 'regression';
+  else if (artifacts.some((p) => p.improvedMetrics.length > 0)) status = 'improvement';
+
+  return { testType: 'perf', status, artifacts };
+}
+
+export const perfCategoryDef: CategoryDef = {
+  testType: 'perf',
+  viewports: (config: AbTestsConfig) => config.perf.viewports,
+  harvest: harvestPerfCategory,
+};

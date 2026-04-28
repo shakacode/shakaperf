@@ -136,7 +136,7 @@ describe('preparePage', function () {
       const context = callArgs[0] as Record<string, unknown>;
       assert.strictEqual(context.scenario, baseTestDef);
       assert.deepStrictEqual(context.viewport, baseViewport);
-      assert.strictEqual(context.testType, TestType.VisualRegression);
+      assert.strictEqual(context.testType, 'visreg');
     });
 
     it('should call testFn with isControl=false for experiment page', async function () {

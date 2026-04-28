@@ -40,7 +40,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const tests = await loadTests({
     testPathPattern,
     filter,
-    testType: TestType.VisualRegression,
+    testType: 'visreg',
     log: function (msg) { logger.log(msg); },
   });
 
