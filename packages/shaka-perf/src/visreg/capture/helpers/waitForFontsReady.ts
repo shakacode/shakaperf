@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import type { Page } from 'playwright';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -11,8 +12,8 @@ export interface WaitForFontsReadyOptions {
 /**
  * Wait for `document.fonts.ready` — resolves once all pending font loads
  * have settled. Without this, visreg screenshots can race FOUT/layout-
- * shift and produce flaky pixel diffs. Swallows its own timeout with a
- * `[waitForFontsReady]` warn so the caller can keep going.
+ * shift and produce flaky pixel diffs. Throws on timeout so the run fails
+ * before capturing known-unstable text rendering.
  */
 export async function waitForFontsReady(
   page: Page,
@@ -36,19 +37,14 @@ export async function waitForFontsReady(
 
     if (outcome === 'ready') {
       console.log(
-        `${LOG_PREFIX} fonts ready for ${url} (${Date.now() - start} ms)`,
+        chalk.green(`${LOG_PREFIX} fonts ready for ${url} (${Date.now() - start} ms)`),
       );
     } else {
-      console.warn(
-        `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — continuing anyway`,
-      );
+      throw new Error(`${LOG_PREFIX} timed out after ${timeout} ms for ${url}`);
     }
   } catch (err) {
     if ((err as Error).name === 'TimeoutError') {
-      console.warn(
-        `${LOG_PREFIX} timed out for ${url}: ${(err as Error).message} — continuing anyway`,
-      );
-      return;
+      throw new Error(`${LOG_PREFIX} timed out for ${url}: ${(err as Error).message}`);
     }
     throw err;
   } finally {

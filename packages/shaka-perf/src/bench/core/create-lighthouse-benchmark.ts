@@ -54,25 +54,44 @@ function isWorkerAlive(worker: ChildProcess): boolean {
  * start of a line (chunk boundaries are arbitrary). Any residual bytes after
  * the last newline are flushed with the prefix on stream end.
  */
-function teeLinePrefixed(src: Readable, prefix: string, sinks: Writable[]): void {
+function stripAnsi(text: string): string {
+  return text.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u001b\u009b][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[a-zA-Z\d]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g,
+    '',
+  );
+}
+
+function teeLinePrefixed(
+  src: Readable,
+  group: string,
+  terminal: Writable,
+  logStream: Writable,
+): void {
   let buf = '';
+  const prefix = `[${group}] `;
   src.setEncoding('utf8');
   src.on('data', (chunk: string) => {
     buf += chunk;
     const lines = buf.split('\n');
     buf = lines.pop() ?? '';
     for (const line of lines) {
-      const out = `${prefix}${line}\n`;
-      for (const s of sinks) s.write(out);
+      terminal.write(`${prefix}${line}\n`);
+      logStream.write(stripAnsi(`${prefix}${line}\n`));
     }
   });
   src.on('end', () => {
     if (buf.length > 0) {
-      const out = `${prefix}${buf}`;
-      for (const s of sinks) s.write(out);
+      terminal.write(`${prefix}${buf}`);
+      logStream.write(stripAnsi(`${prefix}${buf}`));
       buf = '';
     }
   });
+}
+
+function workerEnvWithColors(): NodeJS.ProcessEnv {
+  if (process.env.NO_COLOR || process.env.FORCE_COLOR) return process.env;
+  return { ...process.env, FORCE_COLOR: '1' };
 }
 
 function safeSend(worker: ChildProcess, msg: object): boolean {
@@ -152,15 +171,17 @@ export default function createLighthouseBenchmark(
       // custom array we must include 'ipc' explicitly.
       const logFile = options.logFile;
       const worker = logFile
-        ? fork(workerPath, [], { stdio: ['inherit', 'pipe', 'pipe', 'ipc'] })
+        ? fork(workerPath, [], {
+          stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
+          env: workerEnvWithColors(),
+        })
         : fork(workerPath, [], { stdio: 'inherit' });
 
       let logStream: WriteStream | null = null;
       if (logFile && worker.stdout && worker.stderr) {
         logStream = createWriteStream(logFile, { flags: 'a' });
-        const prefix = `[${group}] `;
-        teeLinePrefixed(worker.stdout, prefix, [process.stdout, logStream]);
-        teeLinePrefixed(worker.stderr, prefix, [process.stderr, logStream]);
+        teeLinePrefixed(worker.stdout, group, process.stdout, logStream);
+        teeLinePrefixed(worker.stderr, group, process.stderr, logStream);
       }
 
       worker.on('error', (err) => {

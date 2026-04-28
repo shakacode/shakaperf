@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import type { ConsoleMessage, Page } from 'playwright';
 
 const DEFAULT_QUIET_MS = 700;
@@ -14,10 +15,9 @@ export interface WaitForNoMutationsOptions {
 /**
  * Wait until `document.body` has gone `quietMs` without observable DOM
  * mutations (anything other than a no-op attribute tick on `<body>`).
- * Resolves even on timeout — the outcome is logged with a
- * `[waitForNoMutations]` prefix. When the page is noisy, each mutation
- * batch is logged too (batch size, type breakdown, a three-mutation
- * sample) so it's obvious *why* the debounce never fires.
+ * Throws on timeout. When the page is noisy, each mutation batch is logged
+ * too (batch size, type breakdown, a three-mutation sample) so it's obvious
+ * why the debounce never fires.
  */
 export async function waitForNoMutations(
   page: Page,
@@ -33,7 +33,7 @@ export async function waitForNoMutations(
   // mutation diagnostics interleave with the node-side messages.
   const onPageConsole = (msg: ConsoleMessage) => {
     const text = msg.text();
-    if (text.startsWith(LOG_PREFIX)) console.log(text);
+    if (text.startsWith(LOG_PREFIX)) console.log(chalk.yellow(text));
   };
   page.on('console', onPageConsole);
 
@@ -130,19 +130,16 @@ export async function waitForNoMutations(
     const elapsed = Date.now() - start;
     if (outcome === 'settled') {
       console.log(
-        `${LOG_PREFIX} quiet for ${quietMs} ms, settled in ${elapsed} ms for ${url}`,
+        chalk.green(`${LOG_PREFIX} quiet for ${quietMs} ms, settled in ${elapsed} ms for ${url}`),
       );
     } else {
-      console.warn(
-        `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — DOM never stayed quiet for ${quietMs} ms. Continuing anyway.`,
+      throw new Error(
+        `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — DOM never stayed quiet for ${quietMs} ms.`,
       );
     }
   } catch (err) {
     if ((err as Error).name === 'TimeoutError') {
-      console.warn(
-        `${LOG_PREFIX} timed out for ${url}: ${(err as Error).message} — continuing anyway`,
-      );
-      return;
+      throw new Error(`${LOG_PREFIX} timed out for ${url}: ${(err as Error).message}`);
     }
     throw err;
   } finally {

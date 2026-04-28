@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import type { Page } from 'playwright';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -10,8 +11,8 @@ export interface WaitForNetworkSettleOptions {
 
 /**
  * Wait for playwright's `networkidle` load state (no network requests for
- * 500 ms). Resolves — even on timeout — so tests can continue; the outcome
- * is logged with a `[waitForNetworkSettle]` prefix either way.
+ * 500 ms). Throws on timeout so screenshots are not captured while network
+ * activity is still ongoing.
  */
 export async function waitForNetworkSettle(
   page: Page,
@@ -21,13 +22,10 @@ export async function waitForNetworkSettle(
   const start = Date.now();
   try {
     await page.waitForLoadState('networkidle', { timeout });
-    console.log(`${LOG_PREFIX} network idle for ${url} (${Date.now() - start} ms)`);
+    console.log(chalk.green(`${LOG_PREFIX} network idle for ${url} (${Date.now() - start} ms)`));
   } catch (err) {
     if ((err as Error).name === 'TimeoutError') {
-      console.warn(
-        `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — continuing anyway`,
-      );
-      return;
+      throw new Error(`${LOG_PREFIX} timed out after ${timeout} ms for ${url}`);
     }
     throw err;
   }

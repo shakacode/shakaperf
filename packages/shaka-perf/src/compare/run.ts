@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import chalk from 'chalk';
 import {
   loadTests,
   findAbTestsConfig,
@@ -248,7 +249,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // is now harvested per-test inside `buildTestResult`, mirroring perf —
   // this block only drives the engine invocation.
   if (categories.includes('visreg') && !opts.reportOnly) {
-    console.log('\n>>> visreg');
+    console.log(chalk.blue('\n>>> visreg'));
     try {
       await invokeVisregEngine({
         controlURL,
@@ -261,7 +262,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       });
     } catch (err) {
       const message = (err as Error).message || String(err);
-      console.error(`visreg engine error: ${message}`);
+      console.error(chalk.red(`visreg engine error: ${message}`));
       engineErrors.push(`visreg engine: ${message}`);
     }
   }
@@ -287,7 +288,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       // check and silently fall back to running every discovered test at
       // this viewport.
       if (bucketTests.length === 0) continue;
-      console.log(`\n>>> perf · ${viewport.label}`);
+      console.log(chalk.blue(`\n>>> perf · ${viewport.label}`));
       const perfRoot = perfRootFor(resultsRoot, viewport);
       // Pre-create each per-test dir so the bench engine's internal readdirSync
       // calls never ENOENT before a test has any profile files written.
@@ -313,7 +314,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         });
       } catch (err) {
         const message = (err as Error).message || String(err);
-        console.error(`perf engine error (${viewport.label}): ${message}`);
+        console.error(chalk.red(`perf engine error (${viewport.label}): ${message}`));
         engineErrors.push(`perf engine (${viewport.label}): ${message}`);
         perfEngineFailedByLabel.add(viewport.label);
       }
