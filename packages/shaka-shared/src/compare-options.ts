@@ -1,5 +1,9 @@
 import type { Command } from 'commander';
 
+// Placeholder values shown in `--help` when no abtests.config.ts is present.
+// They are NOT applied to actual runs — runs require a config that sets these
+// explicitly (see the bundled `init` template). Live overrides go through the
+// config file or `--controlURL` / `--experimentURL` flags.
 export const DEFAULT_CONTROL_URL = 'http://localhost:3020';
 export const DEFAULT_EXPERIMENT_URL = 'http://localhost:3030';
 

@@ -2,7 +2,7 @@ services:
   control-server:
     image: ${CONTROL_IMAGE_NAME}
     ports:
-      - "3020:3000"
+      - "${CONTROL_PORT}:3000"
     environment:
       PERF_EXPERIMENT: "false"
     volumes:
@@ -12,7 +12,7 @@ services:
   experiment-server:
     image: ${EXPERIMENT_IMAGE_NAME}
     ports:
-      - "3030:3000"
+      - "${EXPERIMENT_PORT}:3000"
     environment:
       PERF_EXPERIMENT: "true"
     volumes:

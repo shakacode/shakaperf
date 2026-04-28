@@ -10,6 +10,7 @@ import { runCmd } from './commands/run-cmd';
 import { runCmdParallel } from './commands/run-cmd-parallel';
 import { syncChanges } from './commands/sync-changes';
 import { say } from './commands/say';
+import { notifyServerStarted } from './commands/notify-server-started';
 import { copyChangesToSsh } from './commands/copy-changes-to-ssh';
 import { forwardPorts } from './commands/forward-ports';
 import { customizeDockerCompose } from './commands/customize-docker-compose';
@@ -197,6 +198,21 @@ export function createTwinServersCommands(): Command[] {
     }));
   commands.push(sayCmd);
 
+  const notifyServerStartedCmd = new Command('twins-notify-server-started')
+    .description('Wait for a twin server, announce it, then sleep (Procfile helper)')
+    .argument('<target>', 'control or experiment')
+    .option('--timeout <duration>', 'dockerize -timeout value', '60s')
+    .action(wrapAction(async function(this: Command, target) {
+      const { resolvedConfig } = await getResolvedConfig(this);
+      const usage = 'shaka-perf twins-notify-server-started <control|experiment>';
+      requireTarget(target, usage);
+      await notifyServerStarted(resolvedConfig, target, {
+        timeout: this.opts().timeout,
+      });
+    }));
+  addTwinsOptions(notifyServerStartedCmd);
+  commands.push(notifyServerStartedCmd);
+
   const SSH_HINT = `
 To get the correct arguments:
 1. Go to your CircleCI job
@@ -225,8 +241,8 @@ To get the correct arguments:
     .description('Forward CI ports to localhost')
     .argument('<port>', 'SSH port')
     .argument('<host>', 'SSH host')
-    .argument('[controlPort]', 'Control port (default: 3020)', '3020')
-    .argument('[experimentPort]', 'Experiment port (default: 3030)', '3030')
+    .argument('[controlPort]', 'Control port (default: from twin-servers config, fallback 3020)')
+    .argument('[experimentPort]', 'Experiment port (default: from twin-servers config, fallback 3030)')
     .addHelpText('after', SSH_HINT)
     .action(wrapAction(async function(this: Command, port, host, controlPort, experimentPort) {
       const { resolvedConfig } = await getResolvedConfig(this);

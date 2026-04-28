@@ -17,12 +17,17 @@ This guide walks you through adding twin-servers to a project that already has a
 
 ## 1. Create the config file
 
-Create `twin-servers.config.ts` in your project root:
+Run `shaka-perf init` to drop a starter `abtests.config.ts` into your project. It already defines the port constants used everywhere:
 
 ```ts
-import { defineConfig } from 'shaka-perf/twin-servers';
+const CONTROL_PORT = Number(process.env.SHAKAPERF_CONTROL_PORT ?? 3020);
+const EXPERIMENT_PORT = Number(process.env.SHAKAPERF_EXPERIMENT_PORT ?? 3030);
+```
 
-export default defineConfig({
+Uncomment the `twinServers:` block in that file and fill it in. Reuse the same constants for `ports` so a single env-var override (or a one-line edit) keeps the URLs visreg/perf hit, the host-port mapping in docker-compose, and the Procfile helper aligned:
+
+```ts
+twinServers: {
   projectDir: '.',
 
   // Where the control (baseline) branch will be checked out.
@@ -54,11 +59,19 @@ export default defineConfig({
     experiment: '~/my_app_experiment_docker_volume',
   },
 
+  // Required — pick a unique pair per project if you run multiple
+  // twin-servers setups side-by-side, otherwise the second
+  // `docker compose up` will fail with "address already in use".
+  ports: {
+    control: CONTROL_PORT,
+    experiment: EXPERIMENT_PORT,
+  },
+
   // Commands to run inside containers after start (e.g. database setup)
   setupCommands: [
     { command: 'bin/rails db:prepare', description: 'Preparing database' },
   ],
-});
+},
 ```
 
 ## 2. Prepare your Dockerfile
@@ -193,9 +206,11 @@ If a service already has a Dockerized setup in the project's dev instructions (e
 ```
 control-rails: yarn shaka-perf twins-run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
 experiment-rails: yarn shaka-perf twins-run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
-notify-control-server-started: dockerize -wait http://localhost:3020 -timeout 60s && yarn shaka-perf twins-say "Control server started" && while :; do sleep 2073600; done
-notify-experiment-server-started: dockerize -wait http://localhost:3030 -timeout 60s && yarn shaka-perf twins-say "Experiment server started" && while :; do sleep 2073600; done
+notify-control-server-started: yarn shaka-perf twins-notify-server-started control
+notify-experiment-server-started: yarn shaka-perf twins-notify-server-started experiment
 ```
+
+`twins-notify-server-started` runs `dockerize -wait http://localhost:<port>` with `<port>` derived from the config's `ports.control` / `ports.experiment`, then announces the server (TTS + stdout) and sleeps forever to keep Overmind happy. The TTS calls take a per-user file lock so the two announcements queue up instead of talking over each other when both servers come up around the same time.
 
 `run-overmind-command` runs the command inside the Docker container with proper PID tracking so Overmind can stop/restart individual processes.
 

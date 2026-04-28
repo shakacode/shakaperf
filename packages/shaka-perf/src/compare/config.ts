@@ -1,4 +1,3 @@
-import * as os from 'node:os';
 import { z } from 'zod';
 import {
   DESKTOP_VIEWPORT,
@@ -8,8 +7,6 @@ import {
 } from 'shaka-shared';
 import { TwinServersConfigSchema } from '../twin-servers/types';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
-
-const DEFAULT_PERF_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
@@ -96,8 +93,8 @@ const ResembleOutputOptionsSchema = z
 
 export const SharedConfigSchema = z
   .object({
-    controlURL: z.string().url().default('http://localhost:3020'),
-    experimentURL: z.string().url().default('http://localhost:3030'),
+    controlURL: z.string().url(),
+    experimentURL: z.string().url(),
     testPathPattern: z.string().optional(),
     filter: z.string().optional(),
     resultsFolder: z.string().default('compare-results'),
@@ -143,7 +140,7 @@ export const PerfConfigSchema = z
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
-    parallelism: z.number().int().positive().default(DEFAULT_PERF_PARALLELISM),
+    parallelism: z.number().int().positive(),
     sampleTimeoutMs: z.number().int().positive().default(120000),
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is
@@ -165,9 +162,9 @@ export const PerfConfigSchema = z
 
 export const AbTestsConfigSchema = z
   .object({
-    shared: SharedConfigSchema.optional().default({}),
+    shared: SharedConfigSchema,
     visreg: VisregConfigSchema.optional().default({}),
-    perf: PerfConfigSchema.optional().default({}),
+    perf: PerfConfigSchema,
     twinServers: TwinServersConfigSchema.optional(),
   })
   .superRefine((cfg, ctx) => {

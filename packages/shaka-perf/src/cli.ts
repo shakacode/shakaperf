@@ -55,8 +55,8 @@ async function resolveCompareDefaults(argv: string[]): Promise<ResolvedDefaults>
     const raw = await loadAbTestsConfig(configPath);
     const parsed = parseAbTestsConfig(raw);
     return {
-      controlURL: parsed.shared.controlURL ?? DEFAULT_CONTROL_URL,
-      experimentURL: parsed.shared.experimentURL ?? DEFAULT_EXPERIMENT_URL,
+      controlURL: parsed.shared.controlURL,
+      experimentURL: parsed.shared.experimentURL,
     };
   } catch (err) {
     console.warn(

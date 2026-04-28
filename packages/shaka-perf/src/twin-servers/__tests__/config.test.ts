@@ -15,6 +15,7 @@ describe('defineConfig', () => {
       procfile: 'Procfile',
       images: { control: 'img:ctrl', experiment: 'img:exp' },
       volumes: { control: '/vol/ctrl', experiment: '/vol/exp' },
+      ports: { control: 3020, experiment: 3030 },
     } satisfies TwinServersConfig;
     expect(defineConfig(config)).toBe(config);
   });
@@ -88,6 +89,7 @@ describe('resolveConfig', () => {
       procfile: 'Procfile.twin',
       images: { control: 'img:ctrl', experiment: 'img:exp' },
       volumes: { control: '/tmp/ctrl_vol', experiment: '/tmp/exp_vol' },
+      ports: { control: 3020, experiment: 3030 },
       ...overrides,
     };
   }
@@ -129,6 +131,19 @@ describe('resolveConfig', () => {
     const resolved = resolveConfig(config, tmpDir);
     expect(resolved.setupCommands).toHaveLength(1);
     expect(resolved.setupCommands[0].command).toBe('rake db:migrate');
+  });
+
+  it('rejects missing ports', () => {
+    const { ports: _omit, ...rest } = makeConfig();
+    expect(() => resolveConfig(rest, tmpDir)).toThrow(/ports/);
+  });
+
+  it('passes through explicit ports', () => {
+    const resolved = resolveConfig(
+      makeConfig({ ports: { control: 3060, experiment: 3090 } }),
+      tmpDir,
+    );
+    expect(resolved.ports).toEqual({ control: 3060, experiment: 3090 });
   });
 
   it('throws on Zod validation failure', () => {

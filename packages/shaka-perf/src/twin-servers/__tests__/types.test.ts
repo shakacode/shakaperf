@@ -56,6 +56,7 @@ describe('TwinServersConfigSchema', () => {
       control: '/tmp/control',
       experiment: '/tmp/experiment',
     },
+    ports: { control: 3020, experiment: 3030 },
   };
 
   it('validates a complete valid config', () => {

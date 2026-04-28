@@ -1,9 +1,15 @@
+import * as os from 'node:os';
 import { defineConfig } from 'shaka-perf/compare';
+
+const DEFAULT_CONTROL_PORT = 3060;
+const DEFAULT_EXPERIMENT_PORT = 3090;
+const CONTROL_PORT = Number(process.env.SHAKAPERF_CONTROL_PORT ?? DEFAULT_CONTROL_PORT);
+const EXPERIMENT_PORT = Number(process.env.SHAKAPERF_EXPERIMENT_PORT ?? DEFAULT_EXPERIMENT_PORT);
 
 export default defineConfig({
   shared: {
-    controlURL: 'http://localhost:3020',
-    experimentURL: 'http://localhost:3030',
+    controlURL: `http://localhost:${CONTROL_PORT}`,
+    experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     resultsFolder: 'compare-results',
   },
 
@@ -14,14 +20,12 @@ export default defineConfig({
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
-    asyncCaptureLimit: 5,
-    compareRetries: 2,
-    compareRetryDelay: 1000,
     maxNumDiffPixels: 50,
     defaultMisMatchThreshold: 0.1,
   },
 
   perf: {
+    parallelism: Math.max(1, Math.floor(os.cpus().length / 2)),
     // viewports default to ['desktop', 'phone']. `formFactor` and
     // `screenEmulation` are NOT set here — the viewport referenced from
     // shared.viewports owns them; the runner lowers them via
@@ -55,6 +59,10 @@ export default defineConfig({
     volumes: {
       control: '~/demo_ecommerce_control_docker_volume',
       experiment: '~/demo_ecommerce_experiment_docker_volume',
+    },
+    ports: {
+      control: CONTROL_PORT,
+      experiment: EXPERIMENT_PORT,
     },
     setupCommands: [
       { command: 'bin/rails db:prepare', description: 'Preparing database' },
