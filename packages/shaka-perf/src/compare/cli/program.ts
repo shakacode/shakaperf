@@ -16,11 +16,11 @@ function parseCategories(value: string): Category[] {
 }
 
 export interface CreateCompareCommandOptions {
-  controlURLDefault?: string;
-  experimentURLDefault?: string;
+  controlURLDefault: string;
+  experimentURLDefault: string;
 }
 
-export function createCompareCommand(options: CreateCompareCommandOptions = {}): Command {
+export function createCompareCommand(options: CreateCompareCommandOptions): Command {
   const cmd = new Command('compare')
     .description('Run visreg + perf comparison and produce a single self-contained HTML report')
     .option(

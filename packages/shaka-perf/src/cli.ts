@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import {
-  DEFAULT_CONTROL_URL,
-  DEFAULT_EXPERIMENT_URL,
-  findAbTestsConfig,
-  loadAbTestsConfig,
-} from 'shaka-shared';
 import { createTwinServersCommands } from './twin-servers/program';
 import { createCompareCommand } from './compare/cli/program';
 import { createInitCommand } from './compare/cli/init';
-import { parseAbTestsConfig } from './compare/config';
+import { resolveAbTestsConfig } from './compare/config';
 
 const { version } = require('../package.json');
 
@@ -22,18 +16,13 @@ interface ResolvedDefaults {
 /**
  * Pre-scan argv for `-c/--config` so we can load `abtests.config.ts` BEFORE
  * registering commander options. This lets `--controlURL` / `--experimentURL`
- * show their effective defaults (config value or built-in fallback) in
+ * show their effective defaults (config value or bundled template) in
  * `--help` output. Unknown options are ignored here; the real parser runs later.
  *
- * On any load/parse failure we fall back to the built-in defaults and warn,
- * so `--help` still works on a broken config.
+ * Soft-fallback to the bundled template via `resolveAbTestsConfig`'s
+ * `fallbackOnError` so a broken user config doesn't block `--help`.
  */
 async function resolveCompareDefaults(argv: string[]): Promise<ResolvedDefaults> {
-  const fallback: ResolvedDefaults = {
-    controlURL: DEFAULT_CONTROL_URL,
-    experimentURL: DEFAULT_EXPERIMENT_URL,
-  };
-
   const pre = new Command()
     .option('-c, --config <path>')
     .allowUnknownOption(true)
@@ -41,29 +30,23 @@ async function resolveCompareDefaults(argv: string[]): Promise<ResolvedDefaults>
     .helpOption(false)
     .exitOverride();
 
+  let cliConfigPath: string | undefined;
   try {
     pre.parse(argv, { from: 'node' });
+    cliConfigPath = pre.opts().config as string | undefined;
   } catch {
-    return fallback;
+    // Bad argv — leave cliConfigPath undefined; resolveAbTestsConfig will
+    // then fall back to the bundled template.
   }
 
-  const cliConfigPath = pre.opts().config as string | undefined;
-  const configPath = cliConfigPath ?? findAbTestsConfig();
-  if (!configPath) return fallback;
-
-  try {
-    const raw = await loadAbTestsConfig(configPath);
-    const parsed = parseAbTestsConfig(raw);
-    return {
-      controlURL: parsed.shared.controlURL,
-      experimentURL: parsed.shared.experimentURL,
-    };
-  } catch (err) {
-    console.warn(
-      `shaka-perf: failed to pre-load abtests.config for CLI defaults — falling back to built-ins. (${(err as Error).message})`,
-    );
-    return fallback;
-  }
+  const { config } = await resolveAbTestsConfig({
+    configPath: cliConfigPath,
+    fallbackOnError: true,
+  });
+  return {
+    controlURL: config.shared.controlURL,
+    experimentURL: config.shared.experimentURL,
+  };
 }
 
 async function main(): Promise<void> {

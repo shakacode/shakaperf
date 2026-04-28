@@ -1,12 +1,29 @@
+import * as path from 'node:path';
 import { z } from 'zod';
 import {
   DESKTOP_VIEWPORT,
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
+  findAbTestsConfig,
+  loadAbTestsConfig,
   type Viewport,
 } from 'shaka-shared';
 import { TwinServersConfigSchema } from '../twin-servers/types';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
+
+// Bundled `init` template — same file `shaka-perf init` copies into the user's
+// project. Acts as the implicit default when no `abtests.config.ts` is found,
+// so the runtime and the CLI's `--help` pre-scan agree on the effective
+// defaults. At runtime __dirname is dist/compare/, so two levels up lands at
+// the package root (templates/ ships with the npm tarball via package.json
+// `files`).
+const BUNDLED_TEMPLATE_PATH = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  'templates',
+  'abtests.config.ts',
+);
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
@@ -229,5 +246,63 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     visreg: { ...parsed.visreg, viewports: resolve(parsed.visreg.viewports) },
     perf: { ...parsed.perf, viewports: resolve(parsed.perf.viewports) },
     twinServers: parsed.twinServers,
+  };
+}
+
+export interface ResolveAbTestsConfigOptions {
+  /** Explicit path; skips the cwd-based lookup. */
+  configPath?: string;
+  /** Working directory for the lookup. Defaults to process.cwd(). */
+  cwd?: string;
+  /**
+   * If true, swallow load/parse errors from the user's config and fall back
+   * to the bundled template (with a console.warn breadcrumb). The CLI's
+   * `--help` pre-scan uses this so a broken user config doesn't block
+   * `shaka-perf compare --help`. Real runs (`runCompare`) leave it false so
+   * a bad config fails loudly instead of silently switching to defaults.
+   */
+  fallbackOnError?: boolean;
+}
+
+export interface ResolvedAbTestsConfig {
+  /** Path that was actually loaded — user's config, or the bundled template. */
+  configPath: string;
+  /** True when no user config was found (or load failed and we fell back). */
+  usedBundledTemplate: boolean;
+  config: AbTestsConfig;
+}
+
+/**
+ * Single source of truth for "which abtests.config.ts does shaka-perf use".
+ * Both `runCompare`'s loadConfig and the CLI's `--help` pre-scan call this so
+ * the runtime config and the CLI defaults can never disagree.
+ */
+export async function resolveAbTestsConfig(
+  opts: ResolveAbTestsConfigOptions = {},
+): Promise<ResolvedAbTestsConfig> {
+  const userPath = opts.configPath ?? findAbTestsConfig(opts.cwd);
+
+  if (userPath) {
+    try {
+      const raw = await loadAbTestsConfig(userPath);
+      return {
+        configPath: userPath,
+        usedBundledTemplate: false,
+        config: parseAbTestsConfig(raw),
+      };
+    } catch (err) {
+      if (!opts.fallbackOnError) throw err;
+      console.warn(
+        `shaka-perf: failed to load ${userPath} — falling back to the bundled init template. ` +
+          `(${(err as Error).message})`,
+      );
+    }
+  }
+
+  const raw = await loadAbTestsConfig(BUNDLED_TEMPLATE_PATH);
+  return {
+    configPath: BUNDLED_TEMPLATE_PATH,
+    usedBundledTemplate: true,
+    config: parseAbTestsConfig(raw),
   };
 }
