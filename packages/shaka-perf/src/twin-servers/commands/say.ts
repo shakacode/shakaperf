@@ -13,6 +13,7 @@ const LOCK_PATH = path.join(
   `shaka-perf-say-${process.env.USER ?? process.env.USERNAME ?? 'shared'}.lock`,
 );
 const LOCK_RETRY_MS = 100;
+const LOCK_MAX_ATTEMPTS = 50; // 50 * 100ms = 5s
 
 function commandExists(command: string): Promise<boolean> {
   // `which` (coreutils on Linux, /usr/bin/which on macOS) avoids the
@@ -54,8 +55,14 @@ function isProcessAlive(pid: number): boolean {
   }
 }
 
-async function acquireLock(): Promise<void> {
-  while (true) {
+/**
+ * Try to take the lock. Returns true on success. Returns false after the
+ * retry budget is exhausted, so a wedged lock (filesystem permission flip,
+ * something we can't unlink) can't hang `say` indefinitely — callers proceed
+ * without serialization in that degraded case.
+ */
+async function acquireLock(): Promise<boolean> {
+  for (let attempt = 0; attempt < LOCK_MAX_ATTEMPTS; attempt++) {
     try {
       const fd = fs.openSync(
         LOCK_PATH,
@@ -63,14 +70,19 @@ async function acquireLock(): Promise<void> {
       );
       fs.writeSync(fd, String(process.pid));
       fs.closeSync(fd);
-      return;
+      return true;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-      // The lock holder may have crashed before releasing — if its PID is
-      // dead, take over the lock so we don't deadlock on a stale file.
+      // Another process holds the lock — but it might have crashed before
+      // releasing, or crashed mid-write leaving an empty/garbled PID file.
+      // Treat any unparseable / dead PID as stale and take over.
       try {
         const holderPid = Number(fs.readFileSync(LOCK_PATH, 'utf8'));
-        if (Number.isFinite(holderPid) && holderPid > 0 && !isProcessAlive(holderPid)) {
+        const stale =
+          !Number.isFinite(holderPid) ||
+          holderPid <= 0 ||
+          !isProcessAlive(holderPid);
+        if (stale) {
           fs.unlinkSync(LOCK_PATH);
           continue;
         }
@@ -80,6 +92,11 @@ async function acquireLock(): Promise<void> {
       await new Promise((r) => setTimeout(r, LOCK_RETRY_MS));
     }
   }
+  printWarning(
+    `Could not acquire say lock after ${LOCK_MAX_ATTEMPTS * LOCK_RETRY_MS}ms — ` +
+      'speaking without serialization (announcements may overlap)',
+  );
+  return false;
 }
 
 function releaseLock(): void {
@@ -107,10 +124,10 @@ export async function say(message: string): Promise<void> {
     return;
   }
 
-  await acquireLock();
+  const acquired = await acquireLock();
   try {
     await runAndWait(backend.cmd, backend.argsFor(message));
   } finally {
-    releaseLock();
+    if (acquired) releaseLock();
   }
 }
