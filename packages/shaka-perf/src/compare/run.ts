@@ -122,11 +122,22 @@ function combineStatus(perCategory: CategoryResult[]): Status {
   return 'no_difference';
 }
 
+// Bundled `init` template — same file `shaka-perf init` copies into the user's
+// project. Acts as the implicit default when no `abtests.config.ts` is found,
+// so `shaka-perf compare` works zero-config and stays in lockstep with `init`.
+// At runtime __dirname is dist/compare/, so two levels up lands at the package
+// root (templates/ ships with the npm tarball via package.json `files`).
+const BUNDLED_TEMPLATE_PATH = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  'templates',
+  'abtests.config.ts',
+);
+
 async function loadConfig(opts: CompareRunOptions): Promise<AbTestsConfig> {
-  const configPath = opts.configPath ?? findAbTestsConfig(opts.cwd);
-  if (!configPath) {
-    return parseAbTestsConfig({});
-  }
+  const configPath =
+    opts.configPath ?? findAbTestsConfig(opts.cwd) ?? BUNDLED_TEMPLATE_PATH;
   const raw = await loadAbTestsConfig(configPath);
   return parseAbTestsConfig(raw);
 }
