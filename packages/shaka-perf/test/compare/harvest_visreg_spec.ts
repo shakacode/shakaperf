@@ -2,13 +2,18 @@ import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { harvestVisreg } from '../../src/compare/harvest/visreg';
+import { harvestVisreg, visregCategoryDef } from '../../src/compare/harvest/visreg';
+import type { HarvestContext } from '../../src/compare/category-def';
+import type { Viewport } from 'shaka-shared';
 
-function writeReport(dir: string, data: unknown) {
-  fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(data));
-}
+const DESKTOP: Viewport = {
+  label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1,
+};
+const TABLET: Viewport = {
+  label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3,
+};
 
-function withTempReportDir(cb: (dir: string) => void) {
+function withTempResultsRoot(cb: (resultsRoot: string) => void) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-harvest-'));
   try {
     cb(dir);
@@ -17,16 +22,32 @@ function withTempReportDir(cb: (dir: string) => void) {
   }
 }
 
+function writePerTestReport(
+  resultsRoot: string,
+  slug: string,
+  viewportLabel: string,
+  data: unknown,
+) {
+  const dir = path.join(resultsRoot, `visreg-${viewportLabel}`, slug);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(data));
+}
+
+function harvestCategory(resultsRoot: string, slug: string, viewports: Viewport[]) {
+  const ctx = { slug, viewports, resultsRoot } as unknown as HarvestContext;
+  return visregCategoryDef.harvest(ctx);
+}
+
 describe('harvestVisreg', function () {
-  it('marks a pair as visual_change when the engine wrote a diff image, even if misMatch% is 0', function () {
-    // Dimension-only fail: resemble writes a `failed_diff_*.png` because
+  it('marks a viewport as changed when the engine wrote a diff image, even if misMatch% is 0', function () {
+    // Dimension-only fail: the engine writes a `failed_diff_*.png` because
     // requireSameDimensions was violated, but the pixel-level
     // misMatchPercentage is still 0. The per-row chip in VisregSlot keys off
     // `diffImage !== null`, so the test-level `visual_change` status must
     // agree — otherwise the chip shows on a row whose test pill says "no
     // diff" (the inversion users reported).
-    withTempReportDir((dir) => {
-      writeReport(dir, {
+    withTempResultsRoot((resultsRoot) => {
+      writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         tests: [{
           pair: {
@@ -40,17 +61,21 @@ describe('harvestVisreg', function () {
           status: 'fail',
         }],
       });
-      const out = harvestVisreg(dir);
-      const result = out.get('Homepage');
-      assert.ok(result, 'Homepage result present');
+
+      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      assert.ok(harvested);
+      assert.strictEqual(harvested!.hasChange, true);
+      assert.strictEqual(harvested!.artifacts[0].diffImage !== null, true);
+
+      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
+      assert.ok(result);
       assert.strictEqual(result!.status, 'visual_change');
-      assert.strictEqual(result!.visreg![0].diffImage !== null, true);
     });
   });
 
-  it('marks a pair as no_difference when neither a diff image nor an error is present', function () {
-    withTempReportDir((dir) => {
-      writeReport(dir, {
+  it('marks a category as no_difference when neither a diff image nor an error is present', function () {
+    withTempResultsRoot((resultsRoot) => {
+      writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         tests: [{
           pair: {
@@ -63,52 +88,52 @@ describe('harvestVisreg', function () {
           status: 'pass',
         }],
       });
-      const out = harvestVisreg(dir);
-      const result = out.get('Homepage');
+
+      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      assert.ok(harvested);
+      assert.strictEqual(harvested!.hasChange, false);
+      assert.strictEqual(harvested!.engineError, null);
+      assert.strictEqual(harvested!.artifacts[0].diffImage, null);
+
+      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
-      assert.strictEqual(result!.visreg![0].diffImage, null);
+      assert.strictEqual(result!.error, undefined);
     });
   });
 
-  it('surfaces pair-level engine errors via category.error (not as visual_change) when no diff image was written', function () {
+  it('surfaces the unified engineError via category.error (not as visual_change) when no diff image was written', function () {
     // Regression test for the "VISUAL CHANGE pill but every row shows NO DIFF"
-    // screenshot. A pair that errored (selector not found, reference missing,
-    // engine crash on one viewport) used to bubble `hasError` into the
-    // `changed` predicate, so the test-level status jumped to `visual_change`
-    // even though the pair has no diffImage — the UI then showed an orange
-    // VISUAL CHANGE pill sitting above rows that all render as NoDiffCards
-    // with green NO DIFF badges. The error itself is now surfaced via
-    // `category.error` (error banner + error pill) instead.
-    withTempReportDir((dir) => {
-      writeReport(dir, {
+    // screenshot. Pair-level errors used to bubble into `changed`, so the
+    // test-level status jumped to `visual_change` on a pair with no diffImage —
+    // the UI then showed an orange VISUAL CHANGE pill above rows that all
+    // rendered as NoDiffCards with green NO DIFF badges. Per-pair errors are
+    // now folded into the unified top-level `engineError` payload by the
+    // engine writer, harvested into `engineError`, and surfaced via
+    // `CategoryResult.error` (error banner + error pill) instead.
+    withTempResultsRoot((resultsRoot) => {
+      writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
-        tests: [
-          {
-            pair: {
-              label: 'Homepage',
-              viewportLabel: 'desktop',
-              selector: 'document',
-              misMatchThreshold: 0.01,
-              diff: { misMatchPercentage: '0.00', isSameDimensions: true },
-              engineErrorMsg: 'browser crashed',
-            },
-            status: 'fail',
+        engineError: 'browser crashed',
+        engineOutput: '── document ──\nbrowser crashed',
+        tests: [{
+          pair: {
+            label: 'Homepage',
+            viewportLabel: 'desktop',
+            selector: 'document',
+            misMatchThreshold: 0.01,
+            diff: { misMatchPercentage: '0.00', isSameDimensions: true },
           },
-          {
-            pair: {
-              label: 'Homepage',
-              viewportLabel: 'tablet',
-              selector: 'document',
-              misMatchThreshold: 0.01,
-              diff: { misMatchPercentage: '0.00', isSameDimensions: true },
-            },
-            status: 'pass',
-          },
-        ],
+          status: 'fail',
+        }],
       });
-      const out = harvestVisreg(dir);
-      const result = out.get('Homepage');
+
+      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      assert.ok(harvested);
+      assert.strictEqual(harvested!.hasChange, false);
+      assert.strictEqual(harvested!.engineError, 'browser crashed');
+
+      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
       assert.ok(result!.error, 'pair error is surfaced via category.error');
@@ -117,40 +142,43 @@ describe('harvestVisreg', function () {
     });
   });
 
-  it('aggregates multiple pair errors into one category.error summary', function () {
-    withTempReportDir((dir) => {
-      writeReport(dir, {
+  it('aggregates engineErrors across viewports into one category.error summary', function () {
+    withTempResultsRoot((resultsRoot) => {
+      writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
-        tests: [
-          {
-            pair: {
-              label: 'Homepage',
-              viewportLabel: 'desktop',
-              selector: 'document',
-              misMatchThreshold: 0.01,
-              diff: { misMatchPercentage: '0.00', isSameDimensions: true },
-              engineErrorMsg: 'selector not found',
-            },
-            status: 'fail',
+        engineError: 'selector not found',
+        engineOutput: '── document ──\nselector not found',
+        tests: [{
+          pair: {
+            label: 'Homepage',
+            viewportLabel: 'desktop',
+            selector: 'document',
+            misMatchThreshold: 0.01,
+            diff: { misMatchPercentage: '0.00', isSameDimensions: true },
           },
-          {
-            pair: {
-              label: 'Homepage',
-              viewportLabel: 'tablet',
-              selector: 'document',
-              misMatchThreshold: 0.01,
-              diff: { misMatchPercentage: '0.00', isSameDimensions: true },
-              error: 'reference file missing',
-            },
-            status: 'fail',
-          },
-        ],
+          status: 'fail',
+        }],
       });
-      const out = harvestVisreg(dir);
-      const result = out.get('Homepage');
+      writePerTestReport(resultsRoot, 'homepage', 'tablet', {
+        testSuite: 'visreg',
+        engineError: 'reference file missing',
+        engineOutput: '── document ──\nreference file missing',
+        tests: [{
+          pair: {
+            label: 'Homepage',
+            viewportLabel: 'tablet',
+            selector: 'document',
+            misMatchThreshold: 0.01,
+            diff: { misMatchPercentage: '0.00', isSameDimensions: true },
+          },
+          status: 'fail',
+        }],
+      });
+
+      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP, TABLET]);
       assert.ok(result);
       assert.ok(result!.error);
-      assert.match(result!.error!, /2 pair\(s\) errored/);
+      assert.match(result!.error!, /2 viewport\(s\) errored/);
       assert.match(result!.error!, /selector not found/);
       assert.match(result!.error!, /reference file missing/);
     });
