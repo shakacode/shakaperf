@@ -231,22 +231,14 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedScenarios[0]._testFn, mockTestFn, 'Should attach testFn');
   });
 
-  it('should use default control and experiment URLs', async function () {
-    const capturedScenarios: Array<Record<string, unknown>> = [];
+  it('should throw when controlURL/experimentURL are missing from args', async function () {
     const createComparisonBitmaps = createModule({
       registeredTests: [{
-        name: 'Default URLs test',
+        name: 'Missing URLs test',
         startingPath: '/products',
         options: {},
         testFn: async function () {},
       }],
-      runCompareScenario: {
-        playwright: function (scenarioView: Record<string, unknown>) {
-          capturedConfig = scenarioView.config as Record<string, unknown>;
-          capturedScenarios.push(scenarioView.scenario as Record<string, unknown>);
-          return Promise.resolve({ testPairs: [] });
-        },
-      },
     });
 
     const configWithoutURLs = {
@@ -257,11 +249,18 @@ describe('createComparisonBitmaps', function () {
       },
     };
 
-    await createComparisonBitmaps(configWithoutURLs);
-
-    // Without explicit URLs, defaults should be used
-    assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/products');
-    assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/products');
+    let errorThrown = false;
+    try {
+      await createComparisonBitmaps(configWithoutURLs);
+    } catch (e: unknown) {
+      errorThrown = true;
+      assert(e instanceof Error);
+      assert(
+        /controlURL and experimentURL must be provided/.test(e.message),
+        'Error should mention required URLs: ' + e.message,
+      );
+    }
+    assert(errorThrown, 'Should have thrown when URLs are missing');
   });
 
   it('should auto-discover test files when testFile is not provided', async function () {
@@ -285,6 +284,8 @@ describe('createComparisonBitmaps', function () {
     const configWithoutTestFile = {
       ...mockConfig,
       args: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
         _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
       },
     };
@@ -331,6 +332,8 @@ describe('createComparisonBitmaps', function () {
     const configNoTestFile = {
       ...mockConfig,
       args: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
         _loadedVisregConfig: (mockConfig.args as Record<string, unknown>)._loadedVisregConfig,
       },
     };

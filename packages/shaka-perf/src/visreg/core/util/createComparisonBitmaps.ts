@@ -33,8 +33,14 @@ const CONCURRENCY_DEFAULT = 10;
 
 async function decorateConfigForTestFile (config: RuntimeConfig) {
   const testPathPattern = config.args.testPathPattern as string | undefined;
-  const controlURL = (config.args.controlURL as string) || 'http://localhost:3020';
-  const experimentURL = (config.args.experimentURL as string) || 'http://localhost:3030';
+  const controlURL = config.args.controlURL as string;
+  const experimentURL = config.args.experimentURL as string;
+  if (!controlURL || !experimentURL) {
+    throw new Error(
+      'visreg engine: controlURL and experimentURL must be provided via args ' +
+      '(the compare bridge sets these — direct callers must too).',
+    );
+  }
 
   const filter = config.args.filter as string | undefined;
   const tests = await loadTests({
