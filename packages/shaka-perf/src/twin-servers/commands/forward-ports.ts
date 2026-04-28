@@ -13,9 +13,6 @@ export interface SshTarget {
   port: string;
 }
 
-const DEFAULT_CONTROL_PORT = '3020';
-const DEFAULT_EXPERIMENT_PORT = '3030';
-
 interface PortMapping {
   local: string;
   remote: string;
@@ -67,8 +64,8 @@ export async function forwardPorts(
   const { verbose } = options;
   const { host, port } = sshTarget;
 
-  const controlMapping = parsePortMapping(options.controlPort || DEFAULT_CONTROL_PORT);
-  const experimentMapping = parsePortMapping(options.experimentPort || DEFAULT_EXPERIMENT_PORT);
+  const controlMapping = parsePortMapping(options.controlPort || String(config.ports.control));
+  const experimentMapping = parsePortMapping(options.experimentPort || String(config.ports.experiment));
 
   printBanner('SSH Port Forwarding to a CI Job with running Twin Servers');
 

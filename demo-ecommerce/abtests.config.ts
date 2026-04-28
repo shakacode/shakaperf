@@ -1,11 +1,15 @@
 import { defineConfig } from 'shaka-perf/compare';
 
+const DEFAULT_CONTROL_PORT = 3060;
+const DEFAULT_EXPERIMENT_PORT = 3090;
+const CONTROL_PORT = Number(process.env.SHAKAPERF_CONTROL_PORT ?? DEFAULT_CONTROL_PORT);
+const EXPERIMENT_PORT = Number(process.env.SHAKAPERF_EXPERIMENT_PORT ?? DEFAULT_EXPERIMENT_PORT);
+
 export default defineConfig({
   shared: {
-    controlURL: 'http://localhost:3020',
-    experimentURL: 'http://localhost:3030',
+    controlURL: `http://localhost:${CONTROL_PORT}`,
+    experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     resultsFolder: 'compare-results',
-    retries: 1
   },
 
   visreg: {
@@ -38,7 +42,6 @@ export default defineConfig({
       output: 'html',
       onlyCategories: ['performance'],
     },
-    viewports: ['phone'],
   },
 
   twinServers: {
@@ -54,6 +57,10 @@ export default defineConfig({
     volumes: {
       control: '~/demo_ecommerce_control_docker_volume',
       experiment: '~/demo_ecommerce_experiment_docker_volume',
+    },
+    ports: {
+      control: CONTROL_PORT,
+      experiment: EXPERIMENT_PORT,
     },
     setupCommands: [
       { command: 'bin/rails db:prepare', description: 'Preparing database' },

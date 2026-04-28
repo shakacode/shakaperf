@@ -23,6 +23,17 @@ export const TwinServersConfigSchema = z.object({
     control: z.string().min(1, 'volumes.control is required'),
     experiment: z.string().min(1, 'volumes.experiment is required'),
   }),
+  /**
+   * Host ports the twin containers bind to. Required — there's no sensible
+   * default that works when you run two twin-servers projects side-by-side,
+   * so each project picks its own pair. The `init` template wires these
+   * through `SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT` so the
+   * same value drives `shared.*URL` and Docker's host-port mapping.
+   */
+  ports: z.object({
+    control: z.number().int().positive(),
+    experiment: z.number().int().positive(),
+  }),
   /** Optional setup commands to run in containers after they start */
   setupCommands: z.array(SetupCommandSchema).optional(),
 });

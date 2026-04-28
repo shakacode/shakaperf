@@ -54,6 +54,7 @@ function createMockConfig(tmpDir: string): ResolvedConfig {
       control: path.join(tmpDir, 'volumes', 'control'),
       experiment: path.join(tmpDir, 'volumes', 'experiment'),
     },
+    ports: { control: 3020, experiment: 3030 },
     setupCommands: [],
   };
 }

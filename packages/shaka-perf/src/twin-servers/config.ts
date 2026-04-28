@@ -82,6 +82,7 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
       control: expandTilde(validConfig.volumes.control),
       experiment: expandTilde(validConfig.volumes.experiment),
     },
+    ports: validConfig.ports,
     setupCommands: validConfig.setupCommands ?? [],
   };
 }
