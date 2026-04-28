@@ -20,6 +20,12 @@ describe('compare command', function () {
       __esModule: true,
       default: executeCommandStub
     }));
+    // execute() loads the test list to know which per-test subdirs to wipe.
+    // Stub it so the test doesn't depend on cwd-discovered ab-test files.
+    jest.mock('shaka-shared', () => ({
+      ...jest.requireActual('shaka-shared'),
+      loadTests: jest.fn().mockResolvedValue([]),
+    }));
 
     compare = require('../../../../src/visreg/core/command/compare') as unknown as typeof compare;
   }
@@ -28,14 +34,16 @@ describe('compare command', function () {
     await setupMocks();
   });
 
+  function makeConfig(extra: Record<string, unknown> = {}): Record<string, unknown> {
+    return { args: {}, scenarios: [], viewports: [], ...extra };
+  }
+
   it('should call createComparisonBitmaps with config', async function () {
-    const config = {
-      scenarios: [],
-      viewports: [],
+    const config = makeConfig({
       compareRetries: 3,
       compareRetryDelay: 5000,
-      maxNumDiffPixels: 10
-    };
+      maxNumDiffPixels: 10,
+    });
 
     await compare.execute(config);
 
@@ -44,7 +52,7 @@ describe('compare command', function () {
   });
 
   it('should call _report command after createComparisonBitmaps succeeds', async function () {
-    const config = { scenarios: [], viewports: [] };
+    const config = makeConfig();
 
     await compare.execute(config);
 
@@ -56,7 +64,7 @@ describe('compare command', function () {
     const testError = new Error('Test error from createComparisonBitmaps');
     createComparisonBitmapsStub.mockRejectedValue(testError);
 
-    const config = { scenarios: [], viewports: [] };
+    const config = makeConfig();
 
     try {
       await compare.execute(config);

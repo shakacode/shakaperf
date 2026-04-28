@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import {
   loadTests,
   findAbTestsConfig,
@@ -46,18 +47,41 @@ export interface CompareRunOptions {
    * Run both engines normally, but don't produce the top-level
    * `report.html` / `report.json`. Intended for CI shards that measure a
    * subset of tests and leave final report assembly to a downstream
-   * `reportOnly` run over merged artifacts. Engine errors are persisted
-   * to `<resultsRoot>/.shaka-engine-errors.json` so the assembler can
-   * surface them even though nothing was held in memory across processes.
+   * `reportOnly` run over merged artifacts. Each shard persists its engine
+   * errors to its own `.shaka-engine-errors-<shardKey>.json` (keyed by
+   * filter + testPathPattern + categories), so disjoint shards coexist
+   * and the assembler globs+merges them all.
    */
   skipReport?: boolean;
 }
 
-const ENGINE_ERRORS_FILE = '.shaka-engine-errors.json';
+// Per-shard persisted engine-errors files. Format: <prefix><shardKey><suffix>.
+// One file per shard identity — re-running the same shard overwrites its
+// own file; disjoint shards write to disjoint paths and coexist on a shared
+// resultsRoot. The assembler globs all of them at --report-only time.
+const ENGINE_ERRORS_PREFIX = '.shaka-engine-errors-';
+const ENGINE_ERRORS_SUFFIX = '.json';
 
 interface PersistedEngineErrors {
   engineErrors: string[];
   perfEngineFailedByLabel: string[];
+}
+
+/**
+ * Stable hash of what makes this run's measurement scope distinct from
+ * another shard's: filters/patterns narrow the test set, categories pick
+ * which engines run. Two shards that hash to the same key are measuring
+ * the same thing — re-running them must overwrite the same persisted file
+ * rather than accumulate stale errors.
+ */
+function shardKey(
+  testPathPattern: string | undefined,
+  filter: string | undefined,
+  categories: TestType[],
+): string {
+  const sortedCategories = [...categories].sort().join(',');
+  const input = `${testPathPattern ?? ''}\0${filter ?? ''}\0${sortedCategories}`;
+  return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
 const DEFAULT_CATEGORIES: TestType[] = ['visreg', 'perf'];
@@ -186,12 +210,16 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // from deleted tests are harmless noise.
   if (!opts.reportOnly) {
     fs.mkdirSync(resultsRoot, { recursive: true });
-    // Persisted engine errors belong to exactly one measurement pass. Any file
-    // lingering from a prior `--skip-report` run would be read by a later
-    // `--report-only` assembler as if it were ours — either surfacing stale
-    // errors or (after this run finishes without `--skip-report`) sticking
-    // around to poison the next assembly. Nuke it before engines start.
-    fs.rmSync(path.join(resultsRoot, ENGINE_ERRORS_FILE), { force: true });
+    // Persisted engine-error files belong to a sharded measurement pass.
+    // Under `--skip-report` we let other shards' files persist alongside
+    // ours (write goes to a shard-keyed path; same-shard re-runs overwrite).
+    // A non-shard run (no `--skip-report`, no `--report-only`) is the user
+    // returning to local-iteration mode — wipe any leftover shard files so
+    // a subsequent `--report-only` can't pick up stale errors from a prior
+    // shard pass against the same dir.
+    if (!opts.skipReport) {
+      wipePersistedEngineErrors(resultsRoot);
+    }
   }
 
   const startedAt = Date.now();
@@ -326,7 +354,12 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // them in meta.errors; without this, a shard's "visreg engine: timeout"
   // banner would silently disappear at merge time.
   if (opts.skipReport) {
-    writePersistedEngineErrors(resultsRoot, {
+    const key = shardKey(
+      opts.testPathPattern ?? shared.testPathPattern,
+      opts.filter ?? shared.filter,
+      categories,
+    );
+    writePersistedEngineErrors(resultsRoot, key, {
       engineErrors,
       perfEngineFailedByLabel: [...perfEngineFailedByLabel],
     });
@@ -350,52 +383,81 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
 interface ReadPersistedResult {
   persisted: PersistedEngineErrors | null;
-  /** Surfaced to the user as a top-level banner when the file exists but
-   *  can't be parsed — a truncated JSON from a crashed shard must not be
-   *  swallowed into a green report. */
+  /** Surfaced to the user as a top-level banner when at least one shard
+   *  file exists but can't be parsed — a truncated JSON from a crashed
+   *  shard must not be swallowed into a green report. Reports the first
+   *  unreadable / corrupt file; subsequent files still get parsed and
+   *  merged into `persisted` so one bad shard doesn't drop the others. */
   readError: string | null;
 }
 
-function readPersistedEngineErrors(resultsRoot: string): ReadPersistedResult {
-  const p = path.join(resultsRoot, ENGINE_ERRORS_FILE);
-  let raw: string;
+function listPersistedEngineErrorFiles(resultsRoot: string): string[] {
+  let entries: string[];
   try {
-    raw = fs.readFileSync(p, 'utf8');
+    entries = fs.readdirSync(resultsRoot);
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { persisted: null, readError: null };
-    }
-    return {
-      persisted: null,
-      readError: `persisted engine errors unreadable at ${p}: ${(err as Error).message}`,
-    };
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
   }
-  try {
-    const parsed = JSON.parse(raw) as Partial<PersistedEngineErrors>;
-    return {
-      persisted: {
-        engineErrors: Array.isArray(parsed.engineErrors) ? parsed.engineErrors : [],
-        perfEngineFailedByLabel: Array.isArray(parsed.perfEngineFailedByLabel)
-          ? parsed.perfEngineFailedByLabel
-          : [],
-      },
-      readError: null,
-    };
-  } catch (err) {
-    return {
-      persisted: null,
-      readError: `persisted engine errors corrupted at ${p}: ${(err as Error).message}`,
-    };
-  }
+  return entries
+    .filter((e) => e.startsWith(ENGINE_ERRORS_PREFIX) && e.endsWith(ENGINE_ERRORS_SUFFIX))
+    .map((e) => path.join(resultsRoot, e));
 }
 
-function writePersistedEngineErrors(resultsRoot: string, payload: PersistedEngineErrors): void {
+function readPersistedEngineErrors(resultsRoot: string): ReadPersistedResult {
+  const files = listPersistedEngineErrorFiles(resultsRoot);
+  if (files.length === 0) return { persisted: null, readError: null };
+
+  const engineErrors: string[] = [];
+  const labels = new Set<string>();
+  let firstReadError: string | null = null;
+
+  for (const p of files) {
+    let raw: string;
+    try {
+      raw = fs.readFileSync(p, 'utf8');
+    } catch (err) {
+      const msg = `persisted engine errors unreadable at ${p}: ${(err as Error).message}`;
+      if (!firstReadError) firstReadError = msg;
+      continue;
+    }
+    let parsed: Partial<PersistedEngineErrors>;
+    try {
+      parsed = JSON.parse(raw) as Partial<PersistedEngineErrors>;
+    } catch (err) {
+      const msg = `persisted engine errors corrupted at ${p}: ${(err as Error).message}`;
+      if (!firstReadError) firstReadError = msg;
+      continue;
+    }
+    if (Array.isArray(parsed.engineErrors)) engineErrors.push(...parsed.engineErrors);
+    if (Array.isArray(parsed.perfEngineFailedByLabel)) {
+      for (const label of parsed.perfEngineFailedByLabel) labels.add(label);
+    }
+  }
+
+  return {
+    persisted: { engineErrors, perfEngineFailedByLabel: [...labels] },
+    readError: firstReadError,
+  };
+}
+
+function writePersistedEngineErrors(
+  resultsRoot: string,
+  key: string,
+  payload: PersistedEngineErrors,
+): void {
   // Write via tmp + rename so a crashed shard can't leave a truncated JSON
   // that the assembler would later read as authoritative.
-  const finalPath = path.join(resultsRoot, ENGINE_ERRORS_FILE);
+  const finalPath = path.join(resultsRoot, `${ENGINE_ERRORS_PREFIX}${key}${ENGINE_ERRORS_SUFFIX}`);
   const tmpPath = `${finalPath}.${process.pid}.tmp`;
   fs.writeFileSync(tmpPath, JSON.stringify(payload, null, 2));
   fs.renameSync(tmpPath, finalPath);
+}
+
+function wipePersistedEngineErrors(resultsRoot: string): void {
+  for (const p of listPersistedEngineErrorFiles(resultsRoot)) {
+    fs.rmSync(p, { force: true });
+  }
 }
 
 function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSummary: string } {
