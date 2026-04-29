@@ -168,7 +168,7 @@ export class LighthouseSamplingWorkerPool<TSample> {
   }
 }
 
-export async function setupWithTimeout<TSample>(
+async function setupWithTimeout<TSample>(
   benchmark: Benchmark<TSample>,
   setupTimeoutMs: number,
   raceCancellation?: RaceCancellation
@@ -180,7 +180,7 @@ export async function setupWithTimeout<TSample>(
   return throwIfCancelled(sampler);
 }
 
-export async function sampleWithTimeout<TSample>(
+async function sampleWithTimeout<TSample>(
   sampler: BenchmarkSampler<TSample>,
   iteration: number,
   isTrial: boolean,
@@ -194,7 +194,7 @@ export async function sampleWithTimeout<TSample>(
   return throwIfCancelled(sample);
 }
 
-export async function setupSamplers<TSample>(
+async function setupSamplers<TSample>(
   benchmarks: Benchmark<TSample>[],
   samplers: SamplerSet<TSample>,
   setupTimeoutMs: number,
@@ -223,13 +223,13 @@ export async function setupSamplers<TSample>(
   }
 }
 
-export async function disposeSamplerSet<TSample>(
+async function disposeSamplerSet<TSample>(
   samplerSet: SamplerSet<TSample>
 ): Promise<void> {
   await Promise.all(Object.values(samplerSet).map((sampler) => sampler.dispose()));
 }
 
-export async function runOneShuffledPair<TSample>(
+async function runOneShuffledPair<TSample>(
   samplerSet: SamplerSet<TSample>,
   groups: string[],
   iteration: number,

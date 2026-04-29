@@ -93,13 +93,6 @@ export interface LighthouseBenchmarkOptions {
    * group name so control/experiment interleaves are untangled.
    */
   logFile?: string;
-  /**
-   * Deprecated on individual samplers. Retry orchestration lives in
-   * LighthouseSamplingWorkerPool so simultaneous control/experiment pairs
-   * retry together.
-   */
-  retries?: number;
-  retryDelay?: number;
 }
 
 export interface PhaseSample {
