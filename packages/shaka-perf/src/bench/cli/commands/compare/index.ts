@@ -127,6 +127,7 @@ interface TestContext {
   viewport: Viewport;
   resultsFolder: string;
   benchmarks: [Benchmark<NavigationSample>, Benchmark<NavigationSample>];
+  testDef: AbTestDefinition;
 }
 
 interface PhaseProgress {
@@ -309,7 +310,7 @@ function printSampleStart(
   );
 }
 
-export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
+export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
   if (compareFlags.skipLowNoiseProfiles && compareFlags.lowNoiseProfilesOnly) {
     throw new Error('--skip-low-noise-profiles and --low-noise-profiles-only are mutually exclusive');
   }
@@ -336,7 +337,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     viewportConfigs.map((entry) => [entry.viewport.label, entry.config])
   );
 
-  let analyzedJSONString = "";
   const completedTests: TestInfo[] = [];
   const failedTests: { name: string; reason: string }[] = [];
   const successfulContexts: TestContext[] = [];
@@ -364,6 +364,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         viewport,
         resultsFolder: testResultsFolder,
         benchmarks: createBenchmarks(testDef, compareFlags, testOptions),
+        testDef,
       };
     });
   });
@@ -514,7 +515,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           const actualMeasurements = results[0].samples.length;
 
           if (!compareFlags.hideAnalysis) {
-            analyzedJSONString = await runAnalyze(abMeasurementsPath, {
+            await runAnalyze(abMeasurementsPath, {
               numberOfMeasurements: actualMeasurements,
               regressionThreshold: compareFlags.regressionThreshold!,
             regressionThresholdStat: compareFlags.regressionThresholdStat!,
@@ -583,14 +584,13 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         if (failedContextNames.has(contextKey(context)) && !compareFlags.lowNoiseProfilesOnly) return;
         const lowNoiseFolder = path.join(context.resultsFolder, 'low-noise');
         mkdirpSync(lowNoiseFolder);
-        const testDef = tests.find((test) => test.name === context.name)!;
         const lowNoiseOptions: LighthouseBenchmarkOptions = {
           viewport: context.viewport,
           resultsFolder: lowNoiseFolder,
           lhConfigPath: configByViewport.get(context.viewport.label),
           logFile: path.join(lowNoiseFolder, ENGINE_LOG_FILE),
         };
-        const benchmarks = createBenchmarks(testDef, compareFlags, lowNoiseOptions);
+        const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
         try {
           await measureTest(
             benchmarks,
@@ -626,6 +626,4 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     }
   }
   console.log('');
-
-  return analyzedJSONString;
 }
