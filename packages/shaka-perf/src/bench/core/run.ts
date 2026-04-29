@@ -29,7 +29,6 @@ const noop: SampleEvent = () => undefined;
 
 export interface RunTestOptions {
   testKey: string;
-  durationMs?: number;
   onProgress?: SampleEvent;
   onSampleStart?: SampleEvent;
 }
@@ -57,33 +56,13 @@ export async function measureTest<TSample>(
 ): Promise<SampleGroup<TSample>[]> {
   const groupedSamples = new Map<string, TSample[]>();
   const sampleGroups = benchmarks.map((benchmark) => {
-    const samples: TSample[] = options.durationMs ? [] : new Array(iterations);
+    const samples: TSample[] = new Array(iterations);
     groupedSamples.set(benchmark.group, samples);
     return { group: benchmark.group, samples };
   });
 
   const onProgress = options.onProgress ?? noop;
   const { onSampleStart } = options;
-
-  if (options.durationMs) {
-    let index = 0;
-    const start = Date.now();
-    while (Date.now() - start < options.durationMs) {
-      const results = await pool.submitPair({
-        testKey: options.testKey,
-        benchmarks,
-        iteration: index + 1,
-        isTrial: false,
-        onProgress,
-        onSampleStart,
-      });
-      for (const { group, sample } of results) {
-        groupedSamples.get(group)!.push(sample);
-      }
-      index++;
-    }
-    return sampleGroups;
-  }
 
   try {
     await Promise.all(

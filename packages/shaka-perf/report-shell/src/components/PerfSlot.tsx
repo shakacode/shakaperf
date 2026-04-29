@@ -264,7 +264,9 @@ function PerfBody({
           <PerfTable key={g} title={GROUP_LABEL[g]} metrics={grouped[g]} />
         ))
       ) : !perf.error ? (
-        <div className="empty" style={{ padding: '20px 0' }}>no perf regressions or improvements</div>
+        <div className="empty" style={{ padding: '20px 0' }}>
+          {perf.notice ?? 'no perf regressions or improvements'}
+        </div>
       ) : null}
 
       {hasPreview && perf.timelinePreviewSvg && perf.timelineHref ? (

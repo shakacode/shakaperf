@@ -66,7 +66,6 @@ export interface ICompareFlags {
   samplingMode: SamplingMode;
   retries?: number;
   retryDelay?: number;
-  duration?: number;
   viewportConfigs: { viewport: Viewport; config?: string }[];
   skipPerfWarmup?: boolean;
   warmedUpByVisreg?: boolean;
@@ -370,7 +369,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
   });
 
   const sampleTimeoutMs = compareFlags.sampleTimeoutMs;
-  const durationMs = compareFlags.duration ? compareFlags.duration * 1000 : undefined;
   const createPool = (parallelism: number) => new LighthouseSamplingWorkerPool<NavigationSample>({
     setupTimeoutMs: 5000,
     sampleTimeoutMs,
@@ -426,7 +424,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
             warmupPool,
             {
               testKey: context.slug,
-              durationMs,
               onSampleStart: (group, iteration, isTrial) =>
                 printSampleStart(context, warmupProgress, group, iteration, isTrial),
               onProgress: () => { warmupProgress.completed++; },
@@ -456,12 +453,10 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
       const measurementProgress = createPhaseProgress(
         'perf measurements',
         '--low-noise-profiles-only',
-        durationMs
-          ? null
-          : measurableContexts.reduce(
-            (count, context) => count + context.benchmarks.length * compareFlags.numberOfMeasurements,
-            0,
-          )
+        measurableContexts.reduce(
+          (count, context) => count + context.benchmarks.length * compareFlags.numberOfMeasurements,
+          0,
+        )
       );
       const measurementJobs = contexts.map((context) => {
         if (failedContextNames.has(contextKey(context))) return null;
@@ -472,7 +467,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
           measurementPool,
           {
             testKey: context.slug,
-            durationMs,
             onSampleStart: (group, iteration, isTrial) =>
               printSampleStart(context, measurementProgress, group, iteration, isTrial),
             onProgress: () => { measurementProgress.completed++; },
@@ -571,6 +565,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
       'Doing one final, careful run for each test — one at a time, with nothing else competing for CPU. ' +
       'The numbers from this stage do not affect the regression check; statistical sampling already produced that answer. ' +
       'Its purpose is to produce clean, readable Lighthouse reports, performance traces, and timelines you can open and dig into when something looks off. ' +
+      'These artifacts overwrite the ones written during the measurement stage — same files, less noise. ' +
       'Skip this stage with --skip-low-noise-profiles.'
     );
     const lowNoisePool = createPool(1);
@@ -582,13 +577,11 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
     try {
       await Promise.all(lowNoiseTargets.map(async (context) => {
         if (failedContextNames.has(contextKey(context)) && !compareFlags.lowNoiseProfilesOnly) return;
-        const lowNoiseFolder = path.join(context.resultsFolder, 'low-noise');
-        mkdirpSync(lowNoiseFolder);
         const lowNoiseOptions: LighthouseBenchmarkOptions = {
           viewport: context.viewport,
-          resultsFolder: lowNoiseFolder,
+          resultsFolder: context.resultsFolder,
           lhConfigPath: configByViewport.get(context.viewport.label),
-          logFile: path.join(lowNoiseFolder, ENGINE_LOG_FILE),
+          logFile: path.join(context.resultsFolder, ENGINE_LOG_FILE),
         };
         const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
         try {
@@ -603,7 +596,24 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
               onProgress: () => { lowNoiseProgress.completed++; },
             }
           );
-          writeTimelineArtifacts(lowNoiseFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
+          writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
+          if (compareFlags.lowNoiseProfilesOnly) {
+            // No statistical verdict was produced; write a minimal report.json
+            // so the harvester can surface a "not enough data" notice instead
+            // of silently skipping the viewport. foldEngineArtifactsIntoReport
+            // below preserves this flag (Object.assign keeps unrelated keys).
+            writeFileSync(
+              path.join(context.resultsFolder, 'report.json'),
+              JSON.stringify({ insufficientData: true }, null, 2),
+            );
+            completedTests.push({
+              name: context.name,
+              testFile: context.testFile,
+              line: context.line,
+              resultsFolder: context.resultsFolder,
+            });
+          }
+          foldEngineArtifactsIntoReport(context.resultsFolder, null);
         } catch (err) {
           recordFailure(context, err);
         }
