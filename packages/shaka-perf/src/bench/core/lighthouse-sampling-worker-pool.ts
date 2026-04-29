@@ -38,6 +38,8 @@ export interface LighthouseSamplingWorkerPoolOptions {
   sampleTimeoutMs: number;
   parallelism: number;
   samplingMode: SamplingMode;
+  retries?: number;
+  retryDelay?: number;
   raceCancellation?: RaceCancellation;
 }
 
@@ -109,16 +111,33 @@ export class LighthouseSamplingWorkerPool<TSample> {
     worker: WorkerState<TSample>,
     task: LighthouseSamplingTask<TSample>
   ): Promise<PairSampleResult<TSample>[]> {
-    const samplerSet = await this.bindWorker(worker, task);
-    return runOneShuffledPair(
-      samplerSet,
-      task.benchmarks.map((benchmark) => benchmark.group),
-      task.iteration,
-      task.isTrial,
-      this.options.sampleTimeoutMs,
-      this.options.samplingMode,
-      this.options.raceCancellation,
-      task.onProgress,
+    const maxRetries = this.options.retries ?? 2;
+    const retryDelay = this.options.retryDelay ?? 1000;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const samplerSet = await this.bindWorker(worker, task);
+        return await runOneShuffledPair(
+          samplerSet,
+          task.benchmarks.map((benchmark) => benchmark.group),
+          task.iteration,
+          task.isTrial,
+          this.options.sampleTimeoutMs,
+          this.options.samplingMode,
+          this.options.raceCancellation,
+          task.onProgress,
+        );
+      } catch (err) {
+        lastError = err;
+        if (attempt > maxRetries) break;
+        console.log(`Pair sample attempt ${attempt} failed, retrying whole pair...`);
+        await this.disposeWorker(worker);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+    const error = lastError instanceof Error ? lastError : new Error(String(lastError));
+    throw new Error(
+      `Failed after ${maxRetries + 1} pair attempts. Last error: ${error.message}`
     );
   }
 

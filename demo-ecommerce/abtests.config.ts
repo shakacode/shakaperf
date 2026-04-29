@@ -18,6 +18,7 @@ export default defineConfig({
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     resultsFolder: 'compare-results',
     parallelism: PARALLELISM,
+    retries: 1
   },
 
   visreg: {

@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { launch, LaunchedChrome } from 'chrome-launcher';
 import { chromium, BrowserContext, Page } from 'playwright-core';
 import type { RaceCancellation } from 'race-cancellation';
@@ -101,45 +100,18 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     const fullUrl = parsed.href;
     const markers = this.testDef.options.markers ?? this.options.markers;
 
-    let lastError: Error | null = null;
-    const maxRetries = this.options.retries ?? 2;
-    const retryDelay = this.options.retryDelay ?? 1000;
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      try {
-        const saveArtifacts = iteration === 1;
-        const phases = await this.runLighthouseWithPlaywright(
-          fullUrl,
-          lhSettings,
-          markers,
-          saveArtifacts
-        );
-        return {
-          metadata: {},
-          duration: 0,
-          phases
-        };
-      } catch (error) {
-        lastError = error as Error;
-        if (attempt <= maxRetries) {
-          console.log(chalk.red(lastError.message), lastError.stack);
-          console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
-          await this.killBrowser();
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-          await this.setupBrowser();
-          lhSettings.port = this.chrome!.port;
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        } else {
-          throw new Error(
-            `Failed after ${maxRetries + 1} attempts. Last error: ${
-              lastError?.message
-            }`
-          );
-        }
-      }
-    }
-
-    // unreachable, but satisfies TypeScript
-    throw new Error('Unexpected: retry loop exited without result');
+    const saveArtifacts = iteration === 1;
+    const phases = await this.runLighthouseWithPlaywright(
+      fullUrl,
+      lhSettings,
+      markers,
+      saveArtifacts
+    );
+    return {
+      metadata: {},
+      duration: 0,
+      phases
+    };
   }
 
   private async runLighthouseWithPlaywright(

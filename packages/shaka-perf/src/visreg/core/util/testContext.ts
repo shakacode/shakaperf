@@ -18,7 +18,14 @@ const subjectColors = [
 ] as const;
 const subjectColorIndexes = new Map<string, number>();
 const viewportColorIndexes = new Map<string, number>();
-const sourcePrefixParts = new Map<string, { source: string; viewportLabel?: string }>();
+const categoryColorIndexes = new Map<string, number>();
+const sourcePrefixParts = new Map<string, {
+  source: string;
+  viewportLabel?: string;
+  testCategory?: string;
+  sampleLabel?: string;
+}>();
+const DEFAULT_GROUP_LABEL_WIDTH = '[experiment]'.length;
 
 function colorFor(map: Map<string, number>, key: string): (value: string) => string {
   let colorIndex = map.get(key);
@@ -34,11 +41,13 @@ export function testSourcePrefix(
   line: number | null | undefined,
   fallback: string,
   viewportLabel?: string,
+  testCategory?: string,
+  sampleLabel?: string,
 ): string {
   const relativeFile = file ? path.relative(process.cwd(), file) : null;
   const base = relativeFile && line != null ? `${relativeFile}:${line}` : fallback;
-  const prefix = viewportLabel ? `${base}:${viewportLabel}` : base;
-  sourcePrefixParts.set(prefix, { source: base, viewportLabel });
+  const prefix = [base, viewportLabel, testCategory, sampleLabel].filter(Boolean).join(':');
+  sourcePrefixParts.set(prefix, { source: base, viewportLabel, testCategory, sampleLabel });
   return prefix;
 }
 
@@ -48,11 +57,42 @@ export function colorizedLogPrefix(subject: string): string {
     const source = colorFor(subjectColorIndexes, parts.source)(parts.source);
     if (parts.viewportLabel) {
       const viewport = colorFor(viewportColorIndexes, parts.viewportLabel)(parts.viewportLabel);
-      return `${source}:${viewport}:`;
+      if (parts.testCategory) {
+        const category = colorFor(categoryColorIndexes, parts.testCategory)(parts.testCategory);
+        return `${source}:${viewport}:${category}:${parts.sampleLabel ? `${parts.sampleLabel}:` : ''}`;
+      }
+      return `${source}:${viewport}:${parts.sampleLabel ? `${parts.sampleLabel}:` : ''}`;
     }
-    return `${source}:`;
+    if (parts.testCategory) {
+      const category = colorFor(categoryColorIndexes, parts.testCategory)(parts.testCategory);
+      return `${source}:${category}:${parts.sampleLabel ? `${parts.sampleLabel}:` : ''}`;
+    }
+    return `${source}:${parts.sampleLabel ? `${parts.sampleLabel}:` : ''}`;
   }
   return colorFor(subjectColorIndexes, subject)(`${subject}:`);
+}
+
+function groupLabel(group: string, width = DEFAULT_GROUP_LABEL_WIDTH): string {
+  return `[${group}]`.padEnd(width);
+}
+
+export function formatLogPrefix(
+  subject: string,
+  options: { group?: string; groupWidth?: number } = {},
+): string {
+  const prefix = colorizedLogPrefix(subject);
+  return options.group
+    ? `${prefix} ${groupLabel(options.group, options.groupWidth)} `
+    : `${prefix} `;
+}
+
+export function formatPlainLogPrefix(
+  subject: string,
+  options: { group?: string; groupWidth?: number } = {},
+): string {
+  return options.group
+    ? `${subject}: ${groupLabel(options.group, options.groupWidth)} `
+    : `${subject}: `;
 }
 
 export function runWithTestName<T> (

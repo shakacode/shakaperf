@@ -153,6 +153,7 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
           v.scenario._testDef?.line,
           v.scenario.label,
           v.viewport.label,
+          'visreg',
         );
       }));
       installTestNamePrefix();
@@ -165,6 +166,7 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
             view.scenario._testDef?.line,
             view.scenario.label,
             view.viewport.label,
+            'visreg',
           ),
         );
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {

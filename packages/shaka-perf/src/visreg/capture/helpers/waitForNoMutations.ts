@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import type { ConsoleMessage, Page } from 'playwright';
-import { colorizedLogPrefix, getTestLogSubject } from '../../core/util/testContext';
+import { formatLogPrefix, getTestLogSubject } from '../../core/util/testContext';
 
 const DEFAULT_QUIET_MS = 700;
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -37,7 +37,7 @@ export async function waitForNoMutations(
     const text = msg.text();
     if (text.startsWith(LOG_PREFIX)) {
       const rendered = chalk.yellow(text);
-      console.log(logSubject ? `${colorizedLogPrefix(logSubject)} ${rendered}` : rendered);
+      console.log(logSubject ? `${formatLogPrefix(logSubject)}${rendered}` : rendered);
     }
   };
   page.on('console', onPageConsole);

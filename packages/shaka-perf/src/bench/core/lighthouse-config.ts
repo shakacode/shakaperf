@@ -94,10 +94,9 @@ export interface LighthouseBenchmarkOptions {
    */
   logFile?: string;
   /**
-   * Number of additional attempts (beyond the first) the sampler makes when
-   * a Lighthouse run throws — browser crashes, CDP timeouts, etc. The
-   * browser is killed and re-launched between tries, with `retryDelay` ms
-   * between them. Default 2.
+   * Deprecated on individual samplers. Retry orchestration lives in
+   * LighthouseSamplingWorkerPool so simultaneous control/experiment pairs
+   * retry together.
    */
   retries?: number;
   retryDelay?: number;

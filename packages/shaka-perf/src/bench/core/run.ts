@@ -48,6 +48,8 @@ export interface RunOptions {
   sampleTimeoutMs: number;
   parallelism: number;
   samplingMode: SamplingMode;
+  retries?: number;
+  retryDelay?: number;
   durationMs?: number;
   raceCancellation: RaceCancellation;
 }
@@ -163,6 +165,8 @@ export default async function run<TSample>(
     sampleTimeoutMs = SAMPLE_TIMEOUT,
     parallelism = 1,
     samplingMode = 'simultaneous',
+    retries,
+    retryDelay,
     durationMs,
     raceCancellation
   } = options;
@@ -171,6 +175,8 @@ export default async function run<TSample>(
     sampleTimeoutMs,
     parallelism,
     samplingMode,
+    retries,
+    retryDelay,
     raceCancellation,
   });
   try {

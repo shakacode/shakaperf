@@ -42,8 +42,10 @@ import {
 import { composeEngineErrorPayload } from "../../../../compare/engine-error";
 import { runAnalyze } from "./analyze";
 import { runReport } from "./report";
-import createLogger from "../../../../visreg/core/util/logger";
-import { testSourcePrefix } from "../../../../visreg/core/util/testContext";
+import {
+  formatLogPrefix,
+  testSourcePrefix,
+} from "../../../../visreg/core/util/testContext";
 import { planTestViewports } from "../../../../compare/viewport-plan";
 
 export interface ICompareFlags {
@@ -62,9 +64,9 @@ export interface ICompareFlags {
   parallelism: number;
   samplingMode: SamplingMode;
   /**
-   * Number of additional attempts (beyond the first) the Lighthouse sampler
-   * makes when a sample throws before giving up on that iteration. `retryDelay`
-   * is the ms between attempts. Sourced from `shared.retries` / `shared.retryDelay`.
+   * Number of additional pair attempts (beyond the first) the shared sampling
+   * pool makes when a measurement throws. `retryDelay` is the ms between pair
+   * attempts. Sourced from `shared.retries` / `shared.retryDelay`.
    */
   retries?: number;
   retryDelay?: number;
@@ -280,16 +282,21 @@ function createPhaseProgress(
   };
 }
 
+function announceStage(stageName: string, description: string): void {
+  const delimiter = '='.repeat(88);
+  console.log('');
+  console.log(chalk.cyan(delimiter));
+  console.log(chalk.cyan(`STAGE: ${stageName}`));
+  console.log(chalk.cyan(delimiter));
+  console.log(description);
+  console.log(chalk.cyan(delimiter));
+  console.log('');
+}
+
 function createTestProgressCallback(
   context: TestContext,
   phaseProgress: PhaseProgress,
 ) {
-  const logger = createLogger(testSourcePrefix(
-    context.testFile,
-    context.line,
-    context.name,
-    context.viewport.label,
-  ));
   return (
     elapsed: number,
     _completed: number,
@@ -306,11 +313,23 @@ function createTestProgressCallback(
       ? perTestRemaining
       : Math.max(0, phaseProgress.totalSamples - phaseProgress.completed);
     const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
-    const label = isTrial ? 'warmup' : 'measurement';
+    const percentComplete = phaseProgress.totalSamples && phaseProgress.totalSamples > 0
+      ? Math.min(100, Math.round((phaseProgress.completed / phaseProgress.totalSamples) * 100))
+      : null;
+    const percentText = percentComplete == null ? '' : ` ${chalk.red(`${percentComplete}%`)}`;
     const displayIteration = isTrial ? iteration : Math.max(0, iteration - 1);
-    logger.log(
-      `Finished ${group} ${label} #${displayIteration}. ` +
-      `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.yellow(remainingTime)} ` +
+    const logSubject = testSourcePrefix(
+      context.testFile,
+      context.line,
+      context.name,
+      context.viewport.label,
+      'perf',
+      isTrial ? 'warmup' : `sample-${displayIteration}`,
+    );
+    console.log(
+      formatLogPrefix(logSubject, { group }) +
+      `Done. ` +
+      `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.red(remainingTime)}${percentText} ` +
       `(you may skip this stage with ${chalk.cyan(phaseProgress.skipOption)})`
     );
   };
@@ -364,8 +383,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         viewport,
         resultsFolder: testResultsFolder,
         lhConfigPath: configByViewport.get(viewport.label),
-        retries: compareFlags.retries,
-        retryDelay: compareFlags.retryDelay,
         logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),
       };
       return {
@@ -387,6 +404,8 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     sampleTimeoutMs,
     parallelism,
     samplingMode: compareFlags.samplingMode,
+    retries: compareFlags.retries,
+    retryDelay: compareFlags.retryDelay,
   });
   const failedContextNames = new Set<string>();
   const contextKey = (context: TestContext) => `${context.name}\0${context.viewport.label}`;
@@ -410,6 +429,12 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       console.log(chalk.dim('skipping warmup already warmed up by visreg'));
     }
   } else {
+    announceStage(
+      'perf warmup',
+      'Perf is warming every scheduled test/viewport before statistical sampling. ' +
+      'This lets the app, browser, and route-level code pay first-run costs outside the measured samples. ' +
+      'If visreg already ran in this compare invocation, this stage is skipped because those routes were already exercised.'
+    );
     const warmupPool = createPool(compareFlags.parallelism);
     const warmupProgress = createPhaseProgress(
       'perf warmup',
@@ -438,6 +463,11 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   }
 
   if (!compareFlags.lowNoiseProfilesOnly) {
+    announceStage(
+      'perf measurements',
+      'Perf is collecting the statistical sample set now. Measurements are queued in test order, while the shared Lighthouse worker pool keeps available CPU slots busy. ' +
+      'Control and experiment are sampled as paired work so simultaneous mode exposes both sides to the same CPU noise.'
+    );
     const measurementPool = createPool(compareFlags.parallelism);
     try {
       const measurableContexts = contexts.filter((context) => !failedContextNames.has(contextKey(context)));
@@ -516,10 +546,16 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
             analyzedJSONString = await runAnalyze(abMeasurementsPath, {
               numberOfMeasurements: actualMeasurements,
               regressionThreshold: compareFlags.regressionThreshold!,
-              regressionThresholdStat: compareFlags.regressionThresholdStat!,
-              pValueThreshold: compareFlags.pValueThreshold,
-              jsonReport: true,
-            });
+            regressionThresholdStat: compareFlags.regressionThresholdStat!,
+            pValueThreshold: compareFlags.pValueThreshold,
+            jsonReport: true,
+            summaryMetadata: {
+              testName: context.name,
+              testFile: context.testFile,
+              testLine: context.line,
+              viewportLabel: context.viewport.label,
+            },
+          });
           }
 
           if (!compareFlags.skipReport) {
@@ -545,6 +581,11 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
 
   const lowNoiseTargets = compareFlags.lowNoiseProfilesOnly ? contexts : successfulContexts;
   if (!compareFlags.skipLowNoiseProfiles && lowNoiseTargets.length > 0) {
+    announceStage(
+      'low-noise profiles',
+      'Perf is running one final serial sample per successful test/viewport with parallelism reduced to 1. ' +
+      'These samples do not affect statistical analysis; they exist to capture higher-fidelity Lighthouse reports, traces, and timeline artifacts for debugging.'
+    );
     const lowNoisePool = createPool(1);
     const lowNoiseProgress = createPhaseProgress(
       'low-noise profiles',
@@ -561,8 +602,6 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           viewport: context.viewport,
           resultsFolder: lowNoiseFolder,
           lhConfigPath: configByViewport.get(context.viewport.label),
-          retries: compareFlags.retries,
-          retryDelay: compareFlags.retryDelay,
           logFile: path.join(lowNoiseFolder, ENGINE_LOG_FILE),
         };
         const benchmarks = createBenchmarks(testDef, compareFlags, lowNoiseOptions);
