@@ -191,11 +191,11 @@ function formatTestTitle(testFile: string | null, name: string, line?: number | 
 
 export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   if (!compareFlags.controlURL) {
-    console.error("controlURL is required as a cli flag");
+    console.error(chalk.red("controlURL is required as a cli flag"));
     process.exit(2);
   }
   if (!compareFlags.experimentURL) {
-    console.error("experimentURL is required as a cli flag");
+    console.error(chalk.red("experimentURL is required as a cli flag"));
     process.exit(2);
   }
   const tests = await loadTests({
@@ -261,15 +261,15 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
               const remainingTime = secondsToTime(remainingSecs);
               console.log(
                 "%s: %s %s remaining",
-                group.padStart(15),
-                iteration.toString().padStart(2),
-                `${remainingTime}`.padStart(10)
+                chalk.cyan(group.padStart(15)),
+                chalk.yellow(iteration.toString().padStart(2)),
+                chalk.dim(`${remainingTime}`.padStart(10))
               );
             } else {
               console.log(
                 "%s: %s",
-                group.padStart(15),
-                iteration.toString().padStart(2)
+                chalk.cyan(group.padStart(15)),
+                chalk.yellow(iteration.toString().padStart(2))
               );
             }
           },
@@ -354,7 +354,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
             pValueThreshold: compareFlags.pValueThreshold,
           });
         } catch (err) {
-          console.error(`Failed to generate bench HTML report for ${testDef.name}:`, err);
+          console.error(chalk.red(`Failed to generate bench HTML report for ${testDef.name}:`), err);
         }
       }
 

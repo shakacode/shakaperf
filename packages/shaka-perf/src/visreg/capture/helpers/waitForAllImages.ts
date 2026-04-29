@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import type { Page } from 'playwright';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -10,11 +11,11 @@ export interface WaitForAllImagesOptions {
    * Only wait for `<img>` elements that are currently visible (non-zero
    * bounding box and an `offsetParent`). Default `true`.
    *
-   * Hidden images — modal previews, lazy-loaded `loading="lazy"` below-the-
-   * fold assets, preloads — often never fire `load` because the browser
-   * elides the fetch when they're not in viewport. They also can't appear
-   * in a screenshot, so waiting on them is pointless. Set `false` if your
-   * test needs to be sure *every* image in the DOM has completed.
+   * Hidden images — modal previews, preloads — often never fire `load`.
+   * Set `false` if your test needs hidden non-lazy images to complete too.
+   *
+   * Offscreen `loading="lazy"` images are always skipped, because without
+   * scrolling the browser may never fetch them before the outer timeout.
    */
   onlyVisible?: boolean;
 }
@@ -28,11 +29,12 @@ interface ImageInfo {
 }
 
 /**
- * Wait for every visible `<img>` currently in the DOM to finish loading
- * (fire `load` or `error`, or already be `complete`). Resolves even if
- * the outer timeout fires. On timeout we re-enter the page to enumerate
- * exactly which images are still pending — so the log points at the
- * actual offender(s) rather than just "timeout".
+ * Wait for matching `<img>` elements currently in the DOM to finish loading
+ * (fire `load` or `error`, or already be `complete`). Offscreen lazy-loaded
+ * images are excluded because they may not fetch without scrolling.
+ *
+ * On timeout we re-enter the page to enumerate pending images, log the
+ * offenders, and throw an error with a compact sample.
  */
 export async function waitForAllImages(
   page: Page,
@@ -49,9 +51,22 @@ export async function waitForAllImages(
       const rect = img.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0 && img.offsetParent !== null;
     };
-    const images = Array.from(document.querySelectorAll('img')).filter((img) =>
-      visibleOnly ? isVisible(img) : true,
-    );
+    // Lazy images outside the viewport will never fetch until the browser's
+    // IntersectionObserver triggers — and it won't, because the test isn't
+    // scrolling. Don't wait on them; they'd just burn the outer timeout.
+    const isLazyOffscreen = (img: HTMLImageElement): boolean => {
+      if (img.loading !== 'lazy') return false;
+      const rect = img.getBoundingClientRect();
+      return (
+        rect.right <= 0 ||
+        rect.bottom <= 0 ||
+        rect.left >= window.innerWidth ||
+        rect.top >= window.innerHeight
+      );
+    };
+    const images = Array.from(document.querySelectorAll('img'))
+      .filter((img) => (visibleOnly ? isVisible(img) : true))
+      .filter((img) => !isLazyOffscreen(img));
     await Promise.all(
       images.map((img) => {
         if (img.complete) return Promise.resolve();
@@ -78,7 +93,7 @@ export async function waitForAllImages(
     if (outcome !== 'timeout') {
       const scope = onlyVisible ? 'visible images' : 'images';
       console.log(
-        `${LOG_PREFIX} ${outcome.count} ${scope} loaded for ${url} (${Date.now() - start} ms)`,
+        chalk.green(`${LOG_PREFIX} ${outcome.count} ${scope} loaded for ${url} (${Date.now() - start} ms)`),
       );
       return;
     }
@@ -89,8 +104,19 @@ export async function waitForAllImages(
           const rect = img.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0 && img.offsetParent !== null;
         };
+        const isLazyOffscreen = (img: HTMLImageElement): boolean => {
+          if (img.loading !== 'lazy') return false;
+          const rect = img.getBoundingClientRect();
+          return (
+            rect.right <= 0 ||
+            rect.bottom <= 0 ||
+            rect.left >= window.innerWidth ||
+            rect.top >= window.innerHeight
+          );
+        };
         return Array.from(document.querySelectorAll('img'))
           .filter((img) => (visibleOnly ? isVisible(img) : true))
+          .filter((img) => !isLazyOffscreen(img))
           .filter((img) => !img.complete)
           .map((img): ImageInfo => {
             const rect = img.getBoundingClientRect();
@@ -110,14 +136,14 @@ export async function waitForAllImages(
       }, onlyVisible)
       .catch((err: Error) => {
         console.warn(
-          `${LOG_PREFIX} could not enumerate pending images: ${err.message}`,
+          chalk.yellow(`${LOG_PREFIX} could not enumerate pending images: ${err.message}`),
         );
         return [] as ImageInfo[];
       });
 
     const scope = onlyVisible ? 'visible image(s)' : 'image(s)';
     console.warn(
-      `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — ${pending.length} ${scope} still pending. Continuing anyway.`,
+      chalk.yellow(`${LOG_PREFIX} timed out after ${timeout} ms for ${url} — ${pending.length} ${scope} still pending.`),
     );
     for (const img of pending.slice(0, 10)) {
       const visibility = img.visible ? 'visible' : 'hidden';
@@ -125,20 +151,20 @@ export async function waitForAllImages(
       const resolved =
         img.currentSrc && img.currentSrc !== img.src ? ` (currentSrc=${img.currentSrc})` : '';
       console.warn(
-        `${LOG_PREFIX}   pending ${visibility} @ ${position}: ${img.src}${resolved}`,
+        chalk.yellow(`${LOG_PREFIX}   pending ${visibility} @ ${position}: ${img.src}${resolved}`),
       );
     }
     if (pending.length > 10) {
-      console.warn(`${LOG_PREFIX}   …and ${pending.length - 10} more`);
+      console.warn(chalk.yellow(`${LOG_PREFIX}   …and ${pending.length - 10} more`));
     }
-  } catch (err) {
-    if ((err as Error).name === 'TimeoutError') {
-      console.warn(
-        `${LOG_PREFIX} timed out for ${url}: ${(err as Error).message} — continuing anyway`,
-      );
-      return;
-    }
-    throw err;
+    const sample = pending
+      .slice(0, 3)
+      .map((img) => `${img.rect.x},${img.rect.y} ${img.rect.w}x${img.rect.h} ${img.src}`)
+      .join('; ');
+    const more = pending.length > 3 ? ` (+${pending.length - 3} more)` : '';
+    throw new Error(
+      `${LOG_PREFIX} timed out after ${timeout} ms for ${url} — ${pending.length} ${scope} still pending: ${sample}${more}`,
+    );
   } finally {
     if (timer) clearTimeout(timer);
   }

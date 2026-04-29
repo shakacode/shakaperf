@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import type { Page } from 'playwright';
 
 import { waitForAllImages } from './waitForAllImages';
@@ -24,8 +25,8 @@ function isPageClosedError(err: unknown): boolean {
 /**
  * Umbrella "page is settled" wait — runs `waitForAllImages`,
  * `waitForFontsReady`, `waitForNoMutations`, and `waitForNetworkSettle`
- * in parallel. Each underlying helper swallows its own timeout, so this
- * one always resolves; composite outcome is summarised at the end.
+ * in parallel. Helper timeouts are fatal so a run doesn't capture a page
+ * while images, fonts, DOM mutations, or network activity are still unsettled.
  *
  * Prefer calling the individual helpers when only one of the four
  * matters to the test (e.g. a modal interaction that only needs images
@@ -44,10 +45,10 @@ export async function waitUntilPageSettled(
       waitForNoMutations(page, options),
       waitForNetworkSettle(page, options),
     ]);
-    console.log(`${LOG_PREFIX} all checks complete for ${url} (${Date.now() - start} ms)`);
+    console.log(chalk.blue(`${LOG_PREFIX} all checks complete for ${url} (${Date.now() - start} ms)`));
   } catch (err) {
     if (isPageClosedError(err)) {
-      console.log(`${LOG_PREFIX} ${url} closed during settle — treating as settled`);
+      console.log(chalk.yellow(`${LOG_PREFIX} ${url} closed during settle — treating as settled`));
       return;
     }
     throw err;
