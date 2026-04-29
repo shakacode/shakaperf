@@ -1,4 +1,3 @@
-import * as os from 'node:os';
 import { z } from 'zod';
 import {
   DESKTOP_VIEWPORT,
@@ -8,11 +7,6 @@ import {
 } from 'shaka-shared';
 import { TwinServersConfigSchema } from '../twin-servers/types';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
-
-// Halve the core count so a full compare run (parallel visreg browsers +
-// Lighthouse workers) has headroom for the two dockerized app stacks we're
-// measuring and any system noise. Users can override via `shared.parallelism`.
-const DEFAULT_PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
 export const ViewportSchema: z.ZodType<Viewport> = z.object({
   label: z.string(),
@@ -115,10 +109,14 @@ export const SharedConfigSchema = z
      * Cross-engine concurrency budget. Used for the bench worker pool and
      * for visreg's parallel capture + pixel-compare limits — both engines
      * share a single pool of CPU cores, so exposing one knob lets users
-     * tune overall load without juggling engine-specific fields. Defaults
-     * to half the core count.
+     * tune overall load without juggling engine-specific fields. Mandatory:
+     * the right value depends on the host's core count and how heavy the
+     * two dockerized app stacks under measurement are, so callers must
+     * pick it themselves rather than inherit a hidden machine-dependent
+     * default. The bundled `abtests.config.ts` template seeds it with
+     * `Math.max(1, Math.floor(os.cpus().length / 2))`.
      */
-    parallelism: z.number().int().positive().default(DEFAULT_PARALLELISM),
+    parallelism: z.number().int().positive(),
     /**
      * Cross-engine retry policy for transient failures. Perf retries a
      * Lighthouse sample (the Chrome subprocess is recycled between tries);
@@ -187,7 +185,10 @@ export const PerfConfigSchema = z
 
 export const AbTestsConfigSchema = z
   .object({
-    shared: SharedConfigSchema.optional().default({}),
+    // `shared` must be provided so users always set `parallelism` explicitly —
+    // see SharedConfigSchema. visreg/perf still default to {} because every
+    // field in them is optional with a sensible default.
+    shared: SharedConfigSchema,
     visreg: VisregConfigSchema.optional().default({}),
     perf: PerfConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),

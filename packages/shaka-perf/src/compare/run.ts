@@ -141,10 +141,7 @@ function combineStatus(perCategory: CategoryResult[]): Status {
 
 async function loadConfig(opts: CompareRunOptions): Promise<AbTestsConfig> {
   const configPath = opts.configPath ?? findAbTestsConfig(opts.cwd);
-  if (!configPath) {
-    return parseAbTestsConfig({});
-  }
-  const raw = await loadAbTestsConfig(configPath);
+  const raw = configPath ? await loadAbTestsConfig(configPath) : {};
   return parseAbTestsConfig(raw);
 }
 
