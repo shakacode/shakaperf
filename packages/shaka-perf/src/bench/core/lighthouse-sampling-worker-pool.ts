@@ -30,8 +30,7 @@ interface QueuedTask<TSample> extends LighthouseSamplingTask<TSample> {
 
 interface WorkerState<TSample> {
   busy: boolean;
-  boundTestKey: string | null;
-  samplerSet: SamplerSet<TSample> | null;
+  bound: { testKey: string; samplerSet: SamplerSet<TSample> } | null;
 }
 
 export interface LighthouseSamplingWorkerPoolOptions {
@@ -56,8 +55,7 @@ export class LighthouseSamplingWorkerPool<TSample> {
       : options.parallelism;
     this.workers = Array.from({ length: workerCount }, () => ({
       busy: false,
-      boundTestKey: null,
-      samplerSet: null,
+      bound: null,
     }));
   }
 
@@ -147,8 +145,8 @@ export class LighthouseSamplingWorkerPool<TSample> {
     worker: WorkerState<TSample>,
     task: LighthouseSamplingTask<TSample>
   ): Promise<SamplerSet<TSample>> {
-    if (worker.boundTestKey === task.testKey && worker.samplerSet) {
-      return worker.samplerSet;
+    if (worker.bound?.testKey === task.testKey) {
+      return worker.bound.samplerSet;
     }
     await this.disposeWorker(worker);
     const samplerSet: SamplerSet<TSample> = {};
@@ -158,16 +156,14 @@ export class LighthouseSamplingWorkerPool<TSample> {
       this.options.setupTimeoutMs,
       this.options.raceCancellation,
     );
-    worker.boundTestKey = task.testKey;
-    worker.samplerSet = samplerSet;
+    worker.bound = { testKey: task.testKey, samplerSet };
     return samplerSet;
   }
 
   private async disposeWorker(worker: WorkerState<TSample>): Promise<void> {
-    if (!worker.samplerSet) return;
-    const samplerSet = worker.samplerSet;
-    worker.samplerSet = null;
-    worker.boundTestKey = null;
+    if (!worker.bound) return;
+    const { samplerSet } = worker.bound;
+    worker.bound = null;
     await disposeSamplerSet(samplerSet);
   }
 }
