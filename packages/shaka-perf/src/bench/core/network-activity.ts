@@ -5,18 +5,22 @@ import type { PhaseSample } from './lighthouse-config';
 
 /**
  * Computes total download size from devtools logs. If outputPath is provided,
- * writes a per-URL breakdown file.
+ * writes a per-URL breakdown file ordered by request start time. When
+ * earlyPhaseTimestampUs is provided, a marker line is inserted at the point
+ * where the early-downloads stage ends.
  */
 export function saveNetworkActivity(
   lighthouseResult: RunnerResult,
   url: string,
-  outputPath: string | null
+  outputPath: string | null,
+  earlyPhaseTimestampUs: number | null = null
 ): number {
   const devtoolsLogs = lighthouseResult.artifacts.DevtoolsLog;
   if (!devtoolsLogs) return 0;
 
   const parsedPageUrl = new URL(url);
   const sizesByUrl: { [requestUrl: string]: number } = {};
+  const earliestTimestampByUrl: { [requestUrl: string]: number } = {};
   let totalSizeBytes = 0;
 
   devtoolsLogs.forEach((requestWillBeSentEntry: any) => {
@@ -40,6 +44,11 @@ export function saveNetworkActivity(
             '/graphql?operationName="' + postData.operationName + '"';
         }
       }
+      const requestTimestamp = requestWillBeSentEntry.params.timestamp ?? 0;
+      earliestTimestampByUrl[requestUrl] = Math.min(
+        earliestTimestampByUrl[requestUrl] ?? Infinity,
+        requestTimestamp
+      );
       devtoolsLogs.find((loadingFinishedEntry: any) => {
         if (
           loadingFinishedEntry.method === 'Network.loadingFinished' &&
@@ -57,10 +66,23 @@ export function saveNetworkActivity(
   });
 
   if (outputPath) {
-    const urls = Object.keys(sizesByUrl).sort((a, b) => a.localeCompare(b));
-    const lines = urls.map(
-      (u) => `${u}\n⤷ ${(sizesByUrl[u] / 1024).toFixed(2)} KB`
+    const earlyPhaseTimestampSec =
+      earlyPhaseTimestampUs != null ? earlyPhaseTimestampUs / 1_000_000 : null;
+    // URL tie-break keeps the order deterministic across runs when two
+    // requests share a timestamp, so the diff against the baseline is stable.
+    const urls = Object.keys(sizesByUrl).sort((a, b) =>
+      earliestTimestampByUrl[a] !== earliestTimestampByUrl[b]
+        ? earliestTimestampByUrl[a] - earliestTimestampByUrl[b]
+        : a.localeCompare(b)
     );
+    const lines = urls.map((u) => `${u}\n⤷ ${(sizesByUrl[u] / 1024).toFixed(2)} KB`);
+    if (earlyPhaseTimestampSec != null) {
+      const splitIndex = urls.findIndex(
+        (u) => earliestTimestampByUrl[u] >= earlyPhaseTimestampSec
+      );
+      const insertAt = splitIndex === -1 ? lines.length : splitIndex;
+      lines.splice(insertAt, 0, '--- end of early-downloads stage ---');
+    }
     writeFileSync(outputPath, lines.join('\n') + '\n');
   }
 

@@ -66,7 +66,17 @@ export async function runLighthouse(
     }
   }
 
-  const totalSizeBytes = saveNetworkActivity(runnerResult, url, saveArtifacts ? `${namePrefix}_network_activity.txt` : null);
+  const earlyPhaseMarker = markers.find((m) => m.isEarlyPhase);
+  const earlyPhaseTs = earlyPhaseMarker
+    ? extractRawTraceTimestamp(runnerResult, earlyPhaseMarker.end)
+    : null;
+
+  const totalSizeBytes = saveNetworkActivity(
+    runnerResult,
+    url,
+    saveArtifacts ? `${namePrefix}_network_activity.txt` : null,
+    earlyPhaseTs,
+  );
 
   if (runnerResult.lhr.runtimeError) {
     throw new Error(
@@ -125,12 +135,6 @@ export async function runLighthouse(
       start: 0,
       unit: '/100'
     });
-
-    // Find the early-phase marker and extract its raw trace timestamp
-    const earlyPhaseMarker = markers.find((m) => m.isEarlyPhase);
-    const earlyPhaseTs = earlyPhaseMarker
-      ? extractRawTraceTimestamp(runnerResult, earlyPhaseMarker.end)
-      : null;
 
     results.push(...analyzeNetworkResources(runnerResult, url, earlyPhaseTs, prefix));
   }
