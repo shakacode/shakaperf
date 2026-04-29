@@ -1,3 +1,4 @@
+import * as os from 'node:os';
 import { defineConfig } from 'shaka-perf/compare';
 import { DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 
@@ -9,12 +10,19 @@ const DEFAULT_EXPERIMENT_PORT = 3030;
 const CONTROL_PORT = Number(process.env.SHAKAPERF_CONTROL_PORT ?? DEFAULT_CONTROL_PORT);
 const EXPERIMENT_PORT = Number(process.env.SHAKAPERF_EXPERIMENT_PORT ?? DEFAULT_EXPERIMENT_PORT);
 
+// Halve the core count so a full compare run (parallel visreg browsers +
+// Lighthouse workers) leaves headroom for the two dockerized app stacks
+// under measurement and any system noise. Tune up on dedicated CI runners
+// or down if your control/experiment containers are CPU-hungry.
+const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
+
 export default defineConfig({
   shared: {
     controlURL: `http://localhost:${CONTROL_PORT}`,
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     resultsFolder: 'compare-results',
     viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
+    parallelism: PARALLELISM,
   },
 
   visreg: {
