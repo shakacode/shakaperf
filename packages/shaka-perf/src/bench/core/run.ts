@@ -41,7 +41,6 @@ export async function warmUpTest<TSample>(
   pool: LighthouseSamplingWorkerPool<TSample>,
   options: RunTestOptions
 ): Promise<void> {
-  checkUniqueNames(benchmarks);
   await pool.submitPair({
     testKey: options.testKey,
     benchmarks,
@@ -58,7 +57,6 @@ export async function measureTest<TSample>(
   pool: LighthouseSamplingWorkerPool<TSample>,
   options: RunTestOptions
 ): Promise<SampleGroup<TSample>[]> {
-  checkUniqueNames(benchmarks);
   const groupedSamples = new Map<string, TSample[]>();
   const sampleGroups = benchmarks.map((benchmark) => {
     const samples: TSample[] = options.durationMs ? [] : new Array(iterations);
@@ -111,13 +109,4 @@ export async function measureTest<TSample>(
   }
 
   return sampleGroups;
-}
-
-function checkUniqueNames(benchmarks: Benchmark<unknown>[]): void {
-  const set = new Set<string>();
-  for (const benchmark of benchmarks) {
-    if (set.has(benchmark.group)) {
-      throw new Error(`duplicate benchmark group name ${benchmark.group}`);
-    }
-  }
 }

@@ -72,14 +72,11 @@ export interface ICompareFlags {
   retries?: number;
   retryDelay?: number;
   duration?: number;
-  config?: string;
-  viewportConfigs?: { viewport: Viewport; config?: string }[];
+  viewportConfigs: { viewport: Viewport; config?: string }[];
   skipPerfWarmup?: boolean;
   warmedUpByVisreg?: boolean;
   skipLowNoiseProfiles?: boolean;
   lowNoiseProfilesOnly?: boolean;
-  /** Viewport this pass measures — propagated into the sampler's TestFnContext. */
-  viewport: Viewport;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
@@ -339,10 +336,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   mkdirpSync(compareFlags.resultsFolder!);
 
   const resultsFolder = compareFlags.resultsFolder;
-  const viewportConfigs = compareFlags.viewportConfigs ?? [{
-    viewport: compareFlags.viewport,
-    config: compareFlags.config,
-  }];
+  const viewportConfigs = compareFlags.viewportConfigs;
   const configByViewport = new Map(
     viewportConfigs.map((entry) => [entry.viewport.label, entry.config])
   );

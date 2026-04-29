@@ -83,7 +83,6 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     retries: sharedConfig.retries,
     retryDelay: sharedConfig.retryDelay,
     viewportConfigs: lhConfigPaths,
-    viewport: viewports[0],
   };
 
   try {
