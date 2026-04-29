@@ -13,25 +13,12 @@ export interface PerfBridgeOptions {
   resultsFolder: string;
   perfConfig: PerfConfig;
   sharedConfig: SharedConfig;
-  /**
-   * Viewports this pass measures. The bench worker receives Lighthouse
-   * config whose `formFactor` and `screenEmulation` are derived from this
-   * viewport; user-provided `perf.lighthouseConfig` fills in everything
-   * else (throttling, categories, etc.) but cannot override the
-   * viewport-owned fields.
-   */
   viewports: Viewport[];
   testPathPattern?: string;
   filter?: string;
   warmedUpByVisreg?: boolean;
 }
 
-/**
- * Invokes the bench runCompare (same entry that powers `perf-compare`) with
- * flags derived from the unified abtests.config.ts `perf` slice. Bench writes
- * per-test artifacts (ab-measurements.json, report.json, lighthouse HTMLs,
- * timeline_comparison.html, *.diff.html) into <resultsFolder>/<slug>/.
- */
 export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
   const {
     controlURL,

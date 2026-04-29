@@ -6,12 +6,6 @@ export interface TestViewportPlan {
   viewports: Viewport[];
 }
 
-/**
- * Resolves the viewports a single test should run at for a given category.
- * Returns the intersection of the category's `viewports` and the test's
- * `options.viewports` narrow (if any). An empty result means the category
- * is skipped for this test.
- */
 export function resolveViewportsForTest(
   test: AbTestDefinition,
   categoryViewports: Viewport[],

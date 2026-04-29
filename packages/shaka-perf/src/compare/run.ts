@@ -216,8 +216,6 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
-  // Per-label: if the perf engine throws before it can write complete
-  // artifacts, mark all planned viewport labels as failed for harvest.
   const perfEngineFailedByLabel = new Set<string>();
 
   // Under reportOnly, rehydrate the in-memory error state from whatever the

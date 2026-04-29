@@ -30,9 +30,7 @@ const noop: SampleEvent = () => undefined;
 export interface RunTestOptions {
   testKey: string;
   durationMs?: number;
-  /** Fires after each sample completes. */
   onProgress?: SampleEvent;
-  /** Fires before each sample begins. */
   onSampleStart?: SampleEvent;
 }
 

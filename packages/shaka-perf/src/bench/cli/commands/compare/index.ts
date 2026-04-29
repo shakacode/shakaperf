@@ -64,11 +64,6 @@ export interface ICompareFlags {
   pValueThreshold: number;
   parallelism: number;
   samplingMode: SamplingMode;
-  /**
-   * Number of additional pair attempts (beyond the first) the shared sampling
-   * pool makes when a measurement throws. `retryDelay` is the ms between pair
-   * attempts. Sourced from `shared.retries` / `shared.retryDelay`.
-   */
   retries?: number;
   retryDelay?: number;
   duration?: number;
