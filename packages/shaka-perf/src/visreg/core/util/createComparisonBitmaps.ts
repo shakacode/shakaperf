@@ -8,7 +8,8 @@ import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario } from './convertAbTestToScenario';
 import createLogger from './logger';
-import { installTestNamePrefix, runWithTestName, registerTestNames } from './testContext';
+import { installTestNamePrefix, runWithTestName, registerTestNames, testSourcePrefix } from './testContext';
+import { planTestViewports } from '../../../compare/viewport-plan';
 import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
@@ -60,9 +61,11 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   // before the engine iterates. Without this, `options.viewports: ['phone']`
   // would still run desktop/tablet and only get filtered at harvest time.
   const categoryViewports = globalConfig.viewports ?? [];
-  const scenarios = tests.map(function (t) {
-    return convertAbTestToScenario(t, controlURL, experimentURL, categoryViewports);
-  });
+  const scenarios = planTestViewports(tests, categoryViewports)
+    .filter(function (entry) { return entry.viewports.length > 0; })
+    .map(function ({ test }) {
+      return convertAbTestToScenario(test, controlURL, experimentURL, categoryViewports);
+    });
 
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
@@ -144,10 +147,26 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
         scenarioViews[i]._playwrightBrowser = browser;
       }
 
-      registerTestNames(scenarioViews.map(function (v) { return v.scenario.label; }));
+      registerTestNames(scenarioViews.map(function (v) {
+        return testSourcePrefix(
+          v.scenario._testDef?.file,
+          v.scenario._testDef?.line,
+          v.scenario.label,
+          v.viewport.label,
+        );
+      }));
       installTestNamePrefix();
       pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
-        return runWithTestName(view.scenario.label, function () { return runCompareScenario.playwright(view); });
+        return runWithTestName(
+          view.scenario.label,
+          function () { return runCompareScenario.playwright(view); },
+          testSourcePrefix(
+            view.scenario._testDef?.file,
+            view.scenario._testDef?.line,
+            view.scenario.label,
+            view.viewport.label,
+          ),
+        );
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
         disposePlaywrightBrowser(browser!).then(function () { resolve(out); });
       }, function (e: unknown) {

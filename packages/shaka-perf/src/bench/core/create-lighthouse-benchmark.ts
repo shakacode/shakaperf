@@ -7,6 +7,7 @@ import type { RaceCancellation } from 'race-cancellation';
 import { Benchmark, BenchmarkSampler } from './run';
 import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
 import type { AbTestDefinition } from './ab-test-registry';
+import { colorizedLogPrefix, testSourcePrefix } from '../../visreg/core/util/testContext';
 
 interface ResultMessage {
   type: 'result';
@@ -65,25 +66,27 @@ function stripAnsi(text: string): string {
 function teeLinePrefixed(
   src: Readable,
   group: string,
+  logSubject: string,
   terminal: Writable,
   logStream: Writable,
 ): void {
   let buf = '';
-  const prefix = `[${group}] `;
+  const terminalPrefix = `${colorizedLogPrefix(logSubject)} [${group}] `;
+  const logPrefix = `${logSubject}: [${group}] `;
   src.setEncoding('utf8');
   src.on('data', (chunk: string) => {
     buf += chunk;
     const lines = buf.split('\n');
     buf = lines.pop() ?? '';
     for (const line of lines) {
-      terminal.write(`${prefix}${line}\n`);
-      logStream.write(stripAnsi(`${prefix}${line}\n`));
+      terminal.write(`${terminalPrefix}${line}\n`);
+      logStream.write(stripAnsi(`${logPrefix}${line}\n`));
     }
   });
   src.on('end', () => {
     if (buf.length > 0) {
-      terminal.write(`${prefix}${buf}`);
-      logStream.write(stripAnsi(`${prefix}${buf}`));
+      terminal.write(`${terminalPrefix}${buf}`);
+      logStream.write(stripAnsi(`${logPrefix}${buf}`));
       buf = '';
     }
   });
@@ -180,8 +183,14 @@ export default function createLighthouseBenchmark(
       let logStream: WriteStream | null = null;
       if (logFile && worker.stdout && worker.stderr) {
         logStream = createWriteStream(logFile, { flags: 'a' });
-        teeLinePrefixed(worker.stdout, group, process.stdout, logStream);
-        teeLinePrefixed(worker.stderr, group, process.stderr, logStream);
+        const logSubject = testSourcePrefix(
+          testDef.file,
+          testDef.line,
+          testDef.name,
+          options.viewport.label,
+        );
+        teeLinePrefixed(worker.stdout, group, logSubject, process.stdout, logStream);
+        teeLinePrefixed(worker.stderr, group, logSubject, process.stderr, logStream);
       }
 
       worker.on('error', (err) => {

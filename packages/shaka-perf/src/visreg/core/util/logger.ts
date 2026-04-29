@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import _ from 'lodash';
 import makeSpaces from './makeSpaces';
+import { colorizedLogPrefix } from './testContext';
 
 function identity (string: string) { return string; }
 
@@ -54,7 +55,7 @@ function message (type: string, subject: string, string: string) {
   }
 
   const colorKey = type as keyof typeof typeToColor;
-  console.log(typeToTitleColor[colorKey](subject + ' ') + '| ' + paddedString(longestTitle, typeToColor[colorKey](string)));
+  console.log(colorizedLogPrefix(subject) + ' ' + paddedString(longestTitle, typeToColor[colorKey](string)));
 }
 
 export default function createLogger (subject: string) {

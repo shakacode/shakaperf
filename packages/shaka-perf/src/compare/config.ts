@@ -156,10 +156,17 @@ export const PerfConfigSchema = z
     regressionThresholdStat: z
       .enum(['estimator', 'ci-lower', 'ci-upper'])
       .default('estimator'),
+    /**
+     * @deprecated sequential is retained only for scientific comparison
+     * against simultaneous sampling. See NOISE_RESISTANT_PERF_TESTS_STUDY.md.
+     */
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
     sampleTimeoutMs: z.number().int().positive().default(120000),
+    skipPerfWarmup: z.boolean().default(false),
+    skipLowNoiseProfiles: z.boolean().default(false),
+    lowNoiseProfilesOnly: z.boolean().default(false),
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is
      * desktop + phone so device-specific regressions aren't missed.
@@ -239,6 +246,18 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     throw new Error(where ? `${where}: ${first.message}` : first.message);
   }
   const parsed = result.data;
+  if (parsed.perf.samplingMode === 'sequential') {
+    console.warn(
+      '[shaka-perf] perf.samplingMode "sequential" is deprecated and retained ' +
+      'only for scientific comparison against "simultaneous". ' +
+      'See NOISE_RESISTANT_PERF_TESTS_STUDY.md for why.'
+    );
+  }
+  if (parsed.perf.skipLowNoiseProfiles && parsed.perf.lowNoiseProfilesOnly) {
+    throw new Error(
+      'perf.skipLowNoiseProfiles and perf.lowNoiseProfilesOnly are mutually exclusive'
+    );
+  }
   const byLabel = new Map(parsed.shared.viewports.map((v) => [v.label, v]));
   const resolve = (labels: string[]): Viewport[] =>
     labels.map((l) => byLabel.get(l)!); // safe: root superRefine validated membership
