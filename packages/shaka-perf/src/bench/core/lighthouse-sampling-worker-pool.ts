@@ -204,16 +204,27 @@ export async function setupSamplers<TSample>(
   setupTimeoutMs: number,
   raceCancellation?: RaceCancellation
 ): Promise<void> {
-  await Promise.all(
-    benchmarks.map(async (benchmark) => {
-      const sampler = await setupWithTimeout(
-        benchmark,
-        setupTimeoutMs,
-        raceCancellation
-      );
-      samplers[benchmark.group] = sampler;
-    })
-  );
+  try {
+    await Promise.all(
+      benchmarks.map(async (benchmark) => {
+        const sampler = await setupWithTimeout(
+          benchmark,
+          setupTimeoutMs,
+          raceCancellation
+        );
+        samplers[benchmark.group] = sampler;
+      })
+    );
+  } catch (err) {
+    // Dispose any samplers that finished setup before a sibling rejected;
+    // otherwise their Chrome subprocesses + tmp userDataDirs leak.
+    try {
+      await disposeSamplerSet(samplers);
+    } catch (disposeErr) {
+      console.error('Failed to dispose partial samplers after setup failure:', disposeErr);
+    }
+    throw err;
+  }
 }
 
 export async function disposeSamplerSet<TSample>(
