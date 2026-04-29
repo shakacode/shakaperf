@@ -2,9 +2,6 @@ import type { RaceCancellation } from 'race-cancellation';
 
 import { LighthouseSamplingWorkerPool } from './lighthouse-sampling-worker-pool';
 
-const SETUP_TIMEOUT = 5000;
-const SAMPLE_TIMEOUT = 30 * 1000;
-
 export interface Benchmark<TSample> {
   readonly group: string;
   setup(raceCancellation: RaceCancellation): Promise<BenchmarkSampler<TSample>>;
@@ -24,76 +21,40 @@ export interface SampleGroup<TSample> {
   samples: TSample[];
 }
 
-/**
- * @param ellasped - time since starting to take samples
- * @param completed - number of samples completed across groups
- * @param remaining - remaining samples across groups
- * @param group - group name of sampler that just finished
- * @param iteration - current sample iteration
- * @param isTrial - whether this was a warmup/trial sample
- */
-export type SampleProgressCallback = (
-  ellasped: number,
-  completed: number,
-  remaining: number,
-  group: string,
-  iteration: number,
-  isTrial?: boolean
-) => void;
-
 export type SamplingMode = 'sequential' | 'simultaneous';
 
-export interface RunOptions {
-  setupTimeoutMs: number;
-  sampleTimeoutMs: number;
-  parallelism: number;
-  samplingMode: SamplingMode;
-  retries?: number;
-  retryDelay?: number;
-  durationMs?: number;
-  raceCancellation: RaceCancellation;
-}
+export type SampleEvent = (group: string, iteration: number, isTrial: boolean) => void;
+
+const noop: SampleEvent = () => undefined;
 
 export interface RunTestOptions {
   testKey: string;
-  setupTimeoutMs?: number;
-  sampleTimeoutMs?: number;
-  samplingMode?: SamplingMode;
   durationMs?: number;
-  raceCancellation?: RaceCancellation;
-}
-
-interface ProgressState {
-  start: number;
-  completed: number;
+  /** Fires after each sample completes. */
+  onProgress?: SampleEvent;
+  /** Fires before each sample begins. */
+  onSampleStart?: SampleEvent;
 }
 
 export async function warmUpTest<TSample>(
   benchmarks: Benchmark<TSample>[],
-  progress: SampleProgressCallback,
   pool: LighthouseSamplingWorkerPool<TSample>,
   options: RunTestOptions
 ): Promise<void> {
   checkUniqueNames(benchmarks);
-  const progressState: ProgressState = { start: Date.now(), completed: 0 };
   await pool.submitPair({
     testKey: options.testKey,
     benchmarks,
     iteration: 0,
     isTrial: true,
-    onProgress: createProgressReporter(
-      progress,
-      progressState,
-      benchmarks.length,
-      options.durationMs,
-    ),
+    onProgress: options.onProgress ?? noop,
+    onSampleStart: options.onSampleStart,
   });
 }
 
 export async function measureTest<TSample>(
   benchmarks: Benchmark<TSample>[],
   iterations: number,
-  progress: SampleProgressCallback,
   pool: LighthouseSamplingWorkerPool<TSample>,
   options: RunTestOptions
 ): Promise<SampleGroup<TSample>[]> {
@@ -104,13 +65,9 @@ export async function measureTest<TSample>(
     groupedSamples.set(benchmark.group, samples);
     return { group: benchmark.group, samples };
   });
-  const progressState: ProgressState = { start: Date.now(), completed: 0 };
-  const reportProgress = createProgressReporter(
-    progress,
-    progressState,
-    iterations * benchmarks.length,
-    options.durationMs,
-  );
+
+  const onProgress = options.onProgress ?? noop;
+  const { onSampleStart } = options;
 
   if (options.durationMs) {
     let index = 0;
@@ -121,7 +78,8 @@ export async function measureTest<TSample>(
         benchmarks,
         iteration: index + 1,
         isTrial: false,
-        onProgress: reportProgress,
+        onProgress,
+        onSampleStart,
       });
       for (const { group, sample } of results) {
         groupedSamples.get(group)!.push(sample);
@@ -139,7 +97,8 @@ export async function measureTest<TSample>(
           benchmarks,
           iteration: index + 1,
           isTrial: false,
-          onProgress: reportProgress,
+          onProgress,
+          onSampleStart,
         });
         for (const { group, sample } of results) {
           groupedSamples.get(group)![index] = sample;
@@ -152,68 +111,6 @@ export async function measureTest<TSample>(
   }
 
   return sampleGroups;
-}
-
-export default async function run<TSample>(
-  benchmarks: Benchmark<TSample>[],
-  iterations: number,
-  progress: SampleProgressCallback,
-  options: Partial<RunOptions> = {}
-): Promise<SampleGroup<TSample>[]> {
-  const {
-    setupTimeoutMs = SETUP_TIMEOUT,
-    sampleTimeoutMs = SAMPLE_TIMEOUT,
-    parallelism = 1,
-    samplingMode = 'simultaneous',
-    retries,
-    retryDelay,
-    durationMs,
-    raceCancellation
-  } = options;
-  const pool = new LighthouseSamplingWorkerPool<TSample>({
-    setupTimeoutMs,
-    sampleTimeoutMs,
-    parallelism,
-    samplingMode,
-    retries,
-    retryDelay,
-    raceCancellation,
-  });
-  try {
-    await warmUpTest(benchmarks, progress, pool, {
-      testKey: 'default',
-      durationMs,
-    });
-    return await measureTest(benchmarks, iterations, progress, pool, {
-      testKey: 'default',
-      durationMs,
-    });
-  } finally {
-    await pool.dispose();
-  }
-}
-
-function createProgressReporter(
-  progress: SampleProgressCallback,
-  state: ProgressState,
-  totalSamples: number,
-  durationMs: number | undefined,
-): (group: string, iteration: number, isTrial: boolean) => void {
-  return (group: string, iteration: number, isTrial: boolean) => {
-    const elapsed = Date.now() - state.start;
-    const completed = state.completed + 1;
-    let remaining: number;
-    if (durationMs) {
-      const remainingMs = Math.max(0, durationMs - elapsed);
-      remaining = completed > 0
-        ? Math.round((remainingMs * completed) / elapsed)
-        : 0;
-    } else {
-      remaining = Math.max(0, totalSamples - completed);
-    }
-    state.completed = completed;
-    progress(elapsed, completed, remaining, group, iteration, isTrial);
-  };
 }
 
 function checkUniqueNames(benchmarks: Benchmark<unknown>[]): void {

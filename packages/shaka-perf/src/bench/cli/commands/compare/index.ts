@@ -47,6 +47,7 @@ import {
   testSourcePrefix,
 } from "../../../../visreg/core/util/testContext";
 import { planTestViewports } from "../../../../compare/viewport-plan";
+import { announceStage } from "../../../../compare/announce-stage";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -282,57 +283,38 @@ function createPhaseProgress(
   };
 }
 
-function announceStage(stageName: string, description: string): void {
-  const delimiter = '='.repeat(88);
-  console.log('');
-  console.log(chalk.cyan(delimiter));
-  console.log(chalk.cyan(`STAGE: ${stageName}`));
-  console.log(chalk.cyan(delimiter));
-  console.log(description);
-  console.log(chalk.cyan(delimiter));
-  console.log('');
-}
-
-function createTestProgressCallback(
+function printSampleStart(
   context: TestContext,
   phaseProgress: PhaseProgress,
-) {
-  return (
-    elapsed: number,
-    _completed: number,
-    perTestRemaining: number,
-    group: string,
-    iteration: number,
-    isTrial?: boolean,
-  ) => {
-    phaseProgress.completed++;
-    const averageMs = elapsed > 0 && phaseProgress.completed > 0
-      ? (Date.now() - phaseProgress.start) / phaseProgress.completed
-      : 0;
-    const remaining = phaseProgress.totalSamples == null
-      ? perTestRemaining
-      : Math.max(0, phaseProgress.totalSamples - phaseProgress.completed);
-    const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
-    const percentComplete = phaseProgress.totalSamples && phaseProgress.totalSamples > 0
-      ? Math.min(100, Math.round((phaseProgress.completed / phaseProgress.totalSamples) * 100))
-      : null;
-    const percentText = percentComplete == null ? '' : ` ${chalk.red(`${percentComplete}%`)}`;
-    const displayIteration = isTrial ? iteration : Math.max(0, iteration - 1);
-    const logSubject = testSourcePrefix(
-      context.testFile,
-      context.line,
-      context.name,
-      context.viewport.label,
-      'perf',
-      isTrial ? 'warmup' : `sample-${displayIteration}`,
-    );
-    console.log(
-      formatLogPrefix(logSubject, { group }) +
-      `Done. ` +
-      `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.red(remainingTime)}${percentText} ` +
-      `(you may skip this stage with ${chalk.cyan(phaseProgress.skipOption)})`
-    );
-  };
+  group: string,
+  iteration: number,
+  isTrial: boolean,
+): void {
+  const averageMs = phaseProgress.completed > 0
+    ? (Date.now() - phaseProgress.start) / phaseProgress.completed
+    : 0;
+  const remaining = phaseProgress.totalSamples == null
+    ? 0
+    : Math.max(0, phaseProgress.totalSamples - phaseProgress.completed);
+  const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
+  const percentComplete = phaseProgress.totalSamples && phaseProgress.totalSamples > 0
+    ? Math.min(100, Math.round((phaseProgress.completed / phaseProgress.totalSamples) * 100))
+    : null;
+  const percentText = percentComplete == null ? '' : ` ${chalk.red(`${percentComplete}%`)}`;
+  const displayIteration = isTrial ? iteration : Math.max(0, iteration - 1);
+  const logSubject = testSourcePrefix(
+    context.testFile,
+    context.line,
+    context.name,
+    context.viewport.label,
+    'perf',
+    isTrial ? 'warmup' : `sample-${displayIteration}`,
+  );
+  console.log(
+    formatLogPrefix(logSubject, { group }) +
+    `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.red(remainingTime)}${percentText} ` +
+    `(you may skip this stage with ${chalk.cyan(phaseProgress.skipOption)})`
+  );
 }
 
 export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
@@ -429,11 +411,16 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
       console.log(chalk.dim('skipping warmup already warmed up by visreg'));
     }
   } else {
+    // TODO: update the auto-skip note below when accessibility and seo land
+    // as categories — if either also drives the page through a real browser
+    // before perf, they should pre-warm just like visreg does today.
     announceStage(
       'perf warmup',
-      'Perf is warming every scheduled test/viewport before statistical sampling. ' +
-      'This lets the app, browser, and route-level code pay first-run costs outside the measured samples. ' +
-      'If visreg already ran in this compare invocation, this stage is skipped because those routes were already exercised.'
+      'Doing one throwaway run of every test before any real measurements start. ' +
+      'The first time a page loads, the app and browser have to compile and cache things they will reuse on every later load. ' +
+      'Including those one-time costs in the measurements would make every test look slower than what real users experience after the first visit. ' +
+      'Skipped automatically if visreg already ran in this invocation, because visreg already loaded the same pages. ' +
+      'Skip explicitly with --skip-perf-warmup.'
     );
     const warmupPool = createPool(compareFlags.parallelism);
     const warmupProgress = createPhaseProgress(
@@ -446,11 +433,13 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         try {
           await warmUpTest(
             context.benchmarks,
-            createTestProgressCallback(context, warmupProgress),
             warmupPool,
             {
               testKey: context.slug,
               durationMs,
+              onSampleStart: (group, iteration, isTrial) =>
+                printSampleStart(context, warmupProgress, group, iteration, isTrial),
+              onProgress: () => { warmupProgress.completed++; },
             }
           );
         } catch (err) {
@@ -465,8 +454,11 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   if (!compareFlags.lowNoiseProfilesOnly) {
     announceStage(
       'perf measurements',
-      'Perf is collecting the statistical sample set now. Measurements are queued in test order, while the shared Lighthouse worker pool keeps available CPU slots busy. ' +
-      'Control and experiment are sampled as paired work so simultaneous mode exposes both sides to the same CPU noise.'
+      'Loading each test page many times on both the control server and the experiment server, recording how long things take. ' +
+      'A single page load is too noisy to trust on its own — wifi blips, background CPU, garbage collection, all of it shifts the numbers. ' +
+      'So each test is repeated many times and the comparison is made on the averages, which is what determines whether the experiment counts as a regression or an improvement. ' +
+      'This is the longest stage; more samples means a more confident verdict. ' +
+      'Skip this stage with --low-noise-profiles-only (jumps straight to the final debugging pass; no regression verdict will be produced).'
     );
     const measurementPool = createPool(compareFlags.parallelism);
     try {
@@ -487,11 +479,13 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
         const promise = measureTest(
           context.benchmarks,
           compareFlags.numberOfMeasurements as number,
-          createTestProgressCallback(context, measurementProgress),
           measurementPool,
           {
             testKey: context.slug,
             durationMs,
+            onSampleStart: (group, iteration, isTrial) =>
+              printSampleStart(context, measurementProgress, group, iteration, isTrial),
+            onProgress: () => { measurementProgress.completed++; },
           }
         ).then((sampleGroups) => ({ sampleGroups, startTime }));
         return { context, promise };
@@ -583,8 +577,10 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   if (!compareFlags.skipLowNoiseProfiles && lowNoiseTargets.length > 0) {
     announceStage(
       'low-noise profiles',
-      'Perf is running one final serial sample per successful test/viewport with parallelism reduced to 1. ' +
-      'These samples do not affect statistical analysis; they exist to capture higher-fidelity Lighthouse reports, traces, and timeline artifacts for debugging.'
+      'Doing one final, careful run for each test — one at a time, with nothing else competing for CPU. ' +
+      'The numbers from this stage do not affect the regression check; statistical sampling already produced that answer. ' +
+      'Its purpose is to produce clean, readable Lighthouse reports, performance traces, and timelines you can open and dig into when something looks off. ' +
+      'Skip this stage with --skip-low-noise-profiles.'
     );
     const lowNoisePool = createPool(1);
     const lowNoiseProgress = createPhaseProgress(
@@ -609,10 +605,12 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           await measureTest(
             benchmarks,
             1,
-            createTestProgressCallback(context, lowNoiseProgress),
             lowNoisePool,
             {
               testKey: `${context.slug}-low-noise`,
+              onSampleStart: (group, iteration, isTrial) =>
+                printSampleStart(context, lowNoiseProgress, group, iteration, isTrial),
+              onProgress: () => { lowNoiseProgress.completed++; },
             }
           );
           writeTimelineArtifacts(lowNoiseFolder, compareFlags.controlURL!, compareFlags.experimentURL!);

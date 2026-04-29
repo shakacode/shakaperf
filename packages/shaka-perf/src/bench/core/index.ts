@@ -13,14 +13,11 @@ export {
   DEFAULT_MARKERS,
   lhConfigForViewport,
 } from './lighthouse-config';
-export { default as run } from './run';
 export { LighthouseSamplingWorkerPool } from './lighthouse-sampling-worker-pool';
 export type {
   Benchmark,
   BenchmarkSampler,
   SampleGroup,
-  SampleProgressCallback,
-  RunOptions,
   RunTestOptions,
   SamplingMode,
 } from './run';

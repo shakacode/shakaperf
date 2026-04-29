@@ -28,6 +28,7 @@ import { invokePerfEngine } from './engine-bridge/perf';
 import { slugifyForBench } from './harvest/perf';
 import { CATEGORY_DEFS } from './categories';
 import { planTestViewports, resolveViewportsForTest } from './viewport-plan';
+import { announceStage } from './announce-stage';
 
 export interface CompareRunOptions {
   cwd?: string;
@@ -240,7 +241,16 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // this block only drives the engine invocation.
   let visregRanBeforePerf = false;
   if (categories.includes('visreg') && !opts.reportOnly) {
-    console.log(chalk.blue('\n>>> visreg'));
+    // TODO: update the narrowing hint below when accessibility and seo land
+    // as categories — `--categories perf` will no longer be the only way to
+    // run "everything except visreg".
+    announceStage(
+      'visreg',
+      'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
+      'A test fails when the two sides look visibly different. ' +
+      'This is how a code change that does not break anything functionally still gets caught when it accidentally moves a button, shifts a layout, or changes a color. ' +
+      'When you only care about perf this run, narrow the work by passing --categories perf so visreg is not run.'
+    );
     try {
       await invokeVisregEngine({
         controlURL,
@@ -264,7 +274,15 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     const perfPlan = planTestViewports(tests, perfConfig.viewports)
       .filter((entry) => entry.viewports.length > 0);
     if (perfPlan.length > 0) {
-      console.log(chalk.blue('\n>>> perf'));
+      // TODO: update the narrowing hint below when accessibility and seo land
+      // as categories — `--categories visreg` will no longer be the only way
+      // to run "everything except perf".
+      announceStage(
+        'perf',
+        'Measuring how long pages take to load on the control server vs. the experiment server, then deciding whether the experiment is meaningfully slower or faster. ' +
+        'Runs in three sub-stages, each announced separately: a warmup pass to skip unrepresentative first-load costs, the actual statistical sampling that produces the regression verdict, and one final careful pass per test that produces detailed Lighthouse reports and traces you can dig into. ' +
+        'When you only care about visreg this run, narrow the work by passing --categories visreg so perf is not run.'
+      );
       for (const { test, viewports } of perfPlan) {
         for (const viewport of viewports) {
           fs.mkdirSync(path.join(perfRootFor(resultsRoot, viewport), slugifyForBench(test.name)), { recursive: true });

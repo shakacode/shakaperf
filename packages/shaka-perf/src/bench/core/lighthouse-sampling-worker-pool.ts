@@ -20,6 +20,7 @@ export interface LighthouseSamplingTask<TSample> {
   iteration: number;
   isTrial: boolean;
   onProgress: (group: string, iteration: number, isTrial: boolean) => void;
+  onSampleStart?: (group: string, iteration: number, isTrial: boolean) => void;
 }
 
 interface QueuedTask<TSample> extends LighthouseSamplingTask<TSample> {
@@ -126,6 +127,7 @@ export class LighthouseSamplingWorkerPool<TSample> {
           this.options.samplingMode,
           this.options.raceCancellation,
           task.onProgress,
+          task.onSampleStart,
         );
       } catch (err) {
         lastError = err;
@@ -228,13 +230,15 @@ export async function runOneShuffledPair<TSample>(
   sampleTimeoutMs: number,
   samplingMode: SamplingMode,
   raceCancellation: RaceCancellation | undefined,
-  onProgress: (group: string, iteration: number, isTrial: boolean) => void
+  onProgress: (group: string, iteration: number, isTrial: boolean) => void,
+  onSampleStart?: (group: string, iteration: number, isTrial: boolean) => void,
 ): Promise<PairSampleResult<TSample>[]> {
   const shuffled = [...groups];
   shuffle(shuffled);
 
   const sampleOne = async (group: string): Promise<PairSampleResult<TSample>> => {
     const sampler = samplerSet[group];
+    onSampleStart?.(group, iteration, isTrial);
     const sample = await sampleWithTimeout(
       sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation
     );
