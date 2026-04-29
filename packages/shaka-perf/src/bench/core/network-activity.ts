@@ -45,12 +45,10 @@ export function saveNetworkActivity(
         }
       }
       const requestTimestamp = requestWillBeSentEntry.params.timestamp ?? 0;
-      if (
-        earliestTimestampByUrl[requestUrl] === undefined ||
-        requestTimestamp < earliestTimestampByUrl[requestUrl]
-      ) {
-        earliestTimestampByUrl[requestUrl] = requestTimestamp;
-      }
+      earliestTimestampByUrl[requestUrl] = Math.min(
+        earliestTimestampByUrl[requestUrl] ?? Infinity,
+        requestTimestamp
+      );
       devtoolsLogs.find((loadingFinishedEntry: any) => {
         if (
           loadingFinishedEntry.method === 'Network.loadingFinished' &&
@@ -68,27 +66,22 @@ export function saveNetworkActivity(
   });
 
   if (outputPath) {
-    const earlyPhaseTimestampSec = earlyPhaseTimestampUs != null
-      ? earlyPhaseTimestampUs / 1_000_000
-      : null;
-    const urls = Object.keys(sizesByUrl).sort(
-      (a, b) => earliestTimestampByUrl[a] - earliestTimestampByUrl[b]
+    const earlyPhaseTimestampSec =
+      earlyPhaseTimestampUs != null ? earlyPhaseTimestampUs / 1_000_000 : null;
+    // URL tie-break keeps the order deterministic across runs when two
+    // requests share a timestamp, so the diff against the baseline is stable.
+    const urls = Object.keys(sizesByUrl).sort((a, b) =>
+      earliestTimestampByUrl[a] !== earliestTimestampByUrl[b]
+        ? earliestTimestampByUrl[a] - earliestTimestampByUrl[b]
+        : a.localeCompare(b)
     );
-    const lines: string[] = [];
-    let earlyPhaseMarkerInserted = false;
-    for (const u of urls) {
-      if (
-        earlyPhaseTimestampSec != null &&
-        !earlyPhaseMarkerInserted &&
-        earliestTimestampByUrl[u] >= earlyPhaseTimestampSec
-      ) {
-        lines.push('--- end of early-downloads stage ---');
-        earlyPhaseMarkerInserted = true;
-      }
-      lines.push(`${u}\n⤷ ${(sizesByUrl[u] / 1024).toFixed(2)} KB`);
-    }
-    if (earlyPhaseTimestampSec != null && !earlyPhaseMarkerInserted) {
-      lines.push('--- end of early-downloads stage ---');
+    const lines = urls.map((u) => `${u}\n⤷ ${(sizesByUrl[u] / 1024).toFixed(2)} KB`);
+    if (earlyPhaseTimestampSec != null) {
+      const splitIndex = urls.findIndex(
+        (u) => earliestTimestampByUrl[u] >= earlyPhaseTimestampSec
+      );
+      const insertAt = splitIndex === -1 ? lines.length : splitIndex;
+      lines.splice(insertAt, 0, '--- end of early-downloads stage ---');
     }
     writeFileSync(outputPath, lines.join('\n') + '\n');
   }
