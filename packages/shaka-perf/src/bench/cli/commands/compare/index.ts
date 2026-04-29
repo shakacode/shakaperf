@@ -520,21 +520,9 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
 
           writeFileSync(abMeasurementsPath, JSON.stringify(results));
-          completedTests.push({
-            name: context.name,
-            testFile: context.testFile,
-            line: context.line,
-            resultsFolder: context.resultsFolder,
-          });
-          successfulContexts.push(context);
 
           const duration = secondsToTime(durationInSec(endTime, startTime));
           const actualMeasurements = results[0].samples.length;
-          const message = `${chalkScheme.blackBgGreen(
-            `    ${chalkScheme.white("SUCCESS")}    `
-          )} ${actualMeasurements} measurements took ${duration}`;
-
-          console.log(`\n${message}`);
 
           if (!compareFlags.hideAnalysis) {
             analyzedJSONString = await runAnalyze(abMeasurementsPath, {
@@ -564,6 +552,19 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
           }
 
           foldEngineArtifactsIntoReport(context.resultsFolder, null);
+
+          completedTests.push({
+            name: context.name,
+            testFile: context.testFile,
+            line: context.line,
+            resultsFolder: context.resultsFolder,
+          });
+          successfulContexts.push(context);
+
+          const message = `${chalkScheme.blackBgGreen(
+            `    ${chalkScheme.white("SUCCESS")}    `
+          )} ${actualMeasurements} measurements took ${duration}`;
+          console.log(`\n${message}`);
         } catch (err) {
           recordFailure(context, err);
         }
