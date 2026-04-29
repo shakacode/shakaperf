@@ -11,11 +11,13 @@ import {
   generateHtmlDiffs,
   generateTimelineComparison,
   generateTimelinePreviewSvg,
+  LighthouseSamplingWorkerPool,
   LighthouseBenchmarkOptions,
+  measureTest,
   NavigationSample,
-  run,
+  warmUpTest,
 } from "../../../core";
-import { loadTests, TestType, type Viewport } from "shaka-shared";
+import { loadTests, type AbTestDefinition, type Viewport } from "shaka-shared";
 import {
   mkdirpSync,
   writeFileSync,
@@ -40,6 +42,12 @@ import {
 import { composeEngineErrorPayload } from "../../../../compare/engine-error";
 import { runAnalyze } from "./analyze";
 import { runReport } from "./report";
+import {
+  formatLogPrefix,
+  testSourcePrefix,
+} from "../../../../visreg/core/util/testContext";
+import { planTestViewports } from "../../../../compare/viewport-plan";
+import { announceStage } from "../../../../compare/announce-stage";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -56,17 +64,14 @@ export interface ICompareFlags {
   pValueThreshold: number;
   parallelism: number;
   samplingMode: SamplingMode;
-  /**
-   * Number of additional attempts (beyond the first) the Lighthouse sampler
-   * makes when a sample throws before giving up on that iteration. `retryDelay`
-   * is the ms between attempts. Sourced from `shared.retries` / `shared.retryDelay`.
-   */
   retries?: number;
   retryDelay?: number;
   duration?: number;
-  config?: string;
-  /** Viewport this pass measures — propagated into the sampler's TestFnContext. */
-  viewport: Viewport;
+  viewportConfigs: { viewport: Viewport; config?: string }[];
+  skipPerfWarmup?: boolean;
+  warmedUpByVisreg?: boolean;
+  skipLowNoiseProfiles?: boolean;
+  lowNoiseProfilesOnly?: boolean;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
@@ -112,6 +117,25 @@ interface TestInfo {
   testFile: string | null;
   line: number | null;
   resultsFolder: string;
+}
+
+interface TestContext {
+  name: string;
+  testFile: string | null;
+  line: number | null;
+  slug: string;
+  viewport: Viewport;
+  resultsFolder: string;
+  benchmarks: [Benchmark<NavigationSample>, Benchmark<NavigationSample>];
+  testDef: AbTestDefinition;
+}
+
+interface PhaseProgress {
+  stageName: string;
+  skipOption: string;
+  start: number;
+  completed: number;
+  totalSamples: number | null;
 }
 
 function tryUnlink(p: string): void {
@@ -189,7 +213,107 @@ function formatTestTitle(testFile: string | null, name: string, line?: number | 
   return chalk.dim(loc) + chalk.bold.yellow(` ${name}`);
 }
 
-export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
+function createBenchmarks(
+  testDef: AbTestDefinition,
+  compareFlags: ICompareFlags,
+  testOptions: LighthouseBenchmarkOptions,
+): [Benchmark<NavigationSample>, Benchmark<NavigationSample>] {
+  return [
+    createLighthouseBenchmark(
+      "control",
+      compareFlags.controlURL!,
+      testDef,
+      testOptions
+    ),
+    createLighthouseBenchmark(
+      "experiment",
+      compareFlags.experimentURL!,
+      testDef,
+      testOptions
+    ),
+  ];
+}
+
+function writeTimelineArtifacts(
+  testResultsFolder: string,
+  controlURL: string,
+  experimentURL: string,
+): void {
+  const files = readdirSync(testResultsFolder);
+  const controlHost = new URL(controlURL).host.replace(':', '_');
+  const experimentHost = new URL(experimentURL).host.replace(':', '_');
+  const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
+  const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
+  if (controlProfile && experimentProfile) {
+    generateTimelineComparison({
+      controlProfilePath: path.join(testResultsFolder, controlProfile),
+      experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+      outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
+    });
+    generateTimelinePreviewSvg({
+      controlProfilePath: path.join(testResultsFolder, controlProfile),
+      experimentProfilePath: path.join(testResultsFolder, experimentProfile),
+      outputPath: path.join(testResultsFolder, 'timeline_preview.svg'),
+    });
+  }
+}
+
+function perfRootFor(resultsRoot: string, viewport: Viewport): string {
+  return path.join(resultsRoot, `perf-${viewport.label}`);
+}
+
+function createPhaseProgress(
+  stageName: string,
+  skipOption: string,
+  totalSamples: number | null,
+): PhaseProgress {
+  return {
+    stageName,
+    skipOption,
+    start: Date.now(),
+    completed: 0,
+    totalSamples,
+  };
+}
+
+function printSampleStart(
+  context: TestContext,
+  phaseProgress: PhaseProgress,
+  group: string,
+  iteration: number,
+  isTrial: boolean,
+): void {
+  const averageMs = phaseProgress.completed > 0
+    ? (Date.now() - phaseProgress.start) / phaseProgress.completed
+    : 0;
+  const remaining = phaseProgress.totalSamples == null
+    ? 0
+    : Math.max(0, phaseProgress.totalSamples - phaseProgress.completed);
+  const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
+  const percentComplete = phaseProgress.totalSamples && phaseProgress.totalSamples > 0
+    ? Math.min(100, Math.round((phaseProgress.completed / phaseProgress.totalSamples) * 100))
+    : null;
+  const percentText = percentComplete == null ? '' : ` ${chalk.red(`${percentComplete}%`)}`;
+  const displayIteration = isTrial ? iteration : Math.max(0, iteration - 1);
+  const logSubject = testSourcePrefix(
+    context.testFile,
+    context.line,
+    context.name,
+    context.viewport.label,
+    'perf',
+    isTrial ? 'warmup' : `sample-${displayIteration}`,
+  );
+  console.log(
+    formatLogPrefix(logSubject, { group }) +
+    `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.red(remainingTime)}${percentText} ` +
+    `(you may skip this stage with ${chalk.cyan(phaseProgress.skipOption)})`
+  );
+}
+
+export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
+  if (compareFlags.skipLowNoiseProfiles && compareFlags.lowNoiseProfilesOnly) {
+    throw new Error('--skip-low-noise-profiles and --low-noise-profiles-only are mutually exclusive');
+  }
   if (!compareFlags.controlURL) {
     console.error(chalk.red("controlURL is required as a cli flag"));
     process.exit(2);
@@ -208,173 +332,284 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
   mkdirpSync(compareFlags.resultsFolder!);
 
   const resultsFolder = compareFlags.resultsFolder;
-  const options: LighthouseBenchmarkOptions = {
-    viewport: compareFlags.viewport,
-    resultsFolder,
-    lhConfigPath: compareFlags.config,
-    retries: compareFlags.retries,
-    retryDelay: compareFlags.retryDelay,
-  };
+  const viewportConfigs = compareFlags.viewportConfigs;
+  const configByViewport = new Map(
+    viewportConfigs.map((entry) => [entry.viewport.label, entry.config])
+  );
 
-  let analyzedJSONString = "";
   const completedTests: TestInfo[] = [];
   const failedTests: { name: string; reason: string }[] = [];
+  const successfulContexts: TestContext[] = [];
 
-  for (const testDef of tests) {
+  const contexts: TestContext[] = planTestViewports(
+    tests,
+    viewportConfigs.map((entry) => entry.viewport),
+  ).flatMap(({ test: testDef, viewports }) => {
     console.log(`\n${formatTestTitle(testDef.file ?? null, testDef.name, testDef.line)}`);
-
     const slug = testDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const testResultsFolder = `${resultsFolder}/${slug}`;
-    mkdirpSync(testResultsFolder);
+    return viewports.map((viewport) => {
+      const testResultsFolder = path.join(perfRootFor(resultsFolder, viewport), slug);
+      mkdirpSync(testResultsFolder);
+      const testOptions: LighthouseBenchmarkOptions = {
+        viewport,
+        resultsFolder: testResultsFolder,
+        lhConfigPath: configByViewport.get(viewport.label),
+        logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),
+      };
+      return {
+        name: testDef.name,
+        testFile: testDef.file ?? null,
+        line: testDef.line,
+        slug: `${slug}-${viewport.label}`,
+        viewport,
+        resultsFolder: testResultsFolder,
+        benchmarks: createBenchmarks(testDef, compareFlags, testOptions),
+        testDef,
+      };
+    });
+  });
 
-    const testOptions: LighthouseBenchmarkOptions = {
-      ...options,
-      resultsFolder: testResultsFolder,
-      logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),
-    };
+  const sampleTimeoutMs = compareFlags.sampleTimeoutMs;
+  const durationMs = compareFlags.duration ? compareFlags.duration * 1000 : undefined;
+  const createPool = (parallelism: number) => new LighthouseSamplingWorkerPool<NavigationSample>({
+    setupTimeoutMs: 5000,
+    sampleTimeoutMs,
+    parallelism,
+    samplingMode: compareFlags.samplingMode,
+    retries: compareFlags.retries,
+    retryDelay: compareFlags.retryDelay,
+  });
+  const failedContextNames = new Set<string>();
+  const contextKey = (context: TestContext) => `${context.name}\0${context.viewport.label}`;
+  const recordFailure = (context: TestContext, err: unknown) => {
+    const key = contextKey(context);
+    if (failedContextNames.has(key)) return;
+    failedContextNames.add(key);
+    const error = err instanceof Error ? err : new Error(String(err));
+    const reason = error.stack ?? error.message;
+    foldEngineArtifactsIntoReport(context.resultsFolder, reason);
+    const failBanner = `${chalkScheme.blackBgRed(
+      `    ${chalkScheme.white("FAILED")}     `
+    )} ${error.message}`;
+    console.log(`\n${failBanner}`);
+    failedTests.push({ name: context.name, reason: error.message });
+  };
 
+  const warmupSkippedByVisreg = compareFlags.warmedUpByVisreg === true;
+  if (compareFlags.skipPerfWarmup || warmupSkippedByVisreg || compareFlags.lowNoiseProfilesOnly) {
+    if (warmupSkippedByVisreg) {
+      console.log(chalk.dim('skipping warmup already warmed up by visreg'));
+    }
+  } else {
+    // TODO: update the auto-skip note below when accessibility and seo land
+    // as categories — if either also drives the page through a real browser
+    // before perf, they should pre-warm just like visreg does today.
+    announceStage(
+      'perf warmup',
+      'Doing one throwaway run of every test before any real measurements start. ' +
+      'The first time a page loads, the app and browser have to compile and cache things they will reuse on every later load. ' +
+      'Including those one-time costs in the measurements would make every test look slower than what real users experience after the first visit. ' +
+      'Skipped automatically if visreg already ran in this invocation, because visreg already loaded the same pages. ' +
+      'Skip explicitly with --skip-perf-warmup.'
+    );
+    const warmupPool = createPool(compareFlags.parallelism);
+    const warmupProgress = createPhaseProgress(
+      'perf warmup',
+      '--skip-perf-warmup',
+      contexts.reduce((count, context) => count + context.benchmarks.length, 0)
+    );
     try {
-      const control: Benchmark<NavigationSample> = createLighthouseBenchmark(
-        "control",
-        compareFlags.controlURL!,
-        testDef,
-        testOptions
-      );
-      const experiment: Benchmark<NavigationSample> = createLighthouseBenchmark(
-        "experiment",
-        compareFlags.experimentURL!,
-        testDef,
-        testOptions
-      );
-
-      const sampleTimeoutMs = compareFlags.sampleTimeoutMs;
-
-      const startTime = timestamp();
-      const results = (
-        await run(
-          [control, experiment],
-          compareFlags.numberOfMeasurements as number,
-          (elapsed, completed, remaining, group, iteration) => {
-            if (completed > 0) {
-              const average = elapsed / completed;
-              const remainingSecs = Math.round((remaining * average) / 1000);
-              const remainingTime = secondsToTime(remainingSecs);
-              console.log(
-                "%s: %s %s remaining",
-                chalk.cyan(group.padStart(15)),
-                chalk.yellow(iteration.toString().padStart(2)),
-                chalk.dim(`${remainingTime}`.padStart(10))
-              );
-            } else {
-              console.log(
-                "%s: %s",
-                chalk.cyan(group.padStart(15)),
-                chalk.yellow(iteration.toString().padStart(2))
-              );
-            }
-          },
-          {
-            sampleTimeoutMs,
-            parallelism: compareFlags.parallelism,
-            samplingMode: compareFlags.samplingMode,
-            durationMs: compareFlags.duration ? compareFlags.duration * 1000 : undefined,
-          }
-        )
-      ).map(({ group, samples }) => {
-        const meta = samples.length > 0 ? samples[0].metadata : {};
-        return {
-          group,
-          set: group,
-          samples,
-          meta,
-        };
-      });
-      const endTime = timestamp();
-      if (!results[0].samples[0]) {
-        throw new Error(
-          `No measurements were collected.\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}`
-        );
-      }
-      const abMeasurementsPath = `${testResultsFolder}/ab-measurements.json`;
-      generateHtmlDiffs({
-        testResultsFolder,
-        controlURL: compareFlags.controlURL!,
-        experimentURL: compareFlags.experimentURL!,
-      });
-
-      // Generate timeline comparison from performance profiles
-      {
-        const files = readdirSync(testResultsFolder);
-        const controlHost = new URL(compareFlags.controlURL!).host.replace(':', '_');
-        const experimentHost = new URL(compareFlags.experimentURL!).host.replace(':', '_');
-        const controlProfile = files.find(f => f.startsWith(controlHost) && f.endsWith('_performance_profile.json'));
-        const experimentProfile = files.find(f => f.startsWith(experimentHost) && f.endsWith('_performance_profile.json'));
-        if (controlProfile && experimentProfile) {
-          generateTimelineComparison({
-            controlProfilePath: path.join(testResultsFolder, controlProfile),
-            experimentProfilePath: path.join(testResultsFolder, experimentProfile),
-            outputPath: path.join(testResultsFolder, 'timeline_comparison.html'),
-          });
-          generateTimelinePreviewSvg({
-            controlProfilePath: path.join(testResultsFolder, controlProfile),
-            experimentProfilePath: path.join(testResultsFolder, experimentProfile),
-            outputPath: path.join(testResultsFolder, 'timeline_preview.svg'),
-          });
-        }
-      }
-
-      writeFileSync(abMeasurementsPath, JSON.stringify(results));
-      completedTests.push({ name: testDef.name, testFile: testDef.file ?? null, line: testDef.line, resultsFolder: testResultsFolder });
-
-      const duration = secondsToTime(durationInSec(endTime, startTime));
-      const actualMeasurements = results[0].samples.length;
-      const message = `${chalkScheme.blackBgGreen(
-        `    ${chalkScheme.white("SUCCESS")}    `
-      )} ${actualMeasurements} measurements took ${duration}`;
-
-      console.log(`\n${message}`);
-
-      // if the stdout analysis is not hidden show it
-      if (!compareFlags.hideAnalysis) {
-        analyzedJSONString = await runAnalyze(abMeasurementsPath, {
-          numberOfMeasurements: actualMeasurements,
-          regressionThreshold: compareFlags.regressionThreshold!,
-          regressionThresholdStat: compareFlags.regressionThresholdStat!,
-          pValueThreshold: compareFlags.pValueThreshold,
-          jsonReport: true,
-        });
-      }
-
-      // Emit the legacy bench Handlebars+Chart.js HTML report alongside
-      // ab-measurements.json so the unified compare report can link to it.
-      if (!compareFlags.skipReport) {
+      await Promise.all(contexts.map(async (context) => {
         try {
-          await runReport({
-            resultsFolder: testResultsFolder,
-            pValueThreshold: compareFlags.pValueThreshold,
-          });
+          await warmUpTest(
+            context.benchmarks,
+            warmupPool,
+            {
+              testKey: context.slug,
+              durationMs,
+              onSampleStart: (group, iteration, isTrial) =>
+                printSampleStart(context, warmupProgress, group, iteration, isTrial),
+              onProgress: () => { warmupProgress.completed++; },
+            }
+          );
         } catch (err) {
-          console.error(chalk.red(`Failed to generate bench HTML report for ${testDef.name}:`), err);
+          recordFailure(context, err);
         }
-      }
+      }));
+    } finally {
+      await warmupPool.dispose();
+    }
+  }
 
-      // Absorb the run's engine-output.log transcript into report.json so
-      // the on-disk layout is symmetric with visreg (one JSON holds all
-      // per-test state — error, log, metrics).
-      foldEngineArtifactsIntoReport(testResultsFolder, null);
-    } catch (err) {
-      // Per-test failure: fold the error stack + any partial engine log
-      // directly into report.json. Previously we wrote engine-error.txt
-      // here and let the harvester pick it up; now the harvester reads
-      // from report.json only, so we skip the intermediate file.
-      const error = err instanceof Error ? err : new Error(String(err));
-      const reason = error.stack ?? error.message;
-      foldEngineArtifactsIntoReport(testResultsFolder, reason);
-      const failBanner = `${chalkScheme.blackBgRed(
-        `    ${chalkScheme.white("FAILED")}     `
-      )} ${error.message}`;
-      console.log(`\n${failBanner}`);
-      failedTests.push({ name: testDef.name, reason: error.message });
+  if (!compareFlags.lowNoiseProfilesOnly) {
+    announceStage(
+      'perf measurements',
+      'Loading each test page many times on both the control server and the experiment server, recording how long things take. ' +
+      'A single page load is too noisy to trust on its own — wifi blips, background CPU, garbage collection, all of it shifts the numbers. ' +
+      'So each test is repeated many times and the comparison is made on the averages, which is what determines whether the experiment counts as a regression or an improvement. ' +
+      'This is the longest stage; more samples means a more confident verdict. ' +
+      'Skip this stage with --low-noise-profiles-only (jumps straight to the final debugging pass; no regression verdict will be produced).'
+    );
+    const measurementPool = createPool(compareFlags.parallelism);
+    try {
+      const measurableContexts = contexts.filter((context) => !failedContextNames.has(contextKey(context)));
+      const measurementProgress = createPhaseProgress(
+        'perf measurements',
+        '--low-noise-profiles-only',
+        durationMs
+          ? null
+          : measurableContexts.reduce(
+            (count, context) => count + context.benchmarks.length * compareFlags.numberOfMeasurements,
+            0,
+          )
+      );
+      const measurementJobs = contexts.map((context) => {
+        if (failedContextNames.has(contextKey(context))) return null;
+        const startTime = timestamp();
+        const promise = measureTest(
+          context.benchmarks,
+          compareFlags.numberOfMeasurements as number,
+          measurementPool,
+          {
+            testKey: context.slug,
+            durationMs,
+            onSampleStart: (group, iteration, isTrial) =>
+              printSampleStart(context, measurementProgress, group, iteration, isTrial),
+            onProgress: () => { measurementProgress.completed++; },
+          }
+        ).then((sampleGroups) => ({ sampleGroups, startTime }));
+        return { context, promise };
+      });
+
+      await Promise.all(measurementJobs.map(async (job) => {
+        if (!job) return;
+        const { context, promise } = job;
+        try {
+          const { sampleGroups, startTime } = await promise;
+          const results = sampleGroups.map(({ group, samples }) => {
+            const meta = samples.length > 0 ? samples[0].metadata : {};
+            return {
+              group,
+              set: group,
+              samples,
+              meta,
+            };
+          });
+          const endTime = timestamp();
+          if (!results[0].samples[0]) {
+            throw new Error(
+              `No measurements were collected.\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}`
+            );
+          }
+          const abMeasurementsPath = `${context.resultsFolder}/ab-measurements.json`;
+          generateHtmlDiffs({
+            testResultsFolder: context.resultsFolder,
+            controlURL: compareFlags.controlURL!,
+            experimentURL: compareFlags.experimentURL!,
+          });
+          writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
+
+          writeFileSync(abMeasurementsPath, JSON.stringify(results));
+
+          const duration = secondsToTime(durationInSec(endTime, startTime));
+          const actualMeasurements = results[0].samples.length;
+
+          if (!compareFlags.hideAnalysis) {
+            await runAnalyze(abMeasurementsPath, {
+              numberOfMeasurements: actualMeasurements,
+              regressionThreshold: compareFlags.regressionThreshold!,
+            regressionThresholdStat: compareFlags.regressionThresholdStat!,
+            pValueThreshold: compareFlags.pValueThreshold,
+            jsonReport: true,
+            summaryMetadata: {
+              testName: context.name,
+              testFile: context.testFile,
+              testLine: context.line,
+              viewportLabel: context.viewport.label,
+            },
+          });
+          }
+
+          if (!compareFlags.skipReport) {
+            try {
+              await runReport({
+                resultsFolder: context.resultsFolder,
+                pValueThreshold: compareFlags.pValueThreshold,
+              });
+            } catch (err) {
+              console.error(chalk.red(`Failed to generate bench HTML report for ${context.name}:`), err);
+            }
+          }
+
+          foldEngineArtifactsIntoReport(context.resultsFolder, null);
+
+          completedTests.push({
+            name: context.name,
+            testFile: context.testFile,
+            line: context.line,
+            resultsFolder: context.resultsFolder,
+          });
+          successfulContexts.push(context);
+
+          const message = `${chalkScheme.blackBgGreen(
+            `    ${chalkScheme.white("SUCCESS")}    `
+          )} ${actualMeasurements} measurements took ${duration}`;
+          console.log(`\n${message}`);
+        } catch (err) {
+          recordFailure(context, err);
+        }
+      }));
+    } finally {
+      await measurementPool.dispose();
+    }
+  }
+
+  const lowNoiseTargets = compareFlags.lowNoiseProfilesOnly ? contexts : successfulContexts;
+  if (!compareFlags.skipLowNoiseProfiles && lowNoiseTargets.length > 0) {
+    announceStage(
+      'low-noise profiles',
+      'Doing one final, careful run for each test — one at a time, with nothing else competing for CPU. ' +
+      'The numbers from this stage do not affect the regression check; statistical sampling already produced that answer. ' +
+      'Its purpose is to produce clean, readable Lighthouse reports, performance traces, and timelines you can open and dig into when something looks off. ' +
+      'Skip this stage with --skip-low-noise-profiles.'
+    );
+    const lowNoisePool = createPool(1);
+    const lowNoiseProgress = createPhaseProgress(
+      'low-noise profiles',
+      '--skip-low-noise-profiles',
+      lowNoiseTargets.reduce((count, context) => count + context.benchmarks.length, 0)
+    );
+    try {
+      await Promise.all(lowNoiseTargets.map(async (context) => {
+        if (failedContextNames.has(contextKey(context)) && !compareFlags.lowNoiseProfilesOnly) return;
+        const lowNoiseFolder = path.join(context.resultsFolder, 'low-noise');
+        mkdirpSync(lowNoiseFolder);
+        const lowNoiseOptions: LighthouseBenchmarkOptions = {
+          viewport: context.viewport,
+          resultsFolder: lowNoiseFolder,
+          lhConfigPath: configByViewport.get(context.viewport.label),
+          logFile: path.join(lowNoiseFolder, ENGINE_LOG_FILE),
+        };
+        const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
+        try {
+          await measureTest(
+            benchmarks,
+            1,
+            lowNoisePool,
+            {
+              testKey: `${context.slug}-low-noise`,
+              onSampleStart: (group, iteration, isTrial) =>
+                printSampleStart(context, lowNoiseProgress, group, iteration, isTrial),
+              onProgress: () => { lowNoiseProgress.completed++; },
+            }
+          );
+          writeTimelineArtifacts(lowNoiseFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
+        } catch (err) {
+          recordFailure(context, err);
+        }
+      }));
+    } finally {
+      await lowNoisePool.dispose();
     }
   }
 
@@ -391,6 +626,4 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<string> {
     }
   }
   console.log('');
-
-  return analyzedJSONString;
 }

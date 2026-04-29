@@ -33,6 +33,13 @@ export interface ICompareJSONResults {
   regressionThresholdStat: string;
 }
 
+export interface PerfSummaryMetadata {
+  testName: string;
+  testFile: string | null;
+  testLine: number | null;
+  viewportLabel?: string;
+}
+
 type PhaseResultsFormatted = Array<
   Pick<
     HTMLSectionRenderData,
@@ -61,15 +68,18 @@ export class CompareResults {
   numberOfMeasurements: number;
   regressionThreshold: number;
   regressionThresholdStat: RegressionThresholdStat;
+  summaryMetadata?: PerfSummaryMetadata;
   constructor(
     generateStats: GenerateStats,
     numberOfMeasurements: number,
     regressionThreshold: number,
-    regressionThresholdStat: RegressionThresholdStat = "estimator"
+    regressionThresholdStat: RegressionThresholdStat = "estimator",
+    summaryMetadata?: PerfSummaryMetadata,
   ) {
     this.numberOfMeasurements = numberOfMeasurements;
     this.regressionThreshold = regressionThreshold;
     this.regressionThresholdStat = regressionThresholdStat;
+    this.summaryMetadata = summaryMetadata;
 
     generateStats.vitalsSections.map((section) => {
       this.vitalsTable.display.push({ stats: section.stats, unit: section.unit });
@@ -176,9 +186,26 @@ export class CompareResults {
   }
 
   private logStatSummaryReport(): void {
-    logHeading("Benchmark Results Summary", "log");
+    const divider = "=".repeat(88);
+    console.log("");
+    console.log(chalk.bold.blue(divider));
+    console.log(chalk.bold.blue("PERF STATISTICAL SUMMARY"));
+    console.log(chalk.bold.blue(divider));
+    if (this.summaryMetadata) {
+      const location = this.summaryMetadata.testFile
+        ? `${this.summaryMetadata.testFile}${this.summaryMetadata.testLine != null ? `:${this.summaryMetadata.testLine}` : ''}`
+        : '(unknown source)';
+      console.log(`${chalk.bold('Test:')} ${this.summaryMetadata.testName}`);
+      console.log(`${chalk.bold('Location:')} ${location}`);
+      if (this.summaryMetadata.viewportLabel) {
+        console.log(`${chalk.bold('Viewport:')} ${this.summaryMetadata.viewportLabel}`);
+      }
+      console.log(chalk.bold.blue(divider));
+    }
     const { colored } = this.buildSummaryReport();
     console.log(colored);
+    console.log(chalk.bold.blue(divider));
+    console.log("");
   }
 
   public anyResultsSignificant(phaseIsSigArray: boolean[]): boolean {
