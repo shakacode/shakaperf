@@ -132,14 +132,14 @@ export class LighthouseSamplingWorkerPool<TSample> {
       } catch (err) {
         lastError = err;
         if (attempt > maxRetries) break;
-        console.log(`Pair sample attempt ${attempt} failed, retrying whole pair...`);
+        console.log(`Sample attempt ${attempt} failed, retrying...`);
         await this.disposeWorker(worker);
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
     }
     const error = lastError instanceof Error ? lastError : new Error(String(lastError));
     throw new Error(
-      `Failed after ${maxRetries + 1} pair attempts. Last error: ${error.message}`
+      `Failed after ${maxRetries + 1} attempts. Last error: ${error.message}`
     );
   }
 
