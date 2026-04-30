@@ -197,7 +197,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       }
     }
     try {
-      visregByLabel = harvestVisreg(htmlReportDir);
+      visregByLabel = await harvestVisreg(htmlReportDir);
     } catch (err) {
       const message = (err as Error).message || String(err);
       console.error(`visreg harvest error: ${message}`);
@@ -259,19 +259,21 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  const testResults: TestResult[] = tests.map((test) =>
-    buildTestResult({
-      test,
-      cwd,
-      controlURL,
-      experimentURL,
-      visregConfig,
-      perfConfig,
-      resultsRoot,
-      categories,
-      visregByLabel,
-      perfEngineFailedByLabel,
-    }),
+  const testResults: TestResult[] = await Promise.all(
+    tests.map((test) =>
+      buildTestResult({
+        test,
+        cwd,
+        controlURL,
+        experimentURL,
+        visregConfig,
+        perfConfig,
+        resultsRoot,
+        categories,
+        visregByLabel,
+        perfEngineFailedByLabel,
+      }),
+    ),
   );
 
   const data: ReportData = {
@@ -372,7 +374,7 @@ const TEST_TYPE_FOR_CATEGORY = {
   perf: TestType.Performance,
 } as const;
 
-function buildTestResult(opts: BuildTestResultOpts): TestResult {
+async function buildTestResult(opts: BuildTestResultOpts): Promise<TestResult> {
   const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel } = opts;
 
   const slug = slugifyForBench(test.name);
@@ -436,7 +438,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
           if (reportJsonExists) {
             try {
               perfs.push(
-                harvestPerf({
+                await harvestPerf({
                   perTestDir,
                   controlURL,
                   experimentURL,

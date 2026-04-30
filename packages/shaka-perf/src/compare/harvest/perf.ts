@@ -8,6 +8,7 @@ import type {
   Status,
 } from '../report';
 import type { PerfConfig } from '../config';
+import { compressHtmlImages } from './compress-inlined';
 
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
@@ -154,7 +155,7 @@ export interface HarvestPerfOptions {
  * collect the results into a single `CategoryResult.perfs` array — the same
  * shape visreg uses for its per-viewport pairs.
  */
-export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
+export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifact> {
   const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
 
   const metrics: PerfMetric[] = [];
@@ -213,10 +214,20 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // ran. `reportRoot` is still used to size the relative-path fallback if
   // we later want to toggle back to external refs.
   void reportRoot;
-  const inlineHtml = (name: string | null): string | null => {
+  // timeline_comparison.html and *_lighthouse_report.html embed JPEG/PNG
+  // screenshots as base64 data URIs — without recompression the inlined
+  // payload overflows V8's ~512 MB JSON.stringify limit. Recompress to
+  // WebP at harvest time; for Lighthouse also strip the filmstrip block
+  // (redundant with our own timeline filmstrip).
+  const inlineHtml = async (name: string | null): Promise<string | null> => {
     if (!name) return null;
     try {
-      const content = fs.readFileSync(path.join(perTestDir, name));
+      let content: Buffer = fs.readFileSync(path.join(perTestDir, name));
+      if (name === 'timeline_comparison.html') {
+        content = await compressHtmlImages(content, { imageQuality: 50 });
+      } else if (name.endsWith('_lighthouse_report.html')) {
+        content = await compressHtmlImages(content, { imageQuality: 60 });
+      }
       return `data:text/html;base64,${content.toString('base64')}`;
     } catch {
       return null;
@@ -263,19 +274,35 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // the viewport's bench run errored before writing report.json).
   void slug;
 
+  const [
+    controlLighthouseHref,
+    experimentLighthouseHref,
+    timelineHref,
+    benchReportHref,
+    diffHrefEntries,
+  ] = await Promise.all([
+    inlineHtml(controlLh),
+    inlineHtml(experimentLh),
+    inlineHtml(timeline),
+    inlineHtml(benchReport),
+    Promise.all(
+      diffFiles.map(async (f) => ({ label: prettyDiffLabel(f), href: await inlineHtml(f) })),
+    ),
+  ]);
+
   return {
     viewportLabel,
     metrics,
     regressedMetrics,
     improvedMetrics,
-    controlLighthouseHref: inlineHtml(controlLh),
-    experimentLighthouseHref: inlineHtml(experimentLh),
-    timelineHref: inlineHtml(timeline),
+    controlLighthouseHref,
+    experimentLighthouseHref,
+    timelineHref,
     timelinePreviewSvg,
-    benchReportHref: inlineHtml(benchReport),
-    diffHrefs: diffFiles
-      .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))
-      .filter((d): d is { label: string; href: string } => d.href != null),
+    benchReportHref,
+    diffHrefs: diffHrefEntries.filter(
+      (d): d is { label: string; href: string } => d.href != null,
+    ),
   };
 }
 

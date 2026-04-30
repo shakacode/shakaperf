@@ -3,6 +3,9 @@ import * as path from 'path';
 import { PNG } from 'pngjs';
 import { embedAsBase64 } from 'shaka-shared';
 import type { CategoryResult, VisregArtifact } from '../report';
+import { bufferToWebpDataUri } from './compress-inlined';
+
+const VISREG_WEBP_QUALITY = 80;
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
@@ -168,7 +171,7 @@ interface VisregReport {
  * Groups visreg pairs from <htmlReportDir>/report.json by scenario label
  * (which matches the abTest() name used by convertAbTestToScenario).
  */
-export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult> {
+export async function harvestVisreg(htmlReportDir: string): Promise<Map<string, CategoryResult>> {
   const reportPath = path.join(htmlReportDir, 'report.json');
   const out = new Map<string, CategoryResult>();
   if (!fs.existsSync(reportPath)) return out;
@@ -224,12 +227,17 @@ export function harvestVisreg(htmlReportDir: string): Map<string, CategoryResult
           experimentDims,
         )
       : null;
+    const [controlImage, experimentImage, diffImage] = await Promise.all([
+      toDataUri(htmlReportDir, pair.reference),
+      toDataUri(htmlReportDir, pair.test),
+      diffSource ? toDataUri(htmlReportDir, diffSource) : Promise.resolve(null),
+    ]);
     const artifact: VisregArtifact = {
       viewportLabel: pair.viewportLabel ?? '',
       selector: pair.selector ?? 'document',
-      controlImage: toDataUri(htmlReportDir, pair.reference),
-      experimentImage: toDataUri(htmlReportDir, pair.test),
-      diffImage: diffSource ? toDataUri(htmlReportDir, diffSource) : null,
+      controlImage,
+      experimentImage,
+      diffImage,
       misMatchPercentage,
       diffPixels: scan?.diffPixels ?? 0,
       threshold,
@@ -273,7 +281,16 @@ function resolveUnderBase(baseDir: string, relOrAbs: string): string {
   return path.isAbsolute(relOrAbs) ? relOrAbs : path.join(baseDir, relOrAbs);
 }
 
-function toDataUri(baseDir: string, relOrAbs?: string | null): string {
+async function toDataUri(baseDir: string, relOrAbs?: string | null): Promise<string> {
   if (!relOrAbs) return '';
-  return embedAsBase64(resolveUnderBase(baseDir, relOrAbs)) ?? '';
+  const abs = resolveUnderBase(baseDir, relOrAbs);
+  const ext = path.extname(abs).toLowerCase();
+  if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
+    try {
+      return await bufferToWebpDataUri(fs.readFileSync(abs), VISREG_WEBP_QUALITY);
+    } catch {
+      return '';
+    }
+  }
+  return embedAsBase64(abs) ?? '';
 }

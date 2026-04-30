@@ -8,24 +8,24 @@ function writeReport(dir: string, data: unknown) {
   fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(data));
 }
 
-function withTempReportDir(cb: (dir: string) => void) {
+async function withTempReportDir(cb: (dir: string) => void | Promise<void>) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-harvest-'));
   try {
-    cb(dir);
+    await cb(dir);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
 describe('harvestVisreg', function () {
-  it('marks a pair as visual_change when the engine wrote a diff image, even if misMatch% is 0', function () {
+  it('marks a pair as visual_change when the engine wrote a diff image, even if misMatch% is 0', async function () {
     // Dimension-only fail: resemble writes a `failed_diff_*.png` because
     // requireSameDimensions was violated, but the pixel-level
     // misMatchPercentage is still 0. The per-row chip in VisregSlot keys off
     // `diffImage !== null`, so the test-level `visual_change` status must
     // agree — otherwise the chip shows on a row whose test pill says "no
     // diff" (the inversion users reported).
-    withTempReportDir((dir) => {
+    await withTempReportDir(async (dir) => {
       writeReport(dir, {
         testSuite: 'visreg',
         tests: [{
@@ -40,7 +40,7 @@ describe('harvestVisreg', function () {
           status: 'fail',
         }],
       });
-      const out = harvestVisreg(dir);
+      const out = await harvestVisreg(dir);
       const result = out.get('Homepage');
       assert.ok(result, 'Homepage result present');
       assert.strictEqual(result!.status, 'visual_change');
@@ -48,8 +48,8 @@ describe('harvestVisreg', function () {
     });
   });
 
-  it('marks a pair as no_difference when neither a diff image nor an error is present', function () {
-    withTempReportDir((dir) => {
+  it('marks a pair as no_difference when neither a diff image nor an error is present', async function () {
+    await withTempReportDir(async (dir) => {
       writeReport(dir, {
         testSuite: 'visreg',
         tests: [{
@@ -63,7 +63,7 @@ describe('harvestVisreg', function () {
           status: 'pass',
         }],
       });
-      const out = harvestVisreg(dir);
+      const out = await harvestVisreg(dir);
       const result = out.get('Homepage');
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
@@ -71,7 +71,7 @@ describe('harvestVisreg', function () {
     });
   });
 
-  it('surfaces pair-level engine errors via category.error (not as visual_change) when no diff image was written', function () {
+  it('surfaces pair-level engine errors via category.error (not as visual_change) when no diff image was written', async function () {
     // Regression test for the "VISUAL CHANGE pill but every row shows NO DIFF"
     // screenshot. A pair that errored (selector not found, reference missing,
     // engine crash on one viewport) used to bubble `hasError` into the
@@ -80,7 +80,7 @@ describe('harvestVisreg', function () {
     // VISUAL CHANGE pill sitting above rows that all render as NoDiffCards
     // with green NO DIFF badges. The error itself is now surfaced via
     // `category.error` (error banner + error pill) instead.
-    withTempReportDir((dir) => {
+    await withTempReportDir(async (dir) => {
       writeReport(dir, {
         testSuite: 'visreg',
         tests: [
@@ -107,7 +107,7 @@ describe('harvestVisreg', function () {
           },
         ],
       });
-      const out = harvestVisreg(dir);
+      const out = await harvestVisreg(dir);
       const result = out.get('Homepage');
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
@@ -117,8 +117,8 @@ describe('harvestVisreg', function () {
     });
   });
 
-  it('aggregates multiple pair errors into one category.error summary', function () {
-    withTempReportDir((dir) => {
+  it('aggregates multiple pair errors into one category.error summary', async function () {
+    await withTempReportDir(async (dir) => {
       writeReport(dir, {
         testSuite: 'visreg',
         tests: [
@@ -146,7 +146,7 @@ describe('harvestVisreg', function () {
           },
         ],
       });
-      const out = harvestVisreg(dir);
+      const out = await harvestVisreg(dir);
       const result = out.get('Homepage');
       assert.ok(result);
       assert.ok(result!.error);
