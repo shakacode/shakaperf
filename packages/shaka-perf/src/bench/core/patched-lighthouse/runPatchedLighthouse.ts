@@ -13,38 +13,18 @@ ensureLighthousePatchRegistered();
 // never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
 // at call-time keeps the CLI's other commands usable when Lighthouse isn't
 // needed.
-const nativeImport = new Function('specifier', 'return import(specifier)') as
-  <T>(specifier: string) => Promise<T>;
-
 async function loadLighthouse(): Promise<(typeof import('lighthouse'))['default']> {
-  const loader = await nativeImport<typeof import('./patch-loader.mjs')>('./patch-loader.mjs');
-  const mod = await nativeImport<typeof import('lighthouse')>('lighthouse');
-  assertLighthousePatchesApplied(mod, loader.lighthousePatchTargetSuffixes());
-  return mod.default;
-}
-
-function assertLighthousePatchesApplied(
-  mod: typeof import('lighthouse'),
-  expectedTargets: string[],
-): void {
-  const patchedFiles = (
-    mod as typeof mod & { __shakaperfPatchedFiles?: () => string[] }
-  ).__shakaperfPatchedFiles?.();
-  if (!patchedFiles) {
+  const mod = await import('lighthouse');
+  if (!(globalThis as { shakaPerfPatched?: boolean }).shakaPerfPatched) {
+    // The patched wait-for-condition.js sets this flag on evaluation. If it's
+    // unset after lighthouse loaded, the loader hook never matched our target
+    // and lighthouse is running unpatched.
     throw new Error(
-      '[shaka-perf] Lighthouse patch manifest export is missing. ' +
-      'Check the core/index.js patch target.'
+      '[shaka-perf] Lighthouse loaded without the shaka-perf patch. ' +
+      'Check that patch-loader.mjs matched the lighthouse source paths.'
     );
   }
-
-  const missing = expectedTargets.filter((target) => !patchedFiles.includes(target));
-  if (missing.length === 0) return;
-
-  throw new Error(
-    '[shaka-perf] Lighthouse patch target was not registered at runtime: ' +
-      missing.join(', ') +
-      '. Check the +++ b/... target path in the patch file.'
-  );
+  return mod.default;
 }
 
 const HOLD_GATHER_FLAG = '__shakaperfHoldGather';

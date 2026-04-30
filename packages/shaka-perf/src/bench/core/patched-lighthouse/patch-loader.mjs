@@ -81,7 +81,3 @@ export async function load(url, context, nextLoad) {
   // line instead of one per forked worker × test × viewport.
   return { ...result, source: patched, shortCircuit: true };
 }
-
-export function lighthousePatchTargetSuffixes() {
-  return patchTargets().map(({ targetSuffix }) => targetSuffix);
-}
