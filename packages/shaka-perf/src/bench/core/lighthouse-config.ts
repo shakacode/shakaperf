@@ -93,6 +93,7 @@ export interface LighthouseBenchmarkOptions {
    * group name so control/experiment interleaves are untangled.
    */
   logFile?: string;
+  logDiagnosticTimings?: boolean;
 }
 
 export interface PhaseSample {

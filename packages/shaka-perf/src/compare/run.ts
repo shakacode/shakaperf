@@ -59,6 +59,7 @@ export interface CompareRunOptions {
   skipPerfWarmup?: boolean;
   skipLowNoiseProfiles?: boolean;
   lowNoiseProfilesOnly?: boolean;
+  logDiagnosticTimings?: boolean;
 }
 
 // Per-shard persisted engine-errors files. Format: <prefix><shardKey><suffix>.
@@ -298,6 +299,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
         filter: opts.filter ?? shared.filter,
         warmedUpByVisreg: visregRanBeforePerf,
+        logDiagnosticTimings: opts.logDiagnosticTimings,
       });
     } catch (err) {
       const message = (err as Error).message || String(err);

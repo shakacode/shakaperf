@@ -1,4 +1,11 @@
-import { cpSync, statSync } from 'node:fs';
+import { cpSync, readdirSync, statSync } from 'node:fs';
+
+const lighthousePatchAssets = readdirSync('src/bench/core/patched-lighthouse')
+  .filter((entry) => entry.endsWith('.patch'))
+  .map((entry) => [
+    `src/bench/core/patched-lighthouse/${entry}`,
+    `dist/bench/core/patched-lighthouse/${entry}`,
+  ]);
 
 const assets = [
   // Visreg capture assets (source at src/visreg/capture/, dest follows tsc output at dist/visreg/capture/)
@@ -12,10 +19,7 @@ const assets = [
     'src/bench/core/patched-lighthouse/patch-loader.mjs',
     'dist/bench/core/patched-lighthouse/patch-loader.mjs',
   ],
-  [
-    'src/bench/core/patched-lighthouse/lighthouse.patch',
-    'dist/bench/core/patched-lighthouse/lighthouse.patch',
-  ],
+  ...lighthousePatchAssets,
 ];
 
 for (const [src, dest] of assets) {

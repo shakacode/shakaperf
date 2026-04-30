@@ -71,6 +71,7 @@ export interface ICompareFlags {
   warmedUpByVisreg?: boolean;
   skipLowNoiseProfiles?: boolean;
   lowNoiseProfilesOnly?: boolean;
+  logDiagnosticTimings?: boolean;
 }
 
 const ARTIFACT_DESCRIPTIONS: Record<string, string> = {
@@ -354,6 +355,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
         resultsFolder: testResultsFolder,
         lhConfigPath: configByViewport.get(viewport.label),
         logFile: path.join(testResultsFolder, ENGINE_LOG_FILE),
+        logDiagnosticTimings: compareFlags.logDiagnosticTimings,
       };
       return {
         name: testDef.name,
@@ -582,6 +584,7 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
           resultsFolder: context.resultsFolder,
           lhConfigPath: configByViewport.get(context.viewport.label),
           logFile: path.join(context.resultsFolder, ENGINE_LOG_FILE),
+          logDiagnosticTimings: compareFlags.logDiagnosticTimings,
         };
         const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
         try {

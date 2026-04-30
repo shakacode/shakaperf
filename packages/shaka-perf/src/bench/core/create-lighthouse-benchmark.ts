@@ -28,7 +28,11 @@ interface ReadyMessage {
   type: 'ready';
 }
 
-type WorkerMessage = ResultMessage | ErrorMessage | ReadyMessage;
+interface NavigationReadyMessage {
+  type: 'navigationReady';
+}
+
+type WorkerMessage = ResultMessage | ErrorMessage | ReadyMessage | NavigationReadyMessage;
 
 function waitForMessage(worker: ChildProcess): Promise<WorkerMessage> {
   return new Promise((resolve, reject) => {
@@ -124,20 +128,30 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   async sample(
     iteration: number,
     isTrial: boolean,
-    _raceCancellation: RaceCancellation
+    _raceCancellation: RaceCancellation,
+    navigationBarrier?: () => Promise<void>
   ): Promise<NavigationSample> {
     if (!safeSend(this.worker, { type: 'sample', iteration, isTrial })) {
       throw new Error('lighthouse worker died before it could sample');
     }
     this.setSampleLabel(isTrial ? 'warmup' : `sample-${Math.max(0, iteration - 1)}`);
     try {
-      const msg = await waitForMessage(this.worker);
-      if (msg.type === 'error') {
-        const err = new Error(msg.message);
-        err.stack = msg.stack;
-        throw err;
+      while (true) {
+        const msg = await waitForMessage(this.worker);
+        if (msg.type === 'navigationReady') {
+          await navigationBarrier?.();
+          if (!safeSend(this.worker, { type: 'navigationStart' })) {
+            throw new Error('lighthouse worker died before navigation barrier could release');
+          }
+          continue;
+        }
+        if (msg.type === 'error') {
+          const err = new Error(msg.message);
+          err.stack = msg.stack;
+          throw err;
+        }
+        return (msg as ResultMessage).sample;
       }
-      return (msg as ResultMessage).sample;
     } finally {
       this.setSampleLabel(null);
     }

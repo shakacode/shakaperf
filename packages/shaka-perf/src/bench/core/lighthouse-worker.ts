@@ -22,7 +22,11 @@ interface DisposeMessage {
   type: 'dispose';
 }
 
-type ParentMessage = SetupMessage | SampleMessage | DisposeMessage;
+interface NavigationStartMessage {
+  type: 'navigationStart';
+}
+
+type ParentMessage = SetupMessage | SampleMessage | DisposeMessage | NavigationStartMessage;
 
 function send(msg: object): void {
   try {
@@ -60,6 +64,19 @@ process.on('uncaughtException', reportFatal);
 
 let sampler: BenchmarkSampler<NavigationSample>;
 
+let releaseNavigationBarrier: (() => void) | null = null;
+let logDiagnosticTimings = false;
+
+function logSampleStart(msg: SampleMessage): void {
+  if (!logDiagnosticTimings) return;
+  const timestamp = new Date();
+  const sampleLabel = msg.isTrial ? 'warmup' : `sample-${Math.max(0, msg.iteration - 1)}`;
+  console.log(
+    `[shaka-perf timing] subprocess sample command received at ${timestamp.toISOString()} ` +
+    `(epochMs=${timestamp.getTime()}, pid=${process.pid}, ${sampleLabel})`
+  );
+}
+
 process.on('message', async (msg: ParentMessage) => {
   if (msg.type === 'setup') {
     try {
@@ -78,6 +95,9 @@ process.on('message', async (msg: ParentMessage) => {
         testDef,
         msg.options
       );
+      logDiagnosticTimings = msg.options.logDiagnosticTimings === true;
+      (globalThis as Record<string, unknown>).__shakaperfLogDiagnosticTimings =
+        logDiagnosticTimings;
       sampler = await benchmark.setup(undefined as any);
       send({ type: 'ready' });
     } catch (err) {
@@ -87,6 +107,7 @@ process.on('message', async (msg: ParentMessage) => {
     }
   } else if (msg.type === 'sample') {
     try {
+      logSampleStart(msg);
       const sample = await sampler.sample(msg.iteration, msg.isTrial, undefined as any);
       send({ type: 'result', sample });
     } catch (err) {
@@ -96,5 +117,17 @@ process.on('message', async (msg: ParentMessage) => {
   } else if (msg.type === 'dispose') {
     await sampler.dispose();
     process.exit(0);
+  } else if (msg.type === 'navigationStart') {
+    releaseNavigationBarrier?.();
   }
 });
+
+(globalThis as Record<string, unknown>).__shakaperfBeforePageNavigate = () => {
+  send({ type: 'navigationReady' });
+  return new Promise<void>((resolve) => {
+    releaseNavigationBarrier = () => {
+      releaseNavigationBarrier = null;
+      resolve();
+    };
+  });
+};

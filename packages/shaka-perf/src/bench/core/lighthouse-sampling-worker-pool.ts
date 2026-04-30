@@ -185,10 +185,11 @@ async function sampleWithTimeout<TSample>(
   iteration: number,
   isTrial: boolean,
   sampleTimeoutMs: number,
-  raceCancellation?: RaceCancellation
+  raceCancellation?: RaceCancellation,
+  navigationBarrier?: () => Promise<void>
 ): Promise<TSample> {
   const sample = await withRaceTimeout(
-    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout),
+    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout, navigationBarrier),
     sampleTimeoutMs
   )(raceCancellation);
   return throwIfCancelled(sample);
@@ -242,12 +243,15 @@ async function runOneShuffledPair<TSample>(
 ): Promise<PairSampleResult<TSample>[]> {
   const shuffled = [...groups];
   shuffle(shuffled);
+  const navigationBarrier = samplingMode === 'simultaneous'
+    ? createBarrier(groups.length)
+    : undefined;
 
   const sampleOne = async (group: string): Promise<PairSampleResult<TSample>> => {
     const sampler = samplerSet[group];
     onSampleStart?.(group, iteration, isTrial);
     const sample = await sampleWithTimeout(
-      sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation
+      sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation, navigationBarrier
     );
     onProgress(group, iteration, isTrial);
     return { group, sample };
@@ -271,6 +275,28 @@ async function runOneShuffledPair<TSample>(
   return settled.map(
     (r) => (r as PromiseFulfilledResult<PairSampleResult<TSample>>).value
   );
+}
+
+function createBarrier(participantCount: number): () => Promise<void> {
+  if (participantCount <= 1) return () => Promise.resolve();
+
+  let waiting = 0;
+  let released = false;
+  let release: () => void = () => undefined;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  return async () => {
+    if (!released) {
+      waiting += 1;
+      if (waiting === participantCount) {
+        released = true;
+        release();
+      }
+    }
+    await ready;
+  };
 }
 
 function shuffle<T>(array: T[]): T[] {

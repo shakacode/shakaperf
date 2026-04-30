@@ -79,6 +79,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     _isTrial: boolean,
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
+    const sampleLabel = _isTrial ? 'warmup' : `sample-${Math.max(0, iteration - 1)}`;
     let lhSettings = await this.getMobileSettings();
 
     if (this.options.lhConfigPath) {
@@ -105,7 +106,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       fullUrl,
       lhSettings,
       markers,
-      saveArtifacts
+      saveArtifacts,
+      sampleLabel
     );
     return {
       metadata: {},
@@ -118,7 +120,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     url: string,
     lhSettings: any,
     markers: LighthouseBenchmarkOptions['markers'],
-    saveArtifacts: boolean = true
+    saveArtifacts: boolean,
+    sampleLabel: string
   ): Promise<PhaseSample[]> {
     const port = this.chrome!.port;
     const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
@@ -141,7 +144,15 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         releaseTracking = resolve;
       });
 
-      // Start Lighthouse — it navigates the page itself
+      // Start Lighthouse — it navigates the page itself. The exact
+      // Page.navigate timestamp is logged from the patched Lighthouse driver.
+      if (this.options.logDiagnosticTimings) {
+        const timestamp = new Date();
+        console.log(
+          `[shaka-perf timing] subprocess Lighthouse start at ${timestamp.toISOString()} ` +
+          `(epochMs=${timestamp.getTime()}, pid=${process.pid}, group=${this.group}, ${sampleLabel})`
+        );
+      }
       const lighthousePromise = runLighthouse(
         '',
         url,

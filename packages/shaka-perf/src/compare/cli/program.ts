@@ -37,6 +37,7 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
     .option('--skip-perf-warmup', 'Skip the perf warmup pass before statistical measurements.', false)
     .option('--skip-low-noise-profiles', 'Skip the final serial low-noise profile pass. Without it, per-test artifacts come from the noisier statistical sampling stage; with it, those same files are overwritten with cleaner versions.', false)
     .option('--low-noise-profiles-only', 'Only run the final serial low-noise profile pass; skip statistical perf measurements. Per-test artifacts (Lighthouse report, performance profile, timeline) are written directly to the test folder, overwriting any from a prior measurement stage.', false)
+    .option('--log-diagnostic-timings', 'Log subprocess and Lighthouse navigation timing checkpoints for perf samples.', false)
     .action(async function (this: Command) {
       const opts = this.opts();
       const result = await runCompare({
@@ -51,6 +52,7 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
         skipPerfWarmup: opts.skipPerfWarmup === true,
         skipLowNoiseProfiles: opts.skipLowNoiseProfiles === true,
         lowNoiseProfilesOnly: opts.lowNoiseProfilesOnly === true,
+        logDiagnosticTimings: opts.logDiagnosticTimings === true,
       });
       if (result.reportPath) {
         console.log(`\nReport: ${result.reportPath}`);

@@ -17,6 +17,7 @@ export interface PerfBridgeOptions {
   testPathPattern?: string;
   filter?: string;
   warmedUpByVisreg?: boolean;
+  logDiagnosticTimings?: boolean;
 }
 
 export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
@@ -30,6 +31,7 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     testPathPattern,
     filter,
     warmedUpByVisreg,
+    logDiagnosticTimings,
   } = opts;
 
   // Announce the Lighthouse patch once per invocation in the main process;
@@ -67,6 +69,7 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     warmedUpByVisreg,
     skipLowNoiseProfiles: perfConfig.skipLowNoiseProfiles,
     lowNoiseProfilesOnly: perfConfig.lowNoiseProfilesOnly,
+    logDiagnosticTimings,
     retries: sharedConfig.retries,
     retryDelay: sharedConfig.retryDelay,
     viewportConfigs: lhConfigPaths,

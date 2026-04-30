@@ -12,7 +12,8 @@ export interface BenchmarkSampler<TSample> {
   sample(
     iteration: number,
     isTrial: boolean,
-    raceCancellation: RaceCancellation
+    raceCancellation: RaceCancellation,
+    navigationBarrier?: () => Promise<void>
   ): Promise<TSample>;
 }
 
