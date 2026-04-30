@@ -8,7 +8,13 @@ import type {
   Status,
 } from '../report';
 import type { PerfConfig } from '../config';
-import { compressHtmlImages } from './compress-inlined';
+import { compressHtmlImages, decimateTimelineFrames } from './compress-inlined';
+
+// Timelines larger than this threshold get their frame rate halved at harvest
+// time before WebP recompression. Tuned to keep the report payload under V8's
+// ~512 MB JSON.stringify limit; long-load tests (Lighthouse traces > ~10 s)
+// produce hundreds of frames each and dominate the budget without decimation.
+const TIMELINE_DECIMATE_BYTES = 8 * 1024 * 1024;
 
 // Lighthouse's filmstrip duplicates the screenshots we already capture in
 // timeline_comparison.html — strip it from the inlined report to keep the
@@ -231,6 +237,9 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
     try {
       let content: Buffer = fs.readFileSync(path.join(perTestDir, name));
       if (name === 'timeline_comparison.html') {
+        if (content.byteLength > TIMELINE_DECIMATE_BYTES) {
+          content = decimateTimelineFrames(content, 2);
+        }
         content = await compressHtmlImages(content, { imageQuality: 50 });
       } else if (name.endsWith('_lighthouse_report.html')) {
         content = await compressHtmlImages(content, {
