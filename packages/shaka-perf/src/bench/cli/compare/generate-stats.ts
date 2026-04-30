@@ -240,7 +240,12 @@ export class GenerateStats {
       },
       unit === "ms"
         ? roundFloatAndConvertMicrosecondsToMS
-        : (a: number) => Math.round(a)
+        // Preserve one decimal for non-ms units. CLS lives in the ~0.5–1.5
+        // range after the lighthouse-side scale (`score * 100`), so rounding
+        // to int collapses meaningful differences (e.g. 0.6 vs 1.1 both
+        // displayed as "1/100"). Integer-valued metrics (LH Score, counts)
+        // still render without a trailing ".0" via toString.
+        : (a: number) => Math.round(a * 10) / 10
     );
 
     const estimatorIsSig = Math.abs(stats.estimator) >= 1 ? true : false;
