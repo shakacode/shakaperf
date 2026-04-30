@@ -10,6 +10,13 @@ import type {
 import type { PerfConfig } from '../config';
 import { compressHtmlImages } from './compress-inlined';
 
+// Lighthouse's filmstrip duplicates the screenshots we already capture in
+// timeline_comparison.html — strip it from the inlined report to keep the
+// payload under V8's ~512 MB JSON.stringify string limit.
+const LIGHTHOUSE_STRIP_PATTERNS: RegExp[] = [
+  /<div[^>]*class="[^"]*lh-filmstrip[^"]*"[^>]*>[\s\S]*?<\/div>/g,
+];
+
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
 const HIGHER_IS_BETTER = new Set(['lh score', 'lighthouse score']);
@@ -226,7 +233,10 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
       if (name === 'timeline_comparison.html') {
         content = await compressHtmlImages(content, { imageQuality: 50 });
       } else if (name.endsWith('_lighthouse_report.html')) {
-        content = await compressHtmlImages(content, { imageQuality: 60 });
+        content = await compressHtmlImages(content, {
+          imageQuality: 60,
+          stripPatterns: LIGHTHOUSE_STRIP_PATTERNS,
+        });
       }
       return `data:text/html;base64,${content.toString('base64')}`;
     } catch {
