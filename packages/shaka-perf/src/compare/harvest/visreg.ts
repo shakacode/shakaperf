@@ -2,9 +2,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PNG } from 'pngjs';
 import { embedAsBase64 } from 'shaka-shared';
+import type { TestType } from 'shaka-shared';
 import type { CategoryResult, VisregArtifact } from '../report';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { CategoryDef, HarvestContext } from '../category-def';
+import { bufferToAvifDataUri } from './compress-inlined';
+
+const VISREG_AVIF_QUALITY = 55;
+const VISREG_IMAGE_SCALE = 0.75;
+const VISREG_TEST_TYPE = 'visreg' as unknown as TestType;
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
@@ -205,7 +211,7 @@ function visregRootFor(resultsRoot: string, viewportLabel: string): string {
  * that pair — typically means the test wasn't measured at this viewport
  * (either the shard didn't run it or visreg filtered it out).
  */
-export function harvestVisreg(opts: HarvestVisregOptions): HarvestedVisreg | null {
+export async function harvestVisreg(opts: HarvestVisregOptions): Promise<HarvestedVisreg | null> {
   const { resultsRoot, slug, viewport } = opts;
   const perTestDir = path.join(visregRootFor(resultsRoot, viewport.label), slug);
   const reportPath = path.join(perTestDir, 'report.json');
@@ -253,12 +259,18 @@ export function harvestVisreg(opts: HarvestVisregOptions): HarvestedVisreg | nul
         )
       : null;
 
+    const [controlImage, experimentImage, diffImage] = await Promise.all([
+      toDataUri(perTestDir, pair.reference),
+      toDataUri(perTestDir, pair.test),
+      diffSource ? toDataUri(perTestDir, diffSource) : Promise.resolve(null),
+    ]);
+
     artifacts.push({
       viewportLabel: pair.viewportLabel ?? viewport.label,
       selector: pair.selector ?? 'document',
-      controlImage: toDataUri(perTestDir, pair.reference),
-      experimentImage: toDataUri(perTestDir, pair.test),
-      diffImage: diffSource ? toDataUri(perTestDir, diffSource) : null,
+      controlImage,
+      experimentImage,
+      diffImage,
       misMatchPercentage,
       diffPixels: scan?.diffPixels ?? 0,
       threshold,
@@ -278,12 +290,21 @@ function resolveUnderBase(baseDir: string, relOrAbs: string): string {
   return path.isAbsolute(relOrAbs) ? relOrAbs : path.join(baseDir, relOrAbs);
 }
 
-function toDataUri(baseDir: string, relOrAbs?: string | null): string {
+async function toDataUri(baseDir: string, relOrAbs?: string | null): Promise<string> {
   if (!relOrAbs) return '';
-  return embedAsBase64(resolveUnderBase(baseDir, relOrAbs)) ?? '';
+  const absPath = resolveUnderBase(baseDir, relOrAbs);
+  const ext = path.extname(absPath).toLowerCase();
+  if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
+    return bufferToAvifDataUri(
+      fs.readFileSync(absPath),
+      VISREG_AVIF_QUALITY,
+      VISREG_IMAGE_SCALE,
+    );
+  }
+  return embedAsBase64(absPath) ?? '';
 }
 
-function harvestVisregCategory(ctx: HarvestContext): CategoryResult | null {
+async function harvestVisregCategory(ctx: HarvestContext): Promise<CategoryResult | null> {
   const { slug, viewports, resultsRoot } = ctx;
   const artifacts: VisregArtifact[] = [];
   const viewportErrors: string[] = [];
@@ -292,7 +313,7 @@ function harvestVisregCategory(ctx: HarvestContext): CategoryResult | null {
   let anyHarvested = false;
 
   for (const viewport of viewports) {
-    const harvested = harvestVisreg({ resultsRoot, slug, viewport });
+    const harvested = await harvestVisreg({ resultsRoot, slug, viewport });
     if (!harvested) continue;
     anyHarvested = true;
     artifacts.push(...harvested.artifacts);
@@ -324,7 +345,7 @@ function harvestVisregCategory(ctx: HarvestContext): CategoryResult | null {
 }
 
 export const visregCategoryDef: CategoryDef = {
-  testType: 'visreg',
+  testType: VISREG_TEST_TYPE,
   viewports: (config: AbTestsConfig) => config.visreg.viewports,
   harvest: harvestVisregCategory,
 };

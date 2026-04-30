@@ -87,6 +87,27 @@ type CumulativeChartData = {
   experimentData: number[][];
 };
 
+function dropNonFiniteSamples(
+  control: number[],
+  experiment: number[]
+): { control: number[]; experiment: number[] } {
+  if (control.length === experiment.length) {
+    const c: number[] = [];
+    const e: number[] = [];
+    for (let i = 0; i < control.length; i++) {
+      if (Number.isFinite(control[i]) && Number.isFinite(experiment[i])) {
+        c.push(control[i]);
+        e.push(experiment[i]);
+      }
+    }
+    return { control: c, experiment: e };
+  }
+  return {
+    control: control.filter(Number.isFinite),
+    experiment: experiment.filter(Number.isFinite),
+  };
+}
+
 // takes control/experimentData as raw samples in microseconds
 export class GenerateStats {
   controlData: ITracerBenchTraceResult;
@@ -201,17 +222,30 @@ export class GenerateStats {
     unit: string,
     sign: -1 | 1
   ): HTMLSectionRenderData {
+    // Lighthouse can emit null/NaN for an audit when a metric couldn't be
+    // computed (e.g. speed-index on a page slower than the trace window).
+    // Drop non-finite samples before stats — pair-wise when lengths match,
+    // independently otherwise — so they don't get coerced to 0 and skew the
+    // median (and explode the asPercent denominator).
+    const { control: cleanControl, experiment: cleanExperiment } =
+      dropNonFiniteSamples(controlValues, experimentValues);
+
     // all stats will be converted to milliseconds and rounded to tenths
     const stats = new Stats(
       {
-        control: controlValues,
-        experiment: experimentValues,
+        control: cleanControl,
+        experiment: cleanExperiment,
         name: phaseName,
         confidenceLevel: this.confidenceLevel as IStatsOptions['confidenceLevel'],
       },
       unit === "ms"
         ? roundFloatAndConvertMicrosecondsToMS
-        : (a: number) => Math.round(a)
+        // Preserve one decimal for non-ms units. CLS lives in the ~0.5–1.5
+        // range after the lighthouse-side scale (`score * 100`), so rounding
+        // to int collapses meaningful differences (e.g. 0.6 vs 1.1 both
+        // displayed as "1/100"). Integer-valued metrics (LH Score, counts)
+        // still render without a trailing ".0" via toString.
+        : (a: number) => Math.round(a * 10) / 10
     );
 
     const estimatorIsSig = Math.abs(stats.estimator) >= 1 ? true : false;

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import type { TestType } from 'shaka-shared';
 import type {
   CategoryResult,
   PerfArtifact,
@@ -10,10 +11,12 @@ import type {
 } from '../report';
 import type { AbTestsConfig, PerfConfig, Viewport } from '../config';
 import type { CategoryDef, HarvestContext } from '../category-def';
+import { compressHtmlImages, compressSvgEmbeddedImages } from './compress-inlined';
 
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
 const HIGHER_IS_BETTER = new Set(['lh score', 'lighthouse score']);
+const PERF_TEST_TYPE = 'perf' as unknown as TestType;
 
 function classifyGroup(heading: string | undefined): PerfMetricGroup {
   return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
@@ -113,7 +116,7 @@ export interface HarvestPerfOptions {
  * collect the results into a single perf `CategoryResult.artifacts` array —
  * the same shape visreg uses for its per-viewport pairs.
  */
-export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
+export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifact> {
   const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
 
   const metrics: PerfMetric[] = [];
@@ -178,14 +181,16 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // path instead and rendered in an iframe at dialog-open time; when the
   // viewer doesn't have the perf results directory alongside the report, the
   // dialog falls back to a "timeline only available locally" message.
-  const inlineHtml = (name: string | null): string | null => {
+  const inlineHtml = async (name: string | null): Promise<string | null> => {
     if (!name) return null;
-    try {
-      const content = fs.readFileSync(path.join(perTestDir, name));
-      return `data:text/html;base64,${content.toString('base64')}`;
-    } catch {
-      return null;
+    const fullPath = path.join(perTestDir, name);
+    let content: Buffer = fs.readFileSync(fullPath) as Buffer;
+    if (name.endsWith('_lighthouse_report.html')) {
+      content = await compressHtmlImages(content, { imageQuality: 60, outputFormat: 'jpeg' });
+    } else if (name === 'timeline_comparison.html') {
+      content = await compressHtmlImages(content, { imageQuality: 50 });
     }
+    return `data:text/html;base64,${content.toString('base64')}`;
   };
 
   const relativeHref = (name: string | null): string | null => {
@@ -221,9 +226,13 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // so skipping it saves ~1 MB × (no-diff tests count) in the report.
   const shouldIncludePreview = status !== 'no_difference';
   const timelinePreviewSvg = shouldIncludePreview && timelinePreview
-    ? (() => {
+    ? (async () => {
         try {
-          return fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
+          const raw = fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
+          return await compressSvgEmbeddedImages(raw, {
+            imageQuality: 40,
+            maxWidthPx: 160,
+          });
         } catch {
           return null;
         }
@@ -241,6 +250,20 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
   // have shown when we kept engine-error.txt / engine-output.log on disk.
   const errorPrefix = engineError ? `perf measurement failed: ${engineError}` : undefined;
 
+  const [
+    controlLighthouseHref,
+    experimentLighthouseHref,
+    benchReportHref,
+    diffHrefEntries,
+  ] = await Promise.all([
+    inlineHtml(controlLh),
+    inlineHtml(experimentLh),
+    inlineHtml(benchReport),
+    Promise.all(
+      diffFiles.map(async (f) => ({ label: prettyDiffLabel(f), href: await inlineHtml(f) })),
+    ),
+  ]);
+
   return {
     viewportLabel,
     metrics,
@@ -248,13 +271,12 @@ export function harvestPerf(opts: HarvestPerfOptions): PerfArtifact {
     improvedMetrics,
     ...(errorPrefix ? { error: errorPrefix } : {}),
     ...(engineOutput ? { errorLog: engineOutput } : {}),
-    controlLighthouseHref: inlineHtml(controlLh),
-    experimentLighthouseHref: inlineHtml(experimentLh),
+    controlLighthouseHref,
+    experimentLighthouseHref,
     timelineHref: relativeHref(timeline),
-    timelinePreviewSvg,
-    benchReportHref: inlineHtml(benchReport),
-    diffHrefs: diffFiles
-      .map((f) => ({ label: prettyDiffLabel(f), href: inlineHtml(f) }))
+    timelinePreviewSvg: await timelinePreviewSvg,
+    benchReportHref,
+    diffHrefs: diffHrefEntries
       .filter((d): d is { label: string; href: string } => d.href != null),
   };
 }
@@ -301,7 +323,7 @@ function perfRootFor(resultsRoot: string, viewport: Viewport): string {
   return path.join(resultsRoot, `perf-${viewport.label}`);
 }
 
-function harvestPerfCategory(ctx: HarvestContext): CategoryResult | null {
+async function harvestPerfCategory(ctx: HarvestContext): Promise<CategoryResult | null> {
   const { slug, viewports, resultsRoot, controlURL, experimentURL, config, perfEngineFailedByLabel } = ctx;
   const artifacts: PerfArtifact[] = [];
   let anyHarvested = false;
@@ -318,7 +340,7 @@ function harvestPerfCategory(ctx: HarvestContext): CategoryResult | null {
       anyHarvested = true;
       try {
         artifacts.push(
-          harvestPerf({
+          await harvestPerf({
             perTestDir,
             controlURL,
             experimentURL,
@@ -363,7 +385,7 @@ function harvestPerfCategory(ctx: HarvestContext): CategoryResult | null {
 }
 
 export const perfCategoryDef: CategoryDef = {
-  testType: 'perf',
+  testType: PERF_TEST_TYPE,
   viewports: (config: AbTestsConfig) => config.perf.viewports,
   harvest: harvestPerfCategory,
 };
