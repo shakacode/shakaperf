@@ -11,7 +11,7 @@ import type {
 } from '../report';
 import type { AbTestsConfig, PerfConfig, Viewport } from '../config';
 import type { CategoryDef, HarvestContext } from '../category-def';
-import { compressHtmlImages } from './compress-inlined';
+import { compressHtmlImages, compressSvgEmbeddedImages } from './compress-inlined';
 
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
@@ -186,7 +186,7 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
     const fullPath = path.join(perTestDir, name);
     let content: Buffer = fs.readFileSync(fullPath) as Buffer;
     if (name.endsWith('_lighthouse_report.html')) {
-      content = await compressHtmlImages(content, { imageQuality: 60 });
+      content = await compressHtmlImages(content, { imageQuality: 60, outputFormat: 'jpeg' });
     } else if (name === 'timeline_comparison.html') {
       content = await compressHtmlImages(content, { imageQuality: 50 });
     }
@@ -226,9 +226,13 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
   // so skipping it saves ~1 MB × (no-diff tests count) in the report.
   const shouldIncludePreview = status !== 'no_difference';
   const timelinePreviewSvg = shouldIncludePreview && timelinePreview
-    ? (() => {
+    ? (async () => {
         try {
-          return fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
+          const raw = fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
+          return await compressSvgEmbeddedImages(raw, {
+            imageQuality: 40,
+            maxWidthPx: 160,
+          });
         } catch {
           return null;
         }
@@ -270,7 +274,7 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
     controlLighthouseHref,
     experimentLighthouseHref,
     timelineHref: relativeHref(timeline),
-    timelinePreviewSvg,
+    timelinePreviewSvg: await timelinePreviewSvg,
     benchReportHref,
     diffHrefs: diffHrefEntries
       .filter((d): d is { label: string; href: string } => d.href != null),

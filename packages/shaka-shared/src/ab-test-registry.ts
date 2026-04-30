@@ -33,7 +33,13 @@ export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 66
 export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
-export type TestType = 'perf' | 'visreg' | 'accessibility';
+export const TestType = {
+  Performance: 'perf',
+  VisualRegression: 'visreg',
+  Accessibility: 'accessibility',
+} as const;
+
+export type TestType = (typeof TestType)[keyof typeof TestType];
 
 export interface TestFnContext {
   page: Page;
