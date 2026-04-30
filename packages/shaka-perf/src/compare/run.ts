@@ -49,6 +49,15 @@ export interface CompareRunOptions {
    * Useful when iterating on report/harvest code.
    */
   skipEngines?: boolean;
+  /**
+   * Inline `timeline_comparison.html` (with its embedded screenshot
+   * filmstrip) into the report payload. Defaults to true. Set to false
+   * via the `--no-timeline` CLI flag to exclude timelines from the report
+   * — useful when the inlined payload is approaching V8's ~512 MB string
+   * limit, since timelines are typically the largest single contributor.
+   * The on-disk per-test `timeline_comparison.html` files are unaffected.
+   */
+  includeTimeline?: boolean;
 }
 
 const DEFAULT_CATEGORIES: Category[] = ['visreg', 'perf'];
@@ -272,6 +281,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         categories,
         visregByLabel,
         perfEngineFailedByLabel,
+        includeTimeline: opts.includeTimeline !== false,
       }),
     ),
   );
@@ -350,6 +360,7 @@ interface BuildTestResultOpts {
    *  "this test's viewport had an engine failure" from "this test happens to
    *  be missing report.json in an otherwise healthy viewport's subtree". */
   perfEngineFailedByLabel: Set<string>;
+  includeTimeline: boolean;
 }
 
 function skippedCategory(
@@ -375,7 +386,7 @@ const TEST_TYPE_FOR_CATEGORY = {
 } as const;
 
 async function buildTestResult(opts: BuildTestResultOpts): Promise<TestResult> {
-  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel } = opts;
+  const { test, cwd, controlURL, experimentURL, visregConfig, perfConfig, resultsRoot, categories, visregByLabel, perfEngineFailedByLabel, includeTimeline } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
@@ -446,6 +457,7 @@ async function buildTestResult(opts: BuildTestResultOpts): Promise<TestResult> {
                   reportRoot: resultsRoot,
                   slug,
                   viewportLabel,
+                  includeTimeline,
                 }),
               );
             } catch (err) {

@@ -31,6 +31,7 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
     )
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--skip-engines', 'Re-harvest and re-render the HTML report from existing compare-results/ artifacts without re-running visreg or perf', false)
+    .option('--no-timeline', 'Exclude timeline_comparison.html from the report (smaller payload; per-test reports on disk are unaffected)')
     .action(async function (this: Command) {
       const opts = this.opts();
       const result = await runCompare({
@@ -41,6 +42,8 @@ export function createCompareCommand(options: CreateCompareCommandOptions = {}):
         controlURL: opts.controlURL,
         experimentURL: opts.experimentURL,
         skipEngines: opts.skipEngines === true,
+        // Commander inverts --no-foo into opts.foo === false.
+        includeTimeline: opts.timeline !== false,
       });
       console.log(`\nReport: ${result.reportPath}`);
       if (result.hasFailures) {

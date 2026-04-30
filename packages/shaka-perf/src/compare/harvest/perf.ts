@@ -159,6 +159,8 @@ export interface HarvestPerfOptions {
   reportRoot: string;
   slug: string;
   viewportLabel: string;
+  /** When false, skip inlining `timeline_comparison.html` into the report. */
+  includeTimeline: boolean;
 }
 
 /**
@@ -169,7 +171,7 @@ export interface HarvestPerfOptions {
  * shape visreg uses for its per-viewport pairs.
  */
 export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifact> {
-  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel } = opts;
+  const { perTestDir, controlURL, experimentURL, perfConfig, reportRoot, slug, viewportLabel, includeTimeline } = opts;
 
   const metrics: PerfMetric[] = [];
   const regressedMetrics: string[] = [];
@@ -259,7 +261,12 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
   const experimentLh = files.find(
     (f) => f.startsWith(experimentHost) && f.endsWith('_lighthouse_report.html'),
   ) ?? null;
-  const timeline = files.find((f) => f === 'timeline_comparison.html') ?? null;
+  // `--no-timeline` skips inlining of both the full timeline_comparison.html
+  // AND the smaller timeline_preview.svg (which embeds the same screenshots
+  // in a 3-row triplet grid). The on-disk files stay.
+  const timeline = includeTimeline
+    ? files.find((f) => f === 'timeline_comparison.html') ?? null
+    : null;
   const timelinePreview = files.find((f) => f === 'timeline_preview.svg') ?? null;
   // Legacy bench Handlebars report: `artifact-<n>.html`. Pick the highest-numbered
   // one so re-runs into the same results folder surface the freshest render.
@@ -278,7 +285,7 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
   // and the file can be multi-hundred-KB (10 embedded JPEGs + a PNG diff),
   // so skipping it saves ~1 MB × (no-diff tests count) in the report.
-  const shouldIncludePreview = status !== 'no_difference';
+  const shouldIncludePreview = includeTimeline && status !== 'no_difference';
   const timelinePreviewSvg = shouldIncludePreview && timelinePreview
     ? (() => {
         try {
