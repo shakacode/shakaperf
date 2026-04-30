@@ -8,11 +8,11 @@ import type {
 } from './run';
 
 type SamplerSet<TSample> = { [group: string]: BenchmarkSampler<TSample> };
+type UnixSocketPair = ((type?: number) => [number, number]) & {
+  SOCK_STREAM: number;
+};
 
-interface NavigationBarrier {
-  wait(): Promise<void>;
-  abort(reason: unknown): void;
-}
+const socketpair = require('unix-socketpair') as UnixSocketPair;
 
 export interface PairSampleResult<TSample> {
   group: string;
@@ -134,9 +134,9 @@ export class LighthouseSamplingWorkerPool<TSample> {
         );
       } catch (err) {
         lastError = err;
+        await this.disposeWorker(worker);
         if (attempt > maxRetries) break;
         console.log(`Sample attempt ${attempt} failed, retrying...`);
-        await this.disposeWorker(worker);
         await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
     }
@@ -150,6 +150,7 @@ export class LighthouseSamplingWorkerPool<TSample> {
     worker: WorkerState<TSample>,
     task: LighthouseSamplingTask<TSample>
   ): Promise<SamplerSet<TSample>> {
+    assertBenchmarkPair(task.benchmarks);
     if (worker.bound?.testKey === task.testKey) {
       return worker.bound.samplerSet;
     }
@@ -160,6 +161,8 @@ export class LighthouseSamplingWorkerPool<TSample> {
       samplerSet,
       this.options.setupTimeoutMs,
       this.options.raceCancellation,
+      socketpair(socketpair.SOCK_STREAM),
+      this.options.samplingMode,
     );
     worker.bound = { testKey: task.testKey, samplerSet };
     return samplerSet;
@@ -176,10 +179,12 @@ export class LighthouseSamplingWorkerPool<TSample> {
 async function setupWithTimeout<TSample>(
   benchmark: Benchmark<TSample>,
   setupTimeoutMs: number,
-  raceCancellation?: RaceCancellation
+  raceCancellation: RaceCancellation | undefined,
+  barrierSynchronizationFd: number,
+  samplingMode: SamplingMode,
 ): Promise<BenchmarkSampler<TSample>> {
   const sampler = await withRaceTimeout(
-    (raceTimeout) => benchmark.setup(raceTimeout),
+    (raceTimeout) => benchmark.setup(raceTimeout, barrierSynchronizationFd, samplingMode),
     setupTimeoutMs
   )(raceCancellation);
   return throwIfCancelled(sampler);
@@ -191,10 +196,9 @@ async function sampleWithTimeout<TSample>(
   isTrial: boolean,
   sampleTimeoutMs: number,
   raceCancellation?: RaceCancellation,
-  navigationBarrier?: NavigationBarrier
 ): Promise<TSample> {
   const sample = await withRaceTimeout(
-    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout, navigationBarrier?.wait),
+    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout),
     sampleTimeoutMs
   )(raceCancellation);
   return throwIfCancelled(sample);
@@ -204,15 +208,19 @@ async function setupSamplers<TSample>(
   benchmarks: Benchmark<TSample>[],
   samplers: SamplerSet<TSample>,
   setupTimeoutMs: number,
-  raceCancellation?: RaceCancellation
+  raceCancellation: RaceCancellation | undefined,
+  barrierSynchronizationFds: [number, number],
+  samplingMode: SamplingMode,
 ): Promise<void> {
   try {
     await Promise.all(
-      benchmarks.map(async (benchmark) => {
+      benchmarks.map(async (benchmark, index) => {
         const sampler = await setupWithTimeout(
           benchmark,
           setupTimeoutMs,
-          raceCancellation
+          raceCancellation,
+          barrierSynchronizationFds[index],
+          samplingMode,
         );
         samplers[benchmark.group] = sampler;
       })
@@ -248,23 +256,15 @@ async function runOneShuffledPair<TSample>(
 ): Promise<PairSampleResult<TSample>[]> {
   const shuffled = [...groups];
   shuffle(shuffled);
-  const navigationBarrier = samplingMode === 'simultaneous'
-    ? createBarrier(groups.length)
-    : undefined;
 
   const sampleOne = async (group: string): Promise<PairSampleResult<TSample>> => {
     const sampler = samplerSet[group];
     onSampleStart?.(group, iteration, isTrial);
-    try {
-      const sample = await sampleWithTimeout(
-        sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation, navigationBarrier
-      );
-      onProgress(group, iteration, isTrial);
-      return { group, sample };
-    } catch (err) {
-      navigationBarrier?.abort(err);
-      throw err;
-    }
+    const sample = await sampleWithTimeout(
+      sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation
+    );
+    onProgress(group, iteration, isTrial);
+    return { group, sample };
   };
 
   if (samplingMode === 'sequential') {
@@ -275,53 +275,19 @@ async function runOneShuffledPair<TSample>(
     return results;
   }
 
-  const settled = await Promise.allSettled(shuffled.map(sampleOne));
-  const rejections = settled.filter(
-    (r): r is PromiseRejectedResult => r.status === 'rejected'
-  );
-  if (rejections.length > 0) {
-    throw rejections[0].reason;
-  }
-  return settled.map(
-    (r) => (r as PromiseFulfilledResult<PairSampleResult<TSample>>).value
-  );
+  return Promise.all(shuffled.map(sampleOne));
 }
 
-function createBarrier(participantCount: number): NavigationBarrier {
-  if (participantCount <= 1) {
-    return {
-      wait: () => Promise.resolve(),
-      abort: () => undefined,
-    };
+function assertBenchmarkPair<TSample>(
+  benchmarks: Benchmark<TSample>[],
+): asserts benchmarks is [Benchmark<TSample>, Benchmark<TSample>] {
+  // TODO: Remove the remaining generalized benchmark-count code and model
+  // benchmarks as a 2-tuple. shaka-perf is intended for A/B tests.
+  if (benchmarks.length !== 2) {
+    throw new Error(
+      `shaka-perf is intended for A/B tests and requires exactly 2 benchmarks; got ${benchmarks.length}`
+    );
   }
-
-  let waiting = 0;
-  let released = false;
-  let rejected = false;
-  let release: () => void = () => undefined;
-  let rejectReady: (reason: unknown) => void = () => undefined;
-  const ready = new Promise<void>((resolve, reject) => {
-    release = resolve;
-    rejectReady = reject;
-  });
-
-  return {
-    async wait() {
-      if (!released && !rejected) {
-        waiting += 1;
-        if (waiting === participantCount) {
-          released = true;
-          release();
-        }
-      }
-      await ready;
-    },
-    abort(reason: unknown) {
-      if (released || rejected) return;
-      rejected = true;
-      rejectReady(reason);
-    },
-  };
 }
 
 function shuffle<T>(array: T[]): T[] {

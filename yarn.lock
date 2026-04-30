@@ -10032,7 +10032,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-gyp@npm:latest":
+"node-gyp@npm:12.1.0":
   version: 12.1.0
   resolution: "node-gyp@npm:12.1.0"
   dependencies:
@@ -11582,6 +11582,7 @@ __metadata:
     tslib: "npm:^2.2.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.0"
+    unix-socketpair: "npm:0.1.4"
     vite: "npm:^6.0.0"
     vite-plugin-singlefile: "npm:^2.1.0"
     zod: "npm:^3.24.0"
@@ -12545,6 +12546,15 @@ __metadata:
   version: 2.0.1
   resolution: "universalify@npm:2.0.1"
   checksum: 10c0/73e8ee3809041ca8b818efb141801a1004e3fc0002727f1531f4de613ea281b494a40909596dae4a042a4fb6cd385af5d4db2e137b1362e0e91384b828effd3a
+  languageName: node
+  linkType: hard
+
+"unix-socketpair@npm:0.1.4":
+  version: 0.1.4
+  resolution: "unix-socketpair@npm:0.1.4"
+  dependencies:
+    node-gyp: "npm:latest"
+  checksum: 10c0/d2a60d70b2d57205b1aa18e211f1fb5c2a2457893ce3a79d6f9cbdaf7c0aa4a66f6b93a2b373d481669eaaf0521c4a23c58caf00696fb591f29044087b174ce0
   languageName: node
   linkType: hard
 

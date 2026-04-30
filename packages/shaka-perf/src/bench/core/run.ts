@@ -4,7 +4,11 @@ import { LighthouseSamplingWorkerPool } from './lighthouse-sampling-worker-pool'
 
 export interface Benchmark<TSample> {
   readonly group: string;
-  setup(raceCancellation: RaceCancellation): Promise<BenchmarkSampler<TSample>>;
+  setup(
+    raceCancellation: RaceCancellation,
+    barrierSynchronizationFd: number,
+    samplingMode: SamplingMode,
+  ): Promise<BenchmarkSampler<TSample>>;
 }
 
 export interface BenchmarkSampler<TSample> {
@@ -13,7 +17,6 @@ export interface BenchmarkSampler<TSample> {
     iteration: number,
     isTrial: boolean,
     raceCancellation: RaceCancellation,
-    navigationBarrier?: () => Promise<void>
   ): Promise<TSample>;
 }
 

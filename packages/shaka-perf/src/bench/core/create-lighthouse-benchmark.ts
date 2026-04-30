@@ -1,10 +1,10 @@
 import { fork, type ChildProcess } from 'node:child_process';
-import { createWriteStream, type WriteStream } from 'node:fs';
+import { closeSync, createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 import type { RaceCancellation } from 'race-cancellation';
 
-import { Benchmark, BenchmarkSampler } from './run';
+import { Benchmark, BenchmarkSampler, type SamplingMode } from './run';
 import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
 import type { AbTestDefinition } from './ab-test-registry';
 import {
@@ -12,6 +12,10 @@ import {
   formatPlainLogPrefix,
   testSourcePrefix,
 } from '../../visreg/core/util/testContext';
+
+// stdio slots 0-3 are stdin, stdout, stderr, and Node's IPC channel.
+// Slot 4 is reserved for the worker-to-worker barrier synchronization fd.
+const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
 
 interface ResultMessage {
   type: 'result';
@@ -28,11 +32,7 @@ interface ReadyMessage {
   type: 'ready';
 }
 
-interface NavigationReadyMessage {
-  type: 'navigationReady';
-}
-
-type WorkerMessage = ResultMessage | ErrorMessage | ReadyMessage | NavigationReadyMessage;
+type WorkerMessage = ResultMessage | ErrorMessage | ReadyMessage;
 
 function waitForMessage(worker: ChildProcess): Promise<WorkerMessage> {
   return new Promise((resolve, reject) => {
@@ -129,29 +129,19 @@ class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
     iteration: number,
     isTrial: boolean,
     _raceCancellation: RaceCancellation,
-    navigationBarrier?: () => Promise<void>
   ): Promise<NavigationSample> {
     if (!safeSend(this.worker, { type: 'sample', iteration, isTrial })) {
       throw new Error('lighthouse worker died before it could sample');
     }
     this.setSampleLabel(isTrial ? 'warmup' : `sample-${Math.max(0, iteration - 1)}`);
     try {
-      while (true) {
-        const msg = await waitForMessage(this.worker);
-        if (msg.type === 'navigationReady') {
-          await navigationBarrier?.();
-          if (!safeSend(this.worker, { type: 'navigationStart' })) {
-            throw new Error('lighthouse worker died before navigation barrier could release');
-          }
-          continue;
-        }
-        if (msg.type === 'error') {
-          const err = new Error(msg.message);
-          err.stack = msg.stack;
-          throw err;
-        }
-        return (msg as ResultMessage).sample;
+      const msg = await waitForMessage(this.worker);
+      if (msg.type === 'error') {
+        const err = new Error(msg.message);
+        err.stack = msg.stack;
+        throw err;
       }
+      return (msg as ResultMessage).sample;
     } finally {
       this.setSampleLabel(null);
     }
@@ -194,19 +184,31 @@ export default function createLighthouseBenchmark(
 ): Benchmark<NavigationSample> {
   return {
     group,
-    async setup(_raceCancellation) {
+    async setup(_raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker.js');
       // When logFile is set we pipe stdio and tee to a file; otherwise inherit
       // so the original terminal experience (colors, interleave) is preserved.
       // fork() auto-adds the IPC channel when stdio is 'inherit'; with a
       // custom array we must include 'ipc' explicitly.
       const logFile = options.logFile;
-      const worker = logFile
-        ? fork(workerPath, [], {
-          stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
-          env: workerEnvWithColors(),
-        })
-        : fork(workerPath, [], { stdio: 'inherit' });
+      const barrierSynchronizationEnv = {
+        SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
+        SHAKA_PERF_SAMPLING_MODE: samplingMode,
+      };
+      let worker: ChildProcess;
+      try {
+        worker = logFile
+          ? fork(workerPath, [], {
+            stdio: ['inherit', 'pipe', 'pipe', 'ipc', barrierSynchronizationFd],
+            env: { ...workerEnvWithColors(), ...barrierSynchronizationEnv },
+          })
+          : fork(workerPath, [], {
+            stdio: ['inherit', 'inherit', 'inherit', 'ipc', barrierSynchronizationFd],
+            env: { ...process.env, ...barrierSynchronizationEnv },
+          });
+      } finally {
+        try { closeSync(barrierSynchronizationFd); } catch { /* child_process may already close it */ }
+      }
 
       let logStream: WriteStream | null = null;
       let sampleLabel: string | null = null;

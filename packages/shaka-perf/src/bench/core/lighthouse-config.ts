@@ -46,10 +46,8 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
  * which can't carry viewport options by type) plus the viewport's
  * `formFactor` / `screenEmulation` on top.
  *
- * `DEFAULT_LH_CONFIG` is intentionally NOT spread in here —
- * `create-lighthouse-benchmark-in-process.ts` already layers those defaults
- * under the loaded user config, so repeating them at the bridge layer would
- * be dead work.
+ * `DEFAULT_LH_CONFIG` is intentionally NOT spread in here; the Lighthouse
+ * worker layers those defaults under the loaded user config.
  */
 export function lhConfigForViewport(
   viewport: Viewport,

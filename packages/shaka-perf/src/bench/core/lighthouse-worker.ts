@@ -1,7 +1,26 @@
-import { loadTestFile, getRegisteredTests } from 'shaka-shared';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { launch, type LaunchedChrome } from 'chrome-launcher';
+import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import type { RaceCancellation } from 'race-cancellation';
+
+import { loadConfigFile, loadTestFile, getRegisteredTests } from 'shaka-shared';
 import type { BenchmarkSampler } from './run';
-import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
-import createLighthouseBenchmarkInProcess from './create-lighthouse-benchmark-in-process';
+import { installBeforePageNavigateBarrier } from './barrier-synchronization';
+import {
+  DEFAULT_LH_CONFIG,
+  DEFAULT_MARKERS,
+  getCpuSlowdownMultiplier,
+  type LighthouseBenchmarkOptions,
+  type NavigationSample,
+  type PhaseSample,
+} from './lighthouse-config';
+import { runLighthouse } from './run-lighthouse';
+import { extractMarkers } from './extract-markers';
+import { injectINPObserver, collectINP } from './inp';
+import type { AbTestDefinition } from './ab-test-registry';
 
 interface SetupMessage {
   type: 'setup';
@@ -22,11 +41,180 @@ interface DisposeMessage {
   type: 'dispose';
 }
 
-interface NavigationStartMessage {
-  type: 'navigationStart';
-}
+type ParentMessage = SetupMessage | SampleMessage | DisposeMessage;
 
-type ParentMessage = SetupMessage | SampleMessage | DisposeMessage | NavigationStartMessage;
+class LighthouseWorkerSampler implements BenchmarkSampler<NavigationSample> {
+  private chrome: LaunchedChrome | null = null;
+  private userDataDir: string | null = null;
+
+  constructor(
+    private baseUrl: string,
+    private testDef: AbTestDefinition,
+    private options: LighthouseBenchmarkOptions,
+    private group: string,
+  ) {}
+
+  async setupBrowser(): Promise<void> {
+    const chromeFlags = [
+      '--headless',
+      '--ignore-certificate-errors',
+      '--enable-unsafe-swiftshader',
+      '--disable-dev-shm-usage',
+    ];
+
+    if (process.env.TRACERBENCH_PROXY_URL) {
+      chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
+    }
+
+    this.userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
+    this.chrome = await launch({ chromeFlags, userDataDir: this.userDataDir });
+  }
+
+  async dispose(): Promise<void> {
+    await this.chrome?.kill();
+    if (this.userDataDir) {
+      await rm(this.userDataDir, { recursive: true, force: true });
+    }
+  }
+
+  async getMobileSettings(): Promise<any> {
+    const { defaultConfig } = await import('lighthouse');
+    return {
+      ...defaultConfig?.settings,
+      ...DEFAULT_LH_CONFIG,
+      throttling: {
+        ...DEFAULT_LH_CONFIG.throttling as object,
+        cpuSlowdownMultiplier: process.env.CI ? 6 : 20,
+      },
+      port: this.chrome!.port,
+    };
+  }
+
+  async sample(
+    iteration: number,
+    isTrial: boolean,
+    _raceCancellation: RaceCancellation,
+  ): Promise<NavigationSample> {
+    const sampleLabel = isTrial ? 'warmup' : `sample-${Math.max(0, iteration - 1)}`;
+    let lhSettings = await this.getMobileSettings();
+
+    if (this.options.lhConfigPath) {
+      const userConfig = await loadConfigFile(this.options.lhConfigPath);
+      lhSettings = { ...lhSettings, ...userConfig, port: this.chrome!.port };
+    }
+
+    const fullUrl = this.fullUrl();
+    const markers = this.testDef.options.markers ?? this.options.markers;
+    const phases = await this.runLighthouseWithPlaywright(
+      fullUrl,
+      lhSettings,
+      markers,
+      iteration === 1,
+      sampleLabel,
+    );
+    return { metadata: {}, duration: 0, phases };
+  }
+
+  private fullUrl(): string {
+    const base = new URL(this.baseUrl);
+    const path = this.group === 'experiment' && this.testDef.experimentPathOverride
+      ? this.testDef.experimentPathOverride
+      : this.testDef.startingPath;
+    const parsed = new URL(path, base);
+    for (const [key, value] of base.searchParams) {
+      if (!parsed.searchParams.has(key)) parsed.searchParams.set(key, value);
+    }
+    return parsed.href;
+  }
+
+  private async runLighthouseWithPlaywright(
+    url: string,
+    lhSettings: any,
+    markers: LighthouseBenchmarkOptions['markers'],
+    saveArtifacts: boolean,
+    sampleLabel: string,
+  ): Promise<PhaseSample[]> {
+    const browser = await chromium.connectOverCDP(`http://localhost:${this.chrome!.port}`);
+
+    try {
+      const context = browser.contexts()[0];
+      await context.clearCookies();
+
+      let releaseTracking: () => void = () => {};
+      const canStopTracking = new Promise<void>((resolve) => {
+        releaseTracking = resolve;
+      });
+
+      if (this.options.logDiagnosticTimings) {
+        const timestamp = new Date();
+        console.log(
+          `[shaka-perf timing] subprocess Lighthouse start at ${timestamp.toISOString()} ` +
+          `(epochMs=${timestamp.getTime()}, pid=${process.pid}, group=${this.group}, ${sampleLabel})`
+        );
+      }
+      const lighthousePromise = runLighthouse(
+        '',
+        url,
+        lhSettings,
+        this.options.resultsFolder ?? './tracerbench-results',
+        markers,
+        saveArtifacts,
+        canStopTracking,
+      );
+
+      const page = await this.waitForPage(context, url);
+      await injectINPObserver(page);
+      const playwrightPromise = this.testDef.testFn({
+        page,
+        browserContext: context,
+        isControl: this.group === 'control',
+        scenario: this.testDef,
+        viewport: this.options.viewport,
+        testType: 'perf',
+        annotate: () => {},
+      })
+        .then(() => collectINP(page))
+        .finally(() => releaseTracking());
+
+      const [{ phases, runnerResult }, inp] = await Promise.all([lighthousePromise, playwrightPromise]);
+
+      const multiplier = getCpuSlowdownMultiplier(lhSettings);
+      for (const phase of extractMarkers(runnerResult, markers ?? DEFAULT_MARKERS, '')) {
+        phases.push({ ...phase, duration: phase.duration * multiplier });
+      }
+      if (inp != null && inp > 0) {
+        phases.push({
+          phase: 'interaction-to-next-paint',
+          duration: inp * 1000 * multiplier,
+          start: 0,
+          sign: 1,
+          unit: 'ms',
+        });
+      }
+
+      return phases;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  private async waitForPage(context: BrowserContext, url: string): Promise<Page> {
+    const targetOrigin = new URL(url).origin;
+    const timeout = 30_000;
+    const start = Date.now();
+
+    while (Date.now() - start < timeout) {
+      for (const page of context.pages()) {
+        if (page.url().startsWith(targetOrigin)) {
+          await page.waitForLoadState('domcontentloaded');
+          return page;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    throw new Error(`Timed out waiting for page at ${targetOrigin}`);
+  }
+}
 
 function send(msg: object): boolean {
   try {
@@ -65,7 +253,7 @@ process.on('uncaughtException', reportFatal);
 
 let sampler: BenchmarkSampler<NavigationSample>;
 
-let releaseNavigationBarrier: (() => void) | null = null;
+installBeforePageNavigateBarrier();
 let logDiagnosticTimings = false;
 
 function logSampleStart(msg: SampleMessage): void {
@@ -90,16 +278,12 @@ process.on('message', async (msg: ParentMessage) => {
         return;
       }
 
-      const benchmark = createLighthouseBenchmarkInProcess(
-        msg.group,
-        msg.baseUrl,
-        testDef,
-        msg.options
-      );
       logDiagnosticTimings = msg.options.logDiagnosticTimings === true;
       (globalThis as Record<string, unknown>).__shakaperfLogDiagnosticTimings =
         logDiagnosticTimings;
-      sampler = await benchmark.setup(undefined as any);
+      const workerSampler = new LighthouseWorkerSampler(msg.baseUrl, testDef, msg.options, msg.group);
+      await workerSampler.setupBrowser();
+      sampler = workerSampler;
       send({ type: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -118,22 +302,5 @@ process.on('message', async (msg: ParentMessage) => {
   } else if (msg.type === 'dispose') {
     await sampler.dispose();
     process.exit(0);
-  } else if (msg.type === 'navigationStart') {
-    releaseNavigationBarrier?.();
   }
 });
-
-(globalThis as Record<string, unknown>).__shakaperfBeforePageNavigate = () => {
-  if (releaseNavigationBarrier) {
-    throw new Error('Navigation barrier was entered while a previous barrier is still pending');
-  }
-  if (!send({ type: 'navigationReady' })) {
-    throw new Error('Failed to notify parent that Lighthouse is ready to navigate');
-  }
-  return new Promise<void>((resolve) => {
-    releaseNavigationBarrier = () => {
-      releaseNavigationBarrier = null;
-      resolve();
-    };
-  });
-};

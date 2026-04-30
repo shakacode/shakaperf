@@ -127,6 +127,7 @@
     "temp": "^0.9.4",
     "tslib": "^2.2.0",
     "tsx": "^4.21.0",
+    "unix-socketpair": "0.1.4",
     "zod": "^3.24.0"
   },
   "devDependencies": {
