@@ -28,6 +28,9 @@ import { invokePerfEngine } from './engine-bridge/perf';
 import { slugifyForBench } from './harvest/perf';
 import { CATEGORY_DEFS } from './categories';
 
+const VISREG_TEST_TYPE = 'visreg' as unknown as TestType;
+const PERF_TEST_TYPE = 'perf' as unknown as TestType;
+
 export interface CompareRunOptions {
   cwd?: string;
   configPath?: string;
@@ -85,7 +88,7 @@ function shardKey(
   return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
-const DEFAULT_CATEGORIES: TestType[] = ['visreg', 'perf'];
+const DEFAULT_CATEGORIES: TestType[] = [VISREG_TEST_TYPE, PERF_TEST_TYPE];
 
 /**
  * Per-viewport subfolder under `resultsRoot` where the bench engine writes
@@ -127,7 +130,7 @@ function resolveViewportsForTest(
  */
 function missingArtifactsCategory(category: TestType): CategoryResult {
   const error = missingArtifactsErrorMessage(category);
-  if (category === 'perf') {
+  if (category === PERF_TEST_TYPE) {
     return { testType: 'perf', status: 'no_difference', artifacts: [], error };
   }
   return { testType: 'visreg', status: 'no_difference', artifacts: [], error };
@@ -245,7 +248,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // Run the engines sequentially (each launches its own browser). Visreg
   // is now harvested per-test inside `buildTestResult`, mirroring perf —
   // this block only drives the engine invocation.
-  if (categories.includes('visreg') && !opts.reportOnly) {
+  if (categories.includes(VISREG_TEST_TYPE) && !opts.reportOnly) {
     console.log(chalk.blue('\n>>> visreg'));
     try {
       await invokeVisregEngine({
@@ -277,7 +280,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.reportOnly) {
+  if (categories.includes(PERF_TEST_TYPE) && !opts.reportOnly) {
     for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
       // Buckets are seeded on first insert (see perfBuckets construction
       // above), so an empty bucket is unreachable today. Guard anyway: an
@@ -318,17 +321,19 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  const testResults: TestResult[] = tests.map((test) =>
-    buildTestResult({
-      test,
-      cwd,
-      controlURL,
-      experimentURL,
-      config,
-      resultsRoot,
-      categories,
-      perfEngineFailedByLabel,
-    }),
+  const testResults: TestResult[] = await Promise.all(
+    tests.map((test) =>
+      buildTestResult({
+        test,
+        cwd,
+        controlURL,
+        experimentURL,
+        config,
+        resultsRoot,
+        categories,
+        perfEngineFailedByLabel,
+      }),
+    ),
   );
 
   const data: ReportData = {
@@ -507,7 +512,7 @@ interface BuildTestResultOpts {
 }
 
 function skippedCategory(category: TestType, skipReason: string): CategoryResult {
-  if (category === 'perf') {
+  if (category === PERF_TEST_TYPE) {
     return { testType: 'perf', status: 'skipped', skipReason, artifacts: [] };
   }
   return { testType: 'visreg', status: 'skipped', skipReason, artifacts: [] };
@@ -518,7 +523,7 @@ function viewportFilterSkipReason(category: TestType, narrow: string[] | undefin
   return `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`;
 }
 
-function buildTestResult(opts: BuildTestResultOpts): TestResult {
+async function buildTestResult(opts: BuildTestResultOpts): Promise<TestResult> {
   const { test, cwd, controlURL, experimentURL, config, resultsRoot, categories, perfEngineFailedByLabel } = opts;
 
   const slug = slugifyForBench(test.name);
@@ -537,7 +542,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       perCategory.push(skippedCategory(testType, viewportFilterSkipReason(testType, test.options.viewports)));
       continue;
     }
-    perCategory.push(def.harvest({
+    perCategory.push(await def.harvest({
       test,
       slug,
       viewports,
