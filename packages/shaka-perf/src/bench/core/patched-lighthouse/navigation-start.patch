@@ -9,7 +9,7 @@ diff --git a/core/gather/driver/navigation.js b/core/gather/driver/navigation.js
 +    // navigation is requested until the paired worker is also ready. Skip
 +    // Lighthouse's own neutral-page reset so the timing line reflects the
 +    // benchmark URL, not the about:blank pre-navigation.
-+    if (typeof globalThis !== 'undefined' && requestor !== 'about:blank') {
++    if (requestor !== 'about:blank') {
 +      if (globalThis.__shakaperfBeforePageNavigate) {
 +        await globalThis.__shakaperfBeforePageNavigate(requestor);
 +      }
