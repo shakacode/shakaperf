@@ -87,6 +87,27 @@ type CumulativeChartData = {
   experimentData: number[][];
 };
 
+function dropNonFiniteSamples(
+  control: number[],
+  experiment: number[]
+): { control: number[]; experiment: number[] } {
+  if (control.length === experiment.length) {
+    const c: number[] = [];
+    const e: number[] = [];
+    for (let i = 0; i < control.length; i++) {
+      if (Number.isFinite(control[i]) && Number.isFinite(experiment[i])) {
+        c.push(control[i]);
+        e.push(experiment[i]);
+      }
+    }
+    return { control: c, experiment: e };
+  }
+  return {
+    control: control.filter(Number.isFinite),
+    experiment: experiment.filter(Number.isFinite),
+  };
+}
+
 // takes control/experimentData as raw samples in microseconds
 export class GenerateStats {
   controlData: ITracerBenchTraceResult;
@@ -201,11 +222,19 @@ export class GenerateStats {
     unit: string,
     sign: -1 | 1
   ): HTMLSectionRenderData {
+    // Lighthouse can emit null/NaN for an audit when a metric couldn't be
+    // computed (e.g. speed-index on a page slower than the trace window).
+    // Drop non-finite samples before stats — pair-wise when lengths match,
+    // independently otherwise — so they don't get coerced to 0 and skew the
+    // median (and explode the asPercent denominator).
+    const { control: cleanControl, experiment: cleanExperiment } =
+      dropNonFiniteSamples(controlValues, experimentValues);
+
     // all stats will be converted to milliseconds and rounded to tenths
     const stats = new Stats(
       {
-        control: controlValues,
-        experiment: experimentValues,
+        control: cleanControl,
+        experiment: cleanExperiment,
         name: phaseName,
         confidenceLevel: this.confidenceLevel as IStatsOptions['confidenceLevel'],
       },
