@@ -206,7 +206,10 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       }
     }
     try {
+      console.log(`\n>>> harvest · visreg`);
+      const t0 = Date.now();
       visregByLabel = await harvestVisreg(htmlReportDir);
+      console.log(`    visreg harvested in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     } catch (err) {
       const message = (err as Error).message || String(err);
       console.error(`visreg harvest error: ${message}`);
@@ -268,9 +271,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
+  console.log(`\n>>> harvest · per-test artifacts (${tests.length} test${tests.length === 1 ? '' : 's'})`);
+  const harvestStart = Date.now();
+  let harvestedCount = 0;
   const testResults: TestResult[] = await Promise.all(
-    tests.map((test) =>
-      buildTestResult({
+    tests.map(async (test) => {
+      const t0 = Date.now();
+      const result = await buildTestResult({
         test,
         cwd,
         controlURL,
@@ -282,9 +289,25 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         visregByLabel,
         perfEngineFailedByLabel,
         includeTimeline: opts.includeTimeline !== false,
-      }),
-    ),
+      });
+      harvestedCount += 1;
+      const idx = String(harvestedCount).padStart(String(tests.length).length, ' ');
+      const sizes = sizeBreakdown(result);
+      console.log(
+        `    [${idx}/${tests.length}] ${test.name} ` +
+        `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
+        `${(sizes.total / 1024 / 1024).toFixed(1)} MB total — ` +
+        `LH ${(sizes.lighthouse / 1024 / 1024).toFixed(1)}, ` +
+        `timeline.html ${(sizes.timelineHtml / 1024 / 1024).toFixed(1)}, ` +
+        `preview.svg ${(sizes.previewSvg / 1024 / 1024).toFixed(1)}, ` +
+        `visreg ${(sizes.visreg / 1024 / 1024).toFixed(1)}, ` +
+        `bench ${(sizes.bench / 1024 / 1024).toFixed(1)}, ` +
+        `diffs ${(sizes.diffs / 1024 / 1024).toFixed(1)} MB)`,
+      );
+      return result;
+    }),
   );
+  console.log(`    all tests harvested in ${((Date.now() - harvestStart) / 1000).toFixed(1)}s`);
 
   const data: ReportData = {
     meta: {
@@ -300,7 +323,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     tests: testResults,
   };
 
+  console.log(`\n>>> rendering report.html`);
+  const renderStart = Date.now();
   const reportPath = writeReport(data, resultsRoot);
+  const reportBytes = fs.statSync(reportPath).size;
+  console.log(
+    `    wrote ${reportPath} (${(reportBytes / 1024 / 1024).toFixed(1)} MB) in ${((Date.now() - renderStart) / 1000).toFixed(1)}s`,
+  );
   fs.writeFileSync(
     path.join(resultsRoot, 'report.json'),
     JSON.stringify(data, null, 2),
@@ -344,6 +373,58 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     hasFailures: parts.length > 0,
     failureSummary: parts.join(', '),
   };
+}
+
+function utf8Bytes(s: string | null | undefined): number {
+  return s ? Buffer.byteLength(s, 'utf8') : 0;
+}
+
+interface SizeBreakdown {
+  total: number;
+  lighthouse: number;
+  timelineHtml: number;
+  previewSvg: number;
+  visreg: number;
+  bench: number;
+  diffs: number;
+}
+
+// Approximate byte cost each per-test result will add to the inlined report
+// payload. Sum of every base64 data URI we emit, plus a JSON.stringify of the
+// raw object as a catch-all for everything else (metrics, names, errors).
+function sizeBreakdown(result: TestResult): SizeBreakdown {
+  let lighthouse = 0;
+  let timelineHtml = 0;
+  let previewSvg = 0;
+  let visreg = 0;
+  let bench = 0;
+  let diffs = 0;
+  for (const c of result.categories) {
+    if (c.category === 'perf') {
+      for (const p of c.perfs ?? []) {
+        lighthouse += utf8Bytes(p.controlLighthouseHref) + utf8Bytes(p.experimentLighthouseHref);
+        timelineHtml += utf8Bytes(p.timelineHref);
+        previewSvg += utf8Bytes(p.timelinePreviewSvg);
+        bench += utf8Bytes(p.benchReportHref);
+        for (const d of p.diffHrefs ?? []) diffs += utf8Bytes(d.href);
+      }
+    } else if (c.category === 'visreg') {
+      for (const v of c.visreg ?? []) {
+        visreg += utf8Bytes(v.controlImage) + utf8Bytes(v.experimentImage) + utf8Bytes(v.diffImage);
+      }
+    }
+  }
+  let total = lighthouse + timelineHtml + previewSvg + visreg + bench + diffs;
+  // Add a small allowance for non-blob fields (metrics, labels, error text);
+  // stringify-ing the whole result is the safest catch-all but only worth it
+  // when it doesn't dominate the cost.
+  try {
+    total = Buffer.byteLength(JSON.stringify(result), 'utf8');
+  } catch {
+    // RangeError on a single test is unlikely; if it ever happens fall back
+    // to the sum of per-artifact sizes we already computed.
+  }
+  return { total, lighthouse, timelineHtml, previewSvg, visreg, bench, diffs };
 }
 
 interface BuildTestResultOpts {
