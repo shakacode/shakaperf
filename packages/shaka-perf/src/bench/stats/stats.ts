@@ -270,14 +270,17 @@ export class Stats {
   }
 
   private getSevenFigureSummary(a: number[]): ISevenFigureSummary {
+    // Return raw quantiles — final rounding/unit conversion happens via
+    // unitConverterFn in convertAllUnits. Pre-rounding here would collapse
+    // sub-1 metrics (e.g. CLS, where raw values live in ~0.5–1.5) to "1".
     return {
-      min: Math.round(Math.min.apply(null, a)),
-      max: Math.round(Math.max.apply(null, a)),
-      10: Math.round(quantile(a, 0.1) as number),
-      25: Math.round(quantile(a, 0.25) as number),
-      50: Math.round(quantile(a, 0.5) as number),
-      75: Math.round(quantile(a, 0.75) as number),
-      90: Math.round(quantile(a, 0.9) as number)
+      min: Math.min.apply(null, a),
+      max: Math.max.apply(null, a),
+      10: quantile(a, 0.1) as number,
+      25: quantile(a, 0.25) as number,
+      50: quantile(a, 0.5) as number,
+      75: quantile(a, 0.75) as number,
+      90: quantile(a, 0.9) as number
     };
   }
 
@@ -301,8 +304,10 @@ export class Stats {
 
     const ci = pairedConfidenceInterval(this.pairedCIInputs, confidenceLevel);
     return {
-      min: Math.round(Math.ceil(ci.min * 100) / 100),
-      max: Math.round(Math.ceil(ci.max * 100) / 100),
+      // Raw bounds — convertAllUnits applies the per-unit rounding so sub-1
+      // metrics (CLS) keep a decimal of resolution.
+      min: ci.min,
+      max: ci.max,
       median: ci.median,
       isSig,
       pValue: +pValue.toPrecision(4),
