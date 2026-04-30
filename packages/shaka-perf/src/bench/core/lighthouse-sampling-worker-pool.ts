@@ -9,6 +9,11 @@ import type {
 
 type SamplerSet<TSample> = { [group: string]: BenchmarkSampler<TSample> };
 
+interface NavigationBarrier {
+  wait(): Promise<void>;
+  abort(reason: unknown): void;
+}
+
 export interface PairSampleResult<TSample> {
   group: string;
   sample: TSample;
@@ -186,10 +191,10 @@ async function sampleWithTimeout<TSample>(
   isTrial: boolean,
   sampleTimeoutMs: number,
   raceCancellation?: RaceCancellation,
-  navigationBarrier?: () => Promise<void>
+  navigationBarrier?: NavigationBarrier
 ): Promise<TSample> {
   const sample = await withRaceTimeout(
-    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout, navigationBarrier),
+    (raceTimeout) => sampler.sample(iteration, isTrial, raceTimeout, navigationBarrier?.wait),
     sampleTimeoutMs
   )(raceCancellation);
   return throwIfCancelled(sample);
@@ -250,11 +255,16 @@ async function runOneShuffledPair<TSample>(
   const sampleOne = async (group: string): Promise<PairSampleResult<TSample>> => {
     const sampler = samplerSet[group];
     onSampleStart?.(group, iteration, isTrial);
-    const sample = await sampleWithTimeout(
-      sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation, navigationBarrier
-    );
-    onProgress(group, iteration, isTrial);
-    return { group, sample };
+    try {
+      const sample = await sampleWithTimeout(
+        sampler, iteration, isTrial, sampleTimeoutMs, raceCancellation, navigationBarrier
+      );
+      onProgress(group, iteration, isTrial);
+      return { group, sample };
+    } catch (err) {
+      navigationBarrier?.abort(err);
+      throw err;
+    }
   };
 
   if (samplingMode === 'sequential') {
@@ -277,25 +287,40 @@ async function runOneShuffledPair<TSample>(
   );
 }
 
-function createBarrier(participantCount: number): () => Promise<void> {
-  if (participantCount <= 1) return () => Promise.resolve();
+function createBarrier(participantCount: number): NavigationBarrier {
+  if (participantCount <= 1) {
+    return {
+      wait: () => Promise.resolve(),
+      abort: () => undefined,
+    };
+  }
 
   let waiting = 0;
   let released = false;
+  let rejected = false;
   let release: () => void = () => undefined;
-  const ready = new Promise<void>((resolve) => {
+  let rejectReady: (reason: unknown) => void = () => undefined;
+  const ready = new Promise<void>((resolve, reject) => {
     release = resolve;
+    rejectReady = reject;
   });
 
-  return async () => {
-    if (!released) {
-      waiting += 1;
-      if (waiting === participantCount) {
-        released = true;
-        release();
+  return {
+    async wait() {
+      if (!released && !rejected) {
+        waiting += 1;
+        if (waiting === participantCount) {
+          released = true;
+          release();
+        }
       }
-    }
-    await ready;
+      await ready;
+    },
+    abort(reason: unknown) {
+      if (released || rejected) return;
+      rejected = true;
+      rejectReady(reason);
+    },
   };
 }
 

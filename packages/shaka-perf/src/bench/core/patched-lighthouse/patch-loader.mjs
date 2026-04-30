@@ -23,7 +23,7 @@ let cachedPatchTargets = null;
 
 function targetSuffixFromPatch(patchPath) {
   const patch = readPatch(patchPath);
-  const target = patch.match(/^\+\+\+ b\/(.+)$/m)?.[1];
+  const target = patch.match(/^\+\+\+ b\/(\S+)$/m)?.[1];
   if (!target) {
     throw new Error(`[shaka-perf] Could not find target file in Lighthouse patch: ${patchPath}`);
   }
@@ -56,7 +56,8 @@ function readPatch(patchPath) {
 
 export async function load(url, context, nextLoad) {
   const result = await nextLoad(url, context);
-  const patchEntry = patchTargets().find(({ targetSuffix }) => url.endsWith(targetSuffix));
+  const pathname = new URL(url).pathname;
+  const patchEntry = patchTargets().find(({ targetSuffix }) => pathname.endsWith(targetSuffix));
   if (!patchEntry) return result;
   const { targetSuffix, patchPath } = patchEntry;
 
@@ -75,9 +76,12 @@ export async function load(url, context, nextLoad) {
         'lighthouse source under packages/shaka-perf/src/bench/core/patched-lighthouse/.',
     );
   }
-
   // The per-invocation announcement lives in `ensureLighthousePatchRegistered`
   // (main process) so one perf run prints one "[shaka-perf] lighthouse patched"
   // line instead of one per forked worker × test × viewport.
   return { ...result, source: patched, shortCircuit: true };
+}
+
+export function lighthousePatchTargetSuffixes() {
+  return patchTargets().map(({ targetSuffix }) => targetSuffix);
 }

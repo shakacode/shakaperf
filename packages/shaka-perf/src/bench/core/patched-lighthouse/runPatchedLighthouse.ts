@@ -13,9 +13,38 @@ ensureLighthousePatchRegistered();
 // never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
 // at call-time keeps the CLI's other commands usable when Lighthouse isn't
 // needed.
+const nativeImport = new Function('specifier', 'return import(specifier)') as
+  <T>(specifier: string) => Promise<T>;
+
 async function loadLighthouse(): Promise<(typeof import('lighthouse'))['default']> {
-  const mod = await import('lighthouse');
+  const loader = await nativeImport<typeof import('./patch-loader.mjs')>('./patch-loader.mjs');
+  const mod = await nativeImport<typeof import('lighthouse')>('lighthouse');
+  assertLighthousePatchesApplied(mod, loader.lighthousePatchTargetSuffixes());
   return mod.default;
+}
+
+function assertLighthousePatchesApplied(
+  mod: typeof import('lighthouse'),
+  expectedTargets: string[],
+): void {
+  const patchedFiles = (
+    mod as typeof mod & { __shakaperfPatchedFiles?: () => string[] }
+  ).__shakaperfPatchedFiles?.();
+  if (!patchedFiles) {
+    throw new Error(
+      '[shaka-perf] Lighthouse patch manifest export is missing. ' +
+      'Check the core/index.js patch target.'
+    );
+  }
+
+  const missing = expectedTargets.filter((target) => !patchedFiles.includes(target));
+  if (missing.length === 0) return;
+
+  throw new Error(
+    '[shaka-perf] Lighthouse patch target was not registered at runtime: ' +
+      missing.join(', ') +
+      '. Check the +++ b/... target path in the patch file.'
+  );
 }
 
 const HOLD_GATHER_FLAG = '__shakaperfHoldGather';

@@ -13,6 +13,9 @@ import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
 import type { AbTestDefinition } from './ab-test-registry';
 
+const nativeImport = new Function('specifier', 'return import(specifier)') as
+  <T>(specifier: string) => Promise<T>;
+
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
@@ -57,7 +60,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
   async getMobileSettings(): Promise<any> {
     // Dynamic import because lighthouse v12+ is ESM-only and can't be require()'d from CommonJS
-    const { defaultConfig } = await import('lighthouse');
+    const { defaultConfig } = await nativeImport<typeof import('lighthouse')>('lighthouse');
     const defaultMobileSettings = defaultConfig?.settings;
     // CPU slowdown default: 20x locally, 6x on CI (CI machines are already slow).
     // User's `perf.lighthouseConfig` from `abtests.config.ts` (written to

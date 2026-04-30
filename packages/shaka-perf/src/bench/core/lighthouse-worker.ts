@@ -28,11 +28,12 @@ interface NavigationStartMessage {
 
 type ParentMessage = SetupMessage | SampleMessage | DisposeMessage | NavigationStartMessage;
 
-function send(msg: object): void {
+function send(msg: object): boolean {
   try {
-    process.send!(msg);
+    return process.send!(msg);
   } catch {
     // Parent channel already closed — nothing we can do from here.
+    return false;
   }
 }
 
@@ -123,7 +124,12 @@ process.on('message', async (msg: ParentMessage) => {
 });
 
 (globalThis as Record<string, unknown>).__shakaperfBeforePageNavigate = () => {
-  send({ type: 'navigationReady' });
+  if (releaseNavigationBarrier) {
+    throw new Error('Navigation barrier was entered while a previous barrier is still pending');
+  }
+  if (!send({ type: 'navigationReady' })) {
+    throw new Error('Failed to notify parent that Lighthouse is ready to navigate');
+  }
   return new Promise<void>((resolve) => {
     releaseNavigationBarrier = () => {
       releaseNavigationBarrier = null;

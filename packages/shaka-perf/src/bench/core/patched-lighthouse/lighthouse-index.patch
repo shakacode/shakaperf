@@ -1,0 +1,38 @@
+diff --git a/core/index.js b/core/index.js
+--- a/core/index.js
++++ b/core/index.js
+@@ -13,6 +13,14 @@
+ import {navigationGather} from './gather/navigation-runner.js';
+ import * as LH from '../types/lh.js';
+ 
++if (typeof globalThis !== 'undefined') {
++  const patchedFiles = globalThis.__shakaperfLighthousePatchedFiles ||= [];
++  const patchTarget = '/lighthouse/core/index.js';
++  if (!patchedFiles.includes(patchTarget)) {
++    patchedFiles.push(patchTarget);
++  }
++}
++
+ /*
+  * The relationship between these root modules:
+  *
+@@ -113,6 +121,13 @@
+   return Runner.getAuditList();
+ }
+ 
++/**
++ * @return {string[]}
++ */
++function __shakaperfPatchedFiles() {
++  return [...(globalThis.__shakaperfLighthousePatchedFiles || [])];
++}
++
+ const traceCategories = Trace.getDefaultTraceCategories();
+ 
+ export default lighthouse;
+@@ -131,4 +146,5 @@
+   auditFlowArtifacts,
+   getAuditList,
+   traceCategories,
++  __shakaperfPatchedFiles,
+ };
