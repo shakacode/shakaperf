@@ -6,9 +6,10 @@ import type { TestType } from 'shaka-shared';
 import type { CategoryResult, VisregArtifact } from '../report';
 import type { AbTestsConfig, Viewport } from '../config';
 import type { CategoryDef, HarvestContext } from '../category-def';
-import { bufferToWebpDataUri } from './compress-inlined';
+import { bufferToAvifDataUri } from './compress-inlined';
 
-const VISREG_WEBP_QUALITY = 80;
+const VISREG_AVIF_QUALITY = 55;
+const VISREG_IMAGE_SCALE = 0.75;
 const VISREG_TEST_TYPE = 'visreg' as unknown as TestType;
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
@@ -293,8 +294,12 @@ async function toDataUri(baseDir: string, relOrAbs?: string | null): Promise<str
   if (!relOrAbs) return '';
   const absPath = resolveUnderBase(baseDir, relOrAbs);
   const ext = path.extname(absPath).toLowerCase();
-  if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
-    return bufferToWebpDataUri(fs.readFileSync(absPath), VISREG_WEBP_QUALITY);
+  if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
+    return bufferToAvifDataUri(
+      fs.readFileSync(absPath),
+      VISREG_AVIF_QUALITY,
+      VISREG_IMAGE_SCALE,
+    );
   }
   return embedAsBase64(absPath) ?? '';
 }
