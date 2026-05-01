@@ -50,7 +50,8 @@ export function convertAbTestToScenario(
   if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
   if (visreg.onBefore) scenario.onBefore = visreg.onBefore;
 
-  if (categoryViewports.length > 0) {
+  const narrow = testDef.options.viewports;
+  if (narrow && narrow.length > 0 && categoryViewports.length > 0) {
     const filtered = resolveViewportsForTest(testDef, categoryViewports);
     if (filtered.length > 0) scenario.viewports = filtered as Viewport[];
   }
