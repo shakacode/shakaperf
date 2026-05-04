@@ -220,6 +220,27 @@ function escapeForScript(json: string): string {
   return json.replace(/<\/(script)/gi, '<\\/$1');
 }
 
+function logPayloadBreakdown(data: ReportData): void {
+  const tests = data.tests ?? [];
+  const sizes = tests.map((t) => {
+    let bytes: number;
+    try {
+      bytes = Buffer.byteLength(JSON.stringify(t), 'utf8');
+    } catch {
+      bytes = -1;
+    }
+    return { name: t.name, bytes };
+  });
+  const total = sizes.reduce((s, t) => s + Math.max(0, t.bytes), 0);
+  const top = [...sizes].sort((a, b) => b.bytes - a.bytes).slice(0, 10);
+  const fmt = (b: number) => (b < 0 ? '?MB (stringify failed)' : `${(b / 1024 / 1024).toFixed(1)} MB`);
+  console.log(`    payload total ~${fmt(total)} across ${tests.length} test(s)`);
+  console.log(`    top ${top.length} contributors:`);
+  for (const t of top) {
+    console.log(`      ${fmt(t.bytes).padStart(10, ' ')}  ${t.name}`);
+  }
+}
+
 export function renderReportHtml(data: ReportData): string {
   const templatePath = locateTemplate();
   const template = fs.readFileSync(templatePath, 'utf8');
@@ -233,7 +254,20 @@ export function renderReportHtml(data: ReportData): string {
     throw new Error(`report-shell template malformed near data placeholder: ${templatePath}`);
   }
 
-  const payload = escapeForScript(JSON.stringify(data));
+  logPayloadBreakdown(data);
+
+  let payload: string;
+  try {
+    payload = escapeForScript(JSON.stringify(data));
+  } catch (err) {
+    if (err instanceof RangeError) {
+      throw new Error(
+        `Report payload exceeds V8's ~512 MB string limit — see "top contributors" above. ` +
+        `Reduce by lowering image quality or frame counts. (${err.message})`,
+      );
+    }
+    throw err;
+  }
   return (
     template.slice(0, start + DATA_TAG_OPEN.length) +
     payload +

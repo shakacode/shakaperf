@@ -36,5 +36,5 @@ export interface HarvestContext {
 export interface CategoryDef {
   testType: TestType;
   viewports(config: AbTestsConfig): Viewport[];
-  harvest(ctx: HarvestContext): CategoryResult | null;
+  harvest(ctx: HarvestContext): Promise<CategoryResult | null>;
 }

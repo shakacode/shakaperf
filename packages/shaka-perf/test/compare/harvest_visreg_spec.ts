@@ -13,10 +13,10 @@ const TABLET: Viewport = {
   label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3,
 };
 
-function withTempResultsRoot(cb: (resultsRoot: string) => void) {
+async function withTempResultsRoot(cb: (resultsRoot: string) => Promise<void>) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-harvest-'));
   try {
-    cb(dir);
+    await cb(dir);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -33,20 +33,28 @@ function writePerTestReport(
   fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(data));
 }
 
+function writeTinyPng(absPath: string) {
+  const onePxPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2pX8kAAAAASUVORK5CYII=',
+    'base64',
+  );
+  fs.writeFileSync(absPath, onePxPng);
+}
+
 function harvestCategory(resultsRoot: string, slug: string, viewports: Viewport[]) {
   const ctx = { slug, viewports, resultsRoot } as unknown as HarvestContext;
   return visregCategoryDef.harvest(ctx);
 }
 
 describe('harvestVisreg', function () {
-  it('marks a viewport as changed when the engine wrote a diff image, even if misMatch% is 0', function () {
+  it('marks a viewport as changed when the engine wrote a diff image, even if misMatch% is 0', async function () {
     // Dimension-only fail: the engine writes a `failed_diff_*.png` because
     // requireSameDimensions was violated, but the pixel-level
     // misMatchPercentage is still 0. The per-row chip in VisregSlot keys off
     // `diffImage !== null`, so the test-level `visual_change` status must
     // agree — otherwise the chip shows on a row whose test pill says "no
     // diff" (the inversion users reported).
-    withTempResultsRoot((resultsRoot) => {
+    await withTempResultsRoot(async (resultsRoot) => {
       writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         tests: [{
@@ -61,20 +69,28 @@ describe('harvestVisreg', function () {
           status: 'fail',
         }],
       });
+      writeTinyPng(
+        path.join(
+          resultsRoot,
+          'visreg-desktop',
+          'homepage',
+          'failed_diff_homepage_desktop.png',
+        ),
+      );
 
-      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      const harvested = await harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
       assert.ok(harvested);
       assert.strictEqual(harvested!.hasChange, true);
       assert.strictEqual(harvested!.artifacts[0].diffImage !== null, true);
 
-      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
+      const result = await harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
       assert.ok(result);
       assert.strictEqual(result!.status, 'visual_change');
     });
   });
 
-  it('marks a category as no_difference when neither a diff image nor an error is present', function () {
-    withTempResultsRoot((resultsRoot) => {
+  it('marks a category as no_difference when neither a diff image nor an error is present', async function () {
+    await withTempResultsRoot(async (resultsRoot) => {
       writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         tests: [{
@@ -89,20 +105,20 @@ describe('harvestVisreg', function () {
         }],
       });
 
-      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      const harvested = await harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
       assert.ok(harvested);
       assert.strictEqual(harvested!.hasChange, false);
       assert.strictEqual(harvested!.engineError, null);
       assert.strictEqual(harvested!.artifacts[0].diffImage, null);
 
-      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
+      const result = await harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
       assert.strictEqual(result!.error, undefined);
     });
   });
 
-  it('surfaces the unified engineError via category.error (not as visual_change) when no diff image was written', function () {
+  it('surfaces the unified engineError via category.error (not as visual_change) when no diff image was written', async function () {
     // Regression test for the "VISUAL CHANGE pill but every row shows NO DIFF"
     // screenshot. Pair-level errors used to bubble into `changed`, so the
     // test-level status jumped to `visual_change` on a pair with no diffImage —
@@ -111,7 +127,7 @@ describe('harvestVisreg', function () {
     // now folded into the unified top-level `engineError` payload by the
     // engine writer, harvested into `engineError`, and surfaced via
     // `CategoryResult.error` (error banner + error pill) instead.
-    withTempResultsRoot((resultsRoot) => {
+    await withTempResultsRoot(async (resultsRoot) => {
       writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         engineError: 'browser crashed',
@@ -128,12 +144,12 @@ describe('harvestVisreg', function () {
         }],
       });
 
-      const harvested = harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
+      const harvested = await harvestVisreg({ resultsRoot, slug: 'homepage', viewport: DESKTOP });
       assert.ok(harvested);
       assert.strictEqual(harvested!.hasChange, false);
       assert.strictEqual(harvested!.engineError, 'browser crashed');
 
-      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
+      const result = await harvestCategory(resultsRoot, 'homepage', [DESKTOP]);
       assert.ok(result);
       assert.strictEqual(result!.status, 'no_difference');
       assert.ok(result!.error, 'pair error is surfaced via category.error');
@@ -142,8 +158,8 @@ describe('harvestVisreg', function () {
     });
   });
 
-  it('aggregates engineErrors across viewports into one category.error summary', function () {
-    withTempResultsRoot((resultsRoot) => {
+  it('aggregates engineErrors across viewports into one category.error summary', async function () {
+    await withTempResultsRoot(async (resultsRoot) => {
       writePerTestReport(resultsRoot, 'homepage', 'desktop', {
         testSuite: 'visreg',
         engineError: 'selector not found',
@@ -175,7 +191,7 @@ describe('harvestVisreg', function () {
         }],
       });
 
-      const result = harvestCategory(resultsRoot, 'homepage', [DESKTOP, TABLET]);
+      const result = await harvestCategory(resultsRoot, 'homepage', [DESKTOP, TABLET]);
       assert.ok(result);
       assert.ok(result!.error);
       assert.match(result!.error!, /2 viewport\(s\) errored/);

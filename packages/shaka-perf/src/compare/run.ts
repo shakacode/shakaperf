@@ -30,6 +30,9 @@ import { CATEGORY_DEFS } from './categories';
 import { planTestViewports, resolveViewportsForTest } from './viewport-plan';
 import { announceStage } from './announce-stage';
 
+const VISREG_TEST_TYPE = 'visreg' as unknown as TestType;
+const PERF_TEST_TYPE = 'perf' as unknown as TestType;
+
 export interface CompareRunOptions {
   cwd?: string;
   configPath?: string;
@@ -91,7 +94,7 @@ function shardKey(
   return crypto.createHash('sha256').update(input).digest('hex').slice(0, 12);
 }
 
-const DEFAULT_CATEGORIES: TestType[] = ['visreg', 'perf'];
+const DEFAULT_CATEGORIES: TestType[] = [VISREG_TEST_TYPE, PERF_TEST_TYPE];
 
 /**
  * Per-viewport subfolder under `resultsRoot` where the bench engine writes
@@ -113,7 +116,7 @@ function perfRootFor(resultsRoot: string, viewport: Viewport): string {
  */
 function missingArtifactsCategory(category: TestType): CategoryResult {
   const error = missingArtifactsErrorMessage(category);
-  if (category === 'perf') {
+  if (category === PERF_TEST_TYPE) {
     return { testType: 'perf', status: 'no_difference', artifacts: [], error };
   }
   return { testType: 'visreg', status: 'no_difference', artifacts: [], error };
@@ -239,7 +242,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // is now harvested per-test inside `buildTestResult`, mirroring perf —
   // this block only drives the engine invocation.
   let visregRanBeforePerf = false;
-  if (categories.includes('visreg') && !opts.reportOnly) {
+  if (categories.includes(VISREG_TEST_TYPE) && !opts.reportOnly) {
     // TODO: update the narrowing hint below when accessibility and seo land
     // as categories — `--categories perf` will no longer be the only way to
     // run "everything except visreg".
@@ -269,7 +272,7 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  if (categories.includes('perf') && !opts.reportOnly) {
+  if (categories.includes(PERF_TEST_TYPE) && !opts.reportOnly) {
     const perfPlan = planTestViewports(tests, perfConfig.viewports)
       .filter((entry) => entry.viewports.length > 0);
     if (perfPlan.length > 0) {
@@ -313,18 +316,44 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     }
   }
 
-  const testResults: TestResult[] = tests.map((test) =>
-    buildTestResult({
-      test,
-      cwd,
-      controlURL,
-      experimentURL,
-      config,
-      resultsRoot,
-      categories,
-      perfEngineFailedByLabel,
+  console.log(
+    chalk.blue(
+      `\n>>> harvest · per-test artifacts (${tests.length} test${tests.length === 1 ? '' : 's'})`,
+    ),
+  );
+  const harvestStart = Date.now();
+  let harvestedCount = 0;
+  const testResults: TestResult[] = await Promise.all(
+    tests.map(async (test) => {
+      const t0 = Date.now();
+      const result = await buildTestResult({
+        test,
+        cwd,
+        controlURL,
+        experimentURL,
+        config,
+        resultsRoot,
+        categories,
+        perfEngineFailedByLabel,
+      });
+      harvestedCount += 1;
+      const idx = String(harvestedCount).padStart(String(tests.length).length, ' ');
+      const sizes = sizeBreakdown(result);
+      console.log(
+        `    [${idx}/${tests.length}] ${test.name} ` +
+        `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
+        `${(sizes.total / 1024 / 1024).toFixed(1)} MB total — ` +
+        `LH ${(sizes.lighthouse / 1024 / 1024).toFixed(1)}, ` +
+        `timeline.html ${(sizes.timelineHtml / 1024 / 1024).toFixed(1)}, ` +
+        `preview.svg ${(sizes.previewSvg / 1024 / 1024).toFixed(1)}, ` +
+        `visreg ${(sizes.visreg / 1024 / 1024).toFixed(1)}, ` +
+        `bench ${(sizes.bench / 1024 / 1024).toFixed(1)}, ` +
+        `diffs ${(sizes.diffs / 1024 / 1024).toFixed(1)} MB)`,
+      );
+      return result;
     }),
   );
+  console.log(`    all tests harvested in ${((Date.now() - harvestStart) / 1000).toFixed(1)}s`);
 
   const data: ReportData = {
     meta: {
@@ -362,7 +391,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
     };
   }
 
+  console.log(chalk.blue('\n>>> rendering report.html'));
+  const renderStart = Date.now();
   const reportPath = writeReport(data, resultsRoot);
+  const reportBytes = fs.statSync(reportPath).size;
+  console.log(
+    `    wrote ${reportPath} (${(reportBytes / 1024 / 1024).toFixed(1)} MB) in ${((Date.now() - renderStart) / 1000).toFixed(1)}s`,
+  );
   fs.writeFileSync(
     path.join(resultsRoot, 'report.json'),
     JSON.stringify(data, null, 2),
@@ -487,6 +522,51 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   };
 }
 
+function utf8Bytes(s: string | null | undefined): number {
+  return s ? Buffer.byteLength(s, 'utf8') : 0;
+}
+
+interface SizeBreakdown {
+  total: number;
+  lighthouse: number;
+  timelineHtml: number;
+  previewSvg: number;
+  visreg: number;
+  bench: number;
+  diffs: number;
+}
+
+function sizeBreakdown(result: TestResult): SizeBreakdown {
+  let lighthouse = 0;
+  let timelineHtml = 0;
+  let previewSvg = 0;
+  let visreg = 0;
+  let bench = 0;
+  let diffs = 0;
+  for (const c of result.categories) {
+    if (c.testType === 'perf') {
+      for (const p of c.artifacts) {
+        lighthouse += utf8Bytes(p.controlLighthouseHref) + utf8Bytes(p.experimentLighthouseHref);
+        timelineHtml += utf8Bytes(p.timelineHref);
+        previewSvg += utf8Bytes(p.timelinePreviewSvg);
+        bench += utf8Bytes(p.benchReportHref);
+        for (const d of p.diffHrefs ?? []) diffs += utf8Bytes(d.href);
+      }
+      continue;
+    }
+    for (const v of c.artifacts) {
+      visreg += utf8Bytes(v.controlImage) + utf8Bytes(v.experimentImage) + utf8Bytes(v.diffImage);
+    }
+  }
+  let total = lighthouse + timelineHtml + previewSvg + visreg + bench + diffs;
+  try {
+    total = Buffer.byteLength(JSON.stringify(result), 'utf8');
+  } catch {
+    // fall back to component sum if stringify fails
+  }
+  return { total, lighthouse, timelineHtml, previewSvg, visreg, bench, diffs };
+}
+
 interface BuildTestResultOpts {
   test: AbTestDefinition;
   cwd: string;
@@ -502,7 +582,7 @@ interface BuildTestResultOpts {
 }
 
 function skippedCategory(category: TestType, skipReason: string): CategoryResult {
-  if (category === 'perf') {
+  if (category === PERF_TEST_TYPE) {
     return { testType: 'perf', status: 'skipped', skipReason, artifacts: [] };
   }
   return { testType: 'visreg', status: 'skipped', skipReason, artifacts: [] };
@@ -513,8 +593,17 @@ function viewportFilterSkipReason(category: TestType, narrow: string[] | undefin
   return `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`;
 }
 
-function buildTestResult(opts: BuildTestResultOpts): TestResult {
-  const { test, cwd, controlURL, experimentURL, config, resultsRoot, categories, perfEngineFailedByLabel } = opts;
+async function buildTestResult(opts: BuildTestResultOpts): Promise<TestResult> {
+  const {
+    test,
+    cwd,
+    controlURL,
+    experimentURL,
+    config,
+    resultsRoot,
+    categories,
+    perfEngineFailedByLabel,
+  } = opts;
 
   const slug = slugifyForBench(test.name);
   const perCategory: CategoryResult[] = [];
@@ -532,7 +621,7 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       perCategory.push(skippedCategory(testType, viewportFilterSkipReason(testType, test.options.viewports)));
       continue;
     }
-    perCategory.push(def.harvest({
+    const harvested = await def.harvest({
       test,
       slug,
       viewports,
@@ -541,7 +630,8 @@ function buildTestResult(opts: BuildTestResultOpts): TestResult {
       experimentURL,
       config,
       perfEngineFailedByLabel,
-    }) ?? missingArtifactsCategory(testType));
+    });
+    perCategory.push(harvested ?? missingArtifactsCategory(testType));
   }
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';

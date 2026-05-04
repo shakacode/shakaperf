@@ -124,6 +124,7 @@
     "portfinder": "^1.0.32",
     "race-cancellation": "^0.4.1",
     "shaka-shared": "workspace:^",
+    "sharp": "^0.33.0",
     "temp": "^0.9.4",
     "tslib": "^2.2.0",
     "tsx": "^4.21.0",

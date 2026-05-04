@@ -117,15 +117,18 @@ export function pairedConfidenceInterval(
     ciHigh = sortedWalsh[N - 1 - c];
   }
 
-  const denom = controlMedian === 0 ? 1 : controlMedian;
+  // When the control median is 0 (or no samples), percent change is
+  // mathematically undefined. Emit NaN so downstream formatters render "—"
+  // instead of dividing by 1 and producing absurd values like +5,000,000,000%.
+  const percentScale = controlMedian === 0 ? NaN : 100 / controlMedian;
   return {
     min: ciLow,
     max: ciHigh,
     median: estimator,
     asPercent: {
-      percentMin: toNearestHundreth((ciLow / denom) * 100),
-      percentMedian: toNearestHundreth((estimator / denom) * 100),
-      percentMax: toNearestHundreth((ciHigh / denom) * 100)
+      percentMin: toNearestHundreth(ciLow * percentScale),
+      percentMedian: toNearestHundreth(estimator * percentScale),
+      percentMax: toNearestHundreth(ciHigh * percentScale)
     }
   };
 }
