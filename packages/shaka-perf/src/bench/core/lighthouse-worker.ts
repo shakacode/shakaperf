@@ -234,8 +234,10 @@ function sendError(msg: { type: 'error'; message: string; stack: string }): void
   send(msg);
 }
 
-// Self-terminate if parent disconnects to prevent orphaned Chrome processes
-process.on('disconnect', () => process.exit(1));
+// Self-terminate if parent disconnects to prevent orphaned Chrome processes.
+process.on('disconnect', () => {
+  void shutdown(1);
+});
 
 // Async CDP / puppeteer failures during a sample can surface as unhandled
 // rejections AFTER we've already returned a result or error for the current
@@ -246,12 +248,28 @@ process.on('disconnect', () => process.exit(1));
 function reportFatal(err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
   sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
-  process.exit(1);
+  void shutdown(1);
 }
 process.on('unhandledRejection', reportFatal);
 process.on('uncaughtException', reportFatal);
 
-let sampler: BenchmarkSampler<NavigationSample>;
+let sampler: BenchmarkSampler<NavigationSample> | null = null;
+let shuttingDown = false;
+
+async function shutdown(exitCode: number): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try {
+    await sampler?.dispose();
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    try {
+      process.stderr.write(`Failed to dispose Lighthouse worker sampler: ${error.stack ?? error.message}\n`);
+    } catch { /* stderr closed */ }
+  } finally {
+    process.exit(exitCode);
+  }
+}
 
 installBeforePageNavigateBarrier();
 let logDiagnosticTimings = false;
@@ -267,6 +285,7 @@ function logSampleStart(msg: SampleMessage): void {
 }
 
 process.on('message', async (msg: ParentMessage) => {
+  if (shuttingDown) return;
   if (msg.type === 'setup') {
     try {
       await loadTestFile(msg.testFile);
@@ -282,16 +301,18 @@ process.on('message', async (msg: ParentMessage) => {
       (globalThis as Record<string, unknown>).__shakaperfLogDiagnosticTimings =
         logDiagnosticTimings;
       const workerSampler = new LighthouseWorkerSampler(msg.baseUrl, testDef, msg.options, msg.group);
-      await workerSampler.setupBrowser();
       sampler = workerSampler;
+      await workerSampler.setupBrowser();
+      if (shuttingDown) return;
       send({ type: 'ready' });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
-      process.exit(1);
+      await shutdown(1);
     }
   } else if (msg.type === 'sample') {
     try {
+      if (!sampler) throw new Error('lighthouse worker received sample before setup completed');
       logSampleStart(msg);
       const sample = await sampler.sample(msg.iteration, msg.isTrial, undefined as any);
       send({ type: 'result', sample });
@@ -300,7 +321,13 @@ process.on('message', async (msg: ParentMessage) => {
       sendError({ type: 'error', message: error.message, stack: error.stack ?? '' });
     }
   } else if (msg.type === 'dispose') {
-    await sampler.dispose();
-    process.exit(0);
+    await shutdown(0);
   }
+});
+
+process.on('SIGTERM', () => {
+  void shutdown(1);
+});
+process.on('SIGINT', () => {
+  void shutdown(1);
 });

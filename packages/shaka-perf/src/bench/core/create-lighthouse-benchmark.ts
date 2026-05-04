@@ -2,7 +2,7 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { closeSync, createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
-import type { RaceCancellation } from 'race-cancellation';
+import { throwIfCancelled, type RaceCancellation } from 'race-cancellation';
 
 import { Benchmark, BenchmarkSampler, type SamplingMode } from './run';
 import type { LighthouseBenchmarkOptions, NavigationSample } from './lighthouse-config';
@@ -118,6 +118,33 @@ function safeSend(worker: ChildProcess, msg: object): boolean {
   }
 }
 
+async function terminateWorkerDuringSetup(
+  worker: ChildProcess,
+  logStream: WriteStream | null,
+): Promise<void> {
+  try {
+    if (isWorkerAlive(worker)) {
+      safeSend(worker, { type: 'dispose' });
+    }
+    await new Promise<void>((resolve) => {
+      if (worker.exitCode !== null || worker.signalCode !== null) {
+        resolve();
+        return;
+      }
+      const timer = setTimeout(() => {
+        if (!worker.killed) worker.kill('SIGTERM');
+        resolve();
+      }, 5000);
+      worker.once('exit', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  } finally {
+    logStream?.end();
+  }
+}
+
 class OOPLighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private worker: ChildProcess,
@@ -184,7 +211,7 @@ export default function createLighthouseBenchmark(
 ): Benchmark<NavigationSample> {
   return {
     group,
-    async setup(_raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
+    async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker.js');
       // When logFile is set we pipe stdio and tee to a file; otherwise inherit
       // so the original terminal experience (colors, interleave) is preserved.
@@ -254,9 +281,15 @@ export default function createLighthouseBenchmark(
         throw new Error('lighthouse worker died before setup could be sent');
       }
 
-      const ready = await waitForMessage(worker);
+      let ready: WorkerMessage;
+      try {
+        ready = throwIfCancelled(await raceCancellation(waitForMessage(worker)));
+      } catch (err) {
+        await terminateWorkerDuringSetup(worker, logStream);
+        throw err;
+      }
       if (ready.type === 'error') {
-        logStream?.end();
+        await terminateWorkerDuringSetup(worker, logStream);
         throw new Error((ready as ErrorMessage).message);
       }
 
