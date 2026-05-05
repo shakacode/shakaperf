@@ -48,6 +48,7 @@ import {
 } from "../../../../visreg/core/util/testContext";
 import { planTestViewports } from "../../../../compare/viewport-plan";
 import { announceStage } from "../../../../compare/announce-stage";
+import { attachStickyStatus } from "./sticky-status";
 
 export interface ICompareFlags {
   hideAnalysis: boolean;
@@ -276,24 +277,40 @@ function createPhaseProgress(
   };
 }
 
-function printSampleStart(
+// Until the first sample finishes we have no measured rate, so a divide
+// would render "0m:0s" — looks like the stage is already done. Seed with
+// a coarse 30s/sample guess so the initial estimate is in the right
+// ballpark; the next onProgress overwrites it with the real average.
+const INITIAL_SAMPLE_DURATION_MS = 30_000;
+
+function formatProgressStatus(progress: PhaseProgress): string {
+  const averageMs = progress.completed > 0
+    ? (Date.now() - progress.start) / progress.completed
+    : INITIAL_SAMPLE_DURATION_MS;
+  const remaining = progress.totalSamples == null
+    ? 0
+    : Math.max(0, progress.totalSamples - progress.completed);
+  const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
+  const percentComplete = progress.totalSamples && progress.totalSamples > 0
+    ? Math.min(100, Math.round((progress.completed / progress.totalSamples) * 100))
+    : null;
+  const totalText = progress.totalSamples == null ? '' : `/${progress.totalSamples}`;
+  const counter = chalk.red(`${progress.completed}${totalText}`);
+  const percentText = percentComplete == null
+    ? ` ${counter} finished`
+    : ` ${chalk.red(`${percentComplete}%`)} finished ${counter}`;
+  return (
+    `remaining time for stage ${chalk.cyan(progress.stageName)} ${chalk.red(remainingTime)}.${percentText} ` +
+    `(you may skip this stage with ${chalk.cyan(progress.skipOption)})`
+  );
+}
+
+function logSampleStart(
   context: TestContext,
-  phaseProgress: PhaseProgress,
   group: string,
   iteration: number,
   isTrial: boolean,
 ): void {
-  const averageMs = phaseProgress.completed > 0
-    ? (Date.now() - phaseProgress.start) / phaseProgress.completed
-    : 0;
-  const remaining = phaseProgress.totalSamples == null
-    ? 0
-    : Math.max(0, phaseProgress.totalSamples - phaseProgress.completed);
-  const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
-  const percentComplete = phaseProgress.totalSamples && phaseProgress.totalSamples > 0
-    ? Math.min(100, Math.round((phaseProgress.completed / phaseProgress.totalSamples) * 100))
-    : null;
-  const percentText = percentComplete == null ? '' : ` ${chalk.red(`${percentComplete}%`)}`;
   const displayIteration = isTrial ? iteration : Math.max(0, iteration - 1);
   const logSubject = testSourcePrefix(
     context.testFile,
@@ -303,11 +320,7 @@ function printSampleStart(
     'perf',
     isTrial ? 'warmup' : `sample-${displayIteration}`,
   );
-  console.log(
-    formatLogPrefix(logSubject, { group }) +
-    `remaining time for stage ${chalk.cyan(phaseProgress.stageName)} ${chalk.red(remainingTime)}${percentText} ` +
-    `(you may skip this stage with ${chalk.cyan(phaseProgress.skipOption)})`
-  );
+  console.log(formatLogPrefix(logSubject, { group }) + chalk.dim('starting'));
 }
 
 export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
@@ -379,251 +392,268 @@ export async function runCompare(compareFlags: ICompareFlags): Promise<void> {
     retries: compareFlags.retries,
     retryDelay: compareFlags.retryDelay,
   });
-  const failedContextNames = new Set<string>();
-  const contextKey = (context: TestContext) => `${context.name}\0${context.viewport.label}`;
-  const recordFailure = (context: TestContext, err: unknown) => {
-    const key = contextKey(context);
-    if (failedContextNames.has(key)) return;
-    failedContextNames.add(key);
-    const error = err instanceof Error ? err : new Error(String(err));
-    const reason = error.stack ?? error.message;
-    foldEngineArtifactsIntoReport(context.resultsFolder, reason);
-    const failBanner = `${chalkScheme.blackBgRed(
-      `    ${chalkScheme.white("FAILED")}     `
-    )} ${error.message}`;
-    console.log(`\n${failBanner}`);
-    failedTests.push({ name: context.name, reason: error.message });
-  };
+  const stickyStatus = attachStickyStatus();
+  try {
+    const failedContextNames = new Set<string>();
+    const contextKey = (context: TestContext) => `${context.name}\0${context.viewport.label}`;
+    const recordFailure = (context: TestContext, err: unknown) => {
+      const key = contextKey(context);
+      if (failedContextNames.has(key)) return;
+      failedContextNames.add(key);
+      const error = err instanceof Error ? err : new Error(String(err));
+      const reason = error.stack ?? error.message;
+      foldEngineArtifactsIntoReport(context.resultsFolder, reason);
+      const failBanner = `${chalkScheme.blackBgRed(
+        `    ${chalkScheme.white("FAILED")}     `
+      )} ${error.message}`;
+      console.log(`\n${failBanner}`);
+      failedTests.push({ name: context.name, reason: error.message });
+    };
 
-  const warmupSkippedByVisreg = compareFlags.warmedUpByVisreg === true;
-  if (compareFlags.skipPerfWarmup || warmupSkippedByVisreg || compareFlags.lowNoiseProfilesOnly) {
-    if (warmupSkippedByVisreg) {
-      console.log(chalk.dim('skipping warmup already warmed up by visreg'));
+    const warmupSkippedByVisreg = compareFlags.warmedUpByVisreg === true;
+    if (compareFlags.skipPerfWarmup || warmupSkippedByVisreg || compareFlags.lowNoiseProfilesOnly) {
+      if (warmupSkippedByVisreg) {
+        console.log(chalk.dim('skipping warmup already warmed up by visreg'));
+      }
+    } else {
+      // TODO: update the auto-skip note below when accessibility and seo land
+      // as categories — if either also drives the page through a real browser
+      // before perf, they should pre-warm just like visreg does today.
+      announceStage(
+        'perf warmup',
+        'Doing one throwaway run of every test before any real measurements start. ' +
+        'The first time a page loads, the app and browser have to compile and cache things they will reuse on every later load. ' +
+        'Including those one-time costs in the measurements would make every test look slower than what real users experience after the first visit. ' +
+        'Skipped automatically if visreg already ran in this invocation, because visreg already loaded the same pages. ' +
+        'Skip explicitly with --skip-perf-warmup.'
+      );
+      const warmupPool = createPool(compareFlags.parallelism);
+      const warmupProgress = createPhaseProgress(
+        'perf warmup',
+        '--skip-perf-warmup',
+        contexts.reduce((count, context) => count + context.benchmarks.length, 0)
+      );
+      stickyStatus.set(formatProgressStatus(warmupProgress));
+      try {
+        await Promise.all(contexts.map(async (context) => {
+          try {
+            await warmUpTest(
+              context.benchmarks,
+              warmupPool,
+              {
+                testKey: context.slug,
+                onSampleStart: (group, iteration, isTrial) =>
+                  logSampleStart(context, group, iteration, isTrial),
+                onProgress: () => {
+                  warmupProgress.completed++;
+                  stickyStatus.set(formatProgressStatus(warmupProgress));
+                },
+              }
+            );
+          } catch (err) {
+            recordFailure(context, err);
+          }
+        }));
+      } finally {
+        await warmupPool.dispose();
+      }
     }
-  } else {
-    // TODO: update the auto-skip note below when accessibility and seo land
-    // as categories — if either also drives the page through a real browser
-    // before perf, they should pre-warm just like visreg does today.
-    announceStage(
-      'perf warmup',
-      'Doing one throwaway run of every test before any real measurements start. ' +
-      'The first time a page loads, the app and browser have to compile and cache things they will reuse on every later load. ' +
-      'Including those one-time costs in the measurements would make every test look slower than what real users experience after the first visit. ' +
-      'Skipped automatically if visreg already ran in this invocation, because visreg already loaded the same pages. ' +
-      'Skip explicitly with --skip-perf-warmup.'
-    );
-    const warmupPool = createPool(compareFlags.parallelism);
-    const warmupProgress = createPhaseProgress(
-      'perf warmup',
-      '--skip-perf-warmup',
-      contexts.reduce((count, context) => count + context.benchmarks.length, 0)
-    );
-    try {
-      await Promise.all(contexts.map(async (context) => {
-        try {
-          await warmUpTest(
+
+    if (!compareFlags.lowNoiseProfilesOnly) {
+      announceStage(
+        'perf measurements',
+        'Loading each test page many times on both the control server and the experiment server, recording how long things take. ' +
+        'A single page load is too noisy to trust on its own — wifi blips, background CPU, garbage collection, all of it shifts the numbers. ' +
+        'So each test is repeated many times and the comparison is made on the averages, which is what determines whether the experiment counts as a regression or an improvement. ' +
+        'This is the longest stage; more samples means a more confident verdict. ' +
+        'Skip this stage with --low-noise-profiles-only (jumps straight to the final debugging pass; no regression verdict will be produced).'
+      );
+      const measurementPool = createPool(compareFlags.parallelism);
+      try {
+        const measurableContexts = contexts.filter((context) => !failedContextNames.has(contextKey(context)));
+        const measurementProgress = createPhaseProgress(
+          'perf measurements',
+          '--low-noise-profiles-only',
+          measurableContexts.reduce(
+            (count, context) => count + context.benchmarks.length * compareFlags.numberOfMeasurements,
+            0,
+          )
+        );
+        stickyStatus.set(formatProgressStatus(measurementProgress));
+        const measurementJobs = contexts.map((context) => {
+          if (failedContextNames.has(contextKey(context))) return null;
+          const startTime = timestamp();
+          const promise = measureTest(
             context.benchmarks,
-            warmupPool,
+            compareFlags.numberOfMeasurements as number,
+            measurementPool,
             {
               testKey: context.slug,
               onSampleStart: (group, iteration, isTrial) =>
-                printSampleStart(context, warmupProgress, group, iteration, isTrial),
-              onProgress: () => { warmupProgress.completed++; },
+                logSampleStart(context, group, iteration, isTrial),
+              onProgress: () => {
+                measurementProgress.completed++;
+                stickyStatus.set(formatProgressStatus(measurementProgress));
+              },
             }
-          );
-        } catch (err) {
-          recordFailure(context, err);
-        }
-      }));
-    } finally {
-      await warmupPool.dispose();
-    }
-  }
+          ).then((sampleGroups) => ({ sampleGroups, startTime }));
+          return { context, promise };
+        });
 
-  if (!compareFlags.lowNoiseProfilesOnly) {
-    announceStage(
-      'perf measurements',
-      'Loading each test page many times on both the control server and the experiment server, recording how long things take. ' +
-      'A single page load is too noisy to trust on its own — wifi blips, background CPU, garbage collection, all of it shifts the numbers. ' +
-      'So each test is repeated many times and the comparison is made on the averages, which is what determines whether the experiment counts as a regression or an improvement. ' +
-      'This is the longest stage; more samples means a more confident verdict. ' +
-      'Skip this stage with --low-noise-profiles-only (jumps straight to the final debugging pass; no regression verdict will be produced).'
-    );
-    const measurementPool = createPool(compareFlags.parallelism);
-    try {
-      const measurableContexts = contexts.filter((context) => !failedContextNames.has(contextKey(context)));
-      const measurementProgress = createPhaseProgress(
-        'perf measurements',
-        '--low-noise-profiles-only',
-        measurableContexts.reduce(
-          (count, context) => count + context.benchmarks.length * compareFlags.numberOfMeasurements,
-          0,
-        )
-      );
-      const measurementJobs = contexts.map((context) => {
-        if (failedContextNames.has(contextKey(context))) return null;
-        const startTime = timestamp();
-        const promise = measureTest(
-          context.benchmarks,
-          compareFlags.numberOfMeasurements as number,
-          measurementPool,
-          {
-            testKey: context.slug,
-            onSampleStart: (group, iteration, isTrial) =>
-              printSampleStart(context, measurementProgress, group, iteration, isTrial),
-            onProgress: () => { measurementProgress.completed++; },
-          }
-        ).then((sampleGroups) => ({ sampleGroups, startTime }));
-        return { context, promise };
-      });
-
-      await Promise.all(measurementJobs.map(async (job) => {
-        if (!job) return;
-        const { context, promise } = job;
-        try {
-          const { sampleGroups, startTime } = await promise;
-          const results = sampleGroups.map(({ group, samples }) => {
-            const meta = samples.length > 0 ? samples[0].metadata : {};
-            return {
-              group,
-              set: group,
-              samples,
-              meta,
-            };
-          });
-          const endTime = timestamp();
-          if (!results[0].samples[0]) {
-            throw new Error(
-              `No measurements were collected.\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}`
-            );
-          }
-          const abMeasurementsPath = `${context.resultsFolder}/ab-measurements.json`;
-          generateHtmlDiffs({
-            testResultsFolder: context.resultsFolder,
-            controlURL: compareFlags.controlURL!,
-            experimentURL: compareFlags.experimentURL!,
-          });
-          writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
-
-          writeFileSync(abMeasurementsPath, JSON.stringify(results));
-
-          const duration = secondsToTime(durationInSec(endTime, startTime));
-          const actualMeasurements = results[0].samples.length;
-
-          if (!compareFlags.hideAnalysis) {
-            await runAnalyze(abMeasurementsPath, {
-              numberOfMeasurements: actualMeasurements,
-              regressionThreshold: compareFlags.regressionThreshold!,
-            regressionThresholdStat: compareFlags.regressionThresholdStat!,
-            pValueThreshold: compareFlags.pValueThreshold,
-            jsonReport: true,
-            summaryMetadata: {
-              testName: context.name,
-              testFile: context.testFile,
-              testLine: context.line,
-              viewportLabel: context.viewport.label,
-            },
-          });
-          }
-
-          if (!compareFlags.skipReport) {
-            try {
-              await runReport({
-                resultsFolder: context.resultsFolder,
-                pValueThreshold: compareFlags.pValueThreshold,
-              });
-            } catch (err) {
-              console.error(chalk.red(`Failed to generate bench HTML report for ${context.name}:`), err);
+        await Promise.all(measurementJobs.map(async (job) => {
+          if (!job) return;
+          const { context, promise } = job;
+          try {
+            const { sampleGroups, startTime } = await promise;
+            const results = sampleGroups.map(({ group, samples }) => {
+              const meta = samples.length > 0 ? samples[0].metadata : {};
+              return {
+                group,
+                set: group,
+                samples,
+                meta,
+              };
+            });
+            const endTime = timestamp();
+            if (!results[0].samples[0]) {
+              throw new Error(
+                `No measurements were collected.\nCONTROL: ${compareFlags.controlURL}\nEXPERIMENT: ${compareFlags.experimentURL}`
+              );
             }
-          }
+            const abMeasurementsPath = `${context.resultsFolder}/ab-measurements.json`;
+            generateHtmlDiffs({
+              testResultsFolder: context.resultsFolder,
+              controlURL: compareFlags.controlURL!,
+              experimentURL: compareFlags.experimentURL!,
+            });
+            writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
 
-          foldEngineArtifactsIntoReport(context.resultsFolder, null);
+            writeFileSync(abMeasurementsPath, JSON.stringify(results));
 
-          completedTests.push({
-            name: context.name,
-            testFile: context.testFile,
-            line: context.line,
-            resultsFolder: context.resultsFolder,
-          });
-          successfulContexts.push(context);
+            const duration = secondsToTime(durationInSec(endTime, startTime));
+            const actualMeasurements = results[0].samples.length;
 
-          const message = `${chalkScheme.blackBgGreen(
-            `    ${chalkScheme.white("SUCCESS")}    `
-          )} ${actualMeasurements} measurements took ${duration}`;
-          console.log(`\n${message}`);
-        } catch (err) {
-          recordFailure(context, err);
-        }
-      }));
-    } finally {
-      await measurementPool.dispose();
-    }
-  }
-
-  const lowNoiseTargets = compareFlags.lowNoiseProfilesOnly ? contexts : successfulContexts;
-  if (!compareFlags.skipLowNoiseProfiles && lowNoiseTargets.length > 0) {
-    announceStage(
-      'low-noise profiles',
-      'Doing one final, careful run for each test — one at a time, with nothing else competing for CPU. ' +
-      'The numbers from this stage do not affect the regression check; statistical sampling already produced that answer. ' +
-      'Its purpose is to produce clean, readable Lighthouse reports, performance traces, and timelines you can open and dig into when something looks off. ' +
-      'These artifacts overwrite the ones written during the measurement stage — same files, less noise. ' +
-      'Skip this stage with --skip-low-noise-profiles.'
-    );
-    const lowNoisePool = createPool(1);
-    const lowNoiseProgress = createPhaseProgress(
-      'low-noise profiles',
-      '--skip-low-noise-profiles',
-      lowNoiseTargets.reduce((count, context) => count + context.benchmarks.length, 0)
-    );
-    try {
-      await Promise.all(lowNoiseTargets.map(async (context) => {
-        if (failedContextNames.has(contextKey(context)) && !compareFlags.lowNoiseProfilesOnly) return;
-        const lowNoiseOptions: LighthouseBenchmarkOptions = {
-          viewport: context.viewport,
-          resultsFolder: context.resultsFolder,
-          lhConfigPath: configByViewport.get(context.viewport.label),
-          logFile: path.join(context.resultsFolder, ENGINE_LOG_FILE),
-          logDiagnosticTimings: compareFlags.logDiagnosticTimings,
-        };
-        const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
-        try {
-          await measureTest(
-            benchmarks,
-            1,
-            lowNoisePool,
-            {
-              testKey: `${context.slug}-low-noise`,
-              onSampleStart: (group, iteration, isTrial) =>
-                printSampleStart(context, lowNoiseProgress, group, iteration, isTrial),
-              onProgress: () => { lowNoiseProgress.completed++; },
+            if (!compareFlags.hideAnalysis) {
+              await runAnalyze(abMeasurementsPath, {
+                numberOfMeasurements: actualMeasurements,
+                regressionThreshold: compareFlags.regressionThreshold!,
+              regressionThresholdStat: compareFlags.regressionThresholdStat!,
+              pValueThreshold: compareFlags.pValueThreshold,
+              jsonReport: true,
+              summaryMetadata: {
+                testName: context.name,
+                testFile: context.testFile,
+                testLine: context.line,
+                viewportLabel: context.viewport.label,
+              },
+            });
             }
-          );
-          writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
-          if (compareFlags.lowNoiseProfilesOnly) {
-            // No statistical verdict was produced; write a minimal report.json
-            // so the harvester can surface a "not enough data" notice instead
-            // of silently skipping the viewport. foldEngineArtifactsIntoReport
-            // below preserves this flag (Object.assign keeps unrelated keys).
-            writeFileSync(
-              path.join(context.resultsFolder, 'report.json'),
-              JSON.stringify({ insufficientData: true }, null, 2),
-            );
+
+            if (!compareFlags.skipReport) {
+              try {
+                await runReport({
+                  resultsFolder: context.resultsFolder,
+                  pValueThreshold: compareFlags.pValueThreshold,
+                });
+              } catch (err) {
+                console.error(chalk.red(`Failed to generate bench HTML report for ${context.name}:`), err);
+              }
+            }
+
+            foldEngineArtifactsIntoReport(context.resultsFolder, null);
+
             completedTests.push({
               name: context.name,
               testFile: context.testFile,
               line: context.line,
               resultsFolder: context.resultsFolder,
             });
+            successfulContexts.push(context);
+
+            const message = `${chalkScheme.blackBgGreen(
+              `    ${chalkScheme.white("SUCCESS")}    `
+            )} ${actualMeasurements} measurements took ${duration}`;
+            console.log(`\n${message}`);
+          } catch (err) {
+            recordFailure(context, err);
           }
-          foldEngineArtifactsIntoReport(context.resultsFolder, null);
-        } catch (err) {
-          recordFailure(context, err);
-        }
-      }));
-    } finally {
-      await lowNoisePool.dispose();
+        }));
+      } finally {
+        await measurementPool.dispose();
+      }
     }
+
+    const lowNoiseTargets = compareFlags.lowNoiseProfilesOnly ? contexts : successfulContexts;
+    if (!compareFlags.skipLowNoiseProfiles && lowNoiseTargets.length > 0) {
+      announceStage(
+        'low-noise profiles',
+        'Doing one final, careful run for each test — one at a time, with nothing else competing for CPU. ' +
+        'The numbers from this stage do not affect the regression check; statistical sampling already produced that answer. ' +
+        'Its purpose is to produce clean, readable Lighthouse reports, performance traces, and timelines you can open and dig into when something looks off. ' +
+        'These artifacts overwrite the ones written during the measurement stage — same files, less noise. ' +
+        'Skip this stage with --skip-low-noise-profiles.'
+      );
+      const lowNoisePool = createPool(1);
+      const lowNoiseProgress = createPhaseProgress(
+        'low-noise profiles',
+        '--skip-low-noise-profiles',
+        lowNoiseTargets.reduce((count, context) => count + context.benchmarks.length, 0)
+      );
+      stickyStatus.set(formatProgressStatus(lowNoiseProgress));
+      try {
+        await Promise.all(lowNoiseTargets.map(async (context) => {
+          if (failedContextNames.has(contextKey(context)) && !compareFlags.lowNoiseProfilesOnly) return;
+          const lowNoiseOptions: LighthouseBenchmarkOptions = {
+            viewport: context.viewport,
+            resultsFolder: context.resultsFolder,
+            lhConfigPath: configByViewport.get(context.viewport.label),
+            logFile: path.join(context.resultsFolder, ENGINE_LOG_FILE),
+            logDiagnosticTimings: compareFlags.logDiagnosticTimings,
+          };
+          const benchmarks = createBenchmarks(context.testDef, compareFlags, lowNoiseOptions);
+          try {
+            await measureTest(
+              benchmarks,
+              1,
+              lowNoisePool,
+              {
+                testKey: `${context.slug}-low-noise`,
+                onSampleStart: (group, iteration, isTrial) =>
+                  logSampleStart(context, group, iteration, isTrial),
+                onProgress: () => {
+                  lowNoiseProgress.completed++;
+                  stickyStatus.set(formatProgressStatus(lowNoiseProgress));
+                },
+              }
+            );
+            writeTimelineArtifacts(context.resultsFolder, compareFlags.controlURL!, compareFlags.experimentURL!);
+            if (compareFlags.lowNoiseProfilesOnly) {
+              // No statistical verdict was produced; write a minimal report.json
+              // so the harvester can surface a "not enough data" notice instead
+              // of silently skipping the viewport. foldEngineArtifactsIntoReport
+              // below preserves this flag (Object.assign keeps unrelated keys).
+              writeFileSync(
+                path.join(context.resultsFolder, 'report.json'),
+                JSON.stringify({ insufficientData: true }, null, 2),
+              );
+              completedTests.push({
+                name: context.name,
+                testFile: context.testFile,
+                line: context.line,
+                resultsFolder: context.resultsFolder,
+              });
+            }
+            foldEngineArtifactsIntoReport(context.resultsFolder, null);
+          } catch (err) {
+            recordFailure(context, err);
+          }
+        }));
+      } finally {
+        await lowNoisePool.dispose();
+      }
+    }
+  } finally {
+    stickyStatus.dispose();
   }
 
   // List all generated artifacts per test
