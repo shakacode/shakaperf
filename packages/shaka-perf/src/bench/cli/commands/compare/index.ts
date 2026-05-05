@@ -279,9 +279,20 @@ function createPhaseProgress(
 
 // Until the first sample finishes we have no measured rate, so a divide
 // would render "0m:0s" — looks like the stage is already done. Seed with
-// a coarse 30s/sample guess so the initial estimate is in the right
+// a coarse 5s/sample guess so the initial estimate is in the right
 // ballpark; the next onProgress overwrites it with the real average.
-const INITIAL_SAMPLE_DURATION_MS = 30_000;
+const INITIAL_SAMPLE_DURATION_MS = 5_000;
+
+// `secondsToTime` only renders mm:ss and silently drops hours
+// (`secondsToTime(21600)` → "00m:00s"), which makes the initial estimate
+// for a long stage look like the work is already done. Use an
+// hours-aware formatter for the sticky meter.
+function formatRemainingDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return h > 0 ? `${h.toString().padStart(2, '0')}h:${m}m:${s}s` : `${m}m:${s}s`;
+}
 
 function formatProgressStatus(progress: PhaseProgress): string {
   const averageMs = progress.completed > 0
@@ -290,7 +301,7 @@ function formatProgressStatus(progress: PhaseProgress): string {
   const remaining = progress.totalSamples == null
     ? 0
     : Math.max(0, progress.totalSamples - progress.completed);
-  const remainingTime = secondsToTime(Math.round((remaining * averageMs) / 1000));
+  const remainingTime = formatRemainingDuration(Math.round((remaining * averageMs) / 1000));
   const percentComplete = progress.totalSamples && progress.totalSamples > 0
     ? Math.min(100, Math.round((progress.completed / progress.totalSamples) * 100))
     : null;
