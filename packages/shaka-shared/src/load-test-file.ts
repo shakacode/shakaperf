@@ -3,6 +3,13 @@ import { pathToFileURL } from 'url';
 
 let loadCounter = 0;
 
+// Built via `new Function` so Jest's `import()` transform leaves it alone —
+// otherwise Jest's resolver chokes on the `?shaka-perf-load=N` cache-bust
+// query string and treats the whole URL as a literal file path.
+const dynamicImport = new Function('specifier', 'return import(specifier)') as (
+  specifier: string,
+) => Promise<unknown>;
+
 export async function loadTestFile(testFilePath: string): Promise<void> {
   const absolutePath = path.resolve(testFilePath);
   const ext = path.extname(absolutePath);
@@ -28,7 +35,15 @@ export async function loadTestFile(testFilePath: string): Promise<void> {
       tsx.require(absolutePath, __filename);
     }
   } else {
-    const specifier = pathToFileURL(absolutePath).href + cacheBust;
-    await import(specifier);
+    try {
+      const specifier = pathToFileURL(absolutePath).href + cacheBust;
+      await dynamicImport(specifier);
+    } catch (esmError) {
+      // CJS fallback for environments without ESM dynamic import (e.g. Jest's
+      // default VM without --experimental-vm-modules). Mirrors the .ts branch.
+      delete require.cache[absolutePath];
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require(absolutePath);
+    }
   }
 }

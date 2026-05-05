@@ -105,25 +105,7 @@ export const SharedConfigSchema = z
      * which labels a given test runs at.
      */
     viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
-    /**
-     * Cross-engine concurrency budget. Used for the bench worker pool and
-     * for visreg's parallel capture + pixel-compare limits — both engines
-     * share a single pool of CPU cores, so exposing one knob lets users
-     * tune overall load without juggling engine-specific fields. Mandatory:
-     * the right value depends on the host's core count and how heavy the
-     * two dockerized app stacks under measurement are, so callers must
-     * pick it themselves rather than inherit a hidden machine-dependent
-     * default. The bundled `abtests.config.ts` template seeds it with
-     * `Math.max(1, Math.floor(os.cpus().length / 2))`.
-     */
     parallelism: z.number().int().positive(),
-    /**
-     * Cross-engine retry policy for transient failures. Perf retries a
-     * Lighthouse sample (the Chrome subprocess is recycled between tries);
-     * visreg retries a mismatched screenshot-pair comparison. `retries`
-     * is the number of additional attempts after the first failure;
-     * `retryDelay` is the ms between them.
-     */
     retries: z.number().int().nonnegative().default(2),
     retryDelay: z.number().int().nonnegative().default(1000),
   });
@@ -154,10 +136,14 @@ export const PerfConfigSchema = z
     regressionThresholdStat: z
       .enum(['estimator', 'ci-lower', 'ci-upper'])
       .default('estimator'),
+    // 'sequential' kept only for benchmarking against simultaneous.
     samplingMode: z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
     sampleTimeoutMs: z.number().int().positive().default(120000),
+    skipPerfWarmup: z.boolean().default(false),
+    skipLowNoiseProfiles: z.boolean().default(false),
+    lowNoiseProfilesOnly: z.boolean().default(false),
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is
      * desktop + phone so device-specific regressions aren't missed.
@@ -178,9 +164,6 @@ export const PerfConfigSchema = z
 
 export const AbTestsConfigSchema = z
   .object({
-    // `shared` must be provided so users always set `parallelism` explicitly —
-    // see SharedConfigSchema. visreg/perf still default to {} because every
-    // field in them is optional with a sensible default.
     shared: SharedConfigSchema,
     visreg: VisregConfigSchema.optional().default({}),
     perf: PerfConfigSchema.optional().default({}),
@@ -240,6 +223,18 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     throw new Error(where ? `${where}: ${first.message}` : first.message);
   }
   const parsed = result.data;
+  if (parsed.perf.samplingMode === 'sequential') {
+    console.warn(
+      '[shaka-perf] perf.samplingMode "sequential" is deprecated and retained ' +
+      'only for scientific comparison against "simultaneous". ' +
+      'See NOISE_RESISTANT_PERF_TESTS_STUDY.md for why.'
+    );
+  }
+  if (parsed.perf.skipLowNoiseProfiles && parsed.perf.lowNoiseProfilesOnly) {
+    throw new Error(
+      'perf.skipLowNoiseProfiles and perf.lowNoiseProfilesOnly are mutually exclusive'
+    );
+  }
   const byLabel = new Map(parsed.shared.viewports.map((v) => [v.label, v]));
   const resolve = (labels: string[]): Viewport[] =>
     labels.map((l) => byLabel.get(l)!); // safe: root superRefine validated membership

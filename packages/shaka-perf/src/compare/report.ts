@@ -84,6 +84,13 @@ export interface PerfArtifact {
    * banner's "view logs" action.
    */
   errorLog?: string | null;
+  /**
+   * Non-error, soft notice rendered in place of the metrics table when no
+   * statistical verdict was produced — currently used by `--low-noise-profiles-only`
+   * runs, which collect a single sample per group and so cannot distinguish
+   * a difference from sampling noise.
+   */
+  notice?: string;
   metrics: PerfMetric[];
   regressedMetrics: string[];
   improvedMetrics: string[];

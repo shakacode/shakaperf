@@ -4,6 +4,7 @@ import { dirname, join } from "path";
 
 import type { RegressionThresholdStat } from "../../command-config/tb-config";
 import { CompareResults } from "../../compare/compare-results";
+import type { PerfSummaryMetadata } from "../../compare/compare-results";
 import {
   GenerateStats,
   ParsedTitleConfigs,
@@ -24,6 +25,7 @@ export interface RunAnalyzeOptions {
   regressionThresholdStat: RegressionThresholdStat;
   pValueThreshold?: number;
   jsonReport?: boolean;
+  summaryMetadata?: PerfSummaryMetadata;
 }
 
 function getReportTitles(
@@ -56,7 +58,8 @@ export async function runAnalyze(
     stats,
     numberOfMeasurements,
     regressionThreshold,
-    regressionThresholdStat
+    regressionThresholdStat,
+    options.summaryMetadata,
   );
 
   compareResults.logSummary();

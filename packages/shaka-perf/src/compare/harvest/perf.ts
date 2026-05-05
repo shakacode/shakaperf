@@ -97,7 +97,17 @@ interface BenchCompareJsonResults {
   diagnosticsTableData?: BenchJsonMetric[];
   engineError?: string;
   engineOutput?: string;
+  /**
+   * Set by the bench engine when only the low-noise debugging pass ran
+   * (`--low-noise-profiles-only`). One sample per group is too few to derive
+   * a verdict; the harvester surfaces a notice instead of an empty metrics
+   * table and force-includes the timeline preview.
+   */
+  insufficientData?: boolean;
 }
+
+const INSUFFICIENT_DATA_NOTICE =
+  'Only a single low-noise sample per group was collected — not enough data to tell whether there is a difference.';
 
 export interface HarvestPerfOptions {
   perTestDir: string;
@@ -128,11 +138,13 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
   const reportJsonPath = path.join(perTestDir, 'report.json');
   let engineError: string | null = null;
   let engineOutput: string | null = null;
+  let insufficientData = false;
   if (fs.existsSync(reportJsonPath)) {
     try {
       const raw = JSON.parse(fs.readFileSync(reportJsonPath, 'utf8')) as BenchCompareJsonResults;
       engineError = raw.engineError ?? null;
       engineOutput = raw.engineOutput ?? null;
+      insufficientData = raw.insufficientData === true;
       const allEntries = [
         ...(raw.vitalsTableData ?? []),
         ...(raw.diagnosticsTableData ?? []),
@@ -224,7 +236,9 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
   // and the file can be multi-hundred-KB (10 embedded JPEGs + a PNG diff),
   // so skipping it saves ~1 MB × (no-diff tests count) in the report.
-  const shouldIncludePreview = status !== 'no_difference';
+  // Exception: low-noise-only runs have no verdict but still benefit from
+  // the timeline at a glance, since that is the whole point of the pass.
+  const shouldIncludePreview = status !== 'no_difference' || insufficientData;
   const timelinePreviewSvg = shouldIncludePreview && timelinePreview
     ? (async () => {
         try {
@@ -271,6 +285,7 @@ export async function harvestPerf(opts: HarvestPerfOptions): Promise<PerfArtifac
     improvedMetrics,
     ...(errorPrefix ? { error: errorPrefix } : {}),
     ...(engineOutput ? { errorLog: engineOutput } : {}),
+    ...(insufficientData && !errorPrefix ? { notice: INSUFFICIENT_DATA_NOTICE } : {}),
     controlLighthouseHref,
     experimentLighthouseHref,
     timelineHref: relativeHref(timeline),

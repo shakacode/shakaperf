@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { ConsoleMessage, Page } from 'playwright';
+import { formatLogPrefix, getTestLogSubject } from '../../core/util/testContext';
 
 const DEFAULT_QUIET_MS = 700;
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -31,9 +32,13 @@ export async function waitForNoMutations(
 
   // Forward in-page logs tagged with our prefix to Node stdout so the
   // mutation diagnostics interleave with the node-side messages.
+  const logSubject = getTestLogSubject();
   const onPageConsole = (msg: ConsoleMessage) => {
     const text = msg.text();
-    if (text.startsWith(LOG_PREFIX)) console.log(chalk.yellow(text));
+    if (text.startsWith(LOG_PREFIX)) {
+      const rendered = chalk.yellow(text);
+      console.log(logSubject ? `${formatLogPrefix(logSubject)}${rendered}` : rendered);
+    }
   };
   page.on('console', onPageConsole);
 

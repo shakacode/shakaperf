@@ -27,6 +27,8 @@ import { invokeVisregEngine } from './engine-bridge/visreg';
 import { invokePerfEngine } from './engine-bridge/perf';
 import { slugifyForBench } from './harvest/perf';
 import { CATEGORY_DEFS } from './categories';
+import { planTestViewports, resolveViewportsForTest } from './viewport-plan';
+import { announceStage } from './announce-stage';
 
 const VISREG_TEST_TYPE = 'visreg' as unknown as TestType;
 const PERF_TEST_TYPE = 'perf' as unknown as TestType;
@@ -57,6 +59,10 @@ export interface CompareRunOptions {
    * and the assembler globs+merges them all.
    */
   skipReport?: boolean;
+  skipPerfWarmup?: boolean;
+  skipLowNoiseProfiles?: boolean;
+  lowNoiseProfilesOnly?: boolean;
+  logDiagnosticTimings?: boolean;
 }
 
 // Per-shard persisted engine-errors files. Format: <prefix><shardKey><suffix>.
@@ -97,26 +103,6 @@ const DEFAULT_CATEGORIES: TestType[] = [VISREG_TEST_TYPE, PERF_TEST_TYPE];
  */
 function perfRootFor(resultsRoot: string, viewport: Viewport): string {
   return path.join(resultsRoot, `perf-${viewport.label}`);
-}
-
-/**
- * Resolves the viewports a single test should run at for a given category.
- * Returns the intersection of the category's `viewports` and the test's
- * `options.viewports` narrow (if any). An empty result means the category
- * is SKIPPED for this test — callers surface it as `status: 'skipped'`.
- *
- * Config-level viewports are validated by Zod; per-test `options.viewports`
- * bypasses Zod (plain-TS test files) so unknown labels are silently
- * ignored here — they just won't intersect with anything.
- */
-function resolveViewportsForTest(
-  test: AbTestDefinition,
-  categoryViewports: Viewport[],
-): Viewport[] {
-  const narrow = test.options.viewports;
-  if (!narrow || narrow.length === 0) return categoryViewports;
-  const narrowSet = new Set(narrow);
-  return categoryViewports.filter((v) => narrowSet.has(v.label));
 }
 
 /**
@@ -180,9 +166,18 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   if (opts.skipReport && opts.reportOnly) {
     throw new Error('--skip-report and --report-only are mutually exclusive');
   }
+  if (opts.skipLowNoiseProfiles && opts.lowNoiseProfilesOnly) {
+    throw new Error('--skip-low-noise-profiles and --low-noise-profiles-only are mutually exclusive');
+  }
   const cwd = opts.cwd ?? process.cwd();
   const config = await loadConfig(opts);
-  const { shared, visreg: visregConfig, perf: perfConfig } = config;
+  const { shared, visreg: visregConfig } = config;
+  const perfConfig = {
+    ...config.perf,
+    skipPerfWarmup: opts.skipPerfWarmup || config.perf.skipPerfWarmup,
+    skipLowNoiseProfiles: opts.skipLowNoiseProfiles || config.perf.skipLowNoiseProfiles,
+    lowNoiseProfilesOnly: opts.lowNoiseProfilesOnly || config.perf.lowNoiseProfilesOnly,
+  };
 
   const controlURL = opts.controlURL ?? shared.controlURL;
   const experimentURL = opts.experimentURL ?? shared.experimentURL;
@@ -225,8 +220,6 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
 
   const startedAt = Date.now();
   const engineErrors: string[] = [];
-  // Per-label: one viewport's bench throw must not attribute "engine aborted"
-  // to tests in another viewport's bucket that ran cleanly.
   const perfEngineFailedByLabel = new Set<string>();
 
   // Under reportOnly, rehydrate the in-memory error state from whatever the
@@ -248,8 +241,18 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
   // Run the engines sequentially (each launches its own browser). Visreg
   // is now harvested per-test inside `buildTestResult`, mirroring perf —
   // this block only drives the engine invocation.
+  let visregRanBeforePerf = false;
   if (categories.includes(VISREG_TEST_TYPE) && !opts.reportOnly) {
-    console.log(chalk.blue('\n>>> visreg'));
+    // TODO: update the narrowing hint below when accessibility and seo land
+    // as categories — `--categories perf` will no longer be the only way to
+    // run "everything except visreg".
+    announceStage(
+      'visreg',
+      'Loading every test page on both the control server and the experiment server, taking a screenshot of each once the page has settled, and comparing the two screenshots pixel-by-pixel. ' +
+      'A test fails when the two sides look visibly different. ' +
+      'This is how a code change that does not break anything functionally still gets caught when it accidentally moves a button, shifts a layout, or changes a color. ' +
+      'When you only care about perf this run, narrow the work by passing --categories perf so visreg is not run.'
+    );
     try {
       await invokeVisregEngine({
         controlURL,
@@ -260,64 +263,58 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
         testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
         filter: opts.filter ?? shared.filter,
       });
+      visregRanBeforePerf = true;
     } catch (err) {
       const message = (err as Error).message || String(err);
       console.error(chalk.red(`visreg engine error: ${message}`));
       engineErrors.push(`visreg engine: ${message}`);
-    }
-  }
-
-  // Bucket tests by the perf viewport they resolved to (category viewports ∩
-  // test narrow). Each bucket becomes one bench pass. A test whose narrow
-  // excludes every perf viewport contributes to no bucket and is marked
-  // skipped at report time.
-  const perfBuckets = new Map<string, { viewport: Viewport; tests: AbTestDefinition[] }>();
-  for (const test of tests) {
-    for (const viewport of resolveViewportsForTest(test, perfConfig.viewports)) {
-      const bucket = perfBuckets.get(viewport.label);
-      if (bucket) bucket.tests.push(test);
-      else perfBuckets.set(viewport.label, { viewport, tests: [test] });
+      visregRanBeforePerf = true;
     }
   }
 
   if (categories.includes(PERF_TEST_TYPE) && !opts.reportOnly) {
-    for (const { viewport, tests: bucketTests } of perfBuckets.values()) {
-      // Buckets are seeded on first insert (see perfBuckets construction
-      // above), so an empty bucket is unreachable today. Guard anyway: an
-      // empty `filter` would be falsy in `load-tests.ts`'s `if (filter)`
-      // check and silently fall back to running every discovered test at
-      // this viewport.
-      if (bucketTests.length === 0) continue;
-      console.log(chalk.blue(`\n>>> perf · ${viewport.label}`));
-      const perfRoot = perfRootFor(resultsRoot, viewport);
-      // Pre-create each per-test dir so the bench engine's internal readdirSync
-      // calls never ENOENT before a test has any profile files written.
-      for (const test of bucketTests) {
-        fs.mkdirSync(path.join(perfRoot, slugifyForBench(test.name)), { recursive: true });
+    const perfPlan = planTestViewports(tests, perfConfig.viewports)
+      .filter((entry) => entry.viewports.length > 0);
+    if (perfPlan.length > 0) {
+      // TODO: update the narrowing hint below when accessibility and seo land
+      // as categories — `--categories visreg` will no longer be the only way
+      // to run "everything except perf".
+      announceStage(
+        'perf',
+        'Measuring how long pages take to load on the control server vs. the experiment server, then deciding whether the experiment is meaningfully slower or faster. ' +
+        'Runs in three sub-stages, each announced separately: a warmup pass to skip unrepresentative first-load costs, the actual statistical sampling that produces the regression verdict, and one final careful pass per test that produces detailed Lighthouse reports and traces you can dig into. ' +
+        'When you only care about visreg this run, narrow the work by passing --categories visreg so perf is not run.'
+      );
+      for (const { test, viewports } of perfPlan) {
+        for (const viewport of viewports) {
+          fs.mkdirSync(path.join(perfRootFor(resultsRoot, viewport), slugifyForBench(test.name)), { recursive: true });
+        }
       }
-      // Anchored regex-per-name joined with commas (bench treats commas as
-      // OR, full regex per piece) restricts the pass to exactly these
-      // tests even when the user's global filter would pull in more.
-      const filter = bucketTests
-        .map((t) => `^${t.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
-        .join(',');
-      try {
-        await invokePerfEngine({
-          controlURL,
-          experimentURL,
-          resultsFolder: perfRoot,
-          perfConfig,
-          sharedConfig: shared,
-          viewport,
-          testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
-          filter,
-        });
-      } catch (err) {
-        const message = (err as Error).message || String(err);
-        console.error(chalk.red(`perf engine error (${viewport.label}): ${message}`));
-        engineErrors.push(`perf engine (${viewport.label}): ${message}`);
-        perfEngineFailedByLabel.add(viewport.label);
-      }
+    }
+    try {
+      await invokePerfEngine({
+        controlURL,
+        experimentURL,
+        resultsFolder: resultsRoot,
+        perfConfig,
+        sharedConfig: shared,
+        viewports: perfConfig.viewports,
+        testPathPattern: opts.testPathPattern ?? shared.testPathPattern,
+        filter: opts.filter ?? shared.filter,
+        warmedUpByVisreg: visregRanBeforePerf,
+        logDiagnosticTimings: opts.logDiagnosticTimings,
+      });
+    } catch (err) {
+      const message = (err as Error).message || String(err);
+      console.error(chalk.red(`perf engine error: ${message}`));
+      engineErrors.push(`perf engine: ${message}`);
+      // Don't blanket-mark every viewport failed: per-context bench failures
+      // are already folded into each test's report.json by the bench engine,
+      // and viewports that completed before the catastrophe still have valid
+      // artifacts on disk. The top-level engine error banner above tells the
+      // user a crash happened; the harvester surfaces "no artifacts" for
+      // tests that genuinely produced none. Tagging the viewports as failed
+      // here would falsely overwrite both signals with "engine aborted".
     }
   }
 

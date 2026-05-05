@@ -1,0 +1,24 @@
+diff --git a/core/gather/driver/navigation.js b/core/gather/driver/navigation.js
+--- a/core/gather/driver/navigation.js
++++ b/core/gather/driver/navigation.js
+@@ -96,6 +96,20 @@
+   if (typeof requestor === 'string') {
+     // No timeout needed for Page.navigate. See https://github.com/GoogleChrome/lighthouse/pull/6413
+     session.setNextProtocolTimeout(Infinity);
++    // PATCH (shaka-perf): pause at the exact boundary where the measured page
++    // navigation is requested until the paired worker is also ready. Skip
++    // Lighthouse's own neutral-page reset so the timing line reflects the
++    // benchmark URL, not the about:blank pre-navigation.
++    if (requestor !== 'about:blank') {
++      if (globalThis.__shakaperfBeforePageNavigate) {
++        await globalThis.__shakaperfBeforePageNavigate(requestor);
++      }
++      if (globalThis.__shakaperfLogDiagnosticTimings) {
++        const timestamp = new Date();
++        console.log(`[shaka-perf timing] Lighthouse Page.navigate at ${timestamp.toISOString()} ` +
++          `(epochMs=${timestamp.getTime()}, pid=${process.pid}, url=${requestor})`);
++      }
++    }
+     waitForNavigationTriggered = session.sendCommand('Page.navigate', {url: requestor});
+   } else {
+     waitForNavigationTriggered = requestor();

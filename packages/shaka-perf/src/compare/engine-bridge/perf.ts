@@ -13,24 +13,13 @@ export interface PerfBridgeOptions {
   resultsFolder: string;
   perfConfig: PerfConfig;
   sharedConfig: SharedConfig;
-  /**
-   * Viewport this pass measures. The bench worker receives a Lighthouse
-   * config whose `formFactor` and `screenEmulation` are derived from this
-   * viewport; user-provided `perf.lighthouseConfig` fills in everything
-   * else (throttling, categories, etc.) but cannot override the
-   * viewport-owned fields.
-   */
-  viewport: Viewport;
+  viewports: Viewport[];
   testPathPattern?: string;
   filter?: string;
+  warmedUpByVisreg?: boolean;
+  logDiagnosticTimings?: boolean;
 }
 
-/**
- * Invokes the bench runCompare (same entry that powers `perf-compare`) with
- * flags derived from the unified abtests.config.ts `perf` slice. Bench writes
- * per-test artifacts (ab-measurements.json, report.json, lighthouse HTMLs,
- * timeline_comparison.html, *.diff.html) into <resultsFolder>/<slug>/.
- */
 export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
   const {
     controlURL,
@@ -38,16 +27,23 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     resultsFolder,
     perfConfig,
     sharedConfig,
-    viewport,
+    viewports,
     testPathPattern,
     filter,
+    warmedUpByVisreg,
+    logDiagnosticTimings,
   } = opts;
 
   // Announce the Lighthouse patch once per invocation in the main process;
   // forked workers inherit `SHAKA_PERF_PATCH_ANNOUNCED` and stay quiet.
   ensureLighthousePatchRegistered();
 
-  const lhConfigPath = await writeLighthouseConfigFile(perfConfig, viewport);
+  const lhConfigPaths = await Promise.all(
+    viewports.map(async (viewport) => ({
+      viewport,
+      config: await writeLighthouseConfigFile(perfConfig, viewport),
+    }))
+  );
 
   const flags: ICompareFlags = {
     // hideAnalysis:false is required for the bench runner to invoke
@@ -69,16 +65,22 @@ export async function invokePerfEngine(opts: PerfBridgeOptions): Promise<void> {
     pValueThreshold: perfConfig.pValueThreshold ?? 0.05,
     parallelism: sharedConfig.parallelism,
     samplingMode: perfConfig.samplingMode ?? 'simultaneous',
+    skipPerfWarmup: perfConfig.skipPerfWarmup,
+    warmedUpByVisreg,
+    skipLowNoiseProfiles: perfConfig.skipLowNoiseProfiles,
+    lowNoiseProfilesOnly: perfConfig.lowNoiseProfilesOnly,
+    logDiagnosticTimings,
     retries: sharedConfig.retries,
     retryDelay: sharedConfig.retryDelay,
-    config: lhConfigPath,
-    viewport,
+    viewportConfigs: lhConfigPaths,
   };
 
   try {
     await runBenchCompare(flags);
   } finally {
-    fs.rmSync(lhConfigPath, { force: true });
+    for (const { config: lhConfigPath } of lhConfigPaths) {
+      fs.rmSync(lhConfigPath, { force: true });
+    }
   }
 }
 

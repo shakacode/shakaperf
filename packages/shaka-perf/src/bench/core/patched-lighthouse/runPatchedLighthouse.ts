@@ -7,15 +7,30 @@ import { ensureLighthousePatchRegistered } from './register-patch';
 // pick up the patched `wait-for-condition.js`.
 ensureLighthousePatchRegistered();
 
-// Lighthouse v12+ is ESM-only. TypeScript's CJS emit would rewrite a
-// top-level `import lighthouse from 'lighthouse'` into a plain `require()`,
-// which throws ERR_REQUIRE_ESM at module load — even on code paths that
-// never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
-// at call-time keeps the CLI's other commands usable when Lighthouse isn't
-// needed.
-async function loadLighthouse(): Promise<(typeof import('lighthouse'))['default']> {
+/**
+ * Dynamic-import lighthouse and assert the patch loader hook actually rewrote
+ * its source. The patched `wait-for-condition.js` sets `shakaPerfPatched` on
+ * evaluation; if it's unset after lighthouse finished loading, our loader
+ * hook never matched the target file and lighthouse is running vanilla — a
+ * silent failure mode where post-load testFn interactions get excluded from
+ * the trace.
+ *
+ * Lighthouse v12+ is ESM-only. TypeScript's CJS emit would rewrite a
+ * top-level `import lighthouse from 'lighthouse'` into a plain `require()`,
+ * which throws ERR_REQUIRE_ESM at module load — even on code paths that
+ * never actually call Lighthouse (e.g. `shaka-perf init`). Dynamic-import
+ * at call-time keeps the CLI's other commands usable when Lighthouse isn't
+ * needed.
+ */
+export async function importPatchedLighthouse(): Promise<typeof import('lighthouse')> {
   const mod = await import('lighthouse');
-  return mod.default;
+  if (!(globalThis as { shakaPerfPatched?: boolean }).shakaPerfPatched) {
+    throw new Error(
+      '[shaka-perf] Lighthouse loaded without the shaka-perf patch. ' +
+      'Check that patch-loader.mjs matched the lighthouse source paths.',
+    );
+  }
+  return mod;
 }
 
 const HOLD_GATHER_FLAG = '__shakaperfHoldGather';
@@ -64,7 +79,7 @@ export async function runPatchedLighthouse(
   const previous = g[HOLD_GATHER_FLAG];
   g[HOLD_GATHER_FLAG] = canStopTracking;
   try {
-    const lighthouse = await loadLighthouse();
+    const lighthouse = (await importPatchedLighthouse()).default;
     const result = (await lighthouse(url, settings as never)) as RunnerResult;
     return result;
   } finally {

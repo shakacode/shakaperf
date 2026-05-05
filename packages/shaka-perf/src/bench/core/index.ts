@@ -1,6 +1,5 @@
 export { saveNetworkActivity } from './network-activity';
 export { default as createLighthouseBenchmark } from './create-lighthouse-benchmark';
-export { default as createLighthouseBenchmarkInProcess } from './create-lighthouse-benchmark-in-process';
 export type {
   Marker,
   NavigationSample,
@@ -13,14 +12,15 @@ export {
   DEFAULT_MARKERS,
   lhConfigForViewport,
 } from './lighthouse-config';
-export { default as run } from './run';
+export { LighthouseSamplingWorkerPool } from './lighthouse-sampling-worker-pool';
 export type {
   Benchmark,
   BenchmarkSampler,
   SampleGroup,
-  SampleProgressCallback,
-  RunOptions,
+  RunTestOptions,
+  SamplingMode,
 } from './run';
+export { warmUpTest, measureTest } from './run';
 export { abTest, getRegisteredTests, clearRegistry, TestType } from './ab-test-registry';
 export type { AbTestDefinition, AbTestOptions, AbTestVisregConfig, TestFnContext } from './ab-test-registry';
 export { summarizePerformanceProfile } from './summarize-performance-profile';

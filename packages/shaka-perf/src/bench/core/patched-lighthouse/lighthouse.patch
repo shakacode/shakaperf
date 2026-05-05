@@ -1,6 +1,15 @@
 diff --git a/core/gather/driver/wait-for-condition.js b/core/gather/driver/wait-for-condition.js
 --- a/core/gather/driver/wait-for-condition.js
 +++ b/core/gather/driver/wait-for-condition.js
+@@ -8,6 +8,8 @@
+ import {LighthouseError} from '../../lib/lh-error.js';
+ import {ExecutionContext} from './execution-context.js';
+
++globalThis.shakaPerfPatched = true;
++
+ /** @typedef {InstanceType<import('./network-monitor.js')['NetworkMonitor']>} NetworkMonitor */
+ /** @typedef {import('./network-monitor.js').NetworkMonitorEvent} NetworkMonitorEvent */
+ 
 @@ -462,12 +462,17 @@
 
    // Wait for all initial load promises. Resolves on cleanup function the clears load

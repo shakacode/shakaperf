@@ -3,10 +3,9 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /**
- * Register — once per process — an ESM loader hook that rewrites
- * Lighthouse's `core/gather/driver/wait-for-condition.js` in memory when
- * Node first resolves it. The consumer's `node_modules/lighthouse` stays
- * untouched on disk.
+ * Register — once per process — an ESM loader hook that rewrites selected
+ * Lighthouse modules in memory when Node first resolves them. The consumer's
+ * `node_modules/lighthouse` stays untouched on disk.
  *
  * Requires Node >= 20.6 (see shaka-perf package.json `engines`).
  */
