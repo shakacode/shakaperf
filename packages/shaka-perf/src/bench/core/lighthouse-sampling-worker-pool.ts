@@ -212,29 +212,33 @@ async function setupSamplers<TSample>(
   barrierSynchronizationFds: [number, number],
   samplingMode: SamplingMode,
 ): Promise<void> {
+  // allSettled (not all): once one sibling rejects, the others are still
+  // in flight. Promise.all would surface the first rejection immediately
+  // and the catch would dispose `samplers` while the survivor was still
+  // launching Chrome — its eventual `samplers[group] = sampler` would land
+  // past cleanup, leaking a Chrome subprocess + tmp userDataDir.
+  const results = await Promise.allSettled(
+    benchmarks.map(async (benchmark, index) => {
+      const sampler = await setupWithTimeout(
+        benchmark,
+        setupTimeoutMs,
+        raceCancellation,
+        barrierSynchronizationFds[index],
+        samplingMode,
+      );
+      samplers[benchmark.group] = sampler;
+    }),
+  );
+  const firstFailure = results.find(
+    (r): r is PromiseRejectedResult => r.status === 'rejected',
+  );
+  if (!firstFailure) return;
   try {
-    await Promise.all(
-      benchmarks.map(async (benchmark, index) => {
-        const sampler = await setupWithTimeout(
-          benchmark,
-          setupTimeoutMs,
-          raceCancellation,
-          barrierSynchronizationFds[index],
-          samplingMode,
-        );
-        samplers[benchmark.group] = sampler;
-      })
-    );
-  } catch (err) {
-    // Dispose any samplers that finished setup before a sibling rejected;
-    // otherwise their Chrome subprocesses + tmp userDataDirs leak.
-    try {
-      await disposeSamplerSet(samplers);
-    } catch (disposeErr) {
-      console.error('Failed to dispose partial samplers after setup failure:', disposeErr);
-    }
-    throw err;
+    await disposeSamplerSet(samplers);
+  } catch (disposeErr) {
+    console.error('Failed to dispose partial samplers after setup failure:', disposeErr);
   }
+  throw firstFailure.reason;
 }
 
 async function disposeSamplerSet<TSample>(

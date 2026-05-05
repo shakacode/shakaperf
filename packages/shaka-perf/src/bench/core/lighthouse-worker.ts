@@ -18,6 +18,7 @@ import {
   type PhaseSample,
 } from './lighthouse-config';
 import { runLighthouse } from './run-lighthouse';
+import { importPatchedLighthouse } from './patched-lighthouse';
 import { extractMarkers } from './extract-markers';
 import { injectINPObserver, collectINP } from './inp';
 import type { AbTestDefinition } from './ab-test-registry';
@@ -71,14 +72,35 @@ class LighthouseWorkerSampler implements BenchmarkSampler<NavigationSample> {
   }
 
   async dispose(): Promise<void> {
-    await this.chrome?.kill();
+    // Run both cleanups regardless of whether one throws: a hung Chrome that
+    // can't be killed must not stop us from removing the tmp userDataDir,
+    // otherwise long runs leak GBs of /tmp.
+    const errors: Error[] = [];
+    try {
+      this.chrome?.kill();
+    } catch (err) {
+      errors.push(err instanceof Error ? err : new Error(String(err)));
+    }
     if (this.userDataDir) {
-      await rm(this.userDataDir, { recursive: true, force: true });
+      try {
+        await rm(this.userDataDir, { recursive: true, force: true });
+      } catch (err) {
+        errors.push(err instanceof Error ? err : new Error(String(err)));
+      }
+    }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) {
+      throw new Error(
+        `Multiple Lighthouse worker dispose failures: ${errors.map((e) => e.message).join('; ')}`,
+      );
     }
   }
 
   async getMobileSettings(): Promise<any> {
-    const { defaultConfig } = await import('lighthouse');
+    // Route through importPatchedLighthouse so we fail before runLighthouse
+    // if the loader hook didn't apply — otherwise the run produces a vanilla
+    // trace that silently excludes post-load testFn interactions.
+    const { defaultConfig } = await importPatchedLighthouse();
     return {
       ...defaultConfig?.settings,
       ...DEFAULT_LH_CONFIG,

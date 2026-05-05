@@ -308,11 +308,13 @@ export async function runCompare(opts: CompareRunOptions = {}): Promise<CompareR
       const message = (err as Error).message || String(err);
       console.error(chalk.red(`perf engine error: ${message}`));
       engineErrors.push(`perf engine: ${message}`);
-      for (const { viewports } of perfPlan) {
-        for (const viewport of viewports) {
-          perfEngineFailedByLabel.add(viewport.label);
-        }
-      }
+      // Don't blanket-mark every viewport failed: per-context bench failures
+      // are already folded into each test's report.json by the bench engine,
+      // and viewports that completed before the catastrophe still have valid
+      // artifacts on disk. The top-level engine error banner above tells the
+      // user a crash happened; the harvester surfaces "no artifacts" for
+      // tests that genuinely produced none. Tagging the viewports as failed
+      // here would falsely overwrite both signals with "engine aborted".
     }
   }
 
