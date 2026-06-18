@@ -21,15 +21,21 @@ import {
   type PerfResult,
   type PerfWarmupResult,
 } from './stages/perf';
+import {
+  AccessibilityCompareStage,
+  type AccessibilityCompareResult,
+  type AccessibilityCompareSummary,
+} from './stages/accessibility';
 import { PerfEngineStage } from './stages/perf/stage';
 import { createVisregStage, type VisregResult } from './stages/visreg';
+import type { AccessibilityStageConfig } from '../audit/stages/accessibility';
 import { hasSavedByRetries, hasVisualChange, visualChangeCount } from './stages/visreg/selectors';
 import { comparePipelineReport } from './pipeline-report';
 
 export const comparePipelineMetadata = {
-  description: 'Run visreg + perf stages side-by-side and produce a unified A/B report.',
-  categories: ['visreg', 'perf'],
-  stages: ['visreg', 'perf-warmup', 'perf', 'perf-low-noise'],
+  description: 'Run visreg + perf + accessibility stages side-by-side and produce a unified A/B report.',
+  categories: ['visreg', 'perf', 'accessibility'],
+  stages: ['visreg', 'accessibility', 'perf-warmup', 'perf', 'perf-low-noise'],
 } as const;
 
 interface VisregEngineOptions {
@@ -64,6 +70,7 @@ export interface ComparePipelineConfig {
   readonly perfSamplingMode: 'sequential' | 'simultaneous';
   readonly perfLighthouseConfig?: PerfLighthouseConfig;
   readonly perfPlotTitle?: string;
+  readonly accessibility?: AccessibilityStageConfig;
 }
 
 export function createComparePipeline(input: ComparePipelineConfig) {
@@ -84,6 +91,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       compareRetryDelay: input.visregCompareRetryDelay,
       testPathPattern: input.testPathPattern,
     }));
+    pipeline.runStage(parallelWorkerPool, new AccessibilityCompareStage(input.accessibility));
 
     const perfBaseConfig = {
       regressionThreshold: input.perfRegressionThreshold,
@@ -154,6 +162,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
 
     pipeline.buildChips<{
       visreg: VisregResult;
+      accessibility: AccessibilityCompareResult;
       'perf-warmup': PerfWarmupResult;
       perf: PerfResult;
       'perf-low-noise': PerfLowNoiseResult;
@@ -162,6 +171,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         for (const { test, results } of perTest) {
           const chips: ChipDescriptor[] = [];
+          chips.push(...accessibilityChips(results.accessibility ?? []));
           const regressedMetrics = collectPerfMetrics('regressedMetrics', results.perf, results['perf-low-noise']);
           if (regressedMetrics.length > 0) {
             chips.push({
@@ -224,6 +234,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
     // worst-first default surfaces the biggest regressions.
     pipeline.buildSorts<{
       visreg: VisregResult;
+      accessibility: AccessibilityCompareResult;
       'perf-warmup': PerfWarmupResult;
       perf: PerfResult;
       'perf-low-noise': PerfLowNoiseResult;
@@ -250,6 +261,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
             higherIsWorse: true,
             color: metric.direction === 'regression' ? 'red' : 'blue',
           }));
+          sorts.push(...accessibilitySorts(results.accessibility ?? []));
           if (sorts.length > 0) out.set(test, sorts);
         }
         return out;
@@ -283,6 +295,136 @@ function entriesHave<M>(
 
 type PerfMetricListKey = 'regressedMetrics' | 'improvedMetrics';
 type PerfChipResult = PerfResult | PerfLowNoiseResult;
+type AccessibilityChipResult = AccessibilityCompareResult;
+
+function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>): ChipDescriptor[] {
+  const summary = combineAccessibilitySummaries(entries);
+  const chips: ChipDescriptor[] = [];
+  if (summary.errors > 0) {
+    chips.push({
+      tag: 'accessibility error',
+      text: `a11y error: ${summary.errors}`,
+      color: 'red',
+      sortingWeight: 5,
+      tooltip: 'One or both accessibility scans failed, so no control-vs-experiment comparison was produced.',
+    });
+  }
+  if (summary.new > 0) {
+    const failOnViolation = entries.some((entry) => entry.measurement.failOnViolation);
+    chips.push({
+      tag: failOnViolation ? 'accessibility regression' : 'accessibility finding',
+      text: `a11y: ${summary.new} new`,
+      color: failOnViolation ? 'red' : 'purple',
+      sortingWeight: failOnViolation ? 12 : 24,
+      tooltip: impactTooltip('New accessibility findings', summary.newByImpact),
+    });
+  }
+  if (summary.changed > 0) {
+    chips.push({
+      tag: 'accessibility changed',
+      text: `a11y: ${summary.changed} changed`,
+      color: 'yellow',
+      sortingWeight: 22,
+      tooltip: impactTooltip('Changed accessibility findings', summary.changedByImpact),
+    });
+  }
+  if (summary.fixed > 0) {
+    chips.push({
+      tag: 'accessibility fixed',
+      text: `a11y: ${summary.fixed} fixed`,
+      color: 'blue',
+      sortingWeight: 32,
+      tooltip: impactTooltip('Fixed accessibility findings', summary.fixedByImpact),
+    });
+  }
+  return chips;
+}
+
+function accessibilitySorts(entries: ChipStageResults<AccessibilityChipResult>): SortDescriptor[] {
+  const summary = combineAccessibilitySummaries(entries);
+  const sorts: SortDescriptor[] = [];
+  const seriousNew = (summary.newByImpact.critical ?? 0) + (summary.newByImpact.serious ?? 0);
+  if (seriousNew > 0) {
+    sorts.push({
+      tag: 'a11y-new-critical-serious',
+      label: 'a11y new critical/serious',
+      value: seriousNew,
+      display: `${seriousNew}`,
+      higherIsWorse: true,
+      color: 'red',
+    });
+  }
+  if (summary.new > 0) {
+    sorts.push({
+      tag: 'a11y-new',
+      label: 'a11y new',
+      value: summary.new,
+      display: `${summary.new}`,
+      higherIsWorse: true,
+      color: 'red',
+    });
+  }
+  if (summary.errors > 0) {
+    sorts.push({
+      tag: 'a11y-errors',
+      label: 'a11y errors',
+      value: summary.errors,
+      display: `${summary.errors}`,
+      higherIsWorse: true,
+      color: 'red',
+    });
+  }
+  if (summary.fixed > 0) {
+    sorts.push({
+      tag: 'a11y-fixed',
+      label: 'a11y fixed',
+      value: summary.fixed,
+      display: `${summary.fixed}`,
+      higherIsWorse: false,
+      color: 'blue',
+    });
+  }
+  return sorts;
+}
+
+function combineAccessibilitySummaries(
+  entries: ChipStageResults<AccessibilityChipResult>,
+): AccessibilityCompareSummary {
+  const out: AccessibilityCompareSummary = {
+    new: 0,
+    fixed: 0,
+    changed: 0,
+    unchanged: 0,
+    errors: 0,
+    newByImpact: {},
+    fixedByImpact: {},
+    changedByImpact: {},
+  };
+  for (const entry of entries) {
+    const summary = entry.measurement.summary;
+    out.new += summary.new;
+    out.fixed += summary.fixed;
+    out.changed += summary.changed;
+    out.unchanged += summary.unchanged;
+    out.errors += summary.errors;
+    mergeImpactCounts(out.newByImpact, summary.newByImpact);
+    mergeImpactCounts(out.fixedByImpact, summary.fixedByImpact);
+    mergeImpactCounts(out.changedByImpact, summary.changedByImpact);
+  }
+  return out;
+}
+
+function mergeImpactCounts(target: Record<string, number>, source: Record<string, number>): void {
+  for (const [impact, count] of Object.entries(source)) {
+    target[impact] = (target[impact] ?? 0) + count;
+  }
+}
+
+function impactTooltip(label: string, counts: Record<string, number>): string {
+  const parts = ['critical', 'serious', 'moderate', 'minor', 'unknown']
+    .flatMap((impact) => counts[impact] ? [`${impact}: ${counts[impact]}`] : []);
+  return parts.length > 0 ? `${label}: ${parts.join(', ')}` : label;
+}
 
 function collectPerfMetrics(
   key: PerfMetricListKey,
@@ -311,4 +453,3 @@ function totalVisualChanges(entries: ChipStageResults<VisregResult>): number {
   if (!entriesHave(entries, hasVisualChange)) return 0;
   return entries.reduce((sum, entry) => sum + visualChangeCount(entry.measurement), 0);
 }
-

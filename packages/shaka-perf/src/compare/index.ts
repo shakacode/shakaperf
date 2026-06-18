@@ -12,6 +12,7 @@ export {
   SharedConfigSchema,
   VisregConfigSchema,
   PerfConfigSchema,
+  AccessibilityConfigSchema,
   parseAbTestsConfig,
 } from '../config';
 // `defineConfig` now lives in shaka-shared so user configs don't have to
@@ -34,5 +35,6 @@ export type {
   SharedConfig,
   VisregConfig,
   PerfConfig,
+  AccessibilityConfig,
 } from '../config';
 export type { AbTestsConfigInput } from 'shaka-shared';

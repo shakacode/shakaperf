@@ -249,12 +249,13 @@ export function abTest(
 
 // Audit runs for every test, so callers can opt into a subset of other types
 // without losing the audit pass. `testTypes: null` already means "run all", so
-// we only need to extend explicit lists.
+// we only need to extend explicit lists. Accessibility is deliberately not
+// auto-added: it is a first-class category, so `testTypes: ['visreg']` should
+// mean visual-only work while omitted testTypes still means every category.
 function withMandatoryTestTypes(testTypes: TestType[] | undefined): TestType[] | null {
   if (testTypes == null) return null;
   const out = [...testTypes];
   if (!out.includes('audit')) out.push('audit');
-  if (!out.includes('accessibility')) out.push('accessibility');
   return out;
 }
 

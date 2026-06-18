@@ -1176,12 +1176,16 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   let regressions = 0;
   let visualChanges = 0;
   let accessibilityViolations = 0;
+  let accessibilityRegressions = 0;
+  let accessibilityErrors = 0;
   let errors = 0;
   for (const t of data.tests) {
     if (t.outcomes.some((outcome) => outcome.kind === 'error') || hasChipTag(t, 'broken')) errors++;
     if (hasChipTag(t, 'regression')) regressions++;
     if (hasChipTag(t, 'visual change')) visualChanges++;
     if (hasChipTag(t, 'accessibility violation')) accessibilityViolations++;
+    if (hasChipTag(t, 'accessibility regression')) accessibilityRegressions++;
+    if (hasChipTag(t, 'accessibility error')) accessibilityErrors++;
   }
   if (data.meta.errors.length > 0) errors += data.meta.errors.length;
   const parts: string[] = [];
@@ -1191,6 +1195,16 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   if (accessibilityViolations > 0) {
     parts.push(
       `${accessibilityViolations} test${accessibilityViolations === 1 ? '' : 's'} with accessibility violations`,
+    );
+  }
+  if (accessibilityRegressions > 0) {
+    parts.push(
+      `${accessibilityRegressions} test${accessibilityRegressions === 1 ? '' : 's'} with accessibility regressions`,
+    );
+  }
+  if (accessibilityErrors > 0) {
+    parts.push(
+      `${accessibilityErrors} accessibility scan error${accessibilityErrors === 1 ? '' : 's'}`,
     );
   }
   return {

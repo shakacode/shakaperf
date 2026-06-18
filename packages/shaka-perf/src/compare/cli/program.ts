@@ -79,6 +79,7 @@ export async function createCompareCommand(): Promise<Command> {
           perfSamplingMode: config.perf.samplingMode,
           perfLighthouseConfig: config.perf.lighthouseConfig,
           perfPlotTitle: config.perf.plotTitle,
+          accessibility: config.accessibility,
         });
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
         const result = await runPipeline(pipeline, {
