@@ -137,11 +137,11 @@ function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | nu
   if (raw == null) return null;
   const stripped = raw.trim();
   if (stripped === '') return null;
-  if (!/^\d+$/.test(stripped) || Number(stripped) < 1 || Number(stripped) > MAX_PORT) {
+  const port = Number(stripped);
+  if (!/^\d+$/.test(stripped) || port < 1 || port > MAX_PORT) {
     console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid port (1..${MAX_PORT}); ignoring.`);
     return null;
   }
-  const port = Number(stripped);
   if (port <= PRIVILEGED_PORT_MAX) {
     console.warn(
       `assignPortsAutomatically: ${varName}="${raw}" is in the privileged range ` +
@@ -154,10 +154,20 @@ function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | nu
 function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
   const control = parseExplicitPort(env, 'SHAKAPERF_CONTROL_PORT');
   const experiment = parseExplicitPort(env, 'SHAKAPERF_EXPERIMENT_PORT');
-  // Both are required to pin an explicit pair; a lone value falls through to the
-  // base-port/sticky path (the parse above has already warned on a bad value).
   if (control != null && experiment != null) {
     return { control, experiment };
+  }
+  // Both vars are required to pin an explicit pair. If either was provided (set
+  // and non-blank) but the pair didn't resolve, that's almost always a mistake —
+  // warn that the whole override was dropped, not just the bad half. (A
+  // present-but-invalid value has already warned in parseExplicitPort.)
+  const isPresent = (value?: string): boolean => value != null && value.trim() !== '';
+  if (isPresent(env.SHAKAPERF_CONTROL_PORT) || isPresent(env.SHAKAPERF_EXPERIMENT_PORT)) {
+    console.warn(
+      'assignPortsAutomatically: both SHAKAPERF_CONTROL_PORT and ' +
+        'SHAKAPERF_EXPERIMENT_PORT must be set to valid ports to pin an explicit ' +
+        'pair; falling through to automatic assignment.',
+    );
   }
   return null;
 }

@@ -110,6 +110,14 @@ describe('assignPortsAutomatically', () => {
     warn.mockRestore();
   });
 
+  it('warns when only one explicit port var is set, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = { ...baseDeps(), env: { SHAKAPERF_CONTROL_PORT: '4000' } };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('must be set to valid ports'));
+    warn.mockRestore();
+  });
+
   it('treats blank/absent explicit port vars as unset without warning', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const deps: AssignPortsDeps = {
