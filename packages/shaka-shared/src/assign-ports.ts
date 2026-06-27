@@ -123,10 +123,30 @@ function lsofPortInUse(port: number): boolean {
   }
 }
 
+/**
+ * Parse one explicit-port env var. Returns the port when present and a valid
+ * positive integer; null when absent or blank (silently). A present-but-invalid
+ * value warns and returns null — mirroring `readBasePortOverride`, so a typo'd
+ * `SHAKAPERF_CONTROL_PORT`/`SHAKAPERF_EXPERIMENT_PORT` isn't swallowed silently.
+ */
+function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | null {
+  const raw = env[varName];
+  if (raw == null) return null;
+  const stripped = raw.trim();
+  if (stripped === '') return null;
+  if (!/^\d+$/.test(stripped) || Number(stripped) < 1) {
+    console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid positive integer; ignoring.`);
+    return null;
+  }
+  return Number(stripped);
+}
+
 function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
-  const control = Number(env.SHAKAPERF_CONTROL_PORT);
-  const experiment = Number(env.SHAKAPERF_EXPERIMENT_PORT);
-  if (Number.isInteger(control) && control > 0 && Number.isInteger(experiment) && experiment > 0) {
+  const control = parseExplicitPort(env, 'SHAKAPERF_CONTROL_PORT');
+  const experiment = parseExplicitPort(env, 'SHAKAPERF_EXPERIMENT_PORT');
+  // Both are required to pin an explicit pair; a lone value falls through to the
+  // base-port/sticky path (the parse above has already warned on a bad value).
+  if (control != null && experiment != null) {
     return { control, experiment };
   }
   return null;

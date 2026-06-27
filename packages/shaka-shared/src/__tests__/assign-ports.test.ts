@@ -76,6 +76,28 @@ describe('assignPortsAutomatically', () => {
     expect(fs.existsSync(settingsPath)).toBe(false);
   });
 
+  it('warns when an explicit port var is present but not a valid integer, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '40x0', SHAKAPERF_EXPERIMENT_PORT: '4001' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid positive integer'));
+    warn.mockRestore();
+  });
+
+  it('treats blank/absent explicit port vars as unset without warning', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '  ', SHAKAPERF_EXPERIMENT_PORT: '' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('derives the pair from SHAKAPERF_BASE_PORT and does not persist it', () => {
     const deps: AssignPortsDeps = { ...baseDeps(), env: { SHAKAPERF_BASE_PORT: '4200' } };
     expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 4200, experiment: 4201 });
