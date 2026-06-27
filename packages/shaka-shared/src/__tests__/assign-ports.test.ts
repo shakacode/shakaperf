@@ -83,7 +83,30 @@ describe('assignPortsAutomatically', () => {
       env: { SHAKAPERF_CONTROL_PORT: '40x0', SHAKAPERF_EXPERIMENT_PORT: '4001' },
     };
     expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid positive integer'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    warn.mockRestore();
+  });
+
+  it('warns when an explicit port exceeds the TCP range, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '99999', SHAKAPERF_EXPERIMENT_PORT: '4001' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    warn.mockRestore();
+  });
+
+  it('warns about a privileged explicit port but still uses (and does not persist) the pair', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '80', SHAKAPERF_EXPERIMENT_PORT: '81' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 80, experiment: 81 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('privileged'));
+    expect(fs.existsSync(settingsPath)).toBe(false);
     warn.mockRestore();
   });
 

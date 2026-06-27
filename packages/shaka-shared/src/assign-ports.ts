@@ -124,21 +124,31 @@ function lsofPortInUse(port: number): boolean {
 }
 
 /**
- * Parse one explicit-port env var. Returns the port when present and a valid
- * positive integer; null when absent or blank (silently). A present-but-invalid
- * value warns and returns null — mirroring `readBasePortOverride`, so a typo'd
- * `SHAKAPERF_CONTROL_PORT`/`SHAKAPERF_EXPERIMENT_PORT` isn't swallowed silently.
+ * Parse one explicit-port env var (`SHAKAPERF_CONTROL_PORT` /
+ * `SHAKAPERF_EXPERIMENT_PORT`). Returns the port when present and valid; null
+ * when absent or blank (silently). Validation matches `readBasePortOverride`: a
+ * positive integer within `1..MAX_PORT` (a present-but-invalid value warns and
+ * returns null), plus a privileged-range (`<= PRIVILEGED_PORT_MAX`) advisory that
+ * warns but still returns the port. Keeps a typo'd value from being swallowed
+ * silently.
  */
 function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | null {
   const raw = env[varName];
   if (raw == null) return null;
   const stripped = raw.trim();
   if (stripped === '') return null;
-  if (!/^\d+$/.test(stripped) || Number(stripped) < 1) {
-    console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid positive integer; ignoring.`);
+  if (!/^\d+$/.test(stripped) || Number(stripped) < 1 || Number(stripped) > MAX_PORT) {
+    console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid port (1..${MAX_PORT}); ignoring.`);
     return null;
   }
-  return Number(stripped);
+  const port = Number(stripped);
+  if (port <= PRIVILEGED_PORT_MAX) {
+    console.warn(
+      `assignPortsAutomatically: ${varName}="${raw}" is in the privileged range ` +
+        `(1..${PRIVILEGED_PORT_MAX}); binding will fail without root.`,
+    );
+  }
+  return port;
 }
 
 function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
