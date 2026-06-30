@@ -68,6 +68,8 @@ describe('preparePage', function () {
   const baseConfig = {} as import('../../../../src/visreg/core/types').VisregConfig;
   const baseBrowserContext = {} as import('../../../../src/visreg/core/types').BrowserContext;
 
+  let waitUntilPageSettledSpy: jest.SpyInstance;
+
   beforeAll(function () {
     jest.mock('../../../../src/visreg/capture/visregTools', () => ({
       __esModule: true,
@@ -77,10 +79,9 @@ describe('preparePage', function () {
       __esModule: true,
       loadCookies: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../../src/visreg/capture/helpers/waitUntilPageSettled', () => ({
-      __esModule: true,
-      waitUntilPageSettled: jest.fn().mockResolvedValue(undefined),
-    }));
+    waitUntilPageSettledSpy = jest
+      .spyOn(require('shaka-shared'), 'waitUntilPageSettled')
+      .mockResolvedValue(undefined);
     jest.mock('../../../../src/visreg/capture/helpers/clickAndHoverHelper', () => ({
       __esModule: true,
       clickAndHoverHelper: jest.fn().mockResolvedValue(undefined),
@@ -95,6 +96,10 @@ describe('preparePage', function () {
     const mod = require('../../../../src/visreg/core/util/preparePage');
     preparePage = mod.default;
     translateUrl = mod.translateUrl;
+  });
+
+  afterAll(function () {
+    waitUntilPageSettledSpy.mockRestore();
   });
 
   describe('testFn execution', function () {

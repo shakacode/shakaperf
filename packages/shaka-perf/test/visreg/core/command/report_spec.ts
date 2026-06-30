@@ -41,7 +41,7 @@ describe('visreg core report', function () {
       __esModule: true,
       default: () => ({ log: jest.fn(), error: jest.fn() }),
     }));
-    jest.mock('shaka-shared', () => ({
+    jest.mock('../../../../src/config-loader', () => ({
       loadTests: jest.fn().mockResolvedValue([
         { name: 'Homepage', file: null, line: null },
       ]),

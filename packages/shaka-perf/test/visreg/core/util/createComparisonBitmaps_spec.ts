@@ -63,7 +63,7 @@ describe('createComparisonBitmaps', function () {
 
     const tests = mockRegisteredTests(overrides?.registeredTests);
 
-    jest.mock('shaka-shared', () => ({
+    jest.mock('../../../../src/config-loader', () => ({
       loadTests: function (opts: { filter?: string } = {}) {
         let result = tests;
         if (opts.filter) {
@@ -132,7 +132,7 @@ describe('createComparisonBitmaps', function () {
     jest.resetModules();
 
     const noTestsError = new Error('No tests registered in /dummy/test.abtest.ts. Did you call abTest()?');
-    jest.mock('shaka-shared', () => ({
+    jest.mock('../../../../src/config-loader', () => ({
       loadTests: function () { return Promise.reject(noTestsError); },
     }));
 
@@ -307,7 +307,7 @@ describe('createComparisonBitmaps', function () {
     jest.resetModules();
 
     const noFilesError = new Error('No .abtest.ts or .abtest.js files found. Use --testFile to specify a file directly.');
-    jest.mock('shaka-shared', () => ({
+    jest.mock('../../../../src/config-loader', () => ({
       loadTests: function () { return Promise.reject(noFilesError); },
     }));
 

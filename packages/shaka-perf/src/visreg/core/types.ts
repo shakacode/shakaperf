@@ -250,6 +250,7 @@ export interface DiffResult {
   rawMisMatchPercentage?: number;
   isSameDimensions: boolean;
   dimensionDifference?: { width: number; height: number };
+  numDiffPixels?: number;
   [key: string]: unknown;
 }
 

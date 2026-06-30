@@ -8,6 +8,8 @@
  */
 
 import { Command, Option } from 'commander';
+import path from 'node:path';
+import { ABTESTS_CONFIG_PATH_ENV } from '../../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
@@ -58,6 +60,7 @@ export async function createCompareCommand(): Promise<Command> {
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
+      if (configPath) process.env[ABTESTS_CONFIG_PATH_ENV] = path.resolve(configPath);
       const raw = configPath ? await loadAbTestsConfig(configPath) : {};
       const config = parseAbTestsConfig(raw);
       const pipeline = createComparePipeline({

@@ -12,6 +12,7 @@ import type { BeforeNavigateContext, BeforeNavigateHook } from 'shaka-shared';
 import { findAbTestsConfig, loadAbTestsConfig } from './config-loader';
 
 const LOG_PREFIX = '[beforeNavigate]';
+export const ABTESTS_CONFIG_PATH_ENV = 'SHAKA_PERF_ABTESTS_CONFIG_PATH';
 
 /**
  * The global `shared.beforeNavigate` hook, resolved once per process.
@@ -49,7 +50,7 @@ function resolveGlobalBeforeNavigate(): Promise<BeforeNavigateHook | null> {
 }
 
 async function loadGlobalBeforeNavigate(): Promise<BeforeNavigateHook | null> {
-  const configPath = findAbTestsConfig();
+  const configPath = process.env[ABTESTS_CONFIG_PATH_ENV] || findAbTestsConfig();
   if (!configPath) return null;
   const config = await loadAbTestsConfig(configPath);
   const shared = config.shared as { beforeNavigate?: unknown } | undefined;
