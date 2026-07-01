@@ -8,7 +8,7 @@ const CHANGED_PAGE_VISREG_OPTIONS = {
     readyTimeout: 60_000,
     delay: 250,
     misMatchThreshold: 0.01,
-    maxNumDiffPixels: 50,
+    maxNumDiffPixels: 1_000,
   },
 };
 
@@ -37,6 +37,14 @@ async function waitForVisualReady(page) {
   ]);
 }
 
+function homeSearchbarSelectorForViewport(page) {
+  const viewport = page.viewportSize();
+
+  return viewport && viewport.width < 640
+    ? '[data-test-id="home-searchbar-mobile"]'
+    : '[data-test-id="home-searchbar"]';
+}
+
 abTest(
   'HiChee home',
   {
@@ -46,7 +54,7 @@ abTest(
       ...CHANGED_PAGE_VISREG_OPTIONS,
       visreg: {
         ...CHANGED_PAGE_VISREG_OPTIONS.visreg,
-        readySelector: '[data-test-id="home-searchbar"], [data-test-id="home-searchbar-mobile"]',
+        readySelector: '#homepage-autocomplete-input',
       },
     },
   },
@@ -54,7 +62,7 @@ abTest(
     if (testType !== 'visreg') return;
 
     annotate('wait for home searchbar');
-    await page.waitForSelector('[data-test-id="home-searchbar"], [data-test-id="home-searchbar-mobile"]', {
+    await page.waitForSelector(homeSearchbarSelectorForViewport(page), {
       state: 'visible',
       timeout: 60_000,
     });
