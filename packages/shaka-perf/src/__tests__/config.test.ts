@@ -53,3 +53,11 @@ describe('accessibility config', () => {
     }))).toThrow('accessibility.viewports: unknown viewport label "watch"');
   });
 });
+
+describe('perf config', () => {
+  it('defaults to the documented practical timing regression threshold', () => {
+    const config = parseAbTestsConfig(baseConfig());
+
+    expect(config.perf.regressionThreshold).toBe(50);
+  });
+});

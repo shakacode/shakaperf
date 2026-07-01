@@ -175,7 +175,7 @@ export const VisregConfigSchema = z
 export const PerfConfigSchema = z
   .object({
     numberOfMeasurements: z.number().int().positive().default(20),
-    regressionThreshold: z.number().nonnegative().default(0.1),
+    regressionThreshold: z.number().nonnegative().default(50),
     pValueThreshold: z.number().min(0).max(1).default(0.05),
     regressionThresholdStat: z
       .enum(['estimator', 'ci-lower', 'ci-upper'])

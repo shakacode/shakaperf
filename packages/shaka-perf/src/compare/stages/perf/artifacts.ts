@@ -21,6 +21,10 @@ import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
 // Metrics where a bigger value is a better result (e.g. Lighthouse score).
 // Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
 const HIGHER_IS_BETTER = new Set(['lh score', 'lighthouse score']);
+const CLS_PHASE_NAME = 'cls';
+const CLS_GOOD_THRESHOLD = 10;
+const CLS_POOR_THRESHOLD = 25;
+const CLS_REGRESSION_DELTA_THRESHOLD = 5;
 
 function classifyGroup(heading: string | undefined): PerfMetricGroup {
   return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
@@ -64,6 +68,47 @@ function classifyDirection(
   return deltaValue > 0 ? 'regression' : 'improvement';
 }
 
+function actionableDirection(
+  phaseName: string,
+  deltaValue: number,
+  unit: string,
+  isSignificant: boolean,
+  controlValue: number,
+  experimentValue: number,
+  regressionThreshold: number,
+): PerfDirection {
+  const direction = classifyDirection(phaseName, deltaValue, isSignificant);
+  if (direction !== 'regression') return direction;
+
+  if (isClsMetric(phaseName, unit)) {
+    return Math.abs(deltaValue) > CLS_REGRESSION_DELTA_THRESHOLD
+      || crossesClsQualityThreshold(controlValue, experimentValue)
+      ? 'regression'
+      : 'none';
+  }
+
+  return Math.abs(deltaValue) > practicalRegressionThreshold(unit, regressionThreshold)
+    ? 'regression'
+    : 'none';
+}
+
+function isClsMetric(phaseName: string, unit: string): boolean {
+  return unit === '/100' && phaseName.toLowerCase() === CLS_PHASE_NAME;
+}
+
+function crossesClsQualityThreshold(controlValue: number, experimentValue: number): boolean {
+  return [CLS_GOOD_THRESHOLD, CLS_POOR_THRESHOLD].some(
+    (threshold) => controlValue <= threshold && experimentValue > threshold,
+  );
+}
+
+function practicalRegressionThreshold(unit: string, timingRegressionThreshold: number): number {
+  if (unit === 'ms') return timingRegressionThreshold;
+  if (unit === 'KB') return 1;
+  if (unit === '/100') return 1;
+  return 0.5;
+}
+
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;
@@ -99,6 +144,7 @@ interface BenchCompareJsonResults {
 export interface ReadPerfArtifactOptions {
   perTestDir: string;
   reportRoot: string;
+  regressionThreshold: number;
   saveArtifacts: boolean;
   statisticalAnalysis: boolean;
 }
@@ -133,7 +179,15 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
       const { value: deltaValue, unit } = parseEstimatorDelta(entry.estimatorDelta);
       const controlValue = entry.controlSevenFigureSummary?.['50'] ?? 0;
       const experimentValue = entry.experimentSevenFigureSummary?.['50'] ?? 0;
-      const direction = classifyDirection(entry.phaseName, deltaValue, entry.isSignificant);
+      const direction = actionableDirection(
+        entry.phaseName,
+        deltaValue,
+        unit,
+        entry.isSignificant,
+        controlValue,
+        experimentValue,
+        opts.regressionThreshold,
+      );
 
       metrics.push({
         label: entry.phaseName,

@@ -83,7 +83,7 @@ export default defineConfig({
 
   perf: {
     numberOfMeasurements: 20,
-    regressionThreshold: 0.1,
+    regressionThreshold: 50,
     pValueThreshold: 0.05,
     regressionThresholdStat: 'estimator',
     samplingMode: 'simultaneous',
