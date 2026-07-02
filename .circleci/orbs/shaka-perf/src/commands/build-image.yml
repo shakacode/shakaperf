@@ -1,0 +1,40 @@
+description: |
+  Build a Docker image using shaka-perf twin-servers. Requires abtests.config.ts
+  (with a `twinServers` slice) in the working directory.
+
+parameters:
+  target:
+    type: enum
+    enum: ['control', 'experiment']
+    description: 'Build target (control or experiment)'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing abtests.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  verbose:
+    type: boolean
+    default: false
+    description: 'Enable verbose output'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Build << parameters.target >> Docker image
+      working_directory: << parameters.working-directory >>
+      command: |
+        VERBOSE_FLAG=""
+        if [ "<< parameters.verbose >>" = "true" ]; then
+          VERBOSE_FLAG="--verbose"
+        fi
+        CONFIG_FLAG=""
+        if [ -n "<< parameters.config-path >>" ]; then
+          CONFIG_FLAG="--config << parameters.config-path >>"
+        fi
+        << parameters.cli-prefix >> shaka-perf servers $CONFIG_FLAG build --target << parameters.target >> $VERBOSE_FLAG

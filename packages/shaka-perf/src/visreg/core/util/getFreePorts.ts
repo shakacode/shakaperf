@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import portfinder from 'portfinder';
+/**
+ * Gets the free ports.
+ *
+ * @param      {number}  startingPort    The starting port
+ * @param      {number}  requestedPorts  how many ports should we find?
+ * @return     {Array}   The free ports.
+ */
+export default function getFreePorts (startingPort: number, requestedPorts: number) {
+  return new Promise((resolve, reject) => {
+    const R = resolve;
+    console.log(`searching for ${requestedPorts} available ports.`);
+    const requestedAmount = requestedPorts;
+    const freePorts: number[] = [];
+
+    function findFreePorts (startPort: number, pointer?: number) {
+      const PTR = pointer || 1;
+      // console.log('freePorts > ', PTR, JSON.stringify(freePorts));
+      if (PTR > requestedAmount) {
+        R(freePorts);
+        return;
+      }
+      portfinder.basePort = startPort;
+      portfinder.getPort(function (err: Error | null, port: number) {
+        if (err) {
+          reject(new Error(String(err)));
+        }
+        freePorts[PTR - 1] = port;
+        return findFreePorts(port + 1, PTR + 1);
+      });
+    }
+    findFreePorts(startingPort);
+  });
+}

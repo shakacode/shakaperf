@@ -1,0 +1,26 @@
+description: |
+  Download the control commit SHA from S3 and set PERF_BASELINE_SHA
+  in $BASH_ENV. The checkout-control command will use this SHA to determine
+  which commit to build the control image from.
+
+  Expects environment variables:
+    S3_BUCKET              - S3 bucket name (required)
+    S3_ENDPOINT            - Custom S3 endpoint for R2, MinIO, etc. (optional)
+    AWS_ACCESS_KEY_ID      - AWS credentials (required)
+    AWS_SECRET_ACCESS_KEY  - AWS credentials (required)
+
+  Falls back to HEAD~1 if the SHA is not found, has an invalid format,
+  or refers to a commit not in the current git history.
+
+parameters:
+  s3-key-prefix:
+    type: string
+    default: 'twin-servers-scheduled-tests-control-shas'
+    description: 'S3 key prefix. The full key will be <prefix>/git-sha.txt'
+
+steps:
+  - run:
+      environment:
+        PARAM_S3_KEY_PREFIX: <<parameters.s3-key-prefix>>
+      name: Download control commit SHA from S3
+      command: <<include(scripts/download-control-commit-sha.sh)>>

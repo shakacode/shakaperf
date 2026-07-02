@@ -1,0 +1,27 @@
+description: |
+  Start twin server containers using docker-compose via shaka-perf twin-servers.
+
+parameters:
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing abtests.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Start twin server containers
+      working_directory: << parameters.working-directory >>
+      command: |
+        CONFIG_FLAG=""
+        if [ -n "<< parameters.config-path >>" ]; then
+          CONFIG_FLAG="--config << parameters.config-path >>"
+        fi
+        << parameters.cli-prefix >> shaka-perf servers $CONFIG_FLAG start-containers

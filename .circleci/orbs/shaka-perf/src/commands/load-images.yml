@@ -1,0 +1,30 @@
+description: |
+  Load Docker images from workspace.
+
+parameters:
+  workspace-path:
+    type: string
+    default: '/tmp/workspace/docker-images'
+    description: 'Path to workspace containing images'
+  load-control:
+    type: boolean
+    default: true
+    description: 'Load control image'
+  load-experiment:
+    type: boolean
+    default: true
+    description: 'Load experiment image'
+
+steps:
+  - when:
+      condition: << parameters.load-control >>
+      steps:
+        - run:
+            name: Load control Docker image
+            command: docker load -i "<< parameters.workspace-path >>/control.tar"
+  - when:
+      condition: << parameters.load-experiment >>
+      steps:
+        - run:
+            name: Load experiment Docker image
+            command: docker load -i "<< parameters.workspace-path >>/experiment.tar"
