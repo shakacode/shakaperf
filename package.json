@@ -1,0 +1,38 @@
+{
+  "name": "shakaperf",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Performance and visual regression toolset for web applications",
+  "workspaces": [
+    "packages/*",
+    "demo-ecommerce"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -Apt --include 'packages/*' run build",
+    "typecheck": "yarn workspaces foreach -Ap run typecheck",
+    "//postinstall": "Skip git hooks setup when not in a git repo (e.g. Docker builds)",
+    "postinstall": "[ -d .git ] && git config core.hooksPath .githooks || true",
+    "test": "yarn workspaces foreach -Ap --include 'packages/*' run test",
+    "test:integration": "yarn playwright test -c playwright.integration.config.ts",
+    "license:headers": "ruby scripts/update-license-headers.rb",
+    "install-global-script": "yarn workspace shaka-perf install-global"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shakacode/shakaperf.git"
+  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^20.0.0",
+    "@types/pngjs": "^6.0.5",
+    "pixelmatch": "^7.1.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "yarn@4.12.0",
+  "resolutions": {
+    "@tracerbench/find-chrome": "2.0.0",
+    "node-gyp": "12.1.0"
+  }
+}

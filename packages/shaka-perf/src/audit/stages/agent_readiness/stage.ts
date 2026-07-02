@@ -1,0 +1,70 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import { createElement } from 'react';
+import type { AbTestDefinition } from 'shaka-shared';
+import type { Viewport } from '../../../config';
+import {
+  type JsonValue,
+  type Stage,
+  type StageName,
+  type StageRenderContext,
+  type StageRenderEntry,
+  type TestContext,
+} from '../../../stage/stage';
+import type { WorkerPool } from '../../../pipeline/worker-pool';
+import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
+import { AgentReadinessArtifactView } from './report';
+import type { AgentReadinessResult } from './types';
+
+// Reads how legible each page is to AI agents / answer engines (see ./types).
+// Runs under the `audit` category, so a plain `shaka-perf audit` produces the
+// data with no extra flags; the client report turns it into the "Agent Ready"
+// tab.
+export class AgentReadinessStage implements Stage<AgentReadinessResult> {
+  readonly category = 'audit';
+  readonly name: StageName = 'agent-readiness';
+  readonly label = 'Agent Readiness';
+  readonly description = 'Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).';
+  private readonly config: AgentReadinessStageConfig | undefined;
+
+  constructor(config?: AgentReadinessStageConfig) {
+    this.config = config;
+  }
+
+  applies(_test: AbTestDefinition, _viewport: Viewport): boolean {
+    return !resolveAgentReadinessConfig(this.config).skip;
+  }
+
+  async run(ctx: TestContext, pool: WorkerPool): Promise<AgentReadinessResult> {
+    const runImpl = './engine';
+    const { runAgentReadinessStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
+    return runAgentReadinessStage(ctx, pool, this.config);
+  }
+
+  renderArtifacts(measurements: readonly StageRenderEntry<AgentReadinessResult>[]) {
+    return createElement(AgentReadinessArtifactView, { measurements });
+  }
+
+  machineReadableSummary(measurement: AgentReadinessResult, _ctx: StageRenderContext): JsonValue {
+    const raw = measurement.raw.signals;
+    const r = measurement.rendered;
+    return {
+      url: measurement.url,
+      rawOk: measurement.raw.ok,
+      rawLikelyBlocked: measurement.raw.likelyBlocked,
+      rawTextWords: raw?.textWords ?? 0,
+      renderedTextWords: r.textWords,
+      structuredDataTypes: r.structuredData.types,
+      titlePresent: r.titlePresent,
+      metaDescriptionPresent: r.metaDescriptionPresent,
+      h1Count: r.headings.h1Count,
+    };
+  }
+}

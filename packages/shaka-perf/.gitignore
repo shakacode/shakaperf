@@ -1,0 +1,25 @@
+# shaka-perf-specific ignores
+# (General ignores like node_modules, .DS_Store, *.log, .idea, .vscode are in root .gitignore)
+
+# TypeScript build output
+dist/
+
+# Written by scripts/save-node-path.js during install
+bin/.node-path
+
+# node-gyp output for the in-tree native socketpair binding (sources in native/)
+build/
+
+# Vite report-shell build output
+report-shell/dist/
+
+compare/config.js
+compare/output/control_screenshot/
+compare/output/experiment_screenshot/
+compare/output/config\.js
+
+capture/config.json
+
+**/visreg_data/html_report/
+**/visreg_data/json_report/
+**/visreg_data/reports/

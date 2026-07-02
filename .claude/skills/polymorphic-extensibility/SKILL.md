@@ -1,0 +1,225 @@
+---
+name: polymorphic-extensibility
+description: "Review/design guide for framework extension points in shaka-perf. When a primitive has variants (pipeline, stage, …), the variant must own its behaviour via mandatory factory options and the framework must call into it polymorphically. The only allowed name-keyed `switch` is the single deserialisation site that maps a persisted name back to a primitive instance. Use when adding a new pipeline/stage variant, adding an extension point, reviewing a PR that introduces variant-specific behaviour, or auditing a `switch (name)` that picks between behaviours."
+---
+
+# Polymorphic Extensibility
+
+shaka-perf's framework primitives (`Pipeline`, `Stage`, …) are designed to be
+extended polymorphically. Variant-specific behaviour belongs **inside the
+variant**, surfaced through the framework via mandatory factory options.
+The framework then calls polymorphic methods — never inspects `name` to
+decide what to do.
+
+This skill is both a design rule for new code and a review checklist for
+existing code.
+
+## The primitives this applies to
+
+The same rule governs every variant-bearing primitive in shaka-perf:
+
+- **`Pipeline`** — variants `audit`, `compare`. Created via
+  `createPipeline({ name, report, pipelineConfig, … }, define)`. Variant
+  behaviour lives on the returned `Pipeline` (chip builder, `report`
+  renderers, …).
+- **`Stage`** — variants `visreg`, `perf-warmup`, `perf`, `perf-low-noise`,
+  `audit`. Created either by factory functions (`createVisregStage`) or by
+  classes implementing the `Stage` interface (`PerfEngineStage`,
+  `AuditStage`). The runner calls `stage.applies()`, `stage.run()`,
+  `stage.renderArtifacts()`, `stage.machineReadableSummary()` polymorphically
+  and never branches on `stage.name`.
+- **Future primitives** added under `pipeline/` or `stage/` follow the same
+  contract: variant behaviour on the variant, no central name switch.
+
+```mermaid
+classDiagram
+  direction LR
+
+  class createCompareCommand {
+    <<function>>
+    loads config
+    creates pipeline
+    calls runPipeline()
+  }
+
+  class createComparePipeline {
+    <<function>>
+    calls createPipeline()
+    registers stages
+    registers chipsForTest()
+  }
+
+  class Pipeline {
+    <<interface>>
+    name
+    steps
+    stages
+    chipsForTest()
+  }
+
+  class Stage {
+    <<interface>>
+    name
+    category
+    applies()
+    run()
+    renderArtifacts()
+    machineReadableSummary()
+  }
+
+  class createVisregStage {
+    <<function>>
+    returns Stage
+  }
+
+  class PerfEngineStage {
+    <<class>>
+    implements Stage
+  }
+
+  class runPipeline {
+    <<function>>
+    selects stages
+    executes stage.run()
+    persists outcomes
+    assembles report data
+  }
+
+  class ArtifactStore {
+    <<class>>
+    writeOutcome()
+    readOutcomesForViewport()
+  }
+
+  class writeReport {
+    <<function>>
+    writes report.html
+  }
+
+  class writeMachineReport {
+    <<function>>
+    writes report.json
+  }
+
+  class App {
+    <<React component>>
+    reads ReportData
+    renders filters and test cards
+  }
+
+  createCompareCommand --> createComparePipeline
+  createCompareCommand --> runPipeline
+
+  createComparePipeline --> Pipeline
+  createComparePipeline --> createVisregStage
+  createComparePipeline --> PerfEngineStage
+  Pipeline *-- Stage
+
+  createVisregStage ..|> Stage
+  PerfEngineStage ..|> Stage
+
+  runPipeline --> Pipeline
+  runPipeline --> Stage
+  runPipeline --> ArtifactStore
+  runPipeline --> writeReport
+  runPipeline --> writeMachineReport
+
+  writeReport --> App
+```
+
+The diagram is the rule in pictures: `runPipeline` only talks to `Pipeline`
+and `Stage`. It never knows whether the stage is `createVisregStage` or
+`PerfEngineStage`, and never knows whether the pipeline is audit or compare.
+Adding a new variant is two new factory-side nodes plus implementations of
+the same interfaces — zero edits to `runPipeline`, `App`, `writeReport`,
+or `writeMachineReport`.
+
+## When to apply
+
+- Adding a new pipeline (`createXxxPipeline`) or stage variant.
+- Adding a new extension point that several variants must implement
+  (renderers, summary builders, chip producers, etc.).
+- Reviewing a PR that introduces or modifies variant-specific behaviour.
+- Auditing any `switch (pipelineName)` / `switch (stageName)` / similar
+  name-keyed dispatch in shared modules.
+
+## The rule
+
+1. **Extension points are mandatory fields on the factory's options.**
+   `createPipeline({ name, description, pipelineConfig, report: { … } })` —
+   the type system makes it impossible to register a variant without
+   providing every required hook.
+
+2. **The framework calls polymorphic methods, not `switch (name)`.**
+   `pipeline.report.renderHeaderUrls(meta)` — not
+   `if (name === 'audit') renderAuditHeaderUrls(...)`.
+
+3. **One `switch (name)` is allowed, and only one** — the place that turns
+   a persisted name + config back into a live primitive
+   (`pipelineForReport(name, config) → Pipeline` in
+   `packages/shaka-perf/src/pipeline/pipeline-artifacts.ts`). Past that
+   point every call is polymorphic.
+
+4. **Variant React components / functions live next to the factory.**
+   `packages/shaka-perf/src/audit/pipeline-report.tsx` and
+   `packages/shaka-perf/src/compare/pipeline-report.tsx` export `PipelineReport`
+   objects that are passed in via factory options. The framework never
+   imports them directly.
+
+## Anti-patterns to flag
+
+The first cut at the audit/compare report-rendering split used
+`switch (pipelineName)` dispatchers in `pipeline/pipeline-artifacts.ts` —
+one switch per render hook (header URLs, test-card URLs, dialog meta,
+label). The user called this "detrimental to the architectural style of
+the framework." Specific smells to flag:
+
+- A `switch (name)` (or `if/else` chain on name) in a shared module that
+  picks between renderers, summary builders, validators, etc.
+- A "dispatcher" file that imports every variant and routes by string.
+  Acceptable for the single deserialisation lookup, suspicious elsewhere.
+- A new variant requires editing N central files. Adding a variant should
+  edit only the variant's own files (factory + nearby `*-report.tsx` /
+  helpers) plus the single deserialisation switch.
+- An optional renderer field on factory options (`report?: PipelineReport`).
+  Optional ⇒ the framework needs a fallback ⇒ the fallback ends up as a
+  hidden default behaviour that variants silently inherit. Make it
+  mandatory.
+
+## Review checklist
+
+When auditing a change that touches variant behaviour:
+
+1. Does every extension point live on the factory options as a **mandatory**
+   field?
+2. Does the framework call `primitive.method(...)` rather than inspecting
+   `primitive.name`?
+3. Is there at most one `switch (name)` in the deserialisation path?
+4. Are variant-specific components co-located with the variant's factory?
+5. Could a new variant be added by editing only the variant's own files
+   plus the single deserialisation switch? If the answer requires touching
+   more central files, the design has leaked variant knowledge upward.
+
+## Reference implementation
+
+Pipeline level:
+
+- `packages/shaka-perf/src/pipeline/pipeline.ts` — `PipelineReport`
+  interface, mandatory `report` on `PipelineOptions`.
+- `packages/shaka-perf/src/audit/pipeline-report.tsx` and
+  `packages/shaka-perf/src/compare/pipeline-report.tsx` — variant React
+  components, passed in via factory.
+- `packages/shaka-perf/src/pipeline/pipeline-artifacts.ts` — the single
+  `pipelineForReport(name, config)` lookup; everything else is
+  `pipelineForReport(...).report.renderXxx(...)`.
+
+Stage level (same pattern, separate primitive):
+
+- `packages/shaka-perf/src/stage/stage.ts` — `Stage<M>` interface defining
+  `applies`, `run`, `renderArtifacts`, `machineReadableSummary`. Every
+  variant implements all of them.
+- `packages/shaka-perf/src/compare/stages/visreg/index.ts` (factory) and
+  `packages/shaka-perf/src/compare/stages/perf/stage.ts` (class) — two
+  shapes of variant, same interface.
+- `packages/shaka-perf/src/pipeline/runner.ts` — the framework caller. Only
+  uses `Stage` methods; never branches on `stage.name`.

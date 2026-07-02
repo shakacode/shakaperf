@@ -1,0 +1,78 @@
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="13">
+  <rect width="100%" height="100%" fill="white"/>
+
+  <!-- LEFT: Mann-Whitney U (OLD, unpaired) -->
+  <text x="20" y="20" font-weight="bold">Mann-Whitney U (OLD, unpaired)</text>
+  <text x="20" y="38" font-size="11" fill="#666">all 5 × 5 = 25 cross-pair connections — pairing ignored</text>
+
+  <text x="80"  y="68" text-anchor="middle" font-size="11">control</text>
+  <text x="240" y="68" text-anchor="middle" font-size="11">experiment</text>
+
+  <!-- 25 cross-pair lines -->
+  <line x1="80" y1="90"  x2="240" y2="90"  stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="90"  x2="240" y2="130" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="90"  x2="240" y2="170" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="90"  x2="240" y2="210" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="90"  x2="240" y2="250" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="130" x2="240" y2="90"  stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="130" x2="240" y2="130" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="130" x2="240" y2="170" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="130" x2="240" y2="210" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="130" x2="240" y2="250" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="170" x2="240" y2="90"  stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="170" x2="240" y2="130" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="170" x2="240" y2="170" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="170" x2="240" y2="210" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="170" x2="240" y2="250" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="210" x2="240" y2="90"  stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="210" x2="240" y2="130" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="210" x2="240" y2="170" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="210" x2="240" y2="210" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="210" x2="240" y2="250" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="250" x2="240" y2="90"  stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="250" x2="240" y2="130" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="250" x2="240" y2="170" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="250" x2="240" y2="210" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="80" y1="250" x2="240" y2="250" stroke="#aaa" stroke-width="0.5"/>
+
+  <!-- Sample dots -->
+  <circle cx="80"  cy="90"  r="5" fill="#36c"/>
+  <circle cx="80"  cy="130" r="5" fill="#36c"/>
+  <circle cx="80"  cy="170" r="5" fill="#36c"/>
+  <circle cx="80"  cy="210" r="5" fill="#36c"/>
+  <circle cx="80"  cy="250" r="5" fill="#36c"/>
+  <circle cx="240" cy="90"  r="5" fill="#36c"/>
+  <circle cx="240" cy="130" r="5" fill="#36c"/>
+  <circle cx="240" cy="170" r="5" fill="#36c"/>
+  <circle cx="240" cy="210" r="5" fill="#36c"/>
+  <circle cx="240" cy="250" r="5" fill="#36c"/>
+
+  <!-- Vertical separator -->
+  <line x1="360" y1="55" x2="360" y2="270" stroke="#ddd" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- RIGHT: paired Wilcoxon Signed-Rank (NEW, paired) -->
+  <text x="400" y="20" font-weight="bold">paired Wilcoxon Signed-Rank (NEW, paired)</text>
+  <text x="400" y="38" font-size="11" fill="#666">5 within-pair differences only — pairing exploited</text>
+
+  <text x="460" y="68" text-anchor="middle" font-size="11">control</text>
+  <text x="620" y="68" text-anchor="middle" font-size="11">experiment</text>
+
+  <!-- 5 paired lines -->
+  <line x1="460" y1="90"  x2="620" y2="90"  stroke="#36c" stroke-width="2"/>
+  <line x1="460" y1="130" x2="620" y2="130" stroke="#36c" stroke-width="2"/>
+  <line x1="460" y1="170" x2="620" y2="170" stroke="#36c" stroke-width="2"/>
+  <line x1="460" y1="210" x2="620" y2="210" stroke="#36c" stroke-width="2"/>
+  <line x1="460" y1="250" x2="620" y2="250" stroke="#36c" stroke-width="2"/>
+
+  <!-- Sample dots -->
+  <circle cx="460" cy="90"  r="5" fill="#36c"/>
+  <circle cx="460" cy="130" r="5" fill="#36c"/>
+  <circle cx="460" cy="170" r="5" fill="#36c"/>
+  <circle cx="460" cy="210" r="5" fill="#36c"/>
+  <circle cx="460" cy="250" r="5" fill="#36c"/>
+  <circle cx="620" cy="90"  r="5" fill="#36c"/>
+  <circle cx="620" cy="130" r="5" fill="#36c"/>
+  <circle cx="620" cy="170" r="5" fill="#36c"/>
+  <circle cx="620" cy="210" r="5" fill="#36c"/>
+  <circle cx="620" cy="250" r="5" fill="#36c"/>
+</svg>

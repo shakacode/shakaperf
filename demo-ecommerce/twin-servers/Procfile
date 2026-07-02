@@ -1,0 +1,6 @@
+control-rails: yarn shaka-perf servers run-overmind-command control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# control-renderer: yarn shaka-perf servers run-overmind-command control "node node-renderer.js"
+experiment-rails: yarn shaka-perf servers run-overmind-command experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000"
+# experiment-renderer: yarn shaka-perf servers run-overmind-command experiment "node node-renderer.js"
+notify-control-server-started: yarn shaka-perf servers notify-server-started control
+notify-experiment-server-started: yarn shaka-perf servers notify-server-started experiment
