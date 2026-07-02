@@ -10,7 +10,7 @@ By submitting a contribution (a "Contribution") to this project, you agree:
 1. Grant of rights. You grant ShakaCode LLC a perpetual, worldwide,
    non-exclusive, royalty-free, irrevocable license to use, reproduce,
    modify, distribute, sublicense, and relicense your Contribution, including
-   the right to distribute it under the current Business Source License and
+   the right to distribute it under the current ShakaPerf License and
    under any other license ShakaCode LLC may adopt for the project, including
    commercial licenses.
 
