@@ -47,13 +47,11 @@ yarn shaka-perf servers start-servers
 
 ## License
 
-ShakaPerf is source-available under the Business Source License 1.1. You can
-read, modify, self-host, and use it in production, with two exceptions: you may
-not offer it to third parties as a competing hosted performance service, and
-you may not provide hosted or managed runners/executors for running ShakaPerf
-as a service, including CI cost-reduction services. Each version converts to
-the Apache License 2.0 three years after its release. See [LICENSE](./LICENSE)
-for the full terms. The `shaka-shared` package remains MIT-licensed.
+ShakaPerf is source-available under
+[The ShakaPerf License](../../LICENSE.md) — free to read, study, and
+evaluate for everyone; free in production (including CI and coding-agent
+workflows) for organizations under 10 people, $1M revenue, and $1M raised;
+paid subscription otherwise: https://shakaperf.com/pricing.
 
-For commercial licensing or use beyond the Additional Use Grant, contact
-ShakaCode LLC at [contact@shakacode.com](mailto:contact@shakacode.com).
+Questions or commercial licensing:
+[contact@shakacode.com](mailto:contact@shakacode.com).

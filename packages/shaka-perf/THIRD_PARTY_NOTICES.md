@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 This package may include third-party code or assets whose notices remain
-in effect independently from the ShakaPerf Business Source License.
+in effect independently from The ShakaPerf License.
 
 ## TracerBench-Derived Code Notice
 
