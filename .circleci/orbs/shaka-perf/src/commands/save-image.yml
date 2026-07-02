@@ -1,0 +1,38 @@
+description: |
+  Save a Docker image to the workspace for sharing between jobs.
+
+parameters:
+  target:
+    type: enum
+    enum: ['control', 'experiment']
+    description: 'Image target/tag'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing abtests.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
+
+steps:
+  - run:
+      name: Save << parameters.target >> Docker image
+      working_directory: << parameters.working-directory >>
+      command: |
+        mkdir -p /tmp/docker-images
+        CONFIG_FLAG=""
+        if [ -n "<< parameters.config-path >>" ]; then
+          CONFIG_FLAG="--config << parameters.config-path >>"
+        fi
+        IMAGE_NAME=$(<< parameters.cli-prefix >> shaka-perf servers $CONFIG_FLAG get-config images.<< parameters.target >>)
+        echo "Saving Docker image: $IMAGE_NAME"
+        docker save -o "/tmp/docker-images/<< parameters.target >>.tar" "$IMAGE_NAME"
+  - persist_to_workspace:
+      root: /tmp
+      paths:
+        - docker-images/<< parameters.target >>.tar

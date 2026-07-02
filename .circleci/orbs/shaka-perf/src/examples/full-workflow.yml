@@ -1,0 +1,57 @@
+description: |
+  Fully customized A/B performance + visual-regression workflow with monorepo
+  structure, custom health checks, resource classes, and additional setup
+  steps. Requires `abtests.config.ts` in the project root (see the shaka-perf
+  docs for its schema).
+
+usage:
+  version: 2.1
+
+  orbs:
+    shaka-perf: shakacode/shaka-perf@1.0.0
+
+  workflows:
+    perf-test-full:
+      jobs:
+        - shaka-perf/build-experiment:
+            name: build-experiment-image
+            working-directory: demo-ecommerce
+            resource-class: xlarge
+            setup-steps:
+              - run:
+                  name: Set up custom environment
+                  command: |
+                    echo "Setting up custom environment..."
+            filters:
+              branches:
+                ignore: main
+
+        - shaka-perf/build-control:
+            name: build-control-image
+            working-directory: demo-ecommerce
+            project-subdir: demo-ecommerce
+            resource-class: xlarge
+            filters:
+              branches:
+                ignore: main
+
+        - shaka-perf/run-tests:
+            name: performance-tests
+            requires:
+              - build-experiment-image
+              - build-control-image
+            working-directory: demo-ecommerce
+            server-command: 'bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000'
+            health-timeout: '180s'
+            post-steps:
+              - run:
+                  name: Run shaka-perf compare
+                  command: |
+                    cd demo-ecommerce
+                    yarn shaka-perf compare
+              - store_artifacts:
+                  path: demo-ecommerce/compare-results
+                  destination: shaka-perf-compare-report
+            filters:
+              branches:
+                ignore: main

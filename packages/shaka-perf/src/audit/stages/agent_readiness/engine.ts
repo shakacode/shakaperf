@@ -1,0 +1,229 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import chalk from 'chalk';
+import { chromium, firefox, webkit } from 'playwright-core';
+import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
+import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
+import type { TestContext } from '../../../stage/stage';
+import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
+import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
+import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
+import { extractPageSignals } from './extract';
+import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
+
+interface AgentReadinessSlotState extends PoolWorkerState {
+  agentReadinessBrowser?: Browser;
+}
+
+// A realistic browser UA: we want the server's NORMAL initial HTML (what it
+// hands any first-time visitor before JS runs), not a bot-specific response and
+// not a challenge page triggered by an obvious crawler UA. The copy only ever
+// claims "the HTML your server returns before JavaScript runs", which is true
+// for whatever UA we send.
+const RAW_FETCH_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+const RAW_HTML_MAX_BYTES = 3 * 1024 * 1024;
+
+async function disposeAgentReadinessBrowser(state: Record<string, unknown>): Promise<void> {
+  const slot = state as AgentReadinessSlotState;
+  const browser = slot.agentReadinessBrowser;
+  if (!browser) return;
+  slot.agentReadinessBrowser = undefined;
+  await browser.close().catch(() => {});
+}
+
+export async function runAgentReadinessStage(
+  ctx: TestContext,
+  workerPool: WorkerPool,
+  config: AgentReadinessStageConfig | undefined,
+): Promise<AgentReadinessResult> {
+  const resolved = resolveAgentReadinessConfig(config);
+  return workerPool.submit(async (state) => {
+    const slot = workerPool.getWorkerState<AgentReadinessSlotState>(state, disposeAgentReadinessBrowser);
+    if (!slot.agentReadinessBrowser) {
+      slot.agentReadinessBrowser = await launchBrowser(resolved.engineOptions, ctx.runtime.headed);
+    }
+    return scanAgentReadiness(ctx, slot.agentReadinessBrowser, resolved.engineOptions);
+  }, { key: ctx.testAndViewportId });
+}
+
+async function launchBrowser(
+  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
+  headed = false,
+): Promise<Browser> {
+  const launchOptions: LaunchOptions = {
+    headless: headed ? false : engineOptions.headless ?? true,
+    args: engineOptions.args,
+  };
+  if (engineOptions.browser === 'firefox') return firefox.launch(launchOptions);
+  if (engineOptions.browser === 'webkit') return webkit.launch(launchOptions);
+  return chromium.launch(applyRealChrome(launchOptions));
+}
+
+// A no-JS fetch of the page. Bounded by timeout + a hard size cap (the body is
+// parsed, not stored, but a runaway response should not pin memory). Never
+// throws: a failed fetch returns ok:false so the report can say "we could not
+// read the server HTML" instead of pretending the page was empty.
+async function fetchRawHtml(
+  url: string,
+  timeoutMs: number,
+): Promise<{ html: string | null; status?: number; contentType?: string; bytes?: number }> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      signal: ctl.signal,
+      redirect: 'follow',
+      headers: { 'user-agent': RAW_FETCH_UA, accept: 'text/html,application/xhtml+xml' },
+    });
+    const contentType = res.headers.get('content-type') ?? undefined;
+    const reader = res.body?.getReader();
+    if (!reader) return { html: null, status: res.status, contentType };
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.length;
+      if (total > RAW_HTML_MAX_BYTES) {
+        ctl.abort();
+        break;
+      }
+      chunks.push(value);
+    }
+    const buf = new Uint8Array(total > RAW_HTML_MAX_BYTES ? RAW_HTML_MAX_BYTES : total);
+    let offset = 0;
+    for (const c of chunks) {
+      if (offset + c.length > buf.length) {
+        buf.set(c.subarray(0, buf.length - offset), offset);
+        break;
+      }
+      buf.set(c, offset);
+      offset += c.length;
+    }
+    const html = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+    return { html, status: res.status, contentType, bytes: total };
+  } catch {
+    return { html: null };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readRenderedSignals(
+  ctx: TestContext,
+  browser: Browser,
+  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
+): Promise<{ signals: PageSignals; htmlBytes: number; blocked: boolean }> {
+  let context: BrowserContext | undefined;
+  try {
+    context = await browser.newContext({
+      viewport: { width: ctx.viewport.width, height: ctx.viewport.height },
+      deviceScaleFactor: ctx.viewport.deviceScaleFactor,
+      isMobile: ctx.viewport.formFactor === 'mobile',
+      // Real-Chrome only: serve the phone layout (no-op headless).
+      ...realChromeMobileEmulation(ctx.viewport.formFactor),
+    });
+    const page = await context.newPage();
+    const timeout = engineOptions.navTimeoutMs ?? 45_000;
+    page.setDefaultTimeout(timeout);
+    page.setDefaultNavigationTimeout(timeout);
+    await context.clearCookies();
+    // networkidle so client-rendered content has actually painted before we read
+    // the DOM - otherwise the "rendered" view would understate a slow SPA and
+    // the raw-vs-rendered gap would look smaller than it is.
+    await page.goto(ctx.experimentURL, { waitUntil: 'networkidle' }).catch(async (err) => {
+      // A networkidle timeout on a chatty page is fine - read whatever rendered.
+      console.warn(chalk.yellow(`[shaka-perf agent] networkidle wait did not settle for ${ctx.experimentURL}: ${(err as Error).message}`));
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+    });
+    await waitForBotWallToClear(page);
+    const signals = await page.evaluate(extractPageSignals);
+    const html = await page.content().catch(() => '');
+    // Same guard as the a11y scan: a lingering token on a tall real page is not a wall.
+    const renderedHeightPx = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => undefined);
+    const blocked = scanLandedOnBotWall({ title: signals.title, html }, renderedHeightPx, ctx.viewport.height);
+    return { signals, htmlBytes: Buffer.byteLength(html, 'utf8'), blocked };
+  } finally {
+    await context?.close().catch(() => {});
+  }
+}
+
+// Parse the raw HTML the SAME way as the rendered DOM by loading it into a
+// JavaScript-disabled context and running the identical extractor. With JS off,
+// the page's own scripts never execute, so this is a faithful read of exactly
+// what a non-rendering crawler parses.
+async function readRawSignals(
+  browser: Browser,
+  viewport: TestContext['viewport'],
+  html: string,
+  timeoutMs: number,
+): Promise<PageSignals | null> {
+  let context: BrowserContext | undefined;
+  try {
+    context = await browser.newContext({
+      javaScriptEnabled: false,
+      viewport: { width: viewport.width, height: viewport.height },
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(timeoutMs);
+    // domcontentloaded (not the default 'load'): we only need the parsed DOM, and
+    // waiting on subresources of a synthetic document can hang. Tolerate failure.
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: timeoutMs }).catch(() => {});
+    return await page.evaluate(extractPageSignals);
+  } catch (err) {
+    console.warn(chalk.yellow(`[shaka-perf agent] could not parse raw HTML: ${(err as Error).message}`));
+    return null;
+  } finally {
+    await context?.close().catch(() => {});
+  }
+}
+
+async function scanAgentReadiness(
+  ctx: TestContext,
+  browser: Browser,
+  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
+): Promise<AgentReadinessResult> {
+  const fetchedAt = new Date().toISOString();
+  const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
+
+  // Raw fetch + rendered render run together - they are independent.
+  const [rawFetch, renderedOut] = await Promise.all([
+    fetchRawHtml(ctx.experimentURL, rawFetchTimeout),
+    readRenderedSignals(ctx, browser, engineOptions),
+  ]);
+
+  const likelyBlocked = looksLikeBotWall({ status: rawFetch.status, html: rawFetch.html });
+  const rawSignals = rawFetch.html
+    ? await readRawSignals(browser, ctx.viewport, rawFetch.html, engineOptions.navTimeoutMs ?? 45_000)
+    : null;
+
+  const raw: RawFetchResult = {
+    ok: rawFetch.html !== null && (rawFetch.status === undefined || rawFetch.status < 400),
+    status: rawFetch.status,
+    contentType: rawFetch.contentType,
+    bytes: rawFetch.bytes,
+    likelyBlocked,
+    signals: rawSignals,
+  };
+
+  return {
+    url: ctx.experimentURL,
+    viewportLabel: ctx.viewport.label,
+    viewport: ctx.viewport,
+    fetchedAt,
+    raw,
+    rendered: renderedOut.signals,
+    rawHtmlBytes: rawFetch.bytes,
+    renderedHtmlBytes: renderedOut.htmlBytes,
+    blocked: likelyBlocked || renderedOut.blocked,
+  };
+}

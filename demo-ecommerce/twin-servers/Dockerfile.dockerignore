@@ -1,0 +1,37 @@
+# Dockerignore for demo-ecommerce production build
+# Build context is the monorepo root, so paths are prefixed with demo-ecommerce/
+
+# Ignore credentials (generated inside Docker during build)
+demo-ecommerce/config/master.key
+demo-ecommerce/config/credentials.yml.enc
+demo-ecommerce/config/credentials/*.key
+
+# Ignore git directory
+.git/
+
+# Ignore node_modules (yarn PnP install happens in Docker)
+demo-ecommerce/node_modules/
+
+# Ignore logs, tmp, storage
+demo-ecommerce/log/*
+demo-ecommerce/tmp/*
+demo-ecommerce/storage/*
+
+# Ignore built assets (rebuilt in Docker)
+demo-ecommerce/public/assets
+demo-ecommerce/app/assets/builds/*
+
+# Workspace package contents the demo's container never uses. Kept out of
+# the build context so host-side edits (TypeScript saves, host-only test
+# runs, template tweaks) don't invalidate the docker image.
+#
+# What we keep: each package's `package.json` (workspace resolution),
+# `binding.gyp` + `native/` (shaka-perf's install script runs
+# `node-gyp rebuild` against these inside the container), and anything
+# else not explicitly listed below.
+packages/**/dist
+packages/**/src
+packages/**/__tests__
+packages/**/test
+packages/**/tests
+packages/**/templates

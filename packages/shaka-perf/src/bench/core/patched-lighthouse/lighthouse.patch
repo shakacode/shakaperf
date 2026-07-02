@@ -1,0 +1,39 @@
+--- a/core/gather/driver/wait-for-condition.js
++++ b/core/gather/driver/wait-for-condition.js
+@@ -10,8 +10,10 @@
+ 
+ import {LighthouseError} from '../../lib/lh-error.js';
+ import {ExecutionContext} from './execution-context.js';
+ 
++globalThis.shakaPerfPatched = true;
++
+ /** @typedef {InstanceType<import('./network-monitor.js')['NetworkMonitor']>} NetworkMonitor */
+ /** @typedef {import('./network-monitor.js').NetworkMonitorEvent} NetworkMonitorEvent */
+ 
+ /**
+@@ -467,11 +469,25 @@
+     resolveOnFcp.promise,
+     resolveOnLoadEvent.promise,
+     resolveOnNetworkIdle.promise,
+     resolveOnCriticalNetworkIdle.promise,
++    (typeof globalThis !== 'undefined' && globalThis.__shakaperfHoldGather) || Promise.resolve(),
+   ]).then(() => {
+     resolveOnCPUIdle = waitForCPUIdle(session, cpuQuietThresholdMs);
+     return resolveOnCPUIdle.promise;
++  }).then(async () => {
++    // PATCH (shaka-perf): the measured window just ended — cut the bench
++    // harness's screencast at this boundary (not at scoring time, which pads the
++    // clip, nor at testFn end, which clips late paints LH still measured), then
++    // hold ~500ms before Lighthouse tears the page down. The cut only *triggers*
++    // Page.stopScreencast (fire-and-forget); the hold lets it land so the clip
++    // can't catch page-destruction frames. A self-contained step in the load
++    // chain — cleanupFn below stays vanilla. Only armed (recording) runs install
++    // the hook and pay the 500ms.
++    if (typeof globalThis !== 'undefined' && globalThis.__shakaperfOnMeasuringDone) {
++      globalThis.__shakaperfOnMeasuringDone();
++      await new Promise((resolve) => setTimeout(resolve, 500));
++    }
+   }).then(() => {
+     /** @return {Promise<{timedOut: boolean}>} */
+     const cleanupFn = async function() {
+       log.verbose('waitFor', 'loadEventFired and network considered idle');

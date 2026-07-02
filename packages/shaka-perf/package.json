@@ -1,0 +1,186 @@
+{
+  "name": "shaka-perf",
+  "version": "0.1.4",
+  "description": "Frontend performance testing toolkit for web applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": "./bin/shaka-perf.js",
+  "files": [
+    "dist",
+    "bin",
+    "scripts",
+    "templates",
+    "tb-schema.json",
+    "THIRD_PARTY_NOTICES.md",
+    "binding.gyp",
+    "native"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./bench": {
+      "types": "./dist/bench/cli/index.d.ts",
+      "default": "./dist/bench/cli/index.js"
+    },
+    "./visreg": {
+      "types": "./dist/visreg/core/runner.d.ts",
+      "default": "./dist/visreg/core/runner.js"
+    },
+    "./visreg/core/types": {
+      "types": "./dist/visreg/core/types.d.ts",
+      "default": "./dist/visreg/core/types.js"
+    },
+    "./visreg/helpers": {
+      "types": "./dist/visreg/capture/helpers/index.d.ts",
+      "default": "./dist/visreg/capture/helpers/index.js"
+    },
+    "./twin-servers": {
+      "types": "./dist/twin-servers/index.d.ts",
+      "default": "./dist/twin-servers/index.js"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "default": "./dist/audit/index.js"
+    },
+    "./compare": {
+      "types": "./dist/compare/index.d.ts",
+      "default": "./dist/compare/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "bench": [
+        "dist/bench/cli/index.d.ts"
+      ],
+      "visreg": [
+        "dist/visreg/core/runner.d.ts"
+      ],
+      "visreg/helpers": [
+        "dist/visreg/capture/helpers/index.d.ts"
+      ],
+      "visreg/core/types": [
+        "dist/visreg/core/types.d.ts"
+      ],
+      "twin-servers": [
+        "dist/twin-servers/index.d.ts"
+      ],
+      "audit": [
+        "dist/audit/index.d.ts"
+      ],
+      "compare": [
+        "dist/compare/index.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "postinstall": "node scripts/save-node-path.js",
+    "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
+    "build-report-shell": "vite build --config report-shell/vite.config.ts",
+    "dev-report-shell": "vite --config report-shell/vite.config.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "prepublishOnly": "yarn build",
+    "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
+  },
+  "keywords": [
+    "performance",
+    "benchmark",
+    "visual-regression",
+    "twin-servers",
+    "testing"
+  ],
+  "author": "ShakaCode LLC",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shakacode/shakaperf.git",
+    "directory": "packages/shaka-perf"
+  },
+  "homepage": "https://github.com/shakacode/shakaperf#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@mirzazeyrek/node-resemble-js": "^1.2.1",
+    "archiver": "^7.0.1",
+    "axe-core": "^4.10.2",
+    "chalk": "^4.1.2",
+    "chrome-launcher": "^0.15.1",
+    "commander": "^13.1.0",
+    "d3-array": "~2.12.1",
+    "d3-hierarchy": "^3.0.1",
+    "d3-scale": "~3.3.0",
+    "debug": "^4.3.1",
+    "diff": "^5.2.0",
+    "diverged": "^0.1.3",
+    "dotenv": "^16.0.0",
+    "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.7",
+    "html-minifier-terser": "^7.0.0",
+    "ignore": "^5.3.0",
+    "ink": "^6.0.0",
+    "jpeg-js": "^0.4.4",
+    "json5": "^2.2.0",
+    "jstat": "^1.9.5",
+    "jump.js": "^1.0.2",
+    "junit-report-builder": "^3.1.0",
+    "lighthouse": "13.0.3",
+    "lodash": "^4.17.21",
+    "node-gyp": "^12.1.0",
+    "object-hash": "3.0.0",
+    "opn": "^6.0.0",
+    "os": "^0.1.2",
+    "p-map": "^4.0.0",
+    "pixelmatch": "^5.3.0",
+    "playwright": "^1.40.1",
+    "playwright-core": "^1.50.0",
+    "pngjs": "^7.0.0",
+    "portfinder": "^1.0.32",
+    "race-cancellation": "^0.4.1",
+    "react": "^19.0.0",
+    "shaka-shared": "workspace:^",
+    "sharp": "^0.33.0",
+    "temp": "^0.9.4",
+    "tesseract.js": "^7.0.0",
+    "tslib": "^2.2.0",
+    "tsx": "^4.21.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.0.0",
+    "@types/archiver": "^7.0.0",
+    "@types/d3-array": "~2.12.1",
+    "@types/d3-hierarchy": "^3.1.0",
+    "@types/d3-scale": "~3.0.0",
+    "@types/debug": "^4.1.7",
+    "@types/diff": "^5.2.3",
+    "@types/fs-extra": "^11.0.0",
+    "@types/html-minifier-terser": "^7.0.0",
+    "@types/jest": "^29.5.11",
+    "@types/json5": "^2.2.0",
+    "@types/junit-report-builder": "^3.0.0",
+    "@types/lodash": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "@types/object-hash": "^3.0.0",
+    "@types/pixelmatch": "^5.2.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/temp": "^0.9.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jest": "^30.0.0",
+    "jest-junit": "^16.0.0",
+    "react-dom": "^19.0.0",
+    "ts-jest": "^29.2.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.1.0"
+  }
+}

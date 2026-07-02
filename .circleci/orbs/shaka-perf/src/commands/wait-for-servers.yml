@@ -1,0 +1,68 @@
+description: |
+  Wait for servers to be healthy using dockerize health checks.
+
+parameters:
+  control-health-url:
+    type: string
+    default: ''
+    description: 'Control server health check endpoint (defaults to config ports.control)'
+  experiment-health-url:
+    type: string
+    default: ''
+    description: 'Experiment server health check endpoint (defaults to config ports.experiment)'
+  timeout:
+    type: string
+    default: '120s'
+    description: 'Timeout for each health check'
+  install-dockerize:
+    type: boolean
+    default: true
+    description: 'Install dockerize before health check'
+  working-directory:
+    type: string
+    default: '.'
+    description: 'Directory containing abtests.config.ts'
+  config-path:
+    type: string
+    default: ''
+    description: 'Custom config file path (optional)'
+  cli-prefix:
+    type: string
+    default: 'npx'
+    description: 'Command prefix to invoke shaka-perf (e.g., npx, yarn, pnpm)'
+
+steps:
+  - when:
+      condition: << parameters.install-dockerize >>
+      steps:
+        - run:
+            name: Install dockerize
+            command: curl -sSL 'https://github.com/jwilder/dockerize/releases/download/v0.7.0/dockerize-linux-amd64-v0.7.0.tar.gz' | sudo tar -xz -C /usr/local/bin
+  - run:
+      name: Wait for control server
+      working_directory: << parameters.working-directory >>
+      command: |
+        CONTROL_HEALTH_URL="<< parameters.control-health-url >>"
+        if [ -z "$CONTROL_HEALTH_URL" ]; then
+          CONFIG_FLAG=""
+          if [ -n "<< parameters.config-path >>" ]; then
+            CONFIG_FLAG="--config << parameters.config-path >>"
+          fi
+          CONTROL_PORT=$(<< parameters.cli-prefix >> shaka-perf servers $CONFIG_FLAG get-config ports.control)
+          CONTROL_HEALTH_URL="http://localhost:${CONTROL_PORT}/up"
+        fi
+        dockerize -wait "$CONTROL_HEALTH_URL" -timeout "<< parameters.timeout >>"
+  - run:
+      name: Wait for experiment server
+      working_directory: << parameters.working-directory >>
+      command: |
+        EXPERIMENT_HEALTH_URL="<< parameters.experiment-health-url >>"
+        if [ -z "$EXPERIMENT_HEALTH_URL" ]; then
+          CONFIG_FLAG=""
+          if [ -n "<< parameters.config-path >>" ]; then
+            CONFIG_FLAG="--config << parameters.config-path >>"
+          fi
+          EXPERIMENT_PORT=$(<< parameters.cli-prefix >> shaka-perf servers $CONFIG_FLAG get-config ports.experiment)
+          EXPERIMENT_HEALTH_URL="http://localhost:${EXPERIMENT_PORT}/up"
+        fi
+        dockerize -wait "$EXPERIMENT_HEALTH_URL" -timeout "<< parameters.timeout >>"

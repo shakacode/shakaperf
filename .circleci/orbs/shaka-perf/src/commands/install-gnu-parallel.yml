@@ -1,0 +1,10 @@
+description: |
+  Install GNU parallel, required for running commands in both containers simultaneously.
+
+steps:
+  - run:
+      name: Install GNU parallel
+      command: |
+        if ! command -v parallel &> /dev/null; then
+          sudo apt-get update && sudo apt-get install -y parallel
+        fi

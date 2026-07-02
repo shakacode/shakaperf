@@ -1,0 +1,30 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import { abTest } from 'shaka-shared';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
+
+abTest('Click Shop Now on the homepage', {
+  startingPath: '/',
+  options: {
+    viewports: ['phone'],
+    visreg: {
+      misMatchThreshold: 0.1,
+      maxNumDiffPixels: 5,
+    },
+  },
+}, async ({ page, annotate }) => {
+  annotate('Wait for hero section to load');
+  await page.waitForSelector('[data-cy="hero-section"]');
+  annotate('Click Shop Now button');
+  await page.click('text=Shop Now');
+  annotate('Wait for navigation to products page');
+  await page.waitForURL('**/products');
+  await waitUntilPageSettled(page);
+});

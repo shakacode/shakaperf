@@ -1,0 +1,286 @@
+Skipping global setup (SKIP_GLOBAL_SETUP=1)
+
+Running 1 test using 1 worker
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: run shaka-perf compare --categories perf on twin servers @perf
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Starting puma in both containers
+
+
+>>> run: yarn shaka-perf twins-run-cmd control "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
+ [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+
+  ⏱ 2.4s
+
+>>> run: yarn shaka-perf twins-run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
+
+Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
+ [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
+
+  ⏱ 2.1s
+
+>>> Waiting for ports 3020 + 3030
+
+  ⏱ waitForPort(3020): 0.0s
+  ⏱ waitForPort(3030): 0.0s
+
+>>> Running shaka-perf compare --categories perf
+
+
+>>> run: yarn shaka-perf compare --categories perf --testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"
+
+Discovered 2 test file(s):
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+
+>>> perf
+Discovered 2 test file(s):
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+
+/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts:4 Homepage
+        control:  0
+     experiment:  0    00m:00s remaining
+     experiment:  1    02m:25s remaining
+        control:  1    01m:34s remaining
+     experiment:  2    01m:09s remaining
+        control:  2    00m:54s remaining
+     experiment:  3    01m:25s remaining
+        control:  3    01m:11s remaining
+     experiment:  4    01m:04s remaining
+        control:  4    00m:55s remaining
+        control:  5    01m:07s remaining
+     experiment:  5    00m:59s remaining
+        control:  6    00m:55s remaining
+     experiment:  6    00m:49s remaining
+     experiment:  7    00m:55s remaining
+        control:  7    00m:50s remaining
+     experiment:  8    00m:47s remaining
+        control:  8    00m:42s remaining
+        control:  9    00m:46s remaining
+     experiment:  9    00m:42s remaining
+        control: 10    00m:39s remaining
+     experiment: 10    00m:35s remaining
+     experiment: 11    00m:37s remaining
+        control: 11    00m:34s remaining
+        control: 12    00m:31s remaining
+     experiment: 12    00m:28s remaining
+        control: 13    00m:29s remaining
+     experiment: 13    00m:26s remaining
+        control: 14    00m:24s remaining
+     experiment: 14    00m:22s remaining
+        control: 15    00m:22s remaining
+     experiment: 15    00m:19s remaining
+     experiment: 16    00m:17s remaining
+        control: 16    00m:15s remaining
+        control: 17    00m:14s remaining
+     experiment: 17    00m:12s remaining
+        control: 18    00m:10s remaining
+     experiment: 18    00m:08s remaining
+        control: 19    00m:07s remaining
+     experiment: 19    00m:05s remaining
+        control: 20    00m:03s remaining
+     experiment: 20    00m:02s remaining
+HTML diff: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/diff.html
+
+    SUCCESS     20 measurements took 01m:21s
+
+    ! ALERT     Regression found exceeding the set regression threshold of 0.1 ms
+
+
+    Benchmark Results Summary    
+
+
+LH & Vitals
+  FCP no difference [-6ms to 2ms]
+  speed-index no difference [-6ms to 2ms]
+  LCP no difference [-65ms to 53ms]
+  TBT no difference [-25ms to 103ms]
+  CLS estimated regression +2/100 [0/100 to +3/100] OR +28.93% [+1.55% to +47.47%] p=0.02405
+  TTFB no difference [-2ms to 6ms]
+  LH Score estimated regression -2/100 [-3/100 to -1/100] OR -2.54% [-4.24% to -0.85%] p=0.01267
+  hydration no difference [-90ms to 23ms]
+  hydration-start no difference [-302ms to 240ms]
+
+Diagnostics
+  downloads estimated regression +80KB [+80KB to +80KB] OR +48.65% [+48.61% to +48.7%] p=0.00009556
+  downloads-count estimated regression +4 [+4 to +4] OR +33.33% [+33.33% to +33.33%] p=0.000008554
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+
+    Benchmark Reports    
+
+
+JSON: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/ab-measurements.json
+
+HTML: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/artifact-1.html
+
+
+/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts:4 Click Shop Now on the homepage
+     experiment:  0
+        control:  0    00m:00s remaining
+        control:  1    02m:30s remaining
+     experiment:  1    01m:38s remaining
+     experiment:  2    01m:11s remaining
+        control:  2    00m:56s remaining
+     experiment:  3    01m:32s remaining
+        control:  3    01m:17s remaining
+     experiment:  4    01m:13s remaining
+        control:  4    01m:03s remaining
+     experiment:  5    01m:12s remaining
+        control:  5    01m:04s remaining
+     experiment:  6    01m:02s remaining
+        control:  6    00m:56s remaining
+     experiment:  7    00m:59s remaining
+        control:  7    00m:53s remaining
+     experiment:  8    00m:52s remaining
+        control:  8    00m:47s remaining
+     experiment:  9    00m:49s remaining
+        control:  9    00m:45s remaining
+     experiment: 10    00m:43s remaining
+        control: 10    00m:39s remaining
+     experiment: 11    00m:40s remaining
+        control: 11    00m:37s remaining
+        control: 12    00m:35s remaining
+     experiment: 12    00m:32s remaining
+     experiment: 13    00m:32s remaining
+        control: 13    00m:29s remaining
+        control: 14    00m:27s remaining
+     experiment: 14    00m:24s remaining
+        control: 15    00m:23s remaining
+     experiment: 15    00m:21s remaining
+     experiment: 16    00m:19s remaining
+        control: 16    00m:17s remaining
+        control: 17    00m:15s remaining
+     experiment: 17    00m:13s remaining
+        control: 18    00m:11s remaining
+     experiment: 18    00m:09s remaining
+        control: 19    00m:08s remaining
+     experiment: 19    00m:06s remaining
+        control: 20    00m:04s remaining
+     experiment: 20    00m:02s remaining
+HTML diff: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/diff.html
+
+    SUCCESS     20 measurements took 01m:27s
+
+    ! ALERT     Regression found exceeding the set regression threshold of 0.1 ms
+
+
+    Benchmark Results Summary    
+
+
+LH & Vitals
+  FCP no difference [-2ms to 2ms]
+  speed-index no difference [0ms to 42ms]
+  LCP estimated improvement -45ms [-82ms to -22ms] OR -0.82% [-1.47% to -0.4%] p=0.00003624
+  TBT no difference [-48ms to 142ms]
+  CLS estimated regression +8/100 [+6/100 to +9/100] OR +45.21% [+37.15% to +51.21%] p=0.00006932
+  TTFB no difference [-3ms to 4ms]
+  LH Score estimated regression -5/100 [-6/100 to -4/100] OR -10.64% [-11.7% to -8.51%] p=0.00008713
+  hydration no difference [-94ms to 3ms]
+  hydration-start no difference [-2ms to 481ms]
+  interaction-to-next-paint estimated improvement -400ms [-480ms to -320ms] OR -27.78% [-33.33% to -22.22%] p=0.0001061
+
+Diagnostics
+  downloads no difference [0KB to 0KB]
+  downloads-count no difference [0 to 0]
+  early-downloads no difference [0KB to 0KB]
+  early-downloads-count no difference [0 to 0]
+  js no difference [0KB to 0KB]
+  js-count no difference [0 to 0]
+  images no difference [0KB to 0KB]
+  images-count no difference [0 to 0]
+  fonts no difference [0KB to 0KB]
+  fonts-count no difference [0 to 0]
+
+
+    Benchmark Reports    
+
+
+JSON: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/ab-measurements.json
+
+HTML: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/artifact-1.html
+
+
+    Generated Artifacts    
+
+
+/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts:4 Homepage
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/ab-measurements.json — Raw measurement samples
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/artifact-1.html — Bench HTML report (boxplots + phase charts)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/diff.html
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/engine-output.log — Engine stdout/stderr transcript (for debugging failures)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3020____network_activity.txt — Network activity
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3020____performance_profile.summary.txt
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3030____network_activity.txt — Network activity
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/localhost_3030____performance_profile.summary.txt
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/report.json — Statistical analysis (JSON)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/report.txt — Summary
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/timeline_comparison.html — Visual timeline (control vs experiment)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/homepage/timeline_preview.svg
+
+/private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts:4 Click Shop Now on the homepage
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/ab-measurements.json — Raw measurement samples
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/artifact-1.html — Bench HTML report (boxplots + phase charts)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/diff.html
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/engine-output.log — Engine stdout/stderr transcript (for debugging failures)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3020____lighthouse_report.html — Lighthouse report
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3020____network_activity.txt — Network activity
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.json — Performance profile (DevTools)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3020____performance_profile.summary.txt
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3030____lighthouse_report.html — Lighthouse report
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3030____network_activity.txt — Network activity
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.json — Performance profile (DevTools)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/localhost_3030____performance_profile.summary.txt
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/report.json — Statistical analysis (JSON)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/report.txt — Summary
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/timeline_comparison.html — Visual timeline (control vs experiment)
+  /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/click-shop-now-on-the-homepage/timeline_preview.svg
+
+
+Report: /private/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/compare-results/report.html
+
+
+FAILED: 2 perf regressions
+
+
+>>> Perf compare exited non-zero as expected (regression detected)
+
+
+>>> Copied compare-results to /home/<USER>/shakaperf_3/integration-tests/snapshots/bench-results
+
+
+>>> Screenshotting 11 HTML artifacts
+
+
+>>> Capturing perf report: overview
+
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+  ⏱ git checkout experiment: 0.0s
+Updated 0 paths from the index
+  ⏱ git checkout control: 0.0s
+  ✓  1 integration-tests/bench.spec.ts:13:5 › run shaka-perf compare --categories perf on twin servers @perf (<TIMING>m)
+Skipping teardown (SKIP_TEARDOWN=1)
+
+  1 passed (<TIMING>m)
