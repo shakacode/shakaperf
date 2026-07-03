@@ -65,7 +65,7 @@ describe('preparePage', function () {
   };
 
   const baseViewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
-  const baseConfig = {} as import('../../../../src/visreg/core/types').VisregConfig;
+  const baseConfig = {} as import('../../../../src/visreg/core/types').DecoratedCompareConfig;
   const baseBrowserContext = {} as import('../../../../src/visreg/core/types').BrowserContext;
 
   let waitUntilPageSettledSpy: jest.SpyInstance;
