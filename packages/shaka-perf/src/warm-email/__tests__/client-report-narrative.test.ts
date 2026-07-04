@@ -10,6 +10,7 @@
 import { buildDeterministicNarrative, composeNarrative, type NarrativeFacts } from '../client-report-narrative';
 
 const perfPoor: NonNullable<NarrativeFacts['perf']> = { status: 'poor', avgLabel: '5.3s', slowCount: 2, jumpyCount: 0, worst: [] };
+const perfBlocked: NonNullable<NarrativeFacts['perf']> = { status: 'fair', slowCount: 0, jumpyCount: 0, worst: [], couldNotMeasure: true };
 const blockedA11y: NonNullable<NarrativeFacts['a11y']> = { status: 'good', highImpact: 0, pagesWithBarriers: 0, topIssues: [], couldNotMeasure: true };
 const blockedAgent: NonNullable<NarrativeFacts['agent']> = { status: 'good', score: 0, accessBlocked: false, couldNotMeasure: true };
 
@@ -46,5 +47,23 @@ describe('narrative: could not measure (bot wall)', () => {
     });
     expect(n.a11y.verdictWord).toBe('Could not measure');
     expect(n.bottomLineHtml.toLowerCase()).not.toContain('real gap is accessibility');
+  });
+
+  it('does not call performance slow when no speed page could be measured', () => {
+    const n = buildDeterministicNarrative({ domain: 'x.com', worstDim: 'perf', perf: perfBlocked });
+    expect(n.perf.verdictWord).toBe('Could not measure');
+    expect(n.perf.verdictPara).toContain('mobile speed data');
+    expect(n.bottomLineHtml.toLowerCase()).toContain('could not measure');
+    expect(n.bottomLineHtml).toContain('mobile speed</span>');
+    expect(n.bottomLineHtml).not.toContain('A bit slow on phones');
+  });
+
+  it('keeps a stale AI overlay from rewriting unmeasured performance', () => {
+    const n = composeNarrative(
+      { domain: 'x.com', worstDim: 'perf', perf: perfBlocked },
+      { perf: { verdictWord: 'A bit slow on phones', verdictPara: 'stale wrong text' }, bottomLine: 'The real gap is mobile speed.' },
+    );
+    expect(n.perf.verdictWord).toBe('Could not measure');
+    expect(n.bottomLineHtml.toLowerCase()).not.toContain('real gap');
   });
 });
