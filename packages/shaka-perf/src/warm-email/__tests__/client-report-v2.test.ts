@@ -242,6 +242,13 @@ describe('renderClientReportV2', () => {
     expect(html).not.toContain('data-tab="a11y"'); // a11y absent in this model
   });
 
+  it('switches report tabs without forcing the viewport to scroll', () => {
+    const html = renderClientReportV2(model());
+    expect(html).toContain('function show(id)');
+    expect(html).toContain("p.hidden = (p.id !== 'v2-panel-' + id)");
+    expect(html).not.toContain('window.scrollTo');
+  });
+
   it('renders a neutral "could not measure" accessibility tab (no frames, no findings) when a bot wall blocked the scan', () => {
     const html = renderClientReportV2(model({
       hasA11y: true,

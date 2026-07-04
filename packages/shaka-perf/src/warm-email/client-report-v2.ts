@@ -764,7 +764,6 @@ const SCRIPTS = `<script>
       t.style.color = on ? '#26221d' : '#6f665c';
       t.style.borderBottomColor = on ? '#26221d' : 'transparent';
     });
-    try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }catch(e){}
   }
   tabs.forEach(function(t){ t.addEventListener('click', function(){ show(t.getAttribute('data-tab')); }); });
   document.querySelectorAll('[data-jump]').forEach(function(b){
