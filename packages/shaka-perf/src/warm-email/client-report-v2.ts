@@ -148,6 +148,7 @@ export interface V2Tile {
   status: V2Status;
   wordTx: string;
   metric: string;
+  problemTx?: string; // the dominant problem in plain words, shown beside the number
   metricSub: string;
   conseq: string;
   blocked?: boolean; // neutral "could not measure" styling (a bot wall blocked the audit)
@@ -276,10 +277,13 @@ function bottomLine(m: ClientReportV2Model): string {
 
 function tile(t: V2Tile): string {
   const p = t.blocked ? NEUTRAL : PAL[t.status];
+  const problemTx = t.problemTx
+    ? `\n        <div style="font-size:13px; line-height:1.35; font-weight:700; color:${p.fg}; margin:2px 0 4px">${esc(t.problemTx)}</div>`
+    : '';
   return `      <button type="button" data-jump="${t.target}" class="v2-tile" style="--soft:${p.soft}; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid ${p.line}; border-top:3px solid ${p.fg}; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
         <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:11px">${esc(t.kicker)}</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:${p.fg}; line-height:1.05; margin-bottom:13px">${esc(t.wordTx)}</div>
-        <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>
+        <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>${problemTx}
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">${esc(t.metricSub)}</div>
         <div style="font-size:13.5px; line-height:1.5; color:#4a443c">${esc(t.conseq)}</div>
       </button>`;

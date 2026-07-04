@@ -2581,6 +2581,29 @@ export function buildStartHere(
   return sh;
 }
 
+export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undefined {
+  switch (lead.kind) {
+    case 'slow-lcp': {
+      const lcp = metricVal(page, 'LCP');
+      return lcp === undefined ? undefined : `biggest piece takes ${secs(lcp)} to load`;
+    }
+    case 'layout-shift':
+      return 'the layout jumps around';
+    case 'blank': {
+      const fcp = metricVal(page, 'FCP');
+      return fcp === undefined ? undefined : `screen stays blank for ${secs(fcp)}`;
+    }
+    case 'late-paint': {
+      const fcp = metricVal(page, 'FCP');
+      return fcp === undefined ? undefined : `nothing appears for ${secs(fcp)}`;
+    }
+    case 'sluggish':
+      return 'slow to react to taps';
+    default:
+      return undefined;
+  }
+}
+
 async function buildClientReportV2Model(
   resultsDir: string,
   sc: SiteScorecard,
@@ -2641,6 +2664,12 @@ async function buildClientReportV2Model(
       : ctx.measured.some((r) => r.lead.status === 'fair')
         ? 'fair'
         : 'good';
+  let dominantPerfProblem: RenderedPage | undefined;
+  for (const rp of ctx.measured) {
+    if (!PROBLEM_KINDS.has(rp.lead.kind)) continue;
+    if (!dominantPerfProblem || rp.lead.severity > dominantPerfProblem.lead.severity) dominantPerfProblem = rp;
+  }
+  const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
 
   // ---- ACCESSIBILITY ----
   if (opts.summarizeA11y) await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
@@ -2841,6 +2870,7 @@ async function buildClientReportV2Model(
       status: perfStatus,
       wordTx: narrative.perf.verdictWord,
       metric: ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a',
+      ...(perfProblemTx ? { problemTx: perfProblemTx } : {}),
       metricSub: 'typical wait before a page is usable',
       conseq: perfStatus === 'good'
         ? 'Pages load quickly on a phone, so visitors are not lost to waiting.'
