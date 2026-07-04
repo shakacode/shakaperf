@@ -7,6 +7,10 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import {
   buildDeterministicNarrative,
   composeNarrative,
@@ -14,7 +18,7 @@ import {
   parseNarrativeResponse,
   type NarrativeFacts,
 } from '../client-report-narrative';
-import { perfProblemPhrase, type Problem } from '../client-report';
+import { perfProblemPhrase, perfProblemTileCopy, renderClientReport, type Problem } from '../client-report';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
 import type { PagePerf } from '../synthesis';
 
@@ -170,15 +174,114 @@ function problem(kind: Problem['kind']): Problem {
   return { kind, severity: 1, status: 'poor', headline: '', chip: '' };
 }
 
+const tempResultDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempResultDirs.splice(0)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function displayMetric(label: string, value: number): string {
+  if (label === 'LCP' || label === 'FCP' || label === 'TBT') return `${(value / 1000).toFixed(1)}s`;
+  if (label === 'LH Score') return `${Math.round(value)}/100`;
+  if (label === 'CLS') return (value / 100).toFixed(2);
+  return String(value);
+}
+
+function writePerfResults(metrics: Record<string, number>): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-v2-report-'));
+  tempResultDirs.push(dir);
+  fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
+    meta: { experimentUrl: 'http://localhost', generatedAt: '2026-06-24T00:00:00.000Z' },
+    tests: [
+      {
+        id: 'home',
+        name: 'Home',
+        startingPath: '/',
+        viewport: { label: 'phone', width: 390, height: 844 },
+      },
+    ],
+  }, null, 2)}\n`);
+  fs.mkdirSync(path.join(dir, 'home'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'home', 'audit.json'), `${JSON.stringify({
+    stage: 'audit',
+    measurement: {
+      metrics: Object.entries(metrics).map(([label, value]) => ({
+        label,
+        value,
+        display: displayMetric(label, value),
+      })),
+    },
+  }, null, 2)}\n`);
+  return dir;
+}
+
 describe('perfProblemPhrase', () => {
   it.each([
-    ['slow-lcp', { LCP: 15400 }, 'biggest piece takes 15.4s to load'],
+    ['slow-lcp', { LCP: 15400 }, 'biggest piece appears after 15.4s'],
     ['layout-shift', {}, 'the layout jumps around'],
     ['blank', { FCP: 8200 }, 'screen stays blank for 8.2s'],
     ['late-paint', { FCP: 4100 }, 'nothing appears for 4.1s'],
     ['sluggish', {}, 'slow to react to taps'],
   ] as const)('maps %s to the exact exec-tile phrase', (kind, metrics, expected) => {
     expect(perfProblemPhrase(problem(kind), perfPage(metrics))).toBe(expected);
+  });
+});
+
+describe('perfProblemTileCopy', () => {
+  it.each([
+    [
+      'slow-lcp',
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Main content is late',
+        metricSub: 'typical wait before a page is usable',
+        conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
+      },
+    ],
+    [
+      'layout-shift',
+      {
+        kicker: 'Mobile stability',
+        wordTx: 'Jumpy on phones',
+        metricSub: 'main content timing; stability is the issue',
+        conseq: 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.',
+      },
+    ],
+    [
+      'blank',
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Blank screen first',
+        metricSub: 'main content timing; first screen is blank',
+        conseq: 'A visitor sees nothing at first, which can read as a broken page.',
+      },
+    ],
+    [
+      'late-paint',
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Slow to start',
+        metricSub: 'main content timing; first paint is late',
+        conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
+      },
+    ],
+    [
+      'sluggish',
+      {
+        kicker: 'Mobile response',
+        wordTx: 'Slow to react',
+        metricSub: 'main content timing; taps lag while loading',
+        conseq: 'The page may look loaded, but taps and scrolls can lag behind the visitor.',
+      },
+    ],
+  ] as const)('maps %s to coherent exec-tile copy', (kind, expected) => {
+    expect(perfProblemTileCopy(problem(kind))).toEqual(expected);
+  });
+
+  it('does not create problem copy for clean pages', () => {
+    expect(perfProblemTileCopy(problem('clean'))).toBeUndefined();
   });
 });
 
@@ -261,6 +364,101 @@ function renderedTile(html: string, target: 'perf' | 'a11y' | 'agent'): string {
   return html.slice(start, end + close.length);
 }
 
+describe('renderClientReport v2 perf tile assembly', () => {
+  it.each([
+    [
+      'slow-lcp',
+      { LCP: 15400, FCP: 1500, 'LH Score': 35 },
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Main content is late',
+        metric: '15.4s',
+        problemTx: 'biggest piece appears after 15.4s',
+        metricSub: 'typical wait before a page is usable',
+        absent: 'Slow on phones',
+      },
+    ],
+    [
+      'layout-shift',
+      { LCP: 1800, FCP: 900, CLS: 45, 'LH Score': 91 },
+      {
+        kicker: 'Mobile stability',
+        wordTx: 'Jumpy on phones',
+        metric: '1.8s',
+        problemTx: 'the layout jumps around',
+        metricSub: 'main content timing; stability is the issue',
+        absent: 'Slow on phones',
+      },
+    ],
+    [
+      'blank',
+      { LCP: 9800, FCP: 9200, 'LH Score': 30 },
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Blank screen first',
+        metric: '9.8s',
+        problemTx: 'screen stays blank for 9.2s',
+        metricSub: 'main content timing; first screen is blank',
+        absent: 'Slow on phones',
+      },
+    ],
+    [
+      'late-paint',
+      { LCP: 4300, FCP: 4100, 'LH Score': 55 },
+      {
+        kicker: 'Mobile loading',
+        wordTx: 'Slow to start',
+        metric: '4.3s',
+        problemTx: 'nothing appears for 4.1s',
+        metricSub: 'main content timing; first paint is late',
+        absent: 'A bit slow on phones',
+      },
+    ],
+    [
+      'sluggish',
+      { LCP: 1900, FCP: 900, TBT: 2000, 'LH Score': 88 },
+      {
+        kicker: 'Mobile response',
+        wordTx: 'Slow to react',
+        metric: '1.9s',
+        problemTx: 'slow to react to taps',
+        metricSub: 'main content timing; taps lag while loading',
+        absent: 'A bit slow on phones',
+      },
+    ],
+  ] as const)('renders the %s dominant problem through the final perf tile', async (_kind, metrics, expected) => {
+    const { html } = await renderClientReport(writePerfResults(metrics), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
+    expect(perfTile).toContain(expected.kicker);
+    expect(perfTile).toContain(expected.wordTx);
+    expect(perfTile).toContain(`>${expected.metric}</div>`);
+    expect(perfTile).toContain(expected.problemTx);
+    expect(perfTile).toContain(expected.metricSub);
+    expect(perfTile).not.toContain(expected.absent);
+  });
+
+  it('keeps a clean assembled perf tile generic and without a problem line', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 1900, FCP: 800, CLS: 1, TBT: 50, 'LH Score': 98 }), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
+    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Fast on phones');
+    expect(perfTile).toContain('>1.9s</div>');
+    expect(perfTile).toContain('typical wait before a page is usable');
+    expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
+    expect(perfTile).not.toContain('jumps around');
+  });
+
+  it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
+    const { html } = await renderClientReport(writePerfResults({}), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
+    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Could not measure');
+    expect(perfTile).toContain('>n/a</div>');
+    expect(perfTile).toContain('no usable mobile speed data');
+    expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
+  });
+});
+
 describe('renderClientReportV2', () => {
   it('renders a self-contained document with the masthead, bottom line and tiles', () => {
     const html = renderClientReportV2(model());
@@ -274,17 +472,17 @@ describe('renderClientReportV2', () => {
 
   it('renders a perf tile problem phrase between the metric and sub-label', () => {
     const m = model();
-    m.tiles[0] = { ...m.tiles[0], problemTx: 'biggest piece takes 15.4s to load' };
+    m.tiles[0] = { ...m.tiles[0], problemTx: 'biggest piece appears after 15.4s' };
     const perfTile = renderedTile(renderClientReportV2(m), 'perf');
-    expect(perfTile).toContain('biggest piece takes 15.4s to load');
+    expect(perfTile).toContain('biggest piece appears after 15.4s');
     expect(perfTile).toContain(`<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
-        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#b14a3c; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
+        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#b14a3c; margin:2px 0 4px">biggest piece appears after 15.4s</div>
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>`);
   });
 
   it('leaves the perf tile byte-identical when no problem phrase is present', () => {
     const perfTile = renderedTile(renderClientReportV2(model()), 'perf');
-    expect(perfTile).not.toContain('biggest piece takes');
+    expect(perfTile).not.toContain('biggest piece appears');
     expect(perfTile).toBe(`<button type="button" data-jump="perf" class="v2-tile" style="--soft:#fbeeeb; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #eccbc2; border-top:3px solid #b14a3c; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
         <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:11px">Mobile speed</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#b14a3c; line-height:1.05; margin-bottom:13px">Slow on phones</div>
