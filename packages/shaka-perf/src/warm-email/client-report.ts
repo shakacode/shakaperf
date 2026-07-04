@@ -2305,7 +2305,9 @@ ${CAPTION_JS}${tabScript}
 // Maps the gathered artifacts onto the `ClientReportV2Model` the v2 renderer takes.
 // All async/IO (a11y crops, agent fetch, AI passes) is here; the renderer is pure.
 
-const PROBLEM_KINDS: ReadonlySet<ProblemKind> = new Set<ProblemKind>(['slow-lcp', 'layout-shift', 'blank', 'late-paint', 'sluggish']);
+const PERF_PROBLEM_KINDS = ['slow-lcp', 'layout-shift', 'blank', 'late-paint', 'sluggish'] as const;
+type PerfProblemKind = typeof PERF_PROBLEM_KINDS[number];
+const PROBLEM_KINDS: ReadonlySet<ProblemKind> = new Set<ProblemKind>(PERF_PROBLEM_KINDS);
 
 // Plain-language names for the three per-page agent factors (the design renames
 // the internal category names into owner-friendly phrasing).
@@ -2581,108 +2583,108 @@ export function buildStartHere(
   return sh;
 }
 
-export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undefined {
-  switch (lead.kind) {
-    case 'slow-lcp': {
-      const lcp = metricVal(page, 'LCP');
-      return lcp === undefined ? undefined : `biggest piece appears after ${secs(lcp)}`;
-    }
-    case 'layout-shift':
-      return 'the layout jumps around';
-    case 'blank': {
-      const fcp = metricVal(page, 'FCP');
-      return fcp === undefined ? undefined : `screen stays blank for ${secs(fcp)}`;
-    }
-    case 'late-paint': {
-      const fcp = metricVal(page, 'FCP');
-      return fcp === undefined ? undefined : `nothing appears for ${secs(fcp)}`;
-    }
-    case 'sluggish':
-      return 'slow to react to taps';
-    default:
-      return undefined;
-  }
-}
-
-function perfProblemVerdict(lead: Problem): string | undefined {
-  switch (lead.kind) {
-    case 'slow-lcp':
-      return 'Main content is late';
-    case 'layout-shift':
-      return 'Jumpy on phones';
-    case 'blank':
-      return 'Blank screen first';
-    case 'late-paint':
-      return 'Slow to start';
-    case 'sluggish':
-      return 'Slow to react';
-    default:
-      return undefined;
-  }
-}
-
-function perfProblemKicker(lead: Problem): string | undefined {
-  switch (lead.kind) {
-    case 'slow-lcp':
-    case 'blank':
-    case 'late-paint':
-      return 'Mobile loading';
-    case 'layout-shift':
-      return 'Mobile stability';
-    case 'sluggish':
-      return 'Mobile response';
-    default:
-      return undefined;
-  }
-}
-
-function perfProblemMetricSub(lead: Problem): string | undefined {
-  switch (lead.kind) {
-    case 'slow-lcp':
-      return 'typical wait before a page is usable';
-    case 'blank':
-      return 'main content timing; first screen is blank';
-    case 'late-paint':
-      return 'main content timing; first paint is late';
-    case 'layout-shift':
-      return 'main content timing; stability is the issue';
-    case 'sluggish':
-      return 'main content timing; taps lag while loading';
-    default:
-      return undefined;
-  }
-}
-
-function perfProblemConseq(lead: Problem): string | undefined {
-  switch (lead.kind) {
-    case 'slow-lcp':
-      return 'The page starts, but the main content lands late enough that visitors may give up.';
-    case 'layout-shift':
-      return 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.';
-    case 'blank':
-      return 'A visitor sees nothing at first, which can read as a broken page.';
-    case 'late-paint':
-      return 'The first pixels arrive late, so the page feels stalled before it starts.';
-    case 'sluggish':
-      return 'The page may look loaded, but taps and scrolls can lag behind the visitor.';
-    default:
-      return undefined;
-  }
-}
-
 interface PerfProblemTileCopy {
   kicker: string;
   wordTx: string;
-  metricSub: string;
+  metricSub: (avgLabel: string | undefined) => string;
   conseq: string;
 }
 
+interface PerfProblemCopy extends PerfProblemTileCopy {
+  phrase: (page: PagePerf) => string | undefined;
+  metric: (page: PagePerf) => string | undefined;
+}
+
+const avgLcpSuffix = (avgLabel: string | undefined): string => avgLabel ? `; average LCP is ${avgLabel}` : '';
+const metricSecs = (page: PagePerf, label: string): string | undefined => {
+  const value = metricVal(page, label);
+  return value === undefined ? undefined : secs(value);
+};
+
+const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
+  'slow-lcp': {
+    kicker: 'Mobile loading',
+    wordTx: 'Main content is late',
+    phrase: (page) => {
+      const lcp = metricSecs(page, 'LCP');
+      return lcp === undefined ? undefined : `biggest piece takes ${lcp} to load`;
+    },
+    metric: (page) => metricSecs(page, 'LCP'),
+    metricSub: (avgLabel) => `worst page LCP${avgLcpSuffix(avgLabel)}`,
+    conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
+  },
+  'layout-shift': {
+    kicker: 'Mobile stability',
+    wordTx: 'Layout jumps',
+    phrase: () => 'the layout jumps around',
+    metric: (page) => {
+      const clsV = metricVal(page, 'CLS');
+      return clsV === undefined ? undefined : (clsV / 100).toFixed(2);
+    },
+    metricSub: (avgLabel) => `worst page layout-shift score${avgLcpSuffix(avgLabel)}`,
+    conseq: 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.',
+  },
+  blank: {
+    kicker: 'Mobile loading',
+    wordTx: 'Blank screen first',
+    phrase: (page) => {
+      const fcp = metricSecs(page, 'FCP');
+      return fcp === undefined ? undefined : `screen stays blank for ${fcp}`;
+    },
+    metric: (page) => metricSecs(page, 'FCP'),
+    metricSub: (avgLabel) => `worst page first paint${avgLcpSuffix(avgLabel)}`,
+    conseq: 'A visitor sees nothing at first, which can read as a broken page.',
+  },
+  'late-paint': {
+    kicker: 'Mobile loading',
+    wordTx: 'Slow first paint',
+    phrase: (page) => {
+      const fcp = metricSecs(page, 'FCP');
+      return fcp === undefined ? undefined : `nothing appears for ${fcp}`;
+    },
+    metric: (page) => metricSecs(page, 'FCP'),
+    metricSub: (avgLabel) => `worst page first paint${avgLcpSuffix(avgLabel)}`,
+    conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
+  },
+  sluggish: {
+    kicker: 'Mobile response',
+    wordTx: 'Slow to react',
+    phrase: () => 'slow to react to taps',
+    metric: (page) => metricSecs(page, 'TBT'),
+    metricSub: (avgLabel) => `worst page blocking time${avgLcpSuffix(avgLabel)}`,
+    conseq: 'The page may look loaded, but taps and scrolls can lag behind the visitor.',
+  },
+};
+
+function isPerfProblemKind(kind: ProblemKind): kind is PerfProblemKind {
+  return PROBLEM_KINDS.has(kind);
+}
+
+export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undefined {
+  return isPerfProblemKind(lead.kind) ? PERF_PROBLEM_COPY[lead.kind].phrase(page) : undefined;
+}
+
+function perfProblemMetric(lead: Problem, page: PagePerf): string | undefined {
+  return isPerfProblemKind(lead.kind) ? PERF_PROBLEM_COPY[lead.kind].metric(page) : undefined;
+}
+
 export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefined {
-  const kicker = perfProblemKicker(lead);
-  const wordTx = perfProblemVerdict(lead);
-  const metricSub = perfProblemMetricSub(lead);
-  const conseq = perfProblemConseq(lead);
-  return kicker && wordTx && metricSub && conseq ? { kicker, wordTx, metricSub, conseq } : undefined;
+  if (!isPerfProblemKind(lead.kind)) return undefined;
+  const copy = PERF_PROBLEM_COPY[lead.kind];
+  return {
+    kicker: copy.kicker,
+    wordTx: copy.wordTx,
+    metricSub: copy.metricSub,
+    conseq: copy.conseq,
+  };
+}
+
+const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
+
+function comparePerfProblem(a: RenderedPage, b: RenderedPage): number {
+  const statusDelta = V2_STATUS_RANK[b.lead.status] - V2_STATUS_RANK[a.lead.status];
+  if (statusDelta !== 0) return statusDelta;
+  return b.lead.severity - a.lead.severity;
 }
 
 async function buildClientReportV2Model(
@@ -2710,7 +2712,8 @@ async function buildClientReportV2Model(
 
   // ---- PERFORMANCE ----
   const carded = ctx.detailed.filter((rp) => PROBLEM_KINDS.has(rp.lead.kind));
-  const perfCards = carded.map((rp) => perfCardModel(rp, sc.url));
+  const rankedCarded = [...carded].sort(comparePerfProblem);
+  const perfCards = rankedCarded.map((rp) => perfCardModel(rp, sc.url));
   const fineRows = [
     ...ctx.detailed.filter((rp) => !PROBLEM_KINDS.has(rp.lead.kind)),
     ...ctx.more,
@@ -2729,7 +2732,7 @@ async function buildClientReportV2Model(
   // "Start here": the DISTINCT slow patterns (deduped by problem kind), each on one
   // page with its own short problem (the lead chip, e.g. "biggest piece at 4.2s").
   const perfStartHere = buildStartHere(
-    carded.map((rp) => ({ page: rp.page.name, issue: rp.lead.chip || stripTags(rp.lead.headline), key: rp.lead.kind })),
+    rankedCarded.map((rp) => ({ page: rp.page.name, issue: rp.lead.chip || stripTags(rp.lead.headline), key: rp.lead.kind })),
     fineRows.length,
     'a similar slowdown',
     'a different problem',
@@ -2737,8 +2740,9 @@ async function buildClientReportV2Model(
   );
   // Show Performance whenever there's any page to list (failed pages land in perfFine).
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
+  const perfCouldNotMeasure = ctx.measured.length === 0;
   // No measured page -> never claim 'good' off zero data; stay neutral.
-  const perfStatus: V2Status = ctx.measured.length === 0
+  const perfStatus: V2Status = perfCouldNotMeasure
     ? 'fair'
     : ctx.measured.some((r) => r.lead.status === 'poor')
       ? 'poor'
@@ -2747,10 +2751,11 @@ async function buildClientReportV2Model(
         : 'good';
   let dominantPerfProblem: RenderedPage | undefined;
   for (const rp of ctx.measured) {
-    if (!PROBLEM_KINDS.has(rp.lead.kind)) continue;
-    if (!dominantPerfProblem || rp.lead.severity > dominantPerfProblem.lead.severity) dominantPerfProblem = rp;
+    if (!isPerfProblemKind(rp.lead.kind)) continue;
+    if (!dominantPerfProblem || comparePerfProblem(dominantPerfProblem, rp) > 0) dominantPerfProblem = rp;
   }
   const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
+  const perfProblemMetricTx = dominantPerfProblem ? perfProblemMetric(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
 
   // ---- ACCESSIBILITY ----
   if (opts.summarizeA11y) await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
@@ -2887,7 +2892,7 @@ async function buildClientReportV2Model(
   // ---- worst dimension (for the bottom line) ----
   const rank: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
   const present: { dim: Dim; status: V2Status }[] = [];
-  if (hasPerf) present.push({ dim: 'perf', status: perfStatus });
+  if (hasPerf && !perfCouldNotMeasure) present.push({ dim: 'perf', status: perfStatus });
   if (hasA11y && !a11yCouldNotMeasure) present.push({ dim: 'a11y', status: a11yStatus });
   if (hasAgent && !agentCouldNotMeasure) present.push({ dim: 'agent', status: agentStatus });
   const worstDim: Dim = present.length
@@ -2901,9 +2906,10 @@ async function buildClientReportV2Model(
       status: perfStatus,
       slowCount: ctx.slowCount,
       jumpyCount: ctx.jumpyCount,
-      worst: carded.slice(0, 3).map((rp) => ({ name: rp.page.name, problem: stripTags(rp.lead.headline) })),
+      worst: rankedCarded.slice(0, 3).map((rp) => ({ name: rp.page.name, problem: stripTags(rp.lead.headline) })),
     };
     if (ctx.avgMs !== undefined) perfFact.avgLabel = ctx.avgLabel;
+    if (perfCouldNotMeasure) perfFact.couldNotMeasure = true;
     facts.perf = perfFact;
   }
   if (hasA11y) {
@@ -2951,13 +2957,13 @@ async function buildClientReportV2Model(
       : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
     const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.lead) : undefined;
     const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
-    const perfWordTx = ctx.measured.length === 0
+    const perfWordTx = perfCouldNotMeasure
       ? 'Could not measure'
       : dominantPerfTileCopy?.wordTx ?? narrative.perf.verdictWord;
-    const perfMetricSub = ctx.measured.length === 0
+    const perfMetricSub = perfCouldNotMeasure
       ? 'no usable mobile speed data'
-      : dominantPerfTileCopy?.metricSub ?? defaultPerfMetricSub;
-    const perfConseq = ctx.measured.length === 0
+      : dominantPerfTileCopy?.metricSub(ctx.avgMs !== undefined ? ctx.avgLabel : undefined) ?? defaultPerfMetricSub;
+    const perfConseq = perfCouldNotMeasure
       ? 'The audit did not return enough mobile speed data to make a speed claim.'
       : dominantPerfTileCopy?.conseq ?? defaultPerfConseq;
     tiles.push({
@@ -2965,10 +2971,11 @@ async function buildClientReportV2Model(
       kicker: perfKicker,
       status: perfStatus,
       wordTx: perfWordTx,
-      metric: ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a',
+      metric: perfProblemMetricTx ?? (ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a'),
       ...(perfProblemTx ? { problemTx: perfProblemTx } : {}),
       metricSub: perfMetricSub,
       conseq: perfConseq,
+      ...(perfCouldNotMeasure ? { blocked: true } : {}),
     });
   }
   if (hasA11y) {
@@ -3035,6 +3042,7 @@ async function buildClientReportV2Model(
     tiles,
     hasPerf,
     perfStatus,
+    perfCouldNotMeasure,
     perfCards,
     perfFine,
     hasA11y,

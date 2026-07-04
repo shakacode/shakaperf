@@ -52,6 +52,7 @@ export interface NarrativeFacts {
 
 const COULD_NOT_MEASURE_PARA =
   "Your site's bot protection served our automated checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
+const PERF_COULD_NOT_MEASURE_PARA = 'The audit did not return enough mobile speed data to make a speed claim. Re-run the audit once the pages can be measured cleanly.';
 
 // AI overlay: all fields optional, applied over deterministic copy only when usable.
 // bottomLine is PLAIN text (the highlight span is re-applied after merge).
@@ -76,6 +77,9 @@ const DIM_LABEL: Record<Dim, string> = {
 // ---- deterministic builders ----
 
 function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
+  if (f.couldNotMeasure) {
+    return { verdictWord: 'Could not measure', verdictPara: PERF_COULD_NOT_MEASURE_PARA };
+  }
   const verdictWord = f.status === 'poor' ? 'Slow on phones' : f.status === 'fair' ? 'A bit slow on phones' : 'Fast on phones';
   const wait = f.avgLabel
     ? `A visitor on a phone waits about ${f.avgLabel} before the typical page is usable${f.jumpyCount > 0 ? ', and some pages visibly shift around while they load' : ''}. On a fast desktop these pages feel fine, which is exactly why this is easy to miss.`
@@ -122,13 +126,24 @@ function bottomLineText(f: NarrativeFacts): string {
   const present = [f.perf, f.a11y, f.agent].filter((d): d is NonNullable<typeof d> => !!d);
   // Degenerate audit (no measurable dimension) - never invent a gap.
   if (present.length === 0) return 'We could not measure this site, so there is nothing to report yet.';
-  // A bot-protection challenge can wall a whole dimension; that is "not measured",
-  // never a clean pass and never the gap.
+  // A whole dimension can be unmeasured; that is never a clean pass and never the gap.
   const measured = present.filter((d) => !d.couldNotMeasure);
+  const perfCouldNotMeasure = f.perf?.couldNotMeasure === true;
+  const botCouldNotMeasure = f.a11y?.couldNotMeasure === true || f.agent?.couldNotMeasure === true;
   const blockedNote = present.length > measured.length
-    ? " Some checks could not run - the site's bot protection served our checker a challenge page."
+    ? perfCouldNotMeasure && botCouldNotMeasure
+      ? ' Some checks could not run - mobile speed had no usable data, and bot protection blocked other checks.'
+      : perfCouldNotMeasure
+        ? ' Some checks could not run - the audit did not return enough mobile speed data.'
+        : " Some checks could not run - the site's bot protection served our checker a challenge page."
     : '';
   if (measured.length === 0) {
+    if (perfCouldNotMeasure && botCouldNotMeasure) {
+      return 'We could not measure this site - mobile speed had no usable data, and bot protection blocked other checks.';
+    }
+    if (perfCouldNotMeasure) {
+      return 'We could not measure mobile speed from this audit, so there is nothing to report for performance yet.';
+    }
     return "We could not measure your site - its bot protection served our checker a challenge page instead of the real page. Allowlist our checker and we will run a clean pass.";
   }
   // Everything we could measure is healthy - do NOT claim a "real gap" (that would
@@ -257,10 +272,10 @@ export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverla
   // A dimension we could not measure keeps its deterministic "Could not measure"
   // verdict, and the bottom line stays deterministic too - a stale cached AI
   // overlay (written before detection) must not override either with invented findings.
-  const blockedAware = !!(facts.a11y?.couldNotMeasure || facts.agent?.couldNotMeasure);
+  const blockedAware = !!(facts.perf?.couldNotMeasure || facts.a11y?.couldNotMeasure || facts.agent?.couldNotMeasure);
   return {
     bottomLineHtml: aiBottom && !blockedAware ? highlightBottomLine(aiBottom, facts.worstDim, worstStatusOf(facts)) : base.bottomLineHtml,
-    perf: mergeDim(base.perf, overlay.perf),
+    perf: facts.perf?.couldNotMeasure ? base.perf : mergeDim(base.perf, overlay.perf),
     a11y: facts.a11y?.couldNotMeasure ? base.a11y : mergeDim(base.a11y, overlay.a11y),
     agent: facts.agent?.couldNotMeasure ? base.agent : mergeDim(base.agent, overlay.agent),
   };
@@ -276,9 +291,13 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
   if (f.perf) {
     lines.push('');
     lines.push(`MOBILE SPEED (status ${f.perf.status}):`);
-    if (f.perf.avgLabel) lines.push(`  typical wait for the main content: ${f.perf.avgLabel}`);
-    lines.push(`  pages a visitor waits on: ${f.perf.slowCount}; pages that visibly jump: ${f.perf.jumpyCount}`);
-    if (f.perf.worst.length) lines.push(`  worst pages: ${f.perf.worst.map((w) => `${fence(w.name)} (${fence(w.problem)})`).join('; ')}`);
+    if (f.perf.couldNotMeasure) {
+      lines.push('  could NOT be measured - the audit returned no usable mobile speed data; do not describe mobile speed as slow or fast');
+    } else {
+      if (f.perf.avgLabel) lines.push(`  typical wait for the main content: ${f.perf.avgLabel}`);
+      lines.push(`  pages a visitor waits on: ${f.perf.slowCount}; pages that visibly jump: ${f.perf.jumpyCount}`);
+      if (f.perf.worst.length) lines.push(`  worst pages: ${f.perf.worst.map((w) => `${fence(w.name)} (${fence(w.problem)})`).join('; ')}`);
+    }
   }
   if (f.a11y) {
     lines.push('');
