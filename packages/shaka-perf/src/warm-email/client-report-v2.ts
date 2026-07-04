@@ -189,6 +189,7 @@ export interface ClientReportV2Model {
   // performance (always present when there are pages)
   hasPerf: boolean;
   perfStatus: V2Status;
+  perfCouldNotMeasure: boolean; // true when NO performance page could be measured
   perfCards: V2PerfCard[];
   perfFine: V2PerfFineRow[];
   // accessibility (optional)
@@ -308,7 +309,7 @@ function tabButton(target: string, label: string, status: V2Status, active: bool
 
 function tabs(m: ClientReportV2Model): string {
   const present: { target: string; label: string; status: V2Status; blocked?: boolean }[] = [];
-  if (m.hasPerf) present.push({ target: 'perf', label: 'Performance', status: m.perfStatus });
+  if (m.hasPerf) present.push({ target: 'perf', label: 'Performance', status: m.perfStatus, blocked: m.perfCouldNotMeasure });
   if (m.hasA11y) present.push({ target: 'a11y', label: 'Accessibility', status: m.a11yStatus, blocked: m.a11yCouldNotMeasure });
   if (m.hasAgent) present.push({ target: 'agent', label: 'AI visibility', status: m.agentStatus, blocked: m.agentCouldNotMeasure });
   if (present.length < 2) return ''; // a single section needs no tab bar
@@ -512,7 +513,7 @@ ${items}
 
 function perfPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
-  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere)}
+  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.perfCards.map(perfCard).join('\n')}
 ${perfFineList(m.perfFine)}`;
