@@ -7,6 +7,10 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import {
   buildDeterministicNarrative,
   composeNarrative,
@@ -14,7 +18,52 @@ import {
   parseNarrativeResponse,
   type NarrativeFacts,
 } from '../client-report-narrative';
+import { renderClientReport } from '../client-report';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of tempDirs.splice(0)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function perfResultsDir(lcpMs: number): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'client-report-v2-perf-'));
+  tempDirs.push(dir);
+
+  fs.writeFileSync(
+    path.join(dir, 'report.json'),
+    JSON.stringify({
+      meta: { experimentUrl: 'http://localhost', generatedAt: '2026-06-24T00:00:00.000Z' },
+      tests: [{ id: 'home', name: 'Home', startingPath: '/', viewport: { label: 'phone' } }],
+    }),
+  );
+  fs.mkdirSync(path.join(dir, 'home'));
+  fs.writeFileSync(
+    path.join(dir, 'home', 'audit.json'),
+    JSON.stringify({
+      measurement: {
+        metrics: [
+          { label: 'LCP', value: lcpMs, display: `${(lcpMs / 1000).toFixed(1)}s` },
+          { label: 'FCP', value: 1200, display: '1.2s' },
+          { label: 'CLS', value: 0, display: '0.00' },
+          { label: 'TBT', value: 0, display: '0ms' },
+          { label: 'LH Score', value: 95, display: '95' },
+        ],
+      },
+    }),
+  );
+
+  return dir;
+}
+
+function perfTileVerdict(html: string): string {
+  const match = html.match(/Mobile speed<\/div>\s*<div[^>]*>([^<]+)<\/div>/);
+  if (!match) throw new Error('Mobile speed tile not found');
+  return match[1];
+}
 
 function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
   return {
@@ -151,6 +200,21 @@ describe('v2StatusWord', () => {
     expect(v2StatusWord('good')).toBe('Good');
     expect(v2StatusWord('fair')).toBe('Needs work');
     expect(v2StatusWord('poor')).toBe('Poor');
+  });
+});
+
+describe('renderClientReport v2 performance verdict thresholds', () => {
+  it.each([
+    [2400, 'Fast on phones'],
+    [2600, 'Fast on phones'],
+    [3900, 'Fast on phones'],
+    [4500, 'A bit slow on phones'],
+    [9000, 'A bit slow on phones'],
+    [11000, 'Slow on phones'],
+  ])('maps %sms LCP to "%s"', async (lcpMs, verdict) => {
+    const { html } = await renderClientReport(perfResultsDir(lcpMs), { design: 'v2' });
+
+    expect(perfTileVerdict(html)).toBe(verdict);
   });
 });
 

@@ -89,6 +89,13 @@ const execFileAsync = promisify(execFile);
 const LCP_GOOD_MS = 2500;
 const LCP_SLOW_MS = 10000;
 const LCP_WAIT_MS = 4000; // a visitor notices the wait above this
+// V2 site verdict bands follow Core Web Vitals LCP cutoffs: good <= 2.5s,
+// needs improvement from 2.5s to 4.0s, poor above 4.0s. The v2 client-facing
+// tile maps the CWV needs-improvement band to green so borderline-fine pages
+// do not read as "slow"; red stays at the legacy very-slow cutoff.
+const V2_LCP_FAST_MS = 2500;
+const V2_LCP_ACCEPTABLE_MS = 4000;
+const V2_LCP_SLOW_MS = LCP_SLOW_MS;
 // CLS is stored on the /100 scale (value 25 == raw CLS 0.25). Google: good
 // < 0.10, poor > 0.25.
 const CLS_GOOD = 10;
@@ -128,6 +135,13 @@ function lcpStatus(ms: number | undefined): Status {
   if (ms === undefined) return 'fair';
   if (ms <= LCP_GOOD_MS) return 'good';
   if (ms <= LCP_SLOW_MS) return 'fair';
+  return 'poor';
+}
+function v2LcpStatus(ms: number | undefined): V2Status {
+  if (ms === undefined) return 'fair';
+  if (ms <= V2_LCP_FAST_MS) return 'good';
+  if (ms <= V2_LCP_ACCEPTABLE_MS) return 'good';
+  if (ms <= V2_LCP_SLOW_MS) return 'fair';
   return 'poor';
 }
 function scoreStatus(score: number | undefined): Status {
@@ -636,6 +650,17 @@ interface RenderedPage {
   videoUri?: string;
   videoCoveredSec?: number;
   captionCues?: CaptionCue[]; // on-video captions, built only for pages with a video
+}
+
+const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
+
+function worstV2Status(statuses: V2Status[]): V2Status {
+  return statuses.reduce((worst, status) => (V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst), 'good');
+}
+
+function v2PerfStatusForPage(rp: RenderedPage): V2Status {
+  const problems = [rp.lead, ...rp.rest];
+  return worstV2Status(problems.map((problem) => (problem.kind === 'slow-lcp' ? v2LcpStatus(rp.lcpMs) : problem.status)));
 }
 
 // Caption for the load video. The default promises the page's full LCP wait
@@ -2633,12 +2658,13 @@ async function buildClientReportV2Model(
   );
   // Show Performance whenever there's any page to list (failed pages land in perfFine).
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
+  const measuredPerfStatuses = ctx.measured.map(v2PerfStatusForPage);
   // No measured page -> never claim 'good' off zero data; stay neutral.
-  const perfStatus: V2Status = ctx.measured.length === 0
+  const perfStatus: V2Status = measuredPerfStatuses.length === 0
     ? 'fair'
-    : ctx.measured.some((r) => r.lead.status === 'poor')
+    : measuredPerfStatuses.some((status) => status === 'poor')
       ? 'poor'
-      : ctx.measured.some((r) => r.lead.status === 'fair')
+      : measuredPerfStatuses.some((status) => status === 'fair')
         ? 'fair'
         : 'good';
 
@@ -2775,13 +2801,12 @@ async function buildClientReportV2Model(
   }
 
   // ---- worst dimension (for the bottom line) ----
-  const rank: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
   const present: { dim: Dim; status: V2Status }[] = [];
   if (hasPerf) present.push({ dim: 'perf', status: perfStatus });
   if (hasA11y && !a11yCouldNotMeasure) present.push({ dim: 'a11y', status: a11yStatus });
   if (hasAgent && !agentCouldNotMeasure) present.push({ dim: 'agent', status: agentStatus });
   const worstDim: Dim = present.length
-    ? present.reduce((a, b) => (rank[b.status] > rank[a.status] ? b : a)).dim
+    ? present.reduce((a, b) => (V2_STATUS_RANK[b.status] > V2_STATUS_RANK[a.status] ? b : a)).dim
     : 'perf';
 
   // ---- narrative (deterministic, optionally AI-refined; cached) ----
