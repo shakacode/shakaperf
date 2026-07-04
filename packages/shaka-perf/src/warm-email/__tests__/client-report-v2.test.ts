@@ -14,7 +14,9 @@ import {
   parseNarrativeResponse,
   type NarrativeFacts,
 } from '../client-report-narrative';
+import { perfProblemPhrase, type Problem } from '../client-report';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
+import type { PagePerf } from '../synthesis';
 
 function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
   return {
@@ -154,6 +156,32 @@ describe('v2StatusWord', () => {
   });
 });
 
+function perfPage(metrics: Record<string, number>): PagePerf {
+  return {
+    id: 'home',
+    name: 'Home',
+    startingPath: '/',
+    chips: [],
+    metrics: Object.fromEntries(Object.entries(metrics).map(([label, value]) => [label, { value, display: String(value) }])),
+  };
+}
+
+function problem(kind: Problem['kind']): Problem {
+  return { kind, severity: 1, status: 'poor', headline: '', chip: '' };
+}
+
+describe('perfProblemPhrase', () => {
+  it.each([
+    ['slow-lcp', { LCP: 15400 }, 'biggest piece takes 15.4s to load'],
+    ['layout-shift', {}, 'the layout jumps around'],
+    ['blank', { FCP: 8200 }, 'screen stays blank for 8.2s'],
+    ['late-paint', { FCP: 4100 }, 'nothing appears for 4.1s'],
+    ['sluggish', {}, 'slow to react to taps'],
+  ] as const)('maps %s to the exact exec-tile phrase', (kind, metrics, expected) => {
+    expect(perfProblemPhrase(problem(kind), perfPage(metrics))).toBe(expected);
+  });
+});
+
 function model(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
   const n = buildDeterministicNarrative(facts());
   return {
@@ -224,6 +252,15 @@ function model(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
   };
 }
 
+function renderedTile(html: string, target: 'perf' | 'a11y' | 'agent'): string {
+  const start = html.indexOf(`<button type="button" data-jump="${target}"`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const close = '      </button>';
+  const end = html.indexOf(close, start);
+  expect(end).toBeGreaterThanOrEqual(0);
+  return html.slice(start, end + close.length);
+}
+
 describe('renderClientReportV2', () => {
   it('renders a self-contained document with the masthead, bottom line and tiles', () => {
     const html = renderClientReportV2(model());
@@ -233,6 +270,28 @@ describe('renderClientReportV2', () => {
     expect(html).toContain(model().narrative.bottomLineHtml);
     expect(html).toContain('data-jump="perf"');
     expect(html).toContain('data-jump="agent"');
+  });
+
+  it('renders a perf tile problem phrase between the metric and sub-label', () => {
+    const m = model();
+    m.tiles[0] = { ...m.tiles[0], problemTx: 'biggest piece takes 15.4s to load' };
+    const perfTile = renderedTile(renderClientReportV2(m), 'perf');
+    expect(perfTile).toContain('biggest piece takes 15.4s to load');
+    expect(perfTile).toContain(`<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
+        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#b14a3c; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
+        <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>`);
+  });
+
+  it('leaves the perf tile byte-identical when no problem phrase is present', () => {
+    const perfTile = renderedTile(renderClientReportV2(model()), 'perf');
+    expect(perfTile).not.toContain('biggest piece takes');
+    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="v2-tile" style="--soft:#fbeeeb; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #eccbc2; border-top:3px solid #b14a3c; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:11px">Mobile speed</div>
+        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#b14a3c; line-height:1.05; margin-bottom:13px">Slow on phones</div>
+        <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
+        <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>
+        <div style="font-size:13.5px; line-height:1.5; color:#4a443c">They leave.</div>
+      </button>`);
   });
 
   it('shows a tab bar with one button per present section', () => {
