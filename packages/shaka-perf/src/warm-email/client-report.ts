@@ -2585,7 +2585,7 @@ export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undef
   switch (lead.kind) {
     case 'slow-lcp': {
       const lcp = metricVal(page, 'LCP');
-      return lcp === undefined ? undefined : `biggest piece takes ${secs(lcp)} to load`;
+      return lcp === undefined ? undefined : `biggest piece appears after ${secs(lcp)}`;
     }
     case 'layout-shift':
       return 'the layout jumps around';
@@ -2602,6 +2602,87 @@ export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undef
     default:
       return undefined;
   }
+}
+
+function perfProblemVerdict(lead: Problem): string | undefined {
+  switch (lead.kind) {
+    case 'slow-lcp':
+      return 'Main content is late';
+    case 'layout-shift':
+      return 'Jumpy on phones';
+    case 'blank':
+      return 'Blank screen first';
+    case 'late-paint':
+      return 'Slow to start';
+    case 'sluggish':
+      return 'Slow to react';
+    default:
+      return undefined;
+  }
+}
+
+function perfProblemKicker(lead: Problem): string | undefined {
+  switch (lead.kind) {
+    case 'slow-lcp':
+    case 'blank':
+    case 'late-paint':
+      return 'Mobile loading';
+    case 'layout-shift':
+      return 'Mobile stability';
+    case 'sluggish':
+      return 'Mobile response';
+    default:
+      return undefined;
+  }
+}
+
+function perfProblemMetricSub(lead: Problem): string | undefined {
+  switch (lead.kind) {
+    case 'slow-lcp':
+      return 'typical wait before a page is usable';
+    case 'blank':
+      return 'main content timing; first screen is blank';
+    case 'late-paint':
+      return 'main content timing; first paint is late';
+    case 'layout-shift':
+      return 'main content timing; stability is the issue';
+    case 'sluggish':
+      return 'main content timing; taps lag while loading';
+    default:
+      return undefined;
+  }
+}
+
+function perfProblemConseq(lead: Problem): string | undefined {
+  switch (lead.kind) {
+    case 'slow-lcp':
+      return 'The page starts, but the main content lands late enough that visitors may give up.';
+    case 'layout-shift':
+      return 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.';
+    case 'blank':
+      return 'A visitor sees nothing at first, which can read as a broken page.';
+    case 'late-paint':
+      return 'The first pixels arrive late, so the page feels stalled before it starts.';
+    case 'sluggish':
+      return 'The page may look loaded, but taps and scrolls can lag behind the visitor.';
+    default:
+      return undefined;
+  }
+}
+
+interface PerfProblemTileCopy {
+  kicker: string;
+  wordTx: string;
+  metricSub: string;
+  conseq: string;
+}
+
+export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefined {
+  const kicker = perfProblemKicker(lead);
+  const wordTx = perfProblemVerdict(lead);
+  const metricSub = perfProblemMetricSub(lead);
+  const conseq = perfProblemConseq(lead);
+  return kicker && wordTx && metricSub && conseq ? { kicker, wordTx, metricSub, conseq } : undefined;
 }
 
 async function buildClientReportV2Model(
@@ -2864,17 +2945,30 @@ async function buildClientReportV2Model(
   // ---- exec tiles ----
   const tiles: V2Tile[] = [];
   if (hasPerf) {
+    const defaultPerfMetricSub = 'typical wait before a page is usable';
+    const defaultPerfConseq = perfStatus === 'good'
+      ? 'Pages load quickly on a phone, so visitors are not lost to waiting.'
+      : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
+    const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.lead) : undefined;
+    const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
+    const perfWordTx = ctx.measured.length === 0
+      ? 'Could not measure'
+      : dominantPerfTileCopy?.wordTx ?? narrative.perf.verdictWord;
+    const perfMetricSub = ctx.measured.length === 0
+      ? 'no usable mobile speed data'
+      : dominantPerfTileCopy?.metricSub ?? defaultPerfMetricSub;
+    const perfConseq = ctx.measured.length === 0
+      ? 'The audit did not return enough mobile speed data to make a speed claim.'
+      : dominantPerfTileCopy?.conseq ?? defaultPerfConseq;
     tiles.push({
       target: 'perf',
-      kicker: 'Mobile speed',
+      kicker: perfKicker,
       status: perfStatus,
-      wordTx: narrative.perf.verdictWord,
+      wordTx: perfWordTx,
       metric: ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a',
       ...(perfProblemTx ? { problemTx: perfProblemTx } : {}),
-      metricSub: 'typical wait before a page is usable',
-      conseq: perfStatus === 'good'
-        ? 'Pages load quickly on a phone, so visitors are not lost to waiting.'
-        : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`,
+      metricSub: perfMetricSub,
+      conseq: perfConseq,
     });
   }
   if (hasA11y) {
