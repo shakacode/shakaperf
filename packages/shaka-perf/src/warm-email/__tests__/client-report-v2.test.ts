@@ -378,6 +378,39 @@ function renderedTile(html: string, target: 'perf' | 'a11y' | 'agent'): string {
   return html.slice(start, end + close.length);
 }
 
+function renderedPanel(html: string, target: 'perf' | 'a11y' | 'agent'): string {
+  const start = html.indexOf(`<div class="v2-panel" id="v2-panel-${target}"`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const nextPanel = html.indexOf('\n\n  <div class="v2-panel"', start + 1);
+  const outro = html.indexOf('\n\n  <div style="margin-top:46px;', start + 1);
+  const end = nextPanel >= 0 ? nextPanel : outro;
+  expect(end).toBeGreaterThanOrEqual(0);
+  return html.slice(start, end);
+}
+
+function threeTabHeaderModel(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
+  return model({
+    hasA11y: true,
+    perfCards: [],
+    perfFine: [],
+    a11yCards: [],
+    a11yFine: [],
+    a11yBlocked: [],
+    a11yCouldNotMeasure: false,
+    agentSite: undefined,
+    agentCards: [],
+    agentFine: [],
+    agentBlocked: [],
+    agentCouldNotMeasure: false,
+    tiles: [
+      { target: 'perf', kicker: 'Mobile speed', status: 'poor', wordTx: 'Slow on phones', metric: '5.3s', metricSub: 'typical wait', conseq: 'They leave.' },
+      { target: 'a11y', kicker: 'Accessibility', status: 'fair', wordTx: 'Needs work', metric: '2', metricSub: 'high-impact issues', conseq: 'Some visitors struggle.' },
+      { target: 'agent', kicker: 'AI visibility', status: 'good', wordTx: 'Good', metric: '85', metricSub: 'out of 100', conseq: 'Ahead.' },
+    ],
+    ...over,
+  });
+}
+
 describe('renderClientReport v2 perf tile assembly', () => {
   it.each([
     [
@@ -536,6 +569,38 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('data-tab="perf"');
     expect(html).toContain('data-tab="agent"');
     expect(html).not.toContain('data-tab="a11y"'); // a11y absent in this model
+  });
+
+  it('renders one score badge in each tab header when all three tab scores are present', () => {
+    const html = renderClientReportV2(threeTabHeaderModel({
+      perfScore: 42,
+      a11yStatus: 'fair',
+      a11yScore: 88,
+      agentScore: 85,
+    }));
+    expect(html.match(/>score<\/div>/g)).toHaveLength(3);
+
+    expect(renderedPanel(html, 'perf')).toContain('display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px');
+    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#b14a3c; line-height:1">42</div>');
+    expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#b07d2b; line-height:1">88</div>');
+    expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#3f7d53; line-height:1">85</div>');
+  });
+
+  it('omits tab header score badges when the score is unavailable or the tab is blocked', () => {
+    const html = renderClientReportV2(threeTabHeaderModel({
+      perfScore: undefined,
+      a11yScore: 88,
+      a11yCouldNotMeasure: true,
+      a11yBlocked: [{ name: 'Products', path: '/products' }],
+      agentScore: 85,
+      agentCouldNotMeasure: true,
+      agentBlocked: [{ name: 'Home', path: '/' }],
+    }));
+    expect(renderedPanel(html, 'perf')).not.toContain('>score</div>');
+    expect(renderedPanel(html, 'a11y')).not.toContain('>score</div>');
+    expect(renderedPanel(html, 'agent')).not.toContain('>score</div>');
+    expect(html).not.toContain('NaN');
+    expect(html).not.toContain('undefined');
   });
 
   it('switches report tabs without forcing the viewport to scroll', () => {
