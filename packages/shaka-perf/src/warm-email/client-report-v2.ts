@@ -18,12 +18,12 @@ const esc = (s: string): string =>
 
 export type V2Status = 'good' | 'fair' | 'poor';
 
-// The "calm traffic light" palette (design tokens). Each status: fg / soft bg /
-// border line / softer hover.
+// Traffic-light status palette (design tokens): good stays calm, poor is a
+// decisive attention-red. Each status: fg / soft bg / border line / softer hover.
 const PAL: Record<V2Status, { fg: string; bg: string; line: string; soft: string }> = {
-  good: { fg: '#3f7d53', bg: '#edf3ec', line: '#d2dfd1', soft: '#f4f8f3' },
-  fair: { fg: '#b07d2b', bg: '#f8f0e0', line: '#ecdbbb', soft: '#fbf5ea' },
-  poor: { fg: '#b14a3c', bg: '#f7e9e5', line: '#eccbc2', soft: '#fbeeeb' },
+  good: { fg: '#2f7d4f', bg: '#e9f4ec', line: '#cfe6d6', soft: '#f2f9f4' },
+  fair: { fg: '#a85f00', bg: '#fbeecf', line: '#eed9a8', soft: '#fdf6e8' },
+  poor: { fg: '#c0271f', bg: '#fbe6e3', line: '#f0c4bd', soft: '#fdf0ee' },
 };
 export const v2StatusWord = (s: V2Status): string => (s === 'poor' ? 'Poor' : s === 'fair' ? 'Needs work' : 'Good');
 
@@ -260,7 +260,7 @@ const HEAD_STYLE = `
 
 function masthead(m: ClientReportV2Model): string {
   return `  <div style="display:flex; align-items:center; gap:9px; margin-bottom:38px">
-    <div style="width:11px; height:11px; border-radius:50%; background:#b14a3c"></div>
+    <div style="width:11px; height:11px; border-radius:50%; background:#c0271f"></div>
     <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; letter-spacing:.22em; text-transform:uppercase; color:#26221d">ShakaCode</div>
     <div style="flex:1; height:1px; background:#e7e1d8"></div>
     <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:.08em; color:#9b9286">Site health report${m.dateStr ? ` &middot; ${esc(m.dateStr)}` : ''}</div>
@@ -285,7 +285,7 @@ function tile(t: V2Tile): string {
     ? `\n        <div style="font-size:13px; line-height:1.35; font-weight:700; color:${p.fg}; margin:2px 0 4px">${esc(t.problemTx)}</div>`
     : '';
   return `      <button type="button" data-jump="${t.target}" class="v2-tile" style="--soft:${p.soft}; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid ${p.line}; border-top:3px solid ${p.fg}; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
-        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:11px">${esc(t.kicker)}</div>
+        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">${esc(t.kicker)}</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:${p.fg}; line-height:1.05; margin-bottom:13px">${esc(t.wordTx)}</div>
         <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>${problemTx}
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">${esc(t.metricSub)}</div>
@@ -378,13 +378,13 @@ const monoPath = (path: string, liveUrl?: string): string =>
 const FRAME_BEAT: Record<V2Beat, { ring: string; lbl: string }> = {
   'first-content': { ring: '#2b6cb0', lbl: '#2b6cb0' },
   lcp: { ring: '#d98324', lbl: '#9a5a12' },
-  shift: { ring: '#d0454c', lbl: '#a82f36' },
+  shift: { ring: '#c0271f', lbl: '#951c15' },
 };
 
 // a11y crop-box colors by severity bucket (matches the design + the sev chips):
 // high = red, moderate = orange, low = amber.
 const A11Y_BOX_COL: Record<'hi' | 'mid' | 'lo', { border: string; fill: string }> = {
-  hi: { border: '#d0454c', fill: 'rgba(208,69,76,.16)' },
+  hi: { border: '#c0271f', fill: 'rgba(192,39,31,.16)' },
   mid: { border: '#d98324', fill: 'rgba(217,131,36,.16)' },
   lo: { border: '#caa63a', fill: 'rgba(202,166,58,.15)' },
 };
@@ -479,7 +479,7 @@ ${c.frames.map(perfFrame).join('\n')}
 ${[video, frames].filter(Boolean).join('\n')}
         </div>`
     : '';
-  return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-left:3px solid ${p.fg}; border-radius:14px; padding:22px 24px; margin-bottom:14px">
+  return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
           <div>
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
