@@ -95,6 +95,44 @@ describe('buildDeterministicNarrative', () => {
     expect(n.bottomLineHtml).not.toContain('<span'); // nothing highlighted
   });
 
+  it('does not call relaxed LCP page warnings fully healthy in the bottom line', () => {
+    const n = buildDeterministicNarrative(facts({
+      worstDim: 'perf',
+      perf: {
+        status: 'good',
+        avgLabel: '3.7s',
+        slowCount: 0,
+        jumpyCount: 0,
+        worst: [{ name: 'Home', problem: 'The biggest piece of the page takes 3.7s to appear' }],
+      },
+      a11y: { status: 'good', highImpact: 0, pagesWithBarriers: 0, topIssues: [] },
+      agent: { status: 'good', score: 95, accessBlocked: false },
+    }));
+
+    expect(n.bottomLineHtml).toContain('looks fine overall');
+    expect(n.bottomLineHtml).toContain('page cards still show');
+    expect(n.bottomLineHtml).not.toContain('Every check we could run looks healthy');
+    expect(n.bottomLineHtml).not.toContain('costing you customers');
+  });
+
+  it('does not call relaxed LCP performance quickly loaded when another dimension is worse', () => {
+    const n = buildDeterministicNarrative(facts({
+      worstDim: 'a11y',
+      perf: {
+        status: 'good',
+        avgLabel: '3.7s',
+        slowCount: 0,
+        jumpyCount: 0,
+        worst: [{ name: 'Home', problem: 'The biggest piece of the page takes 3.7s to appear' }],
+      },
+      a11y: { status: 'fair', highImpact: 3, pagesWithBarriers: 1, topIssues: ['low-contrast text'] },
+      agent: { status: 'good', score: 95, accessBlocked: false },
+    }));
+
+    expect(n.bottomLineHtml).toContain('loads fine overall on a phone');
+    expect(n.bottomLineHtml).not.toContain('loads quickly on a phone');
+  });
+
   it('says it could not measure the site when no dimension is present', () => {
     const n = buildDeterministicNarrative({ domain: 'x.com', worstDim: 'perf' });
     expect(n.bottomLineHtml).toContain('could not measure');
@@ -603,9 +641,18 @@ describe('renderClientReport v2 perf tile assembly', () => {
 
   it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fine', async () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
 
     expect(html).toContain('Fine on phones');
     expect(html).toContain('The biggest piece of the page takes <strong>3.7s</strong> to appear');
+    expect(html).toContain('page cards still show');
+    expect(html).not.toContain('Every check we could run looks healthy');
+    expect(perfTile).toContain('Mobile speed');
+    expect(perfTile).toContain('Fine on phones');
+    expect(perfTile).toContain('Pages load fine on a phone');
+    expect(perfTile).not.toContain('Main content is late');
+    expect(perfTile).not.toContain('biggest piece takes 3.7s to load');
+    expect(perfTile).not.toContain('visitors may give up');
   });
 
   it('does not let the relaxed LCP band hide a late first paint in the rendered v2 report', async () => {
@@ -613,6 +660,19 @@ describe('renderClientReport v2 perf tile assembly', () => {
 
     expect(html).toContain('Slow on phones');
     expect(html).toContain('Nothing appears for the first <strong>3.6s</strong>');
+  });
+
+  it('uses the non-relaxed problem for the exec tile when a relaxed LCP page is mixed with another issue', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 3000, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
+      { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 1900, FCP: 900, CLS: 15, TBT: 50, 'LH Score': 90 } },
+    ]), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
+
+    expect(perfTile).toContain('Layout jumps');
+    expect(perfTile).toContain('the layout jumps around');
+    expect(perfTile).not.toContain('Main content is late');
+    expect(perfTile).not.toContain('biggest piece takes 3.0s to load');
   });
 
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
@@ -645,14 +705,14 @@ describe('renderClientReport v2 perf tile assembly', () => {
 
   it('prioritizes a poor-status problem over a higher-severity fair problem', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
-      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 8200, FCP: 7999, 'LH Score': 55 } },
+      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 8200, FCP: 1200, 'LH Score': 55 } },
       { id: 'details', name: 'Details', startingPath: '/details', metrics: { LCP: 1800, FCP: 900, CLS: 26, 'LH Score': 91 } },
     ]), { design: 'v2' });
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Layout jumps');
     expect(perfTile).toContain('>0.26</div>');
     expect(perfTile).toContain('the layout jumps around');
-    expect(perfTile).not.toContain('nothing appears for 8.0s');
+    expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
   });
 });
 
