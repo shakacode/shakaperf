@@ -496,7 +496,7 @@ function model(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
         cues: [{ t: 0, x: 'Blank' }],
         frames: [
           { key: false, blank: true, label: 'Blank', time: '0.0s', imgUri: 'data:image/avif;base64,C', boxes: [] },
-          { key: true, blank: false, label: 'Biggest piece', time: '8.2s', imgUri: 'data:image/avif;base64,D', boxes: [{ left: '10%', top: '20%', width: '30%', height: '5%' }] },
+          { key: true, blank: false, beat: 'shift', label: 'Biggest piece', time: '8.2s', imgUri: 'data:image/avif;base64,D', boxes: [{ left: '10%', top: '20%', width: '30%', height: '5%' }] },
         ],
         totalFrames: 10,
         facts: [{ val: '1.3 MB', label: 'downloaded first', status: 'poor' }, { val: '42/100', label: 'speed score', status: 'poor' }],
@@ -738,7 +738,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
 
   it('keeps a zero performance score in the tab header', async () => {
     const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }), { design: 'v2' });
-    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#b07d2b; line-height:1">0</div>');
+    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">0</div>');
   });
 
   it('uses the worst page metric on the tile and labels the site average separately', async () => {
@@ -782,16 +782,16 @@ describe('renderClientReportV2', () => {
     const perfTile = renderedTile(renderClientReportV2(m), 'perf');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
     expect(perfTile).toContain(`<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
-        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#b14a3c; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
+        <div style="font-size:13px; line-height:1.35; font-weight:700; color:#c0271f; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>`);
   });
 
   it('leaves the perf tile byte-identical when no problem phrase is present', () => {
     const perfTile = renderedTile(renderClientReportV2(model()), 'perf');
     expect(perfTile).not.toContain('biggest piece takes');
-    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="v2-tile" style="--soft:#fbeeeb; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #eccbc2; border-top:3px solid #b14a3c; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
-        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:11px">Mobile speed</div>
-        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#b14a3c; line-height:1.05; margin-bottom:13px">Slow on phones</div>
+    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="v2-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
+        <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Mobile speed</div>
+        <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Slow on phones</div>
         <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
         <div style="font-size:12.5px; color:#9b9286; margin-bottom:13px">typical wait</div>
         <div style="font-size:13.5px; line-height:1.5; color:#4a443c">They leave.</div>
@@ -815,9 +815,9 @@ describe('renderClientReportV2', () => {
     expect(html.match(/>score<\/div>/g)).toHaveLength(3);
 
     expect(renderedPanel(html, 'perf')).toContain('display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px');
-    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#b14a3c; line-height:1">42</div>');
-    expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#b07d2b; line-height:1">88</div>');
-    expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#3f7d53; line-height:1">85</div>');
+    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">42</div>');
+    expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">88</div>');
+    expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#2f7d4f; line-height:1">85</div>');
   });
 
   it('omits tab header score badges when the score is unavailable or the tab is blocked', () => {
@@ -936,6 +936,8 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('1.3 MB');
     expect(html).toContain('Biggest piece');
     expect(html).toContain('Frame by frame');
+    expect(html).toContain('border:2px solid rgba(192,39,31,.9); background:rgba(192,39,31,.18)');
+    expect(html).not.toContain('rgba(208,69,76,.18)');
   });
 
   it('renders agent factor bars and the site-access checks', () => {
