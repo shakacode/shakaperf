@@ -89,6 +89,7 @@ const execFileAsync = promisify(execFile);
 const LCP_GOOD_MS = 2500;
 const LCP_SLOW_MS = 10000;
 const LCP_WAIT_MS = 4000; // a visitor notices the wait above this
+const V2_LCP_ACCEPTABLE_MS = 4000; // CWV: "good" (<2.5s) and "needs improvement" (2.5-4.0s) both read as fine at the top-line verdict
 // CLS is stored on the /100 scale (value 25 == raw CLS 0.25). Google: good
 // < 0.10, poor > 0.25.
 const CLS_GOOD = 10;
@@ -130,6 +131,14 @@ function lcpStatus(ms: number | undefined): Status {
   if (ms <= LCP_SLOW_MS) return 'fair';
   return 'poor';
 }
+
+export function v2LcpStatus(ms: number | undefined): V2Status {
+  if (ms === undefined) return 'fair';
+  if (ms <= V2_LCP_ACCEPTABLE_MS) return 'good';
+  if (ms <= LCP_SLOW_MS) return 'fair';
+  return 'poor';
+}
+
 function scoreStatus(score: number | undefined): Status {
   if (score === undefined) return 'fair';
   if (score >= SCORE_GOOD) return 'good';
@@ -2681,6 +2690,23 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
 
 const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
 
+export interface V2PagePerfStatusInput {
+  page: PagePerf;
+  lead: Problem;
+}
+
+export function v2PagePerfStatus(r: V2PagePerfStatusInput): V2Status {
+  return r.lead.kind === 'slow-lcp' ? v2LcpStatus(metricVal(r.page, 'LCP')) : r.lead.status;
+}
+
+export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): V2Status {
+  if (perfCouldNotMeasure) return 'fair';
+  return rows.reduce<V2Status>((worst, r) => {
+    const status = v2PagePerfStatus(r);
+    return V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst;
+  }, 'good');
+}
+
 function comparePerfProblem(a: RenderedPage, b: RenderedPage): number {
   const statusDelta = V2_STATUS_RANK[b.lead.status] - V2_STATUS_RANK[a.lead.status];
   if (statusDelta !== 0) return statusDelta;
@@ -2742,13 +2768,7 @@ async function buildClientReportV2Model(
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
   const perfCouldNotMeasure = ctx.measured.length === 0;
   // No measured page -> never claim 'good' off zero data; stay neutral.
-  const perfStatus: V2Status = perfCouldNotMeasure
-    ? 'fair'
-    : ctx.measured.some((r) => r.lead.status === 'poor')
-      ? 'poor'
-      : ctx.measured.some((r) => r.lead.status === 'fair')
-        ? 'fair'
-        : 'good';
+  const perfStatus = v2PerfStatus(ctx.measured, perfCouldNotMeasure);
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
   let dominantPerfProblem: RenderedPage | undefined;
   for (const rp of ctx.measured) {

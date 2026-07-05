@@ -18,7 +18,16 @@ import {
   parseNarrativeResponse,
   type NarrativeFacts,
 } from '../client-report-narrative';
-import { perfProblemPhrase, perfProblemTileCopy, renderClientReport, type Problem } from '../client-report';
+import {
+  perfProblemPhrase,
+  perfProblemTileCopy,
+  renderClientReport,
+  v2LcpStatus,
+  v2PagePerfStatus,
+  v2PerfStatus,
+  type Problem,
+  type V2PagePerfStatusInput,
+} from '../client-report';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
 import type { PagePerf } from '../synthesis';
 
@@ -170,8 +179,12 @@ function perfPage(metrics: Record<string, number>): PagePerf {
   };
 }
 
-function problem(kind: Problem['kind']): Problem {
-  return { kind, severity: 1, status: 'poor', headline: '', chip: '' };
+function problem(kind: Problem['kind'], status: Problem['status'] = 'poor'): Problem {
+  return { kind, severity: 1, status, headline: '', chip: '' };
+}
+
+function v2PerfInput(kind: Problem['kind'], status: Problem['status'], metrics: Record<string, number>): V2PagePerfStatusInput {
+  return { page: perfPage(metrics), lead: problem(kind, status) };
 }
 
 const tempResultDirs: string[] = [];
@@ -295,6 +308,47 @@ describe('perfProblemTileCopy', () => {
 
   it('does not create problem copy for clean pages', () => {
     expect(perfProblemTileCopy(problem('clean'))).toBeUndefined();
+  });
+});
+
+describe('v2 mobile-speed verdict calibration', () => {
+  it.each([
+    [2400, 'good'],
+    [2600, 'good'],
+    [3900, 'good'],
+    [4500, 'fair'],
+    [9000, 'fair'],
+    [11000, 'poor'],
+  ] as const)('classifies %dms LCP as %s for the v2 site verdict', (ms, expected) => {
+    expect(v2LcpStatus(ms)).toBe(expected);
+  });
+
+  it('relaxes LCP-bound pages up to 4.0s when aggregating the v2 site perf status', () => {
+    const page = v2PerfInput('slow-lcp', 'fair', { LCP: 3000 });
+    const status = v2PerfStatus([page]);
+
+    expect(v2PagePerfStatus(page)).toBe('good');
+    expect(status).toBe('good');
+    expect(buildDeterministicNarrative(facts({
+      perf: { status, avgLabel: '3.0s', slowCount: 0, jumpyCount: 0, worst: [] },
+    })).perf.verdictWord).toBe('Fast on phones');
+  });
+
+  it('keeps slower LCP-bound pages amber until the existing red cutoff', () => {
+    const page = v2PerfInput('slow-lcp', 'fair', { LCP: 5000 });
+
+    expect(v2PagePerfStatus(page)).toBe('fair');
+    expect(v2PerfStatus([page])).toBe('fair');
+  });
+
+  it('does not relax non-LCP lead problems through the LCP band', () => {
+    expect(v2PerfStatus([
+      v2PerfInput('layout-shift', 'fair', { LCP: 3000, CLS: 15 }),
+    ])).toBe('fair');
+    expect(v2PerfStatus([
+      v2PerfInput('slow-lcp', 'fair', { LCP: 3000 }),
+      v2PerfInput('layout-shift', 'poor', { LCP: 3000, CLS: 30 }),
+    ])).toBe('poor');
   });
 });
 
@@ -493,6 +547,13 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).toContain('typical wait before a page is usable');
     expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
     expect(perfTile).not.toContain('jumps around');
+  });
+
+  it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fast', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }), { design: 'v2' });
+
+    expect(html).toContain('Fast on phones');
+    expect(html).toContain('The biggest piece of the page takes <strong>3.7s</strong> to appear');
   });
 
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
