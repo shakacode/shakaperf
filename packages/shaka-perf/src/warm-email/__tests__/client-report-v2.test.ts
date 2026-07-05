@@ -496,7 +496,7 @@ function model(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
         cues: [{ t: 0, x: 'Blank' }],
         frames: [
           { key: false, blank: true, label: 'Blank', time: '0.0s', imgUri: 'data:image/avif;base64,C', boxes: [] },
-          { key: true, blank: false, label: 'Biggest piece', time: '8.2s', imgUri: 'data:image/avif;base64,D', boxes: [{ left: '10%', top: '20%', width: '30%', height: '5%' }] },
+          { key: true, blank: false, beat: 'shift', label: 'Biggest piece', time: '8.2s', imgUri: 'data:image/avif;base64,D', boxes: [{ left: '10%', top: '20%', width: '30%', height: '5%' }] },
         ],
         totalFrames: 10,
         facts: [{ val: '1.3 MB', label: 'downloaded first', status: 'poor' }, { val: '42/100', label: 'speed score', status: 'poor' }],
@@ -936,6 +936,8 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('1.3 MB');
     expect(html).toContain('Biggest piece');
     expect(html).toContain('Frame by frame');
+    expect(html).toContain('border:2px solid rgba(192,39,31,.9); background:rgba(192,39,31,.18)');
+    expect(html).not.toContain('rgba(208,69,76,.18)');
   });
 
   it('renders agent factor bars and the site-access checks', () => {

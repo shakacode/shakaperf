@@ -420,7 +420,7 @@ function perfFrame(f: V2Frame): string {
   const ring = beat ? `0 0 0 4px ${beat.ring}, 0 0 0 6px ${beat.ring}33` : `0 0 0 1px ${LINE}`;
   const lbl = beat ? beat.lbl : FAINT;
   const boxes = (f.boxes ?? [])
-    .map((b) => `<span style="position:absolute; left:${b.left}; top:${b.top}; width:${b.width}; height:${b.height}; border:2px solid rgba(208,69,76,.9); background:rgba(208,69,76,.18); border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.45)"></span>`)
+    .map((b) => `<span style="position:absolute; left:${b.left}; top:${b.top}; width:${b.width}; height:${b.height}; border:2px solid rgba(192,39,31,.9); background:rgba(192,39,31,.18); border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.45)"></span>`)
     .join('');
   // Full phone shot (height:auto), not a cover-crop, so the frame reads at the
   // same quality as the internal report and the shift boxes line up.
