@@ -108,4 +108,15 @@ describe('readPerfArtifact', () => {
     expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.direction).toBe('regression');
     expect(artifact.regressedMetrics).toEqual(['FCP']);
   });
+
+  it('uses the estimator to classify direction and the configured bound for threshold magnitude', async () => {
+    const artifact = await readMetrics([
+      metric('FCP', '20ms', true, 1000, 1020, ['-80ms', '20ms']),
+    ], 'ci-lower');
+
+    expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.deltaDisplay).toBe('+20ms');
+    expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.direction).toBe('regression');
+    expect(artifact.regressedMetrics).toEqual(['FCP']);
+    expect(artifact.improvedMetrics).toEqual([]);
+  });
 });

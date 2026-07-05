@@ -10,14 +10,15 @@
 /* eslint-disable no-case-declarations */
 import type {
   IAsPercentage,
-  IConfidenceInterval,
   ISevenFigureSummary,
+  Stats,
 } from "../../stats";
 import chalk from "chalk";
 
 import type { RegressionThresholdStat } from "../command-config/tb-config";
 import { logHeading } from "../helpers/utils";
 import { GenerateStats, HTMLSectionRenderData } from "./generate-stats";
+import { classifyPracticalDelta } from "./regression-thresholds";
 import TBTable from "./tb-table";
 
 export interface ICompareJSONResult {
@@ -221,61 +222,39 @@ export class CompareResults {
     return phaseIsSigArray.includes(true);
   }
 
-  // if any phase of the experiment has regressed slower beyond the threshold limit returns false; otherwise true
+  // Returns false when any significant phase has an actionable regression beyond its practical threshold.
   public allBelowRegressionThreshold(): boolean {
-    const regressionThreshold = this.regressionThreshold;
-    const sigConfidenceIntervals: IConfidenceInterval[] = [];
-    const sigDeltas: number[] = [];
     // all stats
     const stats = this.vitalsTable.display.concat(this.diagnosticsTable.display);
 
-    // only push statistics that are stat sig
-    stats.map(({ stats: stat }) => {
-      if (stat.confidenceInterval.isSig) {
-        sigConfidenceIntervals.push(stat.confidenceInterval);
-        sigDeltas.push(stat.estimator);
-      }
+    return stats.every(({ stats: stat, unit }) => {
+      if (!stat.confidenceInterval.isSig) return true;
+
+      const direction = classifyPracticalDelta({
+        phaseName: stat.name,
+        directionDeltaValue: stat.estimator * -1,
+        thresholdDeltaValue: this.thresholdDisplayDelta(stat),
+        unit,
+        isSignificant: stat.confidenceInterval.isSig,
+        controlValue: stat.sevenFigureSummary.control[50],
+        experimentValue: stat.sevenFigureSummary.experiment[50],
+        regressionThreshold: this.regressionThreshold,
+      });
+
+      return direction !== "regression";
     });
+  }
 
-    // is below regressionThresholdStatistic
-    function isBelowThreshold(n: number): boolean {
-      const limit = regressionThreshold;
-      // if the delta is a negative number and abs(delta) greater than threshold return false
-      // eg. -1000 && 1000 > 25 = false (over threshold)
-      // eg. 30 && 30 > 25 = true (under threshold)
-      // regressions are negative numbers only
-      // for comparison against the positive number threshold
-      // the sign must be removed Math.abs()
-      return n < 0 && Math.abs(n) > limit ? false : true;
-    }
-
+  private thresholdDisplayDelta(stat: Pick<Stats, "estimator" | "confidenceInterval">): number {
     switch (this.regressionThresholdStat) {
       case "estimator":
-        // if the experiment is slower beyond the threshold return false;
-        return sigDeltas.every(isBelowThreshold);
-
+        return stat.estimator * -1;
       case "ci-lower":
-        // confidence interval lower/min deltas from all phases
-        const ciLower: number[] = [];
-        sigConfidenceIntervals.map((ci) => {
-          // because of sign inversion on the samples
-          // ci-lower = ci.max [max, min] [ci-lower, ci-upper]
-          ciLower.push(ci.max);
-        });
-        // if the experiment is slower beyond the threshold return false;
-        return ciLower.every(isBelowThreshold);
-
+        // TBTable displays ci-lower from internal max because samples are sign-inverted.
+        return stat.confidenceInterval.max * -1;
       case "ci-upper":
-        // confidence interval upper/max deltas from all phases
-        const ciUpper: number[] = [];
-        sigConfidenceIntervals.map((ci) => {
-          // because of sign inversion on the samples
-          // ci-upper = ci.min [max, min] [ci-lower, ci-upper]
-          ciUpper.push(ci.min);
-        });
-        // if the experiment is slower beyond the threshold return false;
-        return ciUpper.every(isBelowThreshold);
-
+        // TBTable displays ci-upper from internal min because samples are sign-inverted.
+        return stat.confidenceInterval.min * -1;
       default:
         throw new Error(`Cannot determine allBelowRegressionThreshold()`);
     }
