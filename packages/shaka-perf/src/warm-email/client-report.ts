@@ -2754,7 +2754,7 @@ export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNo
 }
 
 function comparePerfProblem(a: RenderedPage, b: RenderedPage): number {
-  const statusDelta = V2_STATUS_RANK[b.lead.status] - V2_STATUS_RANK[a.lead.status];
+  const statusDelta = V2_STATUS_RANK[v2PagePerfStatus(b)] - V2_STATUS_RANK[v2PagePerfStatus(a)];
   if (statusDelta !== 0) return statusDelta;
   return b.lead.severity - a.lead.severity;
 }
@@ -2816,11 +2816,14 @@ async function buildClientReportV2Model(
   // No measured page -> never claim 'good' off zero data; stay neutral.
   const perfStatus = v2PerfStatus(ctx.measured, perfCouldNotMeasure);
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
-  let dominantPerfProblem: RenderedPage | undefined;
+  let dominantPerfProblemCard: RenderedPage | undefined;
   for (const rp of ctx.measured) {
     if (!isPerfProblemKind(rp.lead.kind)) continue;
-    if (!dominantPerfProblem || comparePerfProblem(dominantPerfProblem, rp) > 0) dominantPerfProblem = rp;
+    if (!dominantPerfProblemCard || comparePerfProblem(dominantPerfProblemCard, rp) > 0) dominantPerfProblemCard = rp;
   }
+  const dominantPerfProblem = dominantPerfProblemCard && v2PagePerfStatus(dominantPerfProblemCard) !== 'good'
+    ? dominantPerfProblemCard
+    : undefined;
   const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
   const perfProblemMetricTx = dominantPerfProblem ? perfProblemMetric(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
 
@@ -3024,7 +3027,7 @@ async function buildClientReportV2Model(
   if (hasPerf) {
     const defaultPerfMetricSub = 'typical wait before a page is usable';
     const defaultPerfConseq = perfStatus === 'good'
-      ? 'Pages load quickly on a phone, so visitors are not lost to waiting.'
+      ? 'Pages load fine on a phone, so visitors are not lost to waiting.'
       : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
     const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.lead) : undefined;
     const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';

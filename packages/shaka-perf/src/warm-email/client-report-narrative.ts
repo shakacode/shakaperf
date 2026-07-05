@@ -146,14 +146,20 @@ function bottomLineText(f: NarrativeFacts): string {
     }
     return "We could not measure your site - its bot protection served our checker a challenge page instead of the real page. Allowlist our checker and we will run a clean pass.";
   }
+  const perfHasPageWarnings = (f.perf?.worst.length ?? 0) > 0;
   // Everything we could measure is healthy - do NOT claim a "real gap" (that would
   // contradict the tiles and the verdicts, which all read good).
   if (measured.every((d) => d.status === 'good')) {
+    if (perfHasPageWarnings) {
+      return `The site looks fine overall on a phone; the page cards still show smaller mobile-speed polish items, but nothing rises to a top-line slow-phone gap today.${blockedNote}`;
+    }
     return `Every check we could run looks healthy right now - nothing stands out as costing you customers today.${blockedNote}`;
   }
   const worstLabel = DIM_LABEL[f.worstDim];
   const goods: string[] = [];
-  if (f.perf && f.worstDim !== 'perf' && f.perf.status === 'good' && !f.perf.couldNotMeasure) goods.push('loads quickly on a phone');
+  if (f.perf && f.worstDim !== 'perf' && f.perf.status === 'good' && !f.perf.couldNotMeasure) {
+    goods.push(perfHasPageWarnings ? 'loads fine overall on a phone' : 'loads quickly on a phone');
+  }
   if (f.a11y && f.worstDim !== 'a11y' && f.a11y.status === 'good' && !f.a11y.couldNotMeasure) goods.push('is broadly accessible');
   if (f.agent && f.worstDim !== 'agent' && f.agent.status === 'good' && !f.agent.couldNotMeasure) goods.push('is readable by AI');
   const goodClause = goods.length
