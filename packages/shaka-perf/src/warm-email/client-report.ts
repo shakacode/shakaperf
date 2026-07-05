@@ -2749,7 +2749,7 @@ async function buildClientReportV2Model(
       : ctx.measured.some((r) => r.lead.status === 'fair')
         ? 'fair'
         : 'good';
-  const perfScore = sc.score ? Math.round(sc.score.avg) : undefined;
+  const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
   let dominantPerfProblem: RenderedPage | undefined;
   for (const rp of ctx.measured) {
     if (!isPerfProblemKind(rp.lead.kind)) continue;
