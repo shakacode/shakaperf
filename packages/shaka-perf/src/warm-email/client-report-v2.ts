@@ -189,12 +189,14 @@ export interface ClientReportV2Model {
   // performance (always present when there are pages)
   hasPerf: boolean;
   perfStatus: V2Status;
+  perfScore?: number;
   perfCouldNotMeasure: boolean; // true when NO performance page could be measured
   perfCards: V2PerfCard[];
   perfFine: V2PerfFineRow[];
   // accessibility (optional)
   hasA11y: boolean;
   a11yStatus: V2Status;
+  a11yScore?: number;
   a11yCards: V2A11yCard[];
   a11yFine: V2A11yFineRow[];
   a11yBlocked: V2BlockedPage[]; // pages walled by a bot challenge - "could not measure"
@@ -202,6 +204,7 @@ export interface ClientReportV2Model {
   // AI visibility (optional)
   hasAgent: boolean;
   agentStatus: V2Status;
+  agentScore?: number;
   agentSite?: V2AgentSite;
   agentCards: V2AgentCard[];
   agentFine: V2AgentFineRow[];
@@ -345,11 +348,15 @@ ${inner}
       </div>`;
 }
 
-function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, startHere?: V2StartHere, blocked?: boolean): string {
+function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, startHere?: V2StartHere, blocked?: boolean, score?: number): string {
   const p = blocked ? NEUTRAL : PAL[status];
+  const badge = blocked ? '' : scoreBadge(score, status);
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
-      <div style="font-size:26px; font-weight:800; letter-spacing:-.02em; color:${p.fg}; margin-bottom:10px">${esc(dim.verdictWord)}</div>
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
+        <div style="font-size:26px; font-weight:800; letter-spacing:-.02em; color:${p.fg}">${esc(dim.verdictWord)}</div>
+        ${badge}
+      </div>
       <p style="font-size:17px; line-height:1.55; color:#3a352e; margin:0 0 16px; max-width:64ch">${emphasize(esc(dim.verdictPara))}</p>
       ${!blocked && startHere && (startHere.items.length || startHere.lead) ? startHereBlock(status, startHere) : ''}
     </div>`;
@@ -513,7 +520,7 @@ ${items}
 
 function perfPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
-  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure)}
+  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure, m.perfScore)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.perfCards.map(perfCard).join('\n')}
 ${perfFineList(m.perfFine)}`;
@@ -544,8 +551,8 @@ function a11yShot(fr: V2A11yFrame): string {
         </figure>`;
 }
 
-function a11yScoreBadge(score: number | undefined, status: V2Status): string {
-  if (typeof score !== 'number') return '';
+function scoreBadge(score: number | undefined, status: V2Status): string {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return '';
   const p = PAL[status];
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
             <div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>
@@ -587,7 +594,7 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             <div style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#9b9286">${esc(c.path)}</div>
           </div>
-          ${a11yScoreBadge(c.score, c.status)}
+          ${scoreBadge(c.score, c.status)}
         </div>
         ${sev ? `<div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; align-items:center">\n${sev}${sevHint}\n        </div>` : ''}
         ${c.summary ? `<p style="font-size:15.5px; line-height:1.55; color:#3a352e; margin:0 0 18px; max-width:64ch">${esc(c.summary)}</p>` : ''}
@@ -638,7 +645,7 @@ ${items}
 
 function a11yPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
-  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yStartHere, m.a11yCouldNotMeasure)}
+  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yStartHere, m.a11yCouldNotMeasure, m.a11yScore)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
 ${a11yFineList(m.a11yFine)}
@@ -738,7 +745,7 @@ ${items}
 
 function agentPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.agentCards.length;
-  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure)}
+  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
 ${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.agentCards.map(agentCard).join('\n')}

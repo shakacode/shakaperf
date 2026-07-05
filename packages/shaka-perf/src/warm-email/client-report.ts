@@ -2749,6 +2749,7 @@ async function buildClientReportV2Model(
       : ctx.measured.some((r) => r.lead.status === 'fair')
         ? 'fair'
         : 'good';
+  const perfScore = sc.score ? Math.round(sc.score.avg) : undefined;
   let dominantPerfProblem: RenderedPage | undefined;
   for (const rp of ctx.measured) {
     if (!isPerfProblemKind(rp.lead.kind)) continue;
@@ -2784,6 +2785,10 @@ async function buildClientReportV2Model(
     if (typeof score === 'number') row.score = score;
     return row;
   });
+  const a11yScores = [...a11yCards.map((c) => c.score), ...a11yFine.map((r) => r.score)].filter((score): score is number => typeof score === 'number');
+  const a11yScore = !a11yCouldNotMeasure && a11yScores.length > 0
+    ? Math.round(a11yScores.reduce((sum, score) => sum + score, 0) / a11yScores.length)
+    : undefined;
   const highImpactTotal = cardedA11y.reduce((n, v) => n + v.counts.critical + v.counts.serious, 0);
   const criticalTotal = cardedA11y.reduce((n, v) => n + v.counts.critical, 0);
   const a11yStatus: V2Status = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
@@ -3033,6 +3038,7 @@ async function buildClientReportV2Model(
   const lede = `We loaded ${ctx.measured.length} of your pages the way a customer does - on a typical phone, on a normal cellular connection - and checked what decides whether visitors ${aspectList}.`;
   const outro = `The single fix behind most of this is making sure your full page content is present the moment the page loads - done well, it speeds the page up for real visitors${hasAgent ? ' and makes you readable to AI at the same time' : ''}. That is the work we do every day at ShakaCode; happy to walk through what we found.`;
   const footnote = `Measured ${dateStr ? `${dateStr} ` : ''}on an emulated mid-range phone over the Slow-4G profile Google PageSpeed uses - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale' : ''}. Put together by ShakaCode.`;
+  const agentScore = hasAgent && !agentCouldNotMeasure ? agentOverall : undefined;
 
   const model: ClientReportV2Model = {
     domain,
@@ -3042,17 +3048,20 @@ async function buildClientReportV2Model(
     tiles,
     hasPerf,
     perfStatus,
+    ...(perfScore !== undefined ? { perfScore } : {}),
     perfCouldNotMeasure,
     perfCards,
     perfFine,
     hasA11y,
     a11yStatus,
+    ...(a11yScore !== undefined ? { a11yScore } : {}),
     a11yCards,
     a11yFine,
     a11yBlocked,
     a11yCouldNotMeasure,
     hasAgent,
     agentStatus,
+    ...(agentScore !== undefined ? { agentScore } : {}),
     agentCards,
     agentFine,
     agentBlocked,
