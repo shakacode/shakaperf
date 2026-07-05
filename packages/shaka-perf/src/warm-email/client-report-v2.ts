@@ -463,7 +463,7 @@ function perfVideo(c: V2PerfCard): string {
 function perfCard(c: V2PerfCard): string {
   const p = PAL[c.status];
   const facts = c.facts
-    .map((ft) => `          <div style="font-size:14px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:7px 12px"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b> ${esc(ft.label)}</div>`)
+    .map((ft) => `            <div style="font-size:13px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:6px 11px; white-space:nowrap"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b> ${esc(ft.label)}</div>`)
     .join('\n');
   const video = perfVideo(c);
   const frames = c.frames.length
@@ -485,13 +485,15 @@ ${[video, frames].filter(Boolean).join('\n')}
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             ${monoPath(c.path, c.liveUrl)}
           </div>
-          <span style="flex:none; display:inline-flex; align-items:center; gap:8px; background:${p.bg}; border:1px solid ${p.line}; border-radius:999px; padding:7px 14px 7px 12px; font-size:13.5px; font-weight:700; color:${p.fg}; white-space:nowrap">
-            <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(v2StatusWord(c.status))}
-          </span>
+          <div style="flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:9px; max-width:300px">
+            <span style="display:inline-flex; align-items:center; gap:8px; background:${p.bg}; border:1px solid ${p.line}; border-radius:999px; padding:7px 14px 7px 12px; font-size:13.5px; font-weight:700; color:${p.fg}; white-space:nowrap">
+              <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(v2StatusWord(c.status))}
+            </span>
+            ${facts ? `<div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px">\n${facts}\n            </div>` : ''}
+          </div>
         </div>
         <div style="font-size:17px; font-weight:600; line-height:1.4; margin-bottom:5px; letter-spacing:-.01em">${c.headlineHtml}</div>
         ${c.sub ? `<p style="font-size:15.5px; line-height:1.55; color:#6f665c; margin:0 0 18px; max-width:62ch">${boldTimes(esc(c.sub))}</p>` : ''}
-        ${facts ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px">\n${facts}\n        </div>` : ''}
 ${watch}
         ${c.plain ? `<div style="font-size:15.5px; line-height:1.6; color:#4a443c; max-width:64ch; margin-top:2px">${boldTimes(esc(c.plain))}</div>` : ''}
       </div>`;
