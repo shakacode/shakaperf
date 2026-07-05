@@ -61,15 +61,32 @@ Both run in **production mode**. The only difference is the `PERF_EXPERIMENT` en
 | Experiment server | 3030 | 3000      |
 
 The host ports above are the defaults assigned by `assignPortsAutomatically` in
-the generated `abtests.config.ts`. They shift up as a pair when busy and are
-remembered per project, so concurrent runs don't collide. Two overrides:
+the generated `abtests.config.ts`. It picks the pair in priority order:
 
-- **`SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT`** pin an exact pair.
-- **`SHAKAPERF_BASE_PORT`, or `CONDUCTOR_PORT`** (set automatically per workspace
-  by [Conductor.build](https://conductor.build)) derive the pair from a base
-  block — control = base + 0, experiment = base + 1 — so multiple AI agents in
-  separate workspaces each get a distinct pair with no shared state or probing.
-  `SHAKAPERF_BASE_PORT` takes precedence over `CONDUCTOR_PORT`.
+1. **`SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT`** — pin an exact pair.
+2. **`SHAKAPERF_BASE_PORT`, or `CONDUCTOR_PORT`** (set automatically per workspace
+   by [Conductor.build](https://conductor.build)) — derive the pair from a base
+   block: control = base, experiment = base + 1. `SHAKAPERF_BASE_PORT` wins over
+   `CONDUCTOR_PORT`. Lets multiple AI agents in separate workspaces each get a
+   distinct pair with no shared state or probing.
+3. **Otherwise** — start from the preferred pair (3020 / 3030), shift both up
+   together (preserving the gap) until a free pair is found, then remember it per
+   project in `~/.shaka-perf/ports.json` so it stays stable across runs.
+
+Notes:
+
+- **Overrides aren't persisted.** Only the fall-through path (3) writes
+  `ports.json`; the env-var paths re-derive their pair every run, so the
+  environment — not a cached file — stays the source of truth.
+- **Base ports need ≥ 2 spacing.** The derived block is `{base, base + 1}`, so an
+  allocator that hands out adjacent bases makes adjacent workspaces overlap:
+  bases `5000` and `5001` give `{5000, 5001}` and `{5001, 5002}`, colliding on
+  `5001`. Conductor allocates a wide block per workspace, so this holds in
+  practice; set `SHAKAPERF_BASE_PORT` yourself if your tool packs bases tighter.
+- **Malformed values warn and are skipped.** A non-integer or out-of-range
+  (`1..65535`) port env var logs a warning and is ignored (the next option in the
+  chain still applies); a privileged value (`≤ 1023`) warns that binding needs
+  root but is still used.
 
 ### Docker Volumes
 
