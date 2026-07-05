@@ -485,11 +485,11 @@ ${[video, frames].filter(Boolean).join('\n')}
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             ${monoPath(c.path, c.liveUrl)}
           </div>
-          <div style="flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:9px">
+          <div style="flex:none; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px">
+${facts}
             <span style="display:inline-flex; align-items:center; gap:8px; background:${p.bg}; border:1px solid ${p.line}; border-radius:999px; padding:7px 14px 7px 12px; font-size:13.5px; font-weight:700; color:${p.fg}; white-space:nowrap">
               <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(v2StatusWord(c.status))}
             </span>
-            ${facts ? `<div style="display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px">\n${facts}\n            </div>` : ''}
           </div>
         </div>
         <div style="font-size:17px; font-weight:600; line-height:1.4; margin-bottom:5px; letter-spacing:-.01em">${c.headlineHtml}</div>
