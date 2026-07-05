@@ -121,6 +121,15 @@ describe('assignPortsAutomatically', () => {
     warn.mockRestore();
   });
 
+  it('does not add the generic pair warning when the lone explicit var is malformed', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = { ...baseDeps(), env: { SHAKAPERF_EXPERIMENT_PORT: '40x0' } };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
   it('treats blank/absent explicit port vars as unset without warning', () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const deps: AssignPortsDeps = {

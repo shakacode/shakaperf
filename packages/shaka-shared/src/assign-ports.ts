@@ -156,14 +156,14 @@ function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
   if (control != null && experiment != null) {
     return { control, experiment };
   }
-  // Both vars are required to pin an explicit pair. If exactly one side was
-  // provided, warn that the whole override was dropped. When both sides were
-  // provided but one was malformed, parseExplicitPort has already emitted the
-  // specific warning, so avoid adding a second generic message.
+  // Both vars are required to pin an explicit pair. If one side parsed as valid
+  // and the other side was absent/blank, warn that the whole override was
+  // dropped. Malformed non-blank values already emitted a specific warning in
+  // parseExplicitPort, so avoid adding a second generic message.
   const isPresent = (value?: string): boolean => value != null && value.trim() !== '';
   const controlPresent = isPresent(env.SHAKAPERF_CONTROL_PORT);
   const experimentPresent = isPresent(env.SHAKAPERF_EXPERIMENT_PORT);
-  if (controlPresent !== experimentPresent) {
+  if ((control != null && !experimentPresent) || (experiment != null && !controlPresent)) {
     console.warn(
       'assignPortsAutomatically: both SHAKAPERF_CONTROL_PORT and ' +
         'SHAKAPERF_EXPERIMENT_PORT must be set to valid ports to pin an explicit ' +
