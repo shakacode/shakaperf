@@ -24,6 +24,7 @@ import TBTable from "./tb-table";
 export interface ICompareJSONResult {
   heading: string;
   phaseName: string;
+  sign?: -1 | 1;
   isSignificant: boolean;
   estimatorDelta: string;
   pValue: number;
@@ -92,12 +93,20 @@ export class CompareResults {
     this.summaryMetadata = summaryMetadata;
 
     generateStats.vitalsSections.map((section) => {
-      this.vitalsTable.display.push({ stats: section.stats, unit: section.unit });
+      this.vitalsTable.display.push({
+        stats: section.stats,
+        unit: section.unit,
+        sign: section.sign,
+      });
       this.vitalsResultsFormatted.push(section);
     });
 
     generateStats.diagnosticsSections.map((section) => {
-      this.diagnosticsTable.display.push({ stats: section.stats, unit: section.unit });
+      this.diagnosticsTable.display.push({
+        stats: section.stats,
+        unit: section.unit,
+        sign: section.sign,
+      });
       this.diagnosticsResultsFormatted.push(section);
     });
 
@@ -227,7 +236,7 @@ export class CompareResults {
     // all stats
     const stats = this.vitalsTable.display.concat(this.diagnosticsTable.display);
 
-    return stats.every(({ stats: stat, unit }) => {
+    return stats.every(({ stats: stat, unit, sign }) => {
       if (!stat.confidenceInterval.isSig) return true;
 
       const direction = classifyPracticalDelta({
@@ -239,6 +248,7 @@ export class CompareResults {
         controlValue: stat.sevenFigureSummary.control[50],
         experimentValue: stat.sevenFigureSummary.experiment[50],
         regressionThreshold: this.regressionThreshold,
+        sign,
       });
 
       return direction !== "regression";

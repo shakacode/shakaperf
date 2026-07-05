@@ -15,6 +15,7 @@ import { ICompareJSONResult } from "./compare-results";
 export interface TBTableEntry {
   stats: Stats;
   unit: string;
+  sign?: -1 | 1;
 }
 
 export default class TBTable {
@@ -35,7 +36,7 @@ export default class TBTable {
   // JSON results, stdout, PDF, HTML have parity
   public getData(): ICompareJSONResult[] {
     const a: ICompareJSONResult[] = [];
-    this.display.forEach(({ stats: stat, unit }) => {
+    this.display.forEach(({ stats: stat, unit, sign }) => {
       // flip signs in view as regression is pos (slower) and improvement is neg (faster)
       let [percentMin, percentMedian, percentMax] = Array.from(
         Object.values(stat.confidenceInterval.asPercent),
@@ -47,6 +48,7 @@ export default class TBTable {
       a.push({
         heading: this.heading,
         phaseName: stat.name,
+        sign,
         isSignificant: stat.confidenceInterval.isSig,
         pValue: stat.confidenceInterval.pValue,
         estimatorDelta: `${stat.estimator * -1}${unitSuffix}`,

@@ -8,9 +8,10 @@
  */
 
 export type PracticalDirection = "none" | "regression" | "improvement";
+export type MetricSign = -1 | 1;
 
-// Metrics where a bigger value is a better result (e.g. Lighthouse score).
-// Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
+// Legacy report.json files did not carry `sign`. Use the name fallback only
+// when no explicit metric sign is available.
 const HIGHER_IS_BETTER = new Set(["lh score", "lighthouse score"]);
 const CLS_PHASE_NAME = "cls";
 const CLS_GOOD_THRESHOLD = 10;
@@ -26,14 +27,21 @@ export interface ClassifyPracticalDeltaOptions {
   controlValue: number;
   experimentValue: number;
   regressionThreshold: number;
+  sign?: MetricSign;
 }
 
 export function classifyDisplayDirection(
   phaseName: string,
   displayDeltaValue: number,
   isSignificant: boolean,
+  sign?: MetricSign,
 ): PracticalDirection {
   if (!isSignificant || displayDeltaValue === 0) return "none";
+  if (sign) {
+    const internalDeltaValue = displayDeltaValue * -1;
+    return internalDeltaValue * sign < 0 ? "regression" : "improvement";
+  }
+
   const higherBetter = HIGHER_IS_BETTER.has(phaseName.toLowerCase());
   if (higherBetter) return displayDeltaValue > 0 ? "improvement" : "regression";
   return displayDeltaValue > 0 ? "regression" : "improvement";
@@ -46,6 +54,7 @@ export function classifyPracticalDelta(
     opts.phaseName,
     opts.directionDeltaValue,
     opts.isSignificant,
+    opts.sign,
   );
   if (direction === "none") return direction;
 

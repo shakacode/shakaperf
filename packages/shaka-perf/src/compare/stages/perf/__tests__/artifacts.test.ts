@@ -10,10 +10,12 @@ function metric(
   controlValue = 100,
   experimentValue = 100,
   confidenceInterval = ['0ms', '0ms'],
+  sign?: -1 | 1,
 ) {
   return {
     heading: 'LH & Vitals',
     phaseName,
+    sign,
     isSignificant,
     estimatorDelta,
     confidenceInterval,
@@ -118,5 +120,14 @@ describe('readPerfArtifact', () => {
     expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.direction).toBe('regression');
     expect(artifact.regressedMetrics).toEqual(['FCP']);
     expect(artifact.improvedMetrics).toEqual([]);
+  });
+
+  it('uses report-provided metric sign for custom higher-is-better scores', async () => {
+    const artifact = await readMetrics([
+      metric('SEO Score', '-2/100', true, 90, 88, ['-2/100', '-2/100'], -1),
+    ]);
+
+    expect(artifact.metrics?.find((entry) => entry.label === 'SEO Score')?.direction).toBe('regression');
+    expect(artifact.regressedMetrics).toEqual(['SEO Score']);
   });
 });

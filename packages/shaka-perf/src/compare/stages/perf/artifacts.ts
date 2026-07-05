@@ -77,6 +77,7 @@ interface BenchSevenFigureSummary {
 interface BenchJsonMetric {
   heading?: string;
   phaseName: string;
+  sign?: -1 | 1;
   isSignificant: boolean;
   estimatorDelta: string;
   pValue: number;
@@ -150,6 +151,7 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
         controlValue,
         experimentValue,
         regressionThreshold: opts.regressionThreshold,
+        sign: entry.sign,
       });
 
       metrics.push({

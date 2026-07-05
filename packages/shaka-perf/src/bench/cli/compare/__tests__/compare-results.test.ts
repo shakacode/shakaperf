@@ -131,10 +131,12 @@ describe("CompareResults regression threshold", () => {
     expect(JSON.parse(result.stringifyJSON()).isBelowRegressionThreshold).toBe(false);
   });
 
-  it("uses display direction for higher-is-better score regressions", () => {
-    const result = compareResults([section("LH Score", "/100", 2)]);
+  it("uses metric sign for higher-is-better score regressions", () => {
+    const result = compareResults([section("SEO Score", "/100", 2, { sign: -1 })]);
+    const json = JSON.parse(result.stringifyJSON());
 
     expect(result.isBelowRegressionThreshold).toBe(false);
+    expect(json.vitalsTableData[0].sign).toBe(-1);
   });
 
   it("uses the selected CI stat only for practical threshold magnitude", () => {
