@@ -431,10 +431,36 @@ describe('v2 mobile-speed verdict calibration', () => {
     expect(v2PerfStatus([page])).toBe('poor');
   });
 
+  it('blocks the relaxed LCP verdict when raw first paint is not healthy', () => {
+    const fair = v2PerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 2200, TBT: 50 });
+    const poor = v2PerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 3400, TBT: 50 });
+
+    expect(v2PagePerfStatus(fair)).toBe('fair');
+    expect(v2PagePerfStatus(poor)).toBe('poor');
+  });
+
+  it('blocks the relaxed LCP verdict when raw blocking time is not healthy', () => {
+    const fair = v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 300 });
+    const poor = v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 });
+
+    expect(v2PagePerfStatus(fair)).toBe('fair');
+    expect(v2PagePerfStatus(poor)).toBe('poor');
+  });
+
   it('lets a poor secondary problem outrank a relaxed LCP lead', () => {
     const page: V2PagePerfStatusInput = {
       ...v2PerfInput('slow-lcp', 'fair', { LCP: 3000, CLS: 30 }),
       rest: [problem('layout-shift', 'poor')],
+    };
+
+    expect(v2PagePerfStatus(page)).toBe('poor');
+    expect(v2PerfStatus([page])).toBe('poor');
+  });
+
+  it('lets a red TBT secondary problem outrank a relaxed LCP lead', () => {
+    const page: V2PagePerfStatusInput = {
+      ...v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 }),
+      rest: [problem('sluggish', 'fair')],
     };
 
     expect(v2PagePerfStatus(page)).toBe('poor');
@@ -673,6 +699,29 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).toContain('the layout jumps around');
     expect(perfTile).not.toContain('Main content is late');
     expect(perfTile).not.toContain('biggest piece takes 3.0s to load');
+  });
+
+  it('uses the TBT rest problem for the exec tile when it drives a relaxed-LCP page status', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3500, FCP: 1200, TBT: 650, 'LH Score': 76 }), { design: 'v2' });
+    const perfTile = renderedTile(html, 'perf');
+
+    expect(perfTile).toContain('Slow to react');
+    expect(perfTile).toContain('>0.7s</div>');
+    expect(perfTile).toContain('slow to react to taps');
+    expect(perfTile).not.toContain('Main content is late');
+    expect(perfTile).not.toContain('biggest piece takes 3.5s to load');
+    expect(html).toContain('laggy to tap');
+    expect(html).not.toContain('biggest piece at 3.5s');
+  });
+
+  it('renders a relaxed LCP more-row as good in the compact fine list', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 3000, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
+      { id: 'home-scroll', name: 'Home scroll', startingPath: '/', metrics: { LCP: 3020, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
+    ]), { design: 'v2' });
+
+    expect(html).toContain('Loading fine &middot; 1 page');
+    expect(html).not.toContain('The rest of the pages we checked &middot; 1 page');
   });
 
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
