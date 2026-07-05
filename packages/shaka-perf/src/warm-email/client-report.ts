@@ -2722,27 +2722,34 @@ export interface V2PagePerfStatusInput {
   rest?: readonly Problem[];
 }
 
+const V2_PROBLEM_STATUS: Record<PerfProblemKind, (page: PagePerf) => V2Status> = {
+  'slow-lcp': (page) => v2LcpStatus(metricVal(page, 'LCP')),
+  'layout-shift': (page) => v2ClsStatus(metricVal(page, 'CLS')),
+  blank: (page) => v2FcpStatus(metricVal(page, 'FCP')),
+  'late-paint': (page) => v2FcpStatus(metricVal(page, 'FCP')),
+  sluggish: (page) => v2TbtStatus(metricVal(page, 'TBT')),
+};
+
+function worstV2Status(statuses: readonly V2Status[]): V2Status {
+  return statuses.reduce<V2Status>(
+    (worst, status) => V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst,
+    'good',
+  );
+}
+
 function v2ProblemStatus(page: PagePerf, problem: Problem): V2Status {
-  switch (problem.kind) {
-    case 'slow-lcp':
-      return v2LcpStatus(metricVal(page, 'LCP'));
-    case 'layout-shift':
-      return v2ClsStatus(metricVal(page, 'CLS'));
-    case 'blank':
-    case 'late-paint':
-      return v2FcpStatus(metricVal(page, 'FCP'));
-    case 'sluggish':
-      return v2TbtStatus(metricVal(page, 'TBT'));
-    default:
-      return problem.status;
-  }
+  return isPerfProblemKind(problem.kind) ? V2_PROBLEM_STATUS[problem.kind](page) : problem.status;
 }
 
 export function v2PagePerfStatus(r: V2PagePerfStatusInput): V2Status {
-  return [r.lead, ...(r.rest ?? [])].reduce<V2Status>((worst, problem) => {
-    const status = v2ProblemStatus(r.page, problem);
-    return V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst;
-  }, 'good');
+  const problems = [r.lead, ...(r.rest ?? [])];
+  const statuses = problems.map((problem) => v2ProblemStatus(r.page, problem));
+  if (problems.some((problem) => problem.kind === 'slow-lcp')) {
+    statuses.push(v2FcpStatus(metricVal(r.page, 'FCP')));
+    statuses.push(v2ClsStatus(metricVal(r.page, 'CLS')));
+    statuses.push(v2TbtStatus(metricVal(r.page, 'TBT')));
+  }
+  return worstV2Status(statuses);
 }
 
 export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): V2Status {
@@ -2753,10 +2760,84 @@ export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNo
   }, 'good');
 }
 
+interface V2PerfProblemCandidate {
+  page: PagePerf;
+  problem: Problem;
+  status: V2Status;
+  severity: number;
+}
+
+function v2VirtualProblem(kind: PerfProblemKind, status: V2Status, severity: number, chip: string): Problem {
+  return { kind, status, severity, headline: '', chip };
+}
+
+function v2RawMetricProblemCandidates(page: PagePerf, existingKinds: ReadonlySet<ProblemKind>): V2PerfProblemCandidate[] {
+  const out: V2PerfProblemCandidate[] = [];
+  const fcp = metricVal(page, 'FCP');
+  const fcpStatus = v2FcpStatus(fcp);
+  if (fcp !== undefined && fcpStatus !== 'good' && !existingKinds.has('blank') && !existingKinds.has('late-paint')) {
+    out.push({
+      page,
+      problem: v2VirtualProblem('late-paint', fcpStatus, clamp01(fcp / 9000) * 0.85, `first paint ${secs(fcp)}`),
+      status: fcpStatus,
+      severity: clamp01(fcp / 9000) * 0.85,
+    });
+  }
+  const clsV = metricVal(page, 'CLS');
+  const clsStatusV = v2ClsStatus(clsV);
+  if (clsV !== undefined && clsStatusV !== 'good' && !existingKinds.has('layout-shift')) {
+    out.push({
+      page,
+      problem: v2VirtualProblem('layout-shift', clsStatusV, clamp01(clsV / 60) + 0.02, `layout jumps (${(clsV / 100).toFixed(2)})`),
+      status: clsStatusV,
+      severity: clamp01(clsV / 60) + 0.02,
+    });
+  }
+  const tbt = metricVal(page, 'TBT');
+  const tbtStatus = v2TbtStatus(tbt);
+  if (tbt !== undefined && tbtStatus !== 'good' && !existingKinds.has('sluggish')) {
+    out.push({
+      page,
+      problem: v2VirtualProblem('sluggish', tbtStatus, clamp01(tbt / 1800) * 0.6, 'laggy to tap'),
+      status: tbtStatus,
+      severity: clamp01(tbt / 1800) * 0.6,
+    });
+  }
+  return out;
+}
+
+function v2PerfProblemCandidates(r: V2PagePerfStatusInput): V2PerfProblemCandidate[] {
+  const problems = [r.lead, ...(r.rest ?? [])];
+  const existingKinds = new Set(problems.map((problem) => problem.kind));
+  const candidates = problems
+    .filter((problem): problem is Problem & { kind: PerfProblemKind } => isPerfProblemKind(problem.kind))
+    .map((problem) => ({
+      page: r.page,
+      problem,
+      status: v2ProblemStatus(r.page, problem),
+      severity: problem.severity,
+    }));
+  return existingKinds.has('slow-lcp')
+    ? [...candidates, ...v2RawMetricProblemCandidates(r.page, existingKinds)]
+    : candidates;
+}
+
+function compareV2PerfProblemCandidate(a: V2PerfProblemCandidate, b: V2PerfProblemCandidate): number {
+  const statusDelta = V2_STATUS_RANK[b.status] - V2_STATUS_RANK[a.status];
+  if (statusDelta !== 0) return statusDelta;
+  return b.severity - a.severity;
+}
+
+function v2DominantPerfProblem(r: V2PagePerfStatusInput): V2PerfProblemCandidate | undefined {
+  return v2PerfProblemCandidates(r)
+    .filter((candidate) => candidate.status !== 'good')
+    .sort(compareV2PerfProblemCandidate)[0];
+}
+
 function comparePerfProblem(a: RenderedPage, b: RenderedPage): number {
   const statusDelta = V2_STATUS_RANK[v2PagePerfStatus(b)] - V2_STATUS_RANK[v2PagePerfStatus(a)];
   if (statusDelta !== 0) return statusDelta;
-  return b.lead.severity - a.lead.severity;
+  return (v2DominantPerfProblem(b)?.severity ?? b.lead.severity) - (v2DominantPerfProblem(a)?.severity ?? a.lead.severity);
 }
 
 async function buildClientReportV2Model(
@@ -2794,7 +2875,7 @@ async function buildClientReportV2Model(
     const row: ClientReportV2Model['perfFine'][number] = {
       name: rp.page.name,
       path: rp.page.startingPath,
-      status: rp.lead.status,
+      status: v2PagePerfStatus(rp),
       note: stripTags(rp.lead.headline),
     };
     const liveUrl = liveUrlFor(sc.url, rp.page.startingPath);
@@ -2804,7 +2885,10 @@ async function buildClientReportV2Model(
   // "Start here": the DISTINCT slow patterns (deduped by problem kind), each on one
   // page with its own short problem (the lead chip, e.g. "biggest piece at 4.2s").
   const perfStartHere = buildStartHere(
-    rankedCarded.map((rp) => ({ page: rp.page.name, issue: rp.lead.chip || stripTags(rp.lead.headline), key: rp.lead.kind })),
+    rankedCarded.map((rp) => {
+      const problem = v2DominantPerfProblem(rp)?.problem ?? rp.lead;
+      return { page: rp.page.name, issue: problem.chip || stripTags(problem.headline), key: problem.kind };
+    }),
     fineRows.length,
     'a similar slowdown',
     'a different problem',
@@ -2816,16 +2900,14 @@ async function buildClientReportV2Model(
   // No measured page -> never claim 'good' off zero data; stay neutral.
   const perfStatus = v2PerfStatus(ctx.measured, perfCouldNotMeasure);
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
-  let dominantPerfProblemCard: RenderedPage | undefined;
+  let dominantPerfProblem: V2PerfProblemCandidate | undefined;
   for (const rp of ctx.measured) {
-    if (!isPerfProblemKind(rp.lead.kind)) continue;
-    if (!dominantPerfProblemCard || comparePerfProblem(dominantPerfProblemCard, rp) > 0) dominantPerfProblemCard = rp;
+    const candidate = v2DominantPerfProblem(rp);
+    if (!candidate) continue;
+    if (!dominantPerfProblem || compareV2PerfProblemCandidate(dominantPerfProblem, candidate) > 0) dominantPerfProblem = candidate;
   }
-  const dominantPerfProblem = dominantPerfProblemCard && v2PagePerfStatus(dominantPerfProblemCard) !== 'good'
-    ? dominantPerfProblemCard
-    : undefined;
-  const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
-  const perfProblemMetricTx = dominantPerfProblem ? perfProblemMetric(dominantPerfProblem.lead, dominantPerfProblem.page) : undefined;
+  const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.problem, dominantPerfProblem.page) : undefined;
+  const perfProblemMetricTx = dominantPerfProblem ? perfProblemMetric(dominantPerfProblem.problem, dominantPerfProblem.page) : undefined;
 
   // ---- ACCESSIBILITY ----
   if (opts.summarizeA11y) await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
@@ -3029,7 +3111,7 @@ async function buildClientReportV2Model(
     const defaultPerfConseq = perfStatus === 'good'
       ? 'Pages load fine on a phone, so visitors are not lost to waiting.'
       : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
-    const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.lead) : undefined;
+    const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.problem) : undefined;
     const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
     const perfWordTx = perfCouldNotMeasure
       ? 'Could not measure'
