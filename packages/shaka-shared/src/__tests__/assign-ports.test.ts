@@ -31,6 +31,7 @@ describe('assignPortsAutomatically', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -84,6 +85,7 @@ describe('assignPortsAutomatically', () => {
     };
     expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
   });
 
@@ -95,6 +97,7 @@ describe('assignPortsAutomatically', () => {
     };
     expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
   });
 

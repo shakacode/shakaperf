@@ -126,11 +126,10 @@ function lsofPortInUse(port: number): boolean {
 /**
  * Parse one explicit-port env var (`SHAKAPERF_CONTROL_PORT` /
  * `SHAKAPERF_EXPERIMENT_PORT`). Returns the port when present and valid; null
- * when absent or blank (silently). Validation matches `readBasePortOverride`: a
- * positive integer within `1..MAX_PORT` (a present-but-invalid value warns and
- * returns null), plus a privileged-range (`<= PRIVILEGED_PORT_MAX`) advisory that
- * warns but still returns the port. Keeps a typo'd value from being swallowed
- * silently.
+ * when absent or blank (silently). Validation mirrors `readBasePortOverride`
+ * for malformed and privileged values, but explicit ports may use the full
+ * `1..MAX_PORT` range because no derived experiment offset is added. Keeps a
+ * typo'd value from being swallowed silently.
  */
 function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | null {
   const raw = env[varName];
@@ -157,12 +156,14 @@ function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
   if (control != null && experiment != null) {
     return { control, experiment };
   }
-  // Both vars are required to pin an explicit pair. If either was provided (set
-  // and non-blank) but the pair didn't resolve, that's almost always a mistake —
-  // warn that the whole override was dropped, not just the bad half. (A
-  // present-but-invalid value has already warned in parseExplicitPort.)
+  // Both vars are required to pin an explicit pair. If exactly one side was
+  // provided, warn that the whole override was dropped. When both sides were
+  // provided but one was malformed, parseExplicitPort has already emitted the
+  // specific warning, so avoid adding a second generic message.
   const isPresent = (value?: string): boolean => value != null && value.trim() !== '';
-  if (isPresent(env.SHAKAPERF_CONTROL_PORT) || isPresent(env.SHAKAPERF_EXPERIMENT_PORT)) {
+  const controlPresent = isPresent(env.SHAKAPERF_CONTROL_PORT);
+  const experimentPresent = isPresent(env.SHAKAPERF_EXPERIMENT_PORT);
+  if (controlPresent !== experimentPresent) {
     console.warn(
       'assignPortsAutomatically: both SHAKAPERF_CONTROL_PORT and ' +
         'SHAKAPERF_EXPERIMENT_PORT must be set to valid ports to pin an explicit ' +
