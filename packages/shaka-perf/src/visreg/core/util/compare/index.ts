@@ -23,16 +23,6 @@ const ASYNC_COMPARE_LIMIT = 20;
 function comparePair (pair: TestPair, report: Reporter, config: RuntimeConfig, compareConfig: CompareConfig) {
   const Test = report.addTest(pair);
 
-  if (pair.status === 'pass' || pair.status === 'fail') {
-    Test.status = pair.status;
-    if (pair.status === 'fail') {
-      logger.error('ERROR { status: pixelmatch-fail, content: ' + pair.diff?.misMatchPercentage + '%, threshold: ' + pair.misMatchThreshold + '% }: ' + pair.label + ' ' + pair.fileName);
-    } else {
-      logger.success('OK: ' + pair.label + ' ' + pair.fileName);
-    }
-    return Promise.resolve(pair);
-  }
-
   const referencePath = pair.reference ? path.resolve(config.projectPath, pair.reference) : '';
   const testPath = pair.test ? path.resolve(config.projectPath, pair.test) : '';
 

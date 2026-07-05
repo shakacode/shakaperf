@@ -78,17 +78,17 @@ function actionableDirection(
   regressionThreshold: number,
 ): PerfDirection {
   const direction = classifyDirection(phaseName, deltaValue, isSignificant);
-  if (direction !== 'regression') return direction;
+  if (direction === 'none') return direction;
 
   if (isClsMetric(phaseName, unit)) {
     return Math.abs(deltaValue) > CLS_REGRESSION_DELTA_THRESHOLD
       || crossesClsQualityThreshold(controlValue, experimentValue)
-      ? 'regression'
+      ? direction
       : 'none';
   }
 
   return Math.abs(deltaValue) > practicalRegressionThreshold(unit, regressionThreshold)
-    ? 'regression'
+    ? direction
     : 'none';
 }
 
@@ -98,7 +98,11 @@ function isClsMetric(phaseName: string, unit: string): boolean {
 
 function crossesClsQualityThreshold(controlValue: number, experimentValue: number): boolean {
   return [CLS_GOOD_THRESHOLD, CLS_POOR_THRESHOLD].some(
-    (threshold) => controlValue <= threshold && experimentValue > threshold,
+    (threshold) => (
+      controlValue <= threshold && experimentValue > threshold
+    ) || (
+      controlValue > threshold && experimentValue <= threshold
+    ),
   );
 }
 

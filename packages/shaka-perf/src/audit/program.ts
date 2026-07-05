@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Command, Option } from 'commander';
-import { ABTESTS_CONFIG_PATH_ENV } from '../before-navigate';
+import { withAbTestsConfigPath } from '../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../config';
 import { runPipeline } from '../pipeline/runner';
@@ -60,45 +60,46 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
-      if (configPath) process.env[ABTESTS_CONFIG_PATH_ENV] = path.resolve(configPath);
-      const raw = configPath ? await loadAbTestsConfig(configPath) : {};
-      const config = parseAbTestsConfig(raw);
-      const url = opts.url ?? config.shared.experimentURL;
-      const pipeline = createAuditPipeline({
-        parallelism: config.shared.parallelism,
-        lighthouseConfig: config.audit.lighthouseConfig,
-        limitVideoFramesCount: config.audit.limitVideoFramesCount,
-        accessibility: {
-          tags: config.accessibility.tags,
-          disableRules: config.accessibility.disableRules,
-          includeRules: config.accessibility.includeRules,
-          engineOptions: config.accessibility.engineOptions,
-          failOnViolation: config.accessibility.failOnViolation,
-        },
+      await withAbTestsConfigPath(configPath, async () => {
+        const raw = configPath ? await loadAbTestsConfig(configPath) : {};
+        const config = parseAbTestsConfig(raw);
+        const url = opts.url ?? config.shared.experimentURL;
+        const pipeline = createAuditPipeline({
+          parallelism: config.shared.parallelism,
+          lighthouseConfig: config.audit.lighthouseConfig,
+          limitVideoFramesCount: config.audit.limitVideoFramesCount,
+          accessibility: {
+            tags: config.accessibility.tags,
+            disableRules: config.accessibility.disableRules,
+            includeRules: config.accessibility.includeRules,
+            engineOptions: config.accessibility.engineOptions,
+            failOnViolation: config.accessibility.failOnViolation,
+          },
+        });
+        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        const result = await runPipeline(pipeline, {
+          controlURL: url,
+          experimentURL: url,
+          testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
+          filter: opts.filter ?? config.shared.filter,
+          categories: opts.categories,
+          skipStages: opts.skipStages,
+          restartFromStage,
+          reportOnly: opts.reportOnly === true,
+          skipReport: opts.skipReport === true,
+          keepOldResults: opts.keepOldResults === true,
+          debugShowAllFrames: opts.debugShowAllFrames === true,
+          fullReportZip: opts.fullReportZip === true,
+          headed: opts.headed === true,
+          retries: config.shared.retries,
+          retryDelay: config.shared.retryDelay,
+          timeoutMs: config.shared.timeoutMs,
+          viewports: viewportsByStageCategory(config),
+        });
+        printReportSummary(result);
+        maybeGenerateCoverageReport(result.resultsRoot);
+        reportPipelineFailure(result);
       });
-      const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
-      const result = await runPipeline(pipeline, {
-        controlURL: url,
-        experimentURL: url,
-        testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-        filter: opts.filter ?? config.shared.filter,
-        categories: opts.categories,
-        skipStages: opts.skipStages,
-        restartFromStage,
-        reportOnly: opts.reportOnly === true,
-        skipReport: opts.skipReport === true,
-        keepOldResults: opts.keepOldResults === true,
-        debugShowAllFrames: opts.debugShowAllFrames === true,
-        fullReportZip: opts.fullReportZip === true,
-        headed: opts.headed === true,
-        retries: config.shared.retries,
-        retryDelay: config.shared.retryDelay,
-        timeoutMs: config.shared.timeoutMs,
-        viewports: viewportsByStageCategory(config),
-      });
-      printReportSummary(result);
-      maybeGenerateCoverageReport(result.resultsRoot);
-      reportPipelineFailure(result);
     });
 }
 

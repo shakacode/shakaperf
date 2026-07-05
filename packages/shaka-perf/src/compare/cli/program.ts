@@ -8,8 +8,7 @@
  */
 
 import { Command, Option } from 'commander';
-import path from 'node:path';
-import { ABTESTS_CONFIG_PATH_ENV } from '../../before-navigate';
+import { withAbTestsConfigPath } from '../../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
@@ -60,47 +59,48 @@ export async function createCompareCommand(): Promise<Command> {
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
-      if (configPath) process.env[ABTESTS_CONFIG_PATH_ENV] = path.resolve(configPath);
-      const raw = configPath ? await loadAbTestsConfig(configPath) : {};
-      const config = parseAbTestsConfig(raw);
-      const pipeline = createComparePipeline({
-        parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
-        testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-        visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
-        visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
-        visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
-        visregEngineOptions: config.visreg.engineOptions,
-        visregResembleOutputOptions: config.visreg.resembleOutputOptions,
-        visregCompareRetries: config.visreg.compareRetries,
-        visregCompareRetryDelay: config.visreg.compareRetryDelay,
-        perfNumberOfMeasurements: config.perf.numberOfMeasurements,
-        perfRegressionThreshold: config.perf.regressionThreshold,
-        perfPValueThreshold: config.perf.pValueThreshold,
-        perfRegressionThresholdStat: config.perf.regressionThresholdStat,
-        perfSamplingMode: config.perf.samplingMode,
-        perfLighthouseConfig: config.perf.lighthouseConfig,
-        perfPlotTitle: config.perf.plotTitle,
+      await withAbTestsConfigPath(configPath, async () => {
+        const raw = configPath ? await loadAbTestsConfig(configPath) : {};
+        const config = parseAbTestsConfig(raw);
+        const pipeline = createComparePipeline({
+          parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
+          testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
+          visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
+          visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
+          visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
+          visregEngineOptions: config.visreg.engineOptions,
+          visregResembleOutputOptions: config.visreg.resembleOutputOptions,
+          visregCompareRetries: config.visreg.compareRetries,
+          visregCompareRetryDelay: config.visreg.compareRetryDelay,
+          perfNumberOfMeasurements: config.perf.numberOfMeasurements,
+          perfRegressionThreshold: config.perf.regressionThreshold,
+          perfPValueThreshold: config.perf.pValueThreshold,
+          perfRegressionThresholdStat: config.perf.regressionThresholdStat,
+          perfSamplingMode: config.perf.samplingMode,
+          perfLighthouseConfig: config.perf.lighthouseConfig,
+          perfPlotTitle: config.perf.plotTitle,
+        });
+        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        const result = await runPipeline(pipeline, {
+          controlURL: opts.controlURL ?? config.shared.controlURL,
+          experimentURL: opts.experimentURL ?? config.shared.experimentURL,
+          testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
+          filter: opts.filter ?? config.shared.filter,
+          categories: opts.categories,
+          skipStages: opts.skipStages,
+          restartFromStage,
+          reportOnly: opts.reportOnly === true,
+          skipReport: opts.skipReport === true,
+          keepOldResults: opts.keepOldResults === true,
+          fullReportZip: opts.fullReportZip === true,
+          headed: opts.headed === true,
+          retries: config.shared.retries,
+          retryDelay: config.shared.retryDelay,
+          timeoutMs: config.shared.timeoutMs,
+          viewports: viewportsByStageCategory(config),
+        });
+        printReportSummary(result);
+        reportPipelineFailure(result);
       });
-      const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
-      const result = await runPipeline(pipeline, {
-        controlURL: opts.controlURL ?? config.shared.controlURL,
-        experimentURL: opts.experimentURL ?? config.shared.experimentURL,
-        testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-        filter: opts.filter ?? config.shared.filter,
-        categories: opts.categories,
-        skipStages: opts.skipStages,
-        restartFromStage,
-        reportOnly: opts.reportOnly === true,
-        skipReport: opts.skipReport === true,
-        keepOldResults: opts.keepOldResults === true,
-        fullReportZip: opts.fullReportZip === true,
-        headed: opts.headed === true,
-        retries: config.shared.retries,
-        retryDelay: config.shared.retryDelay,
-        timeoutMs: config.shared.timeoutMs,
-        viewports: viewportsByStageCategory(config),
-      });
-      printReportSummary(result);
-      reportPipelineFailure(result);
     });
 }

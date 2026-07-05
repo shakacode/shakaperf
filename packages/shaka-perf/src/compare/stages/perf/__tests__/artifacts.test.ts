@@ -64,6 +64,21 @@ describe('readPerfArtifact', () => {
     expect(artifact.regressedMetrics).toEqual(['js', 'LH Score', 'downloads-count']);
   });
 
+  it('uses practical floors symmetrically for small improvements', async () => {
+    const artifact = await readMetrics([
+      metric('FCP', '-4ms'),
+      metric('downloads', '-0.5KB'),
+      metric('js', '-1.5KB'),
+      metric('LH Score', '0.5/100'),
+    ]);
+
+    expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.direction).toBe('none');
+    expect(artifact.metrics?.find((entry) => entry.label === 'downloads')?.direction).toBe('none');
+    expect(artifact.metrics?.find((entry) => entry.label === 'js')?.direction).toBe('improvement');
+    expect(artifact.metrics?.find((entry) => entry.label === 'LH Score')?.direction).toBe('none');
+    expect(artifact.improvedMetrics).toEqual(['js']);
+  });
+
   it('reports CLS regressions when they are practically meaningful', async () => {
     const artifact = await readMetrics([
       metric('CLS', '5.1/100', true, 0.6, 5.7),
