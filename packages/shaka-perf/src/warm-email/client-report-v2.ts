@@ -480,12 +480,12 @@ ${[video, frames].filter(Boolean).join('\n')}
         </div>`
     : '';
   return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
-          <div>
+        <div style="display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:12px 16px; margin-bottom:14px">
+          <div style="min-width:0">
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             ${monoPath(c.path, c.liveUrl)}
           </div>
-          <div style="flex:none; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px">
 ${facts}
             <span style="display:inline-flex; align-items:center; gap:8px; background:${p.bg}; border:1px solid ${p.line}; border-radius:999px; padding:7px 14px 7px 12px; font-size:13.5px; font-weight:700; color:${p.fg}; white-space:nowrap">
               <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(v2StatusWord(c.status))}
