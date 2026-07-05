@@ -123,11 +123,52 @@ function lsofPortInUse(port: number): boolean {
   }
 }
 
+/**
+ * Parse one explicit-port env var (`SHAKAPERF_CONTROL_PORT` /
+ * `SHAKAPERF_EXPERIMENT_PORT`). Returns the port when present and valid; null
+ * when absent or blank (silently). Validation mirrors `readBasePortOverride`
+ * for malformed and privileged values, but explicit ports may use the full
+ * `1..MAX_PORT` range because no derived experiment offset is added. Keeps a
+ * typo'd value from being swallowed silently.
+ */
+function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | null {
+  const raw = env[varName];
+  if (raw == null) return null;
+  const stripped = raw.trim();
+  if (stripped === '') return null;
+  const port = Number(stripped);
+  if (!/^\d+$/.test(stripped) || port < 1 || port > MAX_PORT) {
+    console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid port (1..${MAX_PORT}); ignoring.`);
+    return null;
+  }
+  if (port <= PRIVILEGED_PORT_MAX) {
+    console.warn(
+      `assignPortsAutomatically: ${varName}="${raw}" is in the privileged range ` +
+        `(1..${PRIVILEGED_PORT_MAX}); binding will fail without root.`,
+    );
+  }
+  return port;
+}
+
 function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
-  const control = Number(env.SHAKAPERF_CONTROL_PORT);
-  const experiment = Number(env.SHAKAPERF_EXPERIMENT_PORT);
-  if (Number.isInteger(control) && control > 0 && Number.isInteger(experiment) && experiment > 0) {
+  const control = parseExplicitPort(env, 'SHAKAPERF_CONTROL_PORT');
+  const experiment = parseExplicitPort(env, 'SHAKAPERF_EXPERIMENT_PORT');
+  if (control != null && experiment != null) {
     return { control, experiment };
+  }
+  // Both vars are required to pin an explicit pair. If one side parsed as valid
+  // and the other side was absent/blank, warn that the whole override was
+  // dropped. Malformed non-blank values already emitted a specific warning in
+  // parseExplicitPort, so avoid adding a second generic message.
+  const isPresent = (value?: string): boolean => value != null && value.trim() !== '';
+  const controlPresent = isPresent(env.SHAKAPERF_CONTROL_PORT);
+  const experimentPresent = isPresent(env.SHAKAPERF_EXPERIMENT_PORT);
+  if ((control != null && !experimentPresent) || (experiment != null && !controlPresent)) {
+    console.warn(
+      'assignPortsAutomatically: both SHAKAPERF_CONTROL_PORT and ' +
+        'SHAKAPERF_EXPERIMENT_PORT must be set to valid ports to pin an explicit ' +
+        'pair; falling through to automatic assignment.',
+    );
   }
   return null;
 }

@@ -31,6 +31,7 @@ describe('assignPortsAutomatically', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -74,6 +75,70 @@ describe('assignPortsAutomatically', () => {
     };
     expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 4000, experiment: 4001 });
     expect(fs.existsSync(settingsPath)).toBe(false);
+  });
+
+  it('warns when an explicit port var is present but not a valid integer, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '40x0', SHAKAPERF_EXPERIMENT_PORT: '4001' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('warns when an explicit port exceeds the TCP range, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '99999', SHAKAPERF_EXPERIMENT_PORT: '4001' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('warns about a privileged explicit port but still uses (and does not persist) the pair', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '80', SHAKAPERF_EXPERIMENT_PORT: '81' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 80, experiment: 81 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('privileged'));
+    expect(fs.existsSync(settingsPath)).toBe(false);
+    warn.mockRestore();
+  });
+
+  it('warns when only one explicit port var is set, and falls through', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = { ...baseDeps(), env: { SHAKAPERF_CONTROL_PORT: '4000' } };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('must be set to valid ports'));
+    warn.mockRestore();
+  });
+
+  it('does not add the generic pair warning when the lone explicit var is malformed', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = { ...baseDeps(), env: { SHAKAPERF_EXPERIMENT_PORT: '40x0' } };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid port'));
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('treats blank/absent explicit port vars as unset without warning', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps: AssignPortsDeps = {
+      ...baseDeps(),
+      env: { SHAKAPERF_CONTROL_PORT: '  ', SHAKAPERF_EXPERIMENT_PORT: '' },
+    };
+    expect(assignPortsAutomatically({ ...pref, key: 'a' }, deps)).toEqual({ control: 3040, experiment: 3050 });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('derives the pair from SHAKAPERF_BASE_PORT and does not persist it', () => {
