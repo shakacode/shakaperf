@@ -507,6 +507,11 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(html).toContain('The audit did not return enough mobile speed data to make a speed claim.');
   });
 
+  it('keeps a zero performance score in the tab header', async () => {
+    const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }), { design: 'v2' });
+    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#b07d2b; line-height:1">0</div>');
+  });
+
   it('uses the worst page metric on the tile and labels the site average separately', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 2000, FCP: 900, 'LH Score': 95 } },
