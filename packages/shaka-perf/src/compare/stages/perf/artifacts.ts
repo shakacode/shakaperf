@@ -15,6 +15,7 @@ import type {
   PerfMetric,
   PerfMetricGroup,
 } from '../perf';
+import type { RegressionThresholdStat } from '../../../bench/cli/command-config/tb-config';
 import { compressSvgEmbeddedImages } from '../../../pipeline/artifact-compression';
 import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
 
@@ -113,6 +114,19 @@ function practicalRegressionThreshold(unit: string, timingRegressionThreshold: n
   return 0.5;
 }
 
+function thresholdDelta(
+  entry: BenchJsonMetric,
+  regressionThresholdStat: RegressionThresholdStat,
+): { value: number; unit: string } {
+  if (regressionThresholdStat === 'ci-lower') {
+    return parseEstimatorDelta(entry.confidenceInterval?.[0] ?? entry.estimatorDelta);
+  }
+  if (regressionThresholdStat === 'ci-upper') {
+    return parseEstimatorDelta(entry.confidenceInterval?.[1] ?? entry.estimatorDelta);
+  }
+  return parseEstimatorDelta(entry.estimatorDelta);
+}
+
 interface BenchSevenFigureSummary {
   '10'?: number;
   '25'?: number;
@@ -129,6 +143,7 @@ interface BenchJsonMetric {
   isSignificant: boolean;
   estimatorDelta: string;
   pValue: number;
+  confidenceInterval?: string[];
   controlSevenFigureSummary?: BenchSevenFigureSummary;
   experimentSevenFigureSummary?: BenchSevenFigureSummary;
   asPercent?: { percentMedian?: number };
@@ -143,12 +158,14 @@ interface BenchJsonMetric {
 interface BenchCompareJsonResults {
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
+  regressionThresholdStat?: RegressionThresholdStat;
 }
 
 export interface ReadPerfArtifactOptions {
   perTestDir: string;
   reportRoot: string;
   regressionThreshold: number;
+  regressionThresholdStat?: RegressionThresholdStat;
   saveArtifacts: boolean;
   statisticalAnalysis: boolean;
 }
@@ -179,14 +196,18 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
       ...(raw.vitalsTableData ?? []),
       ...(raw.diagnosticsTableData ?? []),
     ];
+    const regressionThresholdStat = raw.regressionThresholdStat
+      ?? opts.regressionThresholdStat
+      ?? 'estimator';
     for (const entry of allEntries) {
       const { value: deltaValue, unit } = parseEstimatorDelta(entry.estimatorDelta);
+      const threshold = thresholdDelta(entry, regressionThresholdStat);
       const controlValue = entry.controlSevenFigureSummary?.['50'] ?? 0;
       const experimentValue = entry.experimentSevenFigureSummary?.['50'] ?? 0;
       const direction = actionableDirection(
         entry.phaseName,
-        deltaValue,
-        unit,
+        threshold.value,
+        threshold.unit || unit,
         entry.isSignificant,
         controlValue,
         experimentValue,

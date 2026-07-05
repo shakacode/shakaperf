@@ -9,12 +9,14 @@ function metric(
   isSignificant = true,
   controlValue = 100,
   experimentValue = 100,
+  confidenceInterval = ['0ms', '0ms'],
 ) {
   return {
     heading: 'LH & Vitals',
     phaseName,
     isSignificant,
     estimatorDelta,
+    confidenceInterval,
     pValue: 0.01,
     controlSevenFigureSummary: { '50': controlValue },
     experimentSevenFigureSummary: { '50': experimentValue },
@@ -22,17 +24,21 @@ function metric(
   };
 }
 
-async function readMetrics(vitalsTableData: ReturnType<typeof metric>[]) {
+async function readMetrics(
+  vitalsTableData: ReturnType<typeof metric>[],
+  regressionThresholdStat: 'estimator' | 'ci-lower' | 'ci-upper' = 'estimator',
+) {
   const perTestDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-artifacts-test-'));
   fs.writeFileSync(
     path.join(perTestDir, 'report.json'),
-    JSON.stringify({ vitalsTableData, diagnosticsTableData: [] }),
+    JSON.stringify({ vitalsTableData, diagnosticsTableData: [], regressionThresholdStat }),
   );
 
   return readPerfArtifact({
     perTestDir,
     reportRoot: perTestDir,
     regressionThreshold: 50,
+    regressionThresholdStat,
     saveArtifacts: false,
     statisticalAnalysis: true,
   });
@@ -86,5 +92,20 @@ describe('readPerfArtifact', () => {
     ]);
 
     expect(artifact.regressedMetrics).toEqual(['CLS', 'CLS']);
+  });
+
+  it.each([
+    ['ci-lower' as const, ['80ms', '10ms']],
+    ['ci-upper' as const, ['10ms', '80ms']],
+  ])('uses the configured %s bound for practical threshold filtering', async (
+    regressionThresholdStat,
+    confidenceInterval,
+  ) => {
+    const artifact = await readMetrics([
+      metric('FCP', '20ms', true, 1000, 1020, confidenceInterval),
+    ], regressionThresholdStat);
+
+    expect(artifact.metrics?.find((entry) => entry.label === 'FCP')?.direction).toBe('regression');
+    expect(artifact.regressedMetrics).toEqual(['FCP']);
   });
 });
