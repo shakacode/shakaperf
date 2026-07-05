@@ -89,7 +89,15 @@ const execFileAsync = promisify(execFile);
 const LCP_GOOD_MS = 2500;
 const LCP_SLOW_MS = 10000;
 const LCP_WAIT_MS = 4000; // a visitor notices the wait above this
-const V2_LCP_ACCEPTABLE_MS = 4000; // CWV: "good" (<2.5s) and "needs improvement" (2.5-4.0s) both read as fine at the top-line verdict
+// V2 site-verdict policy: Google's mobile CWV/Lighthouse bands are measured
+// under mobile conditions. LCP's 2.5-4.0s "needs improvement" band is not
+// literally fast, but it is acceptable for the top-line phone verdict when FCP,
+// CLS, and TBT stay healthy. The per-page LCP card still starts at 2.5s.
+const V2_LCP_ACCEPTABLE_MS = 4000;
+const V2_FCP_GOOD_MS = 1800;
+const V2_FCP_POOR_MS = 3000;
+const V2_TBT_GOOD_MS = 200;
+const V2_TBT_POOR_MS = 600;
 // CLS is stored on the /100 scale (value 25 == raw CLS 0.25). Google: good
 // < 0.10, poor > 0.25.
 const CLS_GOOD = 10;
@@ -136,6 +144,24 @@ export function v2LcpStatus(ms: number | undefined): V2Status {
   if (ms === undefined) return 'fair';
   if (ms <= V2_LCP_ACCEPTABLE_MS) return 'good';
   if (ms <= LCP_SLOW_MS) return 'fair';
+  return 'poor';
+}
+
+export function v2FcpStatus(ms: number | undefined): V2Status {
+  if (ms === undefined) return 'good';
+  if (ms <= V2_FCP_GOOD_MS) return 'good';
+  if (ms <= V2_FCP_POOR_MS) return 'fair';
+  return 'poor';
+}
+
+export function v2ClsStatus(v: number | undefined): V2Status {
+  return clsStatus(v);
+}
+
+export function v2TbtStatus(ms: number | undefined): V2Status {
+  if (ms === undefined) return 'good';
+  if (ms <= V2_TBT_GOOD_MS) return 'good';
+  if (ms <= V2_TBT_POOR_MS) return 'fair';
   return 'poor';
 }
 
@@ -2693,10 +2719,30 @@ const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
 export interface V2PagePerfStatusInput {
   page: PagePerf;
   lead: Problem;
+  rest?: readonly Problem[];
+}
+
+function v2ProblemStatus(page: PagePerf, problem: Problem): V2Status {
+  switch (problem.kind) {
+    case 'slow-lcp':
+      return v2LcpStatus(metricVal(page, 'LCP'));
+    case 'layout-shift':
+      return v2ClsStatus(metricVal(page, 'CLS'));
+    case 'blank':
+    case 'late-paint':
+      return v2FcpStatus(metricVal(page, 'FCP'));
+    case 'sluggish':
+      return v2TbtStatus(metricVal(page, 'TBT'));
+    default:
+      return problem.status;
+  }
 }
 
 export function v2PagePerfStatus(r: V2PagePerfStatusInput): V2Status {
-  return r.lead.kind === 'slow-lcp' ? v2LcpStatus(metricVal(r.page, 'LCP')) : r.lead.status;
+  return [r.lead, ...(r.rest ?? [])].reduce<V2Status>((worst, problem) => {
+    const status = v2ProblemStatus(r.page, problem);
+    return V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst;
+  }, 'good');
 }
 
 export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): V2Status {

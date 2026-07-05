@@ -80,7 +80,7 @@ function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: PERF_COULD_NOT_MEASURE_PARA };
   }
-  const verdictWord = f.status === 'poor' ? 'Slow on phones' : f.status === 'fair' ? 'A bit slow on phones' : 'Fast on phones';
+  const verdictWord = f.status === 'poor' ? 'Slow on phones' : f.status === 'fair' ? 'A bit slow on phones' : 'Fine on phones';
   const wait = f.avgLabel
     ? `A visitor on a phone waits about ${f.avgLabel} before the typical page is usable${f.jumpyCount > 0 ? ', and some pages visibly shift around while they load' : ''}. On a fast desktop these pages feel fine, which is exactly why this is easy to miss.`
     : 'On a fast desktop these pages feel fine; on a phone over a normal connection they are slower, which is easy to miss.';

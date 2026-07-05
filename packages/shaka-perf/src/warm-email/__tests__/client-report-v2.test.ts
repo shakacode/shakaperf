@@ -22,9 +22,12 @@ import {
   perfProblemPhrase,
   perfProblemTileCopy,
   renderClientReport,
+  v2ClsStatus,
+  v2FcpStatus,
   v2LcpStatus,
   v2PagePerfStatus,
   v2PerfStatus,
+  v2TbtStatus,
   type Problem,
   type V2PagePerfStatusInput,
 } from '../client-report';
@@ -323,6 +326,31 @@ describe('v2 mobile-speed verdict calibration', () => {
     expect(v2LcpStatus(ms)).toBe(expected);
   });
 
+  it.each([
+    [1200, 'good'],
+    [2200, 'fair'],
+    [3100, 'poor'],
+    [4100, 'poor'],
+  ] as const)('classifies %dms FCP as %s for the v2 site verdict', (ms, expected) => {
+    expect(v2FcpStatus(ms)).toBe(expected);
+  });
+
+  it.each([
+    [9, 'good'],
+    [15, 'fair'],
+    [30, 'poor'],
+  ] as const)('classifies %d/100 CLS as %s for the v2 site verdict', (value, expected) => {
+    expect(v2ClsStatus(value)).toBe(expected);
+  });
+
+  it.each([
+    [150, 'good'],
+    [300, 'fair'],
+    [700, 'poor'],
+  ] as const)('classifies %dms TBT as %s for the v2 site verdict', (ms, expected) => {
+    expect(v2TbtStatus(ms)).toBe(expected);
+  });
+
   it('relaxes LCP-bound pages up to 4.0s when aggregating the v2 site perf status', () => {
     const page = v2PerfInput('slow-lcp', 'fair', { LCP: 3000 });
     const status = v2PerfStatus([page]);
@@ -331,7 +359,7 @@ describe('v2 mobile-speed verdict calibration', () => {
     expect(status).toBe('good');
     expect(buildDeterministicNarrative(facts({
       perf: { status, avgLabel: '3.0s', slowCount: 0, jumpyCount: 0, worst: [] },
-    })).perf.verdictWord).toBe('Fast on phones');
+    })).perf.verdictWord).toBe('Fine on phones');
   });
 
   it('keeps slower LCP-bound pages amber until the existing red cutoff', () => {
@@ -349,6 +377,30 @@ describe('v2 mobile-speed verdict calibration', () => {
       v2PerfInput('slow-lcp', 'fair', { LCP: 3000 }),
       v2PerfInput('layout-shift', 'poor', { LCP: 3000, CLS: 30 }),
     ])).toBe('poor');
+  });
+
+  it('does not relax a late first paint through the LCP band', () => {
+    const page = v2PerfInput('late-paint', 'fair', { LCP: 3700, FCP: 3600 });
+
+    expect(v2PagePerfStatus(page)).toBe('poor');
+    expect(v2PerfStatus([page])).toBe('poor');
+  });
+
+  it('treats a Lighthouse-red blocking-time problem as poor in the v2 site verdict', () => {
+    const page = v2PerfInput('sluggish', 'fair', { LCP: 1900, FCP: 900, TBT: 700 });
+
+    expect(v2PagePerfStatus(page)).toBe('poor');
+    expect(v2PerfStatus([page])).toBe('poor');
+  });
+
+  it('lets a poor secondary problem outrank a relaxed LCP lead', () => {
+    const page: V2PagePerfStatusInput = {
+      ...v2PerfInput('slow-lcp', 'fair', { LCP: 3000, CLS: 30 }),
+      rest: [problem('layout-shift', 'poor')],
+    };
+
+    expect(v2PagePerfStatus(page)).toBe('poor');
+    expect(v2PerfStatus([page])).toBe('poor');
   });
 });
 
@@ -542,18 +594,25 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 1900, FCP: 800, CLS: 1, TBT: 50, 'LH Score': 98 }), { design: 'v2' });
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Mobile speed');
-    expect(perfTile).toContain('Fast on phones');
+    expect(perfTile).toContain('Fine on phones');
     expect(perfTile).toContain('>1.9s</div>');
     expect(perfTile).toContain('typical wait before a page is usable');
     expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
     expect(perfTile).not.toContain('jumps around');
   });
 
-  it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fast', async () => {
+  it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fine', async () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }), { design: 'v2' });
 
-    expect(html).toContain('Fast on phones');
+    expect(html).toContain('Fine on phones');
     expect(html).toContain('The biggest piece of the page takes <strong>3.7s</strong> to appear');
+  });
+
+  it('does not let the relaxed LCP band hide a late first paint in the rendered v2 report', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 3600, 'LH Score': 76 }), { design: 'v2' });
+
+    expect(html).toContain('Slow on phones');
+    expect(html).toContain('Nothing appears for the first <strong>3.6s</strong>');
   });
 
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
