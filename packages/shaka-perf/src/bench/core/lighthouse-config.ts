@@ -51,8 +51,7 @@ export type PerfLighthouseConfig = Omit<LighthouseConfig, 'formFactor' | 'screen
 export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
   // Lighthouse "Slow 4G" mobile preset (the profile PSI uses) - realistic, vs
   // the old inflated 700/300/cpu20 default. Under 'simulate' only rttMs +
-  // throughputKbps drive Lantern. Override per-project via `lighthouseConfig`,
-  // or cpuSlowdownMultiplier for one run via SHAKAPERF_CPU_MULTIPLIER.
+  // throughputKbps drive Lantern. Override per-project via `lighthouseConfig`.
   throttling: {
     rttMs: 150,
     throughputKbps: 1638.4,
