@@ -18,7 +18,11 @@ interface CaptureOptions {
   outDir: string;
   /** Short label used as a filename prefix (e.g. "perf", "visreg"). */
   label: string;
-  /** Upper bound on the number of shots taken per clickable-element class. */
+  /**
+   * Upper bound on how many elements of a clickable-element class are
+   * interacted with (artifact dialogs shot per button; source toggles all
+   * expanded into one shot).
+   */
   maxPerKind?: number;
 }
 
@@ -39,13 +43,19 @@ interface CaptureOptions {
  *   .a11y-thumb-button            accessibility findings dialog
  *   .card__logs-button            per-card measurement logs dialog
  *   .search input[type=search]    text filter
+ *
+ * Returns the shot names taken (e.g. "01-overview") so the caller can assert
+ * its suite's mandatory shots were actually captured — every interaction here
+ * is optional-locator + swallowed-click by design, so without that assertion
+ * a renamed selector would silently drop a whole evidence class.
  */
-export async function captureReportScreenshots(opts: CaptureOptions): Promise<void> {
+export async function captureReportScreenshots(opts: CaptureOptions): Promise<string[]> {
   const { page, reportHtmlPath, outDir, label } = opts;
   const maxPerKind = opts.maxPerKind ?? 8;
   const shotDir = outDir;
   fs.mkdirSync(shotDir, { recursive: true });
 
+  const taken: string[] = [];
   const shot = async (name: string) => {
     const file = path.join(shotDir, `${label}__${name}.png`);
     const openDialog = page.locator('dialog[open]').first();
@@ -54,6 +64,7 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
     } else {
       await page.screenshot({ path: file, fullPage: true });
     }
+    taken.push(name);
   };
 
   await page.setViewportSize({ width: 1920, height: 1200 });
@@ -78,7 +89,13 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
 
   // 03 — stage filter menu (the "report sections filter" dropdown). It's a
   // native <details>, so it closes by clicking the summary again, not Escape.
-  const stageFilterSummary = page.locator('.stage-filter summary, details > summary').first();
+  // Prefer the scoped selector; the bare `details > summary` fallback exists
+  // only for shells without a .stage-filter wrapper (`.first()` on a comma
+  // list picks DOM order, which could otherwise grab an unrelated details).
+  const scopedSummary = page.locator('.stage-filter summary');
+  const stageFilterSummary = (await scopedSummary.count()) > 0
+    ? scopedSummary.first()
+    : page.locator('details > summary').first();
   if ((await stageFilterSummary.count()) > 0) {
     await stageFilterSummary.click().catch(() => {});
     await page.waitForTimeout(200);
@@ -112,18 +129,19 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
   const artifactShots = Math.min(nArtifacts, maxPerKind);
   for (let i = 0; i < artifactShots; i++) {
     const btn = artifactBtns.nth(i);
-    const btnText = ((await btn.textContent()) || `art${i}`).trim();
-    // Strip digits from the label before slugifying: timeline/profile-frame
-    // buttons embed per-run timings ("2ms initial page load 326ms …"), and a
-    // filename that churns every run breaks the stable-name contract the
-    // screenshot diff relies on.
-    const safe = sanitize(btnText.replace(/\d+(\.\d+)?/g, ''));
+    // Shots are named by position only. Button labels are run-variable in two
+    // ways — timeline/profile-frame labels embed per-run timings and story
+    // beats, and card order follows measured badness — so a label-derived
+    // filename churns as new/deleted pairs in the screenshot diff. Index-only
+    // names keep the slots stable run to run (content drift shows up as a
+    // comparable "changed" card), and the dialog's own title identifies the
+    // artifact inside the screenshot.
     await btn.scrollIntoViewIfNeeded().catch(() => {});
     await btn.click().catch(() => {});
     const dialogOk = await page.waitForSelector('dialog[open]', { timeout: 5000 }).then(() => true, () => false);
     if (dialogOk) {
       await page.waitForTimeout(1500); // iframe content needs a beat to render
-      await shot(`05-artifact-${String(i).padStart(2, '0')}-${safe}`);
+      await shot(`05-artifact-${String(i).padStart(2, '0')}`);
       await closeDialog(page);
     }
   }
@@ -196,6 +214,8 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<vo
     await shot('09-search-home');
     await search.fill('');
   }
+
+  return taken;
 }
 
 async function closeDialog(page: Page): Promise<void> {
@@ -206,7 +226,14 @@ async function closeDialog(page: Page): Promise<void> {
   } else {
     await page.keyboard.press('Escape').catch(() => {});
   }
-  await page.waitForSelector('dialog[open]', { state: 'detached', timeout: 2000 }).catch(() => {});
+  // A dialog that won't close is a report bug, and swallowing it would poison
+  // every later screenshot (shot() prefers `dialog[open]`, so the stale dialog
+  // would be captured under each subsequent shot's name). Fail loudly instead.
+  try {
+    await page.waitForSelector('dialog[open]', { state: 'detached', timeout: 2000 });
+  } catch {
+    throw new Error('closeDialog: a dialog[open] refused to close — the close button/Escape handling in the report is broken');
+  }
   await page.waitForTimeout(200);
 }
 
@@ -254,8 +281,9 @@ function sanitize(s: string): string {
  *
  *   01-overview               bottom line + three status tiles + tab bar with
  *                             per-tab scores + the active (Performance) panel
- *   02-tab-<perf|a11y|agent>  every tab panel, lazy images settled — perf page
- *                             cards with verdicts/filmstrips/load video,
+ *   02-tab-<a11y|agent>       every tab panel EXCEPT the initially-active one
+ *                             (the overview already shows it, so re-shooting
+ *                             would write a byte-identical duplicate) —
  *                             accessibility cards with severity chips + crops,
  *                             AI-visibility (agent-ready) category breakdowns
  *   03-tile-jump              clicking a status tile jumps to its tab
@@ -264,13 +292,15 @@ function sanitize(s: string): string {
  *   06-sev-chip-toggled       severity chip toggled off — problem boxes hidden
  *
  * Every locator is optional: a report without a11y/agent data (or with no
- * frames) simply skips those shots rather than failing the spec.
+ * frames) simply skips those shots rather than failing the spec. Returns the
+ * shot names taken so the caller can assert its mandatory shots landed.
  */
-export async function captureClientReportScreenshots(opts: CaptureOptions): Promise<void> {
+export async function captureClientReportScreenshots(opts: CaptureOptions): Promise<string[]> {
   const { page, reportHtmlPath, outDir, label } = opts;
   const shotDir = outDir;
   fs.mkdirSync(shotDir, { recursive: true });
 
+  const taken: string[] = [];
   const shot = async (name: string) => {
     const file = path.join(shotDir, `${label}__${name}.png`);
     const lightbox = page.locator('#v2-lb');
@@ -279,6 +309,7 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
     } else {
       await page.screenshot({ path: file, fullPage: true });
     }
+    taken.push(name);
   };
 
   await page.setViewportSize({ width: 1440, height: 1100 });
@@ -347,4 +378,6 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
     await shot('06-sev-chip-toggled');
     await sevChip.click().catch(() => {});
   }
+
+  return taken;
 }

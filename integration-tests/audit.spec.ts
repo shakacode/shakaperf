@@ -122,5 +122,9 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
     console.log(err.stderr ?? '');
     throw new Error(`verify-click-coincidence.mjs failed with exit ${err.status ?? 'unknown'} — blue/red chips do not coincide. See output above.`);
   }
+  // Belt-and-braces against a vacuous PASS: the validator hard-fails when it
+  // validated zero click-chip tests, and this asserts the count line it
+  // prints on success so a validator regression can't silently drop it.
+  expect(stdout, 'validator must have validated at least one click-chip test').toMatch(/validated [1-9]\d* test/);
   expect(stdout, 'validator output must end with PASS').toMatch(/\bPASS\b\s*$/);
 });

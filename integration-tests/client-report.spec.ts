@@ -12,8 +12,8 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  env, loud, startServers, waitForPort,
+  ORIGINAL_REPO, EXPERIMENT_CLONE_PATH, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
+  assertPlainNonZeroExit, env, loud, startServers, waitForPort,
 } from './helpers';
 import {
   captureClientReportScreenshots,
@@ -30,12 +30,35 @@ const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 
 //
 // The audit runs over ALL demo ab-tests so the report has enough pages for
 // its multi-page layouts, and it deliberately KEEPS the broken products
-// selector the global setup injected: that page's engine error is exactly how
-// the client report's "we couldn't measure this page" state gets rendered and
-// screenshotted. All AI passes are disabled so the captured copy is the
-// deterministic built-in fallback — baselines must not vary run to run.
+// selector the global setup injected. That exercises the audit's engine-error
+// path end to end: the non-zero exit, and the error card in the TECHNICAL
+// full-report (the products test is desktop-only while the v2 client report
+// is phone-framed, so the client report's own "couldn't measure this page"
+// state is NOT covered here — it would need a phone-viewport failure). All AI
+// passes are disabled so the captured copy is the deterministic built-in
+// fallback — baselines must not vary run to run.
 test('audit all pages, render v2 client report, screenshot its states @audit', async ({ page }) => {
   test.setTimeout(45 * 60 * 1000);
+
+  // This spec's audit must exit non-zero via the sabotaged selector, which
+  // exists only in the temp clone global setup creates — in live mode
+  // (SKIP_GLOBAL_SETUP=1 against the developer's working tree) the audit
+  // would exit 0 and the expectation below would fail spuriously.
+  test.skip(
+    EXPERIMENT_CLONE_PATH === ORIGINAL_REPO,
+    'needs the sabotaged temp clone from global setup — incompatible with SKIP_GLOBAL_SETUP=1',
+  );
+
+  // Fail fast if the sabotage silently vanished (a drifted global-setup
+  // replace would otherwise surface only ~30 min later as "audit exited 0").
+  const productsAbtest = fs.readFileSync(
+    path.join(EXPERIMENT_CLONE_PATH, 'demo-ecommerce/ab-tests/products.abtest.ts'),
+    'utf-8',
+  );
+  expect(
+    productsAbtest.includes('category-option-electronics-fake-broken-selector'),
+    'global setup must have injected the broken products selector',
+  ).toBe(true);
 
   startServers();
   loud(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`);
@@ -44,30 +67,47 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
     waitForPort(EXPERIMENT_PORT),
   ]);
 
-  // Fresh audit over every ab-test. The previous (filtered) audit spec's
-  // results are wiped by the audit engine itself.
+  // Fresh audit over every ab-test. The audit engine wipes audit-results on
+  // its own; this manual wipe is belt-and-braces so persisted engine errors
+  // from the earlier FILTERED audit spec can't leak into this run's report.
   if (fs.existsSync(AUDIT_RESULTS_DIR)) {
     fs.rmSync(AUDIT_RESULTS_DIR, { recursive: true, force: true });
   }
 
   loud('Running shaka-perf audit over all demo ab-tests (ai_summary skipped)');
   // Expect a non-zero exit: the sabotaged products selector reliably errors
-  // that one test, which is the "could not measure" case the client report
-  // must render. Swallow the throw and verify the artifacts below.
+  // that one test. Swallow the throw and verify the artifacts below.
   let auditFailed = false;
   try {
     execSync(
       'yarn shaka-perf audit --skip-stages ai_summary',
       { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
     );
-  } catch {
+  } catch (e) {
     auditFailed = true;
+    // Only a plain non-zero exit counts as "failed as designed" — a timeout
+    // kill or spawn failure must fail the spec, not masquerade as the
+    // engineered error.
+    assertPlainNonZeroExit(e, 'shaka-perf audit');
   }
   if (!auditFailed) {
     throw new Error('Expected shaka-perf audit to exit non-zero (broken products selector), but it exited 0');
   }
   loud('Audit exited non-zero as expected (sabotaged products test errored)');
   expect(fs.existsSync(path.join(AUDIT_RESULTS_DIR, 'report.json')), 'audit must still write report.json').toBe(true);
+
+  // The non-zero exit must come from the ENGINEERED error alone. If any
+  // other test errored (servers dying mid-audit, flaky engine), the baseline
+  // would quietly become a report full of broken pages.
+  const auditReport = JSON.parse(
+    fs.readFileSync(path.join(AUDIT_RESULTS_DIR, 'report.json'), 'utf-8'),
+  ) as { tests: Array<{ name: string; outcomes: Array<{ kind: string }> }> };
+  const erroredTests = [...new Set(
+    auditReport.tests
+      .filter((t) => t.outcomes.some((o) => o.kind === 'error'))
+      .map((t) => t.name),
+  )];
+  expect(erroredTests, 'only the sabotaged products test may error').toEqual(['Products - Electronics Filter']);
 
   // Render the v2 client report deterministically: every claude pass off, so
   // the verdict copy / captions / a11y summaries are the built-in fallbacks.
@@ -89,7 +129,7 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
 
   // Deep-click the technical full-report.html: audit cards with metric chips,
   // accessibility findings, agent-readiness results, timeline filmstrips.
-  await captureReportScreenshots({
+  const auditShots = await captureReportScreenshots({
     page,
     reportHtmlPath: path.join(AUDIT_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
@@ -99,7 +139,7 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
   // Drive the v2 client report through its interactive states: overview with
   // status tiles + tab scores, each tab panel, tile jump, lightbox, severity
   // chip toggle.
-  await captureClientReportScreenshots({
+  const clientShots = await captureClientReportScreenshots({
     page,
     reportHtmlPath: clientReportPath,
     outDir: SNAPSHOT_DIR,
@@ -112,4 +152,16 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
   await expect(page.locator('.v2-tile[data-jump]'), 'v2 report must render 3 status tiles').toHaveCount(3);
   await expect(page.locator('.v2-tab'), 'v2 report must render 3 tab headers').toHaveCount(3);
 
+  // Every capture interaction is optional-locator by design; these manifest
+  // checks are what make a silently-vanished evidence class fail the suite.
+  for (const required of ['01-overview', '07-a11y-dialog', '08-logs']) {
+    expect(auditShots, `technical-report capture must include the ${required} shot`).toContain(required);
+  }
+  expect(
+    auditShots.some((s) => s.startsWith('05-artifact-')),
+    'technical-report capture must include at least one artifact dialog shot',
+  ).toBe(true);
+  for (const required of ['01-overview', '02-tab-a11y', '02-tab-agent', '04-lightbox', '06-sev-chip-toggled']) {
+    expect(clientShots, `client-report capture must include the ${required} shot`).toContain(required);
+  }
 });

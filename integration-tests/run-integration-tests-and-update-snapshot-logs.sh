@@ -30,7 +30,9 @@
 #       report variant always duplicates the full report).
 #
 # The log output is automatically normalized to replace run-variable values
-# (timestamps, timings, home directory paths, docker ages) with stubs.
+# (timestamps, home directory paths, docker ages, and most timings) with
+# stubs — the ⏱ stage markers deliberately survive so the integrity skill's
+# timing analysts can compare them run to run.
 #
 # When reviewing the git diff, IGNORE differences in:
 #   - Webpack hashes (e.g. -fa6c2b68881f0c7d1717)

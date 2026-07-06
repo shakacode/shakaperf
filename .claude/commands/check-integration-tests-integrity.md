@@ -17,11 +17,11 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
    (load the baseline logs via Read) and break the tie; flag the
    disagreement in the output so the reader knows the signal was ambiguous.
 
-3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff report in the browser. If they agree, open `integration-tests/snapshots/screenshot-diff-report.html` with `open <path>` via Bash. If they decline, just print the path.
+3. After printing the summary, use AskUserQuestion to ask whether the user wants to open the screenshot diff report in the browser. If they agree, open `integration-tests/snapshots/screenshot-diff-report.html` via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path.
 
 ## What the logs must contain
 
-Every baseline log is a normalized Playwright transcript: run-variable values (timestamps, timings, home dirs, docker ages) are already replaced with `<TIMING>`/`<TIMESTAMP>`-style stubs, so any remaining diff is either noise listed under its section below or real signal. In ALL logs, these are always signal: `>>>` step banners appearing/disappearing, new `Error:`/`FAIL`/`Traceback` lines, a changed Playwright pass count, or a suite that no longer ends with its expected final banner.
+Every baseline log is a normalized Playwright transcript: run-variable values (timestamps, most timings, home dirs, docker ages) are replaced with `<TIMING>`/`<TIMESTAMP>`-style stubs — the `⏱ <label>: <duration>s` stage markers deliberately survive so the timing analysts below can compare them. Any remaining diff is either noise listed under its section below or real signal. In ALL logs, these are always signal: `>>>` step banners appearing/disappearing, new `Error:`/`FAIL`/`Traceback` lines, a changed Playwright pass count, or a suite that no longer ends with its expected final banner.
 
 ### baseline-twin-servers.log
 
@@ -53,7 +53,7 @@ Same noise rules, plus sparklines and p-values are noise. The compare CLI MUST e
 git diff -- integration-tests/snapshots/baseline-audit.log
 ```
 
-Same noise rules. Two tests. The click-coincidence test must show: the `Restored working products.abtest.ts selector` banner, an audit run over the two filtered click-flow tests (Products Electronics + Form Login) with `ai_summary` skipped, `timeline_frames.json` metadata + frame images verified for every per-test dir, and the validator (metadata click chips vs OCR'd red in-page Click overlays) output ending in `PASS`. The client-report test must show: an all-pages audit that exits NON-zero (banner `Audit exited non-zero as expected (sabotaged products test errored)` — the engine errors must all belong to the sabotaged products test), the `client-report` render with all `--no-ai-*` flags, and the capture banners for the client-report states (overview, tabs, lightbox, severity chip). Ends with `2 passed`. Flag: validator verdict not PASS, engine errors on any test other than the sabotaged products one, missing capture banners, test count changes.
+Same noise rules. Two tests. The click-coincidence test must show: the `Restored working products.abtest.ts selector` banner, an audit run over the two filtered click-flow tests (Products Electronics + Form Login) with `ai_summary` skipped, `timeline_frames.json` metadata + frame images verified for every per-test dir, and the validator (metadata click chips vs OCR'd red in-page Click overlays) printing a `validated N test(s) with click chips` line (N ≥ 1) and ending in `PASS`. The client-report test must show: an all-pages audit that exits NON-zero (banner `Audit exited non-zero as expected (sabotaged products test errored)` — the spec itself asserts the engine errors all belong to the sabotaged products test), the `Rendering v2 client report (all AI passes disabled)` banner, and the two capture banners (`Capturing audit report: overview`, `Capturing client client report: overview` — the per-state shots do not log individually; the spec asserts their manifest instead). Ends with `2 passed`. Flag: validator verdict not PASS or `validated 0`, engine errors on any test other than the sabotaged products one, missing banners, test count changes.
 
 ## What the screenshots must contain
 
@@ -69,7 +69,7 @@ Parse the per-suite summary lines (`<suite>: <total> total — <changed> changed
 
 - Overview / filter / tab / lightbox shots are near-deterministic (the report shells render fixed data): any visible change is worth inspecting.
 - Artifact-dialog shots hosting iframes (lighthouse, timeline, diff pages) drift slightly between runs (iframe/lazy-image timing, sub-pixel anti-aliasing): only gross breakage matters — a blank iframe, an empty grid, a dimension collapse.
-- Any `new`/`deleted` count is signal: names are stable (run-variable digits are stripped from dialog labels before slugifying), so an appearing/disappearing PNG means a screenshot target appeared or stopped rendering.
+- Any `new`/`deleted` count is signal: names are fully stable (artifact-dialog shots are numbered by position — `05-artifact-00`… — with the dialog's own title identifying the artifact inside the image), so an appearing/disappearing PNG means a screenshot target appeared or stopped rendering.
 
 Then verify the inventory from the `ls` output. Expected minimum per suite (missing = an interactive state stopped rendering; extra shots are fine):
 
@@ -86,22 +86,24 @@ In every shot the content bar is the same: no blank/black frames where a page re
 ```bash
 for s in twin-servers visreg perf audit; do \
   git show HEAD:integration-tests/snapshots/baseline-$s.log > /tmp/ic-old-$s.log 2>/dev/null; \
-  echo "=== OLD $s ==="; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-$s.log 2>/dev/null; \
-  echo "=== NEW $s ==="; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-$s.log 2>/dev/null; \
+  echo "=== OLD $s ==="; grep -E '⏱|passed' /tmp/ic-old-$s.log 2>/dev/null; \
+  echo "=== NEW $s ==="; grep -E '⏱|passed' integration-tests/snapshots/baseline-$s.log 2>/dev/null; \
 done
 ```
 
 Build a before/after timing comparison table from the command output above:
 
 - Rows: every stage/step that has a `⏱ <label>: <duration>s` marker, plus each
-  per-test `(<duration>s)` / `(<duration>m)` summary from Playwright, plus each
-  `run: yarn shaka-perf …` block's trailing `⏱ <duration>s`.
+  `run: yarn shaka-perf …` block's trailing `⏱ <duration>s`. (Playwright's
+  per-test `(<duration>s)` summaries are normalized to `(<TIMING>s)` stubs, so
+  ⏱ markers are the only durations that survive in the logs — the `passed`
+  lines are grepped for test-count context only.)
 - Columns: stage · OLD · NEW · Δ · Δ%.
 - Skip lines matching any of: `servers build`, `docker build`, `Building both Docker images`, `Building both Docker containers`, `servers start-containers` — docker layers use unpredictable caches, so their times don't reflect the code under test.
 
 Return a one-line verdict:
 
-- **"no regression"** — every remaining stage's Δ% is within ±25%, and no single test's wall-clock time increased by more than 2×.
+- **"no regression"** — every remaining stage's Δ% is within ±25%.
 - **"regressed"** — otherwise. Name the worst 3 offenders with their OLD vs NEW numbers and Δ%.
 
 If an OLD log is missing (first run on this branch), report **"no baseline"** for that suite and do not build its table.
@@ -111,8 +113,8 @@ If an OLD log is missing (first run on this branch), report **"no baseline"** fo
 ```bash
 for s in twin-servers visreg perf audit; do \
   git show HEAD:integration-tests/snapshots/baseline-$s.log > /tmp/ic-old-$s.log 2>/dev/null; \
-  echo "=== OLD $s ==="; grep -E '⏱|passed|\([0-9.]+[sm]\)' /tmp/ic-old-$s.log 2>/dev/null; \
-  echo "=== NEW $s ==="; grep -E '⏱|passed|\([0-9.]+[sm]\)' integration-tests/snapshots/baseline-$s.log 2>/dev/null; \
+  echo "=== OLD $s ==="; grep -E '⏱|passed' /tmp/ic-old-$s.log 2>/dev/null; \
+  echo "=== NEW $s ==="; grep -E '⏱|passed' integration-tests/snapshots/baseline-$s.log 2>/dev/null; \
 done
 ```
 

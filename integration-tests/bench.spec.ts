@@ -7,12 +7,12 @@
  * License in LICENSE.md.
  */
 
-import { test } from './base-test';
+import { test, expect } from './base-test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  loud, run, startServers, waitForPort,
+  assertPlainNonZeroExit, loud, run, startServers, waitForPort,
 } from './helpers';
 import { captureReportScreenshots } from './report-capture';
 
@@ -50,11 +50,24 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
       if (err.stdout) console.log(err.stdout.toString());
       if (err.stderr) console.log(err.stderr.toString());
     }
+    // Only a plain non-zero exit counts as "failed as designed" — a timeout
+    // kill or spawn failure must fail the spec, not masquerade as a regression.
+    assertPlainNonZeroExit(e, 'shaka-perf compare --categories perf');
   }
   if (!perfFailed) {
     throw new Error('Expected shaka-perf compare --categories perf to exit non-zero (HomePage regression), but it exited 0');
   }
   loud('Perf compare exited non-zero as expected (regression detected)');
+
+  // Pin the ENGINEERED outcome — the LazySection→div swap must be what
+  // regressed, not some run-wide collapse that also exits non-zero.
+  const machineReport = JSON.parse(
+    fs.readFileSync(path.join(COMPARE_RESULTS_DIR, 'report.json'), 'utf-8'),
+  ) as { tests: Array<{ name: string; chips: Array<{ tag: string }> }> };
+  expect(
+    machineReport.tests.some((t) => t.name === 'Homepage' && t.chips.some((c) => c.tag === 'regression')),
+    'the LazySection→div swap must flag Homepage with a regression chip',
+  ).toBe(true);
 
   // Snapshots receive ONLY the deep-click report screenshots below. The results
   // tree itself (report JSON/HTML, raw captures with per-run ids in their
@@ -67,10 +80,20 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   // Interact with the unified full-report.html and capture every distinct
   // state (dialogs, expanded source, filtered grid, timeline preview,
   // scrubber).
-  await captureReportScreenshots({
+  const shots = await captureReportScreenshots({
     page,
     reportHtmlPath: path.join(COMPARE_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'perf',
   });
+
+  // Every capture interaction is optional-locator by design; this manifest
+  // check is what makes a silently-vanished evidence class fail the suite.
+  for (const required of ['01-overview', '08-logs']) {
+    expect(shots, `capture must include the ${required} shot`).toContain(required);
+  }
+  expect(
+    shots.some((s) => s.startsWith('05-artifact-')),
+    'capture must include at least one artifact dialog shot',
+  ).toBe(true);
 });

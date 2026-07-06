@@ -179,6 +179,9 @@ function cardFor(relPath) {
     oldDims: headImg ? `${headImg.width}×${headImg.height}` : null,
     newDims: currentImg ? `${currentImg.width}×${currentImg.height}` : null,
     dimMismatch: !!(headImg && currentImg) && !sameDims,
+    // Bytes exist but don't decode as PNG (truncated blob, LFS pointer, …).
+    // MUST stay distinct from "identical": we never compared these pixels.
+    decodeError: (!!headBuf && !headImg) || (!!currentBuf && !currentImg),
     numDiffPixels,
     pct,
   };
@@ -196,17 +199,21 @@ const sections = targetDirs.map((d) => ({
   cards: sectionCards(d),
 }));
 
+let totalDecodeErrors = 0;
 for (const s of sections) {
+  const decodeErrors = s.cards.filter((c) => c.decodeError).length;
+  totalDecodeErrors += decodeErrors;
   const changed = s.cards.filter(
-    (c) => c.hasOld && c.hasNew && (c.dimMismatch || c.numDiffPixels > 0),
+    (c) => !c.decodeError && c.hasOld && c.hasNew && (c.dimMismatch || c.numDiffPixels > 0),
   ).length;
   const identical = s.cards.filter(
-    (c) => c.hasOld && c.hasNew && !c.dimMismatch && c.numDiffPixels === 0,
+    (c) => !c.decodeError && c.hasOld && c.hasNew && !c.dimMismatch && c.numDiffPixels === 0,
   ).length;
-  const added = s.cards.filter((c) => !c.hasOld && c.hasNew).length;
-  const deleted = s.cards.filter((c) => c.hasOld && !c.hasNew).length;
+  const added = s.cards.filter((c) => !c.decodeError && !c.hasOld && c.hasNew).length;
+  const deleted = s.cards.filter((c) => !c.decodeError && c.hasOld && !c.hasNew).length;
+  const decodeSuffix = decodeErrors > 0 ? `, ${decodeErrors} DECODE ERRORS` : '';
   console.log(
-    `${s.label}: ${s.cards.length} total — ${changed} changed, ${identical} identical, ${added} new, ${deleted} deleted`,
+    `${s.label}: ${s.cards.length} total — ${changed} changed, ${identical} identical, ${added} new, ${deleted} deleted${decodeSuffix}`,
   );
 }
 
@@ -221,6 +228,7 @@ function esc(s) {
 }
 
 function tagFor(card) {
+  if (card.decodeError) return 'DECODE ERROR — not compared';
   if (!card.hasOld) return 'new';
   if (!card.hasNew) return 'deleted';
   if (card.dimMismatch) return `dim-shift ${card.oldDims} → ${card.newDims}`;
@@ -271,3 +279,9 @@ ${sections.map(sectionHtml).join('\n')}
 
 fs.writeFileSync(REPORT_PATH, html);
 console.log(`\nReport: ${REPORT_PATH}`);
+if (totalDecodeErrors > 0) {
+  console.error(
+    `\n${totalDecodeErrors} PNG(s) could not be decoded and were NOT compared — inspect the DECODE ERROR cards before trusting this report.`,
+  );
+  process.exit(1);
+}

@@ -35,7 +35,11 @@ import os from 'node:os';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
 
-const RESULTS = process.argv[2] ?? '/Users/romex/shakaperf_2/demo-ecommerce/audit-results';
+const RESULTS = process.argv[2];
+if (!RESULTS) {
+  console.error('usage: verify-click-coincidence.mjs <audit-results-dir>');
+  process.exit(2);
+}
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-ocr-'));
 process.on('exit', () => { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} });
@@ -58,12 +62,12 @@ const isRedChip = (r, g, b) => r > 200 && g < 100 && b < 100;
 
 /**
  * Compute the bounding box of pixels matching `pred` within the given
- * fractional region of the AVIF. Used to tightly crop the small red
+ * fractional region of the frame image. Used to tightly crop the small red
  * chip in the bottom-right quadrant before OCR — loose crops drown
  * tesseract in empty pixels and it returns ""/".".
  */
-async function bboxOf(avifPath, pred, region) {
-  const { data, info } = await sharp(avifPath).raw().toBuffer({ resolveWithObject: true });
+async function bboxOf(imagePath, pred, region) {
+  const { data, info } = await sharp(imagePath).raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height, chan = info.channels;
   const x0 = Math.floor(W * region.left), x1 = Math.floor(W * region.right);
   const y0 = Math.floor(H * region.top), y1 = Math.floor(H * region.bottom);
@@ -95,11 +99,14 @@ async function ocrRedCornerForClick(imagePath) {
   // Bottom-right chip: hunt for the red-coloured pixels in the
   // tight bottom-right corner and crop tight to them. The overlay
   // anchors the chip at `right: 24px; bottom: 24px` with vw-sized
-  // dimensions ≈80 × 40 px in the 720-wide screencast; restricting
-  // the search to the last 15 % × 15 % keeps red product photos
-  // (apple-watch faces, "Featured" tags, hover icons) out of the
-  // bounding box. The chip lives entirely inside this corner for
-  // every viewport (desktop 720 × 450 and phone 720 × 1280).
+  // dimensions sized against a nominal 720-wide page; the screencast
+  // frames this script reads are downscaled to 500 px wide
+  // (timeline_frame_*.webp — e.g. 500×314 desktop, 500×890 phone), so
+  // the chip lands at ≈56 × 28 px, ≈17 px in from the corner — inside
+  // the last 15 % (75 px) horizontally on every viewport, and well
+  // inside 15 % vertically. Restricting the search to that corner
+  // keeps red page content (product photos, "Featured" tags, hover
+  // icons) out of the bounding box.
   const bbox = await bboxOf(imagePath, isRedChip, { left: 0.85, top: 0.85, right: 1, bottom: 1 });
   if (!bbox) return false;
 
@@ -124,6 +131,7 @@ async function ocrRedCornerForClick(imagePath) {
 const isClickChip = (a) => a.kind === 'pw-interaction' && /^click \d+(\.\d+)?ms$/.test(a.label);
 
 let allPass = true;
+let validatedCount = 0;
 for (const sub of fs.readdirSync(RESULTS)) {
   const dir = path.join(RESULTS, sub, 'artifacts');
   const metadataPath = path.join(dir, 'timeline_frames.json');
@@ -133,10 +141,11 @@ for (const sub of fs.readdirSync(RESULTS)) {
   if (frames.length === 0) continue;
   // Tests with no clicks (pure-navigation flows) have nothing to
   // cross-validate — key presses render their key name, not "Click".
-  if (!frames.some((fr) => fr.annotations.some(isClickChip))) continue;
+  if (!frames.some((fr) => (fr.annotations ?? []).some(isClickChip))) continue;
+  validatedCount++;
   const blue = [], red = [];
   for (const fr of frames) {
-    if (fr.annotations.some(isClickChip)) blue.push(fr.timeMs);
+    if ((fr.annotations ?? []).some(isClickChip)) blue.push(fr.timeMs);
     if (await ocrRedCornerForClick(path.join(dir, fr.imageFilename))) red.push(fr.timeMs);
   }
   // The contract is "every click's blue chip frame is also a red
@@ -156,5 +165,15 @@ for (const sub of fs.readdirSync(RESULTS)) {
   if (!firstOk || !lastOk) allPass = false;
 }
 await worker.terminate();
-console.log(`\n${allPass ? 'PASS' : 'FAIL'}`);
+// A run that validated NOTHING must not pass: if the annotated-timeline
+// stage stops emitting `pw-interaction` click annotations (or the label
+// format drifts away from isClickChip), every test dir would skip and a
+// bare `allPass` would report a vacuous PASS for the exact regression this
+// script exists to catch.
+if (validatedCount === 0) {
+  console.log('\nFAIL: no test with click chips found in the metadata — nothing was validated');
+  process.exit(1);
+}
+console.log(`\nvalidated ${validatedCount} test(s) with click chips`);
+console.log(`${allPass ? 'PASS' : 'FAIL'}`);
 process.exit(allPass ? 0 : 1);
