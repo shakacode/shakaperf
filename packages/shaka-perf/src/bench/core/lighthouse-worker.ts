@@ -283,7 +283,7 @@ class LighthouseWorkerSampler {
         },
         testDef.options.beforeNavigate,
       );
-      await clearBrowserData(browser, url);
+      await clearBrowserData(context, url);
 
       let releaseTracking: () => void = () => {};
       const canStopTracking = new Promise<void>((resolve) => {

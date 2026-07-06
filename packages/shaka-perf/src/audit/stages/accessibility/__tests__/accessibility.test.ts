@@ -598,19 +598,24 @@ function fakeBrowser(options: { events?: string[] } = {}) {
     removeListener: jest.fn(),
     screenshot: jest.fn(async () => Buffer.from('png')),
   };
-  const context = {
-    newPage: jest.fn(async () => page),
-    clearCookies: jest.fn(async () => { events?.push('clearCookies'); }),
-    addCookies: jest.fn(async () => {}),
+  const resetPage = {
     close: jest.fn(async () => {}),
   };
   const cdpSession = {
     send: jest.fn(async (method: string) => { events?.push(`cdp:${method}`); }),
     detach: jest.fn(async () => { events?.push('cdp:detach'); }),
   };
+  const context = {
+    newPage: jest.fn()
+      .mockResolvedValueOnce(page)
+      .mockResolvedValue(resetPage),
+    newCDPSession: jest.fn(async () => cdpSession),
+    clearCookies: jest.fn(async () => { events?.push('clearCookies'); }),
+    addCookies: jest.fn(async () => {}),
+    close: jest.fn(async () => {}),
+  };
   return {
     newContext: jest.fn(async () => context),
-    newBrowserCDPSession: jest.fn(async () => cdpSession),
     close: jest.fn(async () => {}),
     page,
     context,

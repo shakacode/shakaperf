@@ -133,7 +133,7 @@ async function scanViewport(
       page.setDefaultTimeout(config.engineOptions.waitTimeout);
       page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
     }
-    await preparePageForAccessibility(page, context, browser, ctx.test, ctx, config);
+    await preparePageForAccessibility(page, context, ctx.test, ctx, config);
 
     let builder = new AxeBuilder({ page });
     if (effective.includeRules && effective.includeRules.length > 0) {
@@ -259,7 +259,6 @@ async function attachNodeBounds(page: Page, violations: AccessibilityViolation[]
 async function preparePageForAccessibility(
   page: Page,
   context: BrowserContext,
-  browser: Browser,
   test: AbTestDefinition,
   ctx: TestContext,
   config: AccessibilityStageConfig,
@@ -279,7 +278,7 @@ async function preparePageForAccessibility(
     },
     test.options.beforeNavigate,
   );
-  await clearBrowserData(browser, ctx.experimentURL);
+  await clearBrowserData(context, ctx.experimentURL);
 
   await page.goto(ctx.experimentURL, gotoOptions);
   await waitForBotWallToClear(page);

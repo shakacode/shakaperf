@@ -107,10 +107,12 @@ export interface AbTestVisregConfig {
  * Context handed to a `beforeNavigate` hook. Runs BEFORE the engine navigates,
  * so the page may not exist yet — `context` (the Playwright `BrowserContext`)
  * is always present and is the right surface for pre-nav setup that must cover
- * the first navigation and any subframes: `context.route(...)`,
- * `addInitScript`, cookies, extra HTTP headers. `page` is provided only by
- * engines that have one pre-nav (visreg); it is absent on the Lighthouse path
- * (audit/perf), where Lighthouse owns page creation.
+ * the first navigation and any subframes: `installRequestBlocking(context, ...)`,
+ * `addInitScript`, cookies, extra HTTP headers. Avoid Playwright `route()` for
+ * perf request blocking because request interception disables Chromium's HTTP
+ * cache. `page` is provided only by engines that have one pre-nav (visreg); it
+ * is absent on the Lighthouse path (audit/perf), where Lighthouse owns page
+ * creation.
  */
 export interface BeforeNavigateContext {
   context: BrowserContext;

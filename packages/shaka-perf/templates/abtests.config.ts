@@ -59,7 +59,9 @@ export default defineConfig({
     // Runs before EVERY test's navigation, on every engine (a per-test
     // `beforeNavigate` on `abTest()` options runs after this one). The
     // `context` is a Playwright BrowserContext — use it for pre-nav setup:
-    // route-blocking, cookies, extra headers, init scripts.
+    // request blocking, cookies, extra headers, init scripts. Prefer
+    // `installRequestBlocking` over Playwright `route()` for perf request
+    // blocking because request interception disables Chromium's HTTP cache.
     //
     // Default: abort Google reCAPTCHA. Its scripts load from www.google.com /
     // www.gstatic.com, which the twin-server sandbox can't reach (no outbound

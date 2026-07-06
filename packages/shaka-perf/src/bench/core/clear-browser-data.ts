@@ -7,29 +7,41 @@
  * License in LICENSE.md.
  */
 
-import type { Browser } from 'playwright-core';
+import type { BrowserContext, Page } from 'playwright-core';
 
-export async function clearBrowserData(browser: Browser, url: string): Promise<void> {
-  const newBrowserCDPSession = (browser as unknown as {
-    newBrowserCDPSession?: () => Promise<{
-      send(method: string, params?: Record<string, unknown>): Promise<unknown>;
-      detach(): Promise<void>;
-    }>;
-  }).newBrowserCDPSession;
-  if (!newBrowserCDPSession) return;
+type BrowserContextWithCDP = BrowserContext & {
+  newCDPSession?: (page: Page) => Promise<{
+    send(method: string, params?: Record<string, unknown>): Promise<unknown>;
+    detach(): Promise<void>;
+  }>;
+};
 
-  const session = await newBrowserCDPSession.call(browser);
+/**
+ * Clears browser data without disabling the cache for the measured navigation.
+ * These CDP commands need a page-level session; browser-level sessions reject
+ * them in Chromium.
+ */
+export async function clearBrowserData(context: BrowserContext, url: string): Promise<void> {
+  const newCDPSession = (context as BrowserContextWithCDP).newCDPSession;
+  if (!newCDPSession) return;
+
+  const page = await context.newPage();
   try {
-    const origin = new URL(url).origin;
-    await Promise.allSettled([
-      session.send('Network.clearBrowserCache'),
-      session.send('Network.clearBrowserCookies'),
-      session.send('Storage.clearDataForOrigin', {
-        origin,
-        storageTypes: 'all',
-      }),
-    ]);
+    const session = await newCDPSession.call(context, page);
+    try {
+      const origin = new URL(url).origin;
+      await Promise.all([
+        session.send('Network.clearBrowserCache'),
+        session.send('Network.clearBrowserCookies'),
+        session.send('Storage.clearDataForOrigin', {
+          origin,
+          storageTypes: 'all',
+        }),
+      ]);
+    } finally {
+      await session.detach().catch(() => undefined);
+    }
   } finally {
-    await session.detach().catch(() => undefined);
+    await page.close().catch(() => undefined);
   }
 }
