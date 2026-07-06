@@ -62,11 +62,11 @@ const DealsPage: React.FC = () => {
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Box sx={{ mb: 5, textAlign: 'center' }}>
-        <LocalOffer sx={{ fontSize: 48, color: '#667eea', mb: 1 }} />
+        <LocalOffer sx={{ fontSize: 48, color: '#4f46b5', mb: 1 }} />
         <Typography variant="h3" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
           Deals & Promotions
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
+        <Typography variant="subtitle1" component="p" color="text.secondary">
           Current offers available in store
         </Typography>
       </Box>
@@ -79,7 +79,7 @@ const DealsPage: React.FC = () => {
             sx={{ p: 3, borderRadius: 3, border: '1px solid #e0e0e0' }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
                 {deal.title}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -87,7 +87,7 @@ const DealsPage: React.FC = () => {
                 <Chip
                   label={deal.discount}
                   size="small"
-                  sx={{ bgcolor: '#667eea', color: 'white', fontWeight: 600 }}
+                  sx={{ bgcolor: '#4f46b5', color: 'white', fontWeight: 600 }}
                 />
               </Box>
             </Box>
@@ -106,7 +106,7 @@ const DealsPage: React.FC = () => {
                   sx={{
                     fontFamily: 'monospace',
                     bgcolor: 'rgba(102, 126, 234, 0.1)',
-                    color: '#667eea',
+                    color: '#4f46b5',
                     px: 1,
                     py: 0.25,
                     borderRadius: 1,
@@ -129,7 +129,7 @@ const DealsPage: React.FC = () => {
           variant="contained"
           component={Link}
           to="/products"
-          sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+          sx={{ bgcolor: '#4f46b5', '&:hover': { bgcolor: '#4338ca' } }}
         >
           Shop Now
         </Button>

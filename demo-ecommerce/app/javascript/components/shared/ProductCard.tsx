@@ -114,7 +114,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </Typography>
         </Link>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 'auto' }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: '#667eea' }}>
+          <Typography variant="h6" component="p" sx={{ fontWeight: 700, color: '#4f46b5' }}>
             ${product?.price?.toFixed(2)}
           </Typography>
           <Typography
@@ -137,11 +137,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           disabled={product.stock === 0}
           fullWidth
           sx={{
-            bgcolor: '#667eea',
+            bgcolor: '#4f46b5',
             borderRadius: 2,
             py: 1,
             fontWeight: 600,
-            '&:hover': { bgcolor: '#5a6fd6' },
+            '&:hover': { bgcolor: '#4338ca' },
           }}
         >
           Add to Cart
