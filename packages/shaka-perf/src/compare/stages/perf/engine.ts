@@ -113,6 +113,8 @@ export async function runPerfEngineStage(
   const artifact = await readPerfArtifact({
     perTestDir: artifactsDir,
     reportRoot: ctx.runtime.resultsRoot,
+    regressionThreshold: config.regressionThreshold,
+    regressionThresholdStat: config.regressionThresholdStat,
     saveArtifacts: config.saveArtifacts,
     statisticalAnalysis: config.statisticalAnalysis,
   });
