@@ -9,9 +9,13 @@
 
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfLighthouseConfig } from '../bench/core/lighthouse-config';
+import { reportMetaForLighthouseRun } from '../bench/core/lighthouse-config';
+import type { Viewport } from '../config';
 import {
   createPipeline,
   type ChipStageResults,
+  type PipelineMachineReportMeta,
+  type PipelineMachineReportRow,
 } from '../pipeline/pipeline';
 import type { ChipDescriptor, SortDescriptor } from '../pipeline/report';
 import { AuditStage, type AuditMetric, type AuditResult } from './stages/audit';
@@ -58,6 +62,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     description: auditPipelineMetadata.description,
     pipelineConfig: input,
     report: auditPipelineReport,
+    machineReportMeta: ({ rows, reportOnly }) => reportOnly ? {} : auditMachineReportMeta(input, rows),
   }, (pipeline) => {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(workerPool, new AuditStage({
@@ -163,6 +168,21 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
       },
     });
   });
+}
+
+export function auditMachineReportMeta(
+  input: Pick<AuditPipelineConfig, 'lighthouseConfig'>,
+  rows: readonly PipelineMachineReportRow[],
+): PipelineMachineReportMeta {
+  const auditedViewports = rows
+    .filter((row) => row.outcomes.some((outcome) => outcome.kind === 'ok' && outcome.stage === 'audit'))
+    .map((row) => row.viewport);
+  if (auditedViewports.length === 0) return {};
+  return reportMetaForLighthouseRun(preferredLighthouseViewport(auditedViewports), input.lighthouseConfig);
+}
+
+function preferredLighthouseViewport(viewports: readonly Viewport[]): Viewport | undefined {
+  return viewports.find((viewport) => viewport.formFactor === 'mobile') ?? viewports[0];
 }
 
 // "Worse" honours metric direction: for higher-is-better metrics (LH Score)
