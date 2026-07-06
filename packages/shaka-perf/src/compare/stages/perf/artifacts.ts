@@ -15,12 +15,10 @@ import type {
   PerfMetric,
   PerfMetricGroup,
 } from '../perf';
+import type { RegressionThresholdStat } from '../../../bench/cli/command-config/tb-config';
+import { classifyPracticalDelta } from '../../../bench/cli/compare/regression-thresholds';
 import { compressSvgEmbeddedImages } from '../../../pipeline/artifact-compression';
 import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
-
-// Metrics where a bigger value is a better result (e.g. Lighthouse score).
-// Everything else (ms timings, CLS, bytes, counts) treats bigger = worse.
-const HIGHER_IS_BETTER = new Set(['lh score', 'lighthouse score']);
 
 function classifyGroup(heading: string | undefined): PerfMetricGroup {
   return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
@@ -53,15 +51,17 @@ function formatPercentDelta(percentMedian: number | undefined): string {
   return `${sign}${rounded}%`;
 }
 
-function classifyDirection(
-  phaseName: string,
-  deltaValue: number,
-  isSignificant: boolean,
-): PerfDirection {
-  if (!isSignificant || deltaValue === 0) return 'none';
-  const higherBetter = HIGHER_IS_BETTER.has(phaseName.toLowerCase());
-  if (higherBetter) return deltaValue > 0 ? 'improvement' : 'regression';
-  return deltaValue > 0 ? 'regression' : 'improvement';
+function thresholdDelta(
+  entry: BenchJsonMetric,
+  regressionThresholdStat: RegressionThresholdStat,
+): { value: number; unit: string } {
+  if (regressionThresholdStat === 'ci-lower') {
+    return parseEstimatorDelta(entry.confidenceInterval?.[0] ?? entry.estimatorDelta);
+  }
+  if (regressionThresholdStat === 'ci-upper') {
+    return parseEstimatorDelta(entry.confidenceInterval?.[1] ?? entry.estimatorDelta);
+  }
+  return parseEstimatorDelta(entry.estimatorDelta);
 }
 
 interface BenchSevenFigureSummary {
@@ -77,9 +77,11 @@ interface BenchSevenFigureSummary {
 interface BenchJsonMetric {
   heading?: string;
   phaseName: string;
+  sign?: -1 | 1;
   isSignificant: boolean;
   estimatorDelta: string;
   pValue: number;
+  confidenceInterval?: string[];
   controlSevenFigureSummary?: BenchSevenFigureSummary;
   experimentSevenFigureSummary?: BenchSevenFigureSummary;
   asPercent?: { percentMedian?: number };
@@ -94,11 +96,14 @@ interface BenchJsonMetric {
 interface BenchCompareJsonResults {
   vitalsTableData?: BenchJsonMetric[];
   diagnosticsTableData?: BenchJsonMetric[];
+  regressionThresholdStat?: RegressionThresholdStat;
 }
 
 export interface ReadPerfArtifactOptions {
   perTestDir: string;
   reportRoot: string;
+  regressionThreshold: number;
+  regressionThresholdStat?: RegressionThresholdStat;
   saveArtifacts: boolean;
   statisticalAnalysis: boolean;
 }
@@ -129,11 +134,25 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
       ...(raw.vitalsTableData ?? []),
       ...(raw.diagnosticsTableData ?? []),
     ];
+    const regressionThresholdStat = raw.regressionThresholdStat
+      ?? opts.regressionThresholdStat
+      ?? 'estimator';
     for (const entry of allEntries) {
       const { value: deltaValue, unit } = parseEstimatorDelta(entry.estimatorDelta);
+      const threshold = thresholdDelta(entry, regressionThresholdStat);
       const controlValue = entry.controlSevenFigureSummary?.['50'] ?? 0;
       const experimentValue = entry.experimentSevenFigureSummary?.['50'] ?? 0;
-      const direction = classifyDirection(entry.phaseName, deltaValue, entry.isSignificant);
+      const direction: PerfDirection = classifyPracticalDelta({
+        phaseName: entry.phaseName,
+        directionDeltaValue: deltaValue,
+        thresholdDeltaValue: threshold.value,
+        unit: threshold.unit || unit,
+        isSignificant: entry.isSignificant,
+        controlValue,
+        experimentValue,
+        regressionThreshold: opts.regressionThreshold,
+        sign: entry.sign,
+      });
 
       metrics.push({
         label: entry.phaseName,
