@@ -14,7 +14,7 @@ import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
   loud, run, startServers, waitForPort,
 } from './helpers';
-import { captureReportScreenshots, prettifyJsonTree, screenshotAllHtml } from './report-capture';
+import { captureReportScreenshots } from './report-capture';
 
 const COMPARE_RESULTS_DIR = path.join(DEMO_CWD, 'compare-results');
 const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'visreg-results');
@@ -51,10 +51,13 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
   }
   loud('Visreg compare exited non-zero as expected (mismatches detected)');
 
-  // Replace snapshot dir with fresh compare-results output.
+  // Snapshots receive ONLY the deep-click report-shots below. The results
+  // tree itself (report JSON/HTML, raw captures with per-run ids in their
+  // filenames) is transient and never copied — the report is driven in place,
+  // where its relative artifact references resolve, and the full tree stays
+  // in the working results dir until the next run.
   if (fs.existsSync(SNAPSHOT_DIR)) fs.rmSync(SNAPSHOT_DIR, { recursive: true, force: true });
-  fs.cpSync(COMPARE_RESULTS_DIR, SNAPSHOT_DIR, { recursive: true });
-  loud(`Copied compare-results to ${SNAPSHOT_DIR}`);
+  fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
 
   // Per-test outcomes are no longer asserted here: compare's non-zero exit
   // code (checked above) is the real signal that the intended visreg
@@ -64,18 +67,11 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
   // screenshots below still exercise the full artifact tree for visual
   // review.
 
-  // Pretty-print JSON so diffs stay reviewable.
-  prettifyJsonTree(SNAPSHOT_DIR);
-
-  // Screenshot the legacy visreg HTML report (under compare-results/_visreg/html_report/)
-  // plus any other HTML artifacts.
-  await screenshotAllHtml(page, SNAPSHOT_DIR);
-
-  // Interact with the unified report.html: filter toggles, visreg scrubber,
-  // error log surface, test source expansion.
+  // Interact with the unified full-report.html: filter toggles, visreg
+  // scrubber, error log surface, test source expansion.
   await captureReportScreenshots({
     page,
-    reportHtmlPath: path.join(SNAPSHOT_DIR, 'report.html'),
+    reportHtmlPath: path.join(COMPARE_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'visreg',
   });

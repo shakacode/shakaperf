@@ -4,45 +4,44 @@
 #
 # Usage:
 #   ./integration-tests/run-integration-tests-and-update-snapshot-logs.sh \
-#       [--perf] [--visreg] [--twin-servers]
+#       [--perf] [--visreg] [--twin-servers] [--audit]
 #
-# Output layout per suite (under integration-tests/snapshots/):
-#   - baseline-{perf,visreg,twin-servers}.log — the normalized Playwright log
-#   - bench-results/    — copy of demo-ecommerce/compare-results/ after @perf
-#   - visreg-results/   — copy of demo-ecommerce/compare-results/ after @visreg
-#       Each has:
-#         report.html / report.json         — the self-contained unified report
-#         report.screenshot.png             — full-page screenshot of report.html
-#         <slug>/…                          — per-test perf artifacts:
-#                                             lighthouse HTMLs, engine-output.log,
-#                                             timeline_comparison.html,
-#                                             timeline_preview.svg,
-#                                             diff.html  (single stacked diff
-#                                             with both network + profile),
-#                                             artifact-1.html (bench report)
-#         _visreg/html_report/…             — legacy visreg HTML report
-#                                             (control/experiment screenshots,
-#                                             per-pair failed_diff PNGs)
-#         report-shots/                     — deep-click screenshots taken by
-#                                             the spec: filter toggled, every
-#                                             artifact dialog, every visreg
-#                                             scrubber, timeline preview, etc.
+# Snapshots contain ONLY reviewable, STABLE-NAMED artifacts — the normalized
+# per-suite logs and the deep-click report screenshots, whose diffs come from
+# compare-screenshots.mjs at review time. Nothing else is ever copied here:
+# the reports are driven IN PLACE in the working results dirs (the temp
+# clone's demo-ecommerce/{compare,audit}-results, where their relative
+# artifact references resolve), which also keep the transient run output —
+# report JSON/HTML, measurement dumps, videos, timeline frames, raw
+# control/experiment/failed_diff captures with per-run ids in their
+# filenames — until the next run for debugging. Layout under
+# integration-tests/snapshots/:
+#   - baseline-{perf,visreg,twin-servers,audit}.log
+#                       — the normalized Playwright log per suite
+#   - bench-results/report-shots/    — @perf deep-click screenshots
+#   - visreg-results/report-shots/   — @visreg deep-click screenshots
+#   - audit-results/report-shots/    — @audit deep-click screenshots
+#       Taken by the specs while driving full-report.html (overview, filters,
+#       artifact dialogs, visreg scrubbers, error-log dialogs) and, under
+#       audit-results/, the v2 client-report states (status tiles, tab
+#       panels, lightbox, severity chips). The overview shot is the
+#       full-page render of the report — separate per-HTML screenshots would
+#       only duplicate these dialog/overview shots (and the self-contained
+#       report variant always duplicates the full report).
 #
-# The output is automatically normalized to replace run-variable values
+# The log output is automatically normalized to replace run-variable values
 # (timestamps, timings, home directory paths, docker ages) with stubs.
 #
 # When reviewing the git diff, IGNORE differences in:
 #   - Webpack hashes (e.g. -fa6c2b68881f0c7d1717)
-#   - Git SHAs
-#   - Visreg run-ids in filenames (e.g. 01364522760_Homepage_…)
+#   - Git SHAs and visreg run-ids quoted inside the baseline logs
 #   - Ordering of [CONTROL] vs [EXPERIMENT] lines (parallel execution)
 #   - Asset sizes (e.g. "806 KiB") and module counts
-#   - report.json: meta.generatedAt, meta.durationMs
-#   - Embedded base64 data URIs inside report.html / report.json
-#   - Byte-level noise in report-shots/*.png — sub-pixel anti-aliasing and
-#     lazy-image timing drift between runs; only care about gross layout
-#     breakage (missing dialog, empty grid, blank iframe, etc.)
-#   - timeline_preview.svg coordinate jitter (re-measurement reorders samples)
+#   - Byte-level noise in *.png — sub-pixel anti-aliasing and lazy-image
+#     timing drift between runs; only care about gross layout breakage
+#     (missing dialog, empty grid, blank iframe, missing tiles/tabs, etc.).
+#     Review PNG changes through `yarn node
+#     integration-tests/compare-screenshots.mjs`, not raw git diff.
 #
 # Focus on:
 #   - Test pass/fail status
@@ -51,38 +50,41 @@
 #   - Missing or added steps
 #   - Counts surfaced in the CLI's FAILED summary
 #     (e.g. "1 perf regression, 3 visreg mismatches") — the compare CLI
-#     now exits non-zero when any test is errored / regressed / visually
+#     exits non-zero when any test is errored / regressed / visually
 #     changed, so "FAILED:" lines in the log are expected on runs that
-#     still successfully produced the report.
-#   - New/removed files under the results dirs — the file layout is load-
-#     bearing for the unified compare report and per-test artifact links.
+#     still successfully produced the report. The @audit suite's all-pages
+#     audit also expects one engine error (the sabotaged products selector).
+#   - New/removed screenshots under the results dirs — a missing report-shot
+#     means an interactive state stopped rendering.
 #
-# Timing comparison: the `check-integration-tests-integrity` skill
-# (.claude/commands/check-integration-tests-integrity.md) spawns two
-# parallel subagents that each independently extract Playwright durations
-# from the old baseline vs. the new log and return a slowdown verdict;
-# the skill cross-checks the two verdicts. See that skill for the rules —
-# notably, docker build / twins-build times are excluded because their
-# duration depends on layer-cache hit rate, not the code under test.
+# The `check-integration-tests-integrity` skill
+# (.claude/commands/check-integration-tests-integrity.md) automates this
+# review — it documents the per-log and per-screenshot expectations, and it
+# also runs a timing comparison: two parallel subagents independently
+# extract Playwright durations from the old baseline vs. the new log and
+# return cross-checked slowdown verdicts (docker build / twins-build times
+# excluded — layer-cache hit rate, not the code under test).
 
 set -euo pipefail
 
 PERF=false
 VISREG=false
 TWIN_SERVERS=false
+AUDIT=false
 EXTRA_ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --perf)         PERF=true ;;
     --visreg)       VISREG=true ;;
     --twin-servers) TWIN_SERVERS=true ;;
+    --audit)        AUDIT=true ;;
     *) EXTRA_ARGS+=("$arg") ;;
   esac
 done
 
 # If no flags specified, run everything
-if ! $PERF && ! $VISREG && ! $TWIN_SERVERS; then
-  PERF=true; VISREG=true; TWIN_SERVERS=true
+if ! $PERF && ! $VISREG && ! $TWIN_SERVERS && ! $AUDIT; then
+  PERF=true; VISREG=true; TWIN_SERVERS=true; AUDIT=true
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -118,6 +120,7 @@ mkdir -p "$SNAPSHOTS"
 $PERF         && rm -rf "$SNAPSHOTS/baseline-perf.log" "$SNAPSHOTS/bench-results"
 $VISREG       && rm -rf "$SNAPSHOTS/baseline-visreg.log" "$SNAPSHOTS/visreg-results"
 $TWIN_SERVERS && rm -rf "$SNAPSHOTS/baseline-twin-servers.log"
+$AUDIT        && rm -rf "$SNAPSHOTS/baseline-audit.log" "$SNAPSHOTS/audit-results"
 
 # Ensure the Node version from .nvmrc is active (requires nvm to be loaded)
 REQUIRED_NODE=$(cat "$REPO_ROOT/.nvmrc")
@@ -148,8 +151,9 @@ SETUP_NEEDED=true
 $TWIN_SERVERS && run_suite "@twin-servers" "$SNAPSHOTS/baseline-twin-servers.log"
 $VISREG       && run_suite "@visreg"       "$SNAPSHOTS/baseline-visreg.log"
 $PERF         && run_suite "@perf"         "$SNAPSHOTS/baseline-perf.log"
+$AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
 
 # Stop containers after all suites
 echo "=== Stopping containers ==="
 DEMO_CWD="/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce"
-(cd "$DEMO_CWD" && yarn shaka-perf twins-stop-containers) || true
+(cd "$DEMO_CWD" && yarn shaka-perf servers stop-containers) || true

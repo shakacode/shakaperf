@@ -14,7 +14,7 @@ import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
   loud, run, startServers, waitForPort,
 } from './helpers';
-import { captureReportScreenshots, prettifyJsonTree, screenshotAllHtml } from './report-capture';
+import { captureReportScreenshots } from './report-capture';
 
 const COMPARE_RESULTS_DIR = path.join(DEMO_CWD, 'compare-results');
 const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'bench-results');
@@ -56,23 +56,20 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   }
   loud('Perf compare exited non-zero as expected (regression detected)');
 
-  // Replace snapshot dir with fresh compare-results output.
+  // Snapshots receive ONLY the deep-click report-shots below. The results
+  // tree itself (report JSON/HTML, raw captures with per-run ids in their
+  // filenames) is transient and never copied — the report is driven in place,
+  // where its relative artifact references resolve, and the full tree stays
+  // in the working results dir until the next run.
   if (fs.existsSync(SNAPSHOT_DIR)) fs.rmSync(SNAPSHOT_DIR, { recursive: true, force: true });
-  fs.cpSync(COMPARE_RESULTS_DIR, SNAPSHOT_DIR, { recursive: true });
-  loud(`Copied compare-results to ${SNAPSHOT_DIR}`);
+  fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
 
-  // Pretty-print JSON for readable diffs
-  prettifyJsonTree(SNAPSHOT_DIR);
-
-  // Screenshot every per-test HTML artifact (lighthouse reports, timeline
-  // comparison, network/profile diffs, legacy bench report).
-  await screenshotAllHtml(page, SNAPSHOT_DIR);
-
-  // Interact with the unified report.html and capture every distinct state
-  // (dialogs, expanded source, filtered grid, timeline preview, scrubber).
+  // Interact with the unified full-report.html and capture every distinct
+  // state (dialogs, expanded source, filtered grid, timeline preview,
+  // scrubber).
   await captureReportScreenshots({
     page,
-    reportHtmlPath: path.join(SNAPSHOT_DIR, 'report.html'),
+    reportHtmlPath: path.join(COMPARE_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'perf',
   });

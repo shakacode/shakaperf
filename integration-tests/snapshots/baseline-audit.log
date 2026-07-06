@@ -1,0 +1,1723 @@
+Skipping global setup (SKIP_GLOBAL_SETUP=1)
+
+Running 2 tests using 1 worker
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: shaka-perf audit produces frames whose blue + red click chips coincide @audit
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Skipping startServers — ports 3060 + 3090 already respond
+
+
+>>> Waiting for ports 3060 + 3090
+
+  ⏱ waitForPort(3090): 0.0s
+  ⏱ waitForPort(3060): 0.0s
+
+>>> Restored working products.abtest.ts selector for this spec
+
+
+>>> Running shaka-perf audit --filter for Products + Form Login
+
+Discovered 7 test file(s):
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+Selected 2 of 15 test(s).
+
+========================================================================================
+STAGE: audit
+========================================================================================
+Capture one absolute Lighthouse measurement on the target URL.
+========================================================================================
+
+
+========================================================================================
+STAGE: accessibility
+========================================================================================
+Run accessibility checks on the target URL.
+========================================================================================
+
+
+========================================================================================
+STAGE: agent-readiness
+========================================================================================
+Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).
+========================================================================================
+
+
+========================================================================================
+STAGE: build_annotated_timeline
+========================================================================================
+Prepare Lighthouse trace screenshots for the annotated timeline.
+========================================================================================
+
+ab-tests/admin.abtest.ts:44:phone:audit:<1.3s> [shaka-perf] lighthouse patched
+ab-tests/products.abtest.ts:27:desktop:audit:<2.3s>sample-0[ experiment ] starting
+ab-tests/products.abtest.ts:27:desktop:audit:<2.3s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:40:27.440Z (epochMs=1783334427440, pid=421823, sample-0, workerIndex=1)
+ab-tests/admin.abtest.ts:44:phone:audit:<2.3s>sample-0[ experiment ] starting
+ab-tests/admin.abtest.ts:44:phone:audit:<2.3s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:40:27.442Z (epochMs=1783334427442, pid=421822, sample-0, workerIndex=0)
+ab-tests/admin.abtest.ts:44:phone:audit:<3.6s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:40:28.716Z (epochMs=1783334428716, pid=421822, sample-0)
+ab-tests/products.abtest.ts:27:desktop:audit:<3.6s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:40:28.752Z (epochMs=1783334428752, pid=421823, sample-0)
+ab-tests/admin.abtest.ts:44:phone:audit:<5.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:40:30.287Z (epochMs=1783334430287, pid=421822, url=http://localhost:3090/admin/login)
+ab-tests/products.abtest.ts:27:desktop:audit:<5.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:40:30.369Z (epochMs=1783334430369, pid=421823, url=http://localhost:3090/products)
+ab-tests/admin.abtest.ts:44:phone:audit:<5.5s>sample-0[ experiment ] annotate: Wait for admin login form to appear
+ab-tests/admin.abtest.ts:44:phone:audit:<5.5s>sample-0[ experiment ] annotate: Fill in admin credentials
+ab-tests/products.abtest.ts:27:desktop:audit:<5.5s>sample-0[ experiment ] annotate: Wait for products page to load
+ab-tests/products.abtest.ts:27:desktop:audit:<6.2s>sample-0[ experiment ] annotate: Open category dropdown
+ab-tests/products.abtest.ts:27:desktop:audit:<6.3s>sample-0[ experiment ] annotate: Wait for electronics option to appear
+ab-tests/products.abtest.ts:27:desktop:audit:<6.3s>sample-0[ experiment ] annotate: Select electronics category filter
+ab-tests/products.abtest.ts:27:desktop:audit:<6.6s>sample-0[ experiment ] annotate: Wait for filtered results to settle
+ab-tests/products.abtest.ts:27:desktop:audit:<6.6s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (1 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<6.6s>sample-0[ experiment ] [waitForAllImages] 3 visible images loaded for http://localhost:3090/products (5 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<6.6s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (7 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<6.8s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=1 text=0 child=0 :: attr div.MuiBackdrop-root.MuiBackdrop-invisible style="opacity: 0; transition: opacity 195ms cu"
+ab-tests/admin.abtest.ts:44:phone:audit:<6.9s>sample-0[ experiment ] annotate: Submit login form
+ab-tests/products.abtest.ts:27:desktop:audit:<6.9s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=2 attr=1 text=0 child=1 :: attr div.MuiPaper-root.MuiPaper-elevation style="--Paper-shadow: 0px 5px 5px -3px rgba(0," | children body -1[div#menu-.MuiPopover-root.MuiMenu-root]
+ab-tests/admin.abtest.ts:44:phone:audit:<6.9s>sample-0[ experiment ] annotate: Wait for login to complete
+ab-tests/admin.abtest.ts:44:phone:audit:<6.9s>sample-0[ experiment ] annotate: Open admin orders page
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] annotate: Wait for orders page to settle
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/admin/orders (0 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/admin/orders (3 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/admin/orders (2 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | children main.MuiBox-root.css-zxdg2z -1[div.MuiBox-root.css-0]
+ab-tests/admin.abtest.ts:44:phone:audit:<7.5s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/products.abtest.ts:27:desktop:audit:<7.6s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:27:desktop:audit:<7.6s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (982 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<7.7s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/admin.abtest.ts:44:phone:audit:<8.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/admin/orders
+ab-tests/admin.abtest.ts:44:phone:audit:<8.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/admin/orders (1248 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<8.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/admin/login. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/products.abtest.ts:27:desktop:audit:<12.5s> lighthouse sample done
+ab-tests/admin.abtest.ts:44:phone:audit:<13.1s> lighthouse sample done
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s> [shaka-perf coverage] no coverage.json for products-electronics-filter-desktop-59c5d173 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s> Products - Electronics Filter · desktop absolute levels
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   FCP: 1803ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   speed-index: 3428ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   LCP: 7003ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   TBT: 2937ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   CLS: 3/100
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   TTFB: 3ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   downloads: 437KB
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   LH Score: 31/100
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   downloads-count: 26
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   js: 171KB
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   js-count: 9
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   images: 2KB
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   images-count: 1
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   fonts: 0KB
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   fonts-count: 0
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   downloads-before-LCP: 435KB
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   downloads-count-before-LCP: 25
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   hydration: 920ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   hydration-start: 2206ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s>   interaction-to-next-paint: 960ms
+ab-tests/products.abtest.ts:27:desktop:audit:<32.2s> LH HTML thumbnail starting
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s> [shaka-perf coverage] no coverage.json for admin-orders-form-login-interaction-phone-c48d2dee — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s> Admin Orders - Form Login Interaction · phone absolute levels
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   FCP: 1805ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   speed-index: 4586ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   LCP: 4887ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   TBT: 1412ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   CLS: 0/100
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   TTFB: 14ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   downloads: 174KB
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   LH Score: 53/100
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   downloads-count: 12
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   js: 169KB
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   js-count: 8
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   images: 2KB
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   images-count: 1
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   fonts: 0KB
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   fonts-count: 0
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   downloads-before-LCP: 174KB
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   downloads-count-before-LCP: 12
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s>   interaction-to-next-paint: 480ms
+ab-tests/admin.abtest.ts:44:phone:audit:<32.4s> LH HTML thumbnail starting
+ab-tests/products.abtest.ts:27:desktop:audit:<33.0s> LH HTML thumbnail done
+ab-tests/admin.abtest.ts:44:phone:audit:<33.1s> LH HTML thumbnail done
+[1/4] stage:audit
+Capture one absolute Lighthouse measurement on the target URL.
+████████████████ 100% · 2/2 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages audit
+<<< audit · queued 0, running 0, done 2, skipped 0, error 0 · durations total 64.2s, avg 32.1s, max 32.2s
+ab-tests/admin.abtest.ts:44:phone:accessibility:<33.9s> annotate: Wait for admin login form to appear
+ab-tests/admin.abtest.ts:44:phone:accessibility:<33.9s> annotate: Fill in admin credentials
+ab-tests/admin.abtest.ts:44:phone:accessibility:<33.9s> annotate: Submit login form
+ab-tests/admin.abtest.ts:44:phone:accessibility:<33.9s> annotate: Wait for login to complete
+ab-tests/admin.abtest.ts:44:phone:accessibility:<33.9s> annotate: Open admin orders page
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.0s> annotate: Wait for orders page to settle
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.0s> [waitForNetworkSettle] network idle for http://localhost:3090/admin/orders (1 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.0s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/admin/orders (5 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.0s> [waitForFontsReady] fonts ready for http://localhost:3090/admin/orders (4 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.0s> [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | children main.MuiBox-root.css-zxdg2z -1[div.MuiBox-root.css-0]
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.1s> annotate: Wait for products page to load
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.1s> annotate: Open category dropdown
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.1s> annotate: Wait for electronics option to appear
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.1s> annotate: Select electronics category filter
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.4s> annotate: Wait for filtered results to settle
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.4s> [waitForNetworkSettle] network idle for http://localhost:3090/products (0 ms)
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.4s> [waitForAllImages] 3 visible images loaded for http://localhost:3090/products (4 ms)
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.4s> [waitForFontsReady] fonts ready for http://localhost:3090/products (4 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<34.5s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.6s> [waitForNoMutations] mutation batch size=1 attr=1 text=0 child=0 :: attr div.MuiBackdrop-root.MuiBackdrop-invisible style="opacity: 0; transition: opacity 195ms cu"
+ab-tests/products.abtest.ts:27:desktop:accessibility:<34.7s> [waitForNoMutations] mutation batch size=2 attr=1 text=0 child=1 :: attr div.MuiPaper-root.MuiPaper-elevation style="--Paper-shadow: 0px 5px 5px -3px rgba(0," | children body -1[div#menu-.MuiPopover-root.MuiMenu-root]
+ab-tests/admin.abtest.ts:44:phone:accessibility:<35.2s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/admin/orders
+ab-tests/admin.abtest.ts:44:phone:accessibility:<35.2s> [waitUntilPageSettled] all checks complete for http://localhost:3090/admin/orders (1250 ms)
+ab-tests/products.abtest.ts:27:desktop:accessibility:<35.4s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:27:desktop:accessibility:<35.4s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (987 ms)
+[2/4] stage:accessibility
+Run accessibility checks on the target URL.
+████████████████ 100% · 2/2 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages accessibility
+<<< accessibility · queued 0, running 0, done 2, skipped 0, error 0 · durations total 6.5s, avg 3.2s, max 3.4s
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.1s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/products-electronics-filter-desktop-59c5d173/artifacts/experiment_performance_profile.json
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.1s> annotated-timeline: starting worker
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.1s> annotated-timeline: parsing Lighthouse profile
+[3/4] stage:agent-readiness
+Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).
+████████████████ 100% · 2/2 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages agent-readiness
+<<< agent-readiness · queued 0, running 0, done 2, skipped 0, error 0 · durations total 1.7s, avg 838ms, max 1.0s
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.2s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/admin-orders-form-login-interaction-phone-c48d2dee/artifacts/experiment_performance_profile.json
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.2s> annotated-timeline: starting worker
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.2s> annotated-timeline: parsing Lighthouse profile
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.3s> annotated-timeline: profile parsed
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.3s> annotated-timeline: loading screencast video
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.4s> annotated-timeline: profile parsed
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.4s> annotated-timeline: loading screencast video
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.5s> annotated-timeline: loaded 99 screencast shots
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<37.5s> annotated-timeline: deduping screencast before trace sync
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.7s> annotated-timeline: loaded 151 screencast shots
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<37.7s> annotated-timeline: deduping screencast before trace sync
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.2s> annotated-timeline: pre-sync dedupe removed 84/99 screencast frames; kept 15
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.2s> annotated-timeline: synced 15 deduped timeline frame candidates with 15 pixelmatch anchors; retained 99 raw synced frames for interaction annotations
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.2s> annotated-timeline: preparing timeline frames
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<38.4s> annotated-timeline: pre-sync dedupe removed 136/151 screencast frames; kept 15
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<38.4s> annotated-timeline: synced 15 deduped timeline frame candidates with 12 pixelmatch anchors; retained 151 raw synced frames for interaction annotations
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<38.4s> annotated-timeline: preparing timeline frames
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.7s> annotated-timeline: copied 8 previous frames for annotation timestamps
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.7s> annotated-timeline: prepared 23 frames to write
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.7s> annotated-timeline: writing frame image 1/23
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.8s> annotated-timeline: writing frame image 10/23
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<38.9s> annotated-timeline: writing frame image 20/23
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: writing frame image 23/23
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: writing frame metadata
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: wrote 23 metadata entries
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: loaded 23 cached frame metadata entries
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.0s> annotated-timeline: preparing 23 report frames
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.4s> annotated-timeline: prepared 23 report frames
+ab-tests/products.abtest.ts:27:desktop:build_annotated_timeline:<39.4s> annotated-timeline: screencast attached
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<39.6s> annotated-timeline: copied 5 previous frames for annotation timestamps
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<39.6s> annotated-timeline: prepared 22 frames to write
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<39.6s> annotated-timeline: writing frame image 1/22
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<39.8s> annotated-timeline: writing frame image 10/22
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.0s> annotated-timeline: writing frame image 20/22
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: writing frame image 22/22
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: writing frame metadata
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: wrote 22 metadata entries
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: loaded 22 cached frame metadata entries
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.1s> annotated-timeline: preparing 22 report frames
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.6s> annotated-timeline: prepared 22 report frames
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<40.6s> annotated-timeline: screencast attached
+[4/4] stage:build_annotated_timeline
+Prepare Lighthouse trace screenshots for the annotated timeline.
+████████████████ 100% · 2/2 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages build_annotated_timeline
+<<< build_annotated_timeline · queued 0, running 0, done 2, skipped 0, error 0 · durations total 5.8s, avg 2.9s, max 3.4s
+
+>>> assemble · per-test artifacts (2 tests)
+    [1/2] Admin Orders - Form Login Interaction (0.0s, 0.1 MB)
+    [2/2] Products - Electronics Filter (0.0s, 0.1 MB)
+    all tests assembled in 0.0s
+
+>>> rendering report HTML files
+    payload total ~0.1 MB across 2 test(s)
+    top 2 contributors:
+          0.1 MB  Products - Electronics Filter
+          0.0 MB  Admin Orders - Form Login Interaction
+    payload total ~0.2 MB across 2 test(s)
+    top 2 contributors:
+          0.1 MB  Products - Electronics Filter
+          0.1 MB  Admin Orders - Form Login Interaction
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html (0.4 MB) in 0.0s
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html (0.5 MB)
+
+Short report (for slack/email): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html
+Full report (for you): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html
+
+>>> Verifying blue/red click chip coincidence (metadata vs OCR)
+
+
+admin-orders-form-login-interaction-phone-c48d2dee (22 frames)
+  blue clicks: 384.61, 1066.40, 1759.96, 1764.96
+  red Clicks:  384.61, 391.87, 1066.40, 1088.37, 1759.96, 1764.96, 1767.48
+  first match: OK | last match: OK
+
+products-electronics-filter-desktop-59c5d173 (23 frames)
+  blue clicks: 1055.41, 1347.94
+  red Clicks:  1055.41, 1347.94
+  first match: OK | last match: OK
+
+PASS
+
+
+>>> Resetting git changes in temp clone
+
+Updated 1 path from the index
+  ⏱ git checkout experiment: 0.0s
+Updated 0 paths from the index
+  ⏱ git checkout control: 0.0s
+  ✓  1 integration-tests/audit.spec.ts:38:5 › shaka-perf audit produces frames whose blue + red click chips coincide @audit (<TIMING>s)
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>>>>>>>>>>>>>>>>> TEST: audit all pages, render v2 client report, screenshot its states @audit
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+>>> Skipping startServers — ports 3060 + 3090 already respond
+
+
+>>> Waiting for ports 3060 + 3090
+
+  ⏱ waitForPort(3090): 0.0s
+  ⏱ waitForPort(3060): 0.0s
+
+>>> Running shaka-perf audit over all demo ab-tests (ai_summary skipped)
+
+Discovered 7 test file(s):
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/admin.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/carousel.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/cart.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/homepage.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/product-detail.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts
+  /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/shop-now.abtest.ts
+
+========================================================================================
+STAGE: audit
+========================================================================================
+Capture one absolute Lighthouse measurement on the target URL.
+========================================================================================
+
+
+========================================================================================
+STAGE: accessibility
+========================================================================================
+Run accessibility checks on the target URL.
+========================================================================================
+
+
+========================================================================================
+STAGE: agent-readiness
+========================================================================================
+Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).
+========================================================================================
+
+
+========================================================================================
+STAGE: build_annotated_timeline
+========================================================================================
+Prepare Lighthouse trace screenshots for the annotated timeline.
+========================================================================================
+
+ab-tests/admin.abtest.ts:13:desktop:audit:<1.3s> [shaka-perf] lighthouse patched
+ab-tests/admin.abtest.ts:44:phone:audit:<2.5s>sample-0[ experiment ] starting
+ab-tests/admin.abtest.ts:44:phone:audit:<2.5s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.187Z (epochMs=1783334472187, pid=424563, sample-0, workerIndex=1)
+ab-tests/carousel.abtest.ts:50:phone:audit:<2.5s>sample-0[ experiment ] starting
+ab-tests/carousel.abtest.ts:50:phone:audit:<2.5s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.189Z (epochMs=1783334472189, pid=424589, sample-0, workerIndex=5)
+ab-tests/cart.abtest.ts:13:phone:audit:<2.5s>sample-0[ experiment ] starting
+ab-tests/carousel.abtest.ts:29:desktop:audit:<2.5s>sample-0[ experiment ] starting
+ab-tests/cart.abtest.ts:13:phone:audit:<2.5s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.200Z (epochMs=1783334472200, pid=424603, sample-0, workerIndex=7)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<2.5s>sample-0[ experiment ] starting
+ab-tests/carousel.abtest.ts:29:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.201Z (epochMs=1783334472201, pid=424575, sample-0, workerIndex=3)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.204Z (epochMs=1783334472204, pid=424582, sample-0, workerIndex=4)
+ab-tests/homepage.abtest.ts:13:phone:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/homepage.abtest.ts:13:phone:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.206Z (epochMs=1783334472206, pid=424617, sample-0, workerIndex=9)
+ab-tests/carousel.abtest.ts:20:phone:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/carousel.abtest.ts:20:phone:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.210Z (epochMs=1783334472210, pid=424569, sample-0, workerIndex=2)
+ab-tests/admin.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/admin.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.219Z (epochMs=1783334472219, pid=424562, sample-0, workerIndex=0)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/homepage.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.232Z (epochMs=1783334472232, pid=424610, sample-0, workerIndex=8)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/product-detail.abtest.ts:13:phone:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.243Z (epochMs=1783334472243, pid=424631, sample-0, workerIndex=11)
+ab-tests/cart.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/cart.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.250Z (epochMs=1783334472250, pid=424595, sample-0, workerIndex=6)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] starting
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<2.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:12.257Z (epochMs=1783334472257, pid=424624, sample-0, workerIndex=10)
+ab-tests/cart.abtest.ts:13:phone:audit:<4.8s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.442Z (epochMs=1783334474442, pid=424603, sample-0)
+ab-tests/admin.abtest.ts:44:phone:audit:<4.8s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.460Z (epochMs=1783334474460, pid=424563, sample-0)
+ab-tests/admin.abtest.ts:13:desktop:audit:<4.8s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.466Z (epochMs=1783334474466, pid=424562, sample-0)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<4.8s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.494Z (epochMs=1783334474494, pid=424631, sample-0)
+ab-tests/carousel.abtest.ts:20:phone:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.523Z (epochMs=1783334474523, pid=424569, sample-0)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.536Z (epochMs=1783334474536, pid=424582, sample-0)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.538Z (epochMs=1783334474538, pid=424575, sample-0)
+ab-tests/carousel.abtest.ts:50:phone:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.538Z (epochMs=1783334474538, pid=424589, sample-0)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.551Z (epochMs=1783334474551, pid=424610, sample-0)
+ab-tests/cart.abtest.ts:13:desktop:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.564Z (epochMs=1783334474564, pid=424595, sample-0)
+ab-tests/homepage.abtest.ts:13:phone:audit:<4.9s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.565Z (epochMs=1783334474565, pid=424617, sample-0)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<5.0s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:14.612Z (epochMs=1783334474612, pid=424624, sample-0)
+ab-tests/cart.abtest.ts:13:phone:audit:<6.8s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.425Z (epochMs=1783334476425, pid=424603, url=http://localhost:3090/cart)
+ab-tests/admin.abtest.ts:44:phone:audit:<6.8s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.433Z (epochMs=1783334476433, pid=424563, url=http://localhost:3090/admin/login)
+ab-tests/admin.abtest.ts:44:phone:audit:<6.8s>sample-0[ experiment ] [shaka-perf screencast] subscribe (after nav to http://localhost:3090/admin/login) failed: Error: Protocol error (Page.startScreencast): Protocol error (Page.startScreencast): Not attached to an active page
+    at LighthouseError.fromProtocolMessage (file:///home/<USER>/.yarn/berry/cache/lighthouse-npm-13.0.3-c3fdf3cb66-10c0.zip/node_modules/lighthouse/core/lib/lh-error.js:160:19)
+    at file:///home/<USER>/.yarn/berry/cache/lighthouse-npm-13.0.3-c3fdf3cb66-10c0.zip/node_modules/lighthouse/core/gather/session.js:131:29
+    at async subscribe (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/bench/core/screencast-recorder.js:288:13)
+ab-tests/admin.abtest.ts:13:desktop:audit:<6.8s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.497Z (epochMs=1783334476497, pid=424562, url=http://localhost:3090/admin)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<6.9s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.519Z (epochMs=1783334476519, pid=424631, url=http://localhost:3090/products/1)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<6.9s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.585Z (epochMs=1783334476585, pid=424575, url=http://localhost:3090/carousel-demo)
+ab-tests/carousel.abtest.ts:50:phone:audit:<6.9s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.587Z (epochMs=1783334476587, pid=424589, url=http://localhost:3090/carousel-demo)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.0s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.660Z (epochMs=1783334476660, pid=424582, url=http://localhost:3090/carousel-demo)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.0s>sample-0[ experiment ] annotate: Wait for cart page to settle
+ab-tests/carousel.abtest.ts:20:phone:audit:<7.0s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.680Z (epochMs=1783334476680, pid=424569, url=http://localhost:3090/carousel-demo)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.0s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/cart (7 ms)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.0s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/cart (7 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<7.0s>sample-0[ experiment ] annotate: Wait for admin login form to appear
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.0s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.699Z (epochMs=1783334476699, pid=424617, url=http://localhost:3090/)
+ab-tests/admin.abtest.ts:44:phone:audit:<7.1s>sample-0[ experiment ] annotate: Fill in admin credentials
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.1s>sample-0[ experiment ] annotate: Wait for product detail page to settle
+ab-tests/homepage.abtest.ts:13:desktop:audit:<7.1s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.774Z (epochMs=1783334476774, pid=424610, url=http://localhost:3090/)
+ab-tests/admin.abtest.ts:13:desktop:audit:<7.2s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/admin. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.2s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products/1 (76 ms)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.2s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (76 ms)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.2s>sample-0[ experiment ] annotate: Wait for carousel track to be visible
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.2s>sample-0[ experiment ] annotate: Intercept and stub slider images
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.2s>sample-0[ experiment ] annotate: Reload page with image interception active
+ab-tests/cart.abtest.ts:13:desktop:audit:<7.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.872Z (epochMs=1783334476872, pid=424595, url=http://localhost:3090/cart)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<7.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:16.889Z (epochMs=1783334476889, pid=424624, url=http://localhost:3090/products/1)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.2s>sample-0[ experiment ] annotate: Intercept and stub slider images
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.3s>sample-0[ experiment ] annotate: Reload page with image interception active
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.3s>sample-0[ experiment ] annotate: Wait for homepage to settle
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.3s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/ (30 ms)
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.3s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/ (29 ms)
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.3s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.3s>sample-0[ experiment ] annotate: Override default CSS
+ab-tests/homepage.abtest.ts:13:desktop:audit:<7.4s>sample-0[ experiment ] annotate: Wait for homepage to settle
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.4s>sample-0[ experiment ] annotate: Wait for carousel track to be visible
+ab-tests/homepage.abtest.ts:13:phone:audit:<7.4s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=6 attr=4 text=0 child=2 :: children div.MuiBox-root.css-8qb8m4 -1[div.MuiBox-root.css-nfgtzt] | children div.MuiBox-root.css-8qb8m4 +1[div.MuiBox-root.css-sosi6w] | attr img.MuiCardMedia-root.MuiCardMedia-media src="https://images.unsplash.com/photo-150574"
+ab-tests/carousel.abtest.ts:20:phone:audit:<7.4s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/carousel-demo. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/homepage.abtest.ts:13:desktop:audit:<7.4s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/ (17 ms)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<7.4s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/ (18 ms)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<7.4s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=6 attr=4 text=0 child=2 :: children div.MuiBox-root.css-8qb8m4 -1[div.MuiBox-root.css-nfgtzt] | children div.MuiBox-root.css-8qb8m4 +1[div.MuiBox-root.css-sosi6w] | attr img.MuiCardMedia-root.MuiCardMedia-media src="https://images.unsplash.com/photo-150574"
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.4s>sample-0[ experiment ] VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.4s>sample-0[ experiment ] annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.4s>sample-0[ experiment ] annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.4s>sample-0[ experiment ] [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (7 ms)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.4s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (7 ms)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.5s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/cart (436 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] annotate: Wait for product detail page to settle
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.5s>sample-0[ experiment ] annotate: Wait for carousel track to be visible
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products/1 (13 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (14 ms)
+ab-tests/cart.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] annotate: Wait for cart page to settle
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] annotate: Override default CSS
+ab-tests/cart.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/cart (7 ms)
+ab-tests/cart.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/cart (7 ms)
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<7.5s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=3 attr=1 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiContainer-root.MuiContainer-maxWidthLg] | attr img.MuiBox-root.css-y5smgq src="https://images.unsplash.com/photo-150574"
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (6 ms)
+ab-tests/carousel.abtest.ts:50:phone:audit:<7.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (6 ms)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] annotate: Override default CSS
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (4 ms)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<7.6s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (3 ms)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.7s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/cart
+ab-tests/cart.abtest.ts:13:phone:audit:<7.7s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/cart (711 ms)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.8s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (680 ms)
+ab-tests/cart.abtest.ts:13:phone:audit:<7.8s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/cart. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.9s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:13:phone:audit:<7.9s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (774 ms)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<7.9s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (496 ms)
+ab-tests/carousel.abtest.ts:50:phone:audit:<8.0s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (445 ms)
+ab-tests/cart.abtest.ts:13:desktop:audit:<8.0s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/cart (484 ms)
+ab-tests/product-detail.abtest.ts:13:phone:audit:<8.0s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/homepage.abtest.ts:13:phone:audit:<8.0s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/ (734 ms)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<8.1s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (461 ms)
+ab-tests/homepage.abtest.ts:13:phone:audit:<8.1s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:13:phone:audit:<8.1s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/ (761 ms)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<8.1s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/ (707 ms)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<8.1s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:13:desktop:audit:<8.1s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/ (734 ms)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<8.1s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:29:desktop:audit:<8.1s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (707 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<8.1s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (667 ms)
+ab-tests/homepage.abtest.ts:13:phone:audit:<8.2s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/cart.abtest.ts:13:desktop:audit:<8.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/cart
+ab-tests/cart.abtest.ts:13:desktop:audit:<8.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/cart (709 ms)
+ab-tests/homepage.abtest.ts:13:desktop:audit:<8.2s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<8.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<8.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (753 ms)
+ab-tests/carousel.abtest.ts:29:desktop:audit:<8.2s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/carousel-demo. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/carousel.abtest.ts:50:phone:audit:<8.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:phone:audit:<8.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (708 ms)
+ab-tests/carousel.abtest.ts:50:desktop:audit:<8.3s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/cart.abtest.ts:13:desktop:audit:<8.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/cart. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/carousel.abtest.ts:50:desktop:audit:<8.3s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (705 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<8.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/carousel.abtest.ts:50:phone:audit:<8.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/carousel-demo. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/carousel.abtest.ts:50:desktop:audit:<8.4s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/carousel-demo. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/admin.abtest.ts:44:phone:audit:<8.6s>sample-0[ experiment ] annotate: Submit login form
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] annotate: Wait for login to complete
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] annotate: Open admin orders page
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] annotate: Wait for orders page to settle
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/admin/orders (0 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/admin/orders (3 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<8.7s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/admin/orders (3 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<8.8s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | children main.MuiBox-root.css-zxdg2z -1[div.MuiBox-root.css-0]
+ab-tests/admin.abtest.ts:44:phone:audit:<9.3s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/admin.abtest.ts:44:phone:audit:<10.0s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/admin/orders
+ab-tests/admin.abtest.ts:44:phone:audit:<10.0s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/admin/orders (1248 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<10.1s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/admin/login. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<12.0s>sample-0[ experiment ] starting
+ab-tests/cart.abtest.ts:13:phone:audit:<12.0s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<12.0s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:21.686Z (epochMs=1783334481686, pid=424603, sample-0, workerIndex=7)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<12.2s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:21.872Z (epochMs=1783334481872, pid=424603, sample-0)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<12.4s>sample-0[ experiment ] starting
+ab-tests/admin.abtest.ts:13:desktop:audit:<12.4s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:43:phone:audit:<12.4s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:22.018Z (epochMs=1783334482018, pid=424562, sample-0, workerIndex=0)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<12.6s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:22.257Z (epochMs=1783334482257, pid=424562, sample-0)
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<13.2s>sample-0[ experiment ] starting
+ab-tests/cart.abtest.ts:13:desktop:audit:<13.2s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<13.2s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:22.807Z (epochMs=1783334482807, pid=424595, sample-0, workerIndex=6)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<13.2s>sample-0[ experiment ] starting
+ab-tests/product-detail.abtest.ts:13:phone:audit:<13.2s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<13.2s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:22.879Z (epochMs=1783334482879, pid=424631, sample-0, workerIndex=11)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<13.3s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:22.937Z (epochMs=1783334482937, pid=424631, sample-0)
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<13.4s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:23.027Z (epochMs=1783334483027, pid=424595, sample-0)
+ab-tests/products.abtest.ts:13:desktop:audit:<13.4s>sample-0[ experiment ] starting
+ab-tests/carousel.abtest.ts:29:desktop:audit:<13.4s> lighthouse sample done
+ab-tests/products.abtest.ts:13:desktop:audit:<13.4s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:23.034Z (epochMs=1783334483034, pid=424575, sample-0, workerIndex=3)
+ab-tests/products.abtest.ts:13:phone:audit:<13.4s>sample-0[ experiment ] starting
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<13.4s> lighthouse sample done
+ab-tests/products.abtest.ts:13:phone:audit:<13.4s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:23.060Z (epochMs=1783334483060, pid=424624, sample-0, workerIndex=10)
+ab-tests/products.abtest.ts:27:desktop:audit:<13.5s>sample-0[ experiment ] starting
+ab-tests/homepage.abtest.ts:13:desktop:audit:<13.5s> lighthouse sample done
+ab-tests/products.abtest.ts:27:desktop:audit:<13.5s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:23.149Z (epochMs=1783334483149, pid=424610, sample-0, workerIndex=8)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<13.6s>sample-0[ experiment ] starting
+ab-tests/homepage.abtest.ts:13:phone:audit:<13.6s> lighthouse sample done
+ab-tests/shop-now.abtest.ts:13:phone:audit:<13.6s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:23.235Z (epochMs=1783334483235, pid=424617, sample-0, workerIndex=9)
+ab-tests/products.abtest.ts:13:desktop:audit:<13.6s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:23.296Z (epochMs=1783334483296, pid=424575, sample-0)
+ab-tests/products.abtest.ts:13:phone:audit:<13.7s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:23.307Z (epochMs=1783334483307, pid=424624, sample-0)
+ab-tests/products.abtest.ts:27:desktop:audit:<13.7s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:23.375Z (epochMs=1783334483375, pid=424610, sample-0)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<13.8s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:41:23.464Z (epochMs=1783334483464, pid=424617, sample-0)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<13.8s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:23.472Z (epochMs=1783334483472, pid=424603, url=http://localhost:3090/products/1)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<14.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:23.888Z (epochMs=1783334483888, pid=424562, url=http://localhost:3090/products/1)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<14.5s>sample-0[ experiment ] [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (45 ms)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<14.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (45 ms)
+ab-tests/carousel.abtest.ts:20:phone:audit:<14.6s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:43:phone:audit:<14.8s>sample-0[ experiment ] [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (7 ms)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<14.8s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (11 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<14.9s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:24.509Z (epochMs=1783334484509, pid=424631, url=http://localhost:3090/products/1)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<14.9s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (488 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<15.0s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:24.629Z (epochMs=1783334484629, pid=424595, url=http://localhost:3090/products/1)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<15.1s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=2 attr=2 text=0 child=0 :: attr div.MuiCollapse-root.MuiCollapse-vertical class="MuiCollapse-root MuiCollapse-vertical Mu" | attr div.MuiCollapse-root.MuiCollapse-vertical style="min-height: 0px; height: auto; transitio"
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<15.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<15.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (750 ms)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<15.2s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (406 ms)
+ab-tests/products.abtest.ts:13:phone:audit:<15.2s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:24.886Z (epochMs=1783334484886, pid=424624, url=http://localhost:3090/products)
+ab-tests/products.abtest.ts:13:desktop:audit:<15.3s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:24.924Z (epochMs=1783334484924, pid=424575, url=http://localhost:3090/products)
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<15.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:43:phone:audit:<15.3s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/products.abtest.ts:27:desktop:audit:<15.4s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:25.022Z (epochMs=1783334485022, pid=424610, url=http://localhost:3090/products)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.5s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:41:25.136Z (epochMs=1783334485136, pid=424617, url=http://localhost:3090/)
+ab-tests/products.abtest.ts:13:desktop:audit:<15.5s>sample-0[ experiment ] annotate: Wait for products list to settle
+ab-tests/products.abtest.ts:13:desktop:audit:<15.5s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (15 ms)
+ab-tests/products.abtest.ts:13:desktop:audit:<15.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (17 ms)
+ab-tests/products.abtest.ts:13:phone:audit:<15.5s>sample-0[ experiment ] annotate: Wait for products list to settle
+ab-tests/products.abtest.ts:13:desktop:audit:<15.5s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiBadge-badge.MuiBadge-standard +1[#text"0"]
+ab-tests/products.abtest.ts:13:phone:audit:<15.5s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (15 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<15.6s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/deals (6 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<15.6s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/deals (14 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<15.6s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products/1/reviews (14 ms)
+ab-tests/products.abtest.ts:13:desktop:audit:<15.6s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=14 attr=12 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<15.6s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products/1/reviews (21 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<15.6s>sample-0[ experiment ] annotate: Wait for products page to load
+ab-tests/products.abtest.ts:13:phone:audit:<15.6s>sample-0[ experiment ] [waitForAllImages] 10 visible images loaded for http://localhost:3090/products (100 ms)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.7s>sample-0[ experiment ] annotate: Wait for hero section to load
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.8s>sample-0[ experiment ] annotate: Click Shop Now button
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.9s>sample-0[ experiment ] annotate: Wait for navigation to products page
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.9s>sample-0[ experiment ] [waitForAllImages] 0 visible images loaded for http://localhost:3090/products (10 ms)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.9s>sample-0[ experiment ] [waitForFontsReady] fonts ready for http://localhost:3090/products (12 ms)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<15.9s>sample-0[ experiment ] [waitForNoMutations] mutation batch size=14 attr=12 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+ab-tests/product-detail.abtest.ts:43:phone:audit:<16.0s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:43:phone:audit:<16.0s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (1228 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<16.0s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/deals (490 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<16.1s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products/1/reviews (505 ms)
+ab-tests/products.abtest.ts:13:phone:audit:<16.1s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (599 ms)
+ab-tests/product-detail.abtest.ts:43:phone:audit:<16.1s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/products.abtest.ts:13:phone:audit:<16.2s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:13:phone:audit:<16.2s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (714 ms)
+ab-tests/products.abtest.ts:27:desktop:audit:<16.2s>sample-0[ experiment ] annotate: Open category dropdown
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<16.3s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/deals
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<16.3s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/deals (716 ms)
+ab-tests/admin.abtest.ts:44:phone:audit:<16.3s> lighthouse sample done
+ab-tests/products.abtest.ts:13:desktop:audit:<16.3s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<16.3s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1/reviews
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<16.3s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1/reviews (722 ms)
+ab-tests/products.abtest.ts:13:desktop:audit:<16.3s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (773 ms)
+ab-tests/products.abtest.ts:13:desktop:audit:<16.3s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (774 ms)
+ab-tests/products.abtest.ts:13:phone:audit:<16.3s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<16.4s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<16.4s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products/1. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/products.abtest.ts:27:desktop:audit:<16.4s>sample-0[ experiment ] annotate: Wait for electronics option to appear
+ab-tests/products.abtest.ts:13:desktop:audit:<16.4s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/products. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/products.abtest.ts:27:desktop:audit:<16.4s>sample-0[ experiment ] annotate: Select electronics category filter
+ab-tests/shop-now.abtest.ts:13:phone:audit:<16.5s>sample-0[ experiment ] [waitForNetworkSettle] network idle for http://localhost:3090/products (596 ms)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<16.6s>sample-0[ experiment ] [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/shop-now.abtest.ts:13:phone:audit:<16.6s>sample-0[ experiment ] [waitUntilPageSettled] all checks complete for http://localhost:3090/products (729 ms)
+ab-tests/shop-now.abtest.ts:13:phone:audit:<16.7s>sample-0[ experiment ] [shaka-perf coverage] window.__coverage__ missing on http://localhost:3090/. Coverage was requested but the served bundle is not instrumented — add babel-plugin-istanbul to the build (or nyc instrument the served JS).
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<19.6s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:43:phone:audit:<20.7s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<21.0s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<21.0s> lighthouse sample done
+ab-tests/products.abtest.ts:13:phone:audit:<21.1s> lighthouse sample done
+ab-tests/products.abtest.ts:13:desktop:audit:<21.2s> lighthouse sample done
+ab-tests/shop-now.abtest.ts:13:phone:audit:<21.5s> lighthouse sample done
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s> [shaka-perf coverage] no coverage.json for cart-phone-8a359aee — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s> Cart · phone absolute levels
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   FCP: 1802ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   speed-index: 1802ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   LCP: 6298ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   TBT: 1531ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   CLS: 0/100
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   TTFB: 4ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   downloads: 174KB
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   LH Score: 50/100
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   downloads-count: 13
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   js: 168KB
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   js-count: 8
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   images: 2KB
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   images-count: 1
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   fonts: 0KB
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   fonts-count: 0
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   downloads-before-LCP: 174KB
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   downloads-count-before-LCP: 13
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   hydration: 1212ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s>   hydration-start: 1938ms
+ab-tests/cart.abtest.ts:13:phone:audit:<33.6s> LH HTML thumbnail starting
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s> [shaka-perf coverage] no coverage.json for admin-dashboard-cookie-login-desktop-f153827d — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s> Admin Dashboard - Cookie Login · desktop absolute levels
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   FCP: 1806ms
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   speed-index: 1806ms
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   LCP: 5074ms
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   TBT: 851ms
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   CLS: 0/100
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   TTFB: 3ms
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   downloads: 176KB
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   LH Score: 40/100
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   downloads-count: 13
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   js: 169KB
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   js-count: 8
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   images: 4KB
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   images-count: 2
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   fonts: 0KB
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   fonts-count: 0
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   downloads-before-LCP: 176KB
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s>   downloads-count-before-LCP: 13
+ab-tests/admin.abtest.ts:13:desktop:audit:<33.8s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s> [shaka-perf coverage] no coverage.json for product-detail-phone-e327a02c — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s> Product Detail · phone absolute levels
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   FCP: 1810ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   speed-index: 1810ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   LCP: 6616ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   TBT: 2630ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   CLS: 32/100
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   TTFB: 5ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   downloads: 200KB
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   LH Score: 31/100
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   downloads-count: 16
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   js: 169KB
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   js-count: 9
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   images: 2KB
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   images-count: 1
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   downloads-before-LCP: 200KB
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   downloads-count-before-LCP: 16
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   hydration: 1472ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s>   hydration-start: 2468ms
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.0s> LH HTML thumbnail starting
+ab-tests/cart.abtest.ts:13:phone:audit:<34.3s> LH HTML thumbnail done
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s> [shaka-perf coverage] no coverage.json for cart-desktop-2ea5eb02 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s> Cart · desktop absolute levels
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   FCP: 1805ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   speed-index: 1805ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   LCP: 6777ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   TBT: 1658ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   CLS: 0/100
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   TTFB: 9ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   downloads: 174KB
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   LH Score: 36/100
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   downloads-count: 13
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   js: 168KB
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   js-count: 8
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   images: 2KB
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   images-count: 1
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   fonts: 0KB
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   fonts-count: 0
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   downloads-before-LCP: 174KB
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   downloads-count-before-LCP: 13
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   hydration: 1358ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s>   hydration-start: 3088ms
+ab-tests/cart.abtest.ts:13:desktop:audit:<34.4s> LH HTML thumbnail starting
+ab-tests/admin.abtest.ts:13:desktop:audit:<34.6s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:13:phone:audit:<34.7s> LH HTML thumbnail done
+ab-tests/cart.abtest.ts:13:desktop:audit:<35.1s> LH HTML thumbnail done
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.2s> annotate: Wait for cart page to settle
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.2s> [waitForNetworkSettle] network idle for http://localhost:3090/cart (1 ms)
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.2s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/cart (7 ms)
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.2s> [waitForFontsReady] fonts ready for http://localhost:3090/cart (6 ms)
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<35.7s> annotate: Wait for product detail page to settle
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<35.7s> [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (0 ms)
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<35.7s> [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (7 ms)
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<35.7s> [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (6 ms)
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<35.9s> annotate: Wait for cart page to settle
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<35.9s> [waitForNetworkSettle] network idle for http://localhost:3090/cart (1 ms)
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<35.9s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/cart (4 ms)
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<35.9s> [waitForFontsReady] fonts ready for http://localhost:3090/cart (4 ms)
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.9s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/cart
+ab-tests/cart.abtest.ts:13:phone:accessibility:<35.9s> [waitUntilPageSettled] all checks complete for http://localhost:3090/cart (708 ms)
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<36.4s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:13:phone:accessibility:<36.4s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (723 ms)
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<36.6s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/cart
+ab-tests/cart.abtest.ts:13:desktop:accessibility:<36.6s> [waitUntilPageSettled] all checks complete for http://localhost:3090/cart (708 ms)
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<36.6s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/admin-dashboard-cookie-login-desktop-f153827d/artifacts/experiment_performance_profile.json
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<36.7s> annotated-timeline: starting worker
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<36.7s> annotated-timeline: parsing Lighthouse profile
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.0s> annotated-timeline: profile parsed
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.0s> annotated-timeline: loading screencast video
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.1s> annotated-timeline: loaded 17 screencast shots
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.1s> annotated-timeline: deduping screencast before trace sync
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.2s> annotated-timeline: pre-sync dedupe removed 15/17 screencast frames; kept 2
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.2s> annotated-timeline: synced 2 deduped timeline frame candidates with 2 pixelmatch anchors; retained 17 raw synced frames for interaction annotations
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.2s> annotated-timeline: preparing timeline frames
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: prepared 2 frames to write
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: writing frame image 1/2
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: writing frame image 2/2
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: writing frame metadata
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: wrote 2 metadata entries
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: loaded 2 cached frame metadata entries
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.3s> annotated-timeline: preparing 2 report frames
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.4s> annotated-timeline: prepared 2 report frames
+ab-tests/admin.abtest.ts:13:desktop:build_annotated_timeline:<37.4s> annotated-timeline: screencast attached
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<37.7s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/cart-phone-8a359aee/artifacts/experiment_performance_profile.json
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<37.7s> annotated-timeline: starting worker
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<37.7s> annotated-timeline: parsing Lighthouse profile
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<37.9s> annotated-timeline: profile parsed
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<37.9s> annotated-timeline: loading screencast video
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.1s> annotated-timeline: loaded 15 screencast shots
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.1s> annotated-timeline: deduping screencast before trace sync
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.2s> annotated-timeline: pre-sync dedupe removed 12/15 screencast frames; kept 3
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.2s> annotated-timeline: synced 3 deduped timeline frame candidates with 3 pixelmatch anchors; retained 15 raw synced frames for interaction annotations
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.2s> annotated-timeline: preparing timeline frames
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.3s> annotated-timeline: copied 1 previous frame for annotation timestamps
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.3s> annotated-timeline: prepared 4 frames to write
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.3s> annotated-timeline: writing frame image 1/4
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.3s> annotated-timeline: writing frame image 4/4
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.4s> annotated-timeline: writing frame metadata
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.4s> annotated-timeline: wrote 4 metadata entries
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.4s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.4s> annotated-timeline: loaded 4 cached frame metadata entries
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.4s> annotated-timeline: preparing 4 report frames
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.4s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/cart-desktop-2ea5eb02/artifacts/experiment_performance_profile.json
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.4s> annotated-timeline: resetting reused worker
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.4s> annotated-timeline: parsing Lighthouse profile
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.5s> annotated-timeline: profile parsed
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.5s> annotated-timeline: loading screencast video
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.5s> annotated-timeline: prepared 4 report frames
+ab-tests/cart.abtest.ts:13:phone:build_annotated_timeline:<38.5s> annotated-timeline: screencast attached
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.6s> annotated-timeline: loaded 20 screencast shots
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.6s> annotated-timeline: deduping screencast before trace sync
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: pre-sync dedupe removed 17/20 screencast frames; kept 3
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: synced 3 deduped timeline frame candidates with 3 pixelmatch anchors; retained 20 raw synced frames for interaction annotations
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: preparing timeline frames
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: copied 1 previous frame for annotation timestamps
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: prepared 4 frames to write
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: writing frame image 1/4
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: writing frame image 4/4
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: writing frame metadata
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: wrote 4 metadata entries
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: loaded 4 cached frame metadata entries
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.7s> annotated-timeline: preparing 4 report frames
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.8s> annotated-timeline: prepared 4 report frames
+ab-tests/cart.abtest.ts:13:desktop:build_annotated_timeline:<38.8s> annotated-timeline: screencast attached
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<39.7s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/product-detail-phone-e327a02c/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<39.7s> annotated-timeline: starting worker
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<39.7s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<39.9s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<39.9s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.1s> annotated-timeline: loaded 44 screencast shots
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.1s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.3s> annotated-timeline: pre-sync dedupe removed 40/44 screencast frames; kept 4
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.3s> annotated-timeline: synced 4 deduped timeline frame candidates with 4 pixelmatch anchors; retained 44 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.3s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.5s> annotated-timeline: copied 3 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.5s> annotated-timeline: prepared 7 frames to write
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.5s> annotated-timeline: writing frame image 1/7
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: writing frame image 7/7
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: wrote 7 metadata entries
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: loaded 7 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<40.6s> annotated-timeline: preparing 7 report frames
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<41.1s> annotated-timeline: prepared 7 report frames
+ab-tests/product-detail.abtest.ts:13:phone:build_annotated_timeline:<41.1s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:27:desktop:audit:<48.1s> task failed (worker 8 attempt 1/2):
+page.click: Timeout 30000ms exceeded. (latest test annotation: "Select electronics category filter")
+Call log:
+  - waiting for locator('[data-cy="category-option-electronics-fake-broken-selector"]')
+
+    at page.click (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/bench/core/interaction-recorder.js:112:24)
+    at async Object.testFn (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts:45:3)
+ab-tests/products.abtest.ts:27:desktop:audit:<50.2s>sample-0[ experiment ] starting
+ab-tests/products.abtest.ts:27:desktop:audit:<50.2s>sample-0[ experiment ] [shaka-perf timing] subprocess sample command received at 2026-07-06T10:41:59.875Z (epochMs=1783334519875, pid=432925, sample-0, workerIndex=8)
+ab-tests/products.abtest.ts:27:desktop:audit:<51.6s>sample-0[ experiment ] [shaka-perf timing] subprocess Lighthouse start at 2026-07-06T10:42:01.237Z (epochMs=1783334521237, pid=432925, sample-0)
+ab-tests/products.abtest.ts:27:desktop:audit:<53.1s>sample-0[ experiment ] [shaka-perf timing] Lighthouse Page.navigate at 2026-07-06T10:42:02.765Z (epochMs=1783334522765, pid=432925, url=http://localhost:3090/products)
+ab-tests/products.abtest.ts:27:desktop:audit:<53.3s>sample-0[ experiment ] annotate: Wait for products page to load
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s> [shaka-perf coverage] no coverage.json for carousel-demo-pause-with-override-css-desktop-7f0a1144 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s> Carousel Demo - Pause With Override CSS · desktop absolute levels
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   FCP: 1804ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   speed-index: 1804ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   LCP: 10471ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   TBT: 2777ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   CLS: 12/100
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   TTFB: 4ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   downloads: 663KB
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   LH Score: 32/100
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   downloads-count: 15
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   js: 154KB
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   js-count: 7
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   images: 2KB
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   images-count: 1
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   fonts: 0KB
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   fonts-count: 0
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   downloads-before-LCP: 411KB
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   downloads-count-before-LCP: 15
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   hydration: 1408ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s>   hydration-start: 2708ms
+ab-tests/carousel.abtest.ts:29:desktop:audit:<53.5s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s> [shaka-perf coverage] no coverage.json for product-detail-desktop-7024be4d — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s> Product Detail · desktop absolute levels
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   FCP: 1805ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   speed-index: 1805ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   LCP: 7040ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   TBT: 2471ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   CLS: 19/100
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   TTFB: 5ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   downloads: 200KB
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   LH Score: 28/100
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   downloads-count: 16
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   js: 169KB
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   js-count: 9
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   images: 2KB
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   images-count: 1
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   downloads-before-LCP: 200KB
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   downloads-count-before-LCP: 16
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   hydration: 1552ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s>   hydration-start: 2370ms
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<53.8s> LH HTML thumbnail starting
+ab-tests/products.abtest.ts:27:desktop:audit:<54.0s>sample-0[ experiment ] annotate: Open category dropdown
+ab-tests/products.abtest.ts:27:desktop:audit:<54.2s>sample-0[ experiment ] annotate: Wait for electronics option to appear
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s> [shaka-perf coverage] no coverage.json for homepage-desktop-a7dd3b1b — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s> Homepage · desktop absolute levels
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   FCP: 1807ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   speed-index: 1807ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   LCP: 6490ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   TBT: 2150ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   CLS: 7/100
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   TTFB: 4ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   downloads: 247KB
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   LH Score: 36/100
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   downloads-count: 17
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   js: 156KB
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   js-count: 7
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   images: 2KB
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   images-count: 1
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   fonts: 0KB
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   fonts-count: 0
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   downloads-before-LCP: 247KB
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   downloads-count-before-LCP: 17
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   hydration: 1568ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s>   hydration-start: 2080ms
+ab-tests/homepage.abtest.ts:13:desktop:audit:<54.2s> LH HTML thumbnail starting
+ab-tests/products.abtest.ts:27:desktop:audit:<54.2s>sample-0[ experiment ] annotate: Select electronics category filter
+ab-tests/carousel.abtest.ts:29:desktop:audit:<54.3s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:13:desktop:audit:<54.5s> LH HTML thumbnail done
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s> [shaka-perf coverage] no coverage.json for homepage-phone-1efe208b — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s> Homepage · phone absolute levels
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   FCP: 1822ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   speed-index: 1822ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   LCP: 6488ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   TBT: 2288ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   CLS: 15/100
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   TTFB: 3ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   downloads: 247KB
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   LH Score: 42/100
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   downloads-count: 17
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   js: 156KB
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   js-count: 7
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   images: 2KB
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   images-count: 1
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   fonts: 0KB
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   fonts-count: 0
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   downloads-before-LCP: 166KB
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   downloads-count-before-LCP: 13
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   hydration: 1628ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s>   hydration-start: 2438ms
+ab-tests/homepage.abtest.ts:13:phone:audit:<54.6s> LH HTML thumbnail starting
+ab-tests/homepage.abtest.ts:13:desktop:audit:<55.0s> LH HTML thumbnail done
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> annotate: Wait for carousel track to be visible
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> annotate: Override default CSS
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (0 ms)
+ab-tests/homepage.abtest.ts:13:phone:audit:<55.3s> LH HTML thumbnail done
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (3 ms)
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<55.3s> [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (3 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<55.5s> annotate: Wait for product detail page to settle
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<55.5s> [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (1 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<55.5s> [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (4 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<55.5s> [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (4 ms)
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<55.8s> annotate: Wait for homepage to settle
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<55.8s> [waitForNetworkSettle] network idle for http://localhost:3090/ (1 ms)
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<55.8s> [waitForAllImages] 4 visible images loaded for http://localhost:3090/ (4 ms)
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<55.8s> [waitForFontsReady] fonts ready for http://localhost:3090/ (3 ms)
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<56.0s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:29:desktop:accessibility:<56.0s> [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (704 ms)
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.2s> annotate: Wait for homepage to settle
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.2s> [waitForNetworkSettle] network idle for http://localhost:3090/ (1 ms)
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.2s> [waitForAllImages] 4 visible images loaded for http://localhost:3090/ (7 ms)
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.2s> [waitForFontsReady] fonts ready for http://localhost:3090/ (7 ms)
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<56.2s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:13:desktop:accessibility:<56.2s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (706 ms)
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<56.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:13:desktop:accessibility:<56.5s> [waitUntilPageSettled] all checks complete for http://localhost:3090/ (706 ms)
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.9s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/
+ab-tests/homepage.abtest.ts:13:phone:accessibility:<56.9s> [waitUntilPageSettled] all checks complete for http://localhost:3090/ (728 ms)
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.0s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/carousel-demo-pause-with-override-css-desktop-7f0a1144/artifacts/experiment_performance_profile.json
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.0s> annotated-timeline: starting worker
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.0s> annotated-timeline: parsing Lighthouse profile
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.3s> annotated-timeline: profile parsed
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.3s> annotated-timeline: loading screencast video
+ab-tests/carousel.abtest.ts:50:desktop:audit:<58.3s>sample-0[ experiment ] [shaka-perf screencast] subscribe (after nav to chrome://terms/) failed: Error: Protocol error (Page.startScreencast): Protocol error (Page.startScreencast): Not attached to an active page
+    at LighthouseError.fromProtocolMessage (file:///home/<USER>/.yarn/berry/cache/lighthouse-npm-13.0.3-c3fdf3cb66-10c0.zip/node_modules/lighthouse/core/lib/lh-error.js:160:19)
+    at file:///home/<USER>/.yarn/berry/cache/lighthouse-npm-13.0.3-c3fdf3cb66-10c0.zip/node_modules/lighthouse/core/gather/session.js:131:29
+    at async subscribe (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/bench/core/screencast-recorder.js:288:13)
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.4s> annotated-timeline: loaded 35 screencast shots
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.4s> annotated-timeline: deduping screencast before trace sync
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<58.6s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/homepage-desktop-a7dd3b1b/artifacts/experiment_performance_profile.json
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<58.6s> annotated-timeline: starting worker
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<58.6s> annotated-timeline: parsing Lighthouse profile
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.7s> annotated-timeline: pre-sync dedupe removed 29/35 screencast frames; kept 6
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.7s> annotated-timeline: synced 6 deduped timeline frame candidates with 6 pixelmatch anchors; retained 35 raw synced frames for interaction annotations
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.7s> annotated-timeline: preparing timeline frames
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.8s> annotated-timeline: copied 6 previous frames for annotation timestamps
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.8s> annotated-timeline: prepared 12 frames to write
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<58.8s> annotated-timeline: writing frame image 1/12
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<58.9s> annotated-timeline: profile parsed
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<58.9s> annotated-timeline: loading screencast video
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: writing frame image 10/12
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: writing frame image 12/12
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: writing frame metadata
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: wrote 12 metadata entries
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: loaded 12 cached frame metadata entries
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.0s> annotated-timeline: preparing 12 report frames
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.2s> annotated-timeline: loaded 21 screencast shots
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.2s> annotated-timeline: deduping screencast before trace sync
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.3s> annotated-timeline: prepared 12 report frames
+ab-tests/carousel.abtest.ts:29:desktop:build_annotated_timeline:<59.3s> annotated-timeline: screencast attached
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.4s> annotated-timeline: pre-sync dedupe removed 18/21 screencast frames; kept 3
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.4s> annotated-timeline: synced 3 deduped timeline frame candidates with 3 pixelmatch anchors; retained 21 raw synced frames for interaction annotations
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.4s> annotated-timeline: preparing timeline frames
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.5s> annotated-timeline: copied 2 previous frames for annotation timestamps
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.5s> annotated-timeline: prepared 5 frames to write
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.5s> annotated-timeline: writing frame image 1/5
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: writing frame image 5/5
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: writing frame metadata
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: wrote 5 metadata entries
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: loaded 5 cached frame metadata entries
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.6s> annotated-timeline: preparing 5 report frames
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<59.8s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/product-detail-desktop-7024be4d/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<59.9s> annotated-timeline: starting worker
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<59.9s> annotated-timeline: parsing Lighthouse profile
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.9s> annotated-timeline: prepared 5 report frames
+ab-tests/homepage.abtest.ts:13:desktop:build_annotated_timeline:<59.9s> annotated-timeline: screencast attached
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.3s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.3s> annotated-timeline: loading screencast video
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<60.4s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/homepage-phone-1efe208b/artifacts/experiment_performance_profile.json
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<60.4s> annotated-timeline: starting worker
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<60.4s> annotated-timeline: parsing Lighthouse profile
+ab-tests/carousel.abtest.ts:50:desktop:audit:<60.5s> lighthouse sample done
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.6s> annotated-timeline: loaded 27 screencast shots
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.6s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.8s> annotated-timeline: pre-sync dedupe removed 23/27 screencast frames; kept 4
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.8s> annotated-timeline: synced 4 deduped timeline frame candidates with 4 pixelmatch anchors; retained 27 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.8s> annotated-timeline: preparing timeline frames
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<60.8s> annotated-timeline: profile parsed
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<60.8s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.9s> annotated-timeline: copied 4 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.9s> annotated-timeline: prepared 8 frames to write
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<60.9s> annotated-timeline: writing frame image 1/8
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: writing frame image 8/8
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: wrote 8 metadata entries
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: loaded 8 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.1s> annotated-timeline: preparing 8 report frames
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.3s> annotated-timeline: loaded 44 screencast shots
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.3s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.4s> annotated-timeline: prepared 8 report frames
+ab-tests/product-detail.abtest.ts:13:desktop:build_annotated_timeline:<61.4s> annotated-timeline: screencast attached
+ab-tests/carousel.abtest.ts:50:phone:audit:<61.5s> lighthouse sample done
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.6s> annotated-timeline: pre-sync dedupe removed 41/44 screencast frames; kept 3
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.6s> annotated-timeline: synced 3 deduped timeline frame candidates with 3 pixelmatch anchors; retained 44 raw synced frames for interaction annotations
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.6s> annotated-timeline: preparing timeline frames
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.7s> annotated-timeline: copied 3 previous frames for annotation timestamps
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.7s> annotated-timeline: prepared 6 frames to write
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.7s> annotated-timeline: writing frame image 1/6
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.8s> annotated-timeline: writing frame image 6/6
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.9s> annotated-timeline: writing frame metadata
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.9s> annotated-timeline: wrote 6 metadata entries
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.9s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.9s> annotated-timeline: loaded 6 cached frame metadata entries
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<61.9s> annotated-timeline: preparing 6 report frames
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<62.3s> annotated-timeline: prepared 6 report frames
+ab-tests/homepage.abtest.ts:13:phone:build_annotated_timeline:<62.3s> annotated-timeline: screencast attached
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s> [shaka-perf coverage] no coverage.json for carousel-demo-without-stubbing-or-overriding-css-phone-d2fd5a21 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s> Carousel Demo - Without stubbing or overriding CSS · phone absolute levels
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   FCP: 1818ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   speed-index: 1818ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   LCP: 10224ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   TBT: 1798ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   CLS: 25/100
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   TTFB: 4ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   downloads: 663KB
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   LH Score: 34/100
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   downloads-count: 15
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   js: 154KB
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   js-count: 7
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   images: 2KB
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   images-count: 1
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   fonts: 0KB
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   fonts-count: 0
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   downloads-before-LCP: 411KB
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   downloads-count-before-LCP: 15
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   hydration: 1370ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s>   hydration-start: 2412ms
+ab-tests/carousel.abtest.ts:20:phone:audit:<73.5s> LH HTML thumbnail starting
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s> [shaka-perf coverage] no coverage.json for admin-orders-form-login-interaction-phone-c48d2dee — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s> Admin Orders - Form Login Interaction · phone absolute levels
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   FCP: 1803ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   speed-index: 4828ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   LCP: 5211ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   TBT: 1843ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   CLS: 0/100
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   TTFB: 4ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   downloads: 174KB
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   LH Score: 49/100
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   downloads-count: 12
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   js: 169KB
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   js-count: 8
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   images: 2KB
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   images-count: 1
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   fonts: 0KB
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   fonts-count: 0
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   downloads-before-LCP: 174KB
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   downloads-count-before-LCP: 12
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s>   interaction-to-next-paint: 800ms
+ab-tests/admin.abtest.ts:44:phone:audit:<73.7s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s> [shaka-perf coverage] no coverage.json for product-detail-desktop-actions-desktop-ebde8f71 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s> Product Detail - Desktop Actions · desktop absolute levels
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   FCP: 1809ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   speed-index: 2007ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   LCP: 8270ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   TBT: 6394ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   CLS: 19/100
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   TTFB: 5ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   downloads: 198KB
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   LH Score: 27/100
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   downloads-count: 15
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   js: 169KB
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   js-count: 9
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   images: 0KB
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   images-count: 0
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   downloads-before-LCP: 198KB
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   downloads-count-before-LCP: 15
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   hydration: 2218ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s>   hydration-start: 3544ms
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.2s> LH HTML thumbnail starting
+ab-tests/carousel.abtest.ts:20:phone:audit:<74.3s> LH HTML thumbnail done
+ab-tests/admin.abtest.ts:44:phone:audit:<74.4s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:26:desktop:audit:<74.9s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s> [shaka-perf coverage] no coverage.json for product-detail-show-product-journey-toggle-phone-781cf919 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s> Product Detail - Show Product Journey Toggle · phone absolute levels
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   FCP: 1813ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   speed-index: 1975ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   LCP: 7411ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   TBT: 3952ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   CLS: 32/100
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   TTFB: 9ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   downloads: 198KB
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   LH Score: 29/100
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   downloads-count: 15
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   js: 169KB
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   js-count: 9
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   images: 0KB
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   images-count: 0
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   downloads-before-LCP: 198KB
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   downloads-count-before-LCP: 15
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   hydration: 1862ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   hydration-start: 3344ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s>   interaction-to-next-paint: 1280ms
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.0s> LH HTML thumbnail starting
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.1s> annotate: Wait for admin login form to appear
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.1s> annotate: Fill in admin credentials
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.1s> annotate: Submit login form
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.2s> annotate: Wait for login to complete
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.2s> annotate: Open admin orders page
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.2s> annotate: Wait for orders page to settle
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.2s> [waitForNetworkSettle] network idle for http://localhost:3090/admin/orders (1 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.3s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/admin/orders (4 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.3s> [waitForFontsReady] fonts ready for http://localhost:3090/admin/orders (4 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.3s> [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | attr div.MuiButtonBase-root.MuiListItemButton-root class="MuiButtonBase-root MuiListItemButton-roo" | children main.MuiBox-root.css-zxdg2z -1[div.MuiBox-root.css-0]
+ab-tests/product-detail.abtest.ts:43:phone:audit:<75.8s> LH HTML thumbnail done
+ab-tests/admin.abtest.ts:44:phone:accessibility:<75.8s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/product-detail.abtest.ts:26:desktop:accessibility:<75.9s> [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (1 ms)
+ab-tests/product-detail.abtest.ts:26:desktop:accessibility:<75.9s> [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (15 ms)
+ab-tests/product-detail.abtest.ts:26:desktop:accessibility:<75.9s> [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (15 ms)
+ab-tests/admin.abtest.ts:44:phone:accessibility:<76.5s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/admin/orders
+ab-tests/admin.abtest.ts:44:phone:accessibility:<76.5s> [waitUntilPageSettled] all checks complete for http://localhost:3090/admin/orders (1251 ms)
+ab-tests/product-detail.abtest.ts:26:desktop:accessibility:<76.6s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:26:desktop:accessibility:<76.6s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (716 ms)
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<76.6s> [waitForNetworkSettle] network idle for http://localhost:3090/products/1 (0 ms)
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<76.6s> [waitForAllImages] 1 visible images loaded for http://localhost:3090/products/1 (2 ms)
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<76.6s> [waitForFontsReady] fonts ready for http://localhost:3090/products/1 (2 ms)
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<76.9s> [waitForNoMutations] mutation batch size=2 attr=2 text=0 child=0 :: attr div.MuiCollapse-root.MuiCollapse-vertical class="MuiCollapse-root MuiCollapse-vertical Mu" | attr div.MuiCollapse-root.MuiCollapse-vertical style="min-height: 0px; height: auto; transitio"
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<77.2s> [waitForNoMutations] mutation batch size=1 attr=0 text=0 child=1 :: children span.MuiTouchRipple-root.css-4mb1j7 -1[span.css-19ri5qq.MuiTouchRipple-ripple]
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<77.4s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/carousel-demo-without-stubbing-or-overriding-css-phone-d2fd5a21/artifacts/experiment_performance_profile.json
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<77.4s> annotated-timeline: starting worker
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<77.4s> annotated-timeline: parsing Lighthouse profile
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<77.6s> annotated-timeline: profile parsed
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<77.6s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<77.9s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1
+ab-tests/product-detail.abtest.ts:43:phone:accessibility:<77.9s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1 (1241 ms)
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<78.0s> annotated-timeline: loaded 167 screencast shots
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<78.0s> annotated-timeline: deduping screencast before trace sync
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<78.7s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/admin-orders-form-login-interaction-phone-c48d2dee/artifacts/experiment_performance_profile.json
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<78.8s> annotated-timeline: starting worker
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<78.8s> annotated-timeline: parsing Lighthouse profile
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<79.1s> annotated-timeline: profile parsed
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<79.1s> annotated-timeline: loading screencast video
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<79.4s> annotated-timeline: loaded 160 screencast shots
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<79.4s> annotated-timeline: deduping screencast before trace sync
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<79.7s> annotated-timeline: pre-sync dedupe removed 142/167 screencast frames; kept 25
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<79.7s> annotated-timeline: synced 25 deduped timeline frame candidates with 24 pixelmatch anchors; retained 167 raw synced frames for interaction annotations
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<79.7s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<79.7s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/product-detail-desktop-actions-desktop-ebde8f71/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<79.7s> annotated-timeline: starting worker
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<79.7s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.0s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.0s> annotated-timeline: loading screencast video
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<80.1s> annotated-timeline: pre-sync dedupe removed 148/160 screencast frames; kept 12
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<80.1s> annotated-timeline: synced 12 deduped timeline frame candidates with 11 pixelmatch anchors; retained 160 raw synced frames for interaction annotations
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<80.1s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.2s> annotated-timeline: loaded 40 screencast shots
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.2s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: pre-sync dedupe removed 36/40 screencast frames; kept 4
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: synced 4 deduped timeline frame candidates with 4 pixelmatch anchors; retained 40 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: copied 2 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: prepared 6 frames to write
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.4s> annotated-timeline: writing frame image 1/6
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: writing frame image 6/6
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: wrote 6 metadata entries
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: loaded 6 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.5s> annotated-timeline: preparing 6 report frames
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<80.6s> annotated-timeline: copied 3 previous frames for annotation timestamps
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<80.6s> annotated-timeline: prepared 28 frames to write
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<80.6s> annotated-timeline: writing frame image 1/28
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.7s> annotated-timeline: prepared 6 report frames
+ab-tests/product-detail.abtest.ts:26:desktop:build_annotated_timeline:<80.7s> annotated-timeline: screencast attached
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<80.8s> annotated-timeline: writing frame image 10/28
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<81.1s> annotated-timeline: copied 5 previous frames for annotation timestamps
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<81.1s> annotated-timeline: prepared 18 frames to write
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<81.1s> annotated-timeline: writing frame image 1/18
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.1s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/product-detail-show-product-journey-toggle-phone-781cf919/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.1s> annotated-timeline: resetting reused worker
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.1s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.1s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.1s> annotated-timeline: loading screencast video
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.2s> annotated-timeline: writing frame image 20/28
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<81.3s> annotated-timeline: writing frame image 10/18
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.4s> annotated-timeline: loaded 70 screencast shots
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<81.4s> annotated-timeline: deduping screencast before trace sync
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.4s> annotated-timeline: writing frame image 28/28
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.5s> annotated-timeline: writing frame metadata
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.5s> annotated-timeline: wrote 28 metadata entries
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.5s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.5s> annotated-timeline: loaded 28 cached frame metadata entries
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<81.5s> annotated-timeline: preparing 28 report frames
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: writing frame image 18/18
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: writing frame metadata
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: wrote 18 metadata entries
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: loaded 18 cached frame metadata entries
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.4s> annotated-timeline: preparing 18 report frames
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<82.8s> annotated-timeline: prepared 28 report frames
+ab-tests/carousel.abtest.ts:20:phone:build_annotated_timeline:<82.8s> annotated-timeline: screencast attached
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.9s> annotated-timeline: prepared 18 report frames
+ab-tests/admin.abtest.ts:44:phone:build_annotated_timeline:<82.9s> annotated-timeline: screencast attached
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.1s> annotated-timeline: pre-sync dedupe removed 60/70 screencast frames; kept 10
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.1s> annotated-timeline: synced 10 deduped timeline frame candidates with 10 pixelmatch anchors; retained 70 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.1s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.5s> annotated-timeline: copied 6 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.5s> annotated-timeline: prepared 16 frames to write
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.5s> annotated-timeline: writing frame image 1/16
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.8s> annotated-timeline: writing frame image 10/16
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: writing frame image 16/16
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: wrote 16 metadata entries
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: loaded 16 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<83.9s> annotated-timeline: preparing 16 report frames
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<85.0s> annotated-timeline: prepared 16 report frames
+ab-tests/product-detail.abtest.ts:43:phone:build_annotated_timeline:<85.0s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:27:desktop:audit:<85.9s> task failed (worker 8 attempt 2/2):
+page.click: Timeout 30000ms exceeded. (latest test annotation: "Select electronics category filter")
+Call log:
+  - waiting for locator('[data-cy="category-option-electronics-fake-broken-selector"]')
+
+    at page.click (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/bench/core/interaction-recorder.js:112:24)
+    at async Object.testFn (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts:45:3)
+ab-tests/products.abtest.ts:27:desktop:accessibility:<86.9s> annotate: Wait for products page to load
+ab-tests/products.abtest.ts:27:desktop:accessibility:<86.9s> annotate: Open category dropdown
+ab-tests/products.abtest.ts:27:desktop:accessibility:<86.9s> annotate: Wait for electronics option to appear
+ab-tests/products.abtest.ts:27:desktop:accessibility:<86.9s> annotate: Select electronics category filter
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s> [shaka-perf coverage] no coverage.json for product-details-click-on-reviews-click-on-deals-desktop-cfa9215c — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s> Product Details => Click on Reviews => Click on Deals · desktop absolute levels
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   FCP: 1803ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   speed-index: 2038ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   LCP: 7002ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   TBT: 4104ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   CLS: 19/100
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   TTFB: 5ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   downloads: 206KB
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   LH Score: 27/100
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   downloads-count: 19
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   js: 177KB
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   js-count: 12
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   images: 0KB
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   images-count: 0
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   downloads-before-LCP: 198KB
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   downloads-count-before-LCP: 15
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   hydration: 1066ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   hydration-start: 2446ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s>   interaction-to-next-paint: 1600ms
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.2s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s> [shaka-perf coverage] no coverage.json for click-reviews-on-product-detail-desktop-95944b8c — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s> Click Reviews on Product Detail · desktop absolute levels
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   FCP: 1803ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   speed-index: 1945ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   LCP: 6820ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   TBT: 3619ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   CLS: 19/100
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   TTFB: 4ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   downloads: 205KB
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   LH Score: 27/100
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   downloads-count: 18
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   js: 176KB
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   js-count: 11
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   images: 0KB
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   images-count: 0
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   fonts: 0KB
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   fonts-count: 0
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   downloads-before-LCP: 198KB
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   downloads-count-before-LCP: 15
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   hydration: 1298ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   hydration-start: 2052ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s>   interaction-to-next-paint: 1440ms
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<93.4s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:88:desktop:audit:<93.9s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:64:desktop:audit:<94.2s> LH HTML thumbnail done
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s> [shaka-perf coverage] no coverage.json for products-list-phone-7e2d140d — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s> Products List · phone absolute levels
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   FCP: 1804ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   speed-index: 1804ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   LCP: 6685ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   TBT: 2670ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   CLS: 4/100
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   TTFB: 3ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   downloads: 433KB
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   LH Score: 47/100
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   downloads-count: 24
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   js: 171KB
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   js-count: 9
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   images: 0KB
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   images-count: 0
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   fonts: 0KB
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   fonts-count: 0
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   downloads-before-LCP: 433KB
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   downloads-count-before-LCP: 24
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   hydration: 1546ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s>   hydration-start: 1680ms
+ab-tests/products.abtest.ts:13:phone:audit:<94.3s> LH HTML thumbnail starting
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s> [shaka-perf coverage] no coverage.json for products-list-desktop-02e3c432 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s> Products List · desktop absolute levels
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   FCP: 1804ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   speed-index: 1984ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   LCP: 8542ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   TBT: 2894ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   CLS: 3/100
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   TTFB: 5ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   downloads: 433KB
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   LH Score: 35/100
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   downloads-count: 24
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   js: 171KB
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   js-count: 9
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   images: 0KB
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   images-count: 0
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   fonts: 0KB
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   fonts-count: 0
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   downloads-before-LCP: 433KB
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   downloads-count-before-LCP: 24
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   hydration: 1642ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s>   hydration-start: 2242ms
+ab-tests/products.abtest.ts:13:desktop:audit:<95.0s> LH HTML thumbnail starting
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.1s> [waitForNetworkSettle] network idle for http://localhost:3090/deals (0 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.1s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/deals (2 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.1s> [waitForFontsReady] fonts ready for http://localhost:3090/deals (2 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.1s> [waitForNoMutations] mutation batch size=2 attr=0 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiContainer-root.MuiContainer-maxWidthMd] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-nfgtzt]
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.1s> [waitForNoMutations] mutation batch size=2 attr=0 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiContainer-root.MuiContainer-maxWidthMd]
+ab-tests/products.abtest.ts:13:phone:audit:<95.1s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<95.3s> [waitForNetworkSettle] network idle for http://localhost:3090/products/1/reviews (1 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<95.3s> [waitForAllImages] 0 visible images loaded for http://localhost:3090/products/1/reviews (8 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<95.3s> [waitForFontsReady] fonts ready for http://localhost:3090/products/1/reviews (8 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<95.3s> [waitForNoMutations] mutation batch size=2 attr=0 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-nfgtzt]
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<95.3s> [waitForNoMutations] mutation batch size=2 attr=0 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiContainer-root.MuiContainer-maxWidthMd]
+ab-tests/products.abtest.ts:13:desktop:audit:<95.7s> LH HTML thumbnail done
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.8s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/deals
+ab-tests/product-detail.abtest.ts:88:desktop:accessibility:<95.8s> [waitUntilPageSettled] all checks complete for http://localhost:3090/deals (725 ms)
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<96.0s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products/1/reviews
+ab-tests/product-detail.abtest.ts:64:desktop:accessibility:<96.0s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products/1/reviews (727 ms)
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.2s> annotate: Wait for products list to settle
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.2s> [waitForNetworkSettle] network idle for http://localhost:3090/products (0 ms)
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.2s> [waitForAllImages] 10 visible images loaded for http://localhost:3090/products (7 ms)
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.2s> [waitForFontsReady] fonts ready for http://localhost:3090/products (7 ms)
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.9s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:13:phone:accessibility:<96.9s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (709 ms)
+ab-tests/products.abtest.ts:13:desktop:accessibility:<96.9s> annotate: Wait for products list to settle
+ab-tests/products.abtest.ts:13:desktop:accessibility:<96.9s> [waitForNetworkSettle] network idle for http://localhost:3090/products (0 ms)
+ab-tests/products.abtest.ts:13:desktop:accessibility:<96.9s> [waitForAllImages] 10 visible images loaded for http://localhost:3090/products (5 ms)
+ab-tests/products.abtest.ts:13:desktop:accessibility:<96.9s> [waitForFontsReady] fonts ready for http://localhost:3090/products (4 ms)
+ab-tests/products.abtest.ts:13:desktop:accessibility:<97.7s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/products.abtest.ts:13:desktop:accessibility:<97.7s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (817 ms)
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.3s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/product-details-click-on-reviews-click-on-deals-desktop-cfa9215c/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.3s> annotated-timeline: starting worker
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.3s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.6s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.6s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<98.6s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/click-reviews-on-product-detail-desktop-95944b8c/artifacts/experiment_performance_profile.json
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<98.6s> annotated-timeline: starting worker
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<98.6s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.8s> annotated-timeline: loaded 49 screencast shots
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<98.8s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<98.9s> annotated-timeline: profile parsed
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<98.9s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.1s> annotated-timeline: loaded 41 screencast shots
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.1s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.2s> annotated-timeline: pre-sync dedupe removed 40/49 screencast frames; kept 9
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.2s> annotated-timeline: synced 9 deduped timeline frame candidates with 8 pixelmatch anchors; retained 49 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.2s> annotated-timeline: preparing timeline frames
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<99.3s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/products-list-phone-7e2d140d/artifacts/experiment_performance_profile.json
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<99.3s> annotated-timeline: starting worker
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<99.3s> annotated-timeline: parsing Lighthouse profile
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.3s> annotated-timeline: pre-sync dedupe removed 34/41 screencast frames; kept 7
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.3s> annotated-timeline: synced 7 deduped timeline frame candidates with 6 pixelmatch anchors; retained 41 raw synced frames for interaction annotations
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.3s> annotated-timeline: preparing timeline frames
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.5s> annotated-timeline: copied 6 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.5s> annotated-timeline: prepared 15 frames to write
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.5s> annotated-timeline: writing frame image 1/15
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<99.5s> annotated-timeline: profile parsed
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<99.5s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.6s> annotated-timeline: copied 4 previous frames for annotation timestamps
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.6s> annotated-timeline: prepared 11 frames to write
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.6s> annotated-timeline: writing frame image 1/11
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.7s> annotated-timeline: writing frame image 10/15
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.7s> annotated-timeline: writing frame image 10/11
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.7s> annotated-timeline: writing frame image 15/15
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: writing frame image 11/11
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.8s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.8s> annotated-timeline: wrote 15 metadata entries
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.8s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.8s> annotated-timeline: loaded 15 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<99.8s> annotated-timeline: preparing 15 report frames
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: writing frame metadata
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: wrote 11 metadata entries
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: loaded 11 cached frame metadata entries
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<99.8s> annotated-timeline: preparing 11 report frames
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.0s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/products-list-desktop-02e3c432/artifacts/experiment_performance_profile.json
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.0s> annotated-timeline: resetting reused worker
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.0s> annotated-timeline: parsing Lighthouse profile
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.0s> annotated-timeline: profile parsed
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.0s> annotated-timeline: loading screencast video
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<100.2s> annotated-timeline: prepared 15 report frames
+ab-tests/product-detail.abtest.ts:88:desktop:build_annotated_timeline:<100.2s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.2s> annotated-timeline: loaded 43 screencast shots
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.2s> annotated-timeline: deduping screencast before trace sync
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<100.4s> annotated-timeline: prepared 11 report frames
+ab-tests/product-detail.abtest.ts:64:desktop:build_annotated_timeline:<100.4s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.5s> annotated-timeline: loaded 36 screencast shots
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.5s> annotated-timeline: deduping screencast before trace sync
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.5s> annotated-timeline: pre-sync dedupe removed 37/43 screencast frames; kept 6
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.5s> annotated-timeline: synced 6 deduped timeline frame candidates with 6 pixelmatch anchors; retained 43 raw synced frames for interaction annotations
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.5s> annotated-timeline: preparing timeline frames
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.7s> annotated-timeline: pre-sync dedupe removed 27/36 screencast frames; kept 9
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.7s> annotated-timeline: synced 9 deduped timeline frame candidates with 9 pixelmatch anchors; retained 36 raw synced frames for interaction annotations
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.7s> annotated-timeline: preparing timeline frames
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.7s> annotated-timeline: copied 1 previous frame for annotation timestamps
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.7s> annotated-timeline: prepared 7 frames to write
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.7s> annotated-timeline: writing frame image 1/7
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.8s> annotated-timeline: copied 2 previous frames for annotation timestamps
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.8s> annotated-timeline: prepared 11 frames to write
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.8s> annotated-timeline: writing frame image 1/11
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.8s> annotated-timeline: writing frame image 7/7
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.9s> annotated-timeline: writing frame metadata
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.9s> annotated-timeline: wrote 7 metadata entries
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.9s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.9s> annotated-timeline: loaded 7 cached frame metadata entries
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<100.9s> annotated-timeline: preparing 7 report frames
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<100.9s> annotated-timeline: writing frame image 10/11
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: writing frame image 11/11
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: writing frame metadata
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: wrote 11 metadata entries
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: loaded 11 cached frame metadata entries
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.0s> annotated-timeline: preparing 11 report frames
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<101.2s> annotated-timeline: prepared 7 report frames
+ab-tests/products.abtest.ts:13:phone:build_annotated_timeline:<101.2s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.3s> annotated-timeline: prepared 11 report frames
+ab-tests/products.abtest.ts:13:desktop:build_annotated_timeline:<101.3s> annotated-timeline: screencast attached
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s> [shaka-perf coverage] no coverage.json for click-shop-now-on-the-homepage-phone-8b0c3ff8 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s> Click Shop Now on the homepage · phone absolute levels
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   FCP: 1805ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   speed-index: 2129ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   LCP: 6168ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   TBT: 2143ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   CLS: 33/100
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   TTFB: 5ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   downloads: 438KB
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   LH Score: 32/100
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   downloads-count: 26
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   js: 175KB
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   js-count: 10
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   images: 0KB
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   images-count: 0
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   fonts: 0KB
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   fonts-count: 0
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   downloads-before-LCP: 164KB
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   downloads-count-before-LCP: 12
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   hydration: 862ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   hydration-start: 2760ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s>   interaction-to-next-paint: 480ms
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.0s> LH HTML thumbnail starting
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s> [shaka-perf coverage] no coverage.json for carousel-demo-stub-slider-images-desktop-972b12e0 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s> Carousel Demo - Stub Slider Images · desktop absolute levels
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   FCP: 1804ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   speed-index: 1804ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   LCP: 9930ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   TBT: 4470ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   CLS: 8/100
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   TTFB: 19ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   downloads: 327KB
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   LH Score: 34/100
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   downloads-count: 29
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   js: 308KB
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   js-count: 14
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   images: 2KB
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   images-count: 1
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   fonts: 0KB
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   fonts-count: 0
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   downloads-before-LCP: 327KB
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   downloads-count-before-LCP: 29
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   hydration: 1666ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s>   hydration-start: 2184ms
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.2s> LH HTML thumbnail starting
+ab-tests/shop-now.abtest.ts:13:phone:audit:<113.7s> LH HTML thumbnail done
+ab-tests/carousel.abtest.ts:50:desktop:audit:<113.9s> LH HTML thumbnail done
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s> [shaka-perf coverage] no coverage.json for carousel-demo-stub-slider-images-phone-88b6aae8 — see earlier '[shaka-perf coverage]' lines for the cause.
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s> Carousel Demo - Stub Slider Images · phone absolute levels
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   FCP: 1805ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   speed-index: 1805ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   LCP: 9971ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   TBT: 3761ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   CLS: 4/100
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   TTFB: 7ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   downloads: 327KB
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   LH Score: 44/100
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   downloads-count: 29
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   js: 308KB
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   js-count: 14
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   images: 2KB
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   images-count: 1
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   fonts: 0KB
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   fonts-count: 0
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   downloads-before-LCP: 327KB
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   downloads-count-before-LCP: 29
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   hydration: 1298ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s>   hydration-start: 2600ms
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.2s> LH HTML thumbnail starting
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.6s> annotate: Wait for hero section to load
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> annotate: Click Shop Now button
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> annotate: Wait for navigation to products page
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForNetworkSettle] network idle for http://localhost:3090/products (0 ms)
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForAllImages] 4 visible images loaded for http://localhost:3090/products (2 ms)
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForFontsReady] fonts ready for http://localhost:3090/products (2 ms)
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | attr a.MuiButtonBase-root.MuiButton-root class="MuiButtonBase-root MuiButton-root MuiBut" | children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-1egkt5t]
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForNoMutations] mutation batch size=4 attr=2 text=0 child=2 :: children main.MuiBox-root.css-i9gxme -1[div.MuiBox-root.css-nfgtzt] | children main.MuiBox-root.css-i9gxme +1[div.MuiBox-root.css-1htz7z9] | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<114.7s> [waitForNoMutations] mutation batch size=14 attr=12 text=0 child=2 :: children div.MuiContainer-root.MuiContainer-maxWidthLg -1[div.MuiBox-root.css-nfgtzt] | attr input.MuiSelect-nativeInput.css-147e5lo name="" | attr input.MuiSelect-nativeInput.css-147e5lo name=""
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<114.9s> annotate: Intercept and stub slider images
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<114.9s> annotate: Reload page with image interception active
+ab-tests/carousel.abtest.ts:50:phone:audit:<114.9s> LH HTML thumbnail done
+[1/4] stage:audit
+Capture one absolute Lighthouse measurement on the target URL.
+████████████████ 100% · 20/20 done · pool 0/12 active · 2 errors · ETA 00m:00s · to skip this stage use --skip-stages audit
+<<< audit · queued 0, running 0, done 19, skipped 0, error 1 · durations total 1446.0s, avg 72.3s, max 114.0s
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.0s> annotate: Wait for carousel track to be visible
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> annotate: Override default CSS
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (3 ms)
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.1s> [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (2 ms)
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<115.4s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/products
+ab-tests/shop-now.abtest.ts:13:phone:accessibility:<115.4s> [waitUntilPageSettled] all checks complete for http://localhost:3090/products (748 ms)
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.5s> [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (463 ms)
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.8s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:desktop:accessibility:<115.8s> [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (723 ms)
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Intercept and stub slider images
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Reload page with image interception active
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Wait for carousel track to be visible
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Override default CSS
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> VISREG_TEST_CSS_OVERRIDE injected for: http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Inject CSS to pause carousel animation
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> annotate: Wait for page to settle
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> [waitForAllImages] 6 visible images loaded for http://localhost:3090/carousel-demo (2 ms)
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<115.9s> [waitForFontsReady] fonts ready for http://localhost:3090/carousel-demo (2 ms)
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<116.4s> [waitForNetworkSettle] network idle for http://localhost:3090/carousel-demo (483 ms)
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<116.7s> [waitForNoMutations] quiet for 700 ms, settled in <TIMING> ms for http://localhost:3090/carousel-demo
+ab-tests/carousel.abtest.ts:50:phone:accessibility:<116.7s> [waitUntilPageSettled] all checks complete for http://localhost:3090/carousel-demo (717 ms)
+ab-tests/products.abtest.ts:27:desktop:accessibility:<117.1s> task failed (worker 0 attempt 1/2):
+StageFailureError: page.click: Timeout 30000ms exceeded. (latest test annotation: "Select electronics category filter")
+Caused by: page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('[data-cy="category-option-electronics-fake-broken-selector"]')
+
+    at Object.testFn (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts:45:14)
+    at async run (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/test-annotation/index.js:30:20)
+    at async preparePageForAccessibility (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:287:3)
+    at async scanViewport (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:136:5)
+    at async scanAccessibility (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:90:16)
+    at async WorkerPool.runWithTimeout (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:358:24)
+    at async WorkerPool.runWithStageOwner (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:402:20)
+    at async WorkerPool.runOnWorker (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:296:31)
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<117.6s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/click-shop-now-on-the-homepage-phone-8b0c3ff8/artifacts/experiment_performance_profile.json
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<117.6s> annotated-timeline: starting worker
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<117.6s> annotated-timeline: parsing Lighthouse profile
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<117.8s> annotated-timeline: profile parsed
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<117.8s> annotated-timeline: loading screencast video
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<118.0s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/carousel-demo-stub-slider-images-desktop-972b12e0/artifacts/experiment_performance_profile.json
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<118.0s> annotated-timeline: starting worker
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<118.0s> annotated-timeline: parsing Lighthouse profile
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<118.1s> annotated-timeline: loaded 44 screencast shots
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<118.1s> annotated-timeline: deduping screencast before trace sync
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<118.3s> annotated-timeline: profile parsed
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<118.3s> annotated-timeline: loading screencast video
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<118.5s> annotated-timeline: building frames from /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/carousel-demo-stub-slider-images-phone-88b6aae8/artifacts/experiment_performance_profile.json
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<118.5s> annotated-timeline: starting worker
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<118.5s> annotated-timeline: parsing Lighthouse profile
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<118.6s> annotated-timeline: pre-sync dedupe removed 33/44 screencast frames; kept 11
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<118.6s> annotated-timeline: synced 11 deduped timeline frame candidates with 10 pixelmatch anchors; retained 44 raw synced frames for interaction annotations
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<118.6s> annotated-timeline: preparing timeline frames
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<118.8s> annotated-timeline: profile parsed
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<118.8s> annotated-timeline: loading screencast video
+ab-tests/products.abtest.ts:27:desktop:accessibility:<119.1s> annotate: Wait for products page to load
+ab-tests/products.abtest.ts:27:desktop:accessibility:<119.1s> annotate: Open category dropdown
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.2s> annotated-timeline: copied 6 previous frames for annotation timestamps
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.2s> annotated-timeline: prepared 17 frames to write
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.2s> annotated-timeline: writing frame image 1/17
+ab-tests/products.abtest.ts:27:desktop:accessibility:<119.2s> annotate: Wait for electronics option to appear
+ab-tests/products.abtest.ts:27:desktop:accessibility:<119.2s> annotate: Select electronics category filter
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.4s> annotated-timeline: writing frame image 10/17
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: writing frame image 17/17
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: writing frame metadata
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: wrote 17 metadata entries
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: loaded 17 cached frame metadata entries
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<119.6s> annotated-timeline: preparing 17 report frames
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<120.6s> annotated-timeline: loaded 3094 screencast shots
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<120.6s> annotated-timeline: frame hard-cap — evenly dropping 2394 of 3094 screencast frames down to 700 before dedupe
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<120.6s> annotated-timeline: deduping screencast before trace sync
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<120.7s> annotated-timeline: prepared 17 report frames
+ab-tests/shop-now.abtest.ts:13:phone:build_annotated_timeline:<120.7s> annotated-timeline: screencast attached
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<122.5s> annotated-timeline: loaded 3083 screencast shots
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<122.5s> annotated-timeline: frame hard-cap — evenly dropping 2383 of 3083 screencast frames down to 700 before dedupe
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<122.5s> annotated-timeline: deduping screencast before trace sync
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.5s> annotated-timeline: pre-sync dedupe removed 691/700 screencast frames; kept 9
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.5s> annotated-timeline: synced 9 deduped timeline frame candidates with 4 pixelmatch anchors; retained 700 raw synced frames for interaction annotations
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.5s> annotated-timeline: preparing timeline frames
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.7s> annotated-timeline: copied 9 previous frames for annotation timestamps
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.7s> annotated-timeline: prepared 18 frames to write
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.7s> annotated-timeline: writing frame image 1/18
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.8s> annotated-timeline: writing frame image 10/18
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: writing frame image 18/18
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: writing frame metadata
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: wrote 18 metadata entries
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: loaded 18 cached frame metadata entries
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<122.9s> annotated-timeline: preparing 18 report frames
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<123.1s> annotated-timeline: prepared 18 report frames
+ab-tests/carousel.abtest.ts:50:desktop:build_annotated_timeline:<123.1s> annotated-timeline: screencast attached
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.2s> annotated-timeline: pre-sync dedupe removed 690/700 screencast frames; kept 10
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.2s> annotated-timeline: synced 10 deduped timeline frame candidates with 4 pixelmatch anchors; retained 700 raw synced frames for interaction annotations
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.2s> annotated-timeline: preparing timeline frames
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.7s> annotated-timeline: copied 10 previous frames for annotation timestamps
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.7s> annotated-timeline: prepared 20 frames to write
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.7s> annotated-timeline: writing frame image 1/20
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<125.9s> annotated-timeline: writing frame image 10/20
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: writing frame image 20/20
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: writing frame metadata
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: wrote 20 metadata entries
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: frame build done; reading artifact metadata
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: loaded 20 cached frame metadata entries
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.2s> annotated-timeline: preparing 20 report frames
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.7s> annotated-timeline: prepared 20 report frames
+ab-tests/carousel.abtest.ts:50:phone:build_annotated_timeline:<126.7s> annotated-timeline: screencast attached
+ab-tests/products.abtest.ts:27:desktop:accessibility:<149.4s> task failed (worker 0 attempt 2/2):
+StageFailureError: page.click: Timeout 30000ms exceeded. (latest test annotation: "Select electronics category filter")
+Caused by: page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('[data-cy="category-option-electronics-fake-broken-selector"]')
+
+    at Object.testFn (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/ab-tests/products.abtest.ts:45:14)
+    at async run (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/test-annotation/index.js:30:20)
+    at async preparePageForAccessibility (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:287:3)
+    at async scanViewport (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:136:5)
+    at async scanAccessibility (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/src/audit/stages/accessibility/engine.ts:90:16)
+    at async WorkerPool.runWithTimeout (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:358:24)
+    at async WorkerPool.runWithStageOwner (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:402:20)
+    at async WorkerPool.runOnWorker (/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/packages/shaka-perf/dist/pipeline/worker-pool.js:296:31)
+[2/4] stage:accessibility
+Run accessibility checks on the target URL.
+████████████████ 100% · 20/20 done · pool 0/12 active · 2 errors · ETA 00m:00s · to skip this stage use --skip-stages accessibility
+<<< accessibility · queued 0, running 0, done 19, skipped 0, error 1 · durations total 122.7s, avg 6.1s, max 63.5s
+[3/4] stage:agent-readiness
+Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).
+████████████████ 100% · 20/20 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages agent-readiness
+<<< agent-readiness · queued 0, running 0, done 20, skipped 0, error 0 · durations total 19.3s, avg 965.2ms, max 1.1s
+[4/4] stage:build_annotated_timeline
+Prepare Lighthouse trace screenshots for the annotated timeline.
+████████████████ 100% · 19/19 done · pool 0/12 active · ETA 00m:00s · to skip this stage use --skip-stages build_annotated_timeline
+<<< build_annotated_timeline · queued 0, running 0, done 19, skipped 1, error 0 · durations total 47.3s, avg 2.5s, max 8.3s
+
+>>> assemble · per-test artifacts (15 tests)
+    [ 1/15] Admin Dashboard - Cookie Login (0.0s, 0.0 MB)
+    [ 2/15] Admin Orders - Form Login Interaction (0.0s, 0.1 MB)
+    [ 3/15] Carousel Demo - Without stubbing or overriding CSS (0.0s, 0.3 MB)
+    [ 4/15] Carousel Demo - Pause With Override CSS (0.0s, 0.1 MB)
+    [ 5/15] Carousel Demo - Stub Slider Images (0.0s, 0.2 MB)
+    [ 6/15] Cart (0.0s, 0.1 MB)
+    [ 7/15] Homepage (0.0s, 0.2 MB)
+    [ 8/15] Product Detail (0.0s, 0.2 MB)
+    [ 9/15] Product Detail - Desktop Actions (0.0s, 0.1 MB)
+    [10/15] Product Detail - Show Product Journey Toggle (0.0s, 0.2 MB)
+    [11/15] Click Reviews on Product Detail (0.0s, 0.1 MB)
+    [12/15] Product Details => Click on Reviews => Click on Deals (0.0s, 0.1 MB)
+    [13/15] Products List (0.0s, 0.3 MB)
+    [14/15] Products - Electronics Filter (0.0s, 0.0 MB)
+    [15/15] Click Shop Now on the homepage (0.0s, 0.2 MB)
+    all tests assembled in 0.0s
+
+>>> rendering report HTML files
+    payload total ~0.9 MB across 15 test(s)
+    top 10 contributors:
+          0.1 MB  Products List
+          0.1 MB  Homepage
+          0.1 MB  Product Detail
+          0.1 MB  Carousel Demo - Stub Slider Images
+          0.1 MB  Cart
+          0.1 MB  Click Shop Now on the homepage
+          0.0 MB  Admin Orders - Form Login Interaction
+          0.0 MB  Product Details => Click on Reviews => Click on Deals
+          0.0 MB  Product Detail - Desktop Actions
+          0.0 MB  Products - Electronics Filter
+    payload total ~1.8 MB across 15 test(s)
+    top 10 contributors:
+          0.3 MB  Carousel Demo - Without stubbing or overriding CSS
+          0.2 MB  Products List
+          0.2 MB  Carousel Demo - Stub Slider Images
+          0.2 MB  Click Shop Now on the homepage
+          0.2 MB  Product Detail
+          0.1 MB  Product Detail - Show Product Journey Toggle
+          0.1 MB  Homepage
+          0.1 MB  Admin Orders - Form Login Interaction
+          0.1 MB  Carousel Demo - Pause With Override CSS
+          0.1 MB  Product Details => Click on Reviews => Click on Deals
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html (1.2 MB) in 0.0s
+    wrote /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html (2.1 MB)
+
+Short report (for slack/email): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/self-contained-performance-report.html
+Full report (for you): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/full-report.html
+
+FAILED: 1 error
+
+>>> Audit exited non-zero as expected (sabotaged products test errored)
+
+
+>>> Rendering v2 client report (all AI passes disabled)
+
+[shaka-perf agent] no robots.txt / sitemap / llms.txt reachable at http://localhost:3090 - treating crawler access as open.
+Wrote client-facing report for 9 page(s): /tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce/audit-results/client-report.html
+
+>>> Capturing audit report: overview
+
+
+>>> Capturing client client report: overview
+
+
+>>> Resetting git changes in temp clone
+
+Updated 0 paths from the index
+  ⏱ git checkout experiment: 0.0s
+Updated 0 paths from the index
+  ⏱ git checkout control: 0.0s
+  ✓  2 integration-tests/client-report.spec.ts:37:5 › audit all pages, render v2 client report, screenshot its states @audit (<TIMING>m)
+Skipping teardown (SKIP_TEARDOWN=1)
+
+  2 passed (<TIMING>m)

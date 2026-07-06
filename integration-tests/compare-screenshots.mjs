@@ -9,9 +9,15 @@
  */
 
 /**
- * Builds a single HTML report comparing `<suite>/report-shots/*.png` between
- * HEAD and the working tree. Every card always shows three images side by
- * side: Previous, Current, Diff. Missing images become same-size blank PNGs.
+ * Builds a single HTML report comparing every snapshot PNG between HEAD and
+ * the working tree. Snapshots hold only the stable-named deep-click
+ * `report-shots/`, so every PNG diffs meaningfully by path. Every card
+ * always shows three images side by side: Previous, Current, Diff. Missing
+ * images become same-size blank PNGs.
+ *
+ * Overview/filter/tab shots are near-deterministic — treat any visible
+ * change as signal. Artifact-dialog shots host iframes and drift more
+ * (iframe/lazy-image timing), so eyeball those for gross breakage only.
  *
  * Usage:
  *   yarn node integration-tests/compare-screenshots.mjs
@@ -27,11 +33,11 @@ import path from 'path';
 const DEFAULT_DIRS = [
   'integration-tests/snapshots/bench-results',
   'integration-tests/snapshots/visreg-results',
+  'integration-tests/snapshots/audit-results',
 ];
 const SNAPSHOTS_ROOT = 'integration-tests/snapshots';
 const REPORT_PATH = path.join(SNAPSHOTS_ROOT, 'screenshot-diff-report.html');
 const WORK_ROOT = path.join(SNAPSHOTS_ROOT, '.screenshot-diff');
-const REPORT_SHOTS_DIR = 'report-shots';
 
 const argDirs = process.argv.slice(2);
 const rawDirs = argDirs.length ? argDirs : DEFAULT_DIRS;
@@ -53,10 +59,6 @@ if (targetDirs.length === 0) {
 fs.rmSync(WORK_ROOT, { recursive: true, force: true });
 fs.mkdirSync(WORK_ROOT, { recursive: true });
 
-function isInReportShots(p) {
-  return p.split(path.sep).includes(REPORT_SHOTS_DIR);
-}
-
 function walkPngs(root) {
   const out = [];
   const visit = (dir) => {
@@ -65,7 +67,7 @@ function walkPngs(root) {
       if (entry.isDirectory()) {
         if (full === WORK_ROOT) continue;
         visit(full);
-      } else if (entry.name.endsWith('.png') && isInReportShots(full)) {
+      } else if (entry.name.endsWith('.png')) {
         out.push(path.normalize(full));
       }
     }
@@ -87,7 +89,7 @@ function gitTrackedPngs(root) {
   const committed = safeGit(`git ls-tree --name-only -r HEAD -- "${root}"`);
   return new Set(
     [...tracked, ...committed]
-      .filter((f) => f.endsWith('.png') && isInReportShots(f))
+      .filter((f) => f.endsWith('.png'))
       .map((f) => path.normalize(f)),
   );
 }

@@ -59,6 +59,27 @@ export const env: Record<string, string> = {
 };
 
 
+// The global setup injects a broken selector into the experiment clone's
+// products.abtest.ts (and COMMITS it) so visreg exercises the engine-error
+// path. The audit OCR spec needs that flow working again — this rewrites the
+// selector back as an UNCOMMITTED change, which base-test's afterEach
+// `git checkout .` reverts, so later suites still see the sabotage.
+export function restoreProductsSelector(): void {
+  const abtestPath = path.join(
+    EXPERIMENT_CLONE_PATH,
+    'demo-ecommerce/ab-tests/products.abtest.ts',
+  );
+  const content = fs.readFileSync(abtestPath, 'utf-8');
+  const restored = content.replace(
+    'category-option-electronics-fake-broken-selector',
+    'category-option-electronics',
+  );
+  if (restored !== content) {
+    fs.writeFileSync(abtestPath, restored);
+    loud('Restored working products.abtest.ts selector for this spec');
+  }
+}
+
 const GREEN_BOLD = '\x1b[1;32m';
 const RESET = '\x1b[0m';
 

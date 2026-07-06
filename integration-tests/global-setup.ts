@@ -28,8 +28,11 @@ export default async function globalSetup() {
 
   // Copy current working directory as the experiment repo (includes uncommitted changes)
   loud('Copying current directory as experiment repo');
+  // audit-results/compare-results are gitignored scratch from local runs
+  // (can be hundreds of MB of AVIFs/videos) — the specs regenerate them
+  // inside the clone, so copying them would only slow the rsync down.
   timed('rsync experiment', () => execSync(
-    `rsync -a --exclude=node_modules "${ORIGINAL_REPO}/" "${EXPERIMENT_CLONE_PATH}/"`,
+    `rsync -a --exclude=node_modules --exclude=audit-results --exclude=compare-results "${ORIGINAL_REPO}/" "${EXPERIMENT_CLONE_PATH}/"`,
     { stdio: 'inherit' },
   ));
 
