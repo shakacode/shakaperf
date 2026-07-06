@@ -79,7 +79,7 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
   const clientReportPath = path.join(AUDIT_RESULTS_DIR, 'client-report.html');
   expect(fs.existsSync(clientReportPath), 'client-report.html must be written').toBe(true);
 
-  // Snapshots receive ONLY the deep-click report-shots below. The results
+  // Snapshots receive ONLY the deep-click report screenshots below. The results
   // tree itself (report JSON/HTML, raw captures with per-run ids in their
   // filenames) is transient and never copied — the report is driven in place,
   // where its relative artifact references resolve, and the full tree stays

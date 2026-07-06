@@ -18,9 +18,9 @@
 # integration-tests/snapshots/:
 #   - baseline-{perf,visreg,twin-servers,audit}.log
 #                       — the normalized Playwright log per suite
-#   - bench-results/report-shots/    — @perf deep-click screenshots
-#   - visreg-results/report-shots/   — @visreg deep-click screenshots
-#   - audit-results/report-shots/    — @audit deep-click screenshots
+#   - bench-results/*.png    — @perf deep-click screenshots
+#   - visreg-results/*.png   — @visreg deep-click screenshots
+#   - audit-results/*.png    — @audit deep-click screenshots
 #       Taken by the specs while driving full-report.html (overview, filters,
 #       artifact dialogs, visreg scrubbers, error-log dialogs) and, under
 #       audit-results/, the v2 client-report states (status tiles, tab
@@ -54,7 +54,7 @@
 #     changed, so "FAILED:" lines in the log are expected on runs that
 #     still successfully produced the report. The @audit suite's all-pages
 #     audit also expects one engine error (the sabotaged products selector).
-#   - New/removed screenshots under the results dirs — a missing report-shot
+#   - New/removed screenshots under the results dirs — a missing shot
 #     means an interactive state stopped rendering.
 #
 # The `check-integration-tests-integrity` skill

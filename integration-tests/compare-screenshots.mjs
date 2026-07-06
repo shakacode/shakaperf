@@ -10,8 +10,9 @@
 
 /**
  * Builds a single HTML report comparing every snapshot PNG between HEAD and
- * the working tree. Snapshots hold only the stable-named deep-click
- * `report-shots/`, so every PNG diffs meaningfully by path. Every card
+ * the working tree. Snapshots hold only the stable-named deep-click report
+ * screenshots (directly under each `<suite>-results/` dir), so every PNG
+ * diffs meaningfully by path. Every card
  * always shows three images side by side: Previous, Current, Diff. Missing
  * images become same-size blank PNGs.
  *

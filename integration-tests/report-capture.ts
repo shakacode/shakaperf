@@ -43,7 +43,7 @@ interface CaptureOptions {
 export async function captureReportScreenshots(opts: CaptureOptions): Promise<void> {
   const { page, reportHtmlPath, outDir, label } = opts;
   const maxPerKind = opts.maxPerKind ?? 8;
-  const shotDir = path.join(outDir, 'report-shots');
+  const shotDir = outDir;
   fs.mkdirSync(shotDir, { recursive: true });
 
   const shot = async (name: string) => {
@@ -268,7 +268,7 @@ function sanitize(s: string): string {
  */
 export async function captureClientReportScreenshots(opts: CaptureOptions): Promise<void> {
   const { page, reportHtmlPath, outDir, label } = opts;
-  const shotDir = path.join(outDir, 'report-shots');
+  const shotDir = outDir;
   fs.mkdirSync(shotDir, { recursive: true });
 
   const shot = async (name: string) => {

@@ -56,7 +56,7 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   }
   loud('Perf compare exited non-zero as expected (regression detected)');
 
-  // Snapshots receive ONLY the deep-click report-shots below. The results
+  // Snapshots receive ONLY the deep-click report screenshots below. The results
   // tree itself (report JSON/HTML, raw captures with per-run ids in their
   // filenames) is transient and never copied — the report is driven in place,
   // where its relative artifact references resolve, and the full tree stays
