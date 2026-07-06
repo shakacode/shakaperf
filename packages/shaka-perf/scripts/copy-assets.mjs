@@ -7,10 +7,26 @@
  * License in LICENSE.md.
  */
 
-import { cpSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, readdirSync, rmSync, statSync } from 'node:fs';
 
-const lighthousePatchAssets = readdirSync('src/bench/core/patched-lighthouse')
-  .filter((entry) => entry.endsWith('.patch'))
+const srcPatches = readdirSync('src/bench/core/patched-lighthouse')
+  .filter((entry) => entry.endsWith('.patch'));
+
+// Remove dist patches whose src counterpart is gone. The patch loader applies
+// every .patch file it finds next to itself, so a stale leftover in dist keeps
+// rewriting Lighthouse long after the patch was deleted from src.
+let distPatches = [];
+try {
+  distPatches = readdirSync('dist/bench/core/patched-lighthouse').filter((entry) => entry.endsWith('.patch'));
+} catch {
+  // dist not built yet
+}
+for (const stale of distPatches.filter((entry) => !srcPatches.includes(entry))) {
+  rmSync(`dist/bench/core/patched-lighthouse/${stale}`);
+  console.warn(`Removed stale Lighthouse patch from dist: ${stale}`);
+}
+
+const lighthousePatchAssets = srcPatches
   .map((entry) => [
     `src/bench/core/patched-lighthouse/${entry}`,
     `dist/bench/core/patched-lighthouse/${entry}`,
