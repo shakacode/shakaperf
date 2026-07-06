@@ -48,6 +48,10 @@ const LIGHTHOUSE_CONFIG = {
   output: 'html' as const,
   onlyCategories: ['performance'],
   maxWaitForLoad: 60_000,
+  // Reduce the value for Lighhouse to finish earlier on pages with background Network Activity
+  networkQuietThresholdMs: 1000,
+  // Reduce the value for Lighhouse to finish earlier on pages with background CPU Activity
+  cpuQuietThresholdMs: 1000,
 };
 
 export default defineConfig({
