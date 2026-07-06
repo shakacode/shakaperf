@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 import type { StageRenderEntry } from '../../../stage/stage';
 import {
@@ -7,6 +7,17 @@ import {
   StageArtifactTitle,
   StageNote,
 } from '../../../pipeline/stage-report-components';
+import {
+  hotspotZIndex,
+  impactColor,
+  pct,
+  tooltipPlacement,
+} from '../../../audit/stages/accessibility/report-utils';
+import { ACCESSIBILITY_CSS, SCAN_STYLE } from '../../../audit/stages/accessibility/report-styles';
+import type {
+  AccessibilityNodeTarget,
+  AccessibilityViolationNode,
+} from '../../../audit/stages/accessibility/types';
 import type {
   AccessibilityCompareFinding,
   AccessibilityCompareResult,
@@ -14,11 +25,10 @@ import type {
   AccessibilityFindingStatus,
   AccessibilitySideScan,
 } from './types';
-import type { AccessibilityNodeTarget } from '../../../audit/stages/accessibility/types';
 
 const STATUS_LABEL: Record<AccessibilityFindingStatus, string> = {
-  new: 'new',
-  fixed: 'fixed',
+  new: 'new in experiment',
+  fixed: 'fixed in experiment',
   changed: 'changed',
   unchanged: 'unchanged',
 };
@@ -28,6 +38,27 @@ const STATUS_COLOR: Record<AccessibilityFindingStatus, string> = {
   fixed: '#137333',
   changed: '#92400e',
   unchanged: 'var(--fg-muted)',
+};
+
+const STATUS_MARKER_COLOR: Record<AccessibilityFindingStatus, string> = {
+  new: '#dc2626',
+  fixed: '#16a34a',
+  changed: '#d97706',
+  unchanged: '#64748b',
+};
+
+const STATUS_MARKER_BACKGROUND: Record<AccessibilityFindingStatus, string> = {
+  new: 'rgba(220, 38, 38, 0.16)',
+  fixed: 'rgba(22, 163, 74, 0.18)',
+  changed: 'rgba(217, 119, 6, 0.18)',
+  unchanged: 'rgba(100, 116, 139, 0.16)',
+};
+
+const STATUS_ORDER: Record<AccessibilityFindingStatus, number> = {
+  new: 0,
+  fixed: 1,
+  changed: 2,
+  unchanged: 3,
 };
 
 const IMPACT_ORDER: Record<string, number> = {
@@ -43,7 +74,7 @@ const CARD_STYLE: CSSProperties = {
   background: 'var(--bg-elevated)',
   padding: 12,
   display: 'grid',
-  gap: 10,
+  gap: 12,
 };
 
 const SUMMARY_STYLE: CSSProperties = {
@@ -53,10 +84,47 @@ const SUMMARY_STYLE: CSSProperties = {
   alignItems: 'center',
 };
 
-const FILTER_STYLE: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 6,
+const STATUS_PILL_STYLE: CSSProperties = {
+  border: '1px solid var(--border-strong)',
+  background: 'var(--bg)',
+  color: 'var(--fg)',
+  padding: '3px 7px',
+  fontSize: 11,
+  fontWeight: 700,
+};
+
+const SIDE_GRID_STYLE: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gap: 12,
+};
+
+const COMPARE_DIALOG_STYLE: CSSProperties = {
+  display: 'grid',
+  gap: 12,
+  padding: 12,
+};
+
+const COMPARE_DIALOG_GRID_STYLE: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 430px)',
+  gap: 12,
+  minHeight: 0,
+};
+
+const COMPARE_SHOT_GRID_STYLE: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+  gap: 12,
+  minWidth: 0,
+  minHeight: 0,
+  alignContent: 'start',
+  overflow: 'auto',
+};
+
+const SIDE_CARD_STYLE: CSSProperties = {
+  ...SCAN_STYLE,
+  minWidth: 0,
 };
 
 const FINDING_STYLE: CSSProperties = {
@@ -89,6 +157,13 @@ interface FilterState {
   tags: Set<string>;
 }
 
+interface CompareHotspotEntry {
+  finding: AccessibilityCompareFinding;
+  node: AccessibilityViolationNode;
+  nodeIndex: number;
+  side: AccessibilityCompareSide;
+}
+
 export function AccessibilityCompareArtifactView({
   measurements,
 }: {
@@ -97,10 +172,6 @@ export function AccessibilityCompareArtifactView({
   const rows = measurements.filter((entry) =>
     entry.measurement.summary.errors > 0 || entry.measurement.findings.length > 0,
   );
-  const options = useMemo(() => collectFilterOptions(rows), [rows]);
-  const [filter, setFilter] = useState<FilterState | null>(null);
-  const activeFilter = filter ?? defaultFilter(options);
-
   if (rows.length === 0) return null;
 
   return (
@@ -110,10 +181,7 @@ export function AccessibilityCompareArtifactView({
         {rows.map((entry) => (
           <div key={entry.viewport.label} className="stage-stack__viewport">
             <AccessibilityCompareViewport
-              filter={activeFilter}
-              options={options}
               result={entry.measurement}
-              setFilter={setFilter}
               viewportLabel={entry.viewport.label}
             />
           </div>
@@ -124,56 +192,196 @@ export function AccessibilityCompareArtifactView({
 }
 
 function AccessibilityCompareViewport({
-  filter,
-  options,
   result,
-  setFilter,
   viewportLabel,
 }: {
-  filter: FilterState;
-  options: FilterState;
   result: AccessibilityCompareResult;
-  setFilter: (filter: FilterState) => void;
   viewportLabel: string;
 }) {
-  const findings = useMemo(() =>
-    sortFindings(result.findings).filter((finding) => isFindingVisible(finding, filter)),
-  [filter, result.findings]);
-  const total = result.findings.length;
   return (
     <div className="stage-section">
       <div className="stage-section__head">{viewportLabel}</div>
       <div style={CARD_STYLE}>
         <div style={SUMMARY_STYLE}>
-          <strong>{summaryText(result)}</strong>
-          {result.summary.errors > 0 ? <span style={{ color: '#b91c1c' }}>scan error</span> : null}
+          <strong>{headlineText(result)}</strong>
+          <StatusPill color="#b91c1c" count={result.summary.new} label="new" />
+          <StatusPill color="#137333" count={result.summary.fixed} label="fixed" />
+          <StatusPill color="#92400e" count={result.summary.changed} label="changed" />
+          {result.summary.unchanged > 0 ? (
+            <StatusPill color="var(--fg-muted)" count={result.summary.unchanged} label="unchanged" />
+          ) : null}
+          {result.summary.errors > 0 ? (
+            <StatusPill color="#b91c1c" count={result.summary.errors} label="scan error" />
+          ) : null}
           <FullReportOnly>
             <RawLinks result={result} />
           </FullReportOnly>
         </div>
-        <AccessibilityCompareFilters
-          filter={filter}
-          options={options}
-          setFilter={setFilter}
-        />
+
         {result.control.error || result.experiment.error ? <ScanErrors result={result} /> : null}
-        {findings.length > 0 ? (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {findings.map((finding) => (
-              <FindingRow
-                finding={finding}
-                key={finding.signature}
-                result={result}
-                viewportLabel={viewportLabel}
-              />
-            ))}
-          </div>
-        ) : total > 0 ? (
-          <StageNote body="No accessibility findings match the selected filters." />
+
+        {result.findings.length > 0 ? (
+          <DetailedArtifactDialog
+            href={result.comparisonArtifactHref ?? '#'}
+            label={`${viewportLabel} accessibility comparison`}
+            extra={<CompareDialogMeta result={result} viewportLabel={viewportLabel} />}
+            body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
+          >
+            inspect accessibility comparison
+          </DetailedArtifactDialog>
         ) : result.summary.errors === 0 ? (
-          <StageNote body="No meaningful accessibility difference." />
+          <StageNote body="No accessibility difference between control and experiment." />
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function CompareDialogMeta({
+  result,
+  viewportLabel,
+}: {
+  result: AccessibilityCompareResult;
+  viewportLabel: string;
+}) {
+  return (
+    <>
+      <div>
+        <dt>viewport</dt>
+        <dd>{viewportLabel}</dd>
+      </div>
+      <div>
+        <dt>new</dt>
+        <dd>{result.summary.new}</dd>
+      </div>
+      <div>
+        <dt>fixed</dt>
+        <dd>{result.summary.fixed}</dd>
+      </div>
+      <div>
+        <dt>changed</dt>
+        <dd>{result.summary.changed}</dd>
+      </div>
+      <div>
+        <dt>unchanged</dt>
+        <dd>{result.summary.unchanged}</dd>
+      </div>
+    </>
+  );
+}
+
+function CompareFindingsDialog({
+  result,
+  viewportLabel,
+}: {
+  result: AccessibilityCompareResult;
+  viewportLabel: string;
+}) {
+  const options = useMemo(() => collectFilterOptions(result.findings), [result.findings]);
+  const [filter, setFilter] = useState<FilterState | null>(null);
+  const activeFilter = filter ?? defaultFilter(options);
+  const findings = useMemo(() =>
+    sortFindings(result.findings)
+      .filter((finding) => isFindingVisible(finding, activeFilter)),
+  [activeFilter, result.findings]);
+  const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
+  const hotspotRefs = useRef(new Map<string, HTMLElement>());
+  const issueRefs = useRef(new Map<string, HTMLElement>());
+  const registerHotspot = useCallback((issueId: string, element: HTMLElement | null) => {
+    if (element) hotspotRefs.current.set(issueId, element);
+    else hotspotRefs.current.delete(issueId);
+  }, []);
+  const registerIssue = useCallback((issueId: string, element: HTMLElement | null) => {
+    if (element) issueRefs.current.set(issueId, element);
+    else issueRefs.current.delete(issueId);
+  }, []);
+  const selectIssue = useCallback((issueId: string, source: 'hotspot' | 'issue') => {
+    setActiveIssueId(issueId);
+    const hotspot = hotspotRefs.current.get(issueId);
+    const issue = issueRefs.current.get(issueId);
+    const details = issue?.closest('details');
+    if (details instanceof HTMLDetailsElement) details.open = true;
+
+    window.requestAnimationFrame(() => {
+      flashElement(hotspot);
+      flashElement(issue);
+      if (source === 'issue') hotspot?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center',
+      });
+      else issue?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
+    });
+  }, []);
+
+  return (
+    <div style={COMPARE_DIALOG_STYLE}>
+      <style>{ACCESSIBILITY_CSS}</style>
+      <div style={COMPARE_DIALOG_GRID_STYLE}>
+        <div className="a11y-dialog__shot">
+          <div style={COMPARE_SHOT_GRID_STYLE}>
+            <CompareScreenshotPanel
+              activeIssueId={activeIssueId}
+              findings={findings}
+              onSelect={selectIssue}
+              registerHotspot={registerHotspot}
+              result={result}
+              side="control"
+              subtitle={sideSubtitle(result, 'control', activeFilter.statuses)}
+              title="control"
+              viewportLabel={viewportLabel}
+            />
+            <CompareScreenshotPanel
+              activeIssueId={activeIssueId}
+              findings={findings}
+              onSelect={selectIssue}
+              registerHotspot={registerHotspot}
+              result={result}
+              side="experiment"
+              subtitle={sideSubtitle(result, 'experiment', activeFilter.statuses)}
+              title="experiment"
+              viewportLabel={viewportLabel}
+            />
+          </div>
+        </div>
+        <div className="a11y-dialog__issues">
+          <div className="a11y-dialog__summary">
+            <strong>{viewportLabel}</strong>
+            <span style={{ color: '#b91c1c', fontWeight: 700 }}>
+              {findings.length === result.findings.length
+                ? `${findings.length} finding${findings.length === 1 ? '' : 's'}`
+                : `${findings.length} of ${result.findings.length} findings`}
+            </span>
+          </div>
+          <div className="a11y-dialog__filter">
+            <AccessibilityCompareFilters
+              filter={activeFilter}
+              options={options}
+              setFilter={setFilter}
+            />
+          </div>
+          {findings.length > 0 ? (
+            findings.map((finding) => (
+              <FindingDetails
+                activeIssueId={activeIssueId}
+                finding={finding}
+                key={finding.signature}
+                onSelect={selectIssue}
+                registerIssue={registerIssue}
+              />
+            ))
+          ) : (
+            <StageNote body="No accessibility differences match the current view." />
+          )}
+        </div>
+      </div>
+      <FullReportOnly>
+        <RawLinks result={result} />
+      </FullReportOnly>
     </div>
   );
 }
@@ -194,6 +402,7 @@ function AccessibilityCompareFilters({
         label="status"
         selected={filter.statuses}
         setSelected={(statuses) => setFilter({ ...filter, statuses: statuses as Set<AccessibilityFindingStatus> })}
+        valueLabel={(value) => STATUS_LABEL[value as AccessibilityFindingStatus]}
       />
       <FilterRow
         allValues={options.impacts}
@@ -222,18 +431,20 @@ function FilterRow({
   label,
   selected,
   setSelected,
+  valueLabel,
 }: {
   allValues: ReadonlySet<string>;
   label: string;
   selected: ReadonlySet<string>;
   setSelected: (selected: Set<string>) => void;
+  valueLabel?: (value: string) => string;
 }) {
   if (allValues.size === 0) return null;
   const values = [...allValues];
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
       <span style={{ color: 'var(--fg-muted)', minWidth: 56 }}>{label}</span>
-      <div style={FILTER_STYLE}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {values.map((value) => (
           <button
             type="button"
@@ -246,7 +457,7 @@ function FilterRow({
               setSelected(next);
             }}
           >
-            {value}
+            {valueLabel ? valueLabel(value) : value}
           </button>
         ))}
       </div>
@@ -254,153 +465,288 @@ function FilterRow({
   );
 }
 
-function FindingRow({
-  finding,
+function StatusPill({
+  color,
+  count,
+  label,
+}: {
+  color: string;
+  count: number;
+  label: string;
+}) {
+  if (count <= 0) return null;
+  return (
+    <span style={{ ...STATUS_PILL_STYLE, color }}>
+      {count} {label}
+    </span>
+  );
+}
+
+function CompareScreenshotPanel({
+  activeIssueId,
+  findings,
+  onSelect,
+  registerHotspot,
   result,
+  side,
+  subtitle,
+  title,
   viewportLabel,
 }: {
-  finding: AccessibilityCompareFinding;
+  activeIssueId: string | null;
+  findings: readonly AccessibilityCompareFinding[];
+  onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
+  registerHotspot: (issueId: string, element: HTMLElement | null) => void;
   result: AccessibilityCompareResult;
+  side: AccessibilityCompareSide;
+  subtitle: string;
+  title: string;
   viewportLabel: string;
 }) {
-  const nodeCount = (finding.control?.nodes.length ?? 0) + (finding.experiment?.nodes.length ?? 0);
-  const sideLabel = finding.status === 'new'
-    ? 'experiment only'
-    : finding.status === 'fixed'
-      ? 'control only'
-      : 'control + experiment';
+  const sideScan = side === 'control' ? result.control : result.experiment;
+  const source = sideScan.screenshot?.imageHref ?? sideScan.screenshot?.imageDataUri;
+  const hotspots = useMemo(
+    () => compareHotspotsForSide(findings, side),
+    [findings, side],
+  );
   return (
-    <div style={FINDING_STYLE}>
-      <div style={FINDING_HEAD_STYLE}>
-        <strong>{finding.ruleId}</strong>
-        <span style={{ color: STATUS_COLOR[finding.status], fontWeight: 700 }}>
-          {STATUS_LABEL[finding.status]}
-        </span>
-        <span style={{ color: impactColor(finding.impact), fontWeight: 700 }}>
-          {finding.impact ?? 'unknown'}
-        </span>
-        <span style={{ color: 'var(--fg-muted)' }}>
-          {nodeCount} node{nodeCount === 1 ? '' : 's'} · {sideLabel}
-        </span>
+    <div style={SIDE_CARD_STYLE}>
+      <div style={SUMMARY_STYLE}>
+        <strong>{title}</strong>
+        <span style={{ color: 'var(--fg-muted)' }}>{subtitle}</span>
       </div>
-      <div style={{ color: 'var(--fg-muted)' }}>
-        {finding.experiment?.help ?? finding.control?.help}
-      </div>
-      {finding.tags.length > 0 ? (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {finding.tags.map((tag) => <code key={tag}>{tag}</code>)}
+      <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
+      {sideScan.error ? <StageNote label={title} body={sideScan.error} /> : null}
+      {source && sideScan.screenshot ? (
+        <div style={{ marginTop: 10, overflow: 'auto', border: '1px solid var(--border)' }}>
+          <div
+            style={{
+              position: 'relative',
+              width: 'max-content',
+              maxWidth: '100%',
+              background: 'var(--bg-sunken)',
+            }}
+          >
+            <img
+              src={source}
+              width={sideScan.screenshot.width}
+              height={sideScan.screenshot.height}
+              alt={`${viewportLabel} ${side} accessibility screenshot`}
+              loading="lazy"
+              style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+            />
+            {hotspots.map((hotspot, index) => (
+              <CompareHotspot
+                active={activeIssueId === makeCompareIssueId(hotspot.finding, hotspot.side, hotspot.nodeIndex)}
+                hotspot={hotspot}
+                index={index + 1}
+                issueId={makeCompareIssueId(hotspot.finding, hotspot.side, hotspot.nodeIndex)}
+                key={makeCompareIssueId(hotspot.finding, hotspot.side, hotspot.nodeIndex)}
+                onSelect={onSelect}
+                register={registerHotspot}
+                screenshot={sideScan.screenshot!}
+              />
+            ))}
+          </div>
         </div>
+      ) : !sideScan.error ? (
+        <StageNote body={sideCleanText(result, side)} />
       ) : null}
-      <DetailedArtifactDialog
-        href={result.comparisonArtifactHref ?? '#'}
-        label={`${viewportLabel} accessibility ${finding.ruleId}`}
-        extra={<FindingMeta finding={finding} viewportLabel={viewportLabel} />}
-        body={<FindingDialog finding={finding} result={result} />}
-      >
-        details
-      </DetailedArtifactDialog>
-    </div>
-  );
-}
-
-function FindingMeta({
-  finding,
-  viewportLabel,
-}: {
-  finding: AccessibilityCompareFinding;
-  viewportLabel: string;
-}) {
-  return (
-    <>
-      <div>
-        <dt>viewport</dt>
-        <dd>{viewportLabel}</dd>
-      </div>
-      <div>
-        <dt>status</dt>
-        <dd>{finding.status}</dd>
-      </div>
-      <div>
-        <dt>rule</dt>
-        <dd>{finding.ruleId}</dd>
-      </div>
-      <div>
-        <dt>impact</dt>
-        <dd>{finding.impact ?? 'unknown'}</dd>
-      </div>
-    </>
-  );
-}
-
-function FindingDialog({
-  finding,
-  result,
-}: {
-  finding: AccessibilityCompareFinding;
-  result: AccessibilityCompareResult;
-}) {
-  return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-        <SidePanel side="control" sideScan={result.control} findingSide={finding.control} />
-        <SidePanel side="experiment" sideScan={result.experiment} findingSide={finding.experiment} />
-      </div>
       <FullReportOnly>
-        <RawLinks result={result} />
+        {sideRawArtifactHref(result, side) ? (
+          <a href={sideRawArtifactHref(result, side)} target="_blank" rel="noreferrer">raw JSON</a>
+        ) : null}
       </FullReportOnly>
     </div>
   );
 }
 
-function SidePanel({
-  findingSide,
-  side,
-  sideScan,
+function CompareHotspot({
+  active,
+  hotspot,
+  index,
+  issueId,
+  onSelect,
+  register,
+  screenshot,
 }: {
-  findingSide: AccessibilityCompareFinding['control'];
-  side: AccessibilityCompareSide;
-  sideScan: AccessibilitySideScan;
+  active: boolean;
+  hotspot: CompareHotspotEntry;
+  index: number;
+  issueId: string;
+  onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
+  register: (issueId: string, element: HTMLElement | null) => void;
+  screenshot: NonNullable<AccessibilitySideScan['screenshot']>;
 }) {
-  const source = sideScan.screenshot?.imageHref ?? sideScan.screenshot?.imageDataUri;
+  const bounds = hotspot.node.bounds!;
+  const placement = tooltipPlacement(bounds, screenshot);
+  const color = STATUS_MARKER_COLOR[hotspot.finding.status];
+  const style: CSSProperties = {
+    left: pct(bounds.x, screenshot.width),
+    top: pct(bounds.y, screenshot.height),
+    width: pct(bounds.width, screenshot.width),
+    height: pct(bounds.height, screenshot.height),
+    zIndex: hotspotZIndex(bounds.width, bounds.height, screenshot.width, screenshot.height),
+    borderColor: color,
+    background: STATUS_MARKER_BACKGROUND[hotspot.finding.status],
+  };
+  return (
+    <div
+      className="a11y-hotspot"
+      data-active={active ? 'true' : 'false'}
+      data-issue-id={issueId}
+      data-popover-x={placement.x}
+      data-popover-y={placement.y}
+      onClick={() => onSelect(issueId, 'hotspot')}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        onSelect(issueId, 'hotspot');
+      }}
+      ref={(element) => register(issueId, element)}
+      style={style}
+      role="button"
+      tabIndex={0}
+      aria-label={`${hotspot.finding.ruleId}: ${STATUS_LABEL[hotspot.finding.status]}`}
+    >
+      <span className="a11y-hotspot__num" style={{ background: color }}>{index}</span>
+      <div className="a11y-tooltip">
+        <div className="a11y-tooltip__title">
+          <strong>{hotspot.finding.ruleId}</strong>
+          <span style={{ color: STATUS_COLOR[hotspot.finding.status], fontWeight: 700 }}>
+            {STATUS_LABEL[hotspot.finding.status]}
+          </span>
+          <span style={{ color: impactColor(hotspot.finding.impact), fontWeight: 700 }}>
+            {hotspot.finding.impact ?? 'unknown'}
+          </span>
+        </div>
+        <div className="a11y-tooltip__help">
+          {hotspot.finding.experiment?.help ?? hotspot.finding.control?.help}
+        </div>
+        <Target target={hotspot.node.target} />
+        {hotspot.node.html ? <pre>{hotspot.node.html}</pre> : null}
+        {hotspot.node.failureSummary ? <pre>{hotspot.node.failureSummary}</pre> : null}
+      </div>
+    </div>
+  );
+}
+
+function FindingDetails({
+  activeIssueId,
+  finding,
+  onSelect,
+  registerIssue,
+}: {
+  activeIssueId: string | null;
+  finding: AccessibilityCompareFinding;
+  onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
+  registerIssue: (issueId: string, element: HTMLElement | null) => void;
+}) {
+  const nodeCount = (finding.control?.nodes.length ?? 0) + (finding.experiment?.nodes.length ?? 0);
+  const issueIds = [
+    ...(finding.control?.nodes.map((_, index) => makeCompareIssueId(finding, 'control', index)) ?? []),
+    ...(finding.experiment?.nodes.map((_, index) => makeCompareIssueId(finding, 'experiment', index)) ?? []),
+  ];
+  const active = issueIds.includes(activeIssueId ?? '');
+  const primaryIssueId = firstLocalizedIssueId(finding);
+  return (
+    <details className="a11y-issue" data-active={active ? 'true' : 'false'} style={FINDING_STYLE}>
+      <summary
+        style={{ cursor: 'pointer' }}
+        onClick={() => {
+          if (primaryIssueId) window.requestAnimationFrame(() => onSelect(primaryIssueId, 'issue'));
+        }}
+      >
+        <span style={FINDING_HEAD_STYLE}>
+          <strong>{finding.ruleId}</strong>
+          <span style={{ color: STATUS_COLOR[finding.status], fontWeight: 700 }}>
+            {STATUS_LABEL[finding.status]}
+          </span>
+          <span style={{ color: impactColor(finding.impact), fontWeight: 700 }}>
+            {finding.impact ?? 'unknown'}
+          </span>
+          <span style={{ color: 'var(--fg-muted)' }}>
+            {nodeCount} affected node{nodeCount === 1 ? '' : 's'}
+          </span>
+        </span>
+      </summary>
+      <div style={{ color: 'var(--fg-muted)', marginTop: 6 }}>
+        {finding.experiment?.help ?? finding.control?.help}
+      </div>
+      <div style={{ ...SIDE_GRID_STYLE, marginTop: 8 }}>
+        <SidePanel
+          activeIssueId={activeIssueId}
+          finding={finding}
+          findingSide={finding.control}
+          onSelect={onSelect}
+          registerIssue={registerIssue}
+          side="control"
+        />
+        <SidePanel
+          activeIssueId={activeIssueId}
+          finding={finding}
+          findingSide={finding.experiment}
+          onSelect={onSelect}
+          registerIssue={registerIssue}
+          side="experiment"
+        />
+      </div>
+    </details>
+  );
+}
+
+function SidePanel({
+  activeIssueId,
+  finding,
+  findingSide,
+  onSelect,
+  registerIssue,
+  side,
+}: {
+  activeIssueId: string | null;
+  finding: AccessibilityCompareFinding;
+  findingSide: AccessibilityCompareFinding['control'];
+  onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
+  registerIssue: (issueId: string, element: HTMLElement | null) => void;
+  side: AccessibilityCompareSide;
+}) {
   return (
     <section style={{ border: '1px solid var(--border-strong)', padding: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
         <strong>{side}</strong>
-        {sideScan.error ? <span style={{ color: '#b91c1c' }}>error</span> : null}
       </div>
-      <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
-      {source ? (
-        <a href={source} target="_blank" rel="noreferrer">
-          <img
-            src={source}
-            alt={`${side} screenshot`}
-            loading="lazy"
-            style={{
-              display: 'block',
-              width: '100%',
-              maxHeight: 260,
-              objectFit: 'contain',
-              border: '1px solid var(--border)',
-              marginTop: 8,
-            }}
-          />
-        </a>
-      ) : null}
-      {sideScan.error ? <pre style={NODE_PRE_STYLE}>{sideScan.error}</pre> : null}
       {findingSide ? (
         <div style={{ marginTop: 8 }}>
           <a href={findingSide.helpUrl} target="_blank" rel="noreferrer">rule docs</a>
           {findingSide.nodes.map((node, index) => (
-            <div key={index} style={{ marginTop: 8 }}>
+            <div
+              aria-label={node.bounds ? 'Show matching screenshot hotspot' : 'Issue has no localized screenshot hotspot'}
+              className="a11y-issue-node"
+              data-active={makeCompareIssueId(finding, side, index) === activeIssueId ? 'true' : 'false'}
+              data-issue-id={makeCompareIssueId(finding, side, index)}
+              key={index}
+              onClick={() => {
+                if (node.bounds) onSelect(makeCompareIssueId(finding, side, index), 'issue');
+              }}
+              onKeyDown={(event) => {
+                if (!node.bounds || (event.key !== 'Enter' && event.key !== ' ')) return;
+                event.preventDefault();
+                onSelect(makeCompareIssueId(finding, side, index), 'issue');
+              }}
+              ref={(element) => registerIssue(makeCompareIssueId(finding, side, index), element)}
+              role="button"
+              style={{ marginTop: 8 }}
+              tabIndex={node.bounds ? 0 : -1}
+            >
               <Target target={node.target} />
               {node.html ? <pre style={NODE_PRE_STYLE}>{node.html}</pre> : null}
               {node.failureSummary ? <pre style={NODE_PRE_STYLE}>{node.failureSummary}</pre> : null}
             </div>
           ))}
         </div>
-      ) : !sideScan.error ? (
+      ) : (
         <StageNote body={`No matching finding on ${side}.`} />
-      ) : null}
+      )}
     </section>
   );
 }
@@ -441,35 +787,54 @@ function Target({
   return <code>{parts.join(' -> ')}</code>;
 }
 
-function summaryText(result: AccessibilityCompareResult): string {
-  const parts = [
-    countText(result.summary.new, 'new'),
-    countText(result.summary.fixed, 'fixed'),
-    countText(result.summary.changed, 'changed'),
-    countText(result.summary.unchanged, 'unchanged'),
-  ].filter(Boolean);
-  if (result.summary.errors > 0) parts.unshift(countText(result.summary.errors, 'error'));
-  return parts.length > 0 ? parts.join(' · ') : 'clean';
+function headlineText(result: AccessibilityCompareResult): string {
+  if (result.summary.errors > 0) return 'Accessibility scan did not complete';
+  if (result.summary.new > 0) return 'Accessibility regressed in experiment';
+  if (result.summary.changed > 0) return 'Accessibility changed between versions';
+  if (result.summary.fixed > 0) return 'Accessibility improved in experiment';
+  return 'No accessibility difference';
+}
+
+function sideSubtitle(
+  result: AccessibilityCompareResult,
+  side: AccessibilityCompareSide,
+  visibleStatuses: ReadonlySet<AccessibilityFindingStatus>,
+): string {
+  const counts = side === 'control'
+    ? [
+      visibleStatuses.has('fixed') ? countText(result.summary.fixed, 'fixed here') : null,
+      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed') : null,
+      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged') : null,
+    ]
+    : [
+      visibleStatuses.has('new') ? countText(result.summary.new, 'new here') : null,
+      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed') : null,
+      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged') : null,
+    ];
+  return counts.filter(Boolean).join(' · ') || 'no visible differences';
+}
+
+function sideCleanText(result: AccessibilityCompareResult, side: AccessibilityCompareSide): string {
+  if (result.summary.errors > 0) return 'No screenshot findings available because this side did not scan cleanly.';
+  if (side === 'control' && result.summary.new > 0) return 'No control-side match. These findings are new in experiment.';
+  if (side === 'experiment' && result.summary.fixed > 0) return 'No experiment-side match. These findings were fixed.';
+  return 'No visible accessibility differences on this side.';
 }
 
 function countText(count: number, label: string): string | null {
   return count > 0 ? `${count} ${label}` : null;
 }
 
-function collectFilterOptions(
-  rows: readonly StageRenderEntry<AccessibilityCompareResult>[],
-): FilterState {
-  const statuses = new Set<AccessibilityFindingStatus>();
+function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]): FilterState {
+  const statuses = new Set<AccessibilityFindingStatus>(['new', 'fixed', 'changed', 'unchanged']);
   const impacts = new Set<string>();
   const rules = new Set<string>();
   const tags = new Set<string>();
-  for (const { measurement } of rows) {
-    for (const finding of measurement.findings) {
-      statuses.add(finding.status);
-      impacts.add(finding.impact ?? 'unknown');
-      rules.add(finding.ruleId);
-      for (const tag of finding.tags) tags.add(tag);
-    }
+  for (const finding of findings) {
+    statuses.add(finding.status);
+    impacts.add(finding.impact ?? 'unknown');
+    rules.add(finding.ruleId);
+    for (const tag of finding.tags) tags.add(tag);
   }
   return {
     statuses: sortedSet(statuses, (value) => STATUS_ORDER[value]),
@@ -480,20 +845,14 @@ function collectFilterOptions(
 }
 
 function defaultFilter(options: FilterState): FilterState {
+  const defaultStatuses = [...options.statuses].filter((status) => status !== 'unchanged');
   return {
-    statuses: new Set([...options.statuses].filter((status) => status !== 'unchanged')),
+    statuses: new Set(defaultStatuses.length > 0 ? defaultStatuses : options.statuses),
     impacts: new Set(options.impacts),
     rules: new Set(options.rules),
     tags: new Set(options.tags),
   };
 }
-
-const STATUS_ORDER: Record<AccessibilityFindingStatus, number> = {
-  new: 0,
-  changed: 1,
-  fixed: 2,
-  unchanged: 3,
-};
 
 function sortedSet<T extends string>(
   values: ReadonlySet<T>,
@@ -509,6 +868,54 @@ function isFindingVisible(finding: AccessibilityCompareFinding, filter: FilterSt
     (finding.tags.length === 0 || finding.tags.some((tag) => filter.tags.has(tag)));
 }
 
+function sideRawArtifactHref(
+  result: AccessibilityCompareResult,
+  side: AccessibilityCompareSide,
+): string | undefined {
+  return side === 'control' ? result.control.rawArtifactHref : result.experiment.rawArtifactHref;
+}
+
+function compareHotspotsForSide(
+  findings: readonly AccessibilityCompareFinding[],
+  side: AccessibilityCompareSide,
+): CompareHotspotEntry[] {
+  return findings.flatMap((finding) => {
+    const findingSide = side === 'control' ? finding.control : finding.experiment;
+    if (!findingSide) return [];
+    return findingSide.nodes
+      .map((node, nodeIndex) => ({ finding, node, nodeIndex, side }))
+      .filter((entry) => entry.node.bounds != null);
+  });
+}
+
+function firstLocalizedIssueId(finding: AccessibilityCompareFinding): string | null {
+  const sides: AccessibilityCompareSide[] = ['control', 'experiment'];
+  for (const side of sides) {
+    const findingSide = side === 'control' ? finding.control : finding.experiment;
+    const index = findingSide?.nodes.findIndex((node) => node.bounds != null) ?? -1;
+    if (index >= 0) return makeCompareIssueId(finding, side, index);
+  }
+  return null;
+}
+
+function makeCompareIssueId(
+  finding: AccessibilityCompareFinding,
+  side: AccessibilityCompareSide,
+  nodeIndex: number,
+): string {
+  return `${side}:${finding.signature}:${nodeIndex}`;
+}
+
+function flashElement(element: HTMLElement | undefined): void {
+  if (!element) return;
+  element.classList.remove('a11y-flash');
+  void element.offsetWidth;
+  element.classList.add('a11y-flash');
+  window.setTimeout(() => {
+    element.classList.remove('a11y-flash');
+  }, 1250);
+}
+
 function sortFindings(findings: readonly AccessibilityCompareFinding[]): AccessibilityCompareFinding[] {
   return [...findings].sort((a, b) =>
     STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
@@ -516,8 +923,4 @@ function sortFindings(findings: readonly AccessibilityCompareFinding[]): Accessi
     a.ruleId.localeCompare(b.ruleId) ||
     a.signature.localeCompare(b.signature),
   );
-}
-
-function impactColor(impact: AccessibilityCompareFinding['impact']): string {
-  return impact === 'critical' || impact === 'serious' ? '#b91c1c' : '#92400e';
 }
