@@ -150,11 +150,90 @@ const NODE_PRE_STYLE: CSSProperties = {
   background: 'var(--bg)',
 };
 
+const COMPARE_A11Y_CSS = `
+.a11y-compare-filter {
+  display: grid;
+  gap: 8px;
+}
+.a11y-compare-filter__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.a11y-compare-filter__actions button,
+.a11y-compare-filter__button {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  padding: 0 8px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+.a11y-compare-filter__button[data-active="true"] {
+  background: #111827;
+  color: white;
+  border-color: #111827;
+}
+.a11y-compare-filter__button-count {
+  margin-left: 5px;
+  color: inherit;
+  opacity: 0.72;
+}
+.a11y-compare-filter__row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.a11y-compare-filter__label {
+  padding-top: 8px;
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.a11y-compare-filter__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.a11y-compare-filter__group {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.a11y-compare-filter__group summary {
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.a11y-compare-filter__group-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+`;
+
 interface FilterState {
   statuses: Set<AccessibilityFindingStatus>;
   impacts: Set<string>;
   rules: Set<string>;
   tags: Set<string>;
+}
+
+interface FilterCountState {
+  statuses: Map<AccessibilityFindingStatus, number>;
+  impacts: Map<string, number>;
+  rules: Map<string, number>;
+  tags: Map<string, number>;
 }
 
 interface CompareHotspotEntry {
@@ -321,6 +400,7 @@ function CompareFindingsDialog({
   return (
     <div style={COMPARE_DIALOG_STYLE}>
       <style>{ACCESSIBILITY_CSS}</style>
+      <style>{COMPARE_A11Y_CSS}</style>
       <div style={COMPARE_DIALOG_GRID_STYLE}>
         <div className="a11y-dialog__shot">
           <div style={COMPARE_SHOT_GRID_STYLE}>
@@ -360,6 +440,7 @@ function CompareFindingsDialog({
           <div className="a11y-dialog__filter">
             <AccessibilityCompareFilters
               filter={activeFilter}
+              findings={result.findings}
               options={options}
               setFilter={setFilter}
             />
@@ -388,17 +469,29 @@ function CompareFindingsDialog({
 
 function AccessibilityCompareFilters({
   filter,
+  findings,
   options,
   setFilter,
 }: {
   filter: FilterState;
+  findings: readonly AccessibilityCompareFinding[];
   options: FilterState;
   setFilter: (filter: FilterState) => void;
 }) {
+  const counts = useMemo(() => countFilterOptions(findings, options), [findings, options]);
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
+    <div className="a11y-compare-filter">
+      <div className="a11y-compare-filter__actions">
+        <button type="button" onClick={() => setFilter(defaultFilter(options))}>
+          reset
+        </button>
+        <button type="button" onClick={() => setFilter(options)}>
+          all
+        </button>
+      </div>
       <FilterRow
         allValues={options.statuses}
+        counts={counts.statuses}
         label="status"
         selected={filter.statuses}
         setSelected={(statuses) => setFilter({ ...filter, statuses: statuses as Set<AccessibilityFindingStatus> })}
@@ -406,34 +499,44 @@ function AccessibilityCompareFilters({
       />
       <FilterRow
         allValues={options.impacts}
+        counts={counts.impacts}
         label="impact"
         selected={filter.impacts}
         setSelected={(impacts) => setFilter({ ...filter, impacts })}
       />
-      <FilterRow
-        allValues={options.tags}
-        label="tags"
-        selected={filter.tags}
-        setSelected={(tags) => setFilter({ ...filter, tags })}
-      />
-      <FilterRow
-        allValues={options.rules}
-        label="rules"
-        selected={filter.rules}
-        setSelected={(rules) => setFilter({ ...filter, rules })}
-      />
+      <details className="a11y-compare-filter__group">
+        <summary>advanced filters</summary>
+        <div className="a11y-compare-filter__group-body">
+          <FilterRow
+            allValues={options.rules}
+            counts={counts.rules}
+            label="rules"
+            selected={filter.rules}
+            setSelected={(rules) => setFilter({ ...filter, rules })}
+          />
+          <FilterRow
+            allValues={options.tags}
+            counts={counts.tags}
+            label="tags"
+            selected={filter.tags}
+            setSelected={(tags) => setFilter({ ...filter, tags })}
+          />
+        </div>
+      </details>
     </div>
   );
 }
 
 function FilterRow({
   allValues,
+  counts,
   label,
   selected,
   setSelected,
   valueLabel,
 }: {
   allValues: ReadonlySet<string>;
+  counts: ReadonlyMap<string, number>;
   label: string;
   selected: ReadonlySet<string>;
   setSelected: (selected: Set<string>) => void;
@@ -442,14 +545,16 @@ function FilterRow({
   if (allValues.size === 0) return null;
   const values = [...allValues];
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-      <span style={{ color: 'var(--fg-muted)', minWidth: 56 }}>{label}</span>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div className="a11y-compare-filter__row">
+      <span className="a11y-compare-filter__label">{label}</span>
+      <div className="a11y-compare-filter__choices">
         {values.map((value) => (
           <button
             type="button"
             key={value}
+            className="a11y-compare-filter__button"
             data-active={selected.has(value) ? 'true' : 'false'}
+            aria-pressed={selected.has(value)}
             onClick={() => {
               const next = new Set(selected);
               if (next.has(value)) next.delete(value);
@@ -457,12 +562,40 @@ function FilterRow({
               setSelected(next);
             }}
           >
-            {valueLabel ? valueLabel(value) : value}
+            <span>{valueLabel ? valueLabel(value) : value}</span>
+            <span className="a11y-compare-filter__button-count">
+              {counts.get(value) ?? 0}
+            </span>
           </button>
         ))}
       </div>
     </div>
   );
+}
+
+function countFilterOptions(
+  findings: readonly AccessibilityCompareFinding[],
+  options: FilterState,
+): FilterCountState {
+  const counts: FilterCountState = {
+    statuses: new Map([...options.statuses].map((value) => [value, 0])),
+    impacts: new Map([...options.impacts].map((value) => [value, 0])),
+    rules: new Map([...options.rules].map((value) => [value, 0])),
+    tags: new Map([...options.tags].map((value) => [value, 0])),
+  };
+
+  for (const finding of findings) {
+    incrementCount(counts.statuses, finding.status);
+    incrementCount(counts.impacts, finding.impact ?? 'unknown');
+    incrementCount(counts.rules, finding.ruleId);
+    for (const tag of finding.tags) incrementCount(counts.tags, tag);
+  }
+
+  return counts;
+}
+
+function incrementCount<T extends string>(counts: Map<T, number>, value: T): void {
+  counts.set(value, (counts.get(value) ?? 0) + 1);
 }
 
 function StatusPill({
@@ -826,7 +959,7 @@ function countText(count: number, label: string): string | null {
 }
 
 function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]): FilterState {
-  const statuses = new Set<AccessibilityFindingStatus>(['new', 'fixed', 'changed', 'unchanged']);
+  const statuses = new Set<AccessibilityFindingStatus>();
   const impacts = new Set<string>();
   const rules = new Set<string>();
   const tags = new Set<string>();
