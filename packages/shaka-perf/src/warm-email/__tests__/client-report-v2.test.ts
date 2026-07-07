@@ -12,12 +12,15 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import {
+  buildNarrativePrompt,
   buildDeterministicNarrative,
   composeNarrative,
   highlightBottomLine,
+  NARRATIVE_OVERLAY_SCHEMA_VERSION,
   parseNarrativeResponse,
   type NarrativeFacts,
 } from '../client-report-narrative';
+import { BANNED_WORDS } from '../cost-strings';
 import {
   perfProblemPhrase,
   perfProblemTileCopy,
@@ -164,18 +167,23 @@ describe('highlightBottomLine', () => {
 
 describe('parseNarrativeResponse', () => {
   it('parses a clean JSON object', () => {
-    const raw = JSON.stringify({ bottomLine: 'x', perf: { verdictWord: 'Slow', verdictPara: 'p' } });
+    const raw = JSON.stringify({ schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION, bottomLine: 'x', perf: { verdictWord: 'Slow', verdictPara: 'p' } });
     const o = parseNarrativeResponse(raw);
+    expect(o?.schemaVersion).toBe(NARRATIVE_OVERLAY_SCHEMA_VERSION);
     expect(o?.bottomLine).toBe('x');
     expect(o?.perf?.verdictWord).toBe('Slow');
   });
   it('tolerates a code fence around the JSON', () => {
-    const o = parseNarrativeResponse('```json\n{"bottomLine":"hi"}\n```');
+    const o = parseNarrativeResponse(`\`\`\`json\n{"schemaVersion":${NARRATIVE_OVERLAY_SCHEMA_VERSION},"bottomLine":"hi"}\n\`\`\``);
     expect(o?.bottomLine).toBe('hi');
   });
   it('returns null on junk', () => {
     expect(parseNarrativeResponse('not json at all')).toBeNull();
     expect(parseNarrativeResponse('{}')).toBeNull();
+  });
+  it('rejects old cache-shaped JSON without the current schema version', () => {
+    expect(parseNarrativeResponse(JSON.stringify({ bottomLine: 'The clear gap is mobile speed.' }))).toBeNull();
+    expect(parseNarrativeResponse(JSON.stringify({ schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION - 1, bottomLine: 'The clear gap is mobile speed.' }))).toBeNull();
   });
 });
 
@@ -199,6 +207,58 @@ describe('composeNarrative', () => {
     const n = composeNarrative(facts(), { perf: { verdictPara: huge } });
     expect(n.perf.verdictPara).not.toBe(huge);
     expect(n.perf.verdictPara).toContain('5.3s');
+  });
+  it('rejects AI dollar amounts while keeping clean overlay prose', () => {
+    const f = facts({ worstDim: 'perf' });
+    const base = buildDeterministicNarrative(f);
+    const n = composeNarrative(f, {
+      bottomLine: 'The speed fix saves you $4,000 this month.',
+      perf: { verdictWord: 'Painfully slow', verdictPara: 'Fixing this saves you $4,000 this month.' },
+      a11y: { verdictPara: 'Screen reader and keyboard visitors still hit barriers on 4 pages.' },
+    });
+
+    expect(n.bottomLineHtml).toBe(base.bottomLineHtml);
+    expect(n.perf.verdictWord).toBe('Painfully slow');
+    expect(n.perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(n.a11y.verdictPara).toBe('Screen reader and keyboard visitors still hit barriers on 4 pages.');
+  });
+  it('rejects common dollar-denominated AI variants', () => {
+    const f = facts({ worstDim: 'perf' });
+    const base = buildDeterministicNarrative(f);
+
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves USD 4,000 each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 4,000 USD each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 1 dollar per visit.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves \uff044,000 each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves thousands of dollars each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+  });
+  it('rejects banned words in AI overlay fields', () => {
+    const f = facts({ worstDim: 'agent' });
+    const base = buildDeterministicNarrative(f);
+    const n = composeNarrative(f, {
+      bottomLine: 'The zero-click gap is AI visibility.',
+      agent: { verdictWord: 'AI assistants', verdictPara: 'AI crawlers can read most of your content.' },
+    });
+
+    expect(n.bottomLineHtml).toBe(base.bottomLineHtml);
+    expect(n.agent.verdictWord).toBe(base.agent.verdictWord);
+    expect(n.agent.verdictPara).toBe('AI crawlers can read most of your content.');
+    expect(composeNarrative(f, { bottomLine: 'The zero\u2013click gap is AI visibility.' }).bottomLineHtml).toBe(base.bottomLineHtml);
+  });
+  it('rejects banned words hidden by format characters', () => {
+    const f = facts({ worstDim: 'agent' });
+    const base = buildDeterministicNarrative(f);
+    const n = composeNarrative(f, { agent: { verdictWord: 'AI assis\u200btants' } });
+
+    expect(n.agent.verdictWord).toBe(base.agent.verdictWord);
+  });
+});
+
+describe('buildNarrativePrompt', () => {
+  it('forbids invented dollars and the shared banned-word list', () => {
+    const prompt = buildNarrativePrompt(facts());
+    expect(prompt).toContain('Never state or invent a dollar amount or price.');
+    expect(prompt).toContain(`Never use these words: ${BANNED_WORDS.join(', ')}.`);
   });
 });
 
