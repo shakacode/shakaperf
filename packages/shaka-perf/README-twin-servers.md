@@ -60,33 +60,22 @@ Both run in **production mode**. The only difference is the `PERF_EXPERIMENT` en
 | Control server    | 3020 | 3000      |
 | Experiment server | 3030 | 3000      |
 
-The host ports above are the defaults assigned by `assignPortsAutomatically` in
-the generated `abtests.config.ts`. It picks the pair in priority order:
+The host ports above are the defaults assigned in the generated
+`abtests.config.ts`:
 
-1. **`SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT`** — pin an exact pair.
-2. **`SHAKAPERF_BASE_PORT`, or `CONDUCTOR_PORT`** (set automatically per workspace
-   by [Conductor.build](https://conductor.build)) — derive the pair from a base
-   block: control = base, experiment = base + 1. `SHAKAPERF_BASE_PORT` wins over
-   `CONDUCTOR_PORT`. Lets multiple AI agents in separate workspaces each get a
-   distinct pair with no shared state or probing.
-3. **Otherwise** — start from the preferred pair (3020 / 3030), shift both up
-   together (preserving the gap) until a free pair is found, then remember it per
-   project in `~/.shaka-perf/ports.json` so it stays stable across runs.
-
-Notes:
-
-- **Overrides aren't persisted.** Only the fall-through path (3) writes
-  `ports.json`; the env-var paths re-derive their pair every run, so the
-  environment — not a cached file — stays the source of truth.
-- **Base ports need ≥ 2 spacing.** The derived block is `{base, base + 1}`, so an
-  allocator that hands out adjacent bases makes adjacent workspaces overlap:
-  bases `5000` and `5001` give `{5000, 5001}` and `{5001, 5002}`, colliding on
-  `5001`. Conductor allocates a wide block per workspace, so this holds in
-  practice; set `SHAKAPERF_BASE_PORT` yourself if your tool packs bases tighter.
-- **Malformed values warn and are skipped.** A non-integer or out-of-range
-  (`1..65535`) port env var logs a warning and is ignored (the next option in the
-  chain still applies); a privileged value (`≤ 1023`) warns that binding needs
-  root but is still used.
+1. **`SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT`** — pin an exact
+   pair (e.g. in CI). Both must be set; a lone one is ignored.
+2. **`CONDUCTOR_PORT`** (exported per workspace by
+   [Conductor.build](https://conductor.build)) — the first of [10 consecutive
+   ports the workspace owns exclusively](https://docs.conductor.build/tips/conductor-env);
+   the template takes control = base, experiment = base + 1, so concurrent
+   agents in separate workspaces never collide. This lives in the template, not
+   in shaka-perf: the config is plain TypeScript, so any other per-machine
+   override is a one-liner you write there yourself.
+3. **Otherwise `assignPortsAutomatically`** — start from the preferred pair
+   (3020 / 3030), shift both up together (preserving the gap) until a free pair
+   is found, then remember it per project in `~/.shaka-perf/ports.json` so it
+   stays stable across runs.
 
 ### Docker Volumes
 

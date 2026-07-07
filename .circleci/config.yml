@@ -54,13 +54,13 @@ commands:
             - ~/.cache/ms-playwright
 
   pin-shaka-perf-ports:
-    description: Pin shaka-perf twin-server ports for CI
+    description: Pin the demo's twin-server ports for CI (read by demo-ecommerce/abtests.config.ts)
     steps:
       - run:
           name: Pin shaka-perf ports
           command: |
-            echo 'export SHAKAPERF_CONTROL_PORT=3060' >> "$BASH_ENV"
-            echo 'export SHAKAPERF_EXPERIMENT_PORT=3090' >> "$BASH_ENV"
+            echo 'export DEMO_CONTROL_PORT=3060' >> "$BASH_ENV"
+            echo 'export DEMO_EXPERIMENT_PORT=3090' >> "$BASH_ENV"
 
 jobs:
   jest-tests:

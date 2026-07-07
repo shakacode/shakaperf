@@ -31,9 +31,9 @@ export const TwinServersConfigSchema = z.object({
   /**
    * Host ports the twin containers bind to. Required — there's no sensible
    * default that works when you run two twin-servers projects side-by-side,
-   * so each project picks its own pair. The `init` template wires these
-   * through `SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT` so the
-   * same value drives `shared.*URL` and Docker's host-port mapping.
+   * so each project picks its own pair. The `init` template assigns the pair
+   * once (via `assignPortsAutomatically` / `CONDUCTOR_PORT`) and reuses the
+   * same constants here and in `shared.*URL`, so the two can't drift.
    */
   ports: z.object({
     control: z.number().int().positive(),
