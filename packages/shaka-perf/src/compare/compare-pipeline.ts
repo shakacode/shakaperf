@@ -306,7 +306,7 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>):
   if (summary.errors > 0) {
     chips.push({
       tag: 'accessibility error',
-      text: `a11y error: ${summary.errors}`,
+      text: `accessibility error: ${summary.errors}`,
       color: 'red',
       sortingWeight: 5,
       tooltip: 'One or both accessibility scans failed, so no control-vs-experiment comparison was produced.',
@@ -316,7 +316,7 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>):
     const failOnViolation = entries.some((entry) => entry.measurement.failOnViolation);
     chips.push({
       tag: failOnViolation ? 'accessibility regression' : 'accessibility finding',
-      text: `a11y: ${summary.new} new`,
+      text: `accessibility: ${summary.new} new in experiment`,
       color: failOnViolation ? 'red' : 'purple',
       sortingWeight: failOnViolation ? 12 : 24,
       tooltip: impactTooltip('New accessibility findings', summary.newByImpact),
@@ -325,7 +325,7 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>):
   if (summary.changed > 0) {
     chips.push({
       tag: 'accessibility changed',
-      text: `a11y: ${summary.changed} changed`,
+      text: `accessibility: ${summary.changed} changed`,
       color: 'yellow',
       sortingWeight: 22,
       tooltip: impactTooltip('Changed accessibility findings', summary.changedByImpact),
@@ -334,7 +334,7 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>):
   if (summary.fixed > 0) {
     chips.push({
       tag: 'accessibility fixed',
-      text: `a11y: ${summary.fixed} fixed`,
+      text: `accessibility: ${summary.fixed} fixed in experiment`,
       color: 'blue',
       sortingWeight: 32,
       tooltip: impactTooltip('Fixed accessibility findings', summary.fixedByImpact),

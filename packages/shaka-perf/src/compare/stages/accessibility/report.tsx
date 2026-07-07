@@ -77,11 +77,21 @@ const CARD_STYLE: CSSProperties = {
   gap: 12,
 };
 
+const CARD_HEADER_STYLE: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'space-between',
+};
+
 const SUMMARY_STYLE: CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: 8,
   alignItems: 'center',
+  flex: '1 1 260px',
+  minWidth: 0,
 };
 
 const STATUS_PILL_STYLE: CSSProperties = {
@@ -191,6 +201,25 @@ const COMPARE_A11Y_CSS = `
 .a11y-dialog__issues pre {
   max-width: 100%;
   overflow-x: hidden;
+}
+.a11y-compare-card__inspect {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.a11y-compare-card__inspect:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 .a11y-compare-filter {
   display: grid;
@@ -467,34 +496,38 @@ function AccessibilityCompareViewport({
     <div className="stage-section">
       <div className="stage-section__head">{viewportLabel}</div>
       <div style={CARD_STYLE}>
-        <div style={SUMMARY_STYLE}>
-          <strong>{headlineText(result)}</strong>
-          <StatusPill color="#b91c1c" count={result.summary.new} label="new" />
-          <StatusPill color="#137333" count={result.summary.fixed} label="fixed" />
-          <StatusPill color="#92400e" count={result.summary.changed} label="changed" />
-          {result.summary.unchanged > 0 ? (
-            <StatusPill color="var(--fg-muted)" count={result.summary.unchanged} label="unchanged" />
+        <div style={CARD_HEADER_STYLE}>
+          <div style={SUMMARY_STYLE}>
+            <strong>{headlineText(result)}</strong>
+            <StatusPill color="#b91c1c" count={result.summary.new} label="new" />
+            <StatusPill color="#137333" count={result.summary.fixed} label="fixed" />
+            <StatusPill color="#92400e" count={result.summary.changed} label="changed" />
+            {result.summary.unchanged > 0 ? (
+              <StatusPill color="var(--fg-muted)" count={result.summary.unchanged} label="unchanged" />
+            ) : null}
+            {result.summary.errors > 0 ? (
+              <StatusPill color="#b91c1c" count={result.summary.errors} label="scan error" />
+            ) : null}
+            <FullReportOnly>
+              <RawLinks result={result} />
+            </FullReportOnly>
+          </div>
+          {result.findings.length > 0 ? (
+            <DetailedArtifactDialog
+              className="a11y-compare-card__inspect"
+              href={result.comparisonArtifactHref ?? '#'}
+              label={`${viewportLabel} accessibility comparison`}
+              extra={<CompareDialogMeta result={result} viewportLabel={viewportLabel} />}
+              body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
+            >
+              inspect
+            </DetailedArtifactDialog>
           ) : null}
-          {result.summary.errors > 0 ? (
-            <StatusPill color="#b91c1c" count={result.summary.errors} label="scan error" />
-          ) : null}
-          <FullReportOnly>
-            <RawLinks result={result} />
-          </FullReportOnly>
         </div>
 
         {result.control.error || result.experiment.error ? <ScanErrors result={result} /> : null}
 
-        {result.findings.length > 0 ? (
-          <DetailedArtifactDialog
-            href={result.comparisonArtifactHref ?? '#'}
-            label={`${viewportLabel} accessibility comparison`}
-            extra={<CompareDialogMeta result={result} viewportLabel={viewportLabel} />}
-            body={<CompareFindingsDialog result={result} viewportLabel={viewportLabel} />}
-          >
-            inspect accessibility comparison
-          </DetailedArtifactDialog>
-        ) : result.summary.errors === 0 ? (
+        {result.findings.length === 0 && result.summary.errors === 0 ? (
           <StageNote body="No accessibility difference between control and experiment." />
         ) : null}
       </div>

@@ -46,8 +46,13 @@ describe('compare accessibility pipeline integration', () => {
       'accessibility changed',
       'accessibility fixed',
     ]);
+    expect(actualChips.map((chip) => chip.text)).toEqual([
+      'accessibility: 2 new in experiment',
+      'accessibility: 1 changed',
+      'accessibility: 1 fixed in experiment',
+    ]);
     expect(actualChips[0]).toMatchObject({
-      text: 'a11y: 2 new',
+      text: 'accessibility: 2 new in experiment',
       color: 'red',
     });
 
@@ -94,7 +99,7 @@ describe('compare accessibility pipeline integration', () => {
     expect(chips[0]).toMatchObject({
       tag: 'accessibility finding',
       color: 'purple',
-      text: 'a11y: 1 new',
+      text: 'accessibility: 1 new in experiment',
     });
   });
 
@@ -125,7 +130,7 @@ describe('compare accessibility pipeline integration', () => {
     expect(chips[0]).toMatchObject({
       tag: 'accessibility error',
       color: 'red',
-      text: 'a11y error: 1',
+      text: 'accessibility error: 1',
     });
 
     const sorts = pipeline.sortsForAllTests([{
