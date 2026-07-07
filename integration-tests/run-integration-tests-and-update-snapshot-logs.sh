@@ -7,8 +7,11 @@
 #       [--perf] [--visreg] [--twin-servers] [--audit]
 #
 # Snapshots contain ONLY reviewable, STABLE-NAMED artifacts — the normalized
-# per-suite logs and the deep-click report screenshots, whose diffs come from
-# compare-screenshots.mjs at review time. Nothing else is ever copied here:
+# per-suite logs and the deep-click report screenshots. Their diffs
+# (snapshots/screenshot-diff-report.html) are generated automatically at the
+# end of every run — while the fresh shots sit uncommitted against the old
+# HEAD baseline — and can be regenerated anytime with
+# `yarn node integration-tests/compare-screenshots.mjs`. Nothing else is ever copied here:
 # the reports are driven IN PLACE in the working results dirs (the temp
 # clone's demo-ecommerce/{compare,audit}-results, where their relative
 # artifact references resolve), which also keep the transient run output —
@@ -159,3 +162,10 @@ $AUDIT        && run_suite "@audit"        "$SNAPSHOTS/baseline-audit.log"
 echo "=== Stopping containers ==="
 DEMO_CWD="/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce"
 (cd "$DEMO_CWD" && yarn shaka-perf servers stop-containers) || true
+
+# Build the screenshot diff report (working tree vs HEAD) while the window is
+# meaningful: fresh shots on disk, previous baseline still committed. Exits
+# non-zero on undecodable PNGs — that failure should fail the run, so no
+# `|| true` (containers are already stopped above).
+echo "=== Generating screenshot diff report ==="
+yarn node "$SCRIPT_DIR/compare-screenshots.mjs"

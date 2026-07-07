@@ -5,514 +5,661 @@
 <style>
   * { box-sizing: border-box; }
   body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; margin: 0; padding: 24px; }
-  h1 { font-weight: 500; margin: 0 0 24px; }
+  h1 { font-weight: 500; margin: 0 0 8px; }
+  .compare-line { margin: 0 0 24px; color: #aaa; font-size: 13px; }
   h2 { font-weight: 500; margin: 32px 0 16px; border-bottom: 1px solid #333; padding-bottom: 8px; }
   h2 .count { color: #888; font-size: 14px; margin-left: 8px; }
-  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  /* Responsive wrap: each card defaults to its image's native pixel width
+     (set on the scrubber by applyMaxWidths), so as many cards as fit share
+     a row on a wide screen. */
+  section { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  section > h2 { flex: 1 0 100%; }
+  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; width: fit-content; max-width: 100%; }
+  /* Don't let the long path headline widen the card past its image. */
+  .card h3 { width: 0; min-width: 100%; }
   .card h3 { font-size: 13px; margin: 0 0 10px; font-weight: 500; display: flex; gap: 12px; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
   .tag { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: #333; color: #fff; font-family: system-ui, sans-serif; letter-spacing: 0.5px; white-space: nowrap; }
-  .images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   figure { margin: 0; }
   figcaption { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   img { width: 100%; border: 1px solid #333; border-radius: 4px; background: #0e0e24; display: block; }
+  .scrubber { position: relative; max-width: 100%; margin: 0 auto; overflow: hidden; border: 1px solid #333; border-radius: 4px; background: #0e0e24; cursor: ew-resize; touch-action: none; --scrub-pos: 50%; }
+  .scrubber img { width: 100%; border: 0; border-radius: 0; user-select: none; }
+  .scrubber__prev-side { position: absolute; inset: 0; background: #0e0e24; clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
+  .scrubber__diff { position: absolute; inset: 0; background: none; display: none; pointer-events: none; opacity: 0.25; }
+  body.show-diff .scrubber__diff { display: block; }
+  .scrubber__divider { position: absolute; top: 0; bottom: 0; left: var(--scrub-pos); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,.9); pointer-events: none; }
+  .scrubber__tag { position: absolute; top: 8px; font-size: 14px; font-weight: 400; line-height: 1.45; letter-spacing: .3px; padding: 5px 10px; border-radius: 4px; background: rgba(0,0,0,.75); color: #fff; pointer-events: none; text-align: left; }
+  .scrubber__tag b { font-weight: 700; }
+  /* Full-size clip layers (shakaperf-visreg style): the previous tag is
+     revealed only left of the divider, the current tag only right of it —
+     dragging the scrubber wipes them in and out with their image. */
+  .scrubber__tagside { position: absolute; inset: 0; pointer-events: none; }
+  .scrubber__tagside--left { clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
+  .scrubber__tagside--right { clip-path: inset(0 0 0 var(--scrub-pos)); }
+  .scrubber__tag--left { left: 8px; }
+  .scrubber__tag--right { right: 8px; }
+  .diff-toggle { position: fixed; top: 14px; right: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.55); user-select: none; }
+  .diff-toggle input { accent-color: #e5484d; width: 16px; height: 16px; cursor: pointer; }
 </style>
-</head><body>
+</head><body class="show-diff">
 <h1>Screenshot Diff Report</h1>
+<p class="compare-line"><span class="tag">previous · roman-kuksin/revive-integration-tests @ 3f7506b · 2026-07-06</span> → <span class="tag">current · roman-kuksin/revive-integration-tests @ 3f7506b · 2026-07-06 + uncommitted</span></p>
+<label class="diff-toggle"><input type="checkbox" id="diff-toggle-box" checked> Show Pixelmatch Diff</label>
 <section>
-    <h2>bench-results <span class="count">22</span></h2>
+    <h2>bench-results <span class="count">14</span></h2>
     <article class="card">
-    <h3><span class="tag">1.56% · 62250px</span>integration-tests/snapshots/bench-results/perf__01-overview.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__01-overview.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__01-overview.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__01-overview.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×2081 → 1366×2101 · 35.60% · 1436138px</span>integration-tests/snapshots/bench-results/perf__01-overview.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/2101; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__01-overview.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__01-overview.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__01-overview.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">1.54% · 61410px</span>integration-tests/snapshots/bench-results/perf__02-chip-filter.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__02-chip-filter.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__02-chip-filter.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__02-chip-filter.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×2081 → 1366×2101 · 35.06% · 1414484px</span>integration-tests/snapshots/bench-results/perf__02-chip-filter.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/2101; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__02-chip-filter.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__02-chip-filter.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__02-chip-filter.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">1.56% · 62250px</span>integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×2081 → 1366×2101 · 35.82% · 1444906px</span>integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/2101; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__03-stage-filter-menu.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">1.36% · 62250px</span>integration-tests/snapshots/bench-results/perf__04-sources-expanded.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×2376 → 1366×2397 · 35.29% · 1624104px</span>integration-tests/snapshots/bench-results/perf__04-sources-expanded.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/2397; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__04-sources-expanded.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-00-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms_ms_m.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-00-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms_ms_m.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-00-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms_ms_m.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-00-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms_ms_m.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 58.99% · 1226667px</span>integration-tests/snapshots/bench-results/perf__05-artifact-00.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-00.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-00.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-00.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-00.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-00.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-00.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-00.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.26% · 1169813px</span>integration-tests/snapshots/bench-results/perf__05-artifact-01.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-01.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-01.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-01.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-01-control_lh.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-01-control_lh.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-01-control_lh.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-01-control_lh.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.25% · 1169646px</span>integration-tests/snapshots/bench-results/perf__05-artifact-02.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-02.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-02.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-02.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-01.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-01.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-01.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-01.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 59.01% · 1226985px</span>integration-tests/snapshots/bench-results/perf__05-artifact-03.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-03.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-03.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-03.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-02-experiment_lh.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-02-experiment_lh.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-02-experiment_lh.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-02-experiment_lh.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 54.93% · 1142162px</span>integration-tests/snapshots/bench-results/perf__05-artifact-04.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-04.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-04.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-04.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-02.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-02.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-02.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-02.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 54.66% · 1136629px</span>integration-tests/snapshots/bench-results/perf__05-artifact-05.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-05.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-05.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-05.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-03-timeline.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-03-timeline.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-03-timeline.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-03-timeline.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.85% · 1182015px</span>integration-tests/snapshots/bench-results/perf__05-artifact-06.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-06.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-06.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-06.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-03.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-03.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-03.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-03.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.95% · 1184215px</span>integration-tests/snapshots/bench-results/perf__05-artifact-07.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-07.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-07.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-07.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-04-network_diff.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-04-network_diff.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-04-network_diff.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-04-network_diff.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 53.92% · 1121290px</span>integration-tests/snapshots/bench-results/perf__08-logs.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__08-logs.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__08-logs.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__08-logs.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-04.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-04.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-04.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-04.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-05-profile_diff.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-05-profile_diff.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-05-profile_diff.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-05-profile_diff.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-05.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-05.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-05.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-05.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-06-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-06-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-06-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-06-CONTROL_DIFF_EXPERIMENT_ms_ms_ms_ms.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-06.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-06.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-06.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-06.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/bench-results/perf__05-artifact-07-control_lh.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-07-control_lh.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-07-control_lh.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-07-control_lh.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/bench-results/perf__05-artifact-07.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__05-artifact-07.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__05-artifact-07.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__05-artifact-07.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">1.21% · 25187px</span>integration-tests/snapshots/bench-results/perf__08-logs.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__08-logs.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__08-logs.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__08-logs.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">1.56% · 62250px</span>integration-tests/snapshots/bench-results/perf__09-search-home.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__09-search-home.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__09-search-home.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__09-search-home.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×2081 → 1366×2101 · 35.73% · 1441484px</span>integration-tests/snapshots/bench-results/perf__09-search-home.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/2101; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/bench-results/perf__09-search-home.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/bench-results/perf__09-search-home.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/bench-results/perf__09-search-home.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
   </section>
 <section>
     <h2>visreg-results <span class="count">9</span></h2>
     <article class="card">
-    <h3><span class="tag">0.64% · 67923px</span>integration-tests/snapshots/visreg-results/visreg__01-overview.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__01-overview.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__01-overview.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__01-overview.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×5492 → 1366×7400 · 43.16% · 6131489px</span>integration-tests/snapshots/visreg-results/visreg__01-overview.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/7400; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__01-overview.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__01-overview.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__01-overview.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.63% · 66351px</span>integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×5492 → 1366×7400 · 43.03% · 6113056px</span>integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/7400; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__02-chip-filter.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.64% · 67923px</span>integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×5492 → 1366×7400 · 43.23% · 6141760px</span>integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/7400; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__03-stage-filter-menu.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.59% · 68299px</span>integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×6063 → 1366×8221 · 43.18% · 6815182px</span>integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/8221; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__04-sources-expanded.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">identical</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 60.36% · 1255203px</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff-scrubbed.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">identical</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 60.31% · 1254045px</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-diff.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">identical</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 54.87% · 1141001px</span>integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__06-visreg-nodiff.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.12% · 2396px</span>integration-tests/snapshots/visreg-results/visreg__08-logs.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__08-logs.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__08-logs.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__08-logs.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 54.34% · 1129963px</span>integration-tests/snapshots/visreg-results/visreg__08-logs.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__08-logs.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__08-logs.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__08-logs.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.00% · 35px</span>integration-tests/snapshots/visreg-results/visreg__09-search-home.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__09-search-home.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__09-search-home.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__09-search-home.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×1531 → 1366×1531 · 32.99% · 969826px</span>integration-tests/snapshots/visreg-results/visreg__09-search-home.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/1531; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/visreg-results/visreg__09-search-home.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/visreg-results/visreg__09-search-home.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/visreg-results/visreg__09-search-home.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
   </section>
 <section>
-    <h2>audit-results <span class="count">30</span></h2>
+    <h2>audit-results <span class="count">22</span></h2>
     <article class="card">
-    <h3><span class="tag">dim-shift 1920×14062 → 1920×14201</span>integration-tests/snapshots/audit-results/audit__01-overview.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__01-overview.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__01-overview.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__01-overview.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×14201 → 1366×19039 · 43.17% · 15781380px</span>integration-tests/snapshots/audit-results/audit__01-overview.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/19039; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__01-overview.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__01-overview.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__01-overview.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">dim-shift 1920×13036 → 1920×14178</span>integration-tests/snapshots/audit-results/audit__02-chip-filter.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__02-chip-filter.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__02-chip-filter.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__02-chip-filter.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×14178 → 1366×20089 · 44.11% · 17013175px</span>integration-tests/snapshots/audit-results/audit__02-chip-filter.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/20089; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__02-chip-filter.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__02-chip-filter.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__02-chip-filter.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">dim-shift 1920×14039 → 1920×14178</span>integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×14178 → 1366×19021 · 43.20% · 15776211px</span>integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/19021; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__03-stage-filter-menu.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">dim-shift 1920×14597 → 1920×14457</span>integration-tests/snapshots/audit-results/audit__04-sources-expanded.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×14457 → 1366×19563 · 43.31% · 16267552px</span>integration-tests/snapshots/audit-results/audit__04-sources-expanded.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/19563; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__04-sources-expanded.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-00-Lighthouse_report.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-00-Lighthouse_report.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-00-Lighthouse_report.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-00-Lighthouse_report.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.83% · 1181797px</span>integration-tests/snapshots/audit-results/audit__05-artifact-00.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-00.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-00.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-00.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-00.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-00.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-00.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-00.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.37% · 1172190px</span>integration-tests/snapshots/audit-results/audit__05-artifact-01.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-01.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-01.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-01.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-01-Lighthouse_report.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-01-Lighthouse_report.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-01-Lighthouse_report.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-01-Lighthouse_report.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 60.38% · 1255442px</span>integration-tests/snapshots/audit-results/audit__05-artifact-02.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-02.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-02.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-02.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-01.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-01.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-01.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-01.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.26% · 1169886px</span>integration-tests/snapshots/audit-results/audit__05-artifact-03.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-03.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-03.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-03.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-02-msinitial_page_loadmsLayout_Shift_msmsIn.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-02-msinitial_page_loadmsLayout_Shift_msmsIn.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-02-msinitial_page_loadmsLayout_Shift_msmsIn.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-02-msinitial_page_loadmsLayout_Shift_msmsIn.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.20% · 1168517px</span>integration-tests/snapshots/audit-results/audit__05-artifact-04.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-04.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-04.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-04.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-02.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-02.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-02.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-02.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 56.61% · 1177086px</span>integration-tests/snapshots/audit-results/audit__05-artifact-05.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-05.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-05.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-05.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-03-msinitial_page_loadmsLayout_Shift_msmsms.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-03-msinitial_page_loadmsLayout_Shift_msmsms.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-03-msinitial_page_loadmsLayout_Shift_msmsms.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-03-msinitial_page_loadmsLayout_Shift_msmsms.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 55.03% · 1144266px</span>integration-tests/snapshots/audit-results/audit__05-artifact-06.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-06.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-06.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-06.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-03.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-03.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-03.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-03.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 63.32% · 1316744px</span>integration-tests/snapshots/audit-results/audit__05-artifact-07.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-07.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-07.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-07.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-04-Lighthouse_report.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-04-Lighthouse_report.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-04-Lighthouse_report.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-04-Lighthouse_report.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 61.52% · 1279310px</span>integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-04.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-04.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-04.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-04.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1824×1140 → 1298×730 · 55.17% · 1147084px</span>integration-tests/snapshots/audit-results/audit__08-logs.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1824/1140; width:1824px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__08-logs.png" draggable="false" style="width:71.1623%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__08-logs.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__08-logs.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-05-msinitial_page_loadmsLayout_Shift_msLCPm.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-05-msinitial_page_loadmsLayout_Shift_msLCPm.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-05-msinitial_page_loadmsLayout_Shift_msLCPm.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-05-msinitial_page_loadmsLayout_Shift_msLCPm.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1920×3323 → 1366×3306 · 33.21% · 2118901px</span>integration-tests/snapshots/audit-results/audit__09-search-home.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1920/3323; width:1920px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__09-search-home.png" draggable="false" style="width:71.1458%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__09-search-home.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__09-search-home.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-05.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-05.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-05.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-05.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×6445 → 1366×6399 · 19.55% · 1814581px</span>integration-tests/snapshots/audit-results/client__01-overview.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/6445; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__01-overview.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__01-overview.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__01-overview.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-06-Lighthouse_report.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-06-Lighthouse_report.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-06-Lighthouse_report.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-06-Lighthouse_report.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×7252 → 1366×7252 · 8.16% · 852374px</span>integration-tests/snapshots/audit-results/client__02-tab-a11y.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/7252; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__02-tab-a11y.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__02-tab-a11y.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__02-tab-a11y.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-06.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-06.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-06.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-06.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×5836 → 1366×5836 · 7.85% · 660024px</span>integration-tests/snapshots/audit-results/client__02-tab-agent.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/5836; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__02-tab-agent.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__02-tab-agent.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__02-tab-agent.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">deleted</span>integration-tests/snapshots/audit-results/audit__05-artifact-07-Lighthouse_report.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-07-Lighthouse_report.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-07-Lighthouse_report.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-07-Lighthouse_report.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×6445 → 1366×6399 · 19.55% · 1814506px</span>integration-tests/snapshots/audit-results/client__03-tile-jump.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/6445; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__03-tile-jump.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__03-tile-jump.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__03-tile-jump.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">new</span>integration-tests/snapshots/audit-results/audit__05-artifact-07.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__05-artifact-07.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__05-artifact-07.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__05-artifact-07.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×1100 → 1366×768 · 41.44% · 656402px</span>integration-tests/snapshots/audit-results/client__04-lightbox.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/1100; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__04-lightbox.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__04-lightbox.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__04-lightbox.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">identical</span>integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__07-a11y-dialog.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×1100 → 1366×768 · 41.69% · 660336px</span>integration-tests/snapshots/audit-results/client__05-lightbox-next.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/1100; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__05-lightbox-next.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__05-lightbox-next.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__05-lightbox-next.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
 <article class="card">
-    <h3><span class="tag">0.12% · 2450px</span>integration-tests/snapshots/audit-results/audit__08-logs.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__08-logs.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__08-logs.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__08-logs.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">0.56% · 35778px</span>integration-tests/snapshots/audit-results/audit__09-search-home.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/audit__09-search-home.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/audit__09-search-home.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/audit__09-search-home.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">dim-shift 1440×6207 → 1440×6445</span>integration-tests/snapshots/audit-results/client__01-overview.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__01-overview.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__01-overview.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__01-overview.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">0.01% · 1368px</span>integration-tests/snapshots/audit-results/client__02-tab-a11y.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__02-tab-a11y.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__02-tab-a11y.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__02-tab-a11y.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">0.00% · 167px</span>integration-tests/snapshots/audit-results/client__02-tab-agent.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__02-tab-agent.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__02-tab-agent.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__02-tab-agent.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">dim-shift 1440×6207 → 1440×6445</span>integration-tests/snapshots/audit-results/client__03-tile-jump.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__03-tile-jump.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__03-tile-jump.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__03-tile-jump.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">0.00% · 1px</span>integration-tests/snapshots/audit-results/client__04-lightbox.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__04-lightbox.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__04-lightbox.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__04-lightbox.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">2.28% · 36110px</span>integration-tests/snapshots/audit-results/client__05-lightbox-next.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__05-lightbox-next.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__05-lightbox-next.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__05-lightbox-next.png"></figure>
-    </div>
-  </article>
-<article class="card">
-    <h3><span class="tag">0.01% · 1368px</span>integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png"></figure>
-    </div>
+    <h3><span class="tag">dim-shift 1440×7252 → 1366×7252 · 8.13% · 849007px</span>integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png</h3>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:1440/7252; width:1440px">
+        <img class="scrubber__base" loading="lazy" src=".screenshot-diff/new/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png" draggable="false" style="width:94.8611%">
+        <div class="scrubber__prev-side"><img loading="lazy" src=".screenshot-diff/old/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png" draggable="false" style="width:100.0000%"></div>
+        <img class="scrubber__diff" loading="lazy" src=".screenshot-diff/diff/integration-tests/snapshots/audit-results/client__06-sev-chip-toggled.png" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left"><b>previous</b><br>roman-kuksin/revive-integration-tests @ 3f7506b<br>2026-07-06</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right"><b>current</b><br>roman-kuksin/revive-integration-tests<br>@ 3f7506b · 2026-07-06 + uncommitted</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>
   </section>
+<script>
+  document.getElementById('diff-toggle-box').addEventListener('change', (e) => {
+    document.body.classList.toggle('show-diff', e.target.checked);
+  });
+
+  // Shakaperf-visreg-style wipe: the previous shot is revealed only left of
+  // the divider; drag anywhere on the scrubber to move it.
+  document.querySelectorAll('.scrubber').forEach((el) => {
+    const set = (clientX) => {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0) return;
+      const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+      el.style.setProperty('--scrub-pos', pct + '%');
+    };
+    el.addEventListener('pointerdown', (e) => {
+      set(e.clientX);
+      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) set(e.clientX);
+    });
+  });
+</script>
 </body></html>

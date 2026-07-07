@@ -9,12 +9,15 @@
  */
 
 /**
- * Builds a single HTML report comparing every snapshot PNG between HEAD and
- * the working tree. Snapshots hold only the stable-named deep-click report
- * screenshots (directly under each `<suite>-results/` dir), so every PNG
- * diffs meaningfully by path. Every card
- * always shows three images side by side: Previous, Current, Diff. Missing
- * images become same-size blank PNGs.
+ * Builds a single HTML report comparing every snapshot PNG between a base git
+ * ref and the working tree. The base is the first that exists of: master,
+ * main, origin/master, origin/main — falling back to the current branch's
+ * HEAD — so on a feature branch the report shows what the branch changes
+ * against the mainline baseline. Snapshots hold only the stable-named
+ * deep-click report screenshots (directly under each `<suite>-results/` dir),
+ * so every PNG diffs meaningfully by path. Each card shows the Diff and a
+ * previous↔current scrubber; both sides are labeled with their branch,
+ * commit, and commit date. Missing images become same-size blank PNGs.
  *
  * Overview/filter/tab shots are near-deterministic — treat any visible
  * change as signal. Artifact-dialog shots host iframes and drift more
@@ -85,9 +88,59 @@ function safeGit(cmd) {
   }
 }
 
+function gitLine(cmd) {
+  return safeGit(cmd)[0] ?? '';
+}
+
+// The "previous" side of every comparison: the mainline baseline when one
+// exists AND actually shares snapshot paths with the current run — a
+// mainline that predates the current snapshot layout would make every card
+// an incomparable new/deleted pair (blank scrubber side, no pixelmatch).
+// Falls through to the current branch's HEAD, which turns the report into a
+// run-to-run comparison until the baselines land on the mainline.
+function refSharesCurrentPngs(ref, currentPngs) {
+  const tree = new Set(
+    safeGit(`git ls-tree -r --name-only ${ref} -- "${SNAPSHOTS_ROOT}"`).map((f) => path.normalize(f)),
+  );
+  return currentPngs.some((p) => tree.has(p));
+}
+
+function resolveBaseRef(currentPngs) {
+  for (const ref of ['master', 'main', 'origin/master', 'origin/main']) {
+    if (safeGit(`git rev-parse --verify -q ${ref}^{commit}`).length === 0) continue;
+    if (refSharesCurrentPngs(ref, currentPngs)) return ref;
+  }
+  return gitLine('git rev-parse --abbrev-ref HEAD') || 'HEAD';
+}
+
+const BASE_REF = resolveBaseRef(targetDirs.flatMap((d) => walkPngs(d)));
+const CURRENT_BRANCH = gitLine('git rev-parse --abbrev-ref HEAD') || 'HEAD';
+const refMeta = (ref) => ({
+  sha: gitLine(`git rev-parse --short ${ref}`),
+  date: gitLine(`git log -1 --format=%cs ${ref}`),
+});
+const baseMeta = refMeta(BASE_REF);
+const headMeta = refMeta('HEAD');
+const workingTreeDirty = safeGit('git status --porcelain -- integration-tests/snapshots').length > 0;
+
+const PREV_LABEL = `previous · ${BASE_REF} @ ${baseMeta.sha} · ${baseMeta.date}`;
+const CURR_LABEL = `current · ${CURRENT_BRANCH} @ ${headMeta.sha} · ${headMeta.date}`
+  + (workingTreeDirty ? ' + uncommitted' : '');
+// Multi-line variants for the on-image tags — narrow, so they don't cover
+// half the screenshot.
+const PREV_TAG_HTML = ['<b>previous</b>']
+  .concat([`${BASE_REF} @ ${baseMeta.sha}`, baseMeta.date].map(esc))
+  .join('<br>');
+const CURR_TAG_HTML = ['<b>current</b>']
+  .concat([
+    CURRENT_BRANCH,
+    `@ ${headMeta.sha} · ${headMeta.date}${workingTreeDirty ? ' + uncommitted' : ''}`,
+  ].map(esc))
+  .join('<br>');
+
 function gitTrackedPngs(root) {
   const tracked = safeGit(`git ls-files -- "${root}"`);
-  const committed = safeGit(`git ls-tree --name-only -r HEAD -- "${root}"`);
+  const committed = safeGit(`git ls-tree --name-only -r ${BASE_REF} -- "${root}"`);
   return new Set(
     [...tracked, ...committed]
       .filter((f) => f.endsWith('.png'))
@@ -95,9 +148,9 @@ function gitTrackedPngs(root) {
   );
 }
 
-function readHeadBuffer(relPath) {
+function readBaseBuffer(relPath) {
   try {
-    return execSync(`git show "HEAD:${relPath}"`, {
+    return execSync(`git show "${BASE_REF}:${relPath}"`, {
       encoding: 'buffer',
       maxBuffer: 100 * 1024 * 1024,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -119,6 +172,19 @@ function blankPng(width, height) {
   return PNG.sync.write(new PNG({ width, height }));
 }
 
+/**
+ * Pads an image to `width`×`height` (top-left anchored, transparent fill) so
+ * two shots whose page height drifted between runs can still be
+ * pixel-compared — the padded region reads as "different" against the other
+ * image's real pixels, which is exactly what grew/shrank.
+ */
+function padTo(img, width, height) {
+  if (img.width === width && img.height === height) return img;
+  const out = new PNG({ width, height });
+  PNG.bitblt(img, out, 0, 0, img.width, img.height, 0, 0);
+  return out;
+}
+
 function writePng(destPath, buffer) {
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   fs.writeFileSync(destPath, buffer);
@@ -129,7 +195,7 @@ function relFromReport(p) {
 }
 
 function cardFor(relPath) {
-  const headBuf = readHeadBuffer(relPath);
+  const headBuf = readBaseBuffer(relPath);
   const currentBuf = fs.existsSync(relPath) ? fs.readFileSync(relPath) : null;
 
   const headImg = headBuf ? decodePng(headBuf) : null;
@@ -153,17 +219,19 @@ function cardFor(relPath) {
 
   let numDiffPixels = 0;
   let pct = 0;
-  if (sameDims) {
-    const diff = new PNG({ width: headImg.width, height: headImg.height });
-    numDiffPixels = pixelmatch(
-      headImg.data,
-      currentImg.data,
-      diff.data,
-      headImg.width,
-      headImg.height,
-      { threshold: 0.1 },
-    );
-    pct = (numDiffPixels / (headImg.width * headImg.height)) * 100;
+  if (headImg && currentImg) {
+    // Dimensions can drift between runs (full-page height follows content);
+    // pad both to the union size so the pair is still pixel-compared — the
+    // grown/shrunk region counts as diff.
+    const unionW = Math.max(headImg.width, currentImg.width);
+    const unionH = Math.max(headImg.height, currentImg.height);
+    const a = padTo(headImg, unionW, unionH);
+    const b = padTo(currentImg, unionW, unionH);
+    const diff = new PNG({ width: unionW, height: unionH });
+    // diffMask: only differing pixels on a transparent background, so the
+    // diff can be overlaid on the scrubber as a highlight layer.
+    numDiffPixels = pixelmatch(a.data, b.data, diff.data, unionW, unionH, { threshold: 0.1, diffMask: true });
+    pct = (numDiffPixels / (unionW * unionH)) * 100;
     writePng(diffOut, PNG.sync.write(diff));
   } else {
     writePng(diffOut, blankPng(width, height));
@@ -182,6 +250,12 @@ function cardFor(relPath) {
     // Bytes exist but don't decode as PNG (truncated blob, LFS pointer, …).
     // MUST stay distinct from "identical": we never compared these pixels.
     decodeError: (!!headBuf && !headImg) || (!!currentBuf && !currentImg),
+    // Union dimensions size the scrubber container so both sides align
+    // top-left even when the page height drifted between runs.
+    unionW: Math.max(headImg?.width ?? 1, currentImg?.width ?? 1),
+    unionH: Math.max(headImg?.height ?? 1, currentImg?.height ?? 1),
+    oldW: headImg?.width ?? currentImg?.width ?? 1,
+    newW: currentImg?.width ?? headImg?.width ?? 1,
     numDiffPixels,
     pct,
   };
@@ -199,6 +273,7 @@ const sections = targetDirs.map((d) => ({
   cards: sectionCards(d),
 }));
 
+console.log(`comparing ${PREV_LABEL.replace(/^previous · /, '')}  →  ${CURR_LABEL.replace(/^current · /, '')}\n`);
 let totalDecodeErrors = 0;
 for (const s of sections) {
   const decodeErrors = s.cards.filter((c) => c.decodeError).length;
@@ -231,19 +306,27 @@ function tagFor(card) {
   if (card.decodeError) return 'DECODE ERROR — not compared';
   if (!card.hasOld) return 'new';
   if (!card.hasNew) return 'deleted';
-  if (card.dimMismatch) return `dim-shift ${card.oldDims} → ${card.newDims}`;
+  if (card.dimMismatch) return `dim-shift ${card.oldDims} → ${card.newDims} · ${card.pct.toFixed(2)}% · ${card.numDiffPixels}px`;
   if (card.numDiffPixels === 0) return 'identical';
   return `${card.pct.toFixed(2)}% · ${card.numDiffPixels}px`;
 }
 
+// A shakaperf-visreg-style scrubber — previous revealed left of the draggable
+// divider, current right of it — with the pixelmatch diff mask as an overlay
+// highlight layer, toggled by the sticky "Show Pixelmatch Diff" checkbox.
 function cardHtml(card) {
   return `<article class="card">
     <h3><span class="tag">${esc(tagFor(card))}</span>${esc(card.relPath)}</h3>
-    <div class="images">
-      <figure><figcaption>Previous</figcaption><img loading="lazy" src="${esc(relFromReport(card.oldOut))}"></figure>
-      <figure><figcaption>Current</figcaption><img loading="lazy" src="${esc(relFromReport(card.newOut))}"></figure>
-      <figure><figcaption>Diff</figcaption><img loading="lazy" src="${esc(relFromReport(card.diffOut))}"></figure>
-    </div>
+    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
+      <div class="scrubber" style="aspect-ratio:${card.unionW}/${card.unionH}; width:${card.unionW}px">
+        <img class="scrubber__base" loading="lazy" src="${esc(relFromReport(card.newOut))}" draggable="false" style="width:${(card.newW / card.unionW * 100).toFixed(4)}%">
+        <div class="scrubber__prev-side"><img loading="lazy" src="${esc(relFromReport(card.oldOut))}" draggable="false" style="width:${(card.oldW / card.unionW * 100).toFixed(4)}%"></div>
+        <img class="scrubber__diff" loading="lazy" src="${esc(relFromReport(card.diffOut))}" draggable="false" alt="" style="width:100%">
+        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left">${PREV_TAG_HTML}</span></div>
+        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right">${CURR_TAG_HTML}</span></div>
+        <div class="scrubber__divider"></div>
+      </div>
+    </figure>
   </article>`;
 }
 
@@ -261,20 +344,68 @@ const html = `<!DOCTYPE html>
 <style>
   * { box-sizing: border-box; }
   body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; margin: 0; padding: 24px; }
-  h1 { font-weight: 500; margin: 0 0 24px; }
+  h1 { font-weight: 500; margin: 0 0 8px; }
+  .compare-line { margin: 0 0 24px; color: #aaa; font-size: 13px; }
   h2 { font-weight: 500; margin: 32px 0 16px; border-bottom: 1px solid #333; padding-bottom: 8px; }
   h2 .count { color: #888; font-size: 14px; margin-left: 8px; }
-  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  /* Responsive wrap: each card defaults to its image's native pixel width
+     (set on the scrubber by applyMaxWidths), so as many cards as fit share
+     a row on a wide screen. */
+  section { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  section > h2 { flex: 1 0 100%; }
+  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; width: fit-content; max-width: 100%; }
+  /* Don't let the long path headline widen the card past its image. */
+  .card h3 { width: 0; min-width: 100%; }
   .card h3 { font-size: 13px; margin: 0 0 10px; font-weight: 500; display: flex; gap: 12px; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
   .tag { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: #333; color: #fff; font-family: system-ui, sans-serif; letter-spacing: 0.5px; white-space: nowrap; }
-  .images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   figure { margin: 0; }
   figcaption { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   img { width: 100%; border: 1px solid #333; border-radius: 4px; background: #0e0e24; display: block; }
+  .scrubber { position: relative; max-width: 100%; margin: 0 auto; overflow: hidden; border: 1px solid #333; border-radius: 4px; background: #0e0e24; cursor: ew-resize; touch-action: none; --scrub-pos: 50%; }
+  .scrubber img { width: 100%; border: 0; border-radius: 0; user-select: none; }
+  .scrubber__prev-side { position: absolute; inset: 0; background: #0e0e24; clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
+  .scrubber__diff { position: absolute; inset: 0; background: none; display: none; pointer-events: none; opacity: 0.25; }
+  body.show-diff .scrubber__diff { display: block; }
+  .scrubber__divider { position: absolute; top: 0; bottom: 0; left: var(--scrub-pos); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,.9); pointer-events: none; }
+  .scrubber__tag { position: absolute; top: 8px; font-size: 14px; font-weight: 400; line-height: 1.45; letter-spacing: .3px; padding: 5px 10px; border-radius: 4px; background: rgba(0,0,0,.75); color: #fff; pointer-events: none; text-align: left; }\n  .scrubber__tag b { font-weight: 700; }
+  /* Full-size clip layers (shakaperf-visreg style): the previous tag is
+     revealed only left of the divider, the current tag only right of it —
+     dragging the scrubber wipes them in and out with their image. */
+  .scrubber__tagside { position: absolute; inset: 0; pointer-events: none; }
+  .scrubber__tagside--left { clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
+  .scrubber__tagside--right { clip-path: inset(0 0 0 var(--scrub-pos)); }
+  .scrubber__tag--left { left: 8px; }
+  .scrubber__tag--right { right: 8px; }
+  .diff-toggle { position: fixed; top: 14px; right: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.55); user-select: none; }
+  .diff-toggle input { accent-color: #e5484d; width: 16px; height: 16px; cursor: pointer; }
 </style>
-</head><body>
+</head><body class="show-diff">
 <h1>Screenshot Diff Report</h1>
+<p class="compare-line"><span class="tag">${esc(PREV_LABEL)}</span> → <span class="tag">${esc(CURR_LABEL)}</span></p>
+<label class="diff-toggle"><input type="checkbox" id="diff-toggle-box" checked> Show Pixelmatch Diff</label>
 ${sections.map(sectionHtml).join('\n')}
+<script>
+  document.getElementById('diff-toggle-box').addEventListener('change', (e) => {
+    document.body.classList.toggle('show-diff', e.target.checked);
+  });
+\n  // Shakaperf-visreg-style wipe: the previous shot is revealed only left of
+  // the divider; drag anywhere on the scrubber to move it.
+  document.querySelectorAll('.scrubber').forEach((el) => {
+    const set = (clientX) => {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0) return;
+      const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
+      el.style.setProperty('--scrub-pos', pct + '%');
+    };
+    el.addEventListener('pointerdown', (e) => {
+      set(e.clientX);
+      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) set(e.clientX);
+    });
+  });
+</script>
 </body></html>`;
 
 fs.writeFileSync(REPORT_PATH, html);

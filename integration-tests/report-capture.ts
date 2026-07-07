@@ -67,7 +67,9 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<st
     taken.push(name);
   };
 
-  await page.setViewportSize({ width: 1920, height: 1200 });
+  // 1366×768 — the classic laptop screen, the report's most common real
+  // viewing size; fullPage shots extend the height as needed.
+  await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(`file://${reportHtmlPath}`);
   await page.waitForSelector('.app', { timeout: 15_000 });
   await scrollAndSettle(page);
@@ -312,7 +314,9 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
     taken.push(name);
   };
 
-  await page.setViewportSize({ width: 1440, height: 1100 });
+  // Same 1366×768 laptop viewport as the technical-report capture, so every
+  // snapshot renders at the report's most common real viewing size.
+  await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(`file://${reportHtmlPath}`);
   await page.waitForSelector('.v2-wrap', { timeout: 15_000 });
   await scrollAndSettle(page);
