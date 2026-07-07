@@ -24,7 +24,6 @@ export type CostChip = 'measured' | 'estimated' | 'not measured';
 export interface CostChipCopy {
   label: string;
   intent: 'site measurement' | 'calculated estimate' | 'blocked measurement';
-  valuePrefix?: '~=';
   estimatorToggle: boolean;
 }
 
@@ -37,7 +36,6 @@ export const COST_CHIPS: Record<CostChip, CostChipCopy> = {
   estimated: {
     label: 'estimated',
     intent: 'calculated estimate',
-    valuePrefix: '~=',
     estimatorToggle: true,
   },
   'not measured': {
@@ -174,8 +172,12 @@ export function dataCostEstimatedLine(usd: string): string {
   return `${usd} of mobile data per visit`;
 }
 
+function formatPricePerMb(usd: number): string {
+  return `$${usd.toFixed(4)}`;
+}
+
 export function dataCostFormula(mb: string): string {
-  return `${mb} measured on this page x $${MOBILE_DATA_PRICE_USD_PER_MB_LOW}-${MOBILE_DATA_PRICE_USD_PER_MB_HIGH} per MB (cable.co.uk worldwide average / US price)`;
+  return `${mb} measured on this page x ${formatPricePerMb(MOBILE_DATA_PRICE_USD_PER_MB_LOW)}-${formatPricePerMb(MOBILE_DATA_PRICE_USD_PER_MB_HIGH)} per MB (cable.co.uk worldwide average / US price)`;
 }
 
 export interface IndustryDataStat {
@@ -218,5 +220,4 @@ export const AI_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [
   },
 ];
 
-export const INDUSTRY_DATA_STATS = AI_INDUSTRY_DATA_STATS;
 export const A11Y_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [];

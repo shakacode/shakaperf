@@ -30,7 +30,6 @@ import {
   type State,
   type Tab,
 } from '../cost-strings';
-import { MOBILE_DATA_PRICE_USD_PER_MB_HIGH, MOBILE_DATA_PRICE_USD_PER_MB_LOW } from '../cost-model';
 
 describe('findBannedWords', () => {
   it('finds banned report vocabulary case-insensitively', () => {
@@ -51,7 +50,6 @@ describe('cost chips', () => {
     expect(COST_CHIPS.estimated).toEqual({
       label: 'estimated',
       intent: 'calculated estimate',
-      valuePrefix: '~=',
       estimatorToggle: true,
     });
   });
@@ -134,9 +132,7 @@ describe('canonical cost copy', () => {
   it('builds data-cost measured, estimated, and formula lines', () => {
     expect(dataCostMeasuredLine('12.5 MB')).toBe('each visit to this page downloads 12.5 MB');
     expect(dataCostEstimatedLine('~= $0.03-0.08')).toBe('~= $0.03-0.08 of mobile data per visit');
-    expect(dataCostFormula('12.5 MB')).toBe(
-      `12.5 MB measured on this page x $${MOBILE_DATA_PRICE_USD_PER_MB_LOW}-${MOBILE_DATA_PRICE_USD_PER_MB_HIGH} per MB (cable.co.uk worldwide average / US price)`,
-    );
+    expect(dataCostFormula('12.5 MB')).toBe('12.5 MB measured on this page x $0.0026-$0.0060 per MB (cable.co.uk worldwide average / US price)');
   });
 });
 

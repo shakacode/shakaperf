@@ -11,7 +11,6 @@ import {
   DEFAULT_MOBILE_TRAFFIC_SHARE,
   MOBILE_DATA_PRICE_USD_PER_MB_HIGH,
   MOBILE_DATA_PRICE_USD_PER_MB_LOW,
-  formatDataCostRange,
   formatDataCostRangeFromKb,
 } from '../cost-model';
 
@@ -24,30 +23,27 @@ describe('cost model constants', () => {
 });
 
 describe('formatDataCostRangeFromKb', () => {
-  it('formats decimal KB as MB and a rounded estimated USD range', () => {
+  it('formats audit KB as MB and a rounded estimated USD range', () => {
     expect(formatDataCostRangeFromKb(12_500)).toEqual({
-      measuredMb: '12.5 MB',
-      estimatedUsd: '~= $0.03-0.08',
+      measuredMb: '12.2 MB',
+      estimatedUsd: '~= $0.03-0.07',
     });
   });
 
-  it('never emits a zero-dollar low bound', () => {
+  it('renders sub-cent positive estimates without overstating them to a cent', () => {
     const { estimatedUsd } = formatDataCostRangeFromKb(1);
-    const [low, high] = estimatedUsd.replace('~= $', '').split('-').map(Number);
 
-    expect(estimatedUsd).toMatch(/^~= \$\d+\.\d{2}-\d+\.\d{2}$/);
-    expect(low).toBeGreaterThanOrEqual(0.01);
-    expect(high).toBeGreaterThanOrEqual(low);
+    expect(estimatedUsd).toBe('~= <$0.01');
   });
 
-  it('normalizes non-finite input without emitting NaN', () => {
+  it('normalizes zero and non-finite input without emitting NaN or nonzero cost', () => {
+    expect(formatDataCostRangeFromKb(0)).toEqual({
+      measuredMb: '0 MB',
+      estimatedUsd: '~= $0.00-0.00',
+    });
     expect(formatDataCostRangeFromKb(Number.NaN)).toEqual({
       measuredMb: '0 MB',
-      estimatedUsd: '~= $0.01-0.01',
+      estimatedUsd: '~= $0.00-0.00',
     });
-  });
-
-  it('keeps the compatibility formatter aligned with the explicit KB formatter', () => {
-    expect(formatDataCostRange(12_500)).toEqual(formatDataCostRangeFromKb(12_500));
   });
 });

@@ -37,17 +37,27 @@ function formatUsd(value: number): string {
   return value.toFixed(2);
 }
 
-// The audit downloads metric is reported in decimal KB, so 12_500 KB is 12.5 MB.
+function formatEstimatedUsdRange(lowUsdRaw: number, highUsdRaw: number): string {
+  if (highUsdRaw <= 0) return '~= $0.00-0.00';
+
+  const lowUsd = roundUsd(lowUsdRaw);
+  const highUsd = roundUsd(highUsdRaw);
+  if (highUsd === 0) return '~= <$0.01';
+
+  const flooredLowUsd = Math.max(0.01, lowUsd);
+  return `~= $${formatUsd(flooredLowUsd)}-${formatUsd(Math.max(flooredLowUsd, highUsd))}`;
+}
+
+// The audit downloads metric is reported as KB from bytes / 1024.
 export function formatDataCostRangeFromKb(downloadsKb: number): DataCostRange {
   const safeDownloadsKb = Number.isFinite(downloadsKb) ? Math.max(0, downloadsKb) : 0;
-  const measuredMb = safeDownloadsKb / 1000;
-  const lowUsd = Math.max(0.01, roundUsd(measuredMb * MOBILE_DATA_PRICE_USD_PER_MB_LOW));
-  const highUsd = Math.max(lowUsd, roundUsd(measuredMb * MOBILE_DATA_PRICE_USD_PER_MB_HIGH));
+  const measuredMb = safeDownloadsKb / 1024;
 
   return {
     measuredMb: formatMb(measuredMb),
-    estimatedUsd: `~= $${formatUsd(lowUsd)}-${formatUsd(highUsd)}`,
+    estimatedUsd: formatEstimatedUsdRange(
+      measuredMb * MOBILE_DATA_PRICE_USD_PER_MB_LOW,
+      measuredMb * MOBILE_DATA_PRICE_USD_PER_MB_HIGH,
+    ),
   };
 }
-
-export const formatDataCostRange = formatDataCostRangeFromKb;
