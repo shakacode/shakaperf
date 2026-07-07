@@ -1102,14 +1102,14 @@ function sideSubtitle(
 ): string {
   const counts = side === 'control'
     ? [
-      visibleStatuses.has('fixed') ? countText(result.summary.fixed, 'fixed here') : null,
-      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed') : null,
-      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged') : null,
+      visibleStatuses.has('fixed') ? countText(result.summary.fixed, 'present only in control') : null,
+      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed on both') : null,
+      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged on both') : null,
     ]
     : [
-      visibleStatuses.has('new') ? countText(result.summary.new, 'new here') : null,
-      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed') : null,
-      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged') : null,
+      visibleStatuses.has('new') ? countText(result.summary.new, 'present only in experiment') : null,
+      visibleStatuses.has('changed') ? countText(result.summary.changed, 'changed on both') : null,
+      visibleStatuses.has('unchanged') ? countText(result.summary.unchanged, 'unchanged on both') : null,
     ];
   return counts.filter(Boolean).join(' · ') || 'no visible differences';
 }
