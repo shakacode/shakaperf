@@ -3,13 +3,13 @@ import AxeBuilder from '@axe-core/playwright';
 import sharp from 'sharp';
 import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
-import { runWithLastAnnotation } from 'shaka-shared';
 import { runBeforeNavigateHooks } from '../../../before-navigate';
 import { clearBrowserData } from '../../../bench/core/clear-browser-data';
 import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
+import { runWithLastAnnotation } from '../../../test-annotation';
 import {
   accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
@@ -128,7 +128,7 @@ async function scanSide(
       page.setDefaultTimeout(config.engineOptions.waitTimeout);
       page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
     }
-    await preparePageForAccessibilitySide(page, context, browser, ctx, config, side, url);
+    await preparePageForAccessibilitySide(page, context, ctx, config, side, url);
 
     let builder = new AxeBuilder({ page });
     if (effective.includeRules && effective.includeRules.length > 0) {
@@ -187,7 +187,6 @@ async function scanSide(
 async function preparePageForAccessibilitySide(
   page: Page,
   context: BrowserContext,
-  browser: Browser,
   ctx: TestContext,
   config: AccessibilityStageConfig,
   side: AccessibilityCompareSide,
@@ -205,7 +204,7 @@ async function preparePageForAccessibilitySide(
     },
     ctx.test.options.beforeNavigate,
   );
-  await clearBrowserData(browser, url);
+  await clearBrowserData(context, url);
   await page.goto(url, accessibilityGotoOptions(config));
   await runWithLastAnnotation((annotate) =>
     ctx.test.testFn({
