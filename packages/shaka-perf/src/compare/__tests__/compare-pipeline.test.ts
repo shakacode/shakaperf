@@ -5,7 +5,16 @@ import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '..
 describe('compare accessibility pipeline integration', () => {
   it('registers accessibility as a first-class compare category and stage', () => {
     expect(comparePipelineMetadata.categories).toEqual(['visreg', 'perf', 'accessibility']);
-    expect(comparePipelineMetadata.stages).toContain('accessibility');
+    expect(comparePipelineMetadata.stages).toEqual([
+      'visreg',
+      'perf-warmup',
+      'perf',
+      'perf-low-noise',
+      'accessibility',
+    ]);
+
+    const pipeline = createComparePipeline(baseConfig());
+    expect(pipeline.stages.map((stage) => stage.name)).toEqual(comparePipelineMetadata.stages);
   });
 
   it('emits failing accessibility regression chips and sort dimensions for new violations', () => {

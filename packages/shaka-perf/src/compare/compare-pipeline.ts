@@ -35,7 +35,7 @@ import { comparePipelineReport } from './pipeline-report';
 export const comparePipelineMetadata = {
   description: 'Run visreg + perf + accessibility stages side-by-side and produce a unified A/B report.',
   categories: ['visreg', 'perf', 'accessibility'],
-  stages: ['visreg', 'accessibility', 'perf-warmup', 'perf', 'perf-low-noise'],
+  stages: ['visreg', 'perf-warmup', 'perf', 'perf-low-noise', 'accessibility'],
 } as const;
 
 interface VisregEngineOptions {
@@ -91,7 +91,6 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       compareRetryDelay: input.visregCompareRetryDelay,
       testPathPattern: input.testPathPattern,
     }));
-    pipeline.runStage(parallelWorkerPool, new AccessibilityCompareStage(input.accessibility));
 
     const perfBaseConfig = {
       regressionThreshold: input.perfRegressionThreshold,
@@ -159,6 +158,10 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       },
     }));
     pipeline.waitForAllTasksFinishAndDispose(singleThreadedWorkerPool);
+
+    const accessibilityWorkerPool = pipeline.registerWorkerPool(input.parallelism);
+    pipeline.runStage(accessibilityWorkerPool, new AccessibilityCompareStage(input.accessibility));
+    pipeline.waitForAllTasksFinishAndDispose(accessibilityWorkerPool);
 
     pipeline.buildChips<{
       visreg: VisregResult;
