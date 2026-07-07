@@ -339,8 +339,8 @@ function ViolationDetails({
     violation.impact ?? 'unknown impact',
     ...primaryViolationTags(violation, configuredTags).slice(0, 2),
     violation.help,
-    `${violation.nodes.length} issue${violation.nodes.length === 1 ? '' : 's'}`,
-    `${localizedCount} hotspot${localizedCount === 1 ? '' : 's'}`,
+    `${violation.nodes.length} affected node${violation.nodes.length === 1 ? '' : 's'}`,
+    `${localizedCount} screenshot marker${localizedCount === 1 ? '' : 's'}`,
   ].join(' ');
   return (
     <details className="a11y-rule-group" data-active={active ? 'true' : 'false'}>
@@ -366,8 +366,8 @@ function ViolationDetails({
           </span>
           <span className="a11y-rule-group__help">{violation.help}</span>
           <span className="a11y-rule-group__meta">
-            <span>{violation.nodes.length} issue{violation.nodes.length === 1 ? '' : 's'}</span>
-            <span>{localizedCount} hotspot{localizedCount === 1 ? '' : 's'}</span>
+            <span>{violation.nodes.length} affected node{violation.nodes.length === 1 ? '' : 's'}</span>
+            <span>{localizedCount} screenshot marker{localizedCount === 1 ? '' : 's'}</span>
           </span>
         </span>
       </summary>
