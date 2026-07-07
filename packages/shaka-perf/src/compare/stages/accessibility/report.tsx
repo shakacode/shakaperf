@@ -174,19 +174,6 @@ const NODE_PRE_STYLE: CSSProperties = {
 };
 
 const COMPARE_A11Y_CSS = `
-.a11y-dialog__controls {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  margin: -10px -10px 8px;
-  padding: 10px 10px 8px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-sunken);
-}
-.a11y-dialog__controls .a11y-dialog__summary {
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-}
 .a11y-dialog__controls .a11y-dialog__filter {
   display: block;
 }
