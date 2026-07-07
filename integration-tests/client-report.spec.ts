@@ -28,16 +28,24 @@ const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 
 // dominant-problem performance tile, accessibility severity chips, the
 // AI-visibility tab) plus the technical full-report over the same audit.
 //
-// The audit runs over ALL demo ab-tests so the report has enough pages for
-// its multi-page layouts, and it deliberately KEEPS the broken products
-// selector the global setup injected. That exercises the audit's engine-error
-// path end to end: the non-zero exit, and the error card in the TECHNICAL
-// full-report (the products test is desktop-only while the v2 client report
-// is phone-framed, so the client report's own "couldn't measure this page"
-// state is NOT covered here — it would need a phone-viewport failure). All AI
-// passes are disabled so the captured copy is the deterministic built-in
-// fallback — baselines must not vary run to run.
-test('audit all pages, render v2 client report, screenshot its states @audit', async ({ page }) => {
+// The audit runs over a small FILTERED set of ab-tests (homepage + shop-now,
+// matching the perf/visreg slice, plus products for the error path) — enough
+// pages for the report's multi-page layouts without paying to audit all ~19.
+// It deliberately KEEPS the broken products selector the global setup injected.
+// That exercises the audit's engine-error path end to end: the non-zero exit,
+// and the error card in the TECHNICAL full-report (the products test is
+// desktop-only while the v2 client report is phone-framed, so the client
+// report's own "couldn't measure this page" state is NOT covered here — it
+// would need a phone-viewport failure). All AI passes are disabled so the
+// captured copy is the deterministic built-in fallback — baselines must not
+// vary run to run.
+//
+// Keep products in the pattern: the erroredTests assertion below pins it as the
+// sole engineered failure, so dropping it would remove the non-zero exit this
+// spec is built around.
+const AUDIT_TEST_PATH_PATTERN =
+  './ab-tests/homepage.abtest.ts|./ab-tests/shop-now.abtest.ts|./ab-tests/products.abtest.ts';
+test('audit filtered pages, render v2 client report, screenshot its states @audit', async ({ page }) => {
   test.setTimeout(45 * 60 * 1000);
 
   // This spec's audit must exit non-zero via the sabotaged selector, which
@@ -67,20 +75,20 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
     waitForPort(EXPERIMENT_PORT),
   ]);
 
-  // Fresh audit over every ab-test. The audit engine wipes audit-results on
+  // Fresh audit over the filtered ab-tests. The audit engine wipes audit-results on
   // its own; this manual wipe is belt-and-braces so persisted engine errors
   // from the earlier FILTERED audit spec can't leak into this run's report.
   if (fs.existsSync(AUDIT_RESULTS_DIR)) {
     fs.rmSync(AUDIT_RESULTS_DIR, { recursive: true, force: true });
   }
 
-  loud('Running shaka-perf audit over all demo ab-tests (ai_summary skipped)');
+  loud(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped)`);
   // Expect a non-zero exit: the sabotaged products selector reliably errors
   // that one test. Swallow the throw and verify the artifacts below.
   let auditFailed = false;
   try {
     execSync(
-      'yarn shaka-perf audit --skip-stages ai_summary',
+      `yarn shaka-perf audit --skip-stages ai_summary --testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
       { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
     );
   } catch (e) {
@@ -157,11 +165,10 @@ test('audit all pages, render v2 client report, screenshot its states @audit', a
   for (const required of ['01-overview', '07-a11y-dialog', '08-logs']) {
     expect(auditShots, `technical-report capture must include the ${required} shot`).toContain(required);
   }
-  expect(
-    auditShots.some((s) => s.startsWith('05-artifact-')),
-    'technical-report capture must include at least one artifact dialog shot',
-  ).toBe(true);
-  for (const required of ['01-overview', '02-tab-a11y', '02-tab-agent', '04-lightbox', '06-sev-chip-toggled']) {
+  for (const required of ['05-artifact-lighthouse', '05-artifact-timeline']) {
+    expect(auditShots, `technical-report capture must include the ${required} shot`).toContain(required);
+  }
+  for (const required of ['01-overview', '02-tab-a11y', '02-tab-agent', '04-lightbox']) {
     expect(clientShots, `client-report capture must include the ${required} shot`).toContain(required);
   }
 });

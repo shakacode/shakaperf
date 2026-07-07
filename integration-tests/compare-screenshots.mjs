@@ -14,9 +14,10 @@
  * after fresh integration snapshots are written, HEAD is the previous committed
  * baseline and the working tree is the current run. Snapshots hold only the stable-named
  * deep-click report screenshots (directly under each `<suite>-results/` dir),
- * so every PNG diffs meaningfully by path. Each card shows the Diff and a
- * previous↔current scrubber; both sides are labeled with their branch,
- * commit, and commit date. Missing images become same-size blank PNGs.
+ * so every PNG diffs meaningfully by path. Each card shows three side-by-side
+ * panels — Previous, Current, and Diff — with the previous/current branch,
+ * commit, and commit date labeled at the top. Missing images become same-size
+ * blank PNGs.
  *
  * Overview/filter/tab shots are near-deterministic — treat any visible
  * change as signal. Artifact-dialog shots host iframes and drift more
@@ -41,6 +42,13 @@ const DEFAULT_DIRS = [
 const SNAPSHOTS_ROOT = 'integration-tests/snapshots';
 const REPORT_PATH = path.join(SNAPSHOTS_ROOT, 'screenshot-diff-report.html');
 const WORK_ROOT = path.join(SNAPSHOTS_ROOT, '.screenshot-diff');
+
+// Screenshots are captured at a >1 device scale factor, so their pixel width
+// is larger than the CSS width they were rendered at. Each image is capped at
+// `pixel-width × ZOOM` so a panel never upscales a shot past that size (it can
+// still shrink to fit a narrow column). Bump ZOOM to inspect detail, lower it
+// to fit more per row.
+const ZOOM = 0.5;
 
 const argDirs = process.argv.slice(2);
 const rawDirs = argDirs.length ? argDirs : DEFAULT_DIRS;
@@ -104,17 +112,6 @@ const workingTreeDirty = safeGit('git status --porcelain -- integration-tests/sn
 const PREV_LABEL = `previous · ${BASE_REF} @ ${baseMeta.sha} · ${baseMeta.date}`;
 const CURR_LABEL = `current · ${CURRENT_BRANCH} @ ${headMeta.sha} · ${headMeta.date}`
   + (workingTreeDirty ? ' + uncommitted' : '');
-// Multi-line variants for the on-image tags — narrow, so they don't cover
-// half the screenshot.
-const PREV_TAG_HTML = ['<b>previous</b>']
-  .concat([`${BASE_REF} @ ${baseMeta.sha}`, baseMeta.date].map(esc))
-  .join('<br>');
-const CURR_TAG_HTML = ['<b>current</b>']
-  .concat([
-    CURRENT_BRANCH,
-    `@ ${headMeta.sha} · ${headMeta.date}${workingTreeDirty ? ' + uncommitted' : ''}`,
-  ].map(esc))
-  .join('<br>');
 
 function gitTrackedPngs(root) {
   const tracked = safeGit(`git ls-files -- "${root}"`);
@@ -206,9 +203,7 @@ function cardFor(relPath) {
     const a = padTo(headImg, unionW, unionH);
     const b = padTo(currentImg, unionW, unionH);
     const diff = new PNG({ width: unionW, height: unionH });
-    // diffMask: only differing pixels on a transparent background, so the
-    // diff can be overlaid on the scrubber as a highlight layer.
-    numDiffPixels = pixelmatch(a.data, b.data, diff.data, unionW, unionH, { threshold: 0.1, diffMask: true });
+    numDiffPixels = pixelmatch(a.data, b.data, diff.data, unionW, unionH, { threshold: 0.1 });
     pct = (numDiffPixels / (unionW * unionH)) * 100;
     writePng(diffOut, PNG.sync.write(diff));
   } else {
@@ -228,12 +223,11 @@ function cardFor(relPath) {
     // Bytes exist but don't decode as PNG (truncated blob, LFS pointer, …).
     // MUST stay distinct from "identical": we never compared these pixels.
     decodeError: (!!headBuf && !headImg) || (!!currentBuf && !currentImg),
-    // Union dimensions size the scrubber container so both sides align
-    // top-left even when the page height drifted between runs.
-    unionW: Math.max(headImg?.width ?? 1, currentImg?.width ?? 1),
-    unionH: Math.max(headImg?.height ?? 1, currentImg?.height ?? 1),
-    oldW: headImg?.width ?? currentImg?.width ?? 1,
-    newW: currentImg?.width ?? headImg?.width ?? 1,
+    // Native pixel width of each panel's image, used to cap its display width.
+    // The diff is written at the union size of both inputs.
+    oldW: headImg?.width ?? currentImg?.width ?? width,
+    newW: currentImg?.width ?? headImg?.width ?? width,
+    diffW: Math.max(headImg?.width ?? 1, currentImg?.width ?? 1),
     numDiffPixels,
     pct,
   };
@@ -289,22 +283,17 @@ function tagFor(card) {
   return `${card.pct.toFixed(2)}% · ${card.numDiffPixels}px`;
 }
 
-// A shakaperf-visreg-style scrubber — previous revealed left of the draggable
-// divider, current right of it — with the pixelmatch diff mask as an overlay
-// highlight layer, toggled by the sticky "Show Pixelmatch Diff" checkbox.
+// Three side-by-side panels: Previous, Current, Diff. The previous/current
+// figcaptions carry the branch · commit · date label so each side is
+// identified in place.
 function cardHtml(card) {
   return `<article class="card">
     <h3><span class="tag">${esc(tagFor(card))}</span>${esc(card.relPath)}</h3>
-    <figure><figcaption>Previous ↔ Current — drag to compare</figcaption>
-      <div class="scrubber" style="aspect-ratio:${card.unionW}/${card.unionH}; width:${card.unionW}px">
-        <img class="scrubber__base" loading="lazy" src="${esc(relFromReport(card.newOut))}" draggable="false" style="width:${(card.newW / card.unionW * 100).toFixed(4)}%">
-        <div class="scrubber__prev-side"><img loading="lazy" src="${esc(relFromReport(card.oldOut))}" draggable="false" style="width:${(card.oldW / card.unionW * 100).toFixed(4)}%"></div>
-        <img class="scrubber__diff" loading="lazy" src="${esc(relFromReport(card.diffOut))}" draggable="false" alt="" style="width:100%">
-        <div class="scrubber__tagside scrubber__tagside--left"><span class="scrubber__tag scrubber__tag--left">${PREV_TAG_HTML}</span></div>
-        <div class="scrubber__tagside scrubber__tagside--right"><span class="scrubber__tag scrubber__tag--right">${CURR_TAG_HTML}</span></div>
-        <div class="scrubber__divider"></div>
-      </div>
-    </figure>
+    <div class="images">
+      <figure><figcaption>${esc(PREV_LABEL)}</figcaption><img loading="lazy" src="${esc(relFromReport(card.oldOut))}" style="max-width:${Math.round(card.oldW * ZOOM)}px"></figure>
+      <figure><figcaption>${esc(CURR_LABEL)}</figcaption><img loading="lazy" src="${esc(relFromReport(card.newOut))}" style="max-width:${Math.round(card.newW * ZOOM)}px"></figure>
+      <figure><figcaption>Diff</figcaption><img loading="lazy" src="${esc(relFromReport(card.diffOut))}" style="max-width:${Math.round(card.diffW * ZOOM)}px"></figure>
+    </div>
   </article>`;
 }
 
@@ -326,87 +315,18 @@ const html = `<!DOCTYPE html>
   .compare-line { margin: 0 0 24px; color: #aaa; font-size: 13px; }
   h2 { font-weight: 500; margin: 32px 0 16px; border-bottom: 1px solid #333; padding-bottom: 8px; }
   h2 .count { color: #888; font-size: 14px; margin-left: 8px; }
-  /* Responsive wrap: each card defaults to its image's native pixel width
-     (set on the scrubber by applyMaxWidths), so as many cards as fit share
-     a row on a wide screen. */
-  section { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
-  section > h2 { flex: 1 0 100%; }
-  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; width: fit-content; max-width: 100%; }
-  /* Don't let the long path headline widen the card past its image. */
-  .card h3 { width: 0; min-width: 100%; }
+  .card { background: #16213e; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
   .card h3 { font-size: 13px; margin: 0 0 10px; font-weight: 500; display: flex; gap: 12px; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
   .tag { font-size: 11px; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: #333; color: #fff; font-family: system-ui, sans-serif; letter-spacing: 0.5px; white-space: nowrap; }
+  .images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
   figure { margin: 0; }
-  figcaption { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+  figcaption { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; overflow-wrap: anywhere; }
   img { width: 100%; border: 1px solid #333; border-radius: 4px; background: #0e0e24; display: block; }
-  .scrubber { position: relative; max-width: 100%; margin: 0 auto; overflow: hidden; border: 1px solid #333; border-radius: 4px; background: #0e0e24; cursor: ew-resize; touch-action: none; --scrub-pos: 50%; }
-  .scrubber img { width: 100%; border: 0; border-radius: 0; user-select: none; }
-  .scrubber__prev-side { position: absolute; inset: 0; background: #0e0e24; clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
-  .scrubber__diff { position: absolute; inset: 0; background: none; display: none; pointer-events: none; opacity: 0.25; }
-  body.show-diff .scrubber__diff { display: block; }
-  /* While the user is dragging the divider they're comparing the two shots
-     directly — the overlay would only get in the way. */
-  body.show-diff .scrubber--grabbed .scrubber__diff { display: none; }
-  /* Flash: 50 ms visible, then 450 ms hidden (0.5 s cycle, 50/500 = 10 %)
-     — the brief pulse draws the eye to changed regions without obscuring
-     the screenshot underneath. */
-  body.show-diff.blink-diff .scrubber__diff { animation: diff-blink 0.5s linear infinite; }
-  @keyframes diff-blink {
-    0%, 10% { opacity: 0.25; }
-    10.01%, 100% { opacity: 0; }
-  }
-  .scrubber__divider { position: absolute; top: 0; bottom: 0; left: var(--scrub-pos); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,.9); pointer-events: none; }
-  .scrubber__tag { position: absolute; top: 8px; font-size: 14px; font-weight: 400; line-height: 1.45; letter-spacing: .3px; padding: 5px 10px; border-radius: 4px; background: rgba(0,0,0,.75); color: #fff; pointer-events: none; text-align: left; }\n  .scrubber__tag b { font-weight: 700; }
-  /* Full-size clip layers (shakaperf-visreg style): the previous tag is
-     revealed only left of the divider, the current tag only right of it —
-     dragging the scrubber wipes them in and out with their image. */
-  .scrubber__tagside { position: absolute; inset: 0; pointer-events: none; }
-  .scrubber__tagside--left { clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
-  .scrubber__tagside--right { clip-path: inset(0 0 0 var(--scrub-pos)); }
-  .scrubber__tag--left { left: 8px; }
-  .scrubber__tag--right { right: 8px; }
-  .diff-controls { position: fixed; top: 14px; right: 18px; z-index: 10; display: flex; flex-direction: column; gap: 7px; background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 10px 14px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.55); user-select: none; }
-  .diff-controls label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  .diff-controls input { accent-color: #e5484d; width: 16px; height: 16px; cursor: pointer; }
 </style>
-</head><body class="show-diff blink-diff">
+</head><body>
 <h1>Screenshot Diff Report</h1>
 <p class="compare-line"><span class="tag">${esc(PREV_LABEL)}</span> → <span class="tag">${esc(CURR_LABEL)}</span></p>
-<div class="diff-controls">
-  <label><input type="checkbox" id="diff-toggle-box" checked> Show Pixelmatch Diff</label>
-  <label><input type="checkbox" id="diff-blink-box" checked> Blink diff (50 ms flash / 450 ms)</label>
-</div>
 ${sections.map(sectionHtml).join('\n')}
-<script>
-  document.getElementById('diff-toggle-box').addEventListener('change', (e) => {
-    document.body.classList.toggle('show-diff', e.target.checked);
-  });
-  document.getElementById('diff-blink-box').addEventListener('change', (e) => {
-    document.body.classList.toggle('blink-diff', e.target.checked);
-  });
-\n  // Shakaperf-visreg-style wipe: the previous shot is revealed only left of
-  // the divider; drag anywhere on the scrubber to move it.
-  document.querySelectorAll('.scrubber').forEach((el) => {
-    const set = (clientX) => {
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0) return;
-      const pct = Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100));
-      el.style.setProperty('--scrub-pos', pct + '%');
-    };
-    el.addEventListener('pointerdown', (e) => {
-      set(e.clientX);
-      el.classList.add('scrubber--grabbed');
-      try { el.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
-    });
-    el.addEventListener('pointermove', (e) => {
-      if (el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) set(e.clientX);
-    });
-    const release = () => el.classList.remove('scrubber--grabbed');
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointercancel', release);
-    el.addEventListener('lostpointercapture', release);
-  });
-</script>
 </body></html>`;
 
 fs.writeFileSync(REPORT_PATH, html);

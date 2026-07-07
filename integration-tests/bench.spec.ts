@@ -92,8 +92,7 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   for (const required of ['01-overview', '08-logs']) {
     expect(shots, `capture must include the ${required} shot`).toContain(required);
   }
-  expect(
-    shots.some((s) => s.startsWith('05-artifact-')),
-    'capture must include at least one artifact dialog shot',
-  ).toBe(true);
+  for (const required of ['05-artifact-lighthouse', '05-artifact-timeline']) {
+    expect(shots, `capture must include the ${required} shot`).toContain(required);
+  }
 });
