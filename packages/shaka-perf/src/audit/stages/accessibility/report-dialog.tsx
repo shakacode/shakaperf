@@ -333,9 +333,11 @@ function ViolationDetails({
   const issueIds = violation.nodes.map((_, index) => makeIssueId(violation.ruleId, index));
   const active = issueIds.includes(activeIssueId ?? '');
   const primaryIssueId = issueIds.find((issueId) => localizedIssueIds.has(issueId)) ?? issueIds[0];
+  const localizedCount = issueIds.filter((issueId) => localizedIssueIds.has(issueId)).length;
   return (
-    <details className="a11y-issue" data-active={active ? 'true' : 'false'}>
+    <details className="a11y-rule-group" data-active={active ? 'true' : 'false'}>
       <summary
+        className="a11y-rule-group__summary"
         onClick={(event) => {
           const details = event.currentTarget.parentElement;
           if (active && details instanceof HTMLDetailsElement && details.open) {
@@ -347,18 +349,21 @@ function ViolationDetails({
           }
         }}
       >
-        <span className="a11y-issue__rule">{violation.ruleId}</span>
-        {' '}
-        <Impact impact={violation.impact} />
-        {' '}
-        <ViolationTagChips configuredTags={configuredTags} max={2} violation={violation} />
-        {' '}
-        <span>{violation.nodes.length} node{violation.nodes.length === 1 ? '' : 's'}</span>
-        {' '}
-        <span style={{ color: 'var(--fg-muted)' }}>{violation.help}</span>
+        <span className="a11y-rule-group__summary-main">
+          <span className="a11y-rule-group__title-row">
+            <span className="a11y-rule-group__rule">{violation.ruleId}</span>
+            <Impact impact={violation.impact} />
+            <ViolationTagChips configuredTags={configuredTags} max={2} violation={violation} />
+          </span>
+          <span className="a11y-rule-group__help">{violation.help}</span>
+          <span className="a11y-rule-group__meta">
+            <span>{violation.nodes.length} issue{violation.nodes.length === 1 ? '' : 's'}</span>
+            <span>{localizedCount} hotspot{localizedCount === 1 ? '' : 's'}</span>
+          </span>
+        </span>
       </summary>
-      <div style={{ paddingTop: 8 }}>
-        <a href={violation.helpUrl} target="_blank" rel="noreferrer">
+      <div className="a11y-rule-group__issues">
+        <a className="a11y-rule-group__docs" href={violation.helpUrl} target="_blank" rel="noreferrer">
           rule docs
         </a>
         {violation.nodes.map((node, index) => (

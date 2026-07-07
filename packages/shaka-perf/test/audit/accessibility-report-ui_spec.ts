@@ -20,6 +20,7 @@ import {
   AccessibilityReportFilterProvider,
   collectConfiguredFilterOptions,
 } from '../../src/audit/stages/accessibility/report';
+import { AccessibilityDialog } from '../../src/audit/stages/accessibility/report-dialog';
 import { AccessibilityFilter } from '../../src/audit/stages/accessibility/report-filter';
 import type {
   AccessibilityResult,
@@ -149,6 +150,45 @@ describe('accessibility report UI filters', () => {
     expect(html).not.toContain('cat.color');
   });
 
+  it('renders audit accessibility rules as collapsible groups with node details inside', () => {
+    const result = accessibilityResult({
+      effectiveConfig: {
+        tags: ['wcag2a', 'wcag2aa'],
+        disableRules: [],
+        includeRules: null,
+      },
+      violations: [
+        violation('button-name', ['wcag2a']),
+        {
+          ...violation('color-contrast', ['wcag2aa']),
+          nodes: [
+            violation('color-contrast', ['wcag2aa']).nodes[0],
+            {
+              ...violation('color-contrast', ['wcag2aa']).nodes[0],
+              target: ['.secondary-link'],
+              bounds: undefined,
+            },
+          ],
+        },
+      ],
+    });
+    const html = renderToStaticMarkup(
+      React.createElement(AccessibilityDialog, {
+        filterOptions: collectConfiguredFilterOptions([result]),
+        scan: result.scans[0],
+        source: result.scans[0].screenshot!.imageDataUri ?? '',
+      }),
+    );
+
+    expect(html).toContain('class="a11y-rule-group" data-active="false"');
+    expect(html).toContain('class="a11y-rule-group__summary"');
+    expect(html).toContain('2 issues');
+    expect(html).toContain('1 hotspot');
+    expect(html).toContain('class="a11y-rule-group__issues"');
+    expect(html).toContain('class="a11y-issue-node"');
+    expect(html).toContain('.secondary-link');
+  });
+
   it('ships filter CSS for readable hover states, closable filters, and non-scrollable dialog panels', () => {
     const html = renderToStaticMarkup(
       React.createElement(AccessibilityArtifactView, {
@@ -168,6 +208,8 @@ describe('accessibility report UI filters', () => {
     expect(html).toContain('overflow: visible;');
     expect(html).toContain('grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));');
     expect(html).toContain('.a11y-filter__close');
+    expect(html).toContain('.a11y-rule-group__summary::before');
+    expect(html).toContain('.a11y-rule-group[open] > .a11y-rule-group__summary::before');
     expect(html).toContain('.a11y-hotspot[data-active="true"] {\n  z-index: 1000000 !important;');
     expect(html).toContain('.a11y-hotspot:hover,\n.a11y-hotspot:focus {\n  z-index: 2000000 !important;');
   });
