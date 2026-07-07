@@ -220,11 +220,11 @@ function buildA11yPrompt(data: A11yCopyPromptData): string | undefined {
   const top = data.topRules[0];
   const date = slot(data.date, 48, 5);
   const host = structuralSlot(data.host, 120, 3);
-  const ruleId = slot(top.ruleId, 80, 4);
+  const ruleId = bracketSlot(top.ruleId, 80, 4);
   const impact = slot(top.impact, 40, 3);
   const barrier = plainBarrier(top.ruleId);
-  const selectors = (Array.isArray(top.selectors) ? top.selectors : []).slice(0, 2).map((selector) => slot(selector, 90, 4)).join('; ') || 'not listed';
-  const example = hasInput(top.htmlExample) ? slot(top.htmlExample || '', HTML_EXAMPLE_CHARS, HTML_EXAMPLE_WORDS) : '';
+  const selectors = (Array.isArray(top.selectors) ? top.selectors : []).slice(0, 2).map((selector) => bracketSlot(selector, 90, 4)).join('; ') || 'not listed';
+  const example = hasInput(top.htmlExample) ? bracketSlot(top.htmlExample || '', HTML_EXAMPLE_CHARS, HTML_EXAMPLE_WORDS) : '';
   const exampleFact = example ? `- Example markup data: [${example}].` : `- Selectors data: [${selectors}].`;
 
   return finalizePrompt([
@@ -253,7 +253,7 @@ function sanitizeLine(line: string): string {
     .trim()
     .replace(/^```[a-zA-Z]*\s*/, '')
     .replace(/```/g, '')
-    .replace(/^(?:#{1,6}\s+|[>*]+\s+|\/\/+|\/\*+|\*\/+|\*+\s*|-+\s+|\d+[.)]\s+|[;:]\s*)+/, '')
+    .replace(/^(?:#{1,6}\s+|[>*]+\s+|\/\/+|\/\*+|\*\/+|\*+\s+|-+\s+|\d+[.)]\s+|[;:]\s*)+/, '')
     .trim();
   if (!trimmed) return '';
   if (looksLikeInstruction(trimmed)) return '[redacted site-derived instruction]';
@@ -280,6 +280,10 @@ function looksLikeInstruction(s: string): boolean {
 
 function slot(raw: string, maxChars = DEFAULT_FENCE_CHARS, maxWords = DEFAULT_FENCE_WORDS): string {
   return fenceValue(raw, maxChars, maxWords) || 'not measured';
+}
+
+function bracketSlot(raw: string, maxChars = DEFAULT_FENCE_CHARS, maxWords = DEFAULT_FENCE_WORDS): string {
+  return slot(raw, maxChars, maxWords).replace(/[\[\]]/g, '');
 }
 
 function structuralSlot(raw: string, maxChars: number, maxWords: number): string {
