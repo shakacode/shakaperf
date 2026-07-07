@@ -178,22 +178,31 @@ const COMPARE_A11Y_CSS = `
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border-strong);
-  background: var(--bg-elevated);
-  color: var(--fg);
+  background: var(--bg);
+  color: var(--fg-muted);
   padding: 0 8px;
   font-size: 10px;
   line-height: 1;
   cursor: pointer;
 }
+.a11y-compare-filter__actions button:hover,
+.a11y-compare-filter__button:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
 .a11y-compare-filter__button[data-active="true"] {
-  background: #111827;
-  color: white;
-  border-color: #111827;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: inset 3px 0 0 #2563eb;
+}
+.a11y-compare-filter__button[data-active="false"] {
+  background: var(--bg-elevated);
 }
 .a11y-compare-filter__button-count {
   margin-left: 5px;
   color: inherit;
-  opacity: 0.72;
+  opacity: 0.78;
 }
 .a11y-compare-filter__row {
   display: grid;
