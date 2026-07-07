@@ -151,6 +151,13 @@ const SIDE_COUNT_STYLE: CSSProperties = {
   padding: '1px 5px',
 };
 
+const FINDING_TARGET_STYLE: CSSProperties = {
+  color: 'var(--fg-muted)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
 const NODE_PRE_STYLE: CSSProperties = {
   whiteSpace: 'pre-wrap',
   overflowWrap: 'anywhere',
@@ -933,6 +940,7 @@ function FindingDetails({
   ];
   const active = issueIds.includes(activeIssueId ?? '');
   const primaryIssueId = firstLocalizedIssueId(finding);
+  const previewTarget = firstFindingTarget(finding);
   return (
     <details className="a11y-issue" data-active={active ? 'true' : 'false'} style={FINDING_STYLE}>
       <summary
@@ -954,6 +962,11 @@ function FindingDetails({
           </span>
           <SideNodeSummary finding={finding} />
         </span>
+        {previewTarget ? (
+          <div style={FINDING_TARGET_STYLE}>
+            <Target target={previewTarget} />
+          </div>
+        ) : null}
       </summary>
       <div style={{ color: 'var(--fg-muted)', marginTop: 6 }}>
         {finding.experiment?.help ?? finding.control?.help}
@@ -1085,6 +1098,10 @@ function Target({
     Array.isArray(segment) ? segment.join(' > ') : segment,
   );
   return <code>{parts.join(' -> ')}</code>;
+}
+
+function firstFindingTarget(finding: AccessibilityCompareFinding): AccessibilityNodeTarget[] | null {
+  return finding.experiment?.nodes[0]?.target ?? finding.control?.nodes[0]?.target ?? null;
 }
 
 function headlineText(result: AccessibilityCompareResult): string {
