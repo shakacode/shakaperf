@@ -1,6 +1,7 @@
 import { compareScans, projectCompareResultForReport, summarizeFindings } from '../engine';
+import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
-import type { AccessibilitySideScan } from '../types';
+import type { AccessibilityCompareFinding, AccessibilitySideScan } from '../types';
 import type { AccessibilityViolation } from '../../../../audit/stages/accessibility/types';
 
 describe('accessibility compare classification', () => {
@@ -97,6 +98,35 @@ describe('accessibility compare classification', () => {
     expect(findingNode.html).toContain('[truncated from 800 chars]');
     expect(findingNode.failureSummary).toContain('[truncated from 2500 chars]');
   });
+
+  it('uses WCAG-focused tags for compare report filters and chips', () => {
+    const finding = compareFinding({
+      ruleId: 'color-contrast',
+      tags: ['cat.color', 'wcag21aa', 'wcag2aa', 'wcag2aa'],
+    });
+    const options = collectFilterOptions([
+      finding,
+      compareFinding({
+        ruleId: 'button-name',
+        tags: ['best-practice', 'cat.name-role-value'],
+      }),
+    ]);
+
+    expect([...options.tags]).toEqual(['wcag2aa', 'wcag21aa', 'best-practice']);
+    expect(primaryCompareTags(finding.tags)).toEqual(['wcag2aa', 'wcag21aa']);
+    expect(isFindingVisible(finding, {
+      statuses: new Set(['new']),
+      impacts: new Set(['serious']),
+      rules: new Set(['color-contrast']),
+      tags: new Set(['wcag2aa']),
+    })).toBe(true);
+    expect(isFindingVisible(finding, {
+      statuses: new Set(['new']),
+      impacts: new Set(['serious']),
+      rules: new Set(['color-contrast']),
+      tags: new Set(['best-practice']),
+    })).toBe(false);
+  });
 });
 
 function scan(
@@ -128,5 +158,32 @@ function violation(
       html,
       failureSummary,
     }],
+  };
+}
+
+function compareFinding({
+  ruleId,
+  tags,
+}: {
+  ruleId: string;
+  tags: string[];
+}): AccessibilityCompareFinding {
+  return {
+    status: 'new',
+    signature: `${ruleId}|target`,
+    ruleId,
+    impact: 'serious',
+    tags,
+    experiment: {
+      impact: 'serious',
+      help: `${ruleId} help`,
+      helpUrl: `https://example.test/${ruleId}`,
+      tags,
+      nodes: [{
+        target: ['target'],
+        html: '<button>ok</button>',
+        failureSummary: `${ruleId} failure`,
+      }],
+    },
   };
 }

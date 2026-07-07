@@ -69,6 +69,20 @@ const IMPACT_ORDER: Record<string, number> = {
   unknown: 4,
 };
 
+const WCAG_TAG_ORDER = [
+  'wcag2a',
+  'wcag2aa',
+  'wcag21a',
+  'wcag21aa',
+  'wcag22a',
+  'wcag22aa',
+  'best-practice',
+] as const;
+
+const WCAG_TAG_RANK = new Map<string, number>(
+  WCAG_TAG_ORDER.map((tag, index) => [tag, index]),
+);
+
 const CARD_STYLE: CSSProperties = {
   border: '1px solid var(--border-strong)',
   background: 'var(--bg-elevated)',
@@ -456,6 +470,7 @@ interface RuleFindingGroup {
   nodeCount: number;
   statuses: Map<AccessibilityFindingStatus, number>;
   impacts: Map<string, number>;
+  tags: string[];
 }
 
 export function AccessibilityCompareArtifactView({
@@ -751,7 +766,7 @@ function AccessibilityCompareFilters({
             allValues={options.tags}
             counts={counts.tags}
             disabledValues={disabled.tags}
-            label="tags"
+            label="wcag"
             selected={filter.tags}
             setSelected={(tags) => setFilter({ ...filter, tags })}
           />
@@ -891,7 +906,7 @@ function countFilterOptions(
     incrementCount(counts.statuses, finding.status);
     incrementCount(counts.impacts, finding.impact ?? 'unknown');
     incrementCount(counts.rules, finding.ruleId);
-    for (const tag of finding.tags) incrementCount(counts.tags, tag);
+    for (const tag of primaryCompareTags(finding.tags)) incrementCount(counts.tags, tag);
   }
 
   return counts;
@@ -1099,6 +1114,7 @@ function RuleFindingGroupDetails({
           <span className="a11y-rule-group__counts">
             <RuleStatusCounts counts={group.statuses} />
             <RuleImpactCounts counts={group.impacts} />
+            <CompareTagChips tags={group.tags} />
           </span>
         </span>
       </summary>
@@ -1228,6 +1244,7 @@ function FindingDetails({
           <span className="a11y-issue__meta">
             {nodeCount} node{nodeCount === 1 ? '' : 's'}
           </span>
+          <CompareTagChips tags={primaryCompareTags(finding.tags)} max={2} />
           <SideNodeSummary finding={finding} />
         </span>
         {previewTarget ? (
@@ -1424,6 +1441,7 @@ function groupFindingsByRule(
         nodeCount: 0,
         statuses: new Map(),
         impacts: new Map(),
+        tags: [],
       };
       groups.set(finding.ruleId, group);
     }
@@ -1431,6 +1449,7 @@ function groupFindingsByRule(
     group.nodeCount += findingNodeCount(finding);
     incrementCount(group.statuses, finding.status);
     incrementCount(group.impacts, finding.impact ?? 'unknown');
+    group.tags = sortedPrimaryTags([...group.tags, ...finding.tags]);
   }
   return [...groups.values()].map((group) => ({
     ...group,
@@ -1451,7 +1470,7 @@ function groupHasStatus(
   return (group.statuses.get(status) ?? 0) > 0;
 }
 
-function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]): FilterState {
+export function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]): FilterState {
   const statuses = new Set<AccessibilityFindingStatus>();
   const impacts = new Set<string>();
   const rules = new Set<string>();
@@ -1460,13 +1479,13 @@ function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]):
     statuses.add(finding.status);
     impacts.add(finding.impact ?? 'unknown');
     rules.add(finding.ruleId);
-    for (const tag of finding.tags) tags.add(tag);
+    for (const tag of primaryCompareTags(finding.tags)) tags.add(tag);
   }
   return {
     statuses: sortedSet(statuses, (value) => STATUS_ORDER[value]),
     impacts: sortedSet(impacts, (value) => IMPACT_ORDER[value] ?? 99),
     rules: sortedSet(rules),
-    tags: sortedSet(tags),
+    tags: sortedSet(tags, tagRank),
   };
 }
 
@@ -1496,11 +1515,49 @@ function sortedSet<T extends string>(
   return new Set([...values].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)));
 }
 
-function isFindingVisible(finding: AccessibilityCompareFinding, filter: FilterState): boolean {
+export function isFindingVisible(finding: AccessibilityCompareFinding, filter: FilterState): boolean {
+  const tags = primaryCompareTags(finding.tags);
   return filter.statuses.has(finding.status) &&
     filter.impacts.has(finding.impact ?? 'unknown') &&
     filter.rules.has(finding.ruleId) &&
-    (finding.tags.length === 0 || finding.tags.some((tag) => filter.tags.has(tag)));
+    (tags.length === 0 || tags.some((tag) => filter.tags.has(tag)));
+}
+
+export function primaryCompareTags(tags: readonly string[]): string[] {
+  return sortedPrimaryTags(tags);
+}
+
+function sortedPrimaryTags(tags: readonly string[]): string[] {
+  const primary = new Set(tags.filter((tag) => WCAG_TAG_RANK.has(tag)));
+  return [...primary].sort((a, b) => tagRank(a) - tagRank(b) || a.localeCompare(b));
+}
+
+function tagRank(tag: string): number {
+  return WCAG_TAG_RANK.get(tag) ?? 99;
+}
+
+function CompareTagChips({
+  max = 3,
+  tags,
+}: {
+  max?: number;
+  tags: readonly string[];
+}) {
+  if (tags.length === 0) return null;
+  const visible = tags.slice(0, max);
+  const hidden = tags.length - visible.length;
+  return (
+    <span className="a11y-tag-chips" aria-label={`tags: ${tags.join(', ')}`}>
+      {visible.map((tag) => (
+        <span className="a11y-tag-chip" key={tag}>
+          {tag}
+        </span>
+      ))}
+      {hidden > 0 ? (
+        <span className="a11y-tag-chip a11y-tag-chip--muted">+{hidden}</span>
+      ) : null}
+    </span>
+  );
 }
 
 function sideRawArtifactHref(
