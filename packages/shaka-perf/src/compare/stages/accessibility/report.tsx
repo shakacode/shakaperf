@@ -523,6 +523,9 @@ function AccessibilityCompareFilters({
         <button type="button" onClick={() => setFilter(defaultFilter(options))}>
           reset
         </button>
+        <button type="button" onClick={() => setFilter(emptyFilter())}>
+          none
+        </button>
         <button type="button" onClick={() => setFilter(options)}>
           all
         </button>
@@ -1071,6 +1074,15 @@ function defaultFilter(options: FilterState): FilterState {
     impacts: new Set(options.impacts),
     rules: new Set(options.rules),
     tags: new Set(options.tags),
+  };
+}
+
+function emptyFilter(): FilterState {
+  return {
+    statuses: new Set(),
+    impacts: new Set(),
+    rules: new Set(),
+    tags: new Set(),
   };
 }
 
