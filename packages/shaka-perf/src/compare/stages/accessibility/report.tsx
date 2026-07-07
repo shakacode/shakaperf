@@ -103,13 +103,18 @@ const COMPARE_DIALOG_STYLE: CSSProperties = {
   display: 'grid',
   gap: 12,
   padding: 12,
+  height: '100%',
+  minHeight: 0,
+  boxSizing: 'border-box',
 };
 
 const COMPARE_DIALOG_GRID_STYLE: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 430px)',
   gap: 12,
+  height: '100%',
   minHeight: 0,
+  overflow: 'hidden',
 };
 
 const COMPARE_SHOT_GRID_STYLE: CSSProperties = {
@@ -118,6 +123,7 @@ const COMPARE_SHOT_GRID_STYLE: CSSProperties = {
   gap: 12,
   minWidth: 0,
   minHeight: 0,
+  height: '100%',
   alignContent: 'start',
   overflow: 'auto',
 };
@@ -168,6 +174,34 @@ const NODE_PRE_STYLE: CSSProperties = {
 };
 
 const COMPARE_A11Y_CSS = `
+.a11y-dialog__controls {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -10px -10px 8px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+.a11y-dialog__controls .a11y-dialog__summary {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+}
+.a11y-dialog__controls .a11y-dialog__filter {
+  display: block;
+}
+.a11y-dialog__issues {
+  overflow-x: hidden;
+}
+.a11y-dialog__issues code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.a11y-dialog__issues pre {
+  max-width: 100%;
+  overflow-x: hidden;
+}
 .a11y-compare-filter {
   display: grid;
   gap: 8px;
@@ -176,7 +210,7 @@ const COMPARE_A11Y_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 .a11y-compare-filter__actions button,
 .a11y-compare-filter__button {
@@ -224,6 +258,7 @@ const COMPARE_A11Y_CSS = `
   grid-template-columns: 58px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
+  min-width: 0;
 }
 .a11y-compare-filter__label {
   padding-top: 8px;
@@ -484,21 +519,23 @@ function CompareFindingsDialog({
           </div>
         </div>
         <div className="a11y-dialog__issues">
-          <div className="a11y-dialog__summary">
-            <strong>{viewportLabel}</strong>
-            <span style={{ color: '#b91c1c', fontWeight: 700 }}>
-              {findings.length === result.findings.length
-                ? `${findings.length} finding${findings.length === 1 ? '' : 's'}`
-                : `${findings.length} of ${result.findings.length} findings`}
-            </span>
-          </div>
-          <div className="a11y-dialog__filter">
-            <AccessibilityCompareFilters
-              filter={activeFilter}
-              findings={result.findings}
-              options={options}
-              setFilter={setFilter}
-            />
+          <div className="a11y-dialog__controls">
+            <div className="a11y-dialog__summary">
+              <strong>{viewportLabel}</strong>
+              <span style={{ color: '#b91c1c', fontWeight: 700 }}>
+                {findings.length === result.findings.length
+                  ? `${findings.length} finding${findings.length === 1 ? '' : 's'}`
+                  : `${findings.length} of ${result.findings.length} findings`}
+              </span>
+            </div>
+            <div className="a11y-dialog__filter">
+              <AccessibilityCompareFilters
+                filter={activeFilter}
+                findings={result.findings}
+                options={options}
+                setFilter={setFilter}
+              />
+            </div>
           </div>
           {findings.length > 0 ? (
             findings.map((finding) => (
@@ -506,6 +543,7 @@ function CompareFindingsDialog({
                 activeIssueId={activeIssueId}
                 finding={finding}
                 key={finding.signature}
+                onCollapse={() => setActiveIssueId(null)}
                 onSelect={selectIssue}
                 registerIssue={registerIssue}
               />
@@ -616,6 +654,15 @@ function FilterRow({
     <div className="a11y-compare-filter__row">
       <span className="a11y-compare-filter__label">{label}</span>
       <div className="a11y-compare-filter__choices">
+        <button
+          type="button"
+          className="a11y-compare-filter__button"
+          data-active={selected.size === 0 ? 'true' : 'false'}
+          disabled={selected.size === 0}
+          onClick={() => setSelected(new Set())}
+        >
+          none
+        </button>
         {values.map((value) => (
           <button
             type="button"
@@ -669,6 +716,7 @@ function disabledValuesForKind<T extends string>(
   visibleCount: number,
 ): Set<T> {
   const disabled = new Set<T>();
+  if (visibleCount === 0) return disabled;
   for (const value of values) {
     const nextFilter = toggleFilterValue(filter, kind, value);
     if (countVisibleFindings(findings, nextFilter) === visibleCount) {
@@ -776,7 +824,7 @@ function CompareScreenshotPanel({
       <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
       {sideScan.error ? <StageNote label={title} body={sideScan.error} /> : null}
       {source && sideScan.screenshot ? (
-        <div style={{ marginTop: 10, overflow: 'auto', border: '1px solid var(--border)' }}>
+        <div style={{ marginTop: 10, overflow: 'visible', border: '1px solid var(--border)' }}>
           <div
             style={{
               position: 'relative',
@@ -925,11 +973,13 @@ function compactHotspotStyle(
 function FindingDetails({
   activeIssueId,
   finding,
+  onCollapse,
   onSelect,
   registerIssue,
 }: {
   activeIssueId: string | null;
   finding: AccessibilityCompareFinding;
+  onCollapse: () => void;
   onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
   registerIssue: (issueId: string, element: HTMLElement | null) => void;
 }) {
@@ -944,8 +994,13 @@ function FindingDetails({
   return (
     <details className="a11y-issue" data-active={active ? 'true' : 'false'} style={FINDING_STYLE}>
       <summary
-        style={{ cursor: 'pointer' }}
-        onClick={() => {
+        style={{ cursor: 'pointer', maxWidth: '100%', minWidth: 0 }}
+        onClick={(event) => {
+          const details = event.currentTarget.parentElement;
+          if (details instanceof HTMLDetailsElement && details.open) {
+            onCollapse();
+            return;
+          }
           if (primaryIssueId) window.requestAnimationFrame(() => onSelect(primaryIssueId, 'issue'));
         }}
       >
@@ -1097,7 +1152,8 @@ function Target({
   const parts = target.map((segment) =>
     Array.isArray(segment) ? segment.join(' > ') : segment,
   );
-  return <code>{parts.join(' -> ')}</code>;
+  const text = parts.join(' -> ');
+  return <code title={text}>{text}</code>;
 }
 
 function firstFindingTarget(finding: AccessibilityCompareFinding): AccessibilityNodeTarget[] | null {
