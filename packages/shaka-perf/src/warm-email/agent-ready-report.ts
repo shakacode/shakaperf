@@ -298,7 +298,7 @@ export function pageLead(view: AgentPageView): Lead {
   if (firstFail && s.score < 80) {
     return { headline: esc(firstFail.detail), note: firstFail.action, status: scoreBucket(s.score) };
   }
-  return { headline: `Reachable and <strong>well structured</strong> for AI assistants`, note: `${pct(s.coverage)} of the content is in the server HTML, and the page is cleanly marked up.`, status: scoreBucket(s.score) };
+  return { headline: `Reachable and <strong>well structured</strong> for AI tools`, note: `${pct(s.coverage)} of the content is in the server HTML, and the page is cleanly marked up.`, status: scoreBucket(s.score) };
 }
 
 function scoreBadge(score: number, bucket: Bucket, capped: boolean): string {

@@ -229,6 +229,9 @@ const HEAD_STYLE = `
   .v2-tile:hover{background:var(--soft)!important}
   .v2-tab{transition:color .12s ease,border-color .12s ease}
   .v2-panel[hidden]{display:none}
+  [data-disclosure][hidden]{display:none}
+  [data-disclose]{min-height:44px;min-width:44px;color:#26221d}
+  [data-disclose] .v2-mono-chip,[data-disclose].v2-mono-chip{color:#4a443c}
   .v2-shot{cursor:zoom-in}
   .v2-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
   .v2-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
@@ -250,7 +253,7 @@ const HEAD_STYLE = `
   .v2-lb-prev{left:16px} .v2-lb-next{right:16px}
   .v2-lb-close:hover,.v2-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
   .v2-lb-arrow:disabled{opacity:.42;cursor:default}
-  @media print{.v2-panel[hidden]{display:block!important}.v2-tabs{display:none!important}}
+  @media print{.v2-panel[hidden],[data-disclosure][hidden]{display:block!important}.v2-tabs{display:none!important}}
   @media (max-width:760px){
     .v2-tiles{grid-template-columns:1fr!important}
     .v2-wrap h1{font-size:30px!important}
@@ -739,7 +742,7 @@ function agentFineList(rows: V2AgentFineRow[]): string {
     })
     .join('\n');
   return `${sectionKicker(`Reading well &middot; ${rows.length} ${rows.length === 1 ? 'page' : 'pages'}`)}
-    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 12px; max-width:64ch">Nearly all of each page's content is already in the HTML and cleanly marked up, so AI assistants read these fine.</p>
+    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 12px; max-width:64ch">Nearly all of each page's content is already in the HTML and cleanly marked up, so AI tools read these fine.</p>
     <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:6px 22px">
 ${items}
     </div>`;
@@ -782,6 +785,34 @@ const SCRIPTS = `<script>
   tabs.forEach(function(t){ t.addEventListener('click', function(){ show(t.getAttribute('data-tab')); }); });
   document.querySelectorAll('[data-jump]').forEach(function(b){
     b.addEventListener('click', function(){ if(document.getElementById('v2-panel-' + b.getAttribute('data-jump'))) show(b.getAttribute('data-jump')); });
+  });
+
+  // Disclosure contract: control uses data-disclose="<target-id>"; target uses
+  // id="<target-id>" data-disclosure hidden. This handler owns aria-controls,
+  // aria-expanded, and the target's hidden attribute; print CSS opens targets.
+  function disclosureTarget(control){
+    var id = control.getAttribute('data-disclose');
+    if(!id) return null;
+    var target = document.getElementById(id);
+    if(!target || !target.hasAttribute('data-disclosure')) return null;
+    return target;
+  }
+  function syncDisclosure(control, target){
+    control.setAttribute('aria-controls', target.id);
+    control.setAttribute('aria-expanded', target.hidden ? 'false' : 'true');
+  }
+  document.querySelectorAll('[data-disclose]').forEach(function(control){
+    var target = disclosureTarget(control);
+    if(target) syncDisclosure(control, target);
+  });
+  document.addEventListener('click', function(e){
+    var control = e.target && e.target.closest && e.target.closest('[data-disclose]');
+    if(!control) return;
+    var target = disclosureTarget(control);
+    if(!target) return;
+    var willOpen = target.hidden;
+    target.hidden = !willOpen;
+    syncDisclosure(control, target);
   });
 
   // On-video captions: reveal each beat as the clip reaches its time, behind a
