@@ -181,6 +181,9 @@ describe('accessibility report UI filters', () => {
     );
 
     expect(html).toContain('class="a11y-rule-group" data-active="false"');
+    expect(html).toContain(
+      'aria-label="color-contrast serious wcag2aa Fix it 2 issues 1 hotspot"',
+    );
     expect(html).toContain('class="a11y-rule-group__summary"');
     expect(html).toContain('2 issues');
     expect(html).toContain('1 hotspot');

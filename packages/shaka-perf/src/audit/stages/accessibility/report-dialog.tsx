@@ -22,7 +22,7 @@ import type {
 } from './types';
 import { AccessibilityFilter, FilteredEmptyState, useAccessibilityFilterState } from './report-filter';
 import { NODE_PRE_STYLE } from './report-styles';
-import { ViolationTagChips } from './report-tag-chips';
+import { primaryViolationTags, ViolationTagChips } from './report-tag-chips';
 import {
   countFilterOptionsForScans,
   defaultAccessibilityFilterSelection,
@@ -334,9 +334,18 @@ function ViolationDetails({
   const active = issueIds.includes(activeIssueId ?? '');
   const primaryIssueId = issueIds.find((issueId) => localizedIssueIds.has(issueId)) ?? issueIds[0];
   const localizedCount = issueIds.filter((issueId) => localizedIssueIds.has(issueId)).length;
+  const summaryLabel = [
+    violation.ruleId,
+    violation.impact ?? 'unknown impact',
+    ...primaryViolationTags(violation, configuredTags).slice(0, 2),
+    violation.help,
+    `${violation.nodes.length} issue${violation.nodes.length === 1 ? '' : 's'}`,
+    `${localizedCount} hotspot${localizedCount === 1 ? '' : 's'}`,
+  ].join(' ');
   return (
     <details className="a11y-rule-group" data-active={active ? 'true' : 'false'}>
       <summary
+        aria-label={summaryLabel}
         className="a11y-rule-group__summary"
         onClick={(event) => {
           const details = event.currentTarget.parentElement;
