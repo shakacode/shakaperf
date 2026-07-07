@@ -199,6 +199,14 @@ const COMPARE_A11Y_CSS = `
 .a11y-compare-filter__button[data-active="false"] {
   background: var(--bg-elevated);
 }
+.a11y-compare-filter__button:disabled {
+  border-color: var(--border);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  cursor: not-allowed;
+  opacity: 0.42;
+  box-shadow: none;
+}
 .a11y-compare-filter__button-count {
   margin-left: 5px;
   color: inherit;
@@ -273,6 +281,8 @@ interface FilterCountState {
   rules: Map<string, number>;
   tags: Map<string, number>;
 }
+
+type FilterKind = keyof FilterState;
 
 interface CompareHotspotEntry {
   finding: AccessibilityCompareFinding;
@@ -517,6 +527,10 @@ function AccessibilityCompareFilters({
   setFilter: (filter: FilterState) => void;
 }) {
   const counts = useMemo(() => countFilterOptions(findings, options), [findings, options]);
+  const disabled = useMemo(
+    () => disabledFilterOptions(findings, filter, options),
+    [filter, findings, options],
+  );
   return (
     <div className="a11y-compare-filter">
       <div className="a11y-compare-filter__actions">
@@ -533,6 +547,7 @@ function AccessibilityCompareFilters({
       <FilterRow
         allValues={options.statuses}
         counts={counts.statuses}
+        disabledValues={disabled.statuses}
         label="status"
         selected={filter.statuses}
         setSelected={(statuses) => setFilter({ ...filter, statuses: statuses as Set<AccessibilityFindingStatus> })}
@@ -541,6 +556,7 @@ function AccessibilityCompareFilters({
       <FilterRow
         allValues={options.impacts}
         counts={counts.impacts}
+        disabledValues={disabled.impacts}
         label="impact"
         selected={filter.impacts}
         setSelected={(impacts) => setFilter({ ...filter, impacts })}
@@ -551,6 +567,7 @@ function AccessibilityCompareFilters({
           <FilterRow
             allValues={options.rules}
             counts={counts.rules}
+            disabledValues={disabled.rules}
             label="rules"
             selected={filter.rules}
             setSelected={(rules) => setFilter({ ...filter, rules })}
@@ -558,6 +575,7 @@ function AccessibilityCompareFilters({
           <FilterRow
             allValues={options.tags}
             counts={counts.tags}
+            disabledValues={disabled.tags}
             label="tags"
             selected={filter.tags}
             setSelected={(tags) => setFilter({ ...filter, tags })}
@@ -571,6 +589,7 @@ function AccessibilityCompareFilters({
 function FilterRow({
   allValues,
   counts,
+  disabledValues,
   label,
   selected,
   setSelected,
@@ -578,6 +597,7 @@ function FilterRow({
 }: {
   allValues: ReadonlySet<string>;
   counts: ReadonlyMap<string, number>;
+  disabledValues: ReadonlySet<string>;
   label: string;
   selected: ReadonlySet<string>;
   setSelected: (selected: Set<string>) => void;
@@ -595,7 +615,13 @@ function FilterRow({
             key={value}
             className="a11y-compare-filter__button"
             data-active={selected.has(value) ? 'true' : 'false'}
+            disabled={disabledValues.has(value)}
             aria-pressed={selected.has(value)}
+            title={
+              disabledValues.has(value)
+                ? `${valueLabel ? valueLabel(value) : value} will not affect the current filtered view`
+                : undefined
+            }
             onClick={() => {
               const next = new Set(selected);
               if (next.has(value)) next.delete(value);
@@ -612,6 +638,57 @@ function FilterRow({
       </div>
     </div>
   );
+}
+
+function disabledFilterOptions(
+  findings: readonly AccessibilityCompareFinding[],
+  filter: FilterState,
+  options: FilterState,
+): FilterState {
+  const visibleCount = countVisibleFindings(findings, filter);
+  return {
+    statuses: disabledValuesForKind(findings, filter, options.statuses, 'statuses', visibleCount) as Set<AccessibilityFindingStatus>,
+    impacts: disabledValuesForKind(findings, filter, options.impacts, 'impacts', visibleCount),
+    rules: disabledValuesForKind(findings, filter, options.rules, 'rules', visibleCount),
+    tags: disabledValuesForKind(findings, filter, options.tags, 'tags', visibleCount),
+  };
+}
+
+function disabledValuesForKind<T extends string>(
+  findings: readonly AccessibilityCompareFinding[],
+  filter: FilterState,
+  values: ReadonlySet<T>,
+  kind: FilterKind,
+  visibleCount: number,
+): Set<T> {
+  const disabled = new Set<T>();
+  for (const value of values) {
+    const nextFilter = toggleFilterValue(filter, kind, value);
+    if (countVisibleFindings(findings, nextFilter) === visibleCount) {
+      disabled.add(value);
+    }
+  }
+  return disabled;
+}
+
+function toggleFilterValue(filter: FilterState, kind: FilterKind, value: string): FilterState {
+  const next = {
+    statuses: new Set(filter.statuses),
+    impacts: new Set(filter.impacts),
+    rules: new Set(filter.rules),
+    tags: new Set(filter.tags),
+  };
+  const target = next[kind] as Set<string>;
+  if (target.has(value)) target.delete(value);
+  else target.add(value);
+  return next;
+}
+
+function countVisibleFindings(
+  findings: readonly AccessibilityCompareFinding[],
+  filter: FilterState,
+): number {
+  return findings.filter((finding) => isFindingVisible(finding, filter)).length;
 }
 
 function countFilterOptions(
