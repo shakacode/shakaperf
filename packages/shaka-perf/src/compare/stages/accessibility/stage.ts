@@ -23,6 +23,7 @@ import { AccessibilityCompareArtifactView } from './report';
 export class AccessibilityCompareStage implements Stage<AccessibilityCompareResult> {
   readonly category = 'accessibility';
   readonly name = 'accessibility';
+  readonly label = 'Accessibility';
   readonly description = 'Scan control and experiment with axe and classify accessibility changes.';
   private readonly config: AccessibilityStageConfig;
 
