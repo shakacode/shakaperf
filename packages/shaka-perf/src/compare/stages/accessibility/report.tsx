@@ -135,26 +135,29 @@ const SIDE_CARD_STYLE: CSSProperties = {
 
 const FINDING_STYLE: CSSProperties = {
   borderTop: '1px solid var(--border)',
-  paddingTop: 8,
+  paddingTop: 10,
   display: 'grid',
-  gap: 6,
+  gap: 8,
 };
 
 const FINDING_HEAD_STYLE: CSSProperties = {
   display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'baseline',
-  gap: 8,
+  alignItems: 'center',
+  gap: 7,
+  minWidth: 0,
+  whiteSpace: 'nowrap',
 };
 
 const SIDE_COUNT_STYLE: CSSProperties = {
   display: 'inline-flex',
-  gap: 4,
+  gap: 3,
   alignItems: 'baseline',
   border: '1px solid var(--border)',
   background: 'var(--bg-elevated)',
   color: 'var(--fg-muted)',
-  padding: '1px 5px',
+  padding: '1px 4px',
+  fontSize: 11,
+  lineHeight: 1.2,
 };
 
 const FINDING_TARGET_STYLE: CSSProperties = {
@@ -277,22 +280,62 @@ const COMPARE_A11Y_CSS = `
   margin-top: 8px;
 }
 .a11y-rule-group {
-  border-top: 1px solid var(--border-strong);
-  padding-top: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  margin-top: 10px;
 }
-.a11y-rule-group:first-of-type {
-  margin-top: 4px;
+.a11y-rule-group[open] {
+  background: var(--bg);
 }
 .a11y-rule-group__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--fg-muted);
+  list-style: none;
+}
+.a11y-rule-group__summary::-webkit-details-marker {
+  display: none;
+}
+.a11y-rule-group__summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-top: 6px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--fg-muted);
+  transition: transform 120ms ease;
+}
+.a11y-rule-group[open] > .a11y-rule-group__summary::before {
+  transform: rotate(90deg);
+}
+.a11y-rule-group__summary-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.a11y-rule-group__title-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: baseline;
-  cursor: pointer;
-  color: var(--fg-muted);
+  min-width: 0;
 }
-.a11y-rule-group__summary strong {
+.a11y-rule-group__rule {
   color: var(--fg);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.a11y-rule-group__meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--fg-muted);
 }
 .a11y-rule-group__counts {
   display: inline-flex;
@@ -309,8 +352,30 @@ const COMPARE_A11Y_CSS = `
 }
 .a11y-rule-group__findings {
   display: grid;
-  gap: 8px;
-  margin-top: 8px;
+  padding: 0 12px 12px 31px;
+}
+.a11y-rule-group__findings > .a11y-issue:first-child {
+  border-top-color: var(--border-strong);
+}
+.a11y-issue__summary {
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+}
+.a11y-issue__head {
+  overflow: hidden;
+}
+.a11y-issue__rule {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a11y-issue__meta {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  font-weight: 500;
 }
 .a11y-hotspot[data-extent="page"] {
   display: flex;
@@ -990,12 +1055,18 @@ function RuleFindingGroupDetails({
   return (
     <details className="a11y-rule-group" open={defaultOpen || undefined}>
       <summary className="a11y-rule-group__summary">
-        <strong>{group.ruleId}</strong>
-        <span>{group.findings.length} finding{group.findings.length === 1 ? '' : 's'}</span>
-        <span>{group.nodeCount} node{group.nodeCount === 1 ? '' : 's'}</span>
-        <span className="a11y-rule-group__counts">
-          <RuleStatusCounts counts={group.statuses} />
-          <RuleImpactCounts counts={group.impacts} />
+        <span className="a11y-rule-group__summary-main">
+          <span className="a11y-rule-group__title-row">
+            <strong className="a11y-rule-group__rule">{group.ruleId}</strong>
+            <span className="a11y-rule-group__meta">
+              <span>{group.findings.length} finding{group.findings.length === 1 ? '' : 's'}</span>
+              <span>{group.nodeCount} node{group.nodeCount === 1 ? '' : 's'}</span>
+            </span>
+          </span>
+          <span className="a11y-rule-group__counts">
+            <RuleStatusCounts counts={group.statuses} />
+            <RuleImpactCounts counts={group.impacts} />
+          </span>
         </span>
       </summary>
       <div className="a11y-rule-group__findings">
@@ -1103,7 +1174,7 @@ function FindingDetails({
   return (
     <details className="a11y-issue" data-active={active ? 'true' : 'false'} style={FINDING_STYLE}>
       <summary
-        style={{ cursor: 'pointer', maxWidth: '100%', minWidth: 0 }}
+        className="a11y-issue__summary"
         onClick={(event) => {
           const details = event.currentTarget.parentElement;
           if (details instanceof HTMLDetailsElement && details.open) {
@@ -1113,16 +1184,16 @@ function FindingDetails({
           if (primaryIssueId) window.requestAnimationFrame(() => onSelect(primaryIssueId, 'issue'));
         }}
       >
-        <span style={FINDING_HEAD_STYLE}>
-          <strong>{finding.ruleId}</strong>
+        <span className="a11y-issue__head" style={FINDING_HEAD_STYLE}>
+          <strong className="a11y-issue__rule">{finding.ruleId}</strong>
           <span style={{ color: STATUS_COLOR[finding.status], fontWeight: 700 }}>
             {STATUS_LABEL[finding.status]}
           </span>
           <span style={{ color: impactColor(finding.impact), fontWeight: 700 }}>
             {finding.impact ?? 'unknown'}
           </span>
-          <span style={{ color: 'var(--fg-muted)' }}>
-            {nodeCount} affected node{nodeCount === 1 ? '' : 's'}
+          <span className="a11y-issue__meta">
+            {nodeCount} node{nodeCount === 1 ? '' : 's'}
           </span>
           <SideNodeSummary finding={finding} />
         </span>
