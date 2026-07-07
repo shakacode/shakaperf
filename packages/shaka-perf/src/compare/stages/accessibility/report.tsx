@@ -220,6 +220,25 @@ const COMPARE_A11Y_CSS = `
   gap: 8px;
   margin-top: 8px;
 }
+.a11y-hotspot[data-extent="page"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #111827 !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.95),
+    0 2px 12px rgba(15, 23, 42, 0.36);
+}
+.a11y-hotspot[data-extent="page"] .a11y-hotspot__num {
+  position: static;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  line-height: 1;
+}
 `;
 
 interface FilterState {
@@ -714,19 +733,23 @@ function CompareHotspot({
   const bounds = hotspot.node.bounds!;
   const placement = tooltipPlacement(bounds, screenshot);
   const color = STATUS_MARKER_COLOR[hotspot.finding.status];
-  const style: CSSProperties = {
-    left: pct(bounds.x, screenshot.width),
-    top: pct(bounds.y, screenshot.height),
-    width: pct(bounds.width, screenshot.width),
-    height: pct(bounds.height, screenshot.height),
-    zIndex: hotspotZIndex(bounds.width, bounds.height, screenshot.width, screenshot.height),
-    borderColor: color,
-    background: STATUS_MARKER_BACKGROUND[hotspot.finding.status],
-  };
+  const pageExtent = isPageExtentHotspot(bounds, screenshot);
+  const style: CSSProperties = pageExtent
+    ? compactHotspotStyle(bounds, screenshot, color)
+    : {
+      left: pct(bounds.x, screenshot.width),
+      top: pct(bounds.y, screenshot.height),
+      width: pct(bounds.width, screenshot.width),
+      height: pct(bounds.height, screenshot.height),
+      zIndex: hotspotZIndex(bounds.width, bounds.height, screenshot.width, screenshot.height),
+      borderColor: color,
+      background: STATUS_MARKER_BACKGROUND[hotspot.finding.status],
+    };
   return (
     <div
       className="a11y-hotspot"
       data-active={active ? 'true' : 'false'}
+      data-extent={pageExtent ? 'page' : 'node'}
       data-issue-id={issueId}
       data-popover-x={placement.x}
       data-popover-y={placement.y}
@@ -762,6 +785,35 @@ function CompareHotspot({
       </div>
     </div>
   );
+}
+
+function isPageExtentHotspot(
+  bounds: AccessibilityViolationNode['bounds'],
+  screenshot: NonNullable<AccessibilitySideScan['screenshot']>,
+): boolean {
+  if (!bounds) return false;
+  const widthRatio = bounds.width / screenshot.width;
+  const heightRatio = bounds.height / screenshot.height;
+  const areaRatio = (bounds.width * bounds.height) / (screenshot.width * screenshot.height);
+  return areaRatio > 0.45 || (widthRatio > 0.82 && heightRatio > 0.55);
+}
+
+function compactHotspotStyle(
+  bounds: NonNullable<AccessibilityViolationNode['bounds']>,
+  screenshot: NonNullable<AccessibilitySideScan['screenshot']>,
+  color: string,
+): CSSProperties {
+  const markerSize = 22;
+  const x = Math.min(Math.max(bounds.x + 8, 0), Math.max(0, screenshot.width - markerSize));
+  const y = Math.min(Math.max(bounds.y + 8, 0), Math.max(0, screenshot.height - markerSize));
+  return {
+    left: pct(x, screenshot.width),
+    top: pct(y, screenshot.height),
+    width: markerSize,
+    height: markerSize,
+    zIndex: 100,
+    borderColor: color,
+  };
 }
 
 function FindingDetails({
