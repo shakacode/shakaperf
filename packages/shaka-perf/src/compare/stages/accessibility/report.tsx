@@ -141,6 +141,16 @@ const FINDING_HEAD_STYLE: CSSProperties = {
   gap: 8,
 };
 
+const SIDE_COUNT_STYLE: CSSProperties = {
+  display: 'inline-flex',
+  gap: 4,
+  alignItems: 'baseline',
+  border: '1px solid var(--border)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--fg-muted)',
+  padding: '1px 5px',
+};
+
 const NODE_PRE_STYLE: CSSProperties = {
   whiteSpace: 'pre-wrap',
   overflowWrap: 'anywhere',
@@ -853,6 +863,7 @@ function FindingDetails({
           <span style={{ color: 'var(--fg-muted)' }}>
             {nodeCount} affected node{nodeCount === 1 ? '' : 's'}
           </span>
+          <SideNodeSummary finding={finding} />
         </span>
       </summary>
       <div style={{ color: 'var(--fg-muted)', marginTop: 6 }}>
@@ -877,6 +888,21 @@ function FindingDetails({
         />
       </div>
     </details>
+  );
+}
+
+function SideNodeSummary({ finding }: { finding: AccessibilityCompareFinding }) {
+  return (
+    <>
+      <span style={SIDE_COUNT_STYLE}>
+        <span>control:</span>
+        <strong>{finding.control?.nodes.length ?? 0}</strong>
+      </span>
+      <span style={SIDE_COUNT_STYLE}>
+        <span>experiment:</span>
+        <strong>{finding.experiment?.nodes.length ?? 0}</strong>
+      </span>
+    </>
   );
 }
 
