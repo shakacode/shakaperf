@@ -289,6 +289,42 @@ const COMPARE_A11Y_CSS = `
   gap: 8px;
   margin-top: 8px;
 }
+.a11y-rule-group {
+  border-top: 1px solid var(--border-strong);
+  padding-top: 10px;
+}
+.a11y-rule-group:first-of-type {
+  margin-top: 4px;
+}
+.a11y-rule-group__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  cursor: pointer;
+  color: var(--fg-muted);
+}
+.a11y-rule-group__summary strong {
+  color: var(--fg);
+}
+.a11y-rule-group__counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+.a11y-rule-group__counts span {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.a11y-rule-group__findings {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
 .a11y-hotspot[data-extent="page"] {
   display: flex;
   align-items: center;
@@ -331,6 +367,14 @@ interface CompareHotspotEntry {
   node: AccessibilityViolationNode;
   nodeIndex: number;
   side: AccessibilityCompareSide;
+}
+
+interface RuleFindingGroup {
+  ruleId: string;
+  findings: AccessibilityCompareFinding[];
+  nodeCount: number;
+  statuses: Map<AccessibilityFindingStatus, number>;
+  impacts: Map<string, number>;
 }
 
 export function AccessibilityCompareArtifactView({
@@ -453,6 +497,7 @@ function CompareFindingsDialog({
     sortFindings(result.findings)
       .filter((finding) => isFindingVisible(finding, activeFilter)),
   [activeFilter, result.findings]);
+  const ruleGroups = useMemo(() => groupFindingsByRule(findings), [findings]);
   const [activeIssueId, setActiveIssueId] = useState<string | null>(null);
   const hotspotRefs = useRef(new Map<string, HTMLElement>());
   const issueRefs = useRef(new Map<string, HTMLElement>());
@@ -468,8 +513,8 @@ function CompareFindingsDialog({
     setActiveIssueId(issueId);
     const hotspot = hotspotRefs.current.get(issueId);
     const issue = issueRefs.current.get(issueId);
-    const details = issue?.closest('details');
-    if (details instanceof HTMLDetailsElement) details.open = true;
+    openClosestDetails(issue, 'details.a11y-issue');
+    openClosestDetails(issue, 'details.a11y-rule-group');
 
     window.requestAnimationFrame(() => {
       flashElement(hotspot);
@@ -538,11 +583,11 @@ function CompareFindingsDialog({
             </div>
           </div>
           {findings.length > 0 ? (
-            findings.map((finding) => (
-              <FindingDetails
+            ruleGroups.map((group) => (
+              <RuleFindingGroupDetails
                 activeIssueId={activeIssueId}
-                finding={finding}
-                key={finding.signature}
+                group={group}
+                key={group.ruleId}
                 onCollapse={() => setActiveIssueId(null)}
                 onSelect={selectIssue}
                 registerIssue={registerIssue}
@@ -941,6 +986,83 @@ function CompareHotspot({
   );
 }
 
+function RuleFindingGroupDetails({
+  activeIssueId,
+  group,
+  onCollapse,
+  onSelect,
+  registerIssue,
+}: {
+  activeIssueId: string | null;
+  group: RuleFindingGroup;
+  onCollapse: () => void;
+  onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
+  registerIssue: (issueId: string, element: HTMLElement | null) => void;
+}) {
+  const defaultOpen = groupHasStatus(group, 'new') || groupHasStatus(group, 'changed');
+  return (
+    <details className="a11y-rule-group" open={defaultOpen || undefined}>
+      <summary className="a11y-rule-group__summary">
+        <strong>{group.ruleId}</strong>
+        <span>{group.findings.length} finding{group.findings.length === 1 ? '' : 's'}</span>
+        <span>{group.nodeCount} node{group.nodeCount === 1 ? '' : 's'}</span>
+        <span className="a11y-rule-group__counts">
+          <RuleStatusCounts counts={group.statuses} />
+          <RuleImpactCounts counts={group.impacts} />
+        </span>
+      </summary>
+      <div className="a11y-rule-group__findings">
+        {group.findings.map((finding) => (
+          <FindingDetails
+            activeIssueId={activeIssueId}
+            finding={finding}
+            key={finding.signature}
+            onCollapse={onCollapse}
+            onSelect={onSelect}
+            registerIssue={registerIssue}
+          />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function RuleStatusCounts({
+  counts,
+}: {
+  counts: ReadonlyMap<AccessibilityFindingStatus, number>;
+}) {
+  return (
+    <>
+      {(['new', 'fixed', 'changed', 'unchanged'] as AccessibilityFindingStatus[]).map((status) => {
+        const count = counts.get(status) ?? 0;
+        if (count === 0) return null;
+        return (
+          <span key={status} style={{ color: STATUS_COLOR[status] }}>
+            {count} {status}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+function RuleImpactCounts({
+  counts,
+}: {
+  counts: ReadonlyMap<string, number>;
+}) {
+  return (
+    <>
+      {[...counts.entries()].map(([impact, count]) => (
+        <span key={impact} style={{ color: impactColor(impact as Parameters<typeof impactColor>[0]) }}>
+          {count} {impact}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function isPageExtentHotspot(
   bounds: AccessibilityViolationNode['bounds'],
   screenshot: NonNullable<AccessibilitySideScan['screenshot']>,
@@ -1198,6 +1320,46 @@ function countText(count: number, label: string): string | null {
   return count > 0 ? `${count} ${label}` : null;
 }
 
+function groupFindingsByRule(
+  findings: readonly AccessibilityCompareFinding[],
+): RuleFindingGroup[] {
+  const groups = new Map<string, RuleFindingGroup>();
+  for (const finding of findings) {
+    let group = groups.get(finding.ruleId);
+    if (!group) {
+      group = {
+        ruleId: finding.ruleId,
+        findings: [],
+        nodeCount: 0,
+        statuses: new Map(),
+        impacts: new Map(),
+      };
+      groups.set(finding.ruleId, group);
+    }
+    group.findings.push(finding);
+    group.nodeCount += findingNodeCount(finding);
+    incrementCount(group.statuses, finding.status);
+    incrementCount(group.impacts, finding.impact ?? 'unknown');
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    impacts: new Map([...group.impacts.entries()].sort((a, b) =>
+      (IMPACT_ORDER[a[0]] ?? 99) - (IMPACT_ORDER[b[0]] ?? 99) || a[0].localeCompare(b[0]),
+    )),
+  }));
+}
+
+function findingNodeCount(finding: AccessibilityCompareFinding): number {
+  return (finding.control?.nodes.length ?? 0) + (finding.experiment?.nodes.length ?? 0);
+}
+
+function groupHasStatus(
+  group: RuleFindingGroup,
+  status: AccessibilityFindingStatus,
+): boolean {
+  return (group.statuses.get(status) ?? 0) > 0;
+}
+
 function collectFilterOptions(findings: readonly AccessibilityCompareFinding[]): FilterState {
   const statuses = new Set<AccessibilityFindingStatus>();
   const impacts = new Set<string>();
@@ -1296,6 +1458,11 @@ function flashElement(element: HTMLElement | undefined): void {
   window.setTimeout(() => {
     element.classList.remove('a11y-flash');
   }, 1250);
+}
+
+function openClosestDetails(element: HTMLElement | undefined, selector: string): void {
+  const details = element?.closest(selector);
+  if (details instanceof HTMLDetailsElement) details.open = true;
 }
 
 function sortFindings(findings: readonly AccessibilityCompareFinding[]): AccessibilityCompareFinding[] {
