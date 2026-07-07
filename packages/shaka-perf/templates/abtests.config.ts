@@ -11,18 +11,36 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { defineConfig, assignPortsAutomatically, installRequestBlocking, DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 
-// Auto-assign the control/experiment host ports from a required preferred pair.
-// If either port is in use, BOTH shift up by 1 together — preserving their gap —
-// until the first free pair is found; the pair is then remembered per project
-// (in ~/.shaka-perf/ports.json) so it stays stable across runs. Set
-// SHAKAPERF_CONTROL_PORT / SHAKAPERF_EXPERIMENT_PORT to override entirely. The
-// same pair feeds the URLs and twinServers.ports below, so they can't drift.
-//
-// Concurrent-agent tooling: when SHAKAPERF_BASE_PORT or CONDUCTOR_PORT (set
-// automatically per workspace by Conductor.build) is present, the pair is
-// derived from that base (control = base+0, experiment = base+1) so multiple
-// agents in separate workspaces never collide — no probing, no shared state.
-const { control: CONTROL_PORT, experiment: EXPERIMENT_PORT } = assignPortsAutomatically({ control: 3020, experiment: 3030 });
+// Control/experiment host ports. The same pair feeds the URLs and
+// twinServers.ports below, so they can't drift.
+let CONTROL_PORT: number;
+let EXPERIMENT_PORT: number;
+
+const pinnedControl = Number(process.env.SHAKAPERF_CONTROL_PORT);
+const pinnedExperiment = Number(process.env.SHAKAPERF_EXPERIMENT_PORT);
+const conductorBase = Number(process.env.CONDUCTOR_PORT);
+if (pinnedControl > 0 && pinnedExperiment > 0) {
+  // Explicit pin — e.g. CI needing a fixed, known pair. Both vars required;
+  // a lone one is ignored.
+  CONTROL_PORT = pinnedControl;
+  EXPERIMENT_PORT = pinnedExperiment;
+} else if (conductorBase > 0) {
+  // Conductor.build (https://conductor.build) exports CONDUCTOR_PORT — the
+  // first of 10 consecutive ports each workspace owns exclusively
+  // (docs.conductor.build/tips/conductor-env) — so parallel agents get
+  // non-overlapping pairs with no probing or shared state. Not using
+  // Conductor? Delete this branch. Need other per-machine overrides? This
+  // file is plain TypeScript — read whatever env you like right here.
+  CONTROL_PORT = conductorBase;
+  EXPERIMENT_PORT = conductorBase + 1;
+} else {
+  // Auto-assign from the required preferred pair. If either port is in use,
+  // BOTH shift up by 1 together — preserving their gap — until the first free
+  // pair is found; the pair is then remembered per project (in
+  // ~/.shaka-perf/ports.json) so it stays stable across runs.
+  ({ control: CONTROL_PORT, experiment: EXPERIMENT_PORT } =
+    assignPortsAutomatically({ control: 3020, experiment: 3030 }));
+}
 
 const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 

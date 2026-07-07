@@ -22,18 +22,10 @@ Run `shaka-perf init` to drop a starter `abtests.config.ts` into your project, p
 - `discover-abtests` — crawls your site and scaffolds `.abtest.ts` files for visual regression.
 - `setup-docker-servers-for-ab-tests` — walks an agent through this entire guide: filling the `twinServers` config, writing the production `twin-servers/Dockerfile`/`Procfile`, adding the `TWIN_SERVERS` guards, and driving `shaka-perf servers` until both sides build and serve. If you'd rather not follow the steps below by hand, ask Claude Code to "set up twin servers for this project" and it will use that skill.
 
-The generated config already auto-assigns the host ports used everywhere:
-
-```ts
-// Picks the control/experiment host ports from a required preferred pair. If
-// either port is in use, BOTH shift up by 1 together — preserving their gap —
-// until the first free pair is found; the pair is then remembered per project
-// (in ~/.shaka-perf/ports.json) so it stays stable across runs. Set
-// SHAKAPERF_CONTROL_PORT / SHAKAPERF_EXPERIMENT_PORT to override entirely, or
-// SHAKAPERF_BASE_PORT / CONDUCTOR_PORT (Conductor.build, per workspace) to
-// derive control=base+0 / experiment=base+1 so concurrent agents never collide.
-const { control: CONTROL_PORT, experiment: EXPERIMENT_PORT } = assignPortsAutomatically({ control: 3020, experiment: 3030 });
-```
+The generated config already auto-assigns the host ports used everywhere — see
+the `CONTROL_PORT` / `EXPERIMENT_PORT` block in
+[`templates/abtests.config.ts`](./templates/abtests.config.ts) (env pin →
+`CONDUCTOR_PORT` → `assignPortsAutomatically`, each branch commented in place).
 
 Uncomment the `twinServers:` block in that file and fill it in. Reuse the same constants for `ports` so the URLs visreg/perf hit, the host-port mapping in docker-compose, and the Procfile helper all stay aligned:
 

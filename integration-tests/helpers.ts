@@ -53,8 +53,8 @@ export const EXPERIMENT_PORT = ASSIGNED_PORTS.experiment;
 
 export const env: Record<string, string> = {
   ...process.env as Record<string, string>,
-  SHAKAPERF_CONTROL_PORT: String(CONTROL_PORT),
-  SHAKAPERF_EXPERIMENT_PORT: String(EXPERIMENT_PORT),
+  DEMO_CONTROL_PORT: String(CONTROL_PORT),
+  DEMO_EXPERIMENT_PORT: String(EXPERIMENT_PORT),
   CONTROL_REPO_DIR: path.join(CONTROL_CLONE_PATH, 'demo-ecommerce'),
 };
 
