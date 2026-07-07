@@ -9,11 +9,10 @@
  */
 
 /**
- * Builds a single HTML report comparing every snapshot PNG between a base git
- * ref and the working tree. The base is the first that exists of: master,
- * main, origin/master, origin/main — falling back to the current branch's
- * HEAD — so on a feature branch the report shows what the branch changes
- * against the mainline baseline. Snapshots hold only the stable-named
+ * Builds a single HTML report comparing every snapshot PNG between HEAD and
+ * the working tree. This is intentionally run-to-run, not branch-to-main:
+ * after fresh integration snapshots are written, HEAD is the previous committed
+ * baseline and the working tree is the current run. Snapshots hold only the stable-named
  * deep-click report screenshots (directly under each `<suite>-results/` dir),
  * so every PNG diffs meaningfully by path. Each card shows the Diff and a
  * previous↔current scrubber; both sides are labeled with their branch,
@@ -92,28 +91,7 @@ function gitLine(cmd) {
   return safeGit(cmd)[0] ?? '';
 }
 
-// The "previous" side of every comparison: the mainline baseline when one
-// exists AND actually shares snapshot paths with the current run — a
-// mainline that predates the current snapshot layout would make every card
-// an incomparable new/deleted pair (blank scrubber side, no pixelmatch).
-// Falls through to the current branch's HEAD, which turns the report into a
-// run-to-run comparison until the baselines land on the mainline.
-function refSharesCurrentPngs(ref, currentPngs) {
-  const tree = new Set(
-    safeGit(`git ls-tree -r --name-only ${ref} -- "${SNAPSHOTS_ROOT}"`).map((f) => path.normalize(f)),
-  );
-  return currentPngs.some((p) => tree.has(p));
-}
-
-function resolveBaseRef(currentPngs) {
-  for (const ref of ['master', 'main', 'origin/master', 'origin/main']) {
-    if (safeGit(`git rev-parse --verify -q ${ref}^{commit}`).length === 0) continue;
-    if (refSharesCurrentPngs(ref, currentPngs)) return ref;
-  }
-  return gitLine('git rev-parse --abbrev-ref HEAD') || 'HEAD';
-}
-
-const BASE_REF = resolveBaseRef(targetDirs.flatMap((d) => walkPngs(d)));
+const BASE_REF = 'HEAD';
 const CURRENT_BRANCH = gitLine('git rev-parse --abbrev-ref HEAD') || 'HEAD';
 const refMeta = (ref) => ({
   sha: gitLine(`git rev-parse --short ${ref}`),
@@ -366,6 +344,17 @@ const html = `<!DOCTYPE html>
   .scrubber__prev-side { position: absolute; inset: 0; background: #0e0e24; clip-path: inset(0 calc(100% - var(--scrub-pos)) 0 0); }
   .scrubber__diff { position: absolute; inset: 0; background: none; display: none; pointer-events: none; opacity: 0.25; }
   body.show-diff .scrubber__diff { display: block; }
+  /* While the user is dragging the divider they're comparing the two shots
+     directly — the overlay would only get in the way. */
+  body.show-diff .scrubber--grabbed .scrubber__diff { display: none; }
+  /* Flash: 50 ms visible, then 450 ms hidden (0.5 s cycle, 50/500 = 10 %)
+     — the brief pulse draws the eye to changed regions without obscuring
+     the screenshot underneath. */
+  body.show-diff.blink-diff .scrubber__diff { animation: diff-blink 0.5s linear infinite; }
+  @keyframes diff-blink {
+    0%, 10% { opacity: 0.25; }
+    10.01%, 100% { opacity: 0; }
+  }
   .scrubber__divider { position: absolute; top: 0; bottom: 0; left: var(--scrub-pos); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 5px rgba(0,0,0,.9); pointer-events: none; }
   .scrubber__tag { position: absolute; top: 8px; font-size: 14px; font-weight: 400; line-height: 1.45; letter-spacing: .3px; padding: 5px 10px; border-radius: 4px; background: rgba(0,0,0,.75); color: #fff; pointer-events: none; text-align: left; }\n  .scrubber__tag b { font-weight: 700; }
   /* Full-size clip layers (shakaperf-visreg style): the previous tag is
@@ -376,17 +365,24 @@ const html = `<!DOCTYPE html>
   .scrubber__tagside--right { clip-path: inset(0 0 0 var(--scrub-pos)); }
   .scrubber__tag--left { left: 8px; }
   .scrubber__tag--right { right: 8px; }
-  .diff-toggle { position: fixed; top: 14px; right: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.55); user-select: none; }
-  .diff-toggle input { accent-color: #e5484d; width: 16px; height: 16px; cursor: pointer; }
+  .diff-controls { position: fixed; top: 14px; right: 18px; z-index: 10; display: flex; flex-direction: column; gap: 7px; background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 10px 14px; font-size: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.55); user-select: none; }
+  .diff-controls label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .diff-controls input { accent-color: #e5484d; width: 16px; height: 16px; cursor: pointer; }
 </style>
-</head><body class="show-diff">
+</head><body class="show-diff blink-diff">
 <h1>Screenshot Diff Report</h1>
 <p class="compare-line"><span class="tag">${esc(PREV_LABEL)}</span> → <span class="tag">${esc(CURR_LABEL)}</span></p>
-<label class="diff-toggle"><input type="checkbox" id="diff-toggle-box" checked> Show Pixelmatch Diff</label>
+<div class="diff-controls">
+  <label><input type="checkbox" id="diff-toggle-box" checked> Show Pixelmatch Diff</label>
+  <label><input type="checkbox" id="diff-blink-box" checked> Blink diff (50 ms flash / 450 ms)</label>
+</div>
 ${sections.map(sectionHtml).join('\n')}
 <script>
   document.getElementById('diff-toggle-box').addEventListener('change', (e) => {
     document.body.classList.toggle('show-diff', e.target.checked);
+  });
+  document.getElementById('diff-blink-box').addEventListener('change', (e) => {
+    document.body.classList.toggle('blink-diff', e.target.checked);
   });
 \n  // Shakaperf-visreg-style wipe: the previous shot is revealed only left of
   // the divider; drag anywhere on the scrubber to move it.
@@ -399,11 +395,16 @@ ${sections.map(sectionHtml).join('\n')}
     };
     el.addEventListener('pointerdown', (e) => {
       set(e.clientX);
+      el.classList.add('scrubber--grabbed');
       try { el.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
     });
     el.addEventListener('pointermove', (e) => {
       if (el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) set(e.clientX);
     });
+    const release = () => el.classList.remove('scrubber--grabbed');
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
   });
 </script>
 </body></html>`;
