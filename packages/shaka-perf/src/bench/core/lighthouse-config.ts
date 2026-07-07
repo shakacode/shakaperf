@@ -114,14 +114,16 @@ export function reportMetaForLighthouseRun(
   const screen = (activeConfig as Partial<LighthouseConfig>).screenEmulation;
   const width = typeof screen?.width === 'number' ? screen.width : undefined;
   const height = typeof screen?.height === 'number' ? screen.height : undefined;
-  const throttleProfile = throttleProfileForLighthouseConfig(userOverrides);
+  // Label the configured Lighthouse throttling profile. Runtime CPU calibration
+  // such as CI's multiplier does not create a different named profile.
+  const throttleProfile = configuredThrottleProfileForLighthouseConfig(userOverrides);
   return {
     ...(throttleProfile ? { throttleProfile } : {}),
     ...(width !== undefined && height !== undefined ? { viewport: { width, height } } : {}),
   };
 }
 
-const SLOW_4G_METHODS = new Set<unknown>(['simulate', 'devtools', undefined]);
+const SLOW_4G_METHODS = new Set<unknown>(['simulate', 'devtools']);
 const SLOW_4G_THROTTLING_FIELDS = [
   'rttMs',
   'throughputKbps',
@@ -131,7 +133,7 @@ const SLOW_4G_THROTTLING_FIELDS = [
   'cpuSlowdownMultiplier',
 ] as const;
 
-function throttleProfileForLighthouseConfig(userOverrides: PerfLighthouseConfig): string | undefined {
+function configuredThrottleProfileForLighthouseConfig(userOverrides: PerfLighthouseConfig): string | undefined {
   const method = userOverrides.throttlingMethod ?? DEFAULT_LH_CONFIG.throttlingMethod;
   if (!SLOW_4G_METHODS.has(method)) return undefined;
   const throttling = effectiveThrottlingForMeta(userOverrides);

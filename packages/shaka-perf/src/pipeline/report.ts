@@ -119,8 +119,6 @@ export interface ReportMeta {
   title: string;
   pipelineName?: string;
   generatedAt: string;
-  throttleProfile?: string;
-  viewport?: { width: number; height: number };
   controlUrl: string;
   experimentUrl: string;
   durationMs: number;
@@ -345,8 +343,6 @@ export function writeMachineReport(
       generatedAt: meta.generatedAt,
       pipelineName: meta.pipelineName,
       durationMs: meta.durationMs,
-      ...(meta.throttleProfile !== undefined ? { throttleProfile: meta.throttleProfile } : {}),
-      ...(meta.viewport !== undefined ? { viewport: meta.viewport } : {}),
       ...machineReportMeta,
       cwd: meta.cwd,
       controlUrl: meta.controlUrl,

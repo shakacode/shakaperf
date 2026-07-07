@@ -7,13 +7,13 @@
  * License in LICENSE.md.
  */
 
-import { PHONE_VIEWPORT, DESKTOP_VIEWPORT } from 'shaka-shared';
+import { PHONE_VIEWPORT, DESKTOP_VIEWPORT, TABLET_VIEWPORT, type Viewport } from 'shaka-shared';
 import { DEFAULT_LH_CONFIG, reportMetaForLighthouseRun } from '../../bench/core/lighthouse-config';
-import { auditMachineReportMeta } from '../pipeline';
+import { auditMachineReportMeta, createAuditPipeline } from '../pipeline';
 import type { PipelineMachineReportRow } from '../../pipeline/pipeline';
 
 function row(
-  viewport: typeof PHONE_VIEWPORT,
+  viewport: Viewport,
   outcomes: PipelineMachineReportRow['outcomes'] = [{ kind: 'ok', stage: 'audit', measurement: {} }],
 ): PipelineMachineReportRow {
   return { viewport, outcomes };
@@ -33,7 +33,7 @@ describe('auditMachineReportMeta', () => {
     });
   });
 
-  it('keeps the Slow-4G label under CI runtime CPU overrides', () => {
+  it('keeps the configured Slow-4G profile label under CI CPU calibration', () => {
     process.env.CI = 'true';
 
     expect(reportMetaForLighthouseRun(undefined)).toEqual({
@@ -43,6 +43,22 @@ describe('auditMachineReportMeta', () => {
 
   it('persists the active mobile Lighthouse viewport dimensions from audited rows', () => {
     expect(auditMachineReportMeta({}, [row(DESKTOP_VIEWPORT), row(PHONE_VIEWPORT)])).toEqual({
+      throttleProfile: 'Slow-4G',
+      viewport: { width: PHONE_VIEWPORT.width, height: PHONE_VIEWPORT.height },
+    });
+  });
+
+  it('persists audit meta from saved rows during report-only runs', () => {
+    const pipeline = createAuditPipeline({ parallelism: 1 });
+
+    expect(pipeline.machineReportMeta?.({ rows: [row(PHONE_VIEWPORT)], reportOnly: true })).toEqual({
+      throttleProfile: 'Slow-4G',
+      viewport: { width: PHONE_VIEWPORT.width, height: PHONE_VIEWPORT.height },
+    });
+  });
+
+  it('prefers phone-class viewport dimensions over tablet mobile form factors', () => {
+    expect(auditMachineReportMeta({}, [row(DESKTOP_VIEWPORT), row(TABLET_VIEWPORT), row(PHONE_VIEWPORT)])).toEqual({
       throttleProfile: 'Slow-4G',
       viewport: { width: PHONE_VIEWPORT.width, height: PHONE_VIEWPORT.height },
     });

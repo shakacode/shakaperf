@@ -12,7 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { ArtifactStore } from '../artifact-store';
 import { writeMachineReport, type ReportMeta } from '../report';
-import type { Pipeline } from '../pipeline';
+import type { Pipeline, PipelineMachineReportMetaContext } from '../pipeline';
 import type { StageRuntime } from '../../stage/stage';
 
 describe('writeMachineReport', () => {
@@ -28,12 +28,11 @@ describe('writeMachineReport', () => {
 
   it('persists optional throttle profile and viewport meta', () => {
     const reportPath = path.join(dir, 'report.json');
+    let capturedReportOnly: boolean | undefined;
     const meta: ReportMeta = {
       title: 'Audit',
       pipelineName: 'audit',
       generatedAt: '2026-07-01T00:00:00.000Z',
-      throttleProfile: 'Slow-4G',
-      viewport: { width: 390, height: 844 },
       controlUrl: 'https://example.com',
       experimentUrl: 'https://example.com',
       durationMs: 123,
@@ -48,7 +47,14 @@ describe('writeMachineReport', () => {
       reportPath,
       [],
       () => [],
-      { name: 'audit', stages: [] } as unknown as Pipeline,
+      {
+        name: 'audit',
+        stages: [],
+        machineReportMeta: (ctx: PipelineMachineReportMetaContext) => {
+          capturedReportOnly = ctx.reportOnly;
+          return { throttleProfile: 'Slow-4G', viewport: { width: 390, height: 844 } };
+        },
+      } as unknown as Pipeline,
       meta,
       new ArtifactStore(dir),
       { resultsRoot: dir } as StageRuntime,
@@ -61,5 +67,6 @@ describe('writeMachineReport', () => {
 
     expect(payload.meta.throttleProfile).toBe('Slow-4G');
     expect(payload.meta.viewport).toEqual({ width: 390, height: 844 });
+    expect(capturedReportOnly).toBe(false);
   });
 });

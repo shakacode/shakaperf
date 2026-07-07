@@ -35,8 +35,7 @@ function signals(overrides: Partial<PageSignals> = {}): PageSignals {
   };
 }
 
-function agentReadinessResult(): AgentReadinessResult {
-  const rendered = signals();
+function agentReadinessResult(rendered: PageSignals = signals()): AgentReadinessResult {
   return {
     url: 'https://example.com/',
     viewportLabel: 'phone',
@@ -80,5 +79,27 @@ describe('synthesizeSite', () => {
     expect(scorecard.throttleProfile).toBe('Slow-4G');
     expect(scorecard.viewport).toEqual({ width: 390, height: 844 });
     expect(scorecard.pages[0]?.agentReady?.rendered.textSample).toBeUndefined();
+  });
+
+  it('passes through present textSample values', () => {
+    fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify({
+      meta: {
+        experimentUrl: 'https://example.com',
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      },
+      tests: [{ id: 'home-phone', name: 'Home', startingPath: '/', viewport: { label: 'phone' } }],
+    }));
+    fs.mkdirSync(path.join(dir, 'home-phone'));
+    fs.writeFileSync(path.join(dir, 'home-phone', 'agent-readiness.json'), JSON.stringify({
+      kind: 'ok',
+      stage: 'agent-readiness',
+      measurement: agentReadinessResult(signals({ textSample: 'A useful sentence survives synthesis for later consumers.' })),
+    }));
+
+    const scorecard = synthesizeSite(dir);
+
+    expect(scorecard.pages[0]?.agentReady?.rendered.textSample).toBe(
+      'A useful sentence survives synthesis for later consumers.',
+    );
   });
 });

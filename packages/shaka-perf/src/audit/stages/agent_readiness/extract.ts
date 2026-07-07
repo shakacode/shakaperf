@@ -129,7 +129,37 @@ export function extractPageSignals(): PageSignals {
     const body = text(clone.textContent);
     textChars = body.length;
     textWords = body ? body.split(' ').filter(Boolean).length : 0;
-    const sentences = body.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [];
+    const sentences: string[] = [];
+    let sentenceStart = 0;
+    const isDigit = (char: string): boolean => char >= '0' && char <= '9';
+    const isLower = (char: string): boolean => char >= 'a' && char <= 'z';
+    const isUpper = (char: string): boolean => char >= 'A' && char <= 'Z';
+    const isSentenceBoundary = (index: number): boolean => {
+      const mark = body[index];
+      if (mark !== '.') return true;
+      const prev = body[index - 1] || '';
+      const next = body[index + 1] || '';
+      if ((next === '.' || prev === '.') || (isDigit(prev) && isDigit(next))) return false;
+      const before = body.slice(Math.max(0, index - 16), index);
+      const word = before.match(/[A-Za-z]+$/)?.[0] || '';
+      const after = body.slice(index + 1).match(/^\s*([A-Za-z])/)?.[1] || '';
+      if (word.length === 1 && /[A-Za-z]/.test(next)) return false;
+      if (word.length === 1 && isUpper(word) && after && isUpper(after)) return false;
+      if (/([A-Za-z]\.)+[A-Za-z]$/.test(before)) return false;
+      if (/^(e|g|i|mr|mrs|ms|dr|prof|sr|jr|vs|etc|inc|ltd|co|corp|st|ave|no)$/i.test(word) && isLower(after)) {
+        return false;
+      }
+      return true;
+    };
+    for (let i = 0; i < body.length; i++) {
+      if (!/[.!?]/.test(body[i]) || !isSentenceBoundary(i)) continue;
+      let end = i + 1;
+      while (/[.!?]/.test(body[end] || '')) end++;
+      sentences.push(body.slice(sentenceStart, end));
+      sentenceStart = end;
+      i = end - 1;
+    }
+    if (sentenceStart < body.length) sentences.push(body.slice(sentenceStart));
     for (const sentence of sentences) {
       const clean = text(sentence);
       if (!clean) continue;

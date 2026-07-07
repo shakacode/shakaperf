@@ -62,7 +62,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     description: auditPipelineMetadata.description,
     pipelineConfig: input,
     report: auditPipelineReport,
-    machineReportMeta: ({ rows, reportOnly }) => reportOnly ? {} : auditMachineReportMeta(input, rows),
+    machineReportMeta: ({ rows }) => auditMachineReportMeta(input, rows),
   }, (pipeline) => {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(workerPool, new AuditStage({
@@ -182,7 +182,7 @@ export function auditMachineReportMeta(
 }
 
 function preferredLighthouseViewport(viewports: readonly Viewport[]): Viewport | undefined {
-  return viewports.find((viewport) => viewport.formFactor === 'mobile') ?? viewports[0];
+  return viewports.find((viewport) => /phone|mobile/i.test(viewport.label)) ?? viewports[0];
 }
 
 // "Worse" honours metric direction: for higher-is-better metrics (LH Score)
