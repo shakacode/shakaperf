@@ -49,11 +49,19 @@ import { agentStyles, tabStyles } from './agent-ready-styles';
 import { fetchSiteAccessSignals } from './agent-ready-site';
 import { scoreSite, type CategoryScore, type SiteAccessSignals } from './agent-ready-score';
 import {
+  AI_INDUSTRY_DATA_STATS,
+  aiCheckLine,
+  aiHeadline,
+  aiHeadlineSub,
+} from './cost-strings';
+import { buildCopyPrompt } from './copy-prompt';
+import {
   renderClientReportV2,
   type ClientReportV2Model,
   type V2A11yCard,
   type V2AgentCard,
   type V2BlockedPage,
+  type V2CostBlock,
   type V2Frame,
   type V2PerfCard,
   type V2StartHere,
@@ -2561,7 +2569,85 @@ function agentFactor(cat: CategoryScore): { name: string; score: number; status:
   return { name: AGENT_FACTOR_NAME[cat.id] ?? cat.name, score: Math.round(frac * 100), status };
 }
 
-function agentCardModel(view: AgentPageView): V2AgentCard {
+const AI_AFFECTS_PROSE = 'AI search and answer tools usually read the HTML first. If your real page text only appears after browser code runs, they may miss what you sell, answer without your site, or cite a competitor instead.';
+
+interface AgentPromptContext {
+  siteUrl: string;
+  host: string;
+  date: string;
+  conditions: string;
+}
+
+function agentPromptHost(siteUrl: string, domain: string): string {
+  try {
+    return new URL(siteUrl).host;
+  } catch {
+    return domain;
+  }
+}
+
+function agentPromptDate(dateStr: string, generatedAt: string): string {
+  return dateStr || generatedAt || 'date not recorded';
+}
+
+function agentPromptConditions(sc: SiteScorecard): string {
+  const parts = [
+    sc.viewport ? `${sc.viewport.width}x${sc.viewport.height} mobile viewport` : undefined,
+    sc.throttleProfile,
+    'raw HTML versus rendered page',
+  ];
+  return parts.filter((p): p is string => !!p).join(', ');
+}
+
+function agentRawStateForPrompt(view: AgentPageView): string {
+  if (view.struct.rawReachable) return 'ok';
+  return view.result.raw.likelyBlocked ? 'blocked' : 'failed';
+}
+
+function agentRawWords(view: AgentPageView): number {
+  return view.result.raw.signals?.textWords ?? 0;
+}
+
+function agentRenderedWords(view: AgentPageView): number {
+  return view.result.rendered.textWords;
+}
+
+function boundedCoveragePct(rawWords: number, renderedWords: number): number {
+  if (renderedWords <= 0) return 0;
+  return Math.round(Math.max(0, Math.min(1, rawWords / renderedWords)) * 100);
+}
+
+function boundedPresentWords(rawWords: number, renderedWords: number): number {
+  return Math.max(0, Math.min(rawWords, renderedWords));
+}
+
+function agentPromptForView(view: AgentPageView, ctx: AgentPromptContext, coveragePct: number): string | undefined {
+  if (!view.struct.rawReachable) return undefined;
+  const url = liveUrlFor(ctx.siteUrl, view.page.startingPath || '/') || view.result.url || ctx.siteUrl;
+  return buildCopyPrompt('ai', {
+    url,
+    host: ctx.host,
+    date: ctx.date,
+    conditions: ctx.conditions,
+    coveragePct,
+    rawWords: agentRawWords(view),
+    renderedWords: agentRenderedWords(view),
+    headings: view.result.rendered.headings.total,
+    links: view.result.rendered.links.total,
+    textSample: view.result.rendered.textSample,
+    rawState: agentRawStateForPrompt(view),
+  });
+}
+
+function compareAgentCostPage(a: AgentPageView, b: AgentPageView): number {
+  const missingA = Math.max(0, agentRenderedWords(a) - agentRawWords(a));
+  const missingB = Math.max(0, agentRenderedWords(b) - agentRawWords(b));
+  if (missingA !== missingB) return missingB - missingA;
+  if (a.struct.coverage !== b.struct.coverage) return a.struct.coverage - b.struct.coverage;
+  return a.page.startingPath.localeCompare(b.page.startingPath);
+}
+
+function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): V2AgentCard {
   const { page, struct } = view;
   const lead = agentPageLead(view);
   const fixes = view.client?.fixes?.length
@@ -2578,6 +2664,10 @@ function agentCardModel(view: AgentPageView): V2AgentCard {
     fixes,
   };
   if (lead.note) card.sub = lead.note;
+  if (promptCtx) {
+    const copyPrompt = agentPromptForView(view, promptCtx, boundedCoveragePct(agentRawWords(view), agentRenderedWords(view)));
+    if (copyPrompt) card.copyPrompt = copyPrompt;
+  }
   return card;
 }
 
@@ -2980,9 +3070,16 @@ async function buildClientReportV2Model(
   let agentStartHere: V2StartHere | undefined;
   let agentBlocked: V2BlockedPage[] = [];
   let agentCouldNotMeasure = false;
+  let agentCost: V2CostBlock | undefined;
   if (hasAgent) {
     try {
       let agentViews: AgentPageView[] = buildAgentPages(sc.pages, resultsDir);
+      const agentPromptCtx: AgentPromptContext = {
+        siteUrl: sc.url,
+        host: agentPromptHost(sc.url, domain),
+        date: agentPromptDate(dateStr, sc.generatedAt),
+        conditions: agentPromptConditions(sc),
+      };
       const siteSignals: SiteAccessSignals | undefined = await fetchSiteAccessSignals(sc.url);
       if (opts.summarizeAgent) {
         await enrichAgentSummaries(resultsDir, agentViews, siteSignals, opts.summarizeAgent);
@@ -2998,6 +3095,9 @@ async function buildClientReportV2Model(
       const agentMeasurable = agentViews.filter((v) => !isAgentBlocked(v));
       agentBlocked = agentBlockedViews.map((v) => ({ name: v.page.name, path: v.page.startingPath || '/' }));
       agentCouldNotMeasure = agentMeasurable.length === 0 && agentBlockedViews.length > 0;
+      if (agentCouldNotMeasure) {
+        agentCost = { tab: 'ai', state: 'blocked' };
+      }
       if (agentMeasurable.length > 0) {
         const overall = scoreSite(agentMeasurable.map((v) => v.result), siteSignals);
         agentStatus = overall.bucket;
@@ -3013,7 +3113,61 @@ async function buildClientReportV2Model(
         };
         const cardViews = agentMeasurable.filter((v) => v.struct.bucket !== 'good');
         const fineViews = agentMeasurable.filter((v) => v.struct.bucket === 'good');
-        agentCards = cardViews.map(agentCardModel);
+        const reachableForCost = agentMeasurable.filter((v) => v.struct.rawReachable);
+        const rawWords = reachableForCost.reduce((sum, v) => sum + agentRawWords(v), 0);
+        const renderedWords = reachableForCost.reduce((sum, v) => sum + agentRenderedWords(v), 0);
+        const allRenderedWords = agentMeasurable.reduce((sum, v) => sum + agentRenderedWords(v), 0);
+        const coveragePct = boundedCoveragePct(rawWords, renderedWords);
+        const missingPct = 100 - coveragePct;
+        const presentWords = boundedPresentWords(rawWords, renderedWords);
+        const worstCostPage = [...reachableForCost].sort(compareAgentCostPage)[0];
+        let agentCostState: V2CostBlock['state'];
+        if (allRenderedWords < 20 || (reachableForCost.length > 0 && renderedWords < 20)) {
+          agentCostState = 'noclaim';
+        } else if (reachableForCost.length === 0) {
+          agentCostState = 'blocked';
+        } else if (missingPct === 0 || agentStatus === 'good') {
+          agentCostState = 'zero';
+        } else {
+          agentCostState = 'measured';
+        }
+        agentCost = { tab: 'ai', state: agentCostState };
+        if (agentCostState === 'blocked' && reachableForCost.length === 0) {
+          agentCost = {
+            tab: 'ai',
+            state: 'blocked',
+            headline: 'We could not read the page the server sends, so this text gap was not measured.',
+          };
+        }
+        if (agentCostState === 'measured' && worstCostPage) {
+          const worstUrl = liveUrlFor(sc.url, worstCostPage.page.startingPath || '/') || worstCostPage.result.url || sc.url;
+          const worstRawWords = agentRawWords(worstCostPage);
+          const worstRenderedWords = agentRenderedWords(worstCostPage);
+          agentCost = {
+            tab: 'ai',
+            state: 'measured',
+            headline: aiHeadline(missingPct, presentWords, renderedWords),
+            headlineSub: aiHeadlineSub(presentWords, renderedWords),
+            chip: 'measured',
+            checkLine: aiCheckLine(worstUrl),
+            affectsProse: AI_AFFECTS_PROSE,
+            sitePrompt: buildCopyPrompt('ai', {
+              url: worstUrl,
+              host: agentPromptCtx.host,
+              date: agentPromptCtx.date,
+              conditions: agentPromptCtx.conditions,
+              coveragePct: boundedCoveragePct(worstRawWords, worstRenderedWords),
+              rawWords: worstRawWords,
+              renderedWords: worstRenderedWords,
+              headings: worstCostPage.result.rendered.headings.total,
+              links: worstCostPage.result.rendered.links.total,
+              textSample: worstCostPage.result.rendered.textSample,
+              rawState: agentRawStateForPrompt(worstCostPage),
+            }),
+            stats: [...AI_INDUSTRY_DATA_STATS],
+          };
+        }
+        agentCards = cardViews.map((v) => agentCardModel(v, agentPromptCtx));
         const firstGap = cardViews[0] ? agentPageFindings(cardViews[0].struct)[0] : undefined;
         if (firstGap?.label) agentTopGap = firstGap.label.toLowerCase();
         agentFine = fineViews.map((v) => ({
@@ -3045,6 +3199,7 @@ async function buildClientReportV2Model(
       agentFine = [];
       agentBlocked = [];
       agentCouldNotMeasure = false;
+      agentCost = undefined;
     }
   }
 
@@ -3220,6 +3375,7 @@ async function buildClientReportV2Model(
     agentFine,
     agentBlocked,
     agentCouldNotMeasure,
+    ...(agentCost ? { agentCost } : {}),
     narrative,
     outro,
     footnote,
