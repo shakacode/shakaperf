@@ -31,6 +31,7 @@ import {
   type Problem,
   type V2PagePerfStatusInput,
 } from '../client-report';
+import { findBannedWords } from '../cost-strings';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
 import type { PagePerf } from '../synthesis';
 
@@ -842,6 +843,34 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('function show(id)');
     expect(html).toContain("p.hidden = (p.id !== 'v2-panel-' + id)");
     expect(html).not.toContain('window.scrollTo');
+  });
+
+  it('ships shared disclosure toggle plumbing and print force-open CSS', () => {
+    const html = renderClientReportV2(model());
+    expect(html).toContain('[data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}');
+    expect(html).toContain('[data-disclosure][hidden]{display:block!important}');
+    expect(html).toContain('Disclosure contract: button uses data-disclose="<target-id>"; target uses');
+    expect(html).toContain("if(!target || !target.hasAttribute('data-disclosure')) return null;");
+    expect(html).toContain("document.querySelectorAll('[data-disclose]').forEach(function(control){");
+    expect(html).toContain("var control = e.target && e.target.closest && e.target.closest('[data-disclose]');");
+    expect(html).toContain('target.hidden = !willOpen;');
+    expect(html).toContain("control.setAttribute('aria-controls', target.id);");
+    expect(html).toContain("control.setAttribute('aria-expanded', target.hidden ? 'false' : 'true');");
+  });
+
+  it('keeps rendered v2 static copy free of banned cost wording', () => {
+    const html = renderClientReportV2(model({
+      // Narrative copy is owned separately; this keeps the assertion on renderer
+      // static strings and script/CSS text.
+      narrative: {
+        bottomLineHtml: 'Mobile speed is the main gap today.',
+        perf: { verdictWord: 'Slow on phones', verdictPara: 'Pages are slow on phones.' },
+        a11y: { verdictWord: '', verdictPara: '' },
+        agent: { verdictWord: 'Good', verdictPara: 'AI crawlers can read the site.' },
+      },
+    }));
+
+    expect(findBannedWords(html)).toEqual([]);
   });
 
   it('renders a neutral "could not measure" accessibility tab (no frames, no findings) when a bot wall blocked the scan', () => {
