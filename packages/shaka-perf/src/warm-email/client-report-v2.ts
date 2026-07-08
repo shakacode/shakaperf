@@ -9,9 +9,20 @@
 
 // Client report DESIGN v2 (the redesign): pure templating over a fully-assembled
 // `ClientReportV2Model` (built in ./client-report.ts, which does all the IO). v1
-// is the original report in ./client-report.ts. Type-only imports here = no import
-// cycle. Styling is inline per the design handoff; the <head> <style> only adds
-// what inline can't (font, :hover, tab/lightbox JS, mobile reflow).
+// is the original report in ./client-report.ts. Imports from ./client-report.ts
+// stay type-only (no import cycle); ./cost-strings is a leaf module (imports only
+// ./cost-model), so pulling its runtime data table + copy in is cycle-free.
+// Styling is inline per the design handoff; the <head> <style> only adds what
+// inline can't (font, :hover, tab/lightbox JS, mobile reflow).
+
+import {
+  COST_CHIP_LABELS,
+  COST_STATE_MATRIX,
+  INDUSTRY_DATA,
+  WHAT_THIS_AFFECTS,
+  type CostChip,
+  type Tab,
+} from './cost-strings';
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -135,6 +146,7 @@ export interface V2AgentCard {
   sub?: string;
   factors: V2AgentFactor[];
   fixes: string[];
+  copyPrompt?: string; // when set, a compact "Copy prompt for your agent" button
 }
 export interface V2AgentFineRow {
   name: string;
@@ -180,6 +192,35 @@ export interface V2StartHere {
   rest?: string; // one line covering the remaining pages
   lead?: string; // when set, render this plain sentence instead of the page list
 }
+// A sourced industry-data line (publisher + date link) shown in the collapsed
+// "industry data" expander. Same shape as cost-strings' IndustryDataStat, kept
+// local so the model type has no runtime dependency direction to worry about.
+export interface SourcedStat {
+  text: string;
+  publisher: string;
+  date: string;
+  url: string;
+}
+// The reusable "cost of the pain" block for a tab. `state` + `tab` select the
+// row in cost-strings' COST_STATE_MATRIX that decides WHAT renders (headline,
+// chip, copy-prompt button, industry expander); the remaining fields carry the
+// already-composed CONTENT. `idBase` namespaces this block's disclosure targets
+// (`<idBase>-prompt`, `<idBase>-industry`) so multiple blocks never collide.
+// Only `agentCost` is populated today; `perfCost`/`a11yCost` come with the
+// Performance/Accessibility tab tasks and reuse this exact renderer.
+export interface V2CostBlock {
+  tab: Tab;
+  state: 'measured' | 'zero' | 'blocked' | 'noclaim';
+  idBase: string;
+  headline?: string;
+  headlineSub?: string;
+  chip?: CostChip; // optional override; defaults to the matrix cell's chip
+  checkLine?: string;
+  affectsProse?: string;
+  sitePrompt?: string;
+  stats?: SourcedStat[];
+  dataCost?: { measuredLine: string; estimatedLine: string; formula: string };
+}
 export interface ClientReportV2Model {
   domain: string;
   dateStr: string;
@@ -214,6 +255,11 @@ export interface ClientReportV2Model {
   perfStartHere?: V2StartHere;
   a11yStartHere?: V2StartHere;
   agentStartHere?: V2StartHere;
+  // Reusable per-tab "what this affects" cost blocks. Only agentCost is wired in
+  // this task; perf/a11y stay undefined so those tabs render byte-identically.
+  perfCost?: V2CostBlock;
+  a11yCost?: V2CostBlock;
+  agentCost?: V2CostBlock;
   narrative: V2Narrative;
   outro: string;
   footnote: string;
@@ -232,6 +278,8 @@ const HEAD_STYLE = `
   [data-disclosure][hidden]{display:none}
   [data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}
   [data-disclose] .v2-mono-chip,[data-disclose].v2-mono-chip{color:#4a443c}
+  .v2-copy-btn{transition:background .12s ease}
+  .v2-copy-btn:hover{background:#3a352e}
   .v2-shot{cursor:zoom-in}
   .v2-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
   .v2-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
@@ -330,6 +378,118 @@ ${present.map((t) => tabButton(t.target, t.label, t.status, t.target === first, 
 // The "Start here" priority list: the specific pages to fix, each with the one
 // thing wrong on it (in parens), plus a line on the rest. Built from data, so it
 // names different things than the verdict paragraph above it.
+// ---- cost-of-the-pain block (shared across tabs; only the AI tab wires it now) ----
+
+// The epistemic chip. Rendered in the MONO metadata channel (neutral ink on the
+// same warm grey the mastheads use), deliberately NOT the good/fair/poor PAL
+// palette - it labels how a number was obtained, not whether it's good.
+function costChip(chip: CostChip): string {
+  return `<span class="v2-mono-chip" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; color:#6f665c; background:${NEUTRAL.bg}; border:1px solid ${NEUTRAL.line}; border-radius:5px; padding:2px 7px; white-space:nowrap">${esc(COST_CHIP_LABELS[chip])}</span>`;
+}
+
+// The copy-prompt button + a "view the prompt" mono toggle revealing the <pre>.
+// The <pre> is the SINGLE copy source (the click handler reads its textContent)
+// and doubles as the print rendering (print CSS force-opens data-disclosure).
+// It is a disclosure target (id=<idBase>-prompt) so it shares the report's
+// existing toggle plumbing; the copy button carries data-copy pointing at it.
+function copyPromptButton(prompt: string, idBase: string, compact: boolean): string {
+  const preId = `${idBase}-prompt`;
+  const label = 'Copy prompt for your agent';
+  const pad = compact ? '8px 13px' : '10px 16px';
+  const fontSize = compact ? '13px' : '14px';
+  return `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px 13px">
+          <button type="button" class="v2-copy-btn" data-copy="${esc(preId)}" style="appearance:none; font-family:inherit; cursor:pointer; background:#26221d; color:#f3efe7; border:0; border-radius:9px; padding:${pad}; font-size:${fontSize}; font-weight:600; min-height:44px"><span data-copy-label data-copy-idle="${esc(label)}">${esc(label)}</span></button>
+          <button type="button" data-disclose="${esc(preId)}" style="appearance:none; background:none; border:0; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6f665c; text-decoration:underline; text-underline-offset:3px">view the prompt</button>
+        </div>
+        <pre id="${esc(preId)}" data-disclosure hidden style="white-space:pre-wrap; word-break:break-word; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55; color:#3a352e; background:${NEUTRAL.bg}; border:1px solid ${NEUTRAL.line}; border-radius:11px; padding:14px 16px; margin:12px 0 0; max-width:64ch; overflow-x:auto">${esc(prompt)}</pre>`;
+}
+
+// Only http(s) hrefs survive; any other scheme (javascript:/data:/...) collapses
+// to an inert '#'. The stats are a hardcoded constant today, but SourcedStat.url
+// is a generic field on a block documented as reusable, so validate the scheme
+// rather than trust the input (esc() alone stops attribute breakout, not schemes).
+function safeHref(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? url : '#';
+  } catch {
+    return '#';
+  }
+}
+
+// The collapsed "industry data" expander: the sourced stat lines, each with its
+// publisher + date linked to the source. A disclosure target like the <pre>.
+function industryExpander(stats: SourcedStat[], idBase: string): string {
+  const id = `${idBase}-industry`;
+  const lines = stats
+    .map((s) => `            <div style="font-size:13.5px; line-height:1.5; color:#4a443c; margin-bottom:8px">${esc(s.text)} <a href="${esc(safeHref(s.url))}" target="_blank" rel="noopener noreferrer" style="color:#6f665c; text-decoration:underline; text-underline-offset:2px; white-space:nowrap">${esc(s.publisher)}, ${esc(s.date)}</a></div>`)
+    .join('\n');
+  return `<div style="margin-top:14px">
+          <button type="button" data-disclose="${esc(id)}" style="appearance:none; background:none; border:0; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#9b9286">${esc(INDUSTRY_DATA)} &darr;</button>
+          <div id="${esc(id)}" data-disclosure hidden style="margin-top:10px">
+${lines}
+          </div>
+        </div>`;
+}
+
+// Top half of the cost block: the measured headline (or, for a non-measuring
+// state, the matrix's honest fallback copy) + the epistemic chip, then the mono
+// sub-count and "check it yourself" line. State-driven from COST_STATE_MATRIX -
+// no switch. Renders BETWEEN the score-badge row and the verdict paragraph.
+function costHead(cost: V2CostBlock): string {
+  const cell = COST_STATE_MATRIX[cost.tab][cost.state];
+  const chip = cost.chip ?? cell.chip;
+  const head = cell.rendersFullTreatment ? (cost.headline ?? '') : (cell.copy ?? cost.headline ?? '');
+  const sub = cell.rendersFullTreatment && cost.headlineSub
+    ? `\n        <div style="font-size:13px; color:#9b9286; margin-top:6px">${esc(cost.headlineSub)}</div>`
+    : '';
+  const check = cell.rendersFullTreatment && cost.checkLine
+    ? `\n        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#9b9286; margin-top:9px; word-break:break-word">${esc(cost.checkLine)}</div>`
+    : '';
+  return `      <div style="margin:0 0 16px">
+        <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:9px 11px">
+          <div style="font-size:18px; font-weight:700; line-height:1.4; letter-spacing:-.01em; color:#26221d; max-width:58ch">${esc(head)}</div>
+          ${chip ? costChip(chip) : ''}
+        </div>${sub}${check}
+      </div>`;
+}
+
+// The optional data-cost line (measured MB -> estimated $ range, with its math).
+// Not wired for the AI tab; rendered only when a tab supplies dataCost.
+function dataCostLine(dc: NonNullable<V2CostBlock['dataCost']>): string {
+  return `\n        <div style="font-size:14px; line-height:1.5; color:#3a352e; margin-top:12px"><strong style="font-weight:700">${esc(dc.measuredLine)}</strong> - ${esc(dc.estimatedLine)}</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#9b9286; margin-top:5px">${esc(dc.formula)}</div>`;
+}
+
+// Bottom half of the cost block: the "What this affects" mechanism prose, the
+// copy-prompt button + peek, and the collapsed industry-data expander. Every
+// piece is gated by the matrix cell, so zero/blocked/noclaim render nothing here.
+// Renders AFTER the Start-here box.
+function costAffects(cost: V2CostBlock): string {
+  const cell = COST_STATE_MATRIX[cost.tab][cost.state];
+  if (!cell.rendersFullTreatment) return '';
+  const data = cost.dataCost ? dataCostLine(cost.dataCost) : '';
+  const btn = cell.rendersCopyPromptButton && cost.sitePrompt
+    ? `\n        ${copyPromptButton(cost.sitePrompt, cost.idBase, false)}`
+    : '';
+  const industry = cell.rendersIndustryDataExpander && cost.stats && cost.stats.length
+    ? `\n        ${industryExpander(cost.stats, cost.idBase)}`
+    : '';
+  return `      <div style="margin-top:18px; padding:16px 18px; background:#faf8f4; border:1px solid ${LINE}; border-radius:11px; max-width:64ch">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#9b9286; margin-bottom:9px">${esc(WHAT_THIS_AFFECTS)}</div>
+        ${cost.affectsProse ? `<p style="font-size:15px; line-height:1.55; color:#3a352e; margin:0">${esc(cost.affectsProse)}</p>` : ''}${data}${btn}${industry}
+      </div>`;
+}
+
+// The full cost block in fixed order (top then bottom). verdictHead splits these
+// two halves around the Start-here box; this composed form is for a tab (or a
+// test) that wants the whole thing in one slot.
+export function costBlock(cost: V2CostBlock | undefined): string {
+  if (!cost) return '';
+  const affects = costAffects(cost);
+  return affects ? `${costHead(cost)}\n${affects}` : costHead(cost);
+}
+
 function startHereBlock(status: V2Status, sh: V2StartHere): string {
   const p = PAL[status];
   const items = sh.items
@@ -351,17 +511,23 @@ ${inner}
       </div>`;
 }
 
-function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, startHere?: V2StartHere, blocked?: boolean, score?: number): string {
+// `cost` is optional and backward-compatible: perf/a11y pass nothing, so their
+// headers stay byte-identical. When present, the block's top half renders BETWEEN
+// the score-badge row and the verdict paragraph, and its bottom half AFTER the
+// Start-here box. Empty halves inject nothing (no stray whitespace lines).
+function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, startHere?: V2StartHere, blocked?: boolean, score?: number, cost?: V2CostBlock): string {
   const p = blocked ? NEUTRAL : PAL[status];
   const badge = blocked ? '' : scoreBadge(score, status);
+  const headHtml = cost ? costHead(cost) : '';
+  const affectsHtml = cost ? costAffects(cost) : '';
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
         <div style="font-size:26px; font-weight:800; letter-spacing:-.02em; color:${p.fg}">${esc(dim.verdictWord)}</div>
         ${badge}
-      </div>
+      </div>${headHtml ? `\n${headHtml}` : ''}
       <p style="font-size:17px; line-height:1.55; color:#3a352e; margin:0 0 16px; max-width:64ch">${emphasize(esc(dim.verdictPara))}</p>
-      ${!blocked && startHere && (startHere.items.length || startHere.lead) ? startHereBlock(status, startHere) : ''}
+      ${!blocked && startHere && (startHere.items.length || startHere.lead) ? startHereBlock(status, startHere) : ''}${affectsHtml ? `\n${affectsHtml}` : ''}
     </div>`;
 }
 
@@ -688,7 +854,7 @@ ${checks}
       </div>`;
 }
 
-function agentCard(c: V2AgentCard): string {
+function agentCard(c: V2AgentCard, i = 0): string {
   const p = PAL[c.status];
   const factors = c.factors
     .map((f) => {
@@ -724,7 +890,7 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
         <div style="font-size:16px; font-weight:600; line-height:1.4; margin-bottom:4px; letter-spacing:-.01em">${c.headlineHtml}</div>
         ${c.sub ? `<p style="font-size:15.5px; line-height:1.55; color:#6f665c; margin:0 0 18px; max-width:62ch">${esc(c.sub)}</p>` : ''}
         ${factors ? `<div style="display:flex; flex-direction:column; gap:12px; margin-bottom:18px">\n${factors}\n        </div>` : ''}
-${fixes}
+${fixes}${c.copyPrompt ? `\n        <div style="margin-top:16px">${copyPromptButton(c.copyPrompt, `cost-agent-card-${i}`, true)}</div>` : ''}
       </div>`;
 }
 
@@ -750,7 +916,7 @@ ${items}
 
 function agentPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.agentCards.length;
-  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore)}
+  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore, m.agentCost)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
 ${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.agentCards.map(agentCard).join('\n')}
@@ -813,6 +979,39 @@ const SCRIPTS = `<script>
     var willOpen = target.hidden;
     target.hidden = !willOpen;
     syncDisclosure(control, target);
+  });
+
+  // Copy-prompt buttons: copy the paired <pre> (data-copy points at its id), then
+  // flash "Copied" for 2s at a LOCKED width so the button never reflows. Uses the
+  // async Clipboard API with an execCommand textarea fallback (reports open from
+  // file://). The temp textarea is appended to document.body - never inside a
+  // [hidden] disclosure subtree, where a selection cannot be made.
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly','');
+    ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.left = '0'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); });
+    } else { fallbackCopy(text); }
+  }
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre = document.getElementById(btn.getAttribute('data-copy'));
+      if(!pre) return;
+      copyText(pre.textContent || '');
+      var label = btn.querySelector('[data-copy-label]') || btn;
+      btn.style.minWidth = btn.offsetWidth + 'px'; // lock width -> no layout shift
+      var idle = label.getAttribute('data-copy-idle') || label.textContent;
+      label.textContent = 'Copied';
+      if(btn._copyT) clearTimeout(btn._copyT);
+      btn._copyT = setTimeout(function(){ label.textContent = idle; }, 2000);
+    });
   });
 
   // On-video captions: reveal each beat as the clip reaches its time, behind a

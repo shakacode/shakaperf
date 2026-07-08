@@ -54,12 +54,20 @@ import {
   type V2A11yCard,
   type V2AgentCard,
   type V2BlockedPage,
+  type V2CostBlock,
   type V2Frame,
   type V2PerfCard,
   type V2StartHere,
   type V2Status,
   type V2Tile,
 } from './client-report-v2';
+import { buildCopyPrompt, type AiCopyPromptData } from './copy-prompt';
+import {
+  aiCheckLine,
+  aiHeadline,
+  aiHeadlineSub,
+  AI_INDUSTRY_DATA_STATS,
+} from './cost-strings';
 import { looksLikeBotWall } from '../audit/bot-wall';
 import {
   composeNarrative,
@@ -2581,6 +2589,47 @@ function agentCardModel(view: AgentPageView): V2AgentCard {
   return card;
 }
 
+// The AI-tab "What this affects" mechanism prose. Plain-language, avoids the
+// shared BANNED_WORDS list, and states the causal chain the headline number
+// implies: crawlers read the server HTML and skip JS, so JS-only content is
+// left out of AI answers even when classic search ranks the page well.
+const AI_AFFECTS_PROSE =
+  "When someone asks ChatGPT, Claude, or Google's AI for a recommendation, those tools read the page the server sends and mostly skip the JavaScript. Anything that only appears after the browser runs code is invisible to them, so your page can be left out of the answer even when it ranks well in ordinary search.";
+
+// 'ok' when the server HTML was readable, else why not - fed to the copy prompt's
+// rawState gate (a bot-wall state suppresses the prompt).
+function agentRawState(view: AgentPageView): 'ok' | 'blocked' | 'failed' {
+  if (view.struct.rawReachable) return 'ok';
+  return view.result.raw.likelyBlocked ? 'blocked' : 'failed';
+}
+
+// Assemble the AI copy-prompt data for one page from its measured signals. The
+// caller may override the coverage/word counts for the site-level prompt (worst
+// page's structure + the text-weighted site totals).
+function aiPromptDataFor(
+  view: AgentPageView,
+  siteUrl: string,
+  host: string,
+  date: string,
+  override?: { coveragePct: number; rawWords: number; renderedWords: number },
+): AiCopyPromptData {
+  const rawWords = view.result.raw.signals?.textWords ?? 0;
+  const renderedWords = view.result.rendered.textWords;
+  const data: AiCopyPromptData = {
+    url: liveUrlFor(siteUrl, view.page.startingPath || '/') ?? '',
+    host,
+    date,
+    coveragePct: override ? override.coveragePct : Math.round(view.struct.coverage * 100),
+    rawWords: override ? override.rawWords : rawWords,
+    renderedWords: override ? override.renderedWords : renderedWords,
+    headings: view.result.rendered.headings.total,
+    links: view.result.rendered.links.total,
+    rawState: agentRawState(view),
+  };
+  if (view.result.rendered.textSample) data.textSample = view.result.rendered.textSample;
+  return data;
+}
+
 const MAX_START_HERE_ITEMS = 2; // "the main problem, or a unique pair"
 
 // A "Start here" priority list of the DISTINCT problems (deduped by `key`), each
@@ -2980,6 +3029,7 @@ async function buildClientReportV2Model(
   let agentStartHere: V2StartHere | undefined;
   let agentBlocked: V2BlockedPage[] = [];
   let agentCouldNotMeasure = false;
+  let agentCost: V2CostBlock | undefined;
   if (hasAgent) {
     try {
       let agentViews: AgentPageView[] = buildAgentPages(sc.pages, resultsDir);
@@ -3024,6 +3074,70 @@ async function buildClientReportV2Model(
         }));
         const reachable = agentMeasurable.filter((v) => v.struct.rawReachable);
         if (reachable.length > 0) agentCoveragePct = Math.round((reachable.reduce((s, v) => s + v.struct.coverage, 0) / reachable.length) * 100);
+
+        // ---- cost block: headline number is TEXT-WEIGHTED site coverage ----
+        // sum(raw words) / sum(rendered words) over reachable pages. This is NOT
+        // agentCoveragePct above (a mean of per-page ratios, which over-weights
+        // thin pages); the headline states the MISSING share of text.
+        let host = domain;
+        try { host = new URL(sc.url).host || domain; } catch { /* keep domain */ }
+        const sumRawWords = reachable.reduce((s, v) => s + (v.result.raw.signals?.textWords ?? 0), 0);
+        const sumRenderedWords = reachable.reduce((s, v) => s + v.result.rendered.textWords, 0);
+        const missingPct = sumRenderedWords > 0
+          ? Math.max(0, Math.min(100, Math.round((1 - sumRawWords / sumRenderedWords) * 100)))
+          : 0;
+        // Present % is the exact complement of the headline's missing %, so the two
+        // numbers a reader sees side by side (headline vs the copy prompt) never
+        // disagree by a rounding point.
+        const sitePresentPct = 100 - missingPct;
+        // One compact prompt per gap card, built from that page's own signals.
+        agentCards.forEach((card, idx) => {
+          const prompt = buildCopyPrompt('ai', aiPromptDataFor(cardViews[idx], sc.url, host, dateStr));
+          if (prompt) card.copyPrompt = prompt;
+        });
+        // The site/worst-page prompt uses the worst page's structure but the
+        // text-weighted site totals for the coverage numbers it cites.
+        const worstView = cardViews[0] ?? reachable[0] ?? agentMeasurable[0];
+        const sitePrompt = worstView
+          ? buildCopyPrompt('ai', aiPromptDataFor(worstView, sc.url, host, dateStr, {
+            coveragePct: sitePresentPct,
+            rawWords: sumRawWords,
+            renderedWords: sumRenderedWords,
+          }))
+          : undefined;
+        const worstUrl = worstView ? liveUrlFor(sc.url, worstView.page.startingPath || '/') : undefined;
+        // State selection. The cost headline is specifically the text-coverage
+        // claim, so it only earns the `measured` treatment when there is an actual
+        // text gap (missingPct > 0) - a site that is non-good for other reasons
+        // (robots blocking, thin structure) never headlines "0% of your text is
+        // missing". `zero` ("Nothing to fix here") requires BOTH a good verdict and
+        // no gap card, so it can never render above a gap card. A non-good site
+        // with full text coverage gets no cost block at all (undefined): the tab
+        // still shows its verdict + gap cards, just without a text claim that does
+        // not apply here.
+        const agentCostState: V2CostBlock['state'] | undefined =
+          sumRenderedWords < 20
+            ? 'noclaim'
+            : missingPct > 0
+              ? 'measured'
+              : agentStatus === 'good' && agentCards.length === 0
+                ? 'zero'
+                : undefined;
+        if (agentCostState === 'measured') {
+          agentCost = {
+            tab: 'ai',
+            state: 'measured',
+            idBase: 'cost-agent',
+            headline: aiHeadline(missingPct, sumRawWords, sumRenderedWords),
+            headlineSub: aiHeadlineSub(sumRawWords, sumRenderedWords),
+            affectsProse: AI_AFFECTS_PROSE,
+            stats: [...AI_INDUSTRY_DATA_STATS],
+            ...(worstUrl ? { checkLine: aiCheckLine(worstUrl) } : {}),
+            ...(sitePrompt ? { sitePrompt } : {}),
+          };
+        } else if (agentCostState) {
+          agentCost = { tab: 'ai', state: agentCostState, idBase: 'cost-agent' };
+        }
         // "Start here": the DISTINCT gaps (deduped), each on one page (in parens) + rest.
         agentStartHere = buildStartHere(
           cardViews.map((v) => {
@@ -3037,6 +3151,9 @@ async function buildClientReportV2Model(
           (n) => `${n} ${n === 1 ? 'page reads' : 'pages read'} well for AI`,
         );
       }
+      // A fully bot-walled agent scan: no numbers, just the "not measured" chip
+      // + refusal copy (the matrix drives this from the blocked state).
+      if (agentCouldNotMeasure) agentCost = { tab: 'ai', state: 'blocked', idBase: 'cost-agent' };
     } catch (err) {
       console.warn(chalk.yellow(`shaka-perf: the AI visibility section failed to render, omitting it: ${(err as Error).message}`));
       hasAgent = false;
@@ -3045,6 +3162,7 @@ async function buildClientReportV2Model(
       agentFine = [];
       agentBlocked = [];
       agentCouldNotMeasure = false;
+      agentCost = undefined;
     }
   }
 
@@ -3228,6 +3346,7 @@ async function buildClientReportV2Model(
   if (perfStartHere) model.perfStartHere = perfStartHere;
   if (a11yStartHere) model.a11yStartHere = a11yStartHere;
   if (agentStartHere) model.agentStartHere = agentStartHere;
+  if (agentCost) model.agentCost = agentCost;
   return model;
 }
 

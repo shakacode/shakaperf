@@ -21,7 +21,7 @@ import {
   type NarrativeFacts,
   type NarrativeSummarizer,
 } from '../client-report-narrative';
-import { BANNED_WORDS } from '../cost-strings';
+import { aiCheckLine, aiHeadline, aiHeadlineSub, AI_INDUSTRY_DATA_STATS, BANNED_WORDS } from '../cost-strings';
 import {
   perfProblemPhrase,
   perfProblemTileCopy,
@@ -36,7 +36,7 @@ import {
   type V2PagePerfStatusInput,
 } from '../client-report';
 import { findBannedWords } from '../cost-strings';
-import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
+import { renderClientReportV2, v2StatusWord, type ClientReportV2Model, type V2CostBlock } from '../client-report-v2';
 import type { PagePerf } from '../synthesis';
 
 function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
@@ -1133,5 +1133,250 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('width:240px');
     expect(html).toContain('lives in how the whole page is built');
     expect(html).not.toContain('0 spot');
+  });
+});
+
+// ---- AI-visibility cost block (V2CostBlock -> costBlock renderer) ----
+
+function measuredCost(over: Partial<V2CostBlock> = {}): V2CostBlock {
+  return {
+    tab: 'ai',
+    state: 'measured',
+    idBase: 'cost-agent',
+    headline: aiHeadline(83, 95, 550),
+    headlineSub: aiHeadlineSub(95, 550),
+    checkLine: aiCheckLine('http://localhost/products'),
+    affectsProse: 'When someone asks an AI tool for a recommendation, it reads the server HTML and skips the JavaScript.',
+    sitePrompt: 'Line one of the copy prompt.\nLine two mentions <tags> & "quotes".',
+    stats: [...AI_INDUSTRY_DATA_STATS],
+    ...over,
+  };
+}
+
+describe('renderClientReportV2 AI cost block', () => {
+  it('renders the measured headline, mono chip, check line, affects prose, copy button, peek and industry expander', () => {
+    const html = renderClientReportV2(model({ agentCost: measuredCost() }));
+    const agent = renderedPanel(html, 'agent');
+
+    // Text-weighted headline number + its sub-count.
+    expect(agent).toContain('83% of your page');
+    expect(agent).toContain('text is missing from the page the server sends');
+    expect(agent).toContain('only 95 of 550 words present');
+
+    // The chip renders in the MONO metadata channel (neutral warm grey), not PAL.
+    expect(agent).toContain('class="v2-mono-chip"');
+    expect(agent).toContain('background:#f4f1ea');
+    expect(agent).toMatch(/v2-mono-chip[^>]*>measured<\/span>/);
+    // The chip is not painted with a good/fair/poor PAL foreground.
+    expect(agent).not.toMatch(/v2-mono-chip[^>]*color:#2f7d4f/);
+    expect(agent).not.toMatch(/v2-mono-chip[^>]*color:#c0271f/);
+
+    // The mono "check it yourself" line.
+    expect(agent).toContain('check it yourself: open view-source:http://localhost/products');
+
+    // "What this affects" mechanism block.
+    expect(agent).toContain('What this affects');
+    expect(agent).toContain('it reads the server HTML and skips the JavaScript');
+
+    // Copy-prompt button + its single <pre> source (escaped) + the view toggle.
+    expect(agent).toContain('Copy prompt for your agent');
+    expect(agent).toContain('data-copy="cost-agent-prompt"');
+    expect(agent).toContain('data-copy-idle="Copy prompt for your agent"');
+    expect(agent).toContain('data-disclose="cost-agent-prompt"');
+    expect(agent).toContain('<pre id="cost-agent-prompt" data-disclosure hidden');
+    expect(agent).toContain('Line two mentions &lt;tags&gt; &amp; &quot;quotes&quot;.');
+
+    // Collapsed industry-data expander with the five sourced stat lines + links.
+    expect(agent).toContain('data-disclose="cost-agent-industry"');
+    expect(agent).toContain('<div id="cost-agent-industry" data-disclosure hidden');
+    expect(agent).toContain('industry data');
+    for (const s of AI_INDUSTRY_DATA_STATS) {
+      expect(agent).toContain(`href="${s.url}"`);
+      expect(agent).toContain(`${s.publisher}, ${s.date}`);
+    }
+  });
+
+  it('keeps the cost block out of the Performance and Accessibility panels', () => {
+    const html = renderClientReportV2(threeTabHeaderModel({
+      perfScore: 42,
+      a11yStatus: 'fair',
+      a11yScore: 88,
+      agentScore: 85,
+      agentCost: measuredCost(),
+    }));
+    for (const tab of ['perf', 'a11y'] as const) {
+      const panel = renderedPanel(html, tab);
+      expect(panel).not.toContain('Copy prompt for your agent');
+      expect(panel).not.toContain('class="v2-mono-chip"');
+      expect(panel).not.toContain('What this affects');
+      expect(panel).not.toContain('industry data');
+    }
+    expect(renderedPanel(html, 'agent')).toContain('Copy prompt for your agent');
+  });
+
+  it('renders the zero state as "Nothing to fix here" + measured chip, no button or expander', () => {
+    const html = renderClientReportV2(model({ agentCost: { tab: 'ai', state: 'zero', idBase: 'cost-agent' } }));
+    const agent = renderedPanel(html, 'agent');
+    expect(agent).toContain('Nothing to fix here');
+    expect(agent).toMatch(/v2-mono-chip[^>]*>measured<\/span>/);
+    expect(agent).not.toContain('Copy prompt for your agent');
+    expect(agent).not.toContain('industry data');
+    expect(agent).not.toContain('What this affects');
+    expect(agent).not.toContain('% of your page');
+  });
+
+  it('renders the blocked state as a "not measured" chip + refusal copy, with no computed numbers', () => {
+    const html = renderClientReportV2(model({
+      agentCouldNotMeasure: true,
+      agentSite: undefined,
+      agentCards: [],
+      agentFine: [],
+      agentCost: { tab: 'ai', state: 'blocked', idBase: 'cost-agent' },
+    }));
+    const agent = renderedPanel(html, 'agent');
+    expect(agent).toMatch(/v2-mono-chip[^>]*>not measured<\/span>/);
+    expect(agent).toContain('bot protection served our checker a challenge page');
+    expect(agent).not.toContain('Copy prompt for your agent');
+    expect(agent).not.toContain('What this affects');
+    expect(agent).not.toContain('% of your page');
+  });
+
+  it('gates the copy button off when the prompt is undefined even in the measured state', () => {
+    const html = renderClientReportV2(model({ agentCost: measuredCost({ sitePrompt: undefined }) }));
+    const agent = renderedPanel(html, 'agent');
+    // Full treatment still renders...
+    expect(agent).toContain('What this affects');
+    expect(agent).toContain('industry data');
+    // ...but there is no copy button / pre without a prompt to copy.
+    expect(agent).not.toContain('Copy prompt for your agent');
+    expect(agent).not.toContain('<pre id="cost-agent-prompt"');
+  });
+
+  it('renders a compact per-card copy button namespaced by card index', () => {
+    const m = model();
+    m.agentCards[0].copyPrompt = 'A per-card prompt for this page.';
+    const html = renderClientReportV2(m);
+    const agent = renderedPanel(html, 'agent');
+    expect(agent).toContain('data-copy="cost-agent-card-0-prompt"');
+    expect(agent).toContain('<pre id="cost-agent-card-0-prompt" data-disclosure hidden');
+    expect(agent).toContain('A per-card prompt for this page.');
+  });
+
+  it('ships the clipboard copy handler with a fixed-width flip and an execCommand fallback', () => {
+    const html = renderClientReportV2(model({ agentCost: measuredCost() }));
+    expect(html).toContain('navigator.clipboard.writeText');
+    expect(html).toContain("document.execCommand('copy')");
+    expect(html).toContain('document.body.appendChild(ta)');
+    expect(html).toContain('btn.style.minWidth = btn.offsetWidth');
+    expect(html).toContain("label.textContent = 'Copied'");
+  });
+
+  it('routes every cost-block slot through esc and stays free of banned cost wording', () => {
+    const html = renderClientReportV2(model({
+      // Narrative copy is owned separately (its legacy deterministic strings are
+      // out of scope here); neutralize it so the assertion targets the cost block.
+      narrative: {
+        bottomLineHtml: 'Mobile speed is the main gap today.',
+        perf: { verdictWord: 'Slow on phones', verdictPara: 'Pages are slow on phones.' },
+        a11y: { verdictWord: '', verdictPara: '' },
+        agent: { verdictWord: 'Needs work', verdictPara: 'AI crawlers read little of your site.' },
+      },
+      agentCost: measuredCost({ affectsProse: '<script>alert(1)</script>', headline: 'Sneaky <img> headline' }),
+    }));
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('Sneaky &lt;img&gt; headline');
+    expect(findBannedWords(html)).toEqual([]);
+  });
+});
+
+// A full PageSignals object with a chosen text-word count; everything else is a
+// well-formed, agent-friendly page so only the raw/rendered word gap varies.
+function pageSignals(textWords: number): Record<string, unknown> {
+  return {
+    title: 'Title', titlePresent: true, metaDescription: 'A description.', metaDescriptionPresent: true,
+    canonical: true, lang: 'en', robotsMeta: '',
+    og: { title: true, description: true, image: true, type: true, siteName: true },
+    twitterCard: true,
+    structuredData: { blocks: 1, valid: 1, invalid: 0, types: ['Organization'], microdataItems: 0 },
+    headings: { h1Count: 1, total: 6, orderOk: true },
+    landmarks: { main: true, nav: true, header: true, footer: true, article: true },
+    links: { total: 20, nondescriptive: 0 }, images: { total: 4, withAlt: 4 },
+    textChars: textWords * 6, textWords,
+    textSample: 'A sample sentence from the page body.',
+  };
+}
+
+function writeAgentResults(pages: { id: string; name: string; startingPath: string; rawWords: number; renderedWords: number }[]): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-v2-agent-'));
+  tempResultDirs.push(dir);
+  fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
+    meta: { experimentUrl: 'http://localhost', generatedAt: '2026-06-24T00:00:00.000Z' },
+    tests: pages.map((page) => ({
+      id: page.id,
+      name: page.name,
+      startingPath: page.startingPath,
+      viewport: { label: 'phone', width: 390, height: 844 },
+    })),
+  }, null, 2)}\n`);
+  for (const page of pages) {
+    fs.mkdirSync(path.join(dir, page.id), { recursive: true });
+    fs.writeFileSync(path.join(dir, page.id, 'audit.json'), `${JSON.stringify({
+      stage: 'audit',
+      measurement: { metrics: [{ label: 'LCP', value: 2000, display: '2.0s' }, { label: 'LH Score', value: 95, display: '95/100' }] },
+    }, null, 2)}\n`);
+    fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({
+      stage: 'agent-readiness',
+      measurement: {
+        url: `http://localhost${page.startingPath}`,
+        viewportLabel: 'phone',
+        viewport: { label: 'phone', width: 390, height: 844 },
+        fetchedAt: '2026-06-24T00:00:00.000Z',
+        raw: { ok: true, likelyBlocked: false, signals: pageSignals(page.rawWords) },
+        rendered: pageSignals(page.renderedWords),
+      },
+    }, null, 2)}\n`);
+  }
+  return dir;
+}
+
+describe('AI-visibility headline uses text-weighted coverage, not the mean of ratios', () => {
+  it('renders the text-weighted missing % (83%) over a two-page fixture where the mean of ratios (50%) differs', async () => {
+    // home: 45/50 raw/rendered words -> 90% present. products: 50/500 -> 10% present.
+    // Mean of per-page ratios present -> 50%. Text-weighted present -> 95/550 = 17%,
+    // so the honest MISSING headline is 83%, not the 50% a mean would imply.
+    const dir = writeAgentResults([
+      { id: 'home', name: 'Home', startingPath: '/', rawWords: 45, renderedWords: 50 },
+      { id: 'products', name: 'Products', startingPath: '/products', rawWords: 50, renderedWords: 500 },
+    ]);
+    const { html } = await renderClientReport(dir, { design: 'v2', narrate: undefined });
+    const agent = renderedPanel(html, 'agent');
+
+    expect(agent).toContain('83% of your page');
+    expect(agent).toContain('text is missing from the page the server sends');
+    expect(agent).toContain('only 95 of 550 words present');
+    // The mean-of-ratios value must NOT be presented as the headline coverage claim.
+    expect(agent).not.toContain('50% of your page');
+    // The measured chip and a working copy prompt come along with it.
+    expect(agent).toMatch(/v2-mono-chip[^>]*>measured<\/span>/);
+    expect(agent).toContain('Copy prompt for your agent');
+    expect(findBannedWords(html)).toEqual([]);
+  });
+
+  it('never headlines a "0% missing" text claim: full coverage renders the zero state, not a false measured claim', async () => {
+    // Both pages carry all their text in the server HTML (raw == rendered), so
+    // missingPct is 0. The tab must not print "0% of your page's text is missing";
+    // a clean, well-built pair falls to the zero "Nothing to fix here" state.
+    const dir = writeAgentResults([
+      { id: 'home', name: 'Home', startingPath: '/', rawWords: 300, renderedWords: 300 },
+      { id: 'about', name: 'About', startingPath: '/about', rawWords: 260, renderedWords: 260 },
+    ]);
+    const { html } = await renderClientReport(dir, { design: 'v2', narrate: undefined });
+    const agent = renderedPanel(html, 'agent');
+
+    expect(agent).not.toContain('of your page');
+    expect(agent).not.toContain('text is missing from the page the server sends');
+    expect(agent).toContain('Nothing to fix here');
+    expect(agent).not.toContain('Copy prompt for your agent');
   });
 });
