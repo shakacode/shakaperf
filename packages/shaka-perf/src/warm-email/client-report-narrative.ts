@@ -15,8 +15,9 @@
 import type { V2DimNarrative, V2Narrative, V2Status } from './client-report-v2';
 import { BANNED_WORDS, findBannedWords } from './cost-strings';
 
-const DASH_RE = /\s*[\u2010-\u2015\u2212]\s*/g;
-const dashSafe = (s: string): string => s.replace(DASH_RE, ' - ').trim();
+const OUTPUT_DASH_RE = /\s*[\u2013\u2014]\s*/g;
+const FILTER_DASH_RE = /[\u2010-\u2015\u2212]/g;
+const dashSafe = (s: string): string => s.replace(OUTPUT_DASH_RE, ' - ').trim();
 
 export type Dim = 'perf' | 'a11y' | 'agent';
 
@@ -284,7 +285,7 @@ const CURRENCY_FIGURE_RE = [
 ] as const;
 
 function hasUnsafeAiText(s: string): boolean {
-  const normalized = s.normalize('NFKC').replace(DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
+  const normalized = s.normalize('NFKC').replace(FILTER_DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
   return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
 }
 

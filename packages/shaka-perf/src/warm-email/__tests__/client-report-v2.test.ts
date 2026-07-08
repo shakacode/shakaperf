@@ -208,6 +208,12 @@ describe('composeNarrative', () => {
     // unspecified fields fall back to deterministic
     expect(n.perf.verdictPara).toContain('5.3s');
   });
+  it('preserves clean AI prose that uses nonbreaking hyphenation', () => {
+    const n = composeNarrative(facts({ worstDim: 'perf' }), {
+      perf: { verdictPara: 'A well\u2011known mobile issue remains.' },
+    });
+    expect(n.perf.verdictPara).toBe('A well\u2011known mobile issue remains.');
+  });
   it('rejects an over-long AI field and keeps the deterministic one', () => {
     const huge = 'x'.repeat(5000);
     const n = composeNarrative(facts(), { perf: { verdictPara: huge } });
