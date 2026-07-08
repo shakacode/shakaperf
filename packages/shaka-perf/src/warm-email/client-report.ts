@@ -64,6 +64,7 @@ import { looksLikeBotWall } from '../audit/bot-wall';
 import {
   composeNarrative,
   parseNarrativeResponse,
+  versionNarrativeOverlay,
   type Dim,
   type NarrativeFacts,
   type NarrativeOverlay,
@@ -2361,7 +2362,9 @@ function readNarrativeOverlay(resultsDir: string): NarrativeOverlay | null {
   const p = path.join(resultsDir, NARRATIVE_V2_FILENAME);
   if (!fs.existsSync(p)) return null;
   try {
-    return parseNarrativeResponse(fs.readFileSync(p, 'utf8'));
+    const overlay = parseNarrativeResponse(fs.readFileSync(p, 'utf8'), { requireSchemaVersion: true });
+    if (!overlay) console.warn('shaka-perf: cached AI narrative overlay is stale or unreadable - regenerating verdict copy.');
+    return overlay;
   } catch {
     return null;
   }
@@ -2369,7 +2372,7 @@ function readNarrativeOverlay(resultsDir: string): NarrativeOverlay | null {
 
 function writeNarrativeOverlay(resultsDir: string, overlay: NarrativeOverlay): void {
   try {
-    fs.writeFileSync(path.join(resultsDir, NARRATIVE_V2_FILENAME), `${JSON.stringify(overlay, null, 2)}\n`);
+    fs.writeFileSync(path.join(resultsDir, NARRATIVE_V2_FILENAME), `${JSON.stringify(versionNarrativeOverlay(overlay), null, 2)}\n`);
   } catch {
     /* a polish artifact must never fail the report */
   }

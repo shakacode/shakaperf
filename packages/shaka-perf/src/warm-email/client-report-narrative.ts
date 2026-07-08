@@ -15,7 +15,8 @@
 import type { V2DimNarrative, V2Narrative, V2Status } from './client-report-v2';
 import { BANNED_WORDS, findBannedWords } from './cost-strings';
 
-const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ').trim();
+const DASH_RE = /\s*[\u2010-\u2015\u2212]\s*/g;
+const dashSafe = (s: string): string => s.replace(DASH_RE, ' - ').trim();
 
 export type Dim = 'perf' | 'a11y' | 'agent';
 
@@ -67,6 +68,10 @@ export interface NarrativeOverlay {
   agent?: Partial<V2DimNarrative>;
 }
 export type NarrativeSummarizer = (facts: NarrativeFacts) => Promise<NarrativeOverlay | null>;
+
+export function versionNarrativeOverlay(overlay: NarrativeOverlay): NarrativeOverlay {
+  return { ...overlay, schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION };
+}
 
 export const MAX_VERDICT_WORD = 40;
 export const MAX_PARA = 320;
@@ -266,20 +271,20 @@ const useText = (s: unknown, max: number): string | null => {
   return t.length > 0 && t.length <= max && !hasUnsafeAiText(s) && !hasUnsafeAiText(t) ? t : null;
 };
 
-const FORMAT_OR_CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g;
-const NON_HYPHEN_DASH_RE = /[—–]/g;
+const FORMAT_OR_CONTROL_RE = /[\p{Cc}\p{Cf}]/gu;
 const HYPHEN_WITH_SPACES_RE = /\s*-\s*/g;
 const CURRENCY_FIGURE_RE = [
-  /\$\s*(?:\d|\.\d)/i,
-  /\b(?:usd|us\s+dollars?)\s*\$?\s*(?:\d|\.\d)/i,
+  /[$€£¥₹]\s*(?:\d|\.\d)/i,
+  /\b(?:usd|eur|gbp|jpy|inr|us\s+dollars?|euros?|pounds?|yen|rupees?)\s*[$€£¥₹]?\s*(?:\d|\.\d)/i,
   /\bdollars?\b/i,
-  /\b\d[\d,]*(?:\.\d+)?\s*(?:usd|dollars?)\b/i,
-  /\b\d[\d,]*(?:\.\d+)?\s*(?:k|m|bn)\s+dollars?\b/i,
-  /\b\d[\d,]*(?:\.\d+)?\s+(?:hundred|thousand|million|billion)\s+dollars?\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:usd|eur|gbp|jpy|inr|dollars?|euros?|pounds?|yen|rupees?|cents?|bucks|grand)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:k|m|bn)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s+(?:hundred|thousand|million|billion)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d+(?:\.\d+)?\s*(?:k|m|bn)\b(?:\s*(?:a|per|each)\s*)?(?:month|year|week|day|visit|order|customer)\b/i,
 ] as const;
 
 function hasUnsafeAiText(s: string): boolean {
-  const normalized = s.normalize('NFKC').replace(NON_HYPHEN_DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
+  const normalized = s.normalize('NFKC').replace(DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
   return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
 }
 
@@ -386,11 +391,16 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
   ].join('\n');
 }
 
-export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
+interface ParseNarrativeResponseOptions {
+  requireSchemaVersion?: boolean;
+}
+
+export function parseNarrativeResponse(raw: string, opts: ParseNarrativeResponseOptions = {}): NarrativeOverlay | null {
   const json = parseJsonLoose(raw.trim());
   if (typeof json !== 'object' || json === null) return null;
   const o = json as Record<string, unknown>;
-  if (o.schemaVersion !== NARRATIVE_OVERLAY_SCHEMA_VERSION) return null;
+  const hasSchemaVersion = Object.prototype.hasOwnProperty.call(o, 'schemaVersion');
+  if ((opts.requireSchemaVersion || hasSchemaVersion) && Number(o.schemaVersion) !== NARRATIVE_OVERLAY_SCHEMA_VERSION) return null;
   const dim = (v: unknown): Partial<V2DimNarrative> | undefined => {
     if (typeof v !== 'object' || v === null) return undefined;
     const d = v as Record<string, unknown>;
@@ -400,7 +410,6 @@ export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
     return Object.keys(out).length ? out : undefined;
   };
   const overlay: NarrativeOverlay = {};
-  overlay.schemaVersion = NARRATIVE_OVERLAY_SCHEMA_VERSION;
   if (typeof o.bottomLine === 'string') overlay.bottomLine = o.bottomLine;
   const perf = dim(o.perf);
   const a11y = dim(o.a11y);
@@ -410,7 +419,7 @@ export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
   if (agent) overlay.agent = agent;
   // Nothing usable anywhere -> signal a miss so the caller keeps deterministic copy.
   if (!overlay.bottomLine && !perf && !a11y && !agent) return null;
-  return overlay;
+  return versionNarrativeOverlay(overlay);
 }
 
 function parseJsonLoose(s: string): unknown {

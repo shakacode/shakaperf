@@ -19,6 +19,7 @@ import {
   NARRATIVE_OVERLAY_SCHEMA_VERSION,
   parseNarrativeResponse,
   type NarrativeFacts,
+  type NarrativeSummarizer,
 } from '../client-report-narrative';
 import { BANNED_WORDS } from '../cost-strings';
 import {
@@ -177,13 +178,18 @@ describe('parseNarrativeResponse', () => {
     const o = parseNarrativeResponse(`\`\`\`json\n{"schemaVersion":${NARRATIVE_OVERLAY_SCHEMA_VERSION},"bottomLine":"hi"}\n\`\`\``);
     expect(o?.bottomLine).toBe('hi');
   });
+  it('accepts a live response without schemaVersion and stamps it for cache writes', () => {
+    const o = parseNarrativeResponse(JSON.stringify({ bottomLine: 'The clear gap is mobile speed.' }));
+    expect(o?.schemaVersion).toBe(NARRATIVE_OVERLAY_SCHEMA_VERSION);
+    expect(o?.bottomLine).toBe('The clear gap is mobile speed.');
+  });
   it('returns null on junk', () => {
     expect(parseNarrativeResponse('not json at all')).toBeNull();
     expect(parseNarrativeResponse('{}')).toBeNull();
   });
-  it('rejects old cache-shaped JSON without the current schema version', () => {
-    expect(parseNarrativeResponse(JSON.stringify({ bottomLine: 'The clear gap is mobile speed.' }))).toBeNull();
-    expect(parseNarrativeResponse(JSON.stringify({ schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION - 1, bottomLine: 'The clear gap is mobile speed.' }))).toBeNull();
+  it('rejects old cache-shaped JSON when cache schema is required', () => {
+    expect(parseNarrativeResponse(JSON.stringify({ bottomLine: 'The clear gap is mobile speed.' }), { requireSchemaVersion: true })).toBeNull();
+    expect(parseNarrativeResponse(JSON.stringify({ schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION - 1, bottomLine: 'The clear gap is mobile speed.' }), { requireSchemaVersion: true })).toBeNull();
   });
 });
 
@@ -231,6 +237,11 @@ describe('composeNarrative', () => {
     expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 1 dollar per visit.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
     expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves \uff044,000 each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
     expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves thousands of dollars each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves \u20ac4,000 each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 20 bucks each order.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 5 grand each month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 4k a month.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
+    expect(composeNarrative(f, { perf: { verdictPara: 'Fixing this saves 99 cents each visit.' } }).perf.verdictPara).toBe(base.perf.verdictPara);
   });
   it('rejects banned words in AI overlay fields', () => {
     const f = facts({ worstDim: 'agent' });
@@ -244,6 +255,7 @@ describe('composeNarrative', () => {
     expect(n.agent.verdictWord).toBe(base.agent.verdictWord);
     expect(n.agent.verdictPara).toBe('AI crawlers can read most of your content.');
     expect(composeNarrative(f, { bottomLine: 'The zero\u2013click gap is AI visibility.' }).bottomLineHtml).toBe(base.bottomLineHtml);
+    expect(composeNarrative(f, { bottomLine: 'The zero\u2011click gap is AI visibility.' }).bottomLineHtml).toBe(base.bottomLineHtml);
   });
   it('rejects banned words hidden by format characters', () => {
     const f = facts({ worstDim: 'agent' });
@@ -251,6 +263,7 @@ describe('composeNarrative', () => {
     const n = composeNarrative(f, { agent: { verdictWord: 'AI assis\u200btants' } });
 
     expect(n.agent.verdictWord).toBe(base.agent.verdictWord);
+    expect(composeNarrative(f, { agent: { verdictWord: 'AI assis\u00adtants' } }).agent.verdictWord).toBe(base.agent.verdictWord);
   });
 });
 
@@ -642,6 +655,30 @@ function threeTabHeaderModel(over: Partial<ClientReportV2Model> = {}): ClientRep
 }
 
 describe('renderClientReport v2 perf tile assembly', () => {
+  it('writes and reuses a versioned narrative overlay cache', async () => {
+    const dir = writePerfResults({ LCP: 8200, FCP: 1200, 'LH Score': 55 });
+    let calls = 0;
+    const narrate: NarrativeSummarizer = async () => {
+      calls += 1;
+      return {
+        bottomLine: 'The clear gap is mobile speed right now.',
+        perf: { verdictWord: 'Painfully slow' },
+      };
+    };
+
+    const first = await renderClientReport(dir, { design: 'v2', narrate });
+    expect(first.html).toContain('Painfully slow');
+    expect(calls).toBe(1);
+
+    const cache = JSON.parse(fs.readFileSync(path.join(dir, 'client-narrative-v2.json'), 'utf8')) as Record<string, unknown>;
+    expect(cache.schemaVersion).toBe(NARRATIVE_OVERLAY_SCHEMA_VERSION);
+    expect(cache.bottomLine).toBe('The clear gap is mobile speed right now.');
+
+    const second = await renderClientReport(dir, { design: 'v2', narrate });
+    expect(second.html).toContain('Painfully slow');
+    expect(calls).toBe(1);
+  });
+
   it.each([
     [
       'slow-lcp',
