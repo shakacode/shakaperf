@@ -7,17 +7,17 @@
  * License in LICENSE.md.
  */
 
-import type { V2Status } from '../client-report-v2';
+import type { ClientReportStatus } from '../client-report-renderer';
 import type { PagePerf } from '../synthesis';
 
 const LCP_GOOD_MS = 2500;
 const LCP_SLOW_MS = 10000;
 export const LCP_WAIT_MS = 4000; // a visitor notices the wait above this
-const V2_LCP_ACCEPTABLE_MS = 4000;
-const V2_FCP_GOOD_MS = 1800;
-const V2_FCP_POOR_MS = 3000;
-const V2_TBT_GOOD_MS = 200;
-const V2_TBT_POOR_MS = 600;
+const REPORT_LCP_ACCEPTABLE_MS = 4000;
+const REPORT_FCP_GOOD_MS = 1800;
+const REPORT_FCP_POOR_MS = 3000;
+const REPORT_TBT_GOOD_MS = 200;
+const REPORT_TBT_POOR_MS = 600;
 export const CLS_GOOD = 10;
 const CLS_POOR = 25;
 const FCP_BLANK_MS = 8000; // nothing painted for this long = effectively blank
@@ -44,28 +44,28 @@ export function lcpStatus(ms: number | undefined): Status {
   return 'poor';
 }
 
-export function v2LcpStatus(ms: number | undefined): V2Status {
+export function reportLcpStatus(ms: number | undefined): ClientReportStatus {
   if (ms === undefined) return 'fair';
-  if (ms <= V2_LCP_ACCEPTABLE_MS) return 'good';
+  if (ms <= REPORT_LCP_ACCEPTABLE_MS) return 'good';
   if (ms <= LCP_SLOW_MS) return 'fair';
   return 'poor';
 }
 
-export function v2FcpStatus(ms: number | undefined): V2Status {
+export function reportFcpStatus(ms: number | undefined): ClientReportStatus {
   if (ms === undefined) return 'good';
-  if (ms <= V2_FCP_GOOD_MS) return 'good';
-  if (ms <= V2_FCP_POOR_MS) return 'fair';
+  if (ms <= REPORT_FCP_GOOD_MS) return 'good';
+  if (ms <= REPORT_FCP_POOR_MS) return 'fair';
   return 'poor';
 }
 
-export function v2ClsStatus(v: number | undefined): V2Status {
+export function reportClsStatus(v: number | undefined): ClientReportStatus {
   return clsStatus(v);
 }
 
-export function v2TbtStatus(ms: number | undefined): V2Status {
+export function reportTbtStatus(ms: number | undefined): ClientReportStatus {
   if (ms === undefined) return 'good';
-  if (ms <= V2_TBT_GOOD_MS) return 'good';
-  if (ms <= V2_TBT_POOR_MS) return 'fair';
+  if (ms <= REPORT_TBT_GOOD_MS) return 'good';
+  if (ms <= REPORT_TBT_POOR_MS) return 'fair';
   return 'poor';
 }
 
@@ -290,91 +290,91 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
   };
 }
 
-export const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
+export const CLIENT_REPORT_STATUS_RANK: Record<ClientReportStatus, number> = { good: 0, fair: 1, poor: 2 };
 
-export interface V2PagePerfStatusInput {
+export interface ClientReportPagePerfStatusInput {
   page: PagePerf;
   lead: Problem;
   rest?: readonly Problem[];
 }
 
-const V2_PROBLEM_STATUS: Record<PerfProblemKind, (page: PagePerf) => V2Status> = {
-  'slow-lcp': (page) => v2LcpStatus(metricVal(page, 'LCP')),
-  'layout-shift': (page) => v2ClsStatus(metricVal(page, 'CLS')),
-  blank: (page) => v2FcpStatus(metricVal(page, 'FCP')),
-  'late-paint': (page) => v2FcpStatus(metricVal(page, 'FCP')),
-  sluggish: (page) => v2TbtStatus(metricVal(page, 'TBT')),
+const CLIENT_REPORT_PROBLEM_STATUS: Record<PerfProblemKind, (page: PagePerf) => ClientReportStatus> = {
+  'slow-lcp': (page) => reportLcpStatus(metricVal(page, 'LCP')),
+  'layout-shift': (page) => reportClsStatus(metricVal(page, 'CLS')),
+  blank: (page) => reportFcpStatus(metricVal(page, 'FCP')),
+  'late-paint': (page) => reportFcpStatus(metricVal(page, 'FCP')),
+  sluggish: (page) => reportTbtStatus(metricVal(page, 'TBT')),
 };
 
-function worstV2Status(statuses: readonly V2Status[]): V2Status {
-  return statuses.reduce<V2Status>(
-    (worst, status) => V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst,
+function worstClientReportStatus(statuses: readonly ClientReportStatus[]): ClientReportStatus {
+  return statuses.reduce<ClientReportStatus>(
+    (worst, status) => CLIENT_REPORT_STATUS_RANK[status] > CLIENT_REPORT_STATUS_RANK[worst] ? status : worst,
     'good',
   );
 }
 
-function v2ProblemStatus(page: PagePerf, problem: Problem): V2Status {
-  return isPerfProblemKind(problem.kind) ? V2_PROBLEM_STATUS[problem.kind](page) : problem.status;
+function reportProblemStatus(page: PagePerf, problem: Problem): ClientReportStatus {
+  return isPerfProblemKind(problem.kind) ? CLIENT_REPORT_PROBLEM_STATUS[problem.kind](page) : problem.status;
 }
 
-export function v2PagePerfStatus(r: V2PagePerfStatusInput): V2Status {
+export function reportPagePerfStatus(r: ClientReportPagePerfStatusInput): ClientReportStatus {
   const problems = [r.lead, ...(r.rest ?? [])];
-  const statuses = problems.map((problem) => v2ProblemStatus(r.page, problem));
+  const statuses = problems.map((problem) => reportProblemStatus(r.page, problem));
   if (problems.some((problem) => problem.kind === 'slow-lcp')) {
-    statuses.push(v2FcpStatus(metricVal(r.page, 'FCP')));
-    statuses.push(v2ClsStatus(metricVal(r.page, 'CLS')));
-    statuses.push(v2TbtStatus(metricVal(r.page, 'TBT')));
+    statuses.push(reportFcpStatus(metricVal(r.page, 'FCP')));
+    statuses.push(reportClsStatus(metricVal(r.page, 'CLS')));
+    statuses.push(reportTbtStatus(metricVal(r.page, 'TBT')));
   }
-  return worstV2Status(statuses);
+  return worstClientReportStatus(statuses);
 }
 
-export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): V2Status {
+export function reportPerfStatus(rows: readonly ClientReportPagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): ClientReportStatus {
   if (perfCouldNotMeasure) return 'fair';
-  return rows.reduce<V2Status>((worst, r) => {
-    const status = v2PagePerfStatus(r);
-    return V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst;
+  return rows.reduce<ClientReportStatus>((worst, r) => {
+    const status = reportPagePerfStatus(r);
+    return CLIENT_REPORT_STATUS_RANK[status] > CLIENT_REPORT_STATUS_RANK[worst] ? status : worst;
   }, 'good');
 }
 
-export interface V2PerfProblemCandidate {
+export interface ClientReportPerfProblemCandidate {
   page: PagePerf;
   problem: Problem;
-  status: V2Status;
+  status: ClientReportStatus;
   severity: number;
 }
 
-function v2VirtualProblem(kind: PerfProblemKind, status: V2Status, severity: number, chip: string): Problem {
+function reportVirtualProblem(kind: PerfProblemKind, status: ClientReportStatus, severity: number, chip: string): Problem {
   return { kind, status, severity, headline: '', chip };
 }
 
-function v2RawMetricProblemCandidates(page: PagePerf, existingKinds: ReadonlySet<ProblemKind>): V2PerfProblemCandidate[] {
-  const out: V2PerfProblemCandidate[] = [];
+function rawMetricProblemCandidates(page: PagePerf, existingKinds: ReadonlySet<ProblemKind>): ClientReportPerfProblemCandidate[] {
+  const out: ClientReportPerfProblemCandidate[] = [];
   const fcp = metricVal(page, 'FCP');
-  const fcpStatus = v2FcpStatus(fcp);
+  const fcpStatus = reportFcpStatus(fcp);
   if (fcp !== undefined && fcpStatus !== 'good' && !existingKinds.has('blank') && !existingKinds.has('late-paint')) {
     out.push({
       page,
-      problem: v2VirtualProblem('late-paint', fcpStatus, clamp01(fcp / 9000) * 0.85, `first paint ${secs(fcp)}`),
+      problem: reportVirtualProblem('late-paint', fcpStatus, clamp01(fcp / 9000) * 0.85, `first paint ${secs(fcp)}`),
       status: fcpStatus,
       severity: clamp01(fcp / 9000) * 0.85,
     });
   }
   const clsV = metricVal(page, 'CLS');
-  const clsStatusV = v2ClsStatus(clsV);
+  const clsStatusV = reportClsStatus(clsV);
   if (clsV !== undefined && clsStatusV !== 'good' && !existingKinds.has('layout-shift')) {
     out.push({
       page,
-      problem: v2VirtualProblem('layout-shift', clsStatusV, clamp01(clsV / 60) + 0.02, `layout jumps (${(clsV / 100).toFixed(2)})`),
+      problem: reportVirtualProblem('layout-shift', clsStatusV, clamp01(clsV / 60) + 0.02, `layout jumps (${(clsV / 100).toFixed(2)})`),
       status: clsStatusV,
       severity: clamp01(clsV / 60) + 0.02,
     });
   }
   const tbt = metricVal(page, 'TBT');
-  const tbtStatus = v2TbtStatus(tbt);
+  const tbtStatus = reportTbtStatus(tbt);
   if (tbt !== undefined && tbtStatus !== 'good' && !existingKinds.has('sluggish')) {
     out.push({
       page,
-      problem: v2VirtualProblem('sluggish', tbtStatus, clamp01(tbt / 1800) * 0.6, 'laggy to tap'),
+      problem: reportVirtualProblem('sluggish', tbtStatus, clamp01(tbt / 1800) * 0.6, 'laggy to tap'),
       status: tbtStatus,
       severity: clamp01(tbt / 1800) * 0.6,
     });
@@ -382,7 +382,7 @@ function v2RawMetricProblemCandidates(page: PagePerf, existingKinds: ReadonlySet
   return out;
 }
 
-function v2PerfProblemCandidates(r: V2PagePerfStatusInput): V2PerfProblemCandidate[] {
+function perfProblemCandidates(r: ClientReportPagePerfStatusInput): ClientReportPerfProblemCandidate[] {
   const problems = [r.lead, ...(r.rest ?? [])];
   const existingKinds = new Set(problems.map((problem) => problem.kind));
   const candidates = problems
@@ -390,28 +390,28 @@ function v2PerfProblemCandidates(r: V2PagePerfStatusInput): V2PerfProblemCandida
     .map((problem) => ({
       page: r.page,
       problem,
-      status: v2ProblemStatus(r.page, problem),
+      status: reportProblemStatus(r.page, problem),
       severity: problem.severity,
     }));
   return existingKinds.has('slow-lcp')
-    ? [...candidates, ...v2RawMetricProblemCandidates(r.page, existingKinds)]
+    ? [...candidates, ...rawMetricProblemCandidates(r.page, existingKinds)]
     : candidates;
 }
 
-export function compareV2PerfProblemCandidate(a: V2PerfProblemCandidate, b: V2PerfProblemCandidate): number {
-  const statusDelta = V2_STATUS_RANK[b.status] - V2_STATUS_RANK[a.status];
+export function compareClientReportPerfProblemCandidate(a: ClientReportPerfProblemCandidate, b: ClientReportPerfProblemCandidate): number {
+  const statusDelta = CLIENT_REPORT_STATUS_RANK[b.status] - CLIENT_REPORT_STATUS_RANK[a.status];
   if (statusDelta !== 0) return statusDelta;
   return b.severity - a.severity;
 }
 
-export function v2DominantPerfProblem(r: V2PagePerfStatusInput): V2PerfProblemCandidate | undefined {
-  return v2PerfProblemCandidates(r)
+export function dominantPerfProblem(r: ClientReportPagePerfStatusInput): ClientReportPerfProblemCandidate | undefined {
+  return perfProblemCandidates(r)
     .filter((candidate) => candidate.status !== 'good')
-    .sort(compareV2PerfProblemCandidate)[0];
+    .sort(compareClientReportPerfProblemCandidate)[0];
 }
 
-export function comparePerfProblem<T extends V2PagePerfStatusInput>(a: T, b: T): number {
-  const statusDelta = V2_STATUS_RANK[v2PagePerfStatus(b)] - V2_STATUS_RANK[v2PagePerfStatus(a)];
+export function comparePerfProblem<T extends ClientReportPagePerfStatusInput>(a: T, b: T): number {
+  const statusDelta = CLIENT_REPORT_STATUS_RANK[reportPagePerfStatus(b)] - CLIENT_REPORT_STATUS_RANK[reportPagePerfStatus(a)];
   if (statusDelta !== 0) return statusDelta;
-  return (v2DominantPerfProblem(b)?.severity ?? b.lead.severity) - (v2DominantPerfProblem(a)?.severity ?? a.lead.severity);
+  return (dominantPerfProblem(b)?.severity ?? b.lead.severity) - (dominantPerfProblem(a)?.severity ?? a.lead.severity);
 }

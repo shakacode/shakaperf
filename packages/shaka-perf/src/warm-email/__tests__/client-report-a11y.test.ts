@@ -317,7 +317,7 @@ describe('a11yCropFrames structural filter (integration)', () => {
     expect(frames.length).toBeGreaterThanOrEqual(1);
   }, 20000);
 
-  it('v2 blank-skip keeps the color-contrast band and skips a flat non-contrast band', async () => {
+  it('client report blank-skip keeps the color-contrast band and skips a flat non-contrast band', async () => {
     // Both bands are flat grey; color-contrast is exempt from blank-skip, so it (not the link-name fallback) survives.
     const img = await shotDataUri(400, 800);
     const scan: AccessibilityScan = {
@@ -330,7 +330,7 @@ describe('a11yCropFrames structural filter (integration)', () => {
         { ruleId: 'color-contrast', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#b'], html: '<b>', failureSummary: '', bounds: { x: 20, y: 420, width: 200, height: 24 } }] },
       ],
     };
-    const frames = await a11yCropFrames(scan, true); // v2 (dropEngulfing=true)
+    const frames = await a11yCropFrames(scan, true); // current report (dropEngulfing=true)
     expect(frames).toHaveLength(1);
     expect(frames[0].summary).toMatch(/contrast/i);
   }, 20000);

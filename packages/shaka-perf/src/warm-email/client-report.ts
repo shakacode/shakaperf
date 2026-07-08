@@ -52,18 +52,18 @@ import {
 } from './cost-strings';
 import { buildCopyPrompt } from './copy-prompt';
 import {
-  renderClientReportV2,
-  type ClientReportV2Model,
-  type V2A11yCard,
-  type V2AgentCard,
-  type V2BlockedPage,
-  type V2CostBlock,
-  type V2Frame,
-  type V2PerfCard,
-  type V2StartHere,
-  type V2Status,
-  type V2Tile,
-} from './client-report-v2';
+  renderClientReportHtml,
+  type ClientReportModel,
+  type ClientReportA11yCard,
+  type ClientReportAgentCard,
+  type ClientReportBlockedPage,
+  type ClientReportCostBlock,
+  type ClientReportFrame,
+  type ClientReportPerfCard,
+  type ClientReportStartHere,
+  type ClientReportStatus,
+  type ClientReportTile,
+} from './client-report-renderer';
 import { looksLikeBotWall } from '../audit/bot-wall';
 import {
   composeNarrative,
@@ -82,7 +82,7 @@ import {
   clamp01,
   clsStatus,
   comparePerfProblem,
-  compareV2PerfProblemCandidate,
+  compareClientReportPerfProblemCandidate,
   detectProblems,
   metricVal,
   perfProblemMetric,
@@ -90,27 +90,27 @@ import {
   perfProblemTileCopy,
   scoreStatus,
   secs,
-  v2DominantPerfProblem,
-  v2PagePerfStatus,
-  v2PerfStatus,
+  dominantPerfProblem,
+  reportPagePerfStatus,
+  reportPerfStatus,
   type Problem,
   type ProblemKind,
   type Status,
-  type V2PerfProblemCandidate,
-} from './client-report-v2-model/perf';
+  type ClientReportPerfProblemCandidate,
+} from './client-report-model/perf';
 
 export {
   detectProblems,
   perfProblemPhrase,
   perfProblemTileCopy,
-  v2ClsStatus,
-  v2FcpStatus,
-  v2LcpStatus,
-  v2PagePerfStatus,
-  v2PerfStatus,
-  v2TbtStatus,
-} from './client-report-v2-model/perf';
-export type { Problem, ProblemKind, V2PagePerfStatusInput } from './client-report-v2-model/perf';
+  reportClsStatus,
+  reportFcpStatus,
+  reportLcpStatus,
+  reportPagePerfStatus,
+  reportPerfStatus,
+  reportTbtStatus,
+} from './client-report-model/perf';
+export type { Problem, ProblemKind, ClientReportPagePerfStatusInput } from './client-report-model/perf';
 
 const execFileAsync = promisify(execFile);
 
@@ -1368,18 +1368,18 @@ export async function renderClientReport(
       }
     }
   }
-  const model = await buildClientReportV2Model(
+  const model = await buildClientReportModel(
     resultsDir,
     sc,
     domain,
     { detailed, more, measured, avgMs, avgLabel, slowCount, jumpyCount },
     opts,
   );
-  return { html: renderClientReportV2(model), pageCount: rendered.length };
+  return { html: renderClientReportHtml(model), pageCount: rendered.length };
 }
 
-// ---- Client report V2 model assembly ----
-// Maps the gathered artifacts onto the `ClientReportV2Model` the renderer takes.
+// ---- Client report model assembly ----
+// Maps the gathered artifacts onto the `ClientReportModel` the renderer takes.
 // All async/IO (a11y crops, agent fetch, AI passes) is here; the renderer is pure.
 
 // Plain-language names for the three per-page agent factors (the design renames
@@ -1390,13 +1390,16 @@ const AGENT_FACTOR_NAME: Record<string, string> = {
   semantics: 'Clear structure & enough text',
 };
 
-const NARRATIVE_V2_FILENAME = 'client-narrative-v2.json';
+const NARRATIVE_FILENAME = 'client-narrative.json';
+const LEGACY_NARRATIVE_FILENAME = 'client-narrative-v2.json';
 
 // Cache stores the AI OVERLAY (plain text), not the composed narrative, so every
 // render recomposes from current facts: a newly-present tab gets fresh copy, and
 // the bottom-line HTML is re-escaped here (never trusted raw). Bad file -> null.
 function readNarrativeOverlay(resultsDir: string): NarrativeOverlay | null {
-  const p = path.join(resultsDir, NARRATIVE_V2_FILENAME);
+  const current = path.join(resultsDir, NARRATIVE_FILENAME);
+  const legacy = path.join(resultsDir, LEGACY_NARRATIVE_FILENAME);
+  const p = fs.existsSync(current) ? current : legacy;
   if (!fs.existsSync(p)) return null;
   try {
     const overlay = parseNarrativeResponse(fs.readFileSync(p, 'utf8'), { requireSchemaVersion: true });
@@ -1409,7 +1412,7 @@ function readNarrativeOverlay(resultsDir: string): NarrativeOverlay | null {
 
 function writeNarrativeOverlay(resultsDir: string, overlay: NarrativeOverlay): void {
   try {
-    fs.writeFileSync(path.join(resultsDir, NARRATIVE_V2_FILENAME), `${JSON.stringify(versionNarrativeOverlay(overlay), null, 2)}\n`);
+    fs.writeFileSync(path.join(resultsDir, NARRATIVE_FILENAME), `${JSON.stringify(versionNarrativeOverlay(overlay), null, 2)}\n`);
   } catch {
     /* a polish artifact must never fail the report */
   }
@@ -1419,17 +1422,17 @@ function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
   return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
 }
 
-function perfCardModel(rp: RenderedPage, siteUrl: string): V2PerfCard {
+function perfCardModel(rp: RenderedPage, siteUrl: string): ClientReportPerfCard {
   const { page, status, lead } = rp;
   const score = metricVal(page, 'LH Score');
   const clsV = metricVal(page, 'CLS');
   const beforeLcpKb = metricVal(page, 'downloads-before-LCP');
   const totalKb = metricVal(page, 'downloads');
 
-  const frames: V2Frame[] = rp.shots.map((s) => {
+  const frames: ClientReportFrame[] = rp.shots.map((s) => {
     // Beat precedence: biggest piece (LCP) > layout jump > first content.
-    const beat: V2Frame['beat'] = s.isLcp ? 'lcp' : s.shiftValue > 0 ? 'shift' : s.isFcp ? 'first-content' : undefined;
-    const fr: V2Frame = {
+    const beat: ClientReportFrame['beat'] = s.isLcp ? 'lcp' : s.shiftValue > 0 ? 'shift' : s.isFcp ? 'first-content' : undefined;
+    const fr: ClientReportFrame = {
       key: s.isLcp || s.shiftValue > 0,
       blank: s.role === 'Blank',
       label: s.role,
@@ -1447,14 +1450,14 @@ function perfCardModel(rp: RenderedPage, siteUrl: string): V2PerfCard {
     return fr;
   });
 
-  const facts: V2PerfCard['facts'] = [];
+  const facts: ClientReportPerfCard['facts'] = [];
   if (beforeLcpKb !== undefined) facts.push({ val: mb(beforeLcpKb), label: 'downloaded first', status });
   else if (totalKb !== undefined) facts.push({ val: mb(totalKb), label: 'page weight', status });
   if (score !== undefined) facts.push({ val: `${Math.round(score)}/100`, label: 'speed score', status: scoreStatus(score) });
   if (clsV !== undefined && clsV > CLS_GOOD) facts.push({ val: (clsV / 100).toFixed(2), label: 'layout-shift score', status: clsStatus(clsV) });
 
   const poster = (rp.shots.find((s) => s.isLcp) ?? rp.shots[rp.shots.length - 1])?.dataUri;
-  const card: V2PerfCard = {
+  const card: ClientReportPerfCard = {
     name: page.name,
     path: page.startingPath,
     status,
@@ -1489,9 +1492,9 @@ function a11yFallbackFixes(scan: AccessibilityScan): string[] {
   return out;
 }
 
-function a11ySevChips(counts: ImpactCounts): V2A11yCard['sev'] {
+function a11ySevChips(counts: ImpactCounts): ClientReportA11yCard['sev'] {
   const hi = counts.critical + counts.serious;
-  const chips: V2A11yCard['sev'] = [];
+  const chips: ClientReportA11yCard['sev'] = [];
   if (hi > 0) chips.push({ num: hi, label: 'high-impact', status: 'poor' });
   if (counts.moderate > 0) chips.push({ num: counts.moderate, label: 'moderate', status: 'fair' });
   if (counts.minor > 0) chips.push({ num: counts.minor, label: 'low', status: 'good' });
@@ -1503,7 +1506,7 @@ const A11Y_WHOLEPAGE_CAPTION = 'Showing the full page; the flagged issues are li
 
 // When a page has no crop frames, show the whole page so the card still has a
 // visual. The caller picks the caption (structural vs generic).
-async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Promise<V2A11yCard['frames'][number] | null> {
+async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Promise<ClientReportA11yCard['frames'][number] | null> {
   const shot = scan.screenshot;
   const source = shot?.imageDataUri;
   if (!shot || !source) return null;
@@ -1551,17 +1554,17 @@ function a11yStartHereLead(worst: A11yPageView, otherPages: number, allSameFix: 
   return `Start with your worst-affected page (${name}): ${clause}.${rest}`;
 }
 
-async function a11yCardModel(view: A11yPageView): Promise<V2A11yCard> {
+async function a11yCardModel(view: A11yPageView): Promise<ClientReportA11yCard> {
   const { page, scan, counts, client } = view;
   const crops = await a11yCropFrames(scan, true);
   const score = client?.score;
-  const status: V2Status = typeof score === 'number' ? scoreBucket(score) : 'poor';
+  const status: ClientReportStatus = typeof score === 'number' ? scoreBucket(score) : 'poor';
   const topLabel = sortViolations(scan.violations)[0] ? a11yIssueLabel(sortViolations(scan.violations)[0].ruleId) : '';
   const hi = counts.critical + counts.serious;
   const summary = client?.summary
     ? dashSafe(client.summary)
     : `${hi} high-impact issue${hi === 1 ? '' : 's'} on this page${topLabel ? `, mainly ${topLabel}` : ''}.`;
-  let frames: V2A11yCard['frames'] = crops.map((f) => ({
+  let frames: ClientReportA11yCard['frames'] = crops.map((f) => ({
     imgUri: f.dataUri,
     boxes: f.boxes.map((b) => ({ left: b.left, top: b.top, width: b.width, height: b.height, hi: b.hi, level: b.level })),
     cap: f.summary,
@@ -1579,7 +1582,7 @@ async function a11yCardModel(view: A11yPageView): Promise<V2A11yCard> {
     const whole = await a11yWholePageFrame(scan, caption);
     if (whole) frames = [whole];
   }
-  const card: V2A11yCard = {
+  const card: ClientReportA11yCard = {
     name: page.name,
     path: page.startingPath || '/',
     status,
@@ -1592,9 +1595,9 @@ async function a11yCardModel(view: A11yPageView): Promise<V2A11yCard> {
   return card;
 }
 
-function agentFactor(cat: CategoryScore): { name: string; score: number; status: V2Status } {
+function agentFactor(cat: CategoryScore): { name: string; score: number; status: ClientReportStatus } {
   const frac = cat.max > 0 ? cat.points / cat.max : 1;
-  const status: V2Status = frac >= 0.8 ? 'good' : frac >= 0.5 ? 'fair' : 'poor';
+  const status: ClientReportStatus = frac >= 0.8 ? 'good' : frac >= 0.5 ? 'fair' : 'poor';
   return { name: AGENT_FACTOR_NAME[cat.id] ?? cat.name, score: Math.round(frac * 100), status };
 }
 
@@ -1688,13 +1691,13 @@ function compareAgentCostPage(a: AgentPageView, b: AgentPageView): number {
   return a.page.startingPath.localeCompare(b.page.startingPath);
 }
 
-function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): V2AgentCard {
+function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): ClientReportAgentCard {
   const { page, struct } = view;
   const lead = agentPageLead(view);
   const fixes = view.client?.fixes?.length
     ? view.client.fixes.map(dashSafe)
     : Array.from(new Set(agentPageFindings(struct).map((f) => f.action).filter((a): a is string => !!a))).slice(0, 3).map(dashSafe);
-  const card: V2AgentCard = {
+  const card: ClientReportAgentCard = {
     name: page.name,
     path: page.startingPath || '/',
     score: struct.score,
@@ -1725,7 +1728,7 @@ export function buildStartHere(
   sameNoun: string,
   otherNoun: string,
   fineClause: (n: number) => string,
-): V2StartHere | undefined {
+): ClientReportStartHere | undefined {
   if (entries.length === 0) return undefined;
   const items: { page: string; issue: string }[] = [];
   const shownKeys = new Set<string>();
@@ -1747,12 +1750,12 @@ export function buildStartHere(
   if (same > 0) parts.push(`${same} more ${same === 1 ? 'page has' : 'pages have'} ${sameNoun}`);
   if (other > 0) parts.push(`${other} more ${other === 1 ? 'page has' : 'pages have'} ${otherNoun}`);
   if (fineCount > 0) parts.push(fineClause(fineCount));
-  const sh: V2StartHere = { items };
+  const sh: ClientReportStartHere = { items };
   if (parts.length) sh.rest = `${parts.join('; ')}.`;
   return sh;
 }
 
-async function buildClientReportV2Model(
+async function buildClientReportModel(
   resultsDir: string,
   sc: SiteScorecard,
   domain: string,
@@ -1766,7 +1769,7 @@ async function buildClientReportV2Model(
     jumpyCount: number;
   },
   opts: RenderClientReportOptions,
-): Promise<ClientReportV2Model> {
+): Promise<ClientReportModel> {
   const dateStr = sc.generatedAt
     ? new Date(sc.generatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
@@ -1782,10 +1785,10 @@ async function buildClientReportV2Model(
     ...ctx.more,
   ];
   const perfFine = fineRows.map((rp) => {
-    const row: ClientReportV2Model['perfFine'][number] = {
+    const row: ClientReportModel['perfFine'][number] = {
       name: rp.page.name,
       path: rp.page.startingPath,
-      status: v2PagePerfStatus(rp),
+      status: reportPagePerfStatus(rp),
       note: stripTags(rp.lead.headline),
     };
     const liveUrl = liveUrlFor(sc.url, rp.page.startingPath);
@@ -1796,7 +1799,7 @@ async function buildClientReportV2Model(
   // page with its own short problem (the lead chip, e.g. "biggest piece at 4.2s").
   const perfStartHere = buildStartHere(
     rankedCarded.map((rp) => {
-      const problem = v2DominantPerfProblem(rp)?.problem ?? rp.lead;
+      const problem = dominantPerfProblem(rp)?.problem ?? rp.lead;
       return { page: rp.page.name, issue: problem.chip || stripTags(problem.headline), key: problem.kind };
     }),
     fineRows.length,
@@ -1808,16 +1811,16 @@ async function buildClientReportV2Model(
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
   const perfCouldNotMeasure = ctx.measured.length === 0;
   // No measured page -> never claim 'good' off zero data; stay neutral.
-  const perfStatus = v2PerfStatus(ctx.measured, perfCouldNotMeasure);
+  const perfStatus = reportPerfStatus(ctx.measured, perfCouldNotMeasure);
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
-  let dominantPerfProblem: V2PerfProblemCandidate | undefined;
+  let siteDominantPerfProblem: ClientReportPerfProblemCandidate | undefined;
   for (const rp of ctx.measured) {
-    const candidate = v2DominantPerfProblem(rp);
+    const candidate = dominantPerfProblem(rp);
     if (!candidate) continue;
-    if (!dominantPerfProblem || compareV2PerfProblemCandidate(dominantPerfProblem, candidate) > 0) dominantPerfProblem = candidate;
+    if (!siteDominantPerfProblem || compareClientReportPerfProblemCandidate(siteDominantPerfProblem, candidate) > 0) siteDominantPerfProblem = candidate;
   }
-  const perfProblemTx = dominantPerfProblem ? perfProblemPhrase(dominantPerfProblem.problem, dominantPerfProblem.page) : undefined;
-  const perfProblemMetricTx = dominantPerfProblem ? perfProblemMetric(dominantPerfProblem.problem, dominantPerfProblem.page) : undefined;
+  const perfProblemTx = siteDominantPerfProblem ? perfProblemPhrase(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
+  const perfProblemMetricTx = siteDominantPerfProblem ? perfProblemMetric(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
 
   // ---- ACCESSIBILITY ----
   if (opts.summarizeA11y) await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
@@ -1830,14 +1833,14 @@ async function buildClientReportV2Model(
   const isA11yBlocked = (v: A11yPageView): boolean => v.scan.blocked === true;
   const a11yBlockedViews = a11yViews.filter(isA11yBlocked);
   const a11yMeasurable = a11yViews.filter((v) => !isA11yBlocked(v));
-  const a11yBlocked: V2BlockedPage[] = a11yBlockedViews.map((v) => ({ name: v.page.name, path: v.page.startingPath || '/' }));
+  const a11yBlocked: ClientReportBlockedPage[] = a11yBlockedViews.map((v) => ({ name: v.page.name, path: v.page.startingPath || '/' }));
   const a11yCouldNotMeasure = a11yMeasurable.length === 0 && a11yBlockedViews.length > 0;
   const cardedA11y = a11yMeasurable.filter((v) => hasMajorA11yBarrier(v.counts));
   const fineA11y = a11yMeasurable.filter((v) => !hasMajorA11yBarrier(v.counts));
   const a11yCards = await Promise.all(cardedA11y.map(a11yCardModel));
   const a11yFine = fineA11y.map((v) => {
     const score = v.client?.score;
-    const row: ClientReportV2Model['a11yFine'][number] = {
+    const row: ClientReportModel['a11yFine'][number] = {
       name: v.page.name,
       path: v.page.startingPath || '/',
       status: typeof score === 'number' ? scoreBucket(score) : 'good',
@@ -1852,7 +1855,7 @@ async function buildClientReportV2Model(
     : undefined;
   const highImpactTotal = cardedA11y.reduce((n, v) => n + v.counts.critical + v.counts.serious, 0);
   const criticalTotal = cardedA11y.reduce((n, v) => n + v.counts.critical, 0);
-  const a11yStatus: V2Status = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
+  const a11yStatus: ClientReportStatus = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
   // top issue labels across carded pages, impact-weighted, worst first
   const a11yIssueWeight = new Map<string, number>();
   for (const v of cardedA11y) {
@@ -1866,7 +1869,7 @@ async function buildClientReportV2Model(
   // card, so the named page matches what the reader sees first), with a "same
   // fix" line only when the other pages share that fix.
   const a11yWorst = cardedA11y[0];
-  let a11yStartHere: V2StartHere | undefined;
+  let a11yStartHere: ClientReportStartHere | undefined;
   if (a11yWorst) {
     const worstClause = a11yFixClause(sortViolations(a11yWorst.scan.violations)[0]?.ruleId ?? '');
     const others = cardedA11y.slice(1);
@@ -1876,18 +1879,18 @@ async function buildClientReportV2Model(
 
   // ---- AI VISIBILITY (Agent Ready) ----
   let hasAgent = hasAgentData(sc.pages);
-  let agentSite: ClientReportV2Model['agentSite'];
-  let agentCards: V2AgentCard[] = [];
-  let agentFine: ClientReportV2Model['agentFine'] = [];
-  let agentStatus: V2Status = 'good';
+  let agentSite: ClientReportModel['agentSite'];
+  let agentCards: ClientReportAgentCard[] = [];
+  let agentFine: ClientReportModel['agentFine'] = [];
+  let agentStatus: ClientReportStatus = 'good';
   let agentOverall = 0;
   let agentAccessBlocked = false;
   let agentCoveragePct: number | undefined;
   let agentTopGap: string | undefined;
-  let agentStartHere: V2StartHere | undefined;
-  let agentBlocked: V2BlockedPage[] = [];
+  let agentStartHere: ClientReportStartHere | undefined;
+  let agentBlocked: ClientReportBlockedPage[] = [];
   let agentCouldNotMeasure = false;
-  let agentCost: V2CostBlock | undefined;
+  let agentCost: ClientReportCostBlock | undefined;
   if (hasAgent) {
     try {
       let agentViews: AgentPageView[] = buildAgentPages(sc.pages, resultsDir);
@@ -1940,7 +1943,7 @@ async function buildClientReportV2Model(
         const worstCoveragePct = boundedCoveragePct(worstRawWords, worstRenderedWords);
         const worstMissingPct = 100 - worstCoveragePct;
         const worstPresentWords = boundedPresentWords(worstRawWords, worstRenderedWords);
-        let agentCostState: V2CostBlock['state'];
+        let agentCostState: ClientReportCostBlock['state'];
         if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
           agentCostState = 'noclaim';
         } else if (reachableForCost.length === 0) {
@@ -2021,8 +2024,8 @@ async function buildClientReportV2Model(
   }
 
   // ---- worst dimension (for the bottom line) ----
-  const rank: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
-  const present: { dim: Dim; status: V2Status }[] = [];
+  const rank: Record<ClientReportStatus, number> = { good: 0, fair: 1, poor: 2 };
+  const present: { dim: Dim; status: ClientReportStatus }[] = [];
   if (hasPerf && !perfCouldNotMeasure) present.push({ dim: 'perf', status: perfStatus });
   if (hasA11y && !a11yCouldNotMeasure) present.push({ dim: 'a11y', status: a11yStatus });
   if (hasAgent && !agentCouldNotMeasure) present.push({ dim: 'agent', status: agentStatus });
@@ -2080,13 +2083,13 @@ async function buildClientReportV2Model(
   const narrative = composeNarrative(facts, overlay);
 
   // ---- exec tiles ----
-  const tiles: V2Tile[] = [];
+  const tiles: ClientReportTile[] = [];
   if (hasPerf) {
     const defaultPerfMetricSub = 'typical wait before a page is usable';
     const defaultPerfConseq = perfStatus === 'good'
       ? 'Pages load fine on a phone, so visitors are not lost to waiting.'
       : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
-    const dominantPerfTileCopy = dominantPerfProblem ? perfProblemTileCopy(dominantPerfProblem.problem) : undefined;
+    const dominantPerfTileCopy = siteDominantPerfProblem ? perfProblemTileCopy(siteDominantPerfProblem.problem) : undefined;
     const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
     const perfWordTx = perfCouldNotMeasure
       ? 'Could not measure'
@@ -2166,7 +2169,7 @@ async function buildClientReportV2Model(
   const footnote = `Measured ${dateStr ? `${dateStr} ` : ''}on an emulated mid-range phone over the Slow-4G profile Google PageSpeed uses - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale' : ''}. Put together by ShakaCode.`;
   const agentScore = hasAgent && !agentCouldNotMeasure ? agentOverall : undefined;
 
-  const model: ClientReportV2Model = {
+  const model: ClientReportModel = {
     domain,
     dateStr,
     faviconLinkTag: faviconTag,
