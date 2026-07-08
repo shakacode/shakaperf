@@ -13,8 +13,11 @@
 // (best-effort). Statuses/numbers come from the caller; only prose is written here.
 
 import type { V2DimNarrative, V2Narrative, V2Status } from './client-report-v2';
+import { BANNED_WORDS, findBannedWords } from './cost-strings';
 
-const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ').trim();
+const OUTPUT_DASH_RE = /\s*[\u2013\u2014]\s*/g;
+const FILTER_DASH_RE = /[\u2010-\u2015\u2212]/g;
+const dashSafe = (s: string): string => s.replace(OUTPUT_DASH_RE, ' - ').trim();
 
 export type Dim = 'perf' | 'a11y' | 'agent';
 
@@ -54,15 +57,22 @@ const COULD_NOT_MEASURE_PARA =
   "Your site's bot protection served our automated checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
 const PERF_COULD_NOT_MEASURE_PARA = 'The audit did not return enough mobile speed data to make a speed claim. Re-run the audit once the pages can be measured cleanly.';
 
+export const NARRATIVE_OVERLAY_SCHEMA_VERSION = 2;
+
 // AI overlay: all fields optional, applied over deterministic copy only when usable.
 // bottomLine is PLAIN text (the highlight span is re-applied after merge).
 export interface NarrativeOverlay {
+  schemaVersion?: typeof NARRATIVE_OVERLAY_SCHEMA_VERSION;
   bottomLine?: string;
   perf?: Partial<V2DimNarrative>;
   a11y?: Partial<V2DimNarrative>;
   agent?: Partial<V2DimNarrative>;
 }
 export type NarrativeSummarizer = (facts: NarrativeFacts) => Promise<NarrativeOverlay | null>;
+
+export function versionNarrativeOverlay(overlay: NarrativeOverlay): NarrativeOverlay {
+  return { ...overlay, schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION };
+}
 
 export const MAX_VERDICT_WORD = 40;
 export const MAX_PARA = 320;
@@ -259,8 +269,25 @@ export function buildDeterministicNarrative(f: NarrativeFacts): V2Narrative {
 const useText = (s: unknown, max: number): string | null => {
   if (typeof s !== 'string') return null;
   const t = dashSafe(s);
-  return t.length > 0 && t.length <= max ? t : null;
+  return t.length > 0 && t.length <= max && !hasUnsafeAiText(s) && !hasUnsafeAiText(t) ? t : null;
 };
+
+const FORMAT_OR_CONTROL_RE = /[\p{Cc}\p{Cf}]/gu;
+const HYPHEN_WITH_SPACES_RE = /\s*-\s*/g;
+const CURRENCY_FIGURE_RE = [
+  /[$€£¥₹]\s*(?:\d|\.\d)/i,
+  /\b(?:usd|eur|gbp|jpy|inr|us\s+dollars?|euros?|pounds?|yen|rupees?)\s*[$€£¥₹]?\s*(?:\d|\.\d)/i,
+  /\bdollars?\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:usd|eur|gbp|jpy|inr|dollars?|euros?|pounds?|yen|rupees?|cents?|bucks|grand)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:k|m|bn)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s+(?:hundred|thousand|million|billion)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d+(?:\.\d+)?\s*(?:k|m|bn)\b(?:\s*(?:a|per|each)\s*)?(?:month|year|week|day|visit|order|customer)\b/i,
+] as const;
+
+function hasUnsafeAiText(s: string): boolean {
+  const normalized = s.normalize('NFKC').replace(FILTER_DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
+  return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
+}
 
 function mergeDim(base: V2DimNarrative, ov: Partial<V2DimNarrative> | undefined): V2DimNarrative {
   if (!ov) return base;
@@ -348,6 +375,7 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     '',
     'Write JSON exactly in this shape (only the keys shown):',
     '{',
+    `  "schemaVersion": ${NARRATIVE_OVERLAY_SCHEMA_VERSION},`,
     '  "bottomLine": "ONE sentence naming the single biggest gap and why it matters most, mentioning what is already good if anything is; do not wrap anything in tags",',
     dimAsks,
     '}',
@@ -356,16 +384,24 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     `(max ${MAX_VERDICT_WORD} chars). verdictPara max ${MAX_PARA} chars;`,
     `bottomLine max ${MAX_BOTTOM_LINE} chars. Receiver-focused. HARD: no em-dashes and no`,
     'en-dashes anywhere, plain hyphens only.',
+    'Never state or invent a dollar amount or price.',
+    `Never use these words: ${BANNED_WORDS.join(', ')}.`,
     'For ACCESSIBILITY, write 2-3 short plain sentences (about grade-6 reading level), the whole paragraph UNDER 300 characters, answering "Can everyone use your site?". (1) Open by naming the real people blocked - screen reader users, keyboard-only users, low-vision users - and keep at least one of those groups present in EVERY sentence about the problem; never collapse to "anyone"/"users"/"people" in general, and never add a separate "Who this affects:" line. (2) Say in concrete everyday words what each group actually experiences ("thrown back to the top", "no clear way to reach the main content", "cannot tell the menu apart"), not the technical cause. (3) Translate every technical term to plain English; NEVER emit these words: axe, ARIA, landmark, region, DOM, meta-refresh, semantic, WCAG. Examples: "the page reloads itself and throws them back to the top"; "the main content is not clearly marked, so a screen reader cannot jump to it"; "the page areas are not clearly named, so a screen reader cannot tell them apart". (4) Give the number of affected pages as a digit and name the single worst page. (5) Close with the stakes in a few words, each mentioned once only - lost customers, some legal risk, weaker search visibility; use the word "search" at most once and never explain how search engines work. Calm and factual, never alarmist.',
     'Use digits for any count (write "11", not "eleven").',
     'OUTPUT ONLY the JSON object, no prose, no code fence.',
   ].join('\n');
 }
 
-export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
+interface ParseNarrativeResponseOptions {
+  requireSchemaVersion?: boolean;
+}
+
+export function parseNarrativeResponse(raw: string, opts: ParseNarrativeResponseOptions = {}): NarrativeOverlay | null {
   const json = parseJsonLoose(raw.trim());
   if (typeof json !== 'object' || json === null) return null;
   const o = json as Record<string, unknown>;
+  const hasSchemaVersion = Object.prototype.hasOwnProperty.call(o, 'schemaVersion');
+  if ((opts.requireSchemaVersion || hasSchemaVersion) && Number(o.schemaVersion) !== NARRATIVE_OVERLAY_SCHEMA_VERSION) return null;
   const dim = (v: unknown): Partial<V2DimNarrative> | undefined => {
     if (typeof v !== 'object' || v === null) return undefined;
     const d = v as Record<string, unknown>;
@@ -384,7 +420,7 @@ export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
   if (agent) overlay.agent = agent;
   // Nothing usable anywhere -> signal a miss so the caller keeps deterministic copy.
   if (!overlay.bottomLine && !perf && !a11y && !agent) return null;
-  return overlay;
+  return versionNarrativeOverlay(overlay);
 }
 
 function parseJsonLoose(s: string): unknown {
