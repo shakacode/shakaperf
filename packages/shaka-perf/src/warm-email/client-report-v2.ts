@@ -18,11 +18,10 @@ import {
   type Tab as CostTab,
 } from './cost-strings';
 
-// Client report DESIGN v2 (the redesign): pure templating over a fully-assembled
-// `ClientReportV2Model` (built in ./client-report.ts, which does all the IO). v1
-// is the original report in ./client-report.ts. Type-only imports here = no import
-// cycle. Styling is inline per the design handoff; the <head> <style> only adds
-// what inline can't (font, :hover, tab/lightbox JS, mobile reflow).
+// Client report renderer: pure templating over a fully-assembled
+// `ClientReportV2Model` (built in ./client-report.ts, which does all the IO).
+// Styling is inline per the design handoff; the <head> <style> only adds what
+// inline can't (font, :hover, tab/lightbox JS, mobile reflow).
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -57,9 +56,9 @@ export interface V2Box {
   hi?: boolean; // a11y only: high-impact (red) vs minor (amber)
   level?: 'hi' | 'mid' | 'lo'; // a11y only: severity bucket (drives color + the sev-tag toggle)
 }
-// The load story beat a frame represents, restored from the v1 report: drives
-// the frame ring + caption color (first content = blue, biggest piece = orange,
-// layout jump = red). Absent = an ordinary in-between frame (faint).
+// The load story beat a frame represents: drives the frame ring + caption color
+// (first content = blue, biggest piece = orange, layout jump = red). Absent =
+// an ordinary in-between frame (faint).
 export type V2Beat = 'first-content' | 'lcp' | 'shift';
 export interface V2Frame {
   key: boolean; // the highlighted moment (biggest piece / layout jump)
@@ -269,7 +268,7 @@ const HEAD_STYLE = `
   .v2-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
   .v2-sev-chip.v2-sev-off{opacity:.4;text-decoration:line-through}
   /* on-video captions: a dark lower-third scrim so the white beat text stays
-     legible during playback (independent of hover), matching the v1 report. */
+     legible during playback (independent of hover). */
   .v2-vidcap{position:absolute;left:0;right:0;bottom:0;padding:30px 12px 50px;background:linear-gradient(to top,rgba(8,11,15,.92) 0%,rgba(8,11,15,.74) 42%,rgba(8,11,15,0) 100%);text-align:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
   .v2-vidcap.v2-show{opacity:1}
   .v2-vidcap-tx{display:inline-block;max-width:92%;color:#fff;font-size:14px;line-height:1.35;font-weight:600;letter-spacing:.004em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
@@ -514,8 +513,8 @@ const monoPath = (path: string, liveUrl?: string): string =>
     ? `<a href="${esc(liveUrl)}" style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#9b9286; text-decoration:none">${esc(path)}</a>`
     : `<span style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#9b9286">${esc(path)}</span>`;
 
-// Restored v1 beat palette: first content = blue, biggest piece = orange,
-// layout jump = red. `ring` is the frame's box-shadow color, `lbl` the caption.
+// Beat palette: first content = blue, biggest piece = orange, layout jump = red.
+// `ring` is the frame's box-shadow color, `lbl` the caption.
 const FRAME_BEAT: Record<V2Beat, { ring: string; lbl: string }> = {
   'first-content': { ring: '#2b6cb0', lbl: '#2b6cb0' },
   lcp: { ring: '#d98324', lbl: '#9a5a12' },
@@ -1001,7 +1000,7 @@ const SCRIPTS = `<script>
 
   // On-video captions: reveal each beat as the clip reaches its time, behind a
   // dark lower-third scrim so the white text stays legible during playback (not
-  // tied to hover). Mirrors the v1 report.
+  // tied to hover).
   document.querySelectorAll('.v2-vidcap[data-cues]').forEach(function(band){
     var v = band.parentElement && band.parentElement.querySelector('video');
     var tx = band.querySelector('.v2-vidcap-tx');
@@ -1022,7 +1021,7 @@ const SCRIPTS = `<script>
   });
 
   // Lightbox: click a frame to enlarge; the arrows / ArrowLeft-Right step through
-  // the same strip; Esc or a backdrop click closes. Mirrors the v1 report.
+  // the same strip; Esc or a backdrop click closes.
   var lb = document.getElementById('v2-lb');
   if(lb){
     var lbStage = document.getElementById('v2-lb-stage'), lbCap = document.getElementById('v2-lb-cap');

@@ -16,11 +16,8 @@ import {
   scoreSite,
   scoreBucket,
   type Bucket,
-  type CategoryScore,
   type PageStructureScore,
-  type ScoreItem,
   type SiteAccessSignals,
-  type SiteAgentScore,
 } from './agent-ready-score';
 
 // The "Agent Ready" tab: a third lens over the same saved audit, beside
@@ -40,7 +37,6 @@ export const AGENT_SCORE_VERSION = 'v1';
 // which imports US - avoiding an import cycle). ----
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ');
 const pct = (ratio: number): string => `${Math.round(ratio * 100)}%`;
 
 function containedJoin(root: string, ...segs: string[]): string | null {
@@ -263,12 +259,6 @@ function avgCoverage(views: AgentPageView[]): number {
   return reachable.reduce((s, v) => s + v.struct.coverage, 0) / reachable.length;
 }
 
-// ============================================================================
-// Rendering
-// ============================================================================
-
-const bucketWord = (b: Bucket): string => (b === 'good' ? 'Good' : b === 'fair' ? 'Needs work' : 'Poor');
-
 export interface Lead {
   headline: string; // HTML
   note?: string;
@@ -301,176 +291,6 @@ export function pageLead(view: AgentPageView): Lead {
   return { headline: `Reachable and <strong>well structured</strong> for AI tools`, note: `${pct(s.coverage)} of the content is in the server HTML, and the page is cleanly marked up.`, status: scoreBucket(s.score) };
 }
 
-function scoreBadge(score: number, bucket: Bucket, capped: boolean): string {
-  const cap = capped ? ` title="Capped at ${score} because most of the content is not reachable without JavaScript"` : '';
-  return `<div class="ag-score ag-score--${bucket}"${cap}><div class="ag-score__num">${score}</div><div class="ag-score__lbl">page score</div></div>`;
-}
-
-const dot = (state: ScoreItem['state']): string => {
-  const k = state === 'pass' ? 'ok' : state === 'partial' ? 'mid' : state === 'na' ? 'na' : 'bad';
-  return `<span class="ag-dot ag-dot--${k}"></span>`;
-};
-
-function categoryBlock(cat: CategoryScore): string {
-  const frac = cat.max > 0 ? cat.points / cat.max : 1;
-  const bucket: Bucket = frac >= 0.8 ? 'good' : frac >= 0.5 ? 'fair' : 'poor';
-  const rows = cat.items
-    .filter((it) => it.max > 0 || it.state === 'na')
-    .map((it) => `<li class="ag-check">${dot(it.state)}<span class="ag-check__tx">${esc(dashSafe(it.detail))}</span></li>`)
-    .join('');
-  return `<div class="ag-cat">
-      <div class="ag-cat__head"><span class="ag-cat__name">${esc(cat.name)}</span><span class="ag-cat__pts ag-cat__pts--${bucket}">${Math.round(frac * 100)}<span class="ag-cat__of">/100</span></span></div>
-      <ul class="ag-checks">${rows}</ul>
-    </div>`;
-}
-
-function fixesHtml(view: AgentPageView): string {
-  const ai = view.client?.fixes?.length ? view.client.fixes : null;
-  // Fallback (no AI rewrite): render each finding's imperative `action`, not its
-  // descriptive `detail`, so the list reads as actions under "What to change".
-  const items = ai
-    ? ai.map((f) => `<li>${esc(dashSafe(f))}</li>`)
-    // Dedupe by the action TEXT: two findings (low coverage + thin server text)
-    // share the same "server-render this page" action, and the list must not
-    // print it twice.
-    : Array.from(new Set(pageFindings(view.struct).map((f) => f.action).filter((a): a is string => !!a)))
-        .slice(0, 4)
-        .map((a) => `<li>${esc(dashSafe(a))}</li>`);
-  if (items.length === 0) return '';
-  return `<div class="ag-fixes"><h3>What to change</h3><ul>${items.join('')}</ul></div>`;
-}
-
-function agentCardHtml(view: AgentPageView): string {
-  const { page, struct } = view;
-  const lead = pageLead(view);
-  const summary = view.client?.summary ? `<p class="ag-summary">${esc(dashSafe(view.client.summary))}</p>` : '';
-  const breakdown = struct.categories.map(categoryBlock).join('');
-  const capNote = struct.shellCapped
-    ? `<p class="ag-capnote">Scored ${struct.score} (capped): the page's structure and tags are fine, but they only appear after JavaScript runs, so an AI crawler that does not run JavaScript still sees little of it.</p>`
-    : '';
-  return `<section class="ag-card">
-      <header class="card-head">
-        <div class="card-title"><h2>${esc(page.name)}</h2><div class="path">${esc(page.startingPath || '/')}</div></div>
-        ${scoreBadge(struct.score, struct.bucket, struct.shellCapped)}
-      </header>
-      <p class="headline headline--${lead.status}">${lead.headline}</p>
-      ${lead.note ? `<p class="subhead">${esc(lead.note)}</p>` : ''}
-      ${summary}
-      ${capNote}
-      ${fixesHtml(view)}
-      <details class="ag-detail">
-        <summary>See what we checked <span class="ag-detail__hint">${struct.categories.length} groups</span></summary>
-        <div class="ag-cats">${breakdown}</div>
-      </details>
-    </section>`;
-}
-
-function accessSectionHtml(overall: SiteAgentScore): string {
-  const cat = overall.access.category;
-  const rows = cat.items
-    .map((it) => `<li class="ag-check">${dot(it.state)}<span class="ag-check__tx">${esc(dashSafe(it.detail))}</span></li>`)
-    .join('');
-  return `<section class="ag-access">
-      <header class="card-head">
-        <div class="card-title"><h2>Can AI answer engines reach your site?</h2><div class="path">site-wide</div></div>
-        <div class="ag-score ag-score--${overall.access.bucket}"><div class="ag-score__num">${overall.access.score}</div><div class="ag-score__lbl">access</div></div>
-      </header>
-      <p class="subhead">Search and AI answer engines mainly read and cite pages they are allowed to crawl. This is the same for every page on the site.</p>
-      <ul class="ag-checks">${rows}</ul>
-    </section>`;
-}
-
-// Short, visible intro - what this is, the stakes, then the defensible mechanism
-// (most AI crawlers skip JS; Google/Apple/Bing are the exceptions). Plain enough
-// for a non-technical owner; the scoring detail lives in the collapsible below.
-const INTRO = `When people ask ChatGPT, Claude, Perplexity, or Google's AI to recommend a business like yours, those tools read your site first. The less of your content they can read, the less likely they are to recommend you. Most of them - including OpenAI, Anthropic, and Perplexity - only read what your page shows right away and skip anything that loads a moment later; Google, Apple, and Microsoft's Bing are the main exceptions. This tab shows how much of your content AI can read today.`;
-
-// One short visible line; the weighting detail is demoted into "How we score this".
-const DIRECTIONAL_LINE = `This is a directional check (ShakaCode Agent Ready ${AGENT_SCORE_VERSION}), like a speed score - use the findings below, not the number on its own.`;
-
-// Collapsed by default ("How we score this") so it adds no reading burden up top.
-const METHOD = `We score four things, weighted by how much they affect AI visibility: text that loads before JavaScript runs (40%, the biggest factor, because most AI tools do not run JavaScript), whether AI tools are allowed to read your site (25%), labels that tell AI what the page is about (20%), and a clear, logical layout (15%). Sites that send their content as ready-to-read HTML from the server score highest. For the main score we read your page the way a no-JavaScript AI crawler does - the raw page your server sends, before any browser code runs; a site that sends different HTML to specific AI bots may score differently. If we cannot read a page's server HTML, we say so instead of guessing a score, and a page that sends almost no content up front is capped low, since a crawler cannot see what is not there.`;
-
-const OUTRO = `The fix is making sure your full page content is there as soon as the page loads (server-rendering), and done well it usually speeds up the page for real visitors too. We do exactly this work every day at ShakaCode - reach out if it would help to talk through what we found.`;
-
-export async function agentPanelHtml(
-  views: AgentPageView[],
-  site: SiteAccessSignals | undefined,
-  siteSummary: string | undefined,
-): Promise<string> {
-  const overall = scoreSite(views.map((v) => v.result), site);
-  const covAvg = avgCoverage(views);
-  const reachableViews = views.filter((v) => v.struct.rawReachable);
-  // < 0.5 so "serve most of their content only after JavaScript" is literally true
-  // (a page at 0.59 keeps 59% reachable - "most" would overstate it).
-  const shellPages = reachableViews.filter((v) => v.struct.coverage < 0.5).length;
-
-  const cards = views.map(agentCardHtml).join('\n');
-
-  // Headline stats: the score, the wedge (content reachable without JS), and the
-  // access gate. When NO page's raw HTML was readable, show a caveat not a number.
-  const covLabel = views.length > 1 ? 'How much of your content AI can read (average)' : 'How much of your content AI can read';
-  const coverageStat = overall.allRawUnreadable
-    ? `<div class="stat"><div class="num fair">n/a</div><div class="lbl">We could not read your page</div></div>`
-    : `<div class="stat"><div class="num ${covAvg >= 0.8 ? 'good' : covAvg >= 0.5 ? 'fair' : 'poor'}">${pct(covAvg)}</div><div class="lbl">${covLabel}</div></div>`;
-  const accessStat = `<div class="stat"><div class="num ${overall.access.bucket === 'good' ? 'good' : overall.access.bucket === 'fair' ? 'fair' : 'poor'}">${overall.access.score}</div><div class="lbl">Whether AI is allowed in</div></div>`;
-
-  // Always show the fixed INTRO - it is the only place that names the JS-rendering
-  // exceptions (Google/Apple/Bing), a hard requirement. The AI site summary, when
-  // present, is an ADDITIONAL site-specific note below it, never a replacement.
-  const note = `<p class="summary-note">${esc(INTRO)}</p>${siteSummary ? `\n  <p class="summary-note ag-sitenote">${esc(dashSafe(siteSummary))}</p>` : ''}`;
-  // Branch on the reachable count so subject/verb/pronoun agree: "This page" (1),
-  // "Both/All N pages" (every reachable page is a shell), else "M of N pages".
-  const wedgeTail = 'only after JavaScript runs, so an AI crawler that does not run JavaScript misses it.';
-  const wedgeBody = reachableViews.length === 1
-    ? `This page serves most of its content ${wedgeTail}`
-    : shellPages === reachableViews.length
-      ? `${reachableViews.length === 2 ? 'Both' : `All ${reachableViews.length}`} pages we could read serve most of their content ${wedgeTail}`
-      : shellPages === 1
-        ? `1 of the ${reachableViews.length} pages we could read serves most of its content ${wedgeTail}`
-        : `${shellPages} of the ${reachableViews.length} pages we could read serve most of their content ${wedgeTail}`;
-  const wedge = !overall.allRawUnreadable && shellPages > 0
-    ? `<p class="ag-wedge"><b>The gap that matters.</b> ${wedgeBody} Server-rendering closes that gap.</p>`
-    : '';
-
-  // When robots.txt blocks every crawler, that is THE verdict - no AI engine can
-  // read any page however well it is built. Lead with it, above the per-page cards.
-  const blockedFirst = overall.accessBlocked
-    ? `<p class="ag-wedge ag-wedge--alarm"><b>Fix this first.</b> Your robots.txt currently blocks every crawler, so the AI answer engines that respect it - which is most of them, including OpenAI, Anthropic, and Perplexity - will not crawl or cite any page on this site, however well each page is built.</p>`
-    : '';
-
-  // Overall is the hero; the two things it is built from (allowed in + how much
-  // is readable) sit smaller beneath it, so the headline number and its factors
-  // read as total-and-parts, not three numbers that look like the same thing.
-  const ob = overall.bucket;
-  return `<div class="tab-panel" id="agent-panel" role="tabpanel" aria-labelledby="tab-agent" hidden>
-  <div class="ag-hero">
-    <div class="ag-hero__num ${ob}">${overall.overall}</div>
-    <div class="ag-hero__lbl">Overall AI readiness <span class="ag-hero__verdict ${ob}">${bucketWord(overall.bucket)}</span></div>
-  </div>
-  <div class="ag-factors__cap">The two biggest factors</div>
-  <div class="summary ag-factors">
-    ${accessStat}
-    ${coverageStat}
-  </div>
-  ${note}
-  ${blockedFirst}
-  ${wedge}
-  <p class="howto">${DIRECTIONAL_LINE}</p>
-  <details class="ag-detail ag-howto"><summary>How we score this</summary><p class="howto">${METHOD}</p></details>
-  ${accessSectionHtml(overall)}
-${cards}
-  <p class="outro">${esc(OUTRO)}</p>
-</div>`;
-}
-
 export function hasAgentData(pages: PagePerf[]): boolean {
   return pages.some((p) => p.agentReady && p.agentReady.rendered !== undefined);
-}
-
-// The tab pill shows the score so a low one is visible at a glance (a count would
-// read as "issues"). Coloured by bucket.
-export function agentTabPill(views: AgentPageView[], site: SiteAccessSignals | undefined): string {
-  const overall = scoreSite(views.map((v) => v.result), site);
-  return `<span class="tab-pill tab-pill--${overall.bucket}">${overall.overall}</span>`;
 }

@@ -17,7 +17,7 @@ import { writeClientReport } from './client-report';
 import { claudeCaptionRefiner } from './caption-ai';
 import { claudeA11ySummarizer } from './a11y-summary-ai';
 import { claudeAgentSummarizer } from './agent-ready-summary-ai';
-import { CLIENT_REPORT_FILENAME, addDesignOptions, clientReportDesignOpts } from './client-report-program';
+import { CLIENT_REPORT_FILENAME, addClientReportNarrativeOption, clientReportNarrativeOpts } from './client-report-program';
 import { polishDraft } from '../email-polish/polish';
 
 // `shaka-perf warm-email` - standalone command (not a pipeline stage). Reads a
@@ -37,7 +37,7 @@ export function createWarmEmailCommand(): Command {
     .option('--no-polish', 'Skip the built-in critique/revise polish pass')
     .option('--polish-rounds <n>', 'Max critique/revise rounds per panel phase (professionals, then clients; each phase exits early when no high-priority fixes remain)', '3')
     .option('--print-prompt', 'Print the generation prompt to stderr (debugging)', false);
-  return addDesignOptions(cmd).action(async function (this: Command) {
+  return addClientReportNarrativeOption(cmd).action(async function (this: Command) {
       const opts = this.opts();
       const resultsDir = path.resolve(opts.results);
       const reportJson = path.join(resultsDir, 'report.json');
@@ -71,7 +71,7 @@ export function createWarmEmailCommand(): Command {
         refineCaptions: opts.aiCaptions === false ? undefined : claudeCaptionRefiner(),
         summarizeA11y: opts.aiA11y === false ? undefined : claudeA11ySummarizer(),
         summarizeAgent: opts.aiAgent === false ? undefined : claudeAgentSummarizer(),
-        ...clientReportDesignOpts(opts),
+        ...clientReportNarrativeOpts(opts),
       });
       console.log(`Wrote client-facing report for ${reportPages} page(s): ${clientReportPath}`);
 

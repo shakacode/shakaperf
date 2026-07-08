@@ -24,28 +24,23 @@ The same saved audit feeds two reports:
 
 ## client-report
 
-### Design: v2 (default) and v1
+### Design
 
-There are two designs, selectable with `--design` (default `v2`):
+`client-report` renders the current product-owner-first report: a one-line
+"bottom line", three status tiles (Mobile speed / Accessibility / AI
+visibility), and three tabs whose cards lead with a plain-language verdict before
+any numbers. It reuses the saved audit data (frames, video, a11y crops + scores,
+agent factors, and the per-page AI summaries) - no new metrics are collected.
 
-- **v2** (the redesign, default) - a product-owner-first report: a one-line
-  "bottom line", three status tiles (Mobile speed / Accessibility / AI
-  visibility), and three tabs whose cards lead with a plain-language verdict
-  before any numbers. It reuses the exact same measured data v1 does (frames,
-  video, a11y crops + scores, agent factors, the per-page AI summaries) - no new
-  metrics are collected, only re-laid-out. Its narrative copy (the bottom line +
-  each tab's verdict) is written by a `claude` pass (model `sonnet`, one call,
-  cached to `<results>/client-narrative-v2.json`; `--no-ai-narrative` to skip),
-  with a deterministic built-in fallback so the report always renders. The cache
-  stores only the plain AI text; the report is recomposed from the current data
-  each render, so a re-audit that adds a tab is reflected without stale copy.
-  Delete `client-narrative-v2.json` to refresh the AI verdict copy. v2 pulls the
-  Hanken Grotesk web font from Google Fonts (with a `system-ui` fallback if that
-  CDN is unreachable); the report is otherwise self-contained like v1.
-- **v1** (`--design v1`) - the original mobile-speed-led report described below.
-  Output is byte-for-byte what it always was.
-
-The video / filmstrip / a11y / agent behaviour below is shared by both designs.
+Narrative copy (the bottom line + each tab's verdict) is written by a `claude`
+pass (model `sonnet`, one call, cached to
+`<results>/client-narrative-v2.json`; `--no-ai-narrative` to skip), with a
+deterministic built-in fallback so the report always renders. The cache stores
+only the plain AI text; the report is recomposed from the current data each
+render, so a re-audit that adds a tab is reflected without stale copy. Delete
+`client-narrative-v2.json` to refresh the AI verdict copy. The report pulls the
+Hanken Grotesk web font from Google Fonts (with a `system-ui` fallback if that
+CDN is unreachable); it is otherwise self-contained.
 
 Renders one card per page (worst ~5 in full, the rest as a one-line list):
 
@@ -158,11 +153,11 @@ link to from the draft.
 ## Module layout
 
 `src/warm-email/`: `synthesis.ts` (cross-page scorecard over the saved
-artifacts), `client-report.ts` (the client renderer, incl. `buildCaptionCues`
-for the on-video caption track, `enrichA11ySummaries` for the a11y sidecars, and
-`buildClientReportV2Model` which assembles the v2 model from the same data),
-`client-report-v2.ts` (the v2 design - a pure templating module over that model),
-`client-report-narrative.ts` (the v2 verdict copy: deterministic builder + AI
+artifacts), `client-report.ts` (report orchestration, artifact IO, frame and
+a11y crop preparation, and `buildClientReportV2Model`), `client-report-v2.ts`
+(the pure templating module over that model), `client-report-v2-model/` (pure
+model helpers such as performance problem/status policy),
+`client-report-narrative.ts` (the verdict copy: deterministic builder + AI
 overlay merge + prompt/parse), `client-report-narrative-ai.ts` (the optional
 `claude` narrator), `caption-ai.ts` (the optional `claude` caption rewriter),
 `a11y-summary-ai.ts` (the optional `claude` accessibility summary/fixes
@@ -175,5 +170,5 @@ in `src/email-polish/polish.ts`. Pure logic is unit-tested in
 `src/warm-email/__tests__/client-report-a11y.test.ts`,
 `src/warm-email/__tests__/caption-ai.test.ts`,
 `src/warm-email/__tests__/a11y-summary-ai.test.ts`,
-`src/warm-email/__tests__/client-report-v2.test.ts` (the v2 narrative builder +
+`src/warm-email/__tests__/client-report-v2.test.ts` (the narrative builder +
 renderer), and `src/email-polish/__tests__/polish.test.ts`.

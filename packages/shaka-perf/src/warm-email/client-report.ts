@@ -34,18 +34,14 @@ import type {
   AccessibilityViolation,
 } from '../audit/stages/accessibility/types';
 import {
-  agentPanelHtml,
-  agentTabPill,
   buildAgentPages,
   enrichAgentSummaries,
   hasAgentData,
   pageFindings as agentPageFindings,
   pageLead as agentPageLead,
-  readAgentSiteSummary,
   type AgentPageView,
   type AgentSummarizer,
 } from './agent-ready-report';
-import { agentStyles, tabStyles } from './agent-ready-styles';
 import { fetchSiteAccessSignals } from './agent-ready-site';
 import { scoreSite, type CategoryScore, type SiteAccessSignals } from './agent-ready-score';
 import {
@@ -78,6 +74,43 @@ import {
   type NarrativeOverlay,
   type NarrativeSummarizer,
 } from './client-report-narrative';
+import {
+  CLS_GOOD,
+  LCP_WAIT_MS,
+  PROBLEM_KINDS,
+  VISIBLE_SHIFT,
+  clamp01,
+  clsStatus,
+  comparePerfProblem,
+  compareV2PerfProblemCandidate,
+  detectProblems,
+  metricVal,
+  perfProblemMetric,
+  perfProblemPhrase,
+  perfProblemTileCopy,
+  scoreStatus,
+  secs,
+  v2DominantPerfProblem,
+  v2PagePerfStatus,
+  v2PerfStatus,
+  type Problem,
+  type ProblemKind,
+  type Status,
+  type V2PerfProblemCandidate,
+} from './client-report-v2-model/perf';
+
+export {
+  detectProblems,
+  perfProblemPhrase,
+  perfProblemTileCopy,
+  v2ClsStatus,
+  v2FcpStatus,
+  v2LcpStatus,
+  v2PagePerfStatus,
+  v2PerfStatus,
+  v2TbtStatus,
+} from './client-report-v2-model/perf';
+export type { Problem, ProblemKind, V2PagePerfStatusInput } from './client-report-v2-model/perf';
 
 const execFileAsync = promisify(execFile);
 
@@ -94,34 +127,7 @@ const execFileAsync = promisify(execFile);
 // frame-by-frame (the exact regions that moved, with numbers), and any frame
 // can be clicked to zoom. See ../../README-warm-email.md.
 
-// ---- thresholds ----
-const LCP_GOOD_MS = 2500;
-const LCP_SLOW_MS = 10000;
-const LCP_WAIT_MS = 4000; // a visitor notices the wait above this
-// V2 site-verdict policy: Google's mobile CWV/Lighthouse bands are measured
-// under mobile conditions. LCP's 2.5-4.0s "needs improvement" band is not
-// literally fast, but it is acceptable for the top-line phone verdict when FCP,
-// CLS, and TBT stay healthy. The per-page LCP card still starts at 2.5s.
-const V2_LCP_ACCEPTABLE_MS = 4000;
-const V2_FCP_GOOD_MS = 1800;
-const V2_FCP_POOR_MS = 3000;
-const V2_TBT_GOOD_MS = 200;
-const V2_TBT_POOR_MS = 600;
-// CLS is stored on the /100 scale (value 25 == raw CLS 0.25). Google: good
-// < 0.10, poor > 0.25.
-const CLS_GOOD = 10;
-const CLS_POOR = 25;
-const FCP_BLANK_MS = 8000; // nothing painted for this long = effectively blank
-const FCP_LATE_MS = 3500; // first paint noticeably late
-const TBT_SLUGGISH_MS = 600;
-const SCORE_GOOD = 90;
-const SCORE_POOR = 50;
-// A per-frame layout shift below this is real but invisible to the eye; the
-// trace records plenty of 0.001-0.015 ripples. Only shifts at or above this
-// count as a "the page jumped" story beat (red ring, boxes, must-keep frame) -
-// a thumbnail captioned "shifts by 0.00" reads as noise, not analysis.
-const VISIBLE_SHIFT = 0.02;
-
+// ---- frame/image budgets ----
 const FRAME_W = 380; // inlined frame width (px) - enough detail for the zoom
 // Frame budgets per strip. The timeline is already visually deduped upstream
 // (every frame in timeline_frames.json is a frame where something changed), so
@@ -131,186 +137,6 @@ const FRAME_W = 380; // inlined frame width (px) - enough detail for the zoom
 const STRIP_DENSE = 12; // pages with a layout-shift story (every frame differs)
 const STRIP_SPARSE = 8; // load-story pages (enough beats without a wall of blank phones)
 const DETAIL_PAGES = 5; // pages shown in full; the rest get a one-line summary
-
-export type Status = 'good' | 'fair' | 'poor';
-
-const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
-const secs = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
-
-function metricVal(p: PagePerf, label: string): number | undefined {
-  const m = p.metrics[label];
-  return m && typeof m.value === 'number' && !Number.isNaN(m.value) ? m.value : undefined;
-}
-
-function lcpStatus(ms: number | undefined): Status {
-  if (ms === undefined) return 'fair';
-  if (ms <= LCP_GOOD_MS) return 'good';
-  if (ms <= LCP_SLOW_MS) return 'fair';
-  return 'poor';
-}
-
-export function v2LcpStatus(ms: number | undefined): V2Status {
-  if (ms === undefined) return 'fair';
-  if (ms <= V2_LCP_ACCEPTABLE_MS) return 'good';
-  if (ms <= LCP_SLOW_MS) return 'fair';
-  return 'poor';
-}
-
-export function v2FcpStatus(ms: number | undefined): V2Status {
-  if (ms === undefined) return 'good';
-  if (ms <= V2_FCP_GOOD_MS) return 'good';
-  if (ms <= V2_FCP_POOR_MS) return 'fair';
-  return 'poor';
-}
-
-export function v2ClsStatus(v: number | undefined): V2Status {
-  return clsStatus(v);
-}
-
-export function v2TbtStatus(ms: number | undefined): V2Status {
-  if (ms === undefined) return 'good';
-  if (ms <= V2_TBT_GOOD_MS) return 'good';
-  if (ms <= V2_TBT_POOR_MS) return 'fair';
-  return 'poor';
-}
-
-function scoreStatus(score: number | undefined): Status {
-  if (score === undefined) return 'fair';
-  if (score >= SCORE_GOOD) return 'good';
-  if (score >= SCORE_POOR) return 'fair';
-  return 'poor';
-}
-function clsStatus(v: number | undefined): Status {
-  if (v === undefined) return 'good';
-  if (v <= CLS_GOOD) return 'good';
-  if (v <= CLS_POOR) return 'fair';
-  return 'poor';
-}
-
-// ---- problem detection (the adaptive core) ----
-
-export type ProblemKind = 'slow-lcp' | 'layout-shift' | 'blank' | 'late-paint' | 'sluggish' | 'clean' | 'no-data';
-
-export interface Problem {
-  kind: ProblemKind;
-  severity: number; // 0..1, for ranking which problem leads the card
-  status: Status;
-  headline: string; // HTML, the bold lead line
-  note?: string; // one plain clause under the headline
-  chip: string; // short label when shown as a secondary problem
-}
-
-// Look at the measured metrics and decide what is actually wrong with THIS page,
-// ordered by how bad it is. The worst one leads the card; the rest become small
-// "also" chips. A page with no real problem gets a clean/good lead.
-export function detectProblems(page: PagePerf): { lead: Problem; rest: Problem[] } {
-  const lcp = metricVal(page, 'LCP');
-  const fcp = metricVal(page, 'FCP');
-  const clsV = metricVal(page, 'CLS'); // /100 scale
-  const tbt = metricVal(page, 'TBT');
-  const score = metricVal(page, 'LH Score');
-
-  // A page whose audit failed (error outcome / unreadable audit.json) reaches
-  // here with no metrics at all. That is "we could not measure it", never
-  // "Loads cleanly" - the email side already counts these via the broken chip,
-  // and the two artifacts must not contradict each other.
-  if (lcp === undefined && fcp === undefined && clsV === undefined && tbt === undefined && score === undefined) {
-    return {
-      lead: {
-        kind: 'no-data',
-        severity: 0,
-        status: 'fair',
-        headline: `We couldn't measure this page`,
-        note: 'The audit did not complete here, so no numbers are claimed for it.',
-        chip: 'not measured',
-      },
-      rest: [],
-    };
-  }
-  const out: Problem[] = [];
-
-  // Trigger at Google's "needs improvement" line (2.5s), not 4s, so a 3.x-second
-  // page gets an honest "takes 3.7s" headline instead of a false "Loads cleanly"
-  // sitting next to an amber badge.
-  if (lcp !== undefined && lcp > LCP_GOOD_MS) {
-    // The note must match what the filmstrip actually shows. When the rest of
-    // the page paints early (thinkd2 homepage: first content at 1.5s, LCP at
-    // 13.9s), "a mostly empty screen" would be contradicted by the frames two
-    // inches below it.
-    const paintsEarly = fcp !== undefined && fcp <= 3000 && lcp - fcp >= 3000;
-    const note = paintsEarly
-      ? 'Most of the page paints early, so the wait is easy to miss - but the biggest piece of the page only lands then.'
-      : lcp > LCP_WAIT_MS
-        ? 'Until then a visitor on a phone is looking at a mostly empty screen.'
-        : 'A bit slower than the under-2.5-second mark that feels instant on a phone.';
-    out.push({
-      kind: 'slow-lcp',
-      severity: clamp01(lcp / 14000),
-      status: lcpStatus(lcp),
-      headline: `The biggest piece of the page takes <strong>${secs(lcp)}</strong> to appear`,
-      note,
-      chip: `biggest piece at ${secs(lcp)}`,
-    });
-  }
-  if (clsV !== undefined && clsV > CLS_GOOD) {
-    const raw = (clsV / 100).toFixed(2);
-    // Only cite Google's 0.25 "poor" line when the page actually crosses it; in
-    // the 0.10-0.25 band the honest reference is the 0.10 comfort line.
-    const note = clsV > CLS_POOR
-      ? `The page scores ${raw} on Google's layout-shift scale, where anything above 0.25 is poor - so things move under your visitor's thumb.`
-      : `The page scores ${raw} on Google's layout-shift scale; a page is fully stable only below 0.10, and yours is above that, so things can still move under your visitor's thumb.`;
-    out.push({
-      kind: 'layout-shift',
-      severity: clamp01(clsV / 60) + 0.02,
-      status: clsStatus(clsV),
-      headline: `The page <strong>jumps around</strong> as it loads`,
-      note,
-      chip: `layout jumps (${raw})`,
-    });
-  }
-  if (fcp !== undefined && fcp > FCP_BLANK_MS) {
-    out.push({
-      kind: 'blank',
-      severity: clamp01(fcp / 12000) + 0.1,
-      status: 'poor',
-      headline: `The screen stays <strong>blank for ${secs(fcp)}</strong>`,
-      note: 'Nothing at all is painted to the screen for that long - it can read as a broken page.',
-      chip: `blank for ${secs(fcp)}`,
-    });
-  } else if (fcp !== undefined && fcp > FCP_LATE_MS && (lcp === undefined || fcp > lcp - 500)) {
-    out.push({
-      kind: 'late-paint',
-      severity: clamp01(fcp / 9000) * 0.85,
-      status: 'fair',
-      headline: `Nothing appears for the first <strong>${secs(fcp)}</strong>`,
-      note: 'The first pixels take that long to land, so the page feels stalled at the start.',
-      chip: `first paint ${secs(fcp)}`,
-    });
-  }
-  if (tbt !== undefined && tbt > TBT_SLUGGISH_MS) {
-    out.push({
-      kind: 'sluggish',
-      severity: clamp01(tbt / 1800) * 0.6,
-      status: 'fair',
-      headline: `The page is <strong>slow to react</strong> to taps`,
-      note: 'For a stretch while it loads, taps and scrolls lag behind the finger.',
-      chip: 'laggy to tap',
-    });
-  }
-
-  out.sort((a, b) => b.severity - a.severity);
-  if (out.length === 0) {
-    const clean: Problem = {
-      kind: 'clean',
-      severity: 0,
-      status: lcp !== undefined && lcp <= LCP_GOOD_MS ? 'good' : 'fair',
-      headline: lcp !== undefined ? `Loads cleanly in <strong>${secs(lcp)}</strong>` : 'Loads cleanly',
-      chip: 'clean',
-    };
-    return { lead: clean, rest: [] };
-  }
-  return { lead: out[0], rest: out.slice(1) };
-}
 
 // ---- frames (with per-frame layout-shift + lcp annotations) ----
 
@@ -828,144 +654,6 @@ export function isDuplicateStory(a: StoryKey, b: StoryKey): boolean {
   return Math.abs(a.lcpMs - b.lcpMs) / Math.max(a.lcpMs, b.lcpMs) <= 0.2;
 }
 
-function shotHtml(s: Shot, pageName: string): string {
-  const cls = s.isLcp ? 'shot shot--key' : s.shiftValue > 0 ? 'shot shot--shift' : s.isFcp ? 'shot shot--fcp' : 'shot';
-  const boxes = s.boxes
-    .map((b) => `<span class="sbox" style="left:${b.left.toFixed(2)}%;top:${b.top.toFixed(2)}%;width:${b.width.toFixed(2)}%;height:${b.height.toFixed(2)}%"></span>`)
-    .join('');
-  // No numeric tag on the thumbnail (illegible at this size); the precise number
-  // lives in data-detail and shows in the zoom caption.
-  return `
-        <figure class="${cls}" role="button" tabindex="0" data-detail="${esc(s.detail)}" aria-label="Enlarge ${esc(pageName)} at ${s.timeLabel}, ${esc(s.role)}">
-          <div class="phone"><div class="frame-inner"><img loading="lazy" src="${s.dataUri}" alt="${esc(pageName)} at ${s.timeLabel}" />${boxes}</div></div>
-          <figcaption><span class="phase">${esc(s.role)}</span><span class="t">${s.timeLabel}</span></figcaption>
-        </figure>`;
-}
-
-function pageCardHtml(rp: RenderedPage, siteUrl: string, isFirst: boolean): string {
-  const { page, status, lead, rest, shots, totalFrames, videoUri, lcpMs } = rp;
-  const score = metricVal(page, 'LH Score');
-  const clsV = metricVal(page, 'CLS');
-  // Older audits lack downloads-before-LCP; total page weight is a different
-  // (larger) quantity, so the label must follow the metric actually shown.
-  const beforeLcpKb = metricVal(page, 'downloads-before-LCP');
-  const totalKb = metricVal(page, 'downloads');
-  const liveUrl = siteUrl && page.startingPath ? `${siteUrl.replace(/\/$/, '')}${page.startingPath}` : '';
-  const statusWord = status === 'good' ? 'Good' : status === 'fair' ? 'Needs work' : 'Poor';
-
-  const hasShots = shots.length > 0;
-  const filmstrip = hasShots ? shots.map((s) => shotHtml(s, page.name)).join('\n') : '';
-  const chips = rest
-    .map((p) => `<span class="also">also <b>${esc(p.chip)}</b></span>`)
-    .join('');
-
-  const facts = [
-    beforeLcpKb !== undefined
-      ? `<span class="fact"><b>${mb(beforeLcpKb)}</b> downloaded first</span>`
-      : totalKb !== undefined
-        ? `<span class="fact"><b>${mb(totalKb)}</b> page weight</span>`
-        : '',
-    score !== undefined ? `<span class="fact"><b class="sc-${scoreStatus(score)}">${Math.round(score)}/100</b> speed score</span>` : '',
-    clsV !== undefined && clsV > CLS_GOOD ? `<span class="fact"><b class="sc-${clsStatus(clsV)}">${(clsV / 100).toFixed(2)}</b> layout-shift score</span>` : '',
-  ]
-    .filter(Boolean)
-    .join('\n        ');
-
-  // Poster = the loaded/main-content frame, so the player shows the finished page
-  // before you press play (then play it to watch the wait / the jump happen).
-  const poster = (shots.find((s) => s.isLcp) ?? shots[shots.length - 1])?.dataUri;
-  // Caption is a provocation tied to THIS page's problem, not a generic instruction.
-  const vidCap = videoCaption(lead.kind, lcpMs, rp.videoCoveredSec);
-  // On-video captions: the cue track rides in a data attribute and the sync
-  // script (CAPTION_JS) reveals each one as the video clock reaches it. The
-  // overlay band is aria-hidden because the same beats are already in the
-  // accessible frame-by-frame strip + copy below; this is visual reinforcement.
-  const cues = rp.captionCues ?? [];
-  const cuesAttr = cues.length
-    ? ` data-cues="${esc(JSON.stringify(cues.map((c) => ({ t: Math.round(c.atMs), x: c.text }))))}"`
-    : '';
-  const videoHtml = videoUri
-    ? `<div class="loadvid">
-        <div class="phone phone--vid">
-          <div class="vidwrap">
-            <video controls muted loop playsinline preload="none"${poster ? ` poster="${poster}"` : ''}><source src="${videoUri}" type="video/mp4" /></video>
-            <div class="vidcap"${cuesAttr} aria-hidden="true"><span class="vidcap-tx"></span></div>
-          </div>
-        </div>
-        <p class="loadvid-cap">&#9654; ${esc(vidCap)}</p>
-      </div>`
-    : '';
-
-  return `
-    <section class="card">
-      <header class="card-head">
-        <div class="card-title">
-          <h2>${esc(page.name)}</h2>
-          ${liveUrl ? `<a class="path" href="${esc(liveUrl)}">${esc(page.startingPath)}</a>` : `<span class="path">${esc(page.startingPath)}</span>`}
-        </div>
-        <span class="badge badge--${status}"><span class="dot"></span>${statusWord}</span>
-      </header>
-
-      <p class="headline headline--${status}">${lead.headline}</p>
-      ${lead.note ? `<p class="subhead">${esc(lead.note)}</p>` : ''}
-      ${chips ? `<div class="alsos">${chips}</div>` : ''}
-
-      ${videoHtml}
-
-      ${
-        hasShots
-          ? `<details class="frames"${isFirst ? ' open' : ''}>
-        <summary>Frame-by-frame breakdown <span class="fcount">${totalFrames} frames analyzed</span></summary>
-        <p class="frames-note">The moments that matter, left to right - tap any frame to enlarge it.</p>
-        <div class="filmstrip">
-${filmstrip}
-        </div>${isFirst ? `
-        <p class="strip-note">Blue = the first content lands. Orange = the moment the biggest piece of the page lands. Red boxes = parts of the page that move after a visitor is already reading. A near-blank frame is a phone still showing an empty screen.</p>` : ''}
-      </details>`
-          : ''
-      }
-
-      <div class="facts">
-        ${facts}
-      </div>
-
-      ${page.summary ? `<p class="plain">${esc(dashSafe(page.summary))}</p>` : ''}
-    </section>`;
-}
-
-// The pages past the detailed cut get a compact one-line row each, so the report
-// stays punchy but still shows we looked at the whole site.
-const MORE_ROWS_CAP = 8;
-function moreSectionHtml(more: RenderedPage[], siteUrl: string): string {
-  const shown = more.slice(0, MORE_ROWS_CAP);
-  const extra = more.length - shown.length;
-  const rows = shown
-    .map((rp) => {
-      const liveUrl = siteUrl && rp.page.startingPath ? `${siteUrl.replace(/\/$/, '')}${rp.page.startingPath}` : '';
-      const pathHtml = liveUrl ? `<a href="${esc(liveUrl)}">${esc(rp.page.startingPath)}</a>` : esc(rp.page.startingPath);
-      return `        <li class="more-row">
-          <span class="more-dot more-dot--${rp.status}"></span>
-          <span class="more-name"><b>${esc(rp.page.name)}</b> ${pathHtml}</span>
-          <span class="more-prob">${esc(stripTags(rp.lead.headline))}</span>
-        </li>`;
-    })
-    .join('\n');
-  // "Same pattern" / "all the same story" is only honest when the tail rows
-  // actually share one story - a clean green row under that heading (or hidden
-  // clean pages behind the overflow line) reads as sloppy or false to a client.
-  const uniform = more.length > 0 && more.every((rp) => rp.lead.kind === more[0].lead.kind);
-  const heading = uniform ? 'The rest of your pages, same pattern' : 'The rest of the pages we checked';
-  const overflowLabel = uniform ? `, all the same story` : ' in the full data';
-  const overflow = extra > 0 ? `\n        <li class="more-row more-overflow">+ ${extra} more page${extra === 1 ? '' : 's'}${overflowLabel}</li>` : '';
-  return `
-    <section class="more">
-      <h3 class="more-h">${heading}</h3>
-      <ul class="more-list">
-${rows}${overflow}
-      </ul>
-    </section>`;
-}
-
 // ============================================================================
 // Accessibility tab
 // ----------------------------------------------------------------------------
@@ -1192,9 +880,8 @@ const toPct = (ratio: number): string => `${(clamp01(ratio) * 100).toFixed(2)}%`
 
 // Exported for the crop-filter integration test (structural rules must yield no
 // crop, spatial rules must still crop). Not part of the public report API.
-// `dropEngulfing` (v2 only): skip a coarse box that covers the whole crop and
-// count only the boxes actually drawn. v1 passes false so its crop output stays
-// byte-for-byte unchanged.
+// `dropEngulfing`: skip a coarse box that covers the whole crop and count only
+// the boxes actually drawn.
 export async function a11yCropFrames(scan: AccessibilityScan, dropEngulfing = false): Promise<A11yFrame[]> {
   const shot = scan.screenshot;
   const source = shot?.imageDataUri ?? shot?.imageHref;
@@ -1241,8 +928,8 @@ export async function a11yCropFrames(scan: AccessibilityScan, dropEngulfing = fa
       bands.push({ top: n.y, bottom: n.y + n.h, nodes: [n] });
     }
   }
-  // v2 (dropEngulfing) skips flat-placeholder bands and takes the next real one
-  // (one blank kept as last resort); v1 selection is unchanged.
+  // With dropEngulfing, skip flat-placeholder bands and take the next real one
+  // (one blank kept as last resort).
   const ranked = bands
     .map((b) => ({ b, w: b.nodes.reduce((s, n) => s + (n.level === 'hi' ? 3 : n.level === 'mid' ? 2 : 1), 0) }))
     .sort((a, b) => b.w - a.w)
@@ -1309,48 +996,10 @@ export async function a11yCropFrames(scan: AccessibilityScan, dropEngulfing = fa
     // count is the true number of flagged spots in the band; the drawn boxes are
     // capped (A11Y_BOXES_PER_FRAME), so on a dense band the boxes are a sample.
     const summary = a11yFrameSummary(inWin.map((n) => ({ rule: n.rule, hi: n.hi })));
-    // v2 drew only the non-engulfing boxes, so "N spots" must count those, not the
-    // whole band; v1 keeps the band count (it draws every box).
+    // With dropEngulfing, "N spots" must count drawn boxes, not the whole band.
     frames.push({ dataUri: cropUri, boxes, summary, count: dropEngulfing ? boxes.length : inWin.length });
   }
   return frames;
-}
-
-function a11yFramesHtml(frames: A11yFrame[]): string {
-  if (!frames.length) return '';
-  const figs = frames.map((f) => {
-    const boxes = f.boxes
-      .map((b) => `<span class="a11y-box a11y-box--${b.hi ? 'hi' : 'lo'}" style="left:${b.left};top:${b.top};width:${b.width};height:${b.height}"></span>`)
-      .join('');
-    const spots = `${f.count} ${f.count === 1 ? 'spot' : 'spots'}`;
-    const detail = `${spots} - red is high-impact, orange is minor`;
-    return `<figure class="a11y-frame" role="button" tabindex="0" data-zoom-title="${esc(f.summary)}" data-zoom-detail="${esc(detail)}" aria-label="Enlarge: ${esc(f.summary)}, ${spots}">
-          <div class="a11y-frame__img"><img src="${esc(f.dataUri)}" alt="Screenshot detail with accessibility issues highlighted" loading="lazy" />${boxes}</div>
-          <figcaption class="a11y-frame__cap">${esc(f.summary)} &middot; ${spots}</figcaption>
-        </figure>`;
-  }).join('');
-  return `<div class="a11y-frames">${figs}</div>`;
-}
-
-// 3 honest buckets: high-impact (critical+serious), moderate, low (minor).
-function a11yTallyHtml(c: ImpactCounts): string {
-  const chip = (n: number, label: string, k: 'hi' | 'mid' | 'lo'): string =>
-    n > 0 ? `<span class="a11y-sev a11y-sev--${k}">${n} ${label}</span>` : '';
-  return `<div class="a11y-tally">${chip(highImpact(c), 'high-impact', 'hi')}${chip(c.moderate, 'moderate', 'mid')}${chip(c.minor, 'low', 'lo')}</div>`;
-}
-
-const A11Y_SCORE_NOTE = 'Score is the Google Lighthouse accessibility score (0-100), the same scale Chrome and PageSpeed use.';
-
-function a11yScoreBadge(score: number | undefined): string {
-  if (typeof score !== 'number') return '';
-  return `<div class="a11y-score a11y-score--${scoreBucket(score)}" title="${esc(A11Y_SCORE_NOTE)}"><div class="a11y-score__num">${score}</div><div class="a11y-score__lbl">accessibility</div></div>`;
-}
-
-// LLM "what to change" list - the client-language replacement for raw axe text.
-function a11yFixesHtml(fixes: string[] | undefined): string {
-  if (!fixes || !fixes.length) return '';
-  const items = fixes.map((f) => `<li>${esc(dashSafe(f))}</li>`).join('');
-  return `<div class="a11y-fixes"><h3>What to change</h3><ul>${items}</ul></div>`;
 }
 
 // Fallback when no LLM rewrite exists. NEVER print the raw axe `help`
@@ -1382,473 +1031,6 @@ export function a11yIssuesHtml(violations: readonly AccessibilityViolation[]): s
   const more = hidden > 0 ? `<li class="a11y-issue a11y-issue--more">+${hidden} more issue${hidden === 1 ? '' : 's'} on this page</li>` : '';
   return `<ol class="a11y-issues">${items}${more}</ol>`;
 }
-
-async function a11yCardHtml(view: A11yPageView): Promise<string> {
-  const { page, scan, counts, client } = view;
-  const pathLabel = page.startingPath || '/';
-  const frames = await a11yCropFrames(scan);
-  const summary = client?.summary ? `<p class="a11y-summary">${esc(dashSafe(client.summary))}</p>` : '';
-  // LLM "what to change" replaces the issue list when the enrichment ran;
-  // otherwise fall back to a plain-language issue list (label-based, no jargon).
-  const fixes = client?.fixes?.length ? a11yFixesHtml(client.fixes) : a11yIssuesHtml(scan.violations);
-  return `<section class="a11y-card">
-      <header class="card-head">
-        <div class="card-title"><h2>${esc(page.name)}</h2><div class="path">${esc(pathLabel)}</div></div>
-        ${a11yScoreBadge(client?.score)}
-      </header>
-      ${a11yTallyHtml(counts)}
-      ${summary}
-      ${a11yFramesHtml(frames)}
-      ${fixes}
-    </section>`;
-}
-
-async function a11yPanelHtml(views: A11yPageView[], cleanPaths: string[], siteSummary: string | undefined): Promise<string> {
-  // Card only major-barrier pages; the rest fold into the reassurance line.
-  const carded = views.filter((v) => hasMajorA11yBarrier(v.counts));
-  const minorOnly = views.filter((v) => !hasMajorA11yBarrier(v.counts));
-  const hi = carded.reduce((n, v) => n + highImpact(v.counts), 0);
-  // Site-wide average (all scored pages, not just carded); only shown when every page is scored.
-  const scores = views.map((v) => v.client?.score).filter((s): s is number => typeof s === 'number');
-  const avg = scores.length === views.length && views.length > 0
-    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-    : undefined;
-  // allSettled so one page's render failure degrades to a skipped card instead
-  // of failing the whole report.
-  const cards = (await Promise.allSettled(carded.map(a11yCardHtml)))
-    .map((r, i) => (r.status === 'fulfilled' ? r.value : `<!-- accessibility card omitted for ${esc(carded[i].page.id)} -->`))
-    .join('\n');
-  // Pages with no major barrier (moderate-only + clean): acknowledged, not carded.
-  const noMajor = minorOnly.length + cleanPaths.length;
-  const reassure = noMajor > 0
-    ? `<p class="a11y-clean">${carded.length > 0
-        ? `The other ${noMajor} page${noMajor === 1 ? '' : 's'} we checked ${noMajor === 1 ? 'has' : 'have'} no major accessibility barriers.`
-        : `Every page we checked is in good shape - no major accessibility barriers.`}</p>`
-    : '';
-  const note = siteSummary
-    ? `<p class="summary-note">${esc(dashSafe(siteSummary))}</p>`
-    : `<p class="summary-note">We checked each page the way a screen-reader or keyboard-only visitor would use it. The cards below are the pages with a major barrier worth fixing first.</p>`;
-  // Bridge the high score vs the flagged pages - only when there IS one to flag.
-  const bridge = avg !== undefined && carded.length > 0
-    ? `<p class="a11y-bridge">A high score means most of each page is fine. But it only takes one blocking issue to turn a real customer away, so the page${carded.length === 1 ? '' : 's'} below ${carded.length === 1 ? 'is' : 'are'} where we'd start.</p>`
-    : '';
-  const firstStat = avg !== undefined
-    ? `<div class="stat"><div class="num ${scoreBucket(avg)}">${avg}</div><div class="lbl">average accessibility score</div></div>`
-    : `<div class="stat"><div class="num">${views.length}</div><div class="lbl">pages checked</div></div>`;
-  // The crop/legend explanation is only meaningful when there are cards to read.
-  const howto = carded.length > 0
-    ? `<p class="howto"><b>How to read this.</b> Each card explains what to change in plain language and shows a zoomed-in shot of any problem you can see on the page - <span class="a11y-key a11y-key--hi">red</span> is high-impact, <span class="a11y-key a11y-key--lo">orange</span> is minor. Structure issues like heading order have nothing to point at on screen, so they have no shot and are described in the text. ${esc(A11Y_SCORE_NOTE)}</p>`
-    : `<p class="howto">${esc(A11Y_SCORE_NOTE)}</p>`;
-  const outro = carded.length > 0
-    ? `<p class="outro">The high-impact items are the ones quietly costing you customers who cannot get through the page, and they are usually quick to fix once you know where they are. Happy to walk your team through any of this.</p>`
-    : `<p class="outro">Nothing here is blocking customers today. Happy to walk your team through the smaller polish items.</p>`;
-  // Accessibility/SEO bridge at the top: the same structure screen readers need
-  // is what search engines read, so the fixes below double as SEO work.
-  const seo = '<p class="a11y-seo"><b>Accessibility helps your search ranking.</b> Search engines read the same labels, headings, and alt text that visitors with limited vision, color blindness, or keyboard navigation rely on, so these fixes help your SEO too.</p>';
-  return `<div class="tab-panel" id="a11y-panel" role="tabpanel" aria-labelledby="tab-a11y" hidden>
-  ${seo}
-  <div class="summary">
-    ${firstStat}
-    <div class="stat"><div class="num ${carded.length > 0 ? 'poor' : 'good'}">${carded.length}</div><div class="lbl">page${carded.length === 1 ? '' : 's'} with serious barriers</div></div>
-    <div class="stat"><div class="num ${hi > 0 ? 'poor' : 'good'}">${hi}</div><div class="lbl">high-impact issues</div></div>
-  </div>
-  ${bridge}
-  ${note}
-  ${howto}
-${cards}
-${reassure}
-  ${outro}
-</div>`;
-}
-
-function tabBarHtml(opts: { a11yIssues?: number; agentPill?: string }): string {
-  const tabs: string[] = [
-    `<button class="tab" role="tab" id="tab-perf" aria-controls="perf-panel" aria-selected="true" tabindex="0">Performance</button>`,
-  ];
-  if (opts.a11yIssues !== undefined) {
-    // Pill only when there's something to fix ("Accessibility 0" reads as an error).
-    const pill = opts.a11yIssues > 0 ? `<span class="tab-pill">${opts.a11yIssues}</span>` : '';
-    tabs.push(`<button class="tab" role="tab" id="tab-a11y" aria-controls="a11y-panel" aria-selected="false" tabindex="-1">Accessibility${pill}</button>`);
-  }
-  if (opts.agentPill !== undefined) {
-    tabs.push(`<button class="tab" role="tab" id="tab-agent" aria-controls="agent-panel" aria-selected="false" tabindex="-1">Agent Ready${opts.agentPill}</button>`);
-  }
-  return `  <div class="tabs" role="tablist" aria-label="Report sections">
-    ${tabs.join('\n    ')}
-  </div>`;
-}
-
-const TAB_JS = `
-<script>
-(function(){
-  var tabs=Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  if(tabs.length<2) return;
-  function select(id){
-    tabs.forEach(function(t){
-      var on=t.getAttribute('aria-controls')===id;
-      t.setAttribute('aria-selected',on?'true':'false');
-      t.tabIndex=on?0:-1;
-      var panel=document.getElementById(t.getAttribute('aria-controls'));
-      if(panel) panel.hidden=!on;
-    });
-  }
-  tabs.forEach(function(t){
-    t.addEventListener('click',function(){ select(t.getAttribute('aria-controls')); });
-    t.addEventListener('keydown',function(e){
-      if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return;
-      e.preventDefault();
-      var i=tabs.indexOf(t);
-      var n=tabs[(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length];
-      n.focus(); n.click();
-    });
-  });
-  select('perf-panel'); // JS-on: show the Performance panel first. JS-off: Performance stays visible; the Accessibility panel is revealed only when printed (print CSS).
-})();
-</script>`;
-
-function styles(): string {
-  return `
-  :root{
-    --ink:#1f2630; --muted:#6b7480; --line:#e7e9ee; --bg:#f6f7f9; --card:#ffffff;
-    --good:#1a9e57; --fair:#d98324; --poor:#d0454c;
-    --good-bg:#e9f6ee; --fair-bg:#fbf0e1; --poor-bg:#fbe9ea;
-    --accent:#2b6cb0; --shift:#d0454c;
-    --measure:780px;
-  }
-  *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
-  body{margin:0; background:var(--bg); color:var(--ink);
-    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;}
-  .wrap{max-width:var(--measure); margin:0 auto; padding:40px 22px 64px}
-  a{color:var(--accent); text-decoration:none} a:hover{text-decoration:underline}
-
-  .masthead{margin:0 0 26px}
-  .brand{display:inline-block; margin:0 0 18px; line-height:0}
-  .brand svg{height:30px; width:auto; display:block}
-  .kicker{font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 6px}
-  .masthead h1{font-size:30px; line-height:1.2; margin:0 0 12px; letter-spacing:-.01em}
-  .masthead h1 .site{color:var(--accent)}
-  .lede{font-size:17px; color:#3b434e; margin:0 0 10px; max-width:62ch}
-  .captured{font-size:16px; color:#3b434e; margin:0 0 18px; max-width:62ch}
-  .captured b{color:var(--ink); font-weight:700}
-
-  .summary{display:flex; flex-wrap:wrap; gap:0; background:var(--card); border:1px solid var(--line);
-    border-radius:14px; overflow:hidden; margin:0 0 14px;}
-  .summary .stat{flex:1 1 0; min-width:140px; padding:16px 18px; border-right:1px solid var(--line)}
-  .summary .stat:last-child{border-right:0}
-  .summary .num{font-size:24px; font-weight:700; letter-spacing:-.01em}
-  .summary .lbl{font-size:14px; color:var(--muted); margin-top:2px}
-  .num.good{color:var(--good)} .num.fair{color:var(--fair)} .num.poor{color:var(--poor)}
-  .summary-note{font-size:16px; color:#3b434e; margin:0 0 18px; max-width:64ch}
-
-  .howto{font-size:15px; color:var(--muted); margin:0 0 30px; line-height:1.5}
-  .howto b{color:var(--ink); font-weight:600}
-
-  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 22px 20px; margin:0 0 18px;}
-  .card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:0 0 10px}
-  .card-title h2{font-size:19px; margin:0; letter-spacing:-.01em}
-  .card-title .path{font-size:14px; color:var(--muted)}
-  .badge{display:inline-flex; align-items:center; gap:7px; flex:none; font-size:13px; font-weight:600; padding:5px 11px; border-radius:999px; white-space:nowrap;}
-  .badge .dot{width:8px; height:8px; border-radius:50%}
-  .badge--good{background:var(--good-bg); color:#137a43} .badge--good .dot{background:var(--good)}
-  .badge--fair{background:var(--fair-bg); color:#9a5a12} .badge--fair .dot{background:var(--fair)}
-  .badge--poor{background:var(--poor-bg); color:#a82f36} .badge--poor .dot{background:var(--poor)}
-
-  .headline{font-size:19px; margin:2px 0 4px; color:var(--ink); line-height:1.35}
-  .headline strong{font-weight:700}
-  .headline--good strong{color:var(--good)} .headline--fair strong{color:var(--fair)} .headline--poor strong{color:var(--poor)}
-  .subhead{font-size:15.5px; color:#5a626d; margin:0 0 8px; max-width:62ch}
-  .alsos{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 4px}
-  .also{font-size:13.5px; color:#7a818b; background:#f3f4f6; border-radius:7px; padding:4px 10px}
-  .also b{color:#48515c; font-weight:600}
-
-  .frames-note{font-size:14px; color:var(--muted); margin:10px 0 8px}
-  .frames-note b{color:var(--ink)}
-
-  /* The .shot--key scale(1.07) grows a key frame ~17px UPWARD (transform-origin
-     is center bottom). row-gap clears that between rows; the top padding clears
-     it for the FIRST row, which has the section text above it, not a row. */
-  .filmstrip{display:flex; gap:28px 13px; justify-content:center; align-items:flex-start; flex-wrap:wrap; padding:20px 0 6px}
-  .shot{margin:0; flex:0 0 auto; text-align:center; width:118px; cursor:zoom-in; outline:none}
-  .shot:focus-visible .phone{box-shadow:0 0 0 3px var(--accent)}
-  /* dark device bezel so a BLANK (white) screen reads as a phone, not a broken image */
-  .phone{border-radius:14px; padding:5px; background:#363c47; box-shadow:0 2px 5px rgba(20,30,45,.16)}
-  .frame-inner{position:relative; border-radius:9px; overflow:hidden; background:#f2f4f7}
-  .frame-inner img{display:block; width:100%; height:auto}
-  /* layout-shift regions, drawn in % so they scale in the strip AND the zoom */
-  .sbox{position:absolute; border:2px solid var(--shift); background:rgba(208,69,76,.22); border-radius:2px; box-shadow:0 0 0 1px rgba(255,255,255,.4)}
-  /* scale only the phone, not the whole shot, so the caption text stays crisp
-     (a transform on the shot sub-pixel-blurs its figcaption -> looks like a
-     different font). Row-gap above already clears the phone's upward overflow. */
-  .shot--key .phone{transform:scale(1.07); transform-origin:center bottom}
-  .shot--key .phone{background:#3b3326; box-shadow:0 0 0 4px #d98324, 0 0 0 5px rgba(217,131,36,.28), 0 3px 8px rgba(20,30,45,.18)}
-  .shot--shift .phone{box-shadow:0 0 0 2px rgba(208,69,76,.55), 0 2px 6px rgba(20,30,45,.14)}
-  .shot--fcp .phone{box-shadow:0 0 0 3px #2b6cb0, 0 0 0 4px rgba(43,108,176,.28), 0 2px 6px rgba(20,30,45,.14)}
-  figcaption{margin-top:10px; font-size:16px; line-height:1.4}
-  figcaption .phase{display:block; font-weight:600; color:var(--ink)}
-  figcaption .t{color:var(--muted)}
-  .shot--key figcaption .phase{color:#9a5a12}
-  .shot--shift figcaption .phase{color:#a82f36}
-  .shot--fcp figcaption .phase{color:var(--accent)}
-  .strip-note{margin:4px 0 2px; font-size:13.5px; color:var(--muted); text-align:center; font-style:italic; line-height:1.45}
-  .sc-good{color:var(--good)} .sc-fair{color:var(--fair)} .sc-poor{color:var(--poor)}
-
-  /* load video - the "watch it happen" hero, in a phone bezel like the frames */
-  .loadvid{margin:16px 0 6px; text-align:center}
-  .phone--vid{display:inline-block; width:280px; max-width:86%; padding:6px; vertical-align:top}
-  .vidwrap{position:relative; line-height:0; border-radius:11px; overflow:hidden}
-  .phone--vid video{display:block; width:100%; height:auto; border-radius:11px; background:#0b0e12}
-  /* on-video captions: a lower-third band that fades each beat in as the clip
-     reaches it. The text is raised (bottom padding) so it clears the native
-     control bar when that's visible on pause/hover; the scrim still anchors to
-     the bottom so white text stays legible over any frame, even a blank white one. */
-  .vidcap{position:absolute; left:0; right:0; bottom:0; padding:34px 12px 54px;
-    background:linear-gradient(to top, rgba(8,11,15,.92) 0%, rgba(8,11,15,.74) 42%, rgba(8,11,15,0) 100%);
-    text-align:center; opacity:0; transition:opacity .25s ease; pointer-events:none}
-  .vidcap.show{opacity:1}
-  .vidcap-tx{display:inline-block; max-width:92%; color:#fff; font-size:14px; line-height:1.35;
-    font-weight:600; letter-spacing:.004em; text-shadow:0 1px 3px rgba(0,0,0,.7)}
-  .loadvid-cap{font-size:15px; color:#5a626d; margin:10px auto 0; max-width:46ch}
-
-  /* frame-by-frame: collapsed by default (video is the hero), depth on demand */
-  details.frames{margin:14px 0 2px; border-top:1px solid var(--line); padding-top:10px}
-  details.frames > summary{cursor:pointer; font-size:15px; font-weight:600; color:#48515c; list-style:none; display:flex; align-items:center; gap:8px}
-  details.frames > summary::-webkit-details-marker{display:none}
-  details.frames > summary::before{content:"\\25B8"; color:var(--muted); font-size:11px}
-  details.frames[open] > summary::before{content:"\\25BE"}
-  details.frames > summary:hover{color:var(--ink)}
-  details.frames > summary .fcount{font-weight:400; color:var(--muted); font-size:13.5px}
-
-  .facts{display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 0}
-  .fact{font-size:15px; color:#48515c; background:#f3f4f6; border-radius:8px; padding:7px 11px}
-  .fact b{color:var(--ink); font-weight:700}
-
-  .plain{font-size:16px; color:#3b434e; margin:14px 0 0; padding:12px 14px; background:#f7f8fa; border-left:3px solid var(--line); border-radius:0 8px 8px 0}
-
-  .more{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 22px; margin:0 0 18px}
-  .more-h{font-size:16px; margin:0 0 8px; color:var(--ink); font-weight:600}
-  .more-list{list-style:none; margin:0; padding:0}
-  .more-row{display:flex; align-items:baseline; gap:10px; padding:9px 0; border-top:1px solid var(--line)}
-  .more-row:first-child{border-top:0}
-  .more-dot{width:8px; height:8px; border-radius:50%; flex:none; transform:translateY(1px)}
-  .more-dot--good{background:var(--good)} .more-dot--fair{background:var(--fair)} .more-dot--poor{background:var(--poor)}
-  .more-name{flex:1 1 auto; font-size:15.5px} .more-name b{font-weight:600} .more-name a{color:var(--muted); font-size:14px}
-  .more-prob{flex:0 0 auto; font-size:15px; color:#5a626d; text-align:right}
-  .more-overflow{color:var(--muted); font-style:italic}
-
-  .outro{font-size:16px; line-height:1.5; color:#3b434e; margin:26px 2px 0}
-  .a11y-seo{font-size:14.5px; line-height:1.5; color:#475063; margin:0 0 18px; padding:10px 13px; background:#f4f7fb; border-radius:8px}
-
-  .foot{margin:26px 2px 0; font-size:14px; color:var(--muted); line-height:1.6}
-  .foot .by{color:#48515c}
-
-  /* lightbox */
-  .lightbox{position:fixed; inset:0; background:rgba(15,20,28,.85); display:none; align-items:center; justify-content:center; flex-direction:column; z-index:50; cursor:zoom-out; padding:24px}
-  .lightbox.on{display:flex}
-  .lb-stage{max-width:min(440px,92vw); width:100%; display:flex; align-items:center; justify-content:center; min-height:0}
-  .lb-stage .phone{padding:7px; border-radius:20px; max-width:100%; margin:0}
-  .lb-stage .frame-inner{border-radius:13px}
-  /* Height-bound the enlarged frame so the bezel shrinks WITH the window and the
-     caption below it always stays on screen (the base .frame-inner img is
-     width:100%, which on a short window made the frame tall enough to push the
-     caption off the bottom). Reserve ~180px for caption + hint + padding. */
-  .lb-stage .frame-inner img{width:auto; height:auto; max-width:100%; max-height:calc(100vh - 180px); object-fit:contain; display:block}
-  .lb-cap{color:#eef1f4; margin-top:16px; font-size:15px; text-align:center; max-width:min(440px,92vw); line-height:1.45}
-  .lb-cap b{color:#fff}
-  .lb-hint{color:#9aa3ad; font-size:12.5px; margin-top:4px}
-  .lb-close{position:absolute; top:14px; right:16px; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:28px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:3}
-  .lb-arrow{position:absolute; top:50%; transform:translateY(-50%); width:48px; height:48px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.14); color:#fff; font-size:30px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:3}
-  .lb-prev{left:14px} .lb-next{right:14px}
-  .lb-close:hover,.lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
-  .lb-arrow:disabled{opacity:.42; cursor:default}
-
-  @media (max-width:560px){
-    .wrap{padding:26px 16px 48px}
-    .masthead h1{font-size:25px}
-    .summary .stat{flex-basis:50%; border-bottom:1px solid var(--line)}
-    .shot{width:96px}
-    .lb-stage{max-width:84vw}
-    .lb-arrow{width:40px; height:40px; font-size:26px}
-    .lb-prev{left:2px} .lb-next{right:2px}
-  }
-  @media print{
-    body{background:#fff}
-    .card,.summary{break-inside:avoid; box-shadow:none}
-    .lightbox{display:none !important}
-    details.frames:not([open]) > *{display:block}
-  }`;
-}
-
-// Accessibility-tab CSS. Appended to the <style> block ONLY when the report has
-// accessibility data, so a Performance-only report (no accessibility.json on
-// disk) keeps styles() verbatim and stays byte-for-byte identical to before.
-function a11yStyles(): string {
-  return `
-  /* ---- accessibility panel ---- */
-  .a11y-card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 22px 20px; margin:0 0 18px}
-  .a11y-card .card-head{align-items:flex-start}
-  .a11y-score{flex:none; text-align:center; border-radius:12px; padding:8px 12px; min-width:64px; border:1px solid}
-  .a11y-score__num{font-size:26px; font-weight:800; line-height:1}
-  .a11y-score__lbl{font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-top:3px; opacity:.8}
-  .a11y-score--good{background:var(--good-bg); border-color:#bfe6cd; color:#137a43}
-  .a11y-score--fair{background:var(--fair-bg); border-color:#f0d9b8; color:#9a5a12}
-  .a11y-score--poor{background:var(--poor-bg); border-color:#f1c7cb; color:#a82f36}
-  .a11y-tally{display:flex; flex-wrap:wrap; gap:6px 8px; margin:4px 0 14px}
-  .a11y-sev{font-size:13px; font-weight:600; border-radius:7px; padding:4px 10px}
-  .a11y-sev--hi{background:var(--poor-bg); color:#a82f36}
-  .a11y-sev--mid{background:var(--fair-bg); color:#9a5a12}
-  .a11y-sev--lo{background:#eef0f4; color:#5a626d}
-  .a11y-summary{font-size:16px; line-height:1.55; color:#2c333c; margin:0 0 16px}
-  .a11y-bridge{font-size:15.5px; line-height:1.5; color:#3b434e; margin:-6px 0 18px; padding-left:13px; border-left:3px solid var(--line)}
-  .a11y-frames{display:flex; flex-wrap:wrap; gap:14px; margin:0 0 6px}
-  .a11y-frame{margin:0; flex:1 1 220px; max-width:300px; cursor:zoom-in; outline:none}
-  .a11y-frame:focus-visible .a11y-frame__img{box-shadow:0 0 0 3px var(--accent)}
-  .a11y-frame__img{position:relative; line-height:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#fff}
-  .a11y-frame__img img{display:block; width:100%; height:auto}
-  .a11y-frame__cap{font-size:12px; color:var(--muted); margin:6px 0 0; text-align:center; font-weight:600}
-  /* enlarged a11y crop in the lightbox: these are wide page-details, so give the
-     stage more room than the narrow phone frames; bound height so the caption
-     stays on screen; the % overlay boxes scale with the image. */
-  .lb-stage:has(.a11y-frame__img){max-width:min(860px,94vw)}
-  .lb-stage:has(.a11y-frame__img) ~ .lb-cap{max-width:min(860px,94vw)}
-  .lb-stage .a11y-frame__img{max-width:100%; margin:0; border-radius:12px}
-  .lb-stage .a11y-frame__img img{width:auto; height:auto; max-width:100%; max-height:calc(100vh - 180px); object-fit:contain}
-  .a11y-box{position:absolute; border:2px solid; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.55)}
-  .a11y-box--hi{border-color:#dc2626; background:rgba(220,38,38,.20)}
-  /* minor: a bright amber-orange, clearly lighter + yellower than the red so the
-     two are easy to tell apart while staying visible on light screenshots. */
-  .a11y-box--lo{border-color:#f59e0b; background:rgba(245,158,11,.22)}
-  .a11y-fixes{margin:16px 0 0}
-  .a11y-fixes h3{font-size:14px; font-weight:700; color:var(--ink); margin:0 0 8px}
-  .a11y-fixes ul{margin:0; padding-left:20px}
-  .a11y-fixes li{font-size:15.5px; line-height:1.5; color:#3b434e; margin:0 0 6px}
-  .a11y-key{font-weight:700; padding:1px 7px; border-radius:5px; font-size:12px}
-  .a11y-key--hi{background:var(--poor-bg); color:#a82f36}
-  .a11y-key--lo{background:rgba(245,158,11,.18); color:#9a5a12}
-  .a11y-issues{list-style:none; margin:16px 0 0; padding:0}
-  .a11y-issue{display:flex; gap:10px; align-items:flex-start; font-size:15.5px; color:#3b434e;
-    padding:9px 0; border-top:1px solid var(--line); line-height:1.45}
-  .a11y-issue:first-child{border-top:0}
-  .a11y-issue__text b{color:var(--ink); font-weight:600; white-space:nowrap}
-  .a11y-dot{flex:none; width:11px; height:11px; border-radius:50%; margin-top:5px}
-  .a11y-dot--hi{background:#dc2626} .a11y-dot--lo{background:#d97706}
-  .a11y-issue--more{color:var(--muted); font-style:italic; padding-left:21px}
-  .a11y-clean{font-size:15px; color:var(--muted); margin:18px 0 0; line-height:1.5}
-  .a11y-clean b{color:var(--good); font-weight:600}
-
-  @media print{
-    .a11y-card,.a11y-frame{break-inside:avoid}
-  }`;
-}
-
-// The official ShakaCode mark - red shaka badge + dark-charcoal "ShakaCode"
-// wordmark - inlined so the self-contained report makes zero external requests.
-// Linked back to shakacode.com at the top of the report (Justin's 2026-06-16 ask).
-const SHAKACODE_LOGO = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 206 47" fill="none" role="img" aria-label="ShakaCode"><defs><linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="b-shaka"><stop stop-color="#F32B05" offset="0%"/><stop stop-color="#B00012" offset="100%"/></linearGradient><linearGradient x1="50%" y1="24.608%" x2="50%" y2="72.622%" id="c-shaka"><stop stop-color="#FF6956" offset=".792%"/><stop stop-color="#FF6956" stop-opacity=".01" offset="96.579%"/></linearGradient><path d="M11.207 0h41.586a2 2 0 011.77 1.069l8.702 16.534a2 2 0 01-.453 2.437L33.317 45.848a2 2 0 01-2.634 0L1.188 20.04a2 2 0 01-.453-2.437L9.438 1.069A2 2 0 0111.207 0z" id="a-shaka"/></defs><g fill="none" fill-rule="evenodd"><text font-family="Montserrat, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="bold" fill="#333738"><tspan x="80" y="31">ShakaCode</tspan></text><g><mask id="d-shaka" fill="#fff"><use xlink:href="#a-shaka"/></mask><use fill="url(#b-shaka)" xlink:href="#a-shaka"/><path d="M7 33c22.118-2.144 33.57-6.578 34.354-13.303 1.178-10.088-17.4-1.454-20.927-1 9.658-7.17 22.018-11.721 37.08-13.652H66V47H7V33z" fill="url(#c-shaka)" mask="url(#d-shaka)"/></g></g></svg>`;
-
-const LIGHTBOX_JS = `
-<script>
-(function(){
-  var lb=document.getElementById('lb'), stage=document.getElementById('lbStage'), cap=document.getElementById('lbCap');
-  var btnPrev=document.getElementById('lbPrev'), btnNext=document.getElementById('lbNext'), btnClose=document.getElementById('lbClose');
-  if(!lb) return;
-  var strip=[], idx=-1, opener=null;
-  function enabledButtons(){ return [btnClose,btnPrev,btnNext].filter(function(b){return b && !b.disabled;}); }
-  function render(){
-    var shot=strip[idx]; if(!shot) return;
-    var inner=shot.querySelector('.phone, .a11y-frame__img'); // perf frame or a11y crop
-    stage.innerHTML=''; if(inner) stage.appendChild(inner.cloneNode(true));
-    cap.innerHTML='';
-    var role=shot.querySelector('figcaption .phase');
-    if(role){ // performance frame: bold role + time + data-detail
-      var tEl=shot.querySelector('figcaption .t');
-      var time=(tEl&&tEl.textContent)?tEl.textContent:'';
-      var detail=(shot.getAttribute('data-detail')||'').replace(/^.*?- /, ''); // drop the leading "Role - " so the caption doesn't repeat the bold role label
-      var b=document.createElement('b'); b.textContent=role.textContent||'Frame'; cap.appendChild(b);
-      var tail=[time,detail].filter(function(x){return x;}).join(' · ');
-      if(tail) cap.appendChild(document.createTextNode(' · '+tail));
-    } else { // a11y crop: bold issue summary + spot count / colour key
-      var b2=document.createElement('b'); b2.textContent=shot.getAttribute('data-zoom-title')||'Accessibility detail'; cap.appendChild(b2);
-      var d2=shot.getAttribute('data-zoom-detail')||'';
-      if(d2) cap.appendChild(document.createTextNode(' · '+d2));
-    }
-    if(btnPrev) btnPrev.disabled=idx<=0;
-    if(btnNext) btnNext.disabled=idx>=strip.length-1;
-    if(document.activeElement && document.activeElement.disabled && btnClose) btnClose.focus();
-  }
-  function open(shot){
-    var box=shot.closest('.filmstrip, .a11y-frames')||shot.parentNode;
-    strip=Array.prototype.slice.call(box.querySelectorAll('.shot, .a11y-frame'));
-    idx=strip.indexOf(shot); if(idx<0){ strip=[shot]; idx=0; }
-    opener=shot; render(); lb.classList.add('on');
-    var sbw=window.innerWidth-document.documentElement.clientWidth;
-    document.body.style.overflow='hidden';
-    if(sbw>0) document.body.style.paddingRight=sbw+'px';
-    if(btnClose) btnClose.focus();
-  }
-  function close(){
-    lb.classList.remove('on'); document.body.style.overflow=''; document.body.style.paddingRight='';
-    if(opener && opener.focus) opener.focus(); opener=null;
-  }
-  function go(d){ var n=idx+d; if(n<0||n>=strip.length) return; idx=n; render(); }
-  document.querySelectorAll('.shot, .a11y-frame').forEach(function(s){
-    s.addEventListener('click',function(){open(s)});
-    s.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){e.preventDefault();open(s);} });
-  });
-  if(btnPrev) btnPrev.addEventListener('click',function(e){e.stopPropagation();go(-1)});
-  if(btnNext) btnNext.addEventListener('click',function(e){e.stopPropagation();go(1)});
-  if(btnClose) btnClose.addEventListener('click',function(e){e.stopPropagation();close()});
-  // Close on any click in the backdrop - the dim area, the empty space beside the
-  // frame, the caption or hint - but not on the frame image itself or the buttons.
-  lb.addEventListener('click',function(e){ var t=e.target; if(t instanceof Element && !t.closest('.phone, .a11y-frame__img, button')) close(); });
-  document.addEventListener('keydown',function(e){
-    if(!lb.classList.contains('on')) return;
-    if(e.key==='Escape'){ e.preventDefault(); close(); }
-    else if(e.key==='ArrowLeft'){ e.preventDefault(); go(-1); }
-    else if(e.key==='ArrowRight'){ e.preventDefault(); go(1); }
-    else if(e.key==='Tab'){
-      var f=enabledButtons(); if(!f.length) return;
-      var first=f[0], last=f[f.length-1], a=document.activeElement;
-      if(e.shiftKey){ if(a===first || !lb.contains(a)){ e.preventDefault(); last.focus(); } }
-      else { if(a===last || !lb.contains(a)){ e.preventDefault(); first.focus(); } }
-    }
-  });
-})();
-</script>`;
-
-// Reveals each on-video caption as the load video's clock reaches its beat. The
-// cue times are navigation-relative ms (== video.currentTime*1000), so this is a
-// straight "last cue at or before now" lookup, re-run on timeupdate (~4Hz, plenty
-// for a short clip) and on play/seek. No caption rides over the pristine poster
-// (the finished-page still shown before first play); once playing - including
-// every loop back to the blank start - the right beat shows.
-const CAPTION_JS = `
-<script>
-(function(){
-  var bands=document.querySelectorAll('.vidcap[data-cues]');
-  Array.prototype.forEach.call(bands,function(band){
-    var cues;
-    try{ cues=JSON.parse(band.getAttribute('data-cues')||'[]'); }catch(e){ return; }
-    if(!cues||!cues.length) return;
-    var wrap=band.parentNode, video=wrap?wrap.querySelector('video'):null, tx=band.querySelector('.vidcap-tx');
-    if(!video||!tx) return;
-    var cur=-1;
-    function sync(){
-      // Pristine poster state (never played, or scrubbed back to the very start
-      // while paused): keep the finished-page poster caption-free.
-      if(video.paused && video.currentTime===0){ if(cur!==-1){ cur=-1; band.classList.remove('show'); } return; }
-      var ms=video.currentTime*1000, i=0;
-      for(var k=0;k<cues.length;k++){ if(cues[k].t<=ms) i=k; else break; }
-      if(i===cur) return;
-      cur=i; tx.textContent=cues[i].x; band.classList.add('show');
-    }
-    video.addEventListener('timeupdate',sync);
-    video.addEventListener('play',sync);
-    video.addEventListener('seeking',sync);
-    video.addEventListener('pause',sync);
-  });
-})();
-</script>`;
 
 export interface ClientReportResult {
   html: string;
@@ -2064,12 +1246,7 @@ export interface RenderClientReportOptions {
   // AI pass that writes plain-language Agent Ready summaries/fixes to the sidecars.
   // Off by default (tests never spawn it); the CLI wires it unless --no-ai-agent. Cached.
   summarizeAgent?: AgentSummarizer;
-  // Which visual design to render. 'v2' (the product-owner-first redesign) is the
-  // default; 'v1' is the original mobile-speed-led report, reached via `--design v1`.
-  // v1 output is byte-for-byte unchanged when this is 'v1' or unset-at-call (the
-  // CLI defaults it to 'v2'); see ./client-report-v2.ts.
-  design?: 'v1' | 'v2';
-  // Optional AI pass (v2 only) that rewrites the narrative copy - the bottom line
+  // Optional AI pass that rewrites the narrative copy - the bottom line
   // and each tab's verdict. Off by default (tests never spawn it); the CLI wires
   // the claude-backed one unless --no-ai-narrative. Best-effort + cached: a missing
   // /slow/failed claude leaves the built-in deterministic verdict copy in place.
@@ -2120,14 +1297,6 @@ export async function renderClientReport(
   const jumpyCount = rendered.filter((r) => (metricVal(r.page, 'CLS') ?? 0) > CLS_GOOD).length;
   const avgMs = sc.lcpMs ? sc.lcpMs.avg : undefined;
   const avgLabel = avgMs !== undefined ? secs(avgMs) : 'n/a';
-  const avgStatus = lcpStatus(avgMs);
-  // No LCP anywhere = nothing honest to say about the typical wait; drop the
-  // sentence rather than interpolate a literal "about n/a".
-  const framing = avgMs !== undefined
-    ? `In plain terms, a visitor on a phone waits about ${avgLabel} before the typical page here is usable${jumpyCount > 0 ? `, and ${jumpyCount} of your pages visibly jump around under their thumb while loading` : ''}.`
-    : '';
-
-  const totalFramesAll = rendered.reduce((n, r) => n + r.totalFrames, 0);
   // Fill the detailed slots skipping near-duplicate stories (same path, same
   // lead, LCP within noise - e.g. a scroll-variant of the homepage); the
   // skipped ones stay in the compact list, in the same overall order.
@@ -2199,159 +1368,19 @@ export async function renderClientReport(
       }
     }
   }
-  // Frameless audits (legacy runs) have no strips to read or tap - every piece
-  // of frame-by-frame copy must disappear with them, or the report opens with
-  // "recorded each one frame by frame - 0 frames in all" and instructions to
-  // tap frames that do not exist.
-  const anyShots = detailed.some((d) => d.shots.length > 0);
-
-  // v2 (default) reuses the artifacts gathered above; v1 (below) is byte-unchanged.
-  const design = opts.design ?? 'v2';
-  if (design === 'v2') {
-    const model = await buildClientReportV2Model(
-      resultsDir,
-      sc,
-      domain,
-      { detailed, more, measured, totalFramesAll, avgMs, avgLabel, avgStatus, slowCount, jumpyCount },
-      opts,
-    );
-    return { html: renderClientReportV2(model), pageCount: rendered.length };
-  }
-
-  const cards = detailed.map((rp, i) => pageCardHtml(rp, sc.url, i === 0)).join('\n');
-  const moreHtml = more.length ? moreSectionHtml(more, sc.url) : '';
-
-  const dateStr = sc.generatedAt
-    ? new Date(sc.generatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '';
-
-  const faviconUri = await fetchSiteFavicon(sc.url);
-
-  // Accessibility tab. Built from the per-page accessibility.json the audit's
-  // axe stage wrote (loaded onto page.a11y by synthesizeSite). When NO page has
-  // a11y data (audits predating the stage, or runs that skipped it) hasA11y is
-  // false and every inserted expression below is '' - the emitted bytes are then
-  // identical to the Performance-only report, so existing reports are untouched.
-  // Write the AI summaries to the sidecars before the readers below pick them up.
-  if (opts.summarizeA11y) {
-    await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
-  }
-  const a11yViews = buildA11yPages(sc.pages, resultsDir);
-  const a11ySiteSummary = readA11ySiteSummary(resultsDir);
-  const cleanPaths = sc.pages
-    .filter(pageHasCleanA11y)
-    .map((p) => p.startingPath || '/');
-  const hasA11y = a11yViews.length > 0;
-  // Badge counts only surfaced (carded) issues, so it matches the cards the reader sees.
-  const a11ySurfacedIssues = a11yViews
-    .filter((v) => hasMajorA11yBarrier(v.counts))
-    .reduce((n, v) => n + totalIssues(v.counts), 0);
-
-  // Agent Ready tab. Built from the per-page agent-readiness.json the audit's
-  // agent-readiness stage wrote (loaded onto page.agentReady by synthesizeSite).
-  // Same byte-stability rule as Accessibility: when NO page has agent data every
-  // inserted expression below is '' and the report is unchanged.
-  let hasAgent = hasAgentData(sc.pages);
-  let agentPanel = '';
-  let agentPill = '';
-  if (hasAgent) {
-    // A side lens must never sink the whole report: any failure here (a corrupt
-    // agent-readiness.json that slipped the synthesis guard, a render error)
-    // drops just the Agent Ready tab, leaving Performance + Accessibility intact.
-    try {
-      let agentViews: AgentPageView[] = buildAgentPages(sc.pages, resultsDir);
-      // robots.txt / sitemap / llms.txt, fetched once from the live origin (the same
-      // bounded, best-effort pattern as the favicon fetch above).
-      const agentSite: SiteAccessSignals | undefined = await fetchSiteAccessSignals(sc.url);
-      if (opts.summarizeAgent) {
-        await enrichAgentSummaries(resultsDir, agentViews, agentSite, opts.summarizeAgent);
-        agentViews = buildAgentPages(sc.pages, resultsDir); // re-read the sidecars the enrich just wrote
-      }
-      const agentSiteSummary = readAgentSiteSummary(resultsDir);
-      agentPanel = `${await agentPanelHtml(agentViews, agentSite, agentSiteSummary)}\n`;
-      agentPill = agentTabPill(agentViews, agentSite);
-    } catch (err) {
-      console.warn(chalk.yellow(`shaka-perf: the Agent Ready tab failed to render, omitting it: ${(err as Error).message}`));
-      hasAgent = false;
-      agentPanel = '';
-      agentPill = '';
-    }
-  }
-
-  const hasExtra = hasA11y || hasAgent;
-  const tabBar = hasExtra
-    ? `${tabBarHtml({ ...(hasA11y ? { a11yIssues: a11ySurfacedIssues } : {}), ...(hasAgent ? { agentPill } : {}) })}\n\n`
-    : '';
-  const perfPanelOpen = hasExtra ? `  <div class="tab-panel" id="perf-panel" role="tabpanel" aria-labelledby="tab-perf">\n` : '';
-  const perfPanelClose = hasExtra ? `  </div>\n` : '';
-  const a11yPanel = hasA11y ? `${await a11yPanelHtml(a11yViews, cleanPaths, a11ySiteSummary)}\n` : '';
-  const tabScript = hasExtra ? TAB_JS : '';
-  const extraStyles = `${hasExtra ? tabStyles() : ''}${hasA11y ? a11yStyles() : ''}${hasAgent ? agentStyles() : ''}`;
-
-  const thirdStat =
-    jumpyCount > 0
-      ? `<div class="stat"><div class="num poor">${jumpyCount}</div><div class="lbl">pages that jump around</div></div>`
-      : `<div class="stat"><div class="num ${slowCount > 0 ? 'poor' : 'good'}">${slowCount}</div><div class="lbl">pages a visitor waits on</div></div>`;
-
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="robots" content="noindex" />
-${faviconLinkTag(faviconUri)}
-<title>Mobile speed report - ${esc(domain)}</title>
-<style>${styles()}${extraStyles}</style>
-</head>
-<body>
-<main class="wrap">
-  <div class="masthead">
-    <a class="brand" href="https://www.shakacode.com" target="_blank" rel="noopener" aria-label="ShakaCode - shakacode.com">${SHAKACODE_LOGO}</a>
-    <p class="kicker">Mobile speed report${dateStr ? ` &middot; ${esc(dateStr)}` : ''}</p>
-    <h1>How <span class="site">${esc(domain)}</span> loads on a phone</h1>
-    <p class="lede">We loaded ${measured.length} of your pages on a typical phone over a normal cellular connection${totalFramesAll > 0 ? ` and recorded each one frame by frame - ${totalFramesAll.toLocaleString('en-US')} frames in all` : ''}. On a fast desktop these pages feel fine, which is exactly why what is below is easy to miss.</p>
-    ${dateStr ? `<p class="captured">Captured <b>${esc(dateStr)}</b> - a snapshot of the live site that day. If the site has changed since, this report may no longer reflect it.</p>` : ''}
-  </div>
-
-${tabBar}${perfPanelOpen}  <div class="summary">
-    <div class="stat"><div class="num">${measured.length}</div><div class="lbl">pages checked</div></div>
-    <div class="stat"><div class="num ${avgStatus}">${esc(avgLabel)}</div><div class="lbl">average wait for the biggest piece</div></div>
-    ${thirdStat}
-  </div>
-${framing ? `  <p class="summary-note">${esc(framing)}</p>\n` : ''}
-${anyShots ? `  <p class="howto"><b>How to read this.</b> Each strip is one of your pages loading on a phone, left to right in real time. We pulled the moments that matter out of every frame we captured. <b>Tap any frame to enlarge it.</b></p>\n` : ''}
-${cards}
-${moreHtml}
-
-  <p class="foot">
-    <span class="by">Measured ${dateStr ? `on ${esc(dateStr)} ` : ''}on an emulated mid-range phone over the Slow-4G throttling profile Google PageSpeed uses - the conditions a real mobile visitor faces, not a developer's fast laptop. "Speed score" is the same 0-100 scale Google PageSpeed uses for mobile (90 and up is fast, under 50 is slow); "layout-shift score" is Google's CLS, where anything above 0.25 is poor.</span><br/>
-    Put together by ShakaCode.
-  </p>
-${perfPanelClose}${a11yPanel}${agentPanel}</main>
-
-<div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-labelledby="lbCap">
-  <button class="lb-close" id="lbClose" type="button" aria-label="Close">&times;</button>
-  <button class="lb-arrow lb-prev" id="lbPrev" type="button" aria-label="Previous frame">&#8249;</button>
-  <button class="lb-arrow lb-next" id="lbNext" type="button" aria-label="Next frame">&#8250;</button>
-  <div class="lb-stage" id="lbStage"></div>
-  <div class="lb-cap" id="lbCap"></div>
-  <div class="lb-hint">Tap &times; to close &middot; &#8249; &#8250; for previous / next</div>
-</div>
-${LIGHTBOX_JS}
-${CAPTION_JS}${tabScript}
-</body>
-</html>
-`;
-  return { html, pageCount: rendered.length };
+  const model = await buildClientReportV2Model(
+    resultsDir,
+    sc,
+    domain,
+    { detailed, more, measured, avgMs, avgLabel, slowCount, jumpyCount },
+    opts,
+  );
+  return { html: renderClientReportV2(model), pageCount: rendered.length };
 }
 
-// ---- Client report DESIGN v2: model assembly ----
-// Maps the gathered artifacts onto the `ClientReportV2Model` the v2 renderer takes.
+// ---- Client report V2 model assembly ----
+// Maps the gathered artifacts onto the `ClientReportV2Model` the renderer takes.
 // All async/IO (a11y crops, agent fetch, AI passes) is here; the renderer is pure.
-
-const PERF_PROBLEM_KINDS = ['slow-lcp', 'layout-shift', 'blank', 'late-paint', 'sluggish'] as const;
-type PerfProblemKind = typeof PERF_PROBLEM_KINDS[number];
-const PROBLEM_KINDS: ReadonlySet<ProblemKind> = new Set<ProblemKind>(PERF_PROBLEM_KINDS);
 
 // Plain-language names for the three per-page agent factors (the design renames
 // the internal category names into owner-friendly phrasing).
@@ -2398,7 +1427,7 @@ function perfCardModel(rp: RenderedPage, siteUrl: string): V2PerfCard {
   const totalKb = metricVal(page, 'downloads');
 
   const frames: V2Frame[] = rp.shots.map((s) => {
-    // Beat precedence mirrors v1's shotHtml: biggest piece (LCP) > layout jump > first content.
+    // Beat precedence: biggest piece (LCP) > layout jump > first content.
     const beat: V2Frame['beat'] = s.isLcp ? 'lcp' : s.shiftValue > 0 ? 'shift' : s.isFcp ? 'first-content' : undefined;
     const fr: V2Frame = {
       key: s.isLcp || s.shiftValue > 0,
@@ -2723,228 +1752,6 @@ export function buildStartHere(
   return sh;
 }
 
-interface PerfProblemTileCopy {
-  kicker: string;
-  wordTx: string;
-  metricSub: (avgLabel: string | undefined) => string;
-  conseq: string;
-}
-
-interface PerfProblemCopy extends PerfProblemTileCopy {
-  phrase: (page: PagePerf) => string | undefined;
-  metric: (page: PagePerf) => string | undefined;
-}
-
-const avgLcpSuffix = (avgLabel: string | undefined): string => avgLabel ? `; average LCP is ${avgLabel}` : '';
-const metricSecs = (page: PagePerf, label: string): string | undefined => {
-  const value = metricVal(page, label);
-  return value === undefined ? undefined : secs(value);
-};
-
-const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
-  'slow-lcp': {
-    kicker: 'Mobile loading',
-    wordTx: 'Main content is late',
-    phrase: (page) => {
-      const lcp = metricSecs(page, 'LCP');
-      return lcp === undefined ? undefined : `biggest piece takes ${lcp} to load`;
-    },
-    metric: (page) => metricSecs(page, 'LCP'),
-    metricSub: (avgLabel) => `worst page LCP${avgLcpSuffix(avgLabel)}`,
-    conseq: 'The page starts, but the main content lands late enough that visitors may give up.',
-  },
-  'layout-shift': {
-    kicker: 'Mobile stability',
-    wordTx: 'Layout jumps',
-    phrase: () => 'the layout jumps around',
-    metric: (page) => {
-      const clsV = metricVal(page, 'CLS');
-      return clsV === undefined ? undefined : (clsV / 100).toFixed(2);
-    },
-    metricSub: (avgLabel) => `worst page layout-shift score${avgLcpSuffix(avgLabel)}`,
-    conseq: 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.',
-  },
-  blank: {
-    kicker: 'Mobile loading',
-    wordTx: 'Blank screen first',
-    phrase: (page) => {
-      const fcp = metricSecs(page, 'FCP');
-      return fcp === undefined ? undefined : `screen stays blank for ${fcp}`;
-    },
-    metric: (page) => metricSecs(page, 'FCP'),
-    metricSub: (avgLabel) => `worst page first paint${avgLcpSuffix(avgLabel)}`,
-    conseq: 'A visitor sees nothing at first, which can read as a broken page.',
-  },
-  'late-paint': {
-    kicker: 'Mobile loading',
-    wordTx: 'Slow first paint',
-    phrase: (page) => {
-      const fcp = metricSecs(page, 'FCP');
-      return fcp === undefined ? undefined : `nothing appears for ${fcp}`;
-    },
-    metric: (page) => metricSecs(page, 'FCP'),
-    metricSub: (avgLabel) => `worst page first paint${avgLcpSuffix(avgLabel)}`,
-    conseq: 'The first pixels arrive late, so the page feels stalled before it starts.',
-  },
-  sluggish: {
-    kicker: 'Mobile response',
-    wordTx: 'Slow to react',
-    phrase: () => 'slow to react to taps',
-    metric: (page) => metricSecs(page, 'TBT'),
-    metricSub: (avgLabel) => `worst page blocking time${avgLcpSuffix(avgLabel)}`,
-    conseq: 'The page may look loaded, but taps and scrolls can lag behind the visitor.',
-  },
-};
-
-function isPerfProblemKind(kind: ProblemKind): kind is PerfProblemKind {
-  return PROBLEM_KINDS.has(kind);
-}
-
-export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undefined {
-  return isPerfProblemKind(lead.kind) ? PERF_PROBLEM_COPY[lead.kind].phrase(page) : undefined;
-}
-
-function perfProblemMetric(lead: Problem, page: PagePerf): string | undefined {
-  return isPerfProblemKind(lead.kind) ? PERF_PROBLEM_COPY[lead.kind].metric(page) : undefined;
-}
-
-export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefined {
-  if (!isPerfProblemKind(lead.kind)) return undefined;
-  const copy = PERF_PROBLEM_COPY[lead.kind];
-  return {
-    kicker: copy.kicker,
-    wordTx: copy.wordTx,
-    metricSub: copy.metricSub,
-    conseq: copy.conseq,
-  };
-}
-
-const V2_STATUS_RANK: Record<V2Status, number> = { good: 0, fair: 1, poor: 2 };
-
-export interface V2PagePerfStatusInput {
-  page: PagePerf;
-  lead: Problem;
-  rest?: readonly Problem[];
-}
-
-const V2_PROBLEM_STATUS: Record<PerfProblemKind, (page: PagePerf) => V2Status> = {
-  'slow-lcp': (page) => v2LcpStatus(metricVal(page, 'LCP')),
-  'layout-shift': (page) => v2ClsStatus(metricVal(page, 'CLS')),
-  blank: (page) => v2FcpStatus(metricVal(page, 'FCP')),
-  'late-paint': (page) => v2FcpStatus(metricVal(page, 'FCP')),
-  sluggish: (page) => v2TbtStatus(metricVal(page, 'TBT')),
-};
-
-function worstV2Status(statuses: readonly V2Status[]): V2Status {
-  return statuses.reduce<V2Status>(
-    (worst, status) => V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst,
-    'good',
-  );
-}
-
-function v2ProblemStatus(page: PagePerf, problem: Problem): V2Status {
-  return isPerfProblemKind(problem.kind) ? V2_PROBLEM_STATUS[problem.kind](page) : problem.status;
-}
-
-export function v2PagePerfStatus(r: V2PagePerfStatusInput): V2Status {
-  const problems = [r.lead, ...(r.rest ?? [])];
-  const statuses = problems.map((problem) => v2ProblemStatus(r.page, problem));
-  if (problems.some((problem) => problem.kind === 'slow-lcp')) {
-    statuses.push(v2FcpStatus(metricVal(r.page, 'FCP')));
-    statuses.push(v2ClsStatus(metricVal(r.page, 'CLS')));
-    statuses.push(v2TbtStatus(metricVal(r.page, 'TBT')));
-  }
-  return worstV2Status(statuses);
-}
-
-export function v2PerfStatus(rows: readonly V2PagePerfStatusInput[], perfCouldNotMeasure = rows.length === 0): V2Status {
-  if (perfCouldNotMeasure) return 'fair';
-  return rows.reduce<V2Status>((worst, r) => {
-    const status = v2PagePerfStatus(r);
-    return V2_STATUS_RANK[status] > V2_STATUS_RANK[worst] ? status : worst;
-  }, 'good');
-}
-
-interface V2PerfProblemCandidate {
-  page: PagePerf;
-  problem: Problem;
-  status: V2Status;
-  severity: number;
-}
-
-function v2VirtualProblem(kind: PerfProblemKind, status: V2Status, severity: number, chip: string): Problem {
-  return { kind, status, severity, headline: '', chip };
-}
-
-function v2RawMetricProblemCandidates(page: PagePerf, existingKinds: ReadonlySet<ProblemKind>): V2PerfProblemCandidate[] {
-  const out: V2PerfProblemCandidate[] = [];
-  const fcp = metricVal(page, 'FCP');
-  const fcpStatus = v2FcpStatus(fcp);
-  if (fcp !== undefined && fcpStatus !== 'good' && !existingKinds.has('blank') && !existingKinds.has('late-paint')) {
-    out.push({
-      page,
-      problem: v2VirtualProblem('late-paint', fcpStatus, clamp01(fcp / 9000) * 0.85, `first paint ${secs(fcp)}`),
-      status: fcpStatus,
-      severity: clamp01(fcp / 9000) * 0.85,
-    });
-  }
-  const clsV = metricVal(page, 'CLS');
-  const clsStatusV = v2ClsStatus(clsV);
-  if (clsV !== undefined && clsStatusV !== 'good' && !existingKinds.has('layout-shift')) {
-    out.push({
-      page,
-      problem: v2VirtualProblem('layout-shift', clsStatusV, clamp01(clsV / 60) + 0.02, `layout jumps (${(clsV / 100).toFixed(2)})`),
-      status: clsStatusV,
-      severity: clamp01(clsV / 60) + 0.02,
-    });
-  }
-  const tbt = metricVal(page, 'TBT');
-  const tbtStatus = v2TbtStatus(tbt);
-  if (tbt !== undefined && tbtStatus !== 'good' && !existingKinds.has('sluggish')) {
-    out.push({
-      page,
-      problem: v2VirtualProblem('sluggish', tbtStatus, clamp01(tbt / 1800) * 0.6, 'laggy to tap'),
-      status: tbtStatus,
-      severity: clamp01(tbt / 1800) * 0.6,
-    });
-  }
-  return out;
-}
-
-function v2PerfProblemCandidates(r: V2PagePerfStatusInput): V2PerfProblemCandidate[] {
-  const problems = [r.lead, ...(r.rest ?? [])];
-  const existingKinds = new Set(problems.map((problem) => problem.kind));
-  const candidates = problems
-    .filter((problem): problem is Problem & { kind: PerfProblemKind } => isPerfProblemKind(problem.kind))
-    .map((problem) => ({
-      page: r.page,
-      problem,
-      status: v2ProblemStatus(r.page, problem),
-      severity: problem.severity,
-    }));
-  return existingKinds.has('slow-lcp')
-    ? [...candidates, ...v2RawMetricProblemCandidates(r.page, existingKinds)]
-    : candidates;
-}
-
-function compareV2PerfProblemCandidate(a: V2PerfProblemCandidate, b: V2PerfProblemCandidate): number {
-  const statusDelta = V2_STATUS_RANK[b.status] - V2_STATUS_RANK[a.status];
-  if (statusDelta !== 0) return statusDelta;
-  return b.severity - a.severity;
-}
-
-function v2DominantPerfProblem(r: V2PagePerfStatusInput): V2PerfProblemCandidate | undefined {
-  return v2PerfProblemCandidates(r)
-    .filter((candidate) => candidate.status !== 'good')
-    .sort(compareV2PerfProblemCandidate)[0];
-}
-
-function comparePerfProblem(a: RenderedPage, b: RenderedPage): number {
-  const statusDelta = V2_STATUS_RANK[v2PagePerfStatus(b)] - V2_STATUS_RANK[v2PagePerfStatus(a)];
-  if (statusDelta !== 0) return statusDelta;
-  return (v2DominantPerfProblem(b)?.severity ?? b.lead.severity) - (v2DominantPerfProblem(a)?.severity ?? a.lead.severity);
-}
-
 async function buildClientReportV2Model(
   resultsDir: string,
   sc: SiteScorecard,
@@ -2953,10 +1760,8 @@ async function buildClientReportV2Model(
     detailed: RenderedPage[];
     more: RenderedPage[];
     measured: RenderedPage[];
-    totalFramesAll: number;
     avgMs?: number;
     avgLabel: string;
-    avgStatus: Status;
     slowCount: number;
     jumpyCount: number;
   },
