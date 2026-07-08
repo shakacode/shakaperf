@@ -34,11 +34,12 @@ agent factors, and the per-page AI summaries) - no new metrics are collected.
 
 Narrative copy (the bottom line + each tab's verdict) is written by a `claude`
 pass (model `sonnet`, one call, cached to
-`<results>/client-narrative-v2.json`; `--no-ai-narrative` to skip), with a
+`<results>/client-narrative.json`; `--no-ai-narrative` to skip), with a
 deterministic built-in fallback so the report always renders. The cache stores
 only the plain AI text; the report is recomposed from the current data each
 render, so a re-audit that adds a tab is reflected without stale copy. Delete
-`client-narrative-v2.json` to refresh the AI verdict copy. The report pulls the
+`client-narrative.json` to refresh the AI verdict copy. Existing
+`client-narrative-v2.json` caches are still read during the transition. The report pulls the
 Hanken Grotesk web font from Google Fonts (with a `system-ui` fallback if that
 CDN is unreachable); it is otherwise self-contained.
 
@@ -154,8 +155,8 @@ link to from the draft.
 
 `src/warm-email/`: `synthesis.ts` (cross-page scorecard over the saved
 artifacts), `client-report.ts` (report orchestration, artifact IO, frame and
-a11y crop preparation, and `buildClientReportV2Model`), `client-report-v2.ts`
-(the pure templating module over that model), `client-report-v2-model/` (pure
+a11y crop preparation, and `buildClientReportModel`), `client-report-renderer.ts`
+(the pure templating module over that model), `client-report-model/` (pure
 model helpers such as performance problem/status policy),
 `client-report-narrative.ts` (the verdict copy: deterministic builder + AI
 overlay merge + prompt/parse), `client-report-narrative-ai.ts` (the optional
@@ -170,5 +171,5 @@ in `src/email-polish/polish.ts`. Pure logic is unit-tested in
 `src/warm-email/__tests__/client-report-a11y.test.ts`,
 `src/warm-email/__tests__/caption-ai.test.ts`,
 `src/warm-email/__tests__/a11y-summary-ai.test.ts`,
-`src/warm-email/__tests__/client-report-v2.test.ts` (the narrative builder +
+`src/warm-email/__tests__/client-report-renderer.test.ts` (the narrative builder +
 renderer), and `src/email-polish/__tests__/polish.test.ts`.

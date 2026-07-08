@@ -155,7 +155,7 @@ function findingKey(label: string): string {
 
 // The non-passing checks across the three page categories, worst (fail before
 // partial) first, de-duplicated - the raw material for both the AI prompt and the
-// fallback list. Exported so the v2 client report can reuse the same fallback
+// fallback list. Exported so the client report can reuse the same fallback
 // "what to change" actions without re-deriving them.
 export function pageFindings(struct: PageStructureScore): AgentSummaryFinding[] {
   const out: { f: AgentSummaryFinding; rank: number }[] = [];
@@ -266,7 +266,7 @@ export interface Lead {
 }
 
 // The single most important thing about this page, worst-first - mirrors the
-// Performance panel's adaptive lead. Exported so the v2 client report can reuse
+// Performance panel's adaptive lead. Exported so the client report can reuse
 // the exact same adaptive headline/note.
 export function pageLead(view: AgentPageView): Lead {
   const s = view.struct;

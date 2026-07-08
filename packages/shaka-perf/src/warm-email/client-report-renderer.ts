@@ -19,23 +19,23 @@ import {
 } from './cost-strings';
 
 // Client report renderer: pure templating over a fully-assembled
-// `ClientReportV2Model` (built in ./client-report.ts, which does all the IO).
+// `ClientReportModel` (built in ./client-report.ts, which does all the IO).
 // Styling is inline per the design handoff; the <head> <style> only adds what
 // inline can't (font, :hover, tab/lightbox JS, mobile reflow).
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-export type V2Status = 'good' | 'fair' | 'poor';
+export type ClientReportStatus = 'good' | 'fair' | 'poor';
 
 // Traffic-light status palette (design tokens): good stays calm, poor is a
 // decisive attention-red. Each status: fg / soft bg / border line / softer hover.
-const PAL: Record<V2Status, { fg: string; bg: string; line: string; soft: string }> = {
+const PAL: Record<ClientReportStatus, { fg: string; bg: string; line: string; soft: string }> = {
   good: { fg: '#2f7d4f', bg: '#e9f4ec', line: '#cfe6d6', soft: '#f2f9f4' },
   fair: { fg: '#a85f00', bg: '#fbeecf', line: '#eed9a8', soft: '#fdf6e8' },
   poor: { fg: '#c0271f', bg: '#fbe6e3', line: '#f0c4bd', soft: '#fdf0ee' },
 };
-export const v2StatusWord = (s: V2Status): string => (s === 'poor' ? 'Poor' : s === 'fair' ? 'Needs work' : 'Good');
+export const clientReportStatusWord = (s: ClientReportStatus): string => (s === 'poor' ? 'Poor' : s === 'fair' ? 'Needs work' : 'Good');
 
 // A neutral grey for a dimension we could NOT measure (a bot-protection challenge
 // walled the audit) - deliberately not good/fair/poor so it never reads as a pass.
@@ -48,7 +48,7 @@ const LINE = '#e7e1d8';
 
 // ---- model (assembled in client-report.ts) ----
 
-export interface V2Box {
+export interface ClientReportBox {
   left: string;
   top: string;
   width: string;
@@ -59,104 +59,104 @@ export interface V2Box {
 // The load story beat a frame represents: drives the frame ring + caption color
 // (first content = blue, biggest piece = orange, layout jump = red). Absent =
 // an ordinary in-between frame (faint).
-export type V2Beat = 'first-content' | 'lcp' | 'shift';
-export interface V2Frame {
+export type ClientReportBeat = 'first-content' | 'lcp' | 'shift';
+export interface ClientReportFrame {
   key: boolean; // the highlighted moment (biggest piece / layout jump)
   blank: boolean; // a still-blank phone
-  beat?: V2Beat;
+  beat?: ClientReportBeat;
   label: string; // the role, e.g. "Biggest piece"
   detail?: string; // the long zoom caption shown in the lightbox
   time: string;
   imgUri?: string;
-  boxes?: V2Box[]; // layout-shift rects on this frame
+  boxes?: ClientReportBox[]; // layout-shift rects on this frame
 }
-export interface V2Fact {
+export interface ClientReportFact {
   val: string;
   label: string;
-  status: V2Status;
+  status: ClientReportStatus;
 }
-export interface V2PerfCard {
+export interface ClientReportPerfCard {
   name: string;
   path: string;
   liveUrl?: string;
-  status: V2Status;
+  status: ClientReportStatus;
   headlineHtml: string; // pre-built HTML (contains <strong>), inserted raw
   sub?: string;
   videoUri?: string;
   posterUri?: string;
   videoCap: string;
   cues?: { t: number; x: string }[];
-  frames: V2Frame[];
+  frames: ClientReportFrame[];
   totalFrames: number;
-  facts: V2Fact[];
+  facts: ClientReportFact[];
   plain?: string;
 }
-export interface V2PerfFineRow {
+export interface ClientReportPerfFineRow {
   name: string;
   path: string;
   liveUrl?: string;
-  status: V2Status;
+  status: ClientReportStatus;
   note: string;
 }
-export interface V2A11yFrame {
+export interface ClientReportA11yFrame {
   imgUri: string;
-  boxes: V2Box[];
+  boxes: ClientReportBox[];
   cap: string;
   count: number;
 }
-export interface V2A11yCard {
+export interface ClientReportA11yCard {
   name: string;
   path: string;
   score?: number;
-  status: V2Status; // drives the score-badge color (pre-computed by the orchestrator)
-  sev: { num: number; label: string; status: V2Status }[];
+  status: ClientReportStatus; // drives the score-badge color (pre-computed by the orchestrator)
+  sev: { num: number; label: string; status: ClientReportStatus }[];
   summary?: string;
-  frames: V2A11yFrame[];
+  frames: ClientReportA11yFrame[];
   fixes: string[];
 }
-export interface V2A11yFineRow {
+export interface ClientReportA11yFineRow {
   name: string;
   path: string;
   score?: number;
-  status: V2Status;
+  status: ClientReportStatus;
   summary: string;
 }
-export interface V2AgentCheck {
+export interface ClientReportAgentCheck {
   ok: 'ok' | 'na' | 'bad';
   tx: string;
 }
-export interface V2AgentSite {
+export interface ClientReportAgentSite {
   score: number;
-  status: V2Status;
-  checks: V2AgentCheck[];
+  status: ClientReportStatus;
+  checks: ClientReportAgentCheck[];
 }
-export interface V2AgentFactor {
+export interface ClientReportAgentFactor {
   name: string;
   score: number; // 0-100
-  status: V2Status;
+  status: ClientReportStatus;
 }
-export interface V2AgentCard {
+export interface ClientReportAgentCard {
   name: string;
   path: string;
   score: number;
-  status: V2Status;
+  status: ClientReportStatus;
   capped: boolean;
   headlineHtml: string; // pre-built HTML, inserted raw
   sub?: string;
-  factors: V2AgentFactor[];
+  factors: ClientReportAgentFactor[];
   fixes: string[];
   copyPrompt?: string;
 }
-export interface V2AgentFineRow {
+export interface ClientReportAgentFineRow {
   name: string;
   path: string;
   score: number;
-  status: V2Status;
+  status: ClientReportStatus;
 }
-export interface V2Tile {
+export interface ClientReportTile {
   target: 'perf' | 'a11y' | 'agent';
   kicker: string;
-  status: V2Status;
+  status: ClientReportStatus;
   wordTx: string;
   metric: string;
   problemTx?: string; // the dominant problem in plain words, shown beside the number
@@ -166,33 +166,33 @@ export interface V2Tile {
 }
 // A page whose audit landed on a bot-protection challenge: shown as "could not
 // measure", never scored or counted.
-export interface V2BlockedPage {
+export interface ClientReportBlockedPage {
   name: string;
   path: string;
 }
-export interface V2DimNarrative {
+export interface ClientReportDimNarrative {
   verdictWord: string;
   verdictPara: string; // plain text
 }
-export interface V2Narrative {
+export interface ClientReportNarrative {
   bottomLineHtml: string; // pre-built HTML (may contain a highlight <span>), inserted raw
-  perf: V2DimNarrative;
-  a11y: V2DimNarrative;
-  agent: V2DimNarrative;
+  perf: ClientReportDimNarrative;
+  a11y: ClientReportDimNarrative;
+  agent: ClientReportDimNarrative;
 }
 // "Start here" = a deterministic, data-driven priority list (page + the one
 // thing wrong on it), distinct from the AI verdict paragraph above it.
-export interface V2StartHereItem {
+export interface ClientReportStartHereItem {
   page: string;
   issue: string;
 }
-export interface V2StartHere {
-  items: V2StartHereItem[];
+export interface ClientReportStartHere {
+  items: ClientReportStartHereItem[];
   rest?: string; // one line covering the remaining pages
   lead?: string; // when set, render this plain sentence instead of the page list
 }
 export type SourcedStat = IndustryDataStat;
-export interface V2CostBlock {
+export interface ClientReportCostBlock {
   tab: CostTab;
   state: CostState;
   headline?: string;
@@ -208,44 +208,44 @@ export interface V2CostBlock {
     formula: string;
   };
 }
-export interface ClientReportV2Model {
+export interface ClientReportModel {
   domain: string;
   dateStr: string;
   faviconLinkTag: string;
   lede: string;
-  tiles: V2Tile[];
+  tiles: ClientReportTile[];
   // performance (always present when there are pages)
   hasPerf: boolean;
-  perfStatus: V2Status;
+  perfStatus: ClientReportStatus;
   perfScore?: number;
   perfCouldNotMeasure: boolean; // true when NO performance page could be measured
-  perfCards: V2PerfCard[];
-  perfFine: V2PerfFineRow[];
+  perfCards: ClientReportPerfCard[];
+  perfFine: ClientReportPerfFineRow[];
   // accessibility (optional)
   hasA11y: boolean;
-  a11yStatus: V2Status;
+  a11yStatus: ClientReportStatus;
   a11yScore?: number;
-  a11yCards: V2A11yCard[];
-  a11yFine: V2A11yFineRow[];
-  a11yBlocked: V2BlockedPage[]; // pages walled by a bot challenge - "could not measure"
+  a11yCards: ClientReportA11yCard[];
+  a11yFine: ClientReportA11yFineRow[];
+  a11yBlocked: ClientReportBlockedPage[]; // pages walled by a bot challenge - "could not measure"
   a11yCouldNotMeasure: boolean; // true when NO a11y page could be measured
   // AI visibility (optional)
   hasAgent: boolean;
-  agentStatus: V2Status;
+  agentStatus: ClientReportStatus;
   agentScore?: number;
-  agentSite?: V2AgentSite;
-  agentCards: V2AgentCard[];
-  agentFine: V2AgentFineRow[];
-  agentBlocked: V2BlockedPage[];
+  agentSite?: ClientReportAgentSite;
+  agentCards: ClientReportAgentCard[];
+  agentFine: ClientReportAgentFineRow[];
+  agentBlocked: ClientReportBlockedPage[];
   agentCouldNotMeasure: boolean;
-  perfCost?: V2CostBlock;
-  a11yCost?: V2CostBlock;
-  agentCost?: V2CostBlock;
+  perfCost?: ClientReportCostBlock;
+  a11yCost?: ClientReportCostBlock;
+  agentCost?: ClientReportCostBlock;
   // Per-tab "Start here" priority lists (data-driven; optional).
-  perfStartHere?: V2StartHere;
-  a11yStartHere?: V2StartHere;
-  agentStartHere?: V2StartHere;
-  narrative: V2Narrative;
+  perfStartHere?: ClientReportStartHere;
+  a11yStartHere?: ClientReportStartHere;
+  agentStartHere?: ClientReportStartHere;
+  narrative: ClientReportNarrative;
   outro: string;
   footnote: string;
 }
@@ -256,43 +256,43 @@ const HEAD_STYLE = `
   html,body{margin:0;padding:0}
   body{background:#f7f5f0}
   ::selection{background:#e7dcc6}
-  .v2-tile{transition:background .12s ease}
-  .v2-tile:hover{background:var(--soft)!important}
-  .v2-tab{transition:color .12s ease,border-color .12s ease}
-  .v2-panel[hidden]{display:none}
+  .cr-tile{transition:background .12s ease}
+  .cr-tile:hover{background:var(--soft)!important}
+  .cr-tab{transition:color .12s ease,border-color .12s ease}
+  .cr-panel[hidden]{display:none}
   [data-disclosure][hidden]{display:none}
   [data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}
-  [data-disclose] .v2-mono-chip,[data-disclose].v2-mono-chip{color:#4a443c}
-  .v2-shot{cursor:zoom-in}
-  .v2-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
-  .v2-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
-  .v2-sev-chip.v2-sev-off{opacity:.4;text-decoration:line-through}
+  [data-disclose] .cr-mono-chip,[data-disclose].cr-mono-chip{color:#4a443c}
+  .cr-shot{cursor:zoom-in}
+  .cr-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
+  .cr-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
+  .cr-sev-chip.cr-sev-off{opacity:.4;text-decoration:line-through}
   /* on-video captions: a dark lower-third scrim so the white beat text stays
      legible during playback (independent of hover). */
-  .v2-vidcap{position:absolute;left:0;right:0;bottom:0;padding:30px 12px 50px;background:linear-gradient(to top,rgba(8,11,15,.92) 0%,rgba(8,11,15,.74) 42%,rgba(8,11,15,0) 100%);text-align:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
-  .v2-vidcap.v2-show{opacity:1}
-  .v2-vidcap-tx{display:inline-block;max-width:92%;color:#fff;font-size:14px;line-height:1.35;font-weight:600;letter-spacing:.004em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+  .cr-vidcap{position:absolute;left:0;right:0;bottom:0;padding:30px 12px 50px;background:linear-gradient(to top,rgba(8,11,15,.92) 0%,rgba(8,11,15,.74) 42%,rgba(8,11,15,0) 100%);text-align:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
+  .cr-vidcap.cr-show{opacity:1}
+  .cr-vidcap-tx{display:inline-block;max-width:92%;color:#fff;font-size:14px;line-height:1.35;font-weight:600;letter-spacing:.004em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
   /* lightbox */
-  .v2-lb{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(38,34,29,.86);padding:28px;cursor:zoom-out}
-  .v2-lb.open{display:flex}
-  .v2-lb-stage{display:flex;align-items:center;justify-content:center;max-width:92vw;max-height:82vh}
-  .v2-lb-stage .v2-shot{margin:0;max-width:92vw;max-height:82vh;cursor:default;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-  .v2-lb-stage .v2-shot img{width:auto!important;height:auto!important;max-width:92vw;max-height:82vh;object-fit:contain}
-  .v2-lb-cap b{color:#fff}
-  .v2-lb-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
-  .v2-lb-arrow{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:30px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
-  .v2-lb-prev{left:16px} .v2-lb-next{right:16px}
-  .v2-lb-close:hover,.v2-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
-  .v2-lb-arrow:disabled{opacity:.42;cursor:default}
-  @media print{.v2-panel[hidden],[data-disclosure][hidden]{display:block!important}.v2-tabs{display:none!important}}
+  .cr-lb{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(38,34,29,.86);padding:28px;cursor:zoom-out}
+  .cr-lb.open{display:flex}
+  .cr-lb-stage{display:flex;align-items:center;justify-content:center;max-width:92vw;max-height:82vh}
+  .cr-lb-stage .cr-shot{margin:0;max-width:92vw;max-height:82vh;cursor:default;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .cr-lb-stage .cr-shot img{width:auto!important;height:auto!important;max-width:92vw;max-height:82vh;object-fit:contain}
+  .cr-lb-cap b{color:#fff}
+  .cr-lb-close{position:absolute;top:16px;right:18px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
+  .cr-lb-arrow{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#f3efe7;font-size:30px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3}
+  .cr-lb-prev{left:16px} .cr-lb-next{right:16px}
+  .cr-lb-close:hover,.cr-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
+  .cr-lb-arrow:disabled{opacity:.42;cursor:default}
+  @media print{.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}}
   @media (max-width:760px){
-    .v2-tiles{grid-template-columns:1fr!important}
-    .v2-wrap h1{font-size:30px!important}
+    .cr-tiles{grid-template-columns:1fr!important}
+    .cr-wrap h1{font-size:30px!important}
   }`;
 
 // ---- shared bits ----
 
-function masthead(m: ClientReportV2Model): string {
+function masthead(m: ClientReportModel): string {
   return `  <div style="display:flex; align-items:center; gap:9px; margin-bottom:38px">
     <div style="width:11px; height:11px; border-radius:50%; background:#c0271f"></div>
     <div style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; letter-spacing:.22em; text-transform:uppercase; color:#26221d">ShakaCode</div>
@@ -306,19 +306,19 @@ function masthead(m: ClientReportV2Model): string {
   ${m.dateStr ? `<p style="font-size:14px; color:#9b9286; margin:10px 0 0; max-width:60ch">A snapshot of the live site on ${esc(m.dateStr)}. If the site has changed since, this may no longer reflect it.</p>` : ''}`;
 }
 
-function bottomLine(m: ClientReportV2Model): string {
+function bottomLine(m: ClientReportModel): string {
   return `  <div style="margin:46px 0 18px; padding:22px 24px; background:#26221d; border-radius:16px; color:#f3efe7">
     <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:#b8ad9b; margin-bottom:9px">The bottom line</div>
     <p style="font-size:21px; line-height:1.45; font-weight:600; margin:0; letter-spacing:-.01em">${m.narrative.bottomLineHtml}</p>
   </div>`;
 }
 
-function tile(t: V2Tile): string {
+function tile(t: ClientReportTile): string {
   const p = t.blocked ? NEUTRAL : PAL[t.status];
   const problemTx = t.problemTx
     ? `\n        <div style="font-size:13px; line-height:1.35; font-weight:700; color:${p.fg}; margin:2px 0 4px">${esc(t.problemTx)}</div>`
     : '';
-  return `      <button type="button" data-jump="${t.target}" class="v2-tile" style="--soft:${p.soft}; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid ${p.line}; border-top:3px solid ${p.fg}; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
+  return `      <button type="button" data-jump="${t.target}" class="cr-tile" style="--soft:${p.soft}; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid ${p.line}; border-top:3px solid ${p.fg}; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
         <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">${esc(t.kicker)}</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:${p.fg}; line-height:1.05; margin-bottom:13px">${esc(t.wordTx)}</div>
         <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">${esc(t.metric)}</div>${problemTx}
@@ -327,31 +327,31 @@ function tile(t: V2Tile): string {
       </button>`;
 }
 
-function tiles(m: ClientReportV2Model): string {
+function tiles(m: ClientReportModel): string {
   if (m.tiles.length === 0) return '';
   const cols = Math.min(3, m.tiles.length);
-  return `  <div class="v2-tiles" style="display:grid; grid-template-columns:repeat(${cols},1fr); gap:14px; margin-bottom:8px">
+  return `  <div class="cr-tiles" style="display:grid; grid-template-columns:repeat(${cols},1fr); gap:14px; margin-bottom:8px">
 ${m.tiles.map(tile).join('\n')}
   </div>`;
 }
 
-function tabButton(target: string, label: string, status: V2Status, active: boolean, blocked?: boolean): string {
+function tabButton(target: string, label: string, status: ClientReportStatus, active: boolean, blocked?: boolean): string {
   const dot = blocked ? NEUTRAL.fg : PAL[status].fg;
   const col = active ? INK : '#6f665c';
   const bdr = active ? INK : 'transparent';
-  return `    <button type="button" class="v2-tab" data-tab="${target}" aria-selected="${active ? 'true' : 'false'}" style="appearance:none; font-family:inherit; background:none; cursor:pointer; border:0; border-bottom:2px solid ${bdr}; margin-bottom:-1px; padding:11px 18px 13px; display:flex; align-items:center; gap:9px; font-size:15.5px; font-weight:600; color:${col}">
+  return `    <button type="button" class="cr-tab" data-tab="${target}" aria-selected="${active ? 'true' : 'false'}" style="appearance:none; font-family:inherit; background:none; cursor:pointer; border:0; border-bottom:2px solid ${bdr}; margin-bottom:-1px; padding:11px 18px 13px; display:flex; align-items:center; gap:9px; font-size:15.5px; font-weight:600; color:${col}">
       <span style="width:8px; height:8px; border-radius:50%; background:${dot}"></span>${esc(label)}
     </button>`;
 }
 
-function tabs(m: ClientReportV2Model): string {
-  const present: { target: string; label: string; status: V2Status; blocked?: boolean }[] = [];
+function tabs(m: ClientReportModel): string {
+  const present: { target: string; label: string; status: ClientReportStatus; blocked?: boolean }[] = [];
   if (m.hasPerf) present.push({ target: 'perf', label: 'Performance', status: m.perfStatus, blocked: m.perfCouldNotMeasure });
   if (m.hasA11y) present.push({ target: 'a11y', label: 'Accessibility', status: m.a11yStatus, blocked: m.a11yCouldNotMeasure });
   if (m.hasAgent) present.push({ target: 'agent', label: 'AI visibility', status: m.agentStatus, blocked: m.agentCouldNotMeasure });
   if (present.length < 2) return ''; // a single section needs no tab bar
   const first = present[0].target;
-  return `  <div class="v2-tabs" style="display:flex; gap:2px; border-bottom:1px solid #e7e1d8; margin:42px 0 28px; position:sticky; top:0; background:#f7f5f0; z-index:5; padding-top:6px">
+  return `  <div class="cr-tabs" style="display:flex; gap:2px; border-bottom:1px solid #e7e1d8; margin:42px 0 28px; position:sticky; top:0; background:#f7f5f0; z-index:5; padding-top:6px">
 ${present.map((t) => tabButton(t.target, t.label, t.status, t.target === first, t.blocked)).join('\n')}
   </div>`;
 }
@@ -361,7 +361,7 @@ ${present.map((t) => tabButton(t.target, t.label, t.status, t.target === first, 
 // The "Start here" priority list: the specific pages to fix, each with the one
 // thing wrong on it (in parens), plus a line on the rest. Built from data, so it
 // names different things than the verdict paragraph above it.
-function startHereBlock(status: V2Status, sh: V2StartHere): string {
+function startHereBlock(status: ClientReportStatus, sh: ClientReportStartHere): string {
   const p = PAL[status];
   const items = sh.items
     .map((it) => `          <li style="display:flex; gap:9px; font-size:15px; line-height:1.5; color:#3a352e">
@@ -410,7 +410,7 @@ function copyPromptControl(prompt: string | undefined, id: string, compact = fal
   const gap = compact ? '8px' : '10px';
   return `        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:${gap}; margin-top:${compact ? '14px' : '16px'}">
           <button type="button" data-copy-prompt="${esc(id)}" style="appearance:none; border:1px solid #26221d; background:#26221d; color:#fff; border-radius:8px; width:${width}; min-height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(label)}</span></button>
-          <button type="button" data-disclose="${esc(id)}" class="v2-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">view the prompt</button>
+          <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">view the prompt</button>
         </div>
         <pre id="${esc(id)}" data-disclosure hidden style="white-space:pre-wrap; overflow:auto; max-height:340px; margin:${compact ? '10px' : '12px'} 0 0; padding:14px 16px; border:1px solid #e0d9cd; border-radius:11px; background:#f4f1ea; color:#3a352e; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55">${esc(prompt)}</pre>`;
 }
@@ -424,7 +424,7 @@ function industryData(stats: readonly SourcedStat[] | undefined, id: string): st
           </li>`)
     .join('\n');
   return `        <div style="margin-top:16px">
-          <button type="button" data-disclose="${esc(id)}" class="v2-mono-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:8px 11px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#4a443c; cursor:pointer">${esc(INDUSTRY_DATA)}</button>
+          <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:8px 11px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#4a443c; cursor:pointer">${esc(INDUSTRY_DATA)}</button>
           <div id="${esc(id)}" data-disclosure hidden style="margin-top:10px; padding:14px 16px; border:1px solid #e7e1d8; border-radius:11px; background:#fbfaf8">
             <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px">
 ${rows}
@@ -433,7 +433,7 @@ ${rows}
         </div>`;
 }
 
-function dataCostLines(cost: V2CostBlock): string {
+function dataCostLines(cost: ClientReportCostBlock): string {
   if (!cost.dataCost) return '';
   return `        <div style="margin-top:10px; padding:11px 13px; border:1px solid #e0d9cd; border-radius:10px; background:#fbfaf8; max-width:64ch">
           <div style="font-size:13.5px; line-height:1.45; color:#4a443c">${esc(cost.dataCost.measuredLine)}</div>
@@ -442,9 +442,9 @@ function dataCostLines(cost: V2CostBlock): string {
         </div>`;
 }
 
-function costBlock(cost: V2CostBlock | undefined): string;
-function costBlock(cost: V2CostBlock | undefined, slot: 'top' | 'bottom'): string;
-function costBlock(cost: V2CostBlock | undefined, slot?: 'top' | 'bottom'): string {
+function costBlock(cost: ClientReportCostBlock | undefined): string;
+function costBlock(cost: ClientReportCostBlock | undefined, slot: 'top' | 'bottom'): string;
+function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bottom'): string {
   if (!cost) return '';
   const cell = COST_STATE_MATRIX[cost.tab][cost.state];
   const chip = cost.chip ?? cell.chip;
@@ -461,8 +461,8 @@ function costBlock(cost: V2CostBlock | undefined, slot?: 'top' | 'bottom'): stri
 ${cell.rendersCostNumber ? dataCostLines(cost) : ''}
       </div>`
     : '';
-  const promptId = costId('v2', cost.tab, 'site-prompt');
-  const dataId = costId('v2', cost.tab, 'industry-data');
+  const promptId = costId('cr', cost.tab, 'site-prompt');
+  const dataId = costId('cr', cost.tab, 'industry-data');
   const prompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, promptId) : '';
   const stats = cell.rendersIndustryDataExpander ? industryData(cost.stats, dataId) : '';
   const bottom = cell.rendersFullTreatment && (cost.affectsProse || prompt || stats)
@@ -480,12 +480,12 @@ ${stats}
 
 function verdictHead(
   question: string,
-  status: V2Status,
-  dim: V2DimNarrative,
-  startHere?: V2StartHere,
+  status: ClientReportStatus,
+  dim: ClientReportDimNarrative,
+  startHere?: ClientReportStartHere,
   blocked?: boolean,
   score?: number,
-  cost?: V2CostBlock,
+  cost?: ClientReportCostBlock,
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
   const badge = blocked ? '' : scoreBadge(score, status);
@@ -515,7 +515,7 @@ const monoPath = (path: string, liveUrl?: string): string =>
 
 // Beat palette: first content = blue, biggest piece = orange, layout jump = red.
 // `ring` is the frame's box-shadow color, `lbl` the caption.
-const FRAME_BEAT: Record<V2Beat, { ring: string; lbl: string }> = {
+const FRAME_BEAT: Record<ClientReportBeat, { ring: string; lbl: string }> = {
   'first-content': { ring: '#2b6cb0', lbl: '#2b6cb0' },
   lcp: { ring: '#d98324', lbl: '#9a5a12' },
   shift: { ring: '#c0271f', lbl: '#951c15' },
@@ -555,7 +555,7 @@ function emphasize(safeHtml: string): string {
 
 // ---- PERFORMANCE ----
 
-function perfFrame(f: V2Frame): string {
+function perfFrame(f: ClientReportFrame): string {
   const beat = f.beat ? FRAME_BEAT[f.beat] : null;
   const ring = beat ? `0 0 0 4px ${beat.ring}, 0 0 0 6px ${beat.ring}33` : `0 0 0 1px ${LINE}`;
   const lbl = beat ? beat.lbl : FAINT;
@@ -565,7 +565,7 @@ function perfFrame(f: V2Frame): string {
   // Full phone shot (height:auto), not a cover-crop, so the frame reads at the
   // same quality as the internal report and the shift boxes line up.
   const inner = f.imgUri
-    ? `<div class="v2-shot" role="button" tabindex="0" data-lb-src="${esc(f.imgUri)}" data-lb-label="${esc(f.label)}" data-lb-time="${esc(f.time)}" data-lb-detail="${esc(f.detail ?? f.label)}" style="position:relative; border-radius:9px; overflow:hidden; background:#fbfaf8"><img loading="lazy" src="${esc(f.imgUri)}" alt="${esc(f.label)} at ${esc(f.time)}" style="display:block; width:100%; height:auto" />${boxes}</div>`
+    ? `<div class="cr-shot" role="button" tabindex="0" data-lb-src="${esc(f.imgUri)}" data-lb-label="${esc(f.label)}" data-lb-time="${esc(f.time)}" data-lb-detail="${esc(f.detail ?? f.label)}" style="position:relative; border-radius:9px; overflow:hidden; background:#fbfaf8"><img loading="lazy" src="${esc(f.imgUri)}" alt="${esc(f.label)} at ${esc(f.time)}" style="display:block; width:100%; height:auto" />${boxes}</div>`
     : `<div style="border-radius:9px; overflow:hidden; background:#fbfaf8; aspect-ratio:9 / 19.5"></div>`;
   return `                <div style="width:116px; text-align:center">
                   <div style="border-radius:13px; padding:5px; background:#322d27; box-shadow:${ring}">
@@ -576,7 +576,7 @@ function perfFrame(f: V2Frame): string {
                 </div>`;
 }
 
-function perfVideo(c: V2PerfCard): string {
+function perfVideo(c: ClientReportPerfCard): string {
   const fg = PAL[c.status].fg;
   let screen: string;
   if (c.videoUri) {
@@ -584,7 +584,7 @@ function perfVideo(c: V2PerfCard): string {
     // Full screencast (height:auto), no cover-crop. The caption band is
     // pointer-events:none so the native scrubber/seconds stay usable on hover.
     screen = `<video controls muted loop playsinline preload="none"${c.posterUri ? ` poster="${esc(c.posterUri)}"` : ''} style="display:block; width:100%; height:auto; background:#fbfaf8"><source src="${esc(c.videoUri)}" type="video/mp4" /></video>
-                <div class="v2-vidcap"${cuesAttr} aria-hidden="true"><span class="v2-vidcap-tx"></span></div>`;
+                <div class="cr-vidcap"${cuesAttr} aria-hidden="true"><span class="cr-vidcap-tx"></span></div>`;
   } else if (c.posterUri) {
     screen = `<img src="${esc(c.posterUri)}" alt="${esc(c.name)} loaded" style="display:block; width:100%; height:auto" />`;
   } else {
@@ -600,7 +600,7 @@ function perfVideo(c: V2PerfCard): string {
           </div>`;
 }
 
-function perfCard(c: V2PerfCard): string {
+function perfCard(c: ClientReportPerfCard): string {
   const p = PAL[c.status];
   const facts = c.facts
     .map((ft) => `            <div style="font-size:13px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:6px 11px; white-space:nowrap"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b> ${esc(ft.label)}</div>`)
@@ -609,7 +609,7 @@ function perfCard(c: V2PerfCard): string {
   const frames = c.frames.length
     ? `          <div style="flex:1; min-width:300px">
             <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#9b9286; margin:2px 0 12px">Frame by frame &middot; ${c.totalFrames} captured</div>
-            <div class="v2-strip" style="display:flex; gap:13px; align-items:flex-start; flex-wrap:wrap">
+            <div class="cr-strip" style="display:flex; gap:13px; align-items:flex-start; flex-wrap:wrap">
 ${c.frames.map(perfFrame).join('\n')}
             </div>
           </div>`
@@ -628,7 +628,7 @@ ${[video, frames].filter(Boolean).join('\n')}
           <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px">
 ${facts}
             <span style="display:inline-flex; align-items:center; gap:8px; background:${p.bg}; border:1px solid ${p.line}; border-radius:999px; padding:7px 14px 7px 12px; font-size:13.5px; font-weight:700; color:${p.fg}; white-space:nowrap">
-              <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(v2StatusWord(c.status))}
+              <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}"></span>${esc(clientReportStatusWord(c.status))}
             </span>
           </div>
         </div>
@@ -639,7 +639,7 @@ ${watch}
       </div>`;
 }
 
-function perfFineList(rows: V2PerfFineRow[]): string {
+function perfFineList(rows: ClientReportPerfFineRow[]): string {
   if (!rows.length) return '';
   // "Loading fine" only when every row is good; else a neutral heading.
   const allGood = rows.every((r) => r.status === 'good');
@@ -660,7 +660,7 @@ ${items}
     </div>`;
 }
 
-function perfPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
+function perfPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
   const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure, m.perfScore, m.perfCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
@@ -671,14 +671,14 @@ ${perfFineList(m.perfFine)}`;
 
 // ---- ACCESSIBILITY ----
 
-function a11yShot(fr: V2A11yFrame): string {
+function a11yShot(fr: ClientReportA11yFrame): string {
   const boxes = fr.boxes
     .map((b) => {
       // Design palette by severity: high = red, moderate = orange, low = amber.
       // 3px + a translucent fill so the color (and what it means) reads at a glance.
       const lvl = b.level ?? (b.hi ? 'hi' : 'mid');
       const c = A11Y_BOX_COL[lvl];
-      return `<span class="v2-a11y-box v2-box-${lvl}" style="position:absolute; left:${b.left}; top:${b.top}; width:${b.width}; height:${b.height}; border:3px solid ${c.border}; background:${c.fill}; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.55)"></span>`;
+      return `<span class="cr-a11y-box cr-box-${lvl}" style="position:absolute; left:${b.left}; top:${b.top}; width:${b.width}; height:${b.height}; border:3px solid ${c.border}; background:${c.fill}; border-radius:3px; box-shadow:0 0 0 1px rgba(255,255,255,.55)"></span>`;
     })
     .join('');
   // count 0 = the whole-page fallback (structural issues, no spot to box): no "spots" suffix.
@@ -686,14 +686,14 @@ function a11yShot(fr: V2A11yFrame): string {
   const lbCap = spots ? `${esc(fr.cap)} &middot;${spots}` : esc(fr.cap);
   const figW = fr.count > 0 ? 198 : 240;
   return `        <figure style="margin:0; width:${figW}px">
-          <div class="a11y-shot v2-shot" data-lb-src="${esc(fr.imgUri)}" data-lb-cap="${lbCap}" style="position:relative; border-radius:11px; overflow:hidden; border:1px solid #e7e1d8; background:#fbfaf8; line-height:0">
+          <div class="a11y-shot cr-shot" data-lb-src="${esc(fr.imgUri)}" data-lb-cap="${lbCap}" style="position:relative; border-radius:11px; overflow:hidden; border:1px solid #e7e1d8; background:#fbfaf8; line-height:0">
             <img src="${esc(fr.imgUri)}" alt="Screenshot of the page with accessibility issues" loading="lazy" style="display:block; width:100%; height:auto" />${boxes}
           </div>
           <figcaption style="font-size:13.5px; line-height:1.45; color:#6f665c; margin-top:9px">${esc(fr.cap)}${spots ? ` <span style="color:#9b9286">&middot;${spots}</span>` : ''}</figcaption>
         </figure>`;
 }
 
-function scoreBadge(score: number | undefined, status: V2Status): string {
+function scoreBadge(score: number | undefined, status: ClientReportStatus): string {
   if (typeof score !== 'number' || !Number.isFinite(score)) return '';
   const p = PAL[status];
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
@@ -702,7 +702,7 @@ function scoreBadge(score: number | undefined, status: V2Status): string {
           </div>`;
 }
 
-function a11yCard(c: V2A11yCard): string {
+function a11yCard(c: ClientReportA11yCard): string {
   // A sev chip becomes a toggle ONLY for a severity that actually has boxes drawn
   // on this card's frames (moderate issues are mostly structural -> unboxed, so
   // their chip stays a plain count rather than a dead toggle).
@@ -712,7 +712,7 @@ function a11yCard(c: V2A11yCard): string {
       const base = `font-size:13.5px; font-weight:600; border-radius:7px; padding:5px 11px; background:${PAL[s.status].bg}; color:${PAL[s.status].fg}`;
       const lvl = SEV_LEVEL[s.label];
       return lvl && boxedLevels.has(lvl)
-        ? `          <button type="button" class="v2-sev-chip" data-sev="${lvl}" aria-pressed="true" title="Click to show or hide these boxes on the frames" style="appearance:none; border:0; font-family:inherit; cursor:pointer; ${base}">${s.num} ${esc(s.label)}</button>`
+        ? `          <button type="button" class="cr-sev-chip" data-sev="${lvl}" aria-pressed="true" title="Click to show or hide these boxes on the frames" style="appearance:none; border:0; font-family:inherit; cursor:pointer; ${base}">${s.num} ${esc(s.label)}</button>`
         : `          <span style="${base}">${s.num} ${esc(s.label)}</span>`;
     })
     .join('\n');
@@ -720,7 +720,7 @@ function a11yCard(c: V2A11yCard): string {
     ? `\n          <span style="font-size:12px; color:#9b9286; align-self:center">&larr; tap to highlight</span>`
     : '';
   const shots = c.frames.length
-    ? `        <div class="v2-strip" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-start">
+    ? `        <div class="cr-strip" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-start">
 ${c.frames.map(a11yShot).join('\n')}
         </div>`
     : '';
@@ -730,7 +730,7 @@ ${c.frames.map(a11yShot).join('\n')}
 ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:15px; line-height:1.5; color:#4a443c"><span style="color:${PAL.fair.fg}; font-weight:700; flex:none">&rarr;</span><span>${esc(fix)}</span></li>`).join('\n')}
         </ul>`
     : '';
-  return `      <div class="v2-a11y-card" style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
+  return `      <div class="cr-a11y-card" style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
           <div>
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
@@ -745,7 +745,7 @@ ${fixes}
       </div>`;
 }
 
-function a11yFineList(rows: V2A11yFineRow[]): string {
+function a11yFineList(rows: ClientReportA11yFineRow[]): string {
   if (!rows.length) return '';
   const items = rows
     .map((r) => {
@@ -770,7 +770,7 @@ ${items}
 
 // Pages walled by a bot challenge: shown as "could not measure", never scored or
 // counted. No frame - per the rule, a frame is shown only for a real measurement.
-function blockedSection(rows: V2BlockedPage[], includeIntro = true): string {
+function blockedSection(rows: ClientReportBlockedPage[], includeIntro = true): string {
   if (!rows.length) return '';
   const items = rows
     .map((r) => `      <div style="display:flex; align-items:center; gap:12px; padding:14px 0; border-top:1px solid #efeae2">
@@ -789,7 +789,7 @@ ${items}
     </div>`;
 }
 
-function a11yPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
+function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
   const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yStartHere, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
@@ -801,7 +801,7 @@ ${blockedSection(m.a11yBlocked)}`;
 
 // ---- AI VISIBILITY (Agent Ready) ----
 
-function agentSiteCard(site: V2AgentSite): string {
+function agentSiteCard(site: ClientReportAgentSite): string {
   const p = PAL[site.status];
   const checks = site.checks
     .map((ck) => {
@@ -829,7 +829,7 @@ ${checks}
       </div>`;
 }
 
-function agentCard(c: V2AgentCard, index: number): string {
+function agentCard(c: ClientReportAgentCard, index: number): string {
   const p = PAL[c.status];
   const factors = c.factors
     .map((f) => {
@@ -851,7 +851,7 @@ function agentCard(c: V2AgentCard, index: number): string {
 ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:15px; line-height:1.5; color:#4a443c"><span style="color:${PAL.good.fg}; font-weight:700; flex:none">&rarr;</span><span>${esc(fix)}</span></li>`).join('\n')}
         </ul>`
     : '';
-  const prompt = copyPromptControl(c.copyPrompt, costId('v2', 'agent-card', index, c.path), true);
+  const prompt = copyPromptControl(c.copyPrompt, costId('cr', 'agent-card', index, c.path), true);
   return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
           <div>
@@ -871,7 +871,7 @@ ${fixes}
       </div>`;
 }
 
-function agentFineList(rows: V2AgentFineRow[]): string {
+function agentFineList(rows: ClientReportAgentFineRow[]): string {
   if (!rows.length) return '';
   // These pages all "read well", so per-page notes just repeat ("~100% of content
   // in the HTML, cleanly marked up"). Say it ONCE above, then list compact rows.
@@ -891,7 +891,7 @@ ${items}
     </div>`;
 }
 
-function agentPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
+function agentPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.agentCards.length;
   const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore, m.agentCost)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
@@ -905,7 +905,7 @@ ${blockedSection(m.agentBlocked, !(m.agentCouldNotMeasure && m.agentCost?.state 
 // Single section -> always visible; multi -> first shown, rest hidden.
 function panelWrap(id: string, body: string, multi: boolean, first: boolean): string {
   const hidden = multi && !first ? ' hidden' : '';
-  return `  <div class="v2-panel" id="v2-panel-${id}" role="tabpanel"${hidden}>
+  return `  <div class="cr-panel" id="cr-panel-${id}" role="tabpanel"${hidden}>
 ${body}
   </div>`;
 }
@@ -914,10 +914,10 @@ ${body}
 const SCRIPTS = `<script>
 (function(){
   // Tabs + exec-tile jumps.
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.v2-tab'));
-  var panels = Array.prototype.slice.call(document.querySelectorAll('.v2-panel'));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.cr-tab'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.cr-panel'));
   function show(id){
-    panels.forEach(function(p){ p.hidden = (p.id !== 'v2-panel-' + id); });
+    panels.forEach(function(p){ p.hidden = (p.id !== 'cr-panel-' + id); });
     tabs.forEach(function(t){
       var on = t.getAttribute('data-tab') === id;
       t.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -927,7 +927,7 @@ const SCRIPTS = `<script>
   }
   tabs.forEach(function(t){ t.addEventListener('click', function(){ show(t.getAttribute('data-tab')); }); });
   document.querySelectorAll('[data-jump]').forEach(function(b){
-    b.addEventListener('click', function(){ if(document.getElementById('v2-panel-' + b.getAttribute('data-jump'))) show(b.getAttribute('data-jump')); });
+    b.addEventListener('click', function(){ if(document.getElementById('cr-panel-' + b.getAttribute('data-jump'))) show(b.getAttribute('data-jump')); });
   });
 
   // Disclosure contract: button uses data-disclose="<target-id>"; target uses
@@ -1001,9 +1001,9 @@ const SCRIPTS = `<script>
   // On-video captions: reveal each beat as the clip reaches its time, behind a
   // dark lower-third scrim so the white text stays legible during playback (not
   // tied to hover).
-  document.querySelectorAll('.v2-vidcap[data-cues]').forEach(function(band){
+  document.querySelectorAll('.cr-vidcap[data-cues]').forEach(function(band){
     var v = band.parentElement && band.parentElement.querySelector('video');
-    var tx = band.querySelector('.v2-vidcap-tx');
+    var tx = band.querySelector('.cr-vidcap-tx');
     if(!v || !tx) return;
     var cues;
     try{ cues = JSON.parse(band.getAttribute('data-cues') || '[]'); }catch(e){ return; }
@@ -1011,21 +1011,21 @@ const SCRIPTS = `<script>
     cues.sort(function(a,b){ return a.t - b.t; });
     var cur = -1;
     function sync(){
-      if(v.paused && v.currentTime === 0){ if(cur !== -1){ cur = -1; band.classList.remove('v2-show'); } return; }
+      if(v.paused && v.currentTime === 0){ if(cur !== -1){ cur = -1; band.classList.remove('cr-show'); } return; }
       var ms = v.currentTime * 1000, i = 0;
       for(var k=0;k<cues.length;k++){ if(cues[k].t <= ms) i = k; else break; }
       if(i === cur) return;
-      cur = i; tx.textContent = cues[i].x; band.classList.add('v2-show');
+      cur = i; tx.textContent = cues[i].x; band.classList.add('cr-show');
     }
     v.addEventListener('timeupdate', sync); v.addEventListener('play', sync); v.addEventListener('seeking', sync); v.addEventListener('pause', sync); sync();
   });
 
   // Lightbox: click a frame to enlarge; the arrows / ArrowLeft-Right step through
   // the same strip; Esc or a backdrop click closes.
-  var lb = document.getElementById('v2-lb');
+  var lb = document.getElementById('cr-lb');
   if(lb){
-    var lbStage = document.getElementById('v2-lb-stage'), lbCap = document.getElementById('v2-lb-cap');
-    var btnPrev = document.getElementById('v2-lb-prev'), btnNext = document.getElementById('v2-lb-next'), btnClose = document.getElementById('v2-lb-close');
+    var lbStage = document.getElementById('cr-lb-stage'), lbCap = document.getElementById('cr-lb-cap');
+    var btnPrev = document.getElementById('cr-lb-prev'), btnNext = document.getElementById('cr-lb-next'), btnClose = document.getElementById('cr-lb-close');
     var strip = [], idx = -1;
     var renderCap = function(el){
       lbCap.innerHTML = '';
@@ -1044,7 +1044,7 @@ const SCRIPTS = `<script>
       // the image), not just the bare src - so the big view shows the jump too.
       // Reset any boxes the sev-chip toggle hid, so the enlarged view is complete.
       var node = el.cloneNode(true);
-      var nb = node.querySelectorAll('.v2-a11y-box');
+      var nb = node.querySelectorAll('.cr-a11y-box');
       for (var bi = 0; bi < nb.length; bi++) nb[bi].style.display = '';
       lbStage.innerHTML = ''; lbStage.appendChild(node);
       renderCap(el);
@@ -1052,21 +1052,21 @@ const SCRIPTS = `<script>
       if(btnNext) btnNext.disabled = idx >= strip.length - 1;
     };
     var openFrom = function(el){
-      var box = el.closest('.v2-strip') || el.parentNode;
-      strip = Array.prototype.slice.call(box.querySelectorAll('.v2-shot'));
+      var box = el.closest('.cr-strip') || el.parentNode;
+      strip = Array.prototype.slice.call(box.querySelectorAll('.cr-shot'));
       idx = strip.indexOf(el); if(idx < 0){ strip = [el]; idx = 0; }
       render(); lb.classList.add('open');
     };
     var go = function(d){ var n = idx + d; if(n < 0 || n >= strip.length) return; idx = n; render(); };
     var close = function(){ lb.classList.remove('open'); lbStage.innerHTML = ''; };
-    document.querySelectorAll('.v2-shot').forEach(function(el){
+    document.querySelectorAll('.cr-shot').forEach(function(el){
       el.addEventListener('click', function(){ openFrom(el); });
       el.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openFrom(el); } });
     });
     if(btnPrev) btnPrev.addEventListener('click', function(e){ e.stopPropagation(); go(-1); });
     if(btnNext) btnNext.addEventListener('click', function(e){ e.stopPropagation(); go(1); });
     if(btnClose) btnClose.addEventListener('click', function(e){ e.stopPropagation(); close(); });
-    lb.addEventListener('click', function(e){ if(e.target && e.target.closest && !e.target.closest('.v2-lb-stage, button')) close(); });
+    lb.addEventListener('click', function(e){ if(e.target && e.target.closest && !e.target.closest('.cr-lb-stage, button')) close(); });
     document.addEventListener('keydown', function(e){
       if(!lb.classList.contains('open')) return;
       if(e.key === 'Escape'){ e.preventDefault(); close(); }
@@ -1076,19 +1076,19 @@ const SCRIPTS = `<script>
   }
 
   // Accessibility: each severity chip toggles its own boxes on that card's frames.
-  document.querySelectorAll('.v2-sev-chip').forEach(function(chip){
+  document.querySelectorAll('.cr-sev-chip').forEach(function(chip){
     chip.addEventListener('click', function(){
-      var card = chip.closest('.v2-a11y-card'); if(!card) return;
+      var card = chip.closest('.cr-a11y-card'); if(!card) return;
       var sev = chip.getAttribute('data-sev');
-      var off = chip.classList.toggle('v2-sev-off');
+      var off = chip.classList.toggle('cr-sev-off');
       chip.setAttribute('aria-pressed', off ? 'false' : 'true');
-      card.querySelectorAll('.v2-box-' + sev).forEach(function(b){ b.style.display = off ? 'none' : ''; });
+      card.querySelectorAll('.cr-box-' + sev).forEach(function(b){ b.style.display = off ? 'none' : ''; });
     });
   });
 })();
 </script>`;
 
-export function renderClientReportV2(m: ClientReportV2Model): string {
+export function renderClientReportHtml(m: ClientReportModel): string {
   const sections: { has: boolean; html: (multi: boolean, first: boolean) => string }[] = [
     { has: m.hasPerf, html: (multi: boolean, first: boolean) => perfPanel(m, multi, first) },
     { has: m.hasA11y, html: (multi: boolean, first: boolean) => a11yPanel(m, multi, first) },
@@ -1113,7 +1113,7 @@ ${m.faviconLinkTag}
 </head>
 <body>
 <div style="background:#f7f5f0; color:#26221d; font-family:'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; padding:0 20px 80px">
-<div class="v2-wrap" style="max-width:960px; margin:0 auto; padding-top:46px">
+<div class="cr-wrap" style="max-width:960px; margin:0 auto; padding-top:46px">
 
 ${masthead(m)}
 
@@ -1133,12 +1133,12 @@ ${panels}
 </div>
 </div>
 
-<div class="v2-lb" id="v2-lb" role="dialog" aria-modal="true" aria-label="Enlarged frame">
-  <button class="v2-lb-close" id="v2-lb-close" type="button" aria-label="Close">&times;</button>
-  <button class="v2-lb-arrow v2-lb-prev" id="v2-lb-prev" type="button" aria-label="Previous frame">&#8249;</button>
-  <button class="v2-lb-arrow v2-lb-next" id="v2-lb-next" type="button" aria-label="Next frame">&#8250;</button>
-  <div class="v2-lb-stage" id="v2-lb-stage"></div>
-  <div class="v2-lb-cap" id="v2-lb-cap" style="position:absolute; bottom:20px; left:0; right:0; text-align:center; color:#eef1f4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16.5px; line-height:1.5; padding:0 72px"></div>
+<div class="cr-lb" id="cr-lb" role="dialog" aria-modal="true" aria-label="Enlarged frame">
+  <button class="cr-lb-close" id="cr-lb-close" type="button" aria-label="Close">&times;</button>
+  <button class="cr-lb-arrow cr-lb-prev" id="cr-lb-prev" type="button" aria-label="Previous frame">&#8249;</button>
+  <button class="cr-lb-arrow cr-lb-next" id="cr-lb-next" type="button" aria-label="Next frame">&#8250;</button>
+  <div class="cr-lb-stage" id="cr-lb-stage"></div>
+  <div class="cr-lb-cap" id="cr-lb-cap" style="position:absolute; bottom:20px; left:0; right:0; text-align:center; color:#eef1f4; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16.5px; line-height:1.5; padding:0 72px"></div>
 </div>
 ${SCRIPTS}
 </body>

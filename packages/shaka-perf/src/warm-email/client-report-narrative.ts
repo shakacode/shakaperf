@@ -7,12 +7,12 @@
  * License in LICENSE.md.
  */
 
-// v2 narrative copy: the "bottom line" + each tab's verdict word/paragraph. Two
+// Client report narrative copy: the "bottom line" + each tab's verdict word/paragraph. Two
 // layers: a DETERMINISTIC builder (always present, so the report renders
 // with no `claude`) and an optional AI overlay that only rewrites the wording
 // (best-effort). Statuses/numbers come from the caller; only prose is written here.
 
-import type { V2DimNarrative, V2Narrative, V2Status } from './client-report-v2';
+import type { ClientReportDimNarrative, ClientReportNarrative, ClientReportStatus } from './client-report-renderer';
 import { BANNED_WORDS, findBannedWords } from './cost-strings';
 
 const OUTPUT_DASH_RE = /\s*[\u2013\u2014]\s*/g;
@@ -27,7 +27,7 @@ export interface NarrativeFacts {
   domain: string;
   worstDim: Dim; // the single biggest gap, for the bottom line
   perf?: {
-    status: V2Status;
+    status: ClientReportStatus;
     avgLabel?: string; // e.g. "5.3s"
     slowCount: number;
     jumpyCount: number;
@@ -35,7 +35,7 @@ export interface NarrativeFacts {
     couldNotMeasure?: boolean; // reserved; perf block-detection is a follow-up
   };
   a11y?: {
-    status: V2Status;
+    status: ClientReportStatus;
     highImpact: number; // total high-impact issues across carded pages
     pagesWithBarriers: number;
     topIssues: string[]; // plain issue labels, worst-first
@@ -43,7 +43,7 @@ export interface NarrativeFacts {
     couldNotMeasure?: boolean; // a bot-protection challenge blocked every page's scan
   };
   agent?: {
-    status: V2Status;
+    status: ClientReportStatus;
     score: number;
     coveragePct?: number;
     accessBlocked: boolean;
@@ -64,9 +64,9 @@ export const NARRATIVE_OVERLAY_SCHEMA_VERSION = 2;
 export interface NarrativeOverlay {
   schemaVersion?: typeof NARRATIVE_OVERLAY_SCHEMA_VERSION;
   bottomLine?: string;
-  perf?: Partial<V2DimNarrative>;
-  a11y?: Partial<V2DimNarrative>;
-  agent?: Partial<V2DimNarrative>;
+  perf?: Partial<ClientReportDimNarrative>;
+  a11y?: Partial<ClientReportDimNarrative>;
+  agent?: Partial<ClientReportDimNarrative>;
 }
 export type NarrativeSummarizer = (facts: NarrativeFacts) => Promise<NarrativeOverlay | null>;
 
@@ -86,7 +86,7 @@ const DIM_LABEL: Record<Dim, string> = {
 
 // ---- deterministic builders ----
 
-function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
+function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: PERF_COULD_NOT_MEASURE_PARA };
   }
@@ -97,7 +97,7 @@ function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
   return { verdictWord, verdictPara: wait };
 }
 
-function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): V2DimNarrative {
+function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: COULD_NOT_MEASURE_PARA };
   }
@@ -113,7 +113,7 @@ function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): V2DimNarrative {
   return { verdictWord, verdictPara };
 }
 
-function agentNarrative(f: NonNullable<NarrativeFacts['agent']>): V2DimNarrative {
+function agentNarrative(f: NonNullable<NarrativeFacts['agent']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: COULD_NOT_MEASURE_PARA };
   }
@@ -186,14 +186,14 @@ function bottomLineText(f: NarrativeFacts): string {
 
 // On-dark highlight colors for the bottom-line box (dark bg), keyed by how
 // serious the worst dimension is: red (poor) / amber (needs work) / green (good).
-const BOTTOM_HL: Record<V2Status, string> = {
+const BOTTOM_HL: Record<ClientReportStatus, string> = {
   poor: '#ec8f7f',
   fair: '#e8a36b',
   good: '#86c79b',
 };
 
 // The worst dimension's own status drives the highlight color.
-function worstStatusOf(f: NarrativeFacts): V2Status {
+function worstStatusOf(f: NarrativeFacts): ClientReportStatus {
   return f[f.worstDim]?.status ?? 'fair';
 }
 
@@ -240,7 +240,7 @@ function findKeySpan(text: string, worstDim: Dim): { i: number; len: number } | 
 
 // Wrap the bottom line's KEY span (the wait time / count, else the problem
 // phrase) in the design's highlight, colored by severity; else leave it plain.
-export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: V2Status = 'fair'): string {
+export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: ClientReportStatus = 'fair'): string {
   const safe = escHtml(text);
   const hit = findKeySpan(text, worstDim);
   if (!hit) return safe;
@@ -254,8 +254,8 @@ const escHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // The full deterministic narrative (always renderable).
-export function buildDeterministicNarrative(f: NarrativeFacts): V2Narrative {
-  const empty: V2DimNarrative = { verdictWord: '', verdictPara: '' };
+export function buildDeterministicNarrative(f: NarrativeFacts): ClientReportNarrative {
+  const empty: ClientReportDimNarrative = { verdictWord: '', verdictPara: '' };
   return {
     bottomLineHtml: highlightBottomLine(bottomLineText(f), f.worstDim, worstStatusOf(f)),
     perf: f.perf ? perfNarrative(f.perf) : empty,
@@ -289,7 +289,7 @@ function hasUnsafeAiText(s: string): boolean {
   return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
 }
 
-function mergeDim(base: V2DimNarrative, ov: Partial<V2DimNarrative> | undefined): V2DimNarrative {
+function mergeDim(base: ClientReportDimNarrative, ov: Partial<ClientReportDimNarrative> | undefined): ClientReportDimNarrative {
   if (!ov) return base;
   return {
     verdictWord: useText(ov.verdictWord, MAX_VERDICT_WORD) ?? base.verdictWord,
@@ -298,7 +298,7 @@ function mergeDim(base: V2DimNarrative, ov: Partial<V2DimNarrative> | undefined)
 }
 
 // Deterministic base with any usable AI field laid over it; bottom line re-highlighted.
-export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverlay | null): V2Narrative {
+export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverlay | null): ClientReportNarrative {
   const base = buildDeterministicNarrative(facts);
   if (!overlay) return base;
   const aiBottom = useText(overlay.bottomLine, MAX_BOTTOM_LINE);
@@ -402,10 +402,10 @@ export function parseNarrativeResponse(raw: string, opts: ParseNarrativeResponse
   const o = json as Record<string, unknown>;
   const hasSchemaVersion = Object.prototype.hasOwnProperty.call(o, 'schemaVersion');
   if ((opts.requireSchemaVersion || hasSchemaVersion) && Number(o.schemaVersion) !== NARRATIVE_OVERLAY_SCHEMA_VERSION) return null;
-  const dim = (v: unknown): Partial<V2DimNarrative> | undefined => {
+  const dim = (v: unknown): Partial<ClientReportDimNarrative> | undefined => {
     if (typeof v !== 'object' || v === null) return undefined;
     const d = v as Record<string, unknown>;
-    const out: Partial<V2DimNarrative> = {};
+    const out: Partial<ClientReportDimNarrative> = {};
     if (typeof d.verdictWord === 'string') out.verdictWord = d.verdictWord;
     if (typeof d.verdictPara === 'string') out.verdictPara = d.verdictPara;
     return Object.keys(out).length ? out : undefined;

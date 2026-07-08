@@ -32,16 +32,16 @@ import {
   perfProblemPhrase,
   perfProblemTileCopy,
   renderClientReport,
-  v2ClsStatus,
-  v2FcpStatus,
-  v2LcpStatus,
-  v2PagePerfStatus,
-  v2PerfStatus,
-  v2TbtStatus,
+  reportClsStatus,
+  reportFcpStatus,
+  reportLcpStatus,
+  reportPagePerfStatus,
+  reportPerfStatus,
+  reportTbtStatus,
   type Problem,
-  type V2PagePerfStatusInput,
+  type ClientReportPagePerfStatusInput,
 } from '../client-report';
-import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
+import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type { PagePerf } from '../synthesis';
 
@@ -288,11 +288,11 @@ describe('buildNarrativePrompt', () => {
   });
 });
 
-describe('v2StatusWord', () => {
+describe('clientReportStatusWord', () => {
   it('maps the three statuses', () => {
-    expect(v2StatusWord('good')).toBe('Good');
-    expect(v2StatusWord('fair')).toBe('Needs work');
-    expect(v2StatusWord('poor')).toBe('Poor');
+    expect(clientReportStatusWord('good')).toBe('Good');
+    expect(clientReportStatusWord('fair')).toBe('Needs work');
+    expect(clientReportStatusWord('poor')).toBe('Poor');
   });
 });
 
@@ -310,7 +310,7 @@ function problem(kind: Problem['kind'], status: Problem['status'] = 'poor'): Pro
   return { kind, severity: 1, status, headline: '', chip: '' };
 }
 
-function v2PerfInput(kind: Problem['kind'], status: Problem['status'], metrics: Record<string, number>): V2PagePerfStatusInput {
+function reportPerfInput(kind: Problem['kind'], status: Problem['status'], metrics: Record<string, number>): ClientReportPagePerfStatusInput {
   return { page: perfPage(metrics), lead: problem(kind, status) };
 }
 
@@ -400,7 +400,7 @@ function writePerfResults(metrics: Record<string, number>): string {
 }
 
 function writePerfResultsForPages(pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture }[]): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-v2-report-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-cr-report-'));
   tempResultDirs.push(dir);
   fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
     meta: { experimentUrl: 'http://localhost', generatedAt: '2026-06-24T00:00:00.000Z' },
@@ -505,7 +505,7 @@ describe('perfProblemTileCopy', () => {
   });
 });
 
-describe('v2 mobile-speed verdict calibration', () => {
+describe('client report mobile-speed verdict calibration', () => {
   it.each([
     [2400, 'good'],
     [2600, 'good'],
@@ -513,8 +513,8 @@ describe('v2 mobile-speed verdict calibration', () => {
     [4500, 'fair'],
     [9000, 'fair'],
     [11000, 'poor'],
-  ] as const)('classifies %dms LCP as %s for the v2 site verdict', (ms, expected) => {
-    expect(v2LcpStatus(ms)).toBe(expected);
+  ] as const)('classifies %dms LCP as %s for the client report site verdict', (ms, expected) => {
+    expect(reportLcpStatus(ms)).toBe(expected);
   });
 
   it.each([
@@ -522,31 +522,31 @@ describe('v2 mobile-speed verdict calibration', () => {
     [2200, 'fair'],
     [3100, 'poor'],
     [4100, 'poor'],
-  ] as const)('classifies %dms FCP as %s for the v2 site verdict', (ms, expected) => {
-    expect(v2FcpStatus(ms)).toBe(expected);
+  ] as const)('classifies %dms FCP as %s for the client report site verdict', (ms, expected) => {
+    expect(reportFcpStatus(ms)).toBe(expected);
   });
 
   it.each([
     [9, 'good'],
     [15, 'fair'],
     [30, 'poor'],
-  ] as const)('classifies %d/100 CLS as %s for the v2 site verdict', (value, expected) => {
-    expect(v2ClsStatus(value)).toBe(expected);
+  ] as const)('classifies %d/100 CLS as %s for the client report site verdict', (value, expected) => {
+    expect(reportClsStatus(value)).toBe(expected);
   });
 
   it.each([
     [150, 'good'],
     [300, 'fair'],
     [700, 'poor'],
-  ] as const)('classifies %dms TBT as %s for the v2 site verdict', (ms, expected) => {
-    expect(v2TbtStatus(ms)).toBe(expected);
+  ] as const)('classifies %dms TBT as %s for the client report site verdict', (ms, expected) => {
+    expect(reportTbtStatus(ms)).toBe(expected);
   });
 
-  it('relaxes LCP-bound pages up to 4.0s when aggregating the v2 site perf status', () => {
-    const page = v2PerfInput('slow-lcp', 'fair', { LCP: 3000 });
-    const status = v2PerfStatus([page]);
+  it('relaxes LCP-bound pages up to 4.0s when aggregating the client report site perf status', () => {
+    const page = reportPerfInput('slow-lcp', 'fair', { LCP: 3000 });
+    const status = reportPerfStatus([page]);
 
-    expect(v2PagePerfStatus(page)).toBe('good');
+    expect(reportPagePerfStatus(page)).toBe('good');
     expect(status).toBe('good');
     expect(buildDeterministicNarrative(facts({
       perf: { status, avgLabel: '3.0s', slowCount: 0, jumpyCount: 0, worst: [] },
@@ -554,74 +554,74 @@ describe('v2 mobile-speed verdict calibration', () => {
   });
 
   it('keeps slower LCP-bound pages amber until the existing red cutoff', () => {
-    const page = v2PerfInput('slow-lcp', 'fair', { LCP: 5000 });
+    const page = reportPerfInput('slow-lcp', 'fair', { LCP: 5000 });
 
-    expect(v2PagePerfStatus(page)).toBe('fair');
-    expect(v2PerfStatus([page])).toBe('fair');
+    expect(reportPagePerfStatus(page)).toBe('fair');
+    expect(reportPerfStatus([page])).toBe('fair');
   });
 
   it('does not relax non-LCP lead problems through the LCP band', () => {
-    expect(v2PerfStatus([
-      v2PerfInput('layout-shift', 'fair', { LCP: 3000, CLS: 15 }),
+    expect(reportPerfStatus([
+      reportPerfInput('layout-shift', 'fair', { LCP: 3000, CLS: 15 }),
     ])).toBe('fair');
-    expect(v2PerfStatus([
-      v2PerfInput('slow-lcp', 'fair', { LCP: 3000 }),
-      v2PerfInput('layout-shift', 'poor', { LCP: 3000, CLS: 30 }),
+    expect(reportPerfStatus([
+      reportPerfInput('slow-lcp', 'fair', { LCP: 3000 }),
+      reportPerfInput('layout-shift', 'poor', { LCP: 3000, CLS: 30 }),
     ])).toBe('poor');
   });
 
   it('does not relax a late first paint through the LCP band', () => {
-    const page = v2PerfInput('late-paint', 'fair', { LCP: 3700, FCP: 3600 });
+    const page = reportPerfInput('late-paint', 'fair', { LCP: 3700, FCP: 3600 });
 
-    expect(v2PagePerfStatus(page)).toBe('poor');
-    expect(v2PerfStatus([page])).toBe('poor');
+    expect(reportPagePerfStatus(page)).toBe('poor');
+    expect(reportPerfStatus([page])).toBe('poor');
   });
 
-  it('treats a Lighthouse-red blocking-time problem as poor in the v2 site verdict', () => {
-    const page = v2PerfInput('sluggish', 'fair', { LCP: 1900, FCP: 900, TBT: 700 });
+  it('treats a Lighthouse-red blocking-time problem as poor in the client report site verdict', () => {
+    const page = reportPerfInput('sluggish', 'fair', { LCP: 1900, FCP: 900, TBT: 700 });
 
-    expect(v2PagePerfStatus(page)).toBe('poor');
-    expect(v2PerfStatus([page])).toBe('poor');
+    expect(reportPagePerfStatus(page)).toBe('poor');
+    expect(reportPerfStatus([page])).toBe('poor');
   });
 
   it('blocks the relaxed LCP verdict when raw first paint is not healthy', () => {
-    const fair = v2PerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 2200, TBT: 50 });
-    const poor = v2PerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 3400, TBT: 50 });
+    const fair = reportPerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 2200, TBT: 50 });
+    const poor = reportPerfInput('slow-lcp', 'fair', { LCP: 3900, FCP: 3400, TBT: 50 });
 
-    expect(v2PagePerfStatus(fair)).toBe('fair');
-    expect(v2PagePerfStatus(poor)).toBe('poor');
+    expect(reportPagePerfStatus(fair)).toBe('fair');
+    expect(reportPagePerfStatus(poor)).toBe('poor');
   });
 
   it('blocks the relaxed LCP verdict when raw blocking time is not healthy', () => {
-    const fair = v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 300 });
-    const poor = v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 });
+    const fair = reportPerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 300 });
+    const poor = reportPerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 });
 
-    expect(v2PagePerfStatus(fair)).toBe('fair');
-    expect(v2PagePerfStatus(poor)).toBe('poor');
+    expect(reportPagePerfStatus(fair)).toBe('fair');
+    expect(reportPagePerfStatus(poor)).toBe('poor');
   });
 
   it('lets a poor secondary problem outrank a relaxed LCP lead', () => {
-    const page: V2PagePerfStatusInput = {
-      ...v2PerfInput('slow-lcp', 'fair', { LCP: 3000, CLS: 30 }),
+    const page: ClientReportPagePerfStatusInput = {
+      ...reportPerfInput('slow-lcp', 'fair', { LCP: 3000, CLS: 30 }),
       rest: [problem('layout-shift', 'poor')],
     };
 
-    expect(v2PagePerfStatus(page)).toBe('poor');
-    expect(v2PerfStatus([page])).toBe('poor');
+    expect(reportPagePerfStatus(page)).toBe('poor');
+    expect(reportPerfStatus([page])).toBe('poor');
   });
 
   it('lets a red TBT secondary problem outrank a relaxed LCP lead', () => {
-    const page: V2PagePerfStatusInput = {
-      ...v2PerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 }),
+    const page: ClientReportPagePerfStatusInput = {
+      ...reportPerfInput('slow-lcp', 'fair', { LCP: 3500, FCP: 1200, TBT: 650 }),
       rest: [problem('sluggish', 'fair')],
     };
 
-    expect(v2PagePerfStatus(page)).toBe('poor');
-    expect(v2PerfStatus([page])).toBe('poor');
+    expect(reportPagePerfStatus(page)).toBe('poor');
+    expect(reportPerfStatus([page])).toBe('poor');
   });
 });
 
-function model(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
+function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
   const n = buildDeterministicNarrative(facts());
   return {
     domain: 'www.example.com',
@@ -702,16 +702,16 @@ function renderedTile(html: string, target: 'perf' | 'a11y' | 'agent'): string {
 }
 
 function renderedPanel(html: string, target: 'perf' | 'a11y' | 'agent'): string {
-  const start = html.indexOf(`<div class="v2-panel" id="v2-panel-${target}"`);
+  const start = html.indexOf(`<div class="cr-panel" id="cr-panel-${target}"`);
   expect(start).toBeGreaterThanOrEqual(0);
-  const nextPanel = html.indexOf('\n\n  <div class="v2-panel"', start + 1);
+  const nextPanel = html.indexOf('\n\n  <div class="cr-panel"', start + 1);
   const outro = html.indexOf('\n\n  <div style="margin-top:46px;', start + 1);
   const end = nextPanel >= 0 ? nextPanel : outro;
   expect(end).toBeGreaterThanOrEqual(0);
   return html.slice(start, end);
 }
 
-function threeTabHeaderModel(over: Partial<ClientReportV2Model> = {}): ClientReportV2Model {
+function threeTabHeaderModel(over: Partial<ClientReportModel> = {}): ClientReportModel {
   return model({
     hasA11y: true,
     perfCards: [],
@@ -734,7 +734,7 @@ function threeTabHeaderModel(over: Partial<ClientReportV2Model> = {}): ClientRep
   });
 }
 
-describe('renderClientReport v2 perf tile assembly', () => {
+describe('renderClientReport perf tile assembly', () => {
   it('writes and reuses a versioned narrative overlay cache', async () => {
     const dir = writePerfResults({ LCP: 8200, FCP: 1200, 'LH Score': 55 });
     let calls = 0;
@@ -750,13 +750,29 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(first.html).toContain('Painfully slow');
     expect(calls).toBe(1);
 
-    const cache = JSON.parse(fs.readFileSync(path.join(dir, 'client-narrative-v2.json'), 'utf8')) as Record<string, unknown>;
+    const cache = JSON.parse(fs.readFileSync(path.join(dir, 'client-narrative.json'), 'utf8')) as Record<string, unknown>;
     expect(cache.schemaVersion).toBe(NARRATIVE_OVERLAY_SCHEMA_VERSION);
     expect(cache.bottomLine).toBe('The clear gap is mobile speed right now.');
 
     const second = await renderClientReport(dir, { narrate });
     expect(second.html).toContain('Painfully slow');
     expect(calls).toBe(1);
+  });
+
+  it('reuses the legacy narrative overlay cache filename', async () => {
+    const dir = writePerfResults({ LCP: 8200, FCP: 1200, 'LH Score': 55 });
+    fs.writeFileSync(path.join(dir, 'client-narrative-v2.json'), `${JSON.stringify({
+      schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION,
+      perf: { verdictWord: 'Legacy cache' },
+    })}\n`);
+    const narrate: NarrativeSummarizer = async () => {
+      throw new Error('should not regenerate');
+    };
+
+    const rendered = await renderClientReport(dir, { narrate });
+
+    expect(rendered.html).toContain('Legacy cache');
+    expect(fs.existsSync(path.join(dir, 'client-narrative.json'))).toBe(false);
   });
 
   it.each([
@@ -842,7 +858,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).not.toContain('jumps around');
   });
 
-  it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fine', async () => {
+  it('keeps the 3.7s LCP page card honest while the narrative verdict reads fine', async () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }));
     const perfTile = renderedTile(html, 'perf');
 
@@ -985,7 +1001,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
   });
 
-  it('derives zero AI cost through the v2 model only when reachable page text is fully present', async () => {
+  it('derives zero AI cost through the client report model only when reachable page text is fully present', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
         id: 'ssr',
@@ -1003,7 +1019,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(agentPanelHtml).not.toContain('industry data');
   });
 
-  it('derives no-claim AI cost through the v2 model when reachable rendered text is too small', async () => {
+  it('derives no-claim AI cost through the client report model when reachable rendered text is too small', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
         id: 'tiny',
@@ -1114,9 +1130,9 @@ describe('renderClientReport v2 perf tile assembly', () => {
   });
 });
 
-describe('renderClientReportV2', () => {
+describe('renderClientReportHtml', () => {
   it('renders a self-contained document with the masthead, bottom line and tiles', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('www.example.com');
     expect(html).toContain('The bottom line');
@@ -1128,7 +1144,7 @@ describe('renderClientReportV2', () => {
   it('renders a perf tile problem phrase between the metric and sub-label', () => {
     const m = model();
     m.tiles[0] = { ...m.tiles[0], problemTx: 'biggest piece takes 15.4s to load' };
-    const perfTile = renderedTile(renderClientReportV2(m), 'perf');
+    const perfTile = renderedTile(renderClientReportHtml(m), 'perf');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
     expect(perfTile).toContain(`<div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
         <div style="font-size:13px; line-height:1.35; font-weight:700; color:#c0271f; margin:2px 0 4px">biggest piece takes 15.4s to load</div>
@@ -1136,9 +1152,9 @@ describe('renderClientReportV2', () => {
   });
 
   it('leaves the perf tile byte-identical when no problem phrase is present', () => {
-    const perfTile = renderedTile(renderClientReportV2(model()), 'perf');
+    const perfTile = renderedTile(renderClientReportHtml(model()), 'perf');
     expect(perfTile).not.toContain('biggest piece takes');
-    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="v2-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
+    expect(perfTile).toBe(`<button type="button" data-jump="perf" class="cr-tile" style="--soft:#fdf0ee; text-align:left; cursor:pointer; appearance:none; font-family:inherit; background:#ffffff; border:1px solid #f0c4bd; border-top:3px solid #c0271f; border-radius:14px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:0">
         <div style="font-size:12px; font-weight:600; letter-spacing:.02em; color:#9b9286; margin-bottom:11px">Mobile speed</div>
         <div style="font-size:23px; font-weight:800; letter-spacing:-.02em; color:#c0271f; line-height:1.05; margin-bottom:13px">Slow on phones</div>
         <div style="font-size:30px; font-weight:800; letter-spacing:-.02em; color:#26221d; line-height:1; margin-bottom:4px">5.3s</div>
@@ -1148,14 +1164,14 @@ describe('renderClientReportV2', () => {
   });
 
   it('shows a tab bar with one button per present section', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('data-tab="perf"');
     expect(html).toContain('data-tab="agent"');
     expect(html).not.toContain('data-tab="a11y"'); // a11y absent in this model
   });
 
   it('renders one score badge in each tab header when all three tab scores are present', () => {
-    const html = renderClientReportV2(threeTabHeaderModel({
+    const html = renderClientReportHtml(threeTabHeaderModel({
       perfScore: 42,
       a11yStatus: 'fair',
       a11yScore: 88,
@@ -1170,7 +1186,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('omits tab header score badges when the score is unavailable or the tab is blocked', () => {
-    const html = renderClientReportV2(threeTabHeaderModel({
+    const html = renderClientReportHtml(threeTabHeaderModel({
       perfScore: undefined,
       a11yScore: 88,
       a11yCouldNotMeasure: true,
@@ -1187,14 +1203,14 @@ describe('renderClientReportV2', () => {
   });
 
   it('switches report tabs without forcing the viewport to scroll', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('function show(id)');
-    expect(html).toContain("p.hidden = (p.id !== 'v2-panel-' + id)");
+    expect(html).toContain("p.hidden = (p.id !== 'cr-panel-' + id)");
     expect(html).not.toContain('window.scrollTo');
   });
 
   it('ships shared disclosure toggle plumbing and print force-open CSS', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('[data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}');
     expect(html).toContain('[data-disclosure][hidden]{display:block!important}');
     expect(html).toContain('Disclosure contract: button uses data-disclose="<target-id>"; target uses');
@@ -1214,8 +1230,8 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('window.setTimeout(function(){ label.textContent = original; }, 2000)');
   });
 
-  it('keeps rendered v2 static copy free of banned cost wording', () => {
-    const html = renderClientReportV2(model({
+  it('keeps rendered static copy free of banned cost wording', () => {
+    const html = renderClientReportHtml(model({
       // Narrative copy is owned separately; this keeps the assertion on renderer
       // static strings and script/CSS text.
       narrative: {
@@ -1230,7 +1246,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('keeps rendered AI cost treatment free of banned cost wording', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
         state: 'measured',
@@ -1267,8 +1283,8 @@ describe('renderClientReportV2', () => {
         },
       ],
     });
-    const withoutCost = renderClientReportV2(base);
-    const withCost = renderClientReportV2({
+    const withoutCost = renderClientReportHtml(base);
+    const withCost = renderClientReportHtml({
       ...base,
       agentCost: {
         tab: 'ai',
@@ -1287,7 +1303,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders a neutral "could not measure" accessibility tab (no frames, no findings) when a bot wall blocked the scan', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       hasA11y: true,
       a11yStatus: 'good',
       a11yCards: [],
@@ -1315,7 +1331,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders a neutral "could not measure" AI visibility tab (no scorecard) when a bot wall blocked the agent scan', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       hasAgent: true,
       agentStatus: 'good',
       agentSite: undefined,
@@ -1343,12 +1359,12 @@ describe('renderClientReportV2', () => {
   });
 
   it('omits the tab bar when only one section is present', () => {
-    const html = renderClientReportV2(model({ hasAgent: false, tiles: [] }));
-    expect(html).not.toContain('class="v2-tabs"');
+    const html = renderClientReportHtml(model({ hasAgent: false, tiles: [] }));
+    expect(html).not.toContain('class="cr-tabs"');
   });
 
   it('opens on the first PRESENT section even when Performance is absent', () => {
-    const html = renderClientReportV2(
+    const html = renderClientReportHtml(
       model({
         hasPerf: false,
         perfCards: [],
@@ -1361,20 +1377,20 @@ describe('renderClientReportV2', () => {
       }),
     );
     // a11y is the first present section -> visible (no hidden); agent -> hidden.
-    expect(html).toContain('id="v2-panel-a11y" role="tabpanel">');
-    expect(html).toContain('id="v2-panel-agent" role="tabpanel" hidden>');
-    expect(html).not.toContain('id="v2-panel-perf"');
+    expect(html).toContain('id="cr-panel-a11y" role="tabpanel">');
+    expect(html).toContain('id="cr-panel-agent" role="tabpanel" hidden>');
+    expect(html).not.toContain('id="cr-panel-perf"');
   });
 
   it('injects the real video into the .loadvid-screen and carries the cue track', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('class="loadvid-screen"');
     expect(html).toContain('data:video/mp4;base64,AAAA');
     expect(html).toContain('data-cues=');
   });
 
   it('renders perf facts colored by status and the filmstrip frames', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('1.3 MB');
     expect(html).toContain('Biggest piece');
     expect(html).toContain('Frame by frame');
@@ -1383,7 +1399,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders agent factor bars and the site-access checks', () => {
-    const html = renderClientReportV2(model());
+    const html = renderClientReportHtml(model());
     expect(html).toContain('Readable without running code');
     expect(html).toContain('width:79%');
     expect(html).toContain('Can AI reach your site at all?');
@@ -1391,7 +1407,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders the measured AI cost block, copy prompt controls, and industry data expander', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
         state: 'measured',
@@ -1413,19 +1429,19 @@ describe('renderClientReportV2', () => {
     expect(agentPanelHtml).toContain('check it yourself: open view-source:https://www.example.com/cards');
     expect(agentPanelHtml).toContain('What this affects');
     expect(agentPanelHtml).toContain('Copy prompt for your agent');
-    expect(agentPanelHtml).toContain('data-copy-prompt="v2-ai-site-prompt"');
+    expect(agentPanelHtml).toContain('data-copy-prompt="cr-ai-site-prompt"');
     expect(agentPanelHtml).toContain('width:190px');
-    expect(agentPanelHtml).toContain('<pre id="v2-ai-site-prompt" data-disclosure hidden');
+    expect(agentPanelHtml).toContain('<pre id="cr-ai-site-prompt" data-disclosure hidden');
     expect(agentPanelHtml).toContain('industry data');
     expect(agentPanelHtml).toContain('Ahrefs, Dec 2025');
     expect(agentPanelHtml).toContain('GSQI, Aug 2025');
-    expect(agentPanelHtml).toContain('data-copy-prompt="v2-agent-card-0-cards"');
+    expect(agentPanelHtml).toContain('data-copy-prompt="cr-agent-card-0-cards"');
     expect(agentPanelHtml).toContain('width:118px');
     expect(agentPanelHtml).toContain('Fix this page card.');
   });
 
   it('renders zero-state AI cost copy without prompt controls or industry data', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
         state: 'zero',
@@ -1443,7 +1459,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders blocked-state AI cost copy as not measured and hides computed numbers', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
         state: 'blocked',
@@ -1460,7 +1476,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders no-claim AI cost copy without prompt controls or industry data', () => {
-    const html = renderClientReportV2(model({
+    const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
         state: 'noclaim',
@@ -1480,13 +1496,13 @@ describe('renderClientReportV2', () => {
   it('escapes page names so markup in data cannot break out', () => {
     const m = model();
     m.perfCards[0].name = '<script>alert(1)</script>';
-    const html = renderClientReportV2(m);
+    const html = renderClientReportHtml(m);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;');
   });
 
   it('renders the a11y panel with score badge, sev chips and shots when present', () => {
-    const html = renderClientReportV2(
+    const html = renderClientReportHtml(
       model({
         hasA11y: true,
         a11yCards: [
@@ -1510,7 +1526,7 @@ describe('renderClientReportV2', () => {
   });
 
   it('renders the whole-page a11y fallback (count 0) with no spots suffix and a wider figure', () => {
-    const html = renderClientReportV2(
+    const html = renderClientReportHtml(
       model({
         hasA11y: true,
         a11yCards: [
