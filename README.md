@@ -3,7 +3,7 @@
 [![License: ShakaPerf License](https://img.shields.io/badge/license-ShakaPerf%20License-blue.svg)](./LICENSE.md)
 
 ## The easiest way to test Frontend Performance
-Do you want to improve `Lighthose` & `Web Vitals` without breaking your site?
+Do you want to improve `Lighthouse` & `Web Vitals` without breaking your site?
 `shaka-perf` will measure the impact of your PRs on performance and detect visual changes.
 It also auto-detects SEO and accessibility issues, and it's extremely easy to setup.
 This is the only benchmarking toolset your web site needs.
@@ -44,13 +44,13 @@ graph TD
 ```
 
 ## Why choose `shaka-perf`?
-1. **One test to rule them all**. Write a Playwright test once — get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
-2. **Statistically sound, adjusted for CPU noise.**. Unlike when using other performance benchmarks, you don't have to reduce CPU noise. Control and experiment are sampled *simultaneously* so they hit the same instant of CPU activity, then analyzed with a paired Wilcoxon Signed-Rank test + paired Hodges-Lehmann estimator, with exact-distribution p-values at small n. You don't need a quiet machine, a dedicated CI box — shared noise cancels inside each pair. This make perf-tests extremely cheap and easy to setup. No other web-perf toolkit we could find (such as TracerBench, sitespeed.io) combines noise-aligned sampling with paired statistics this way. See [used_statistics.md](./packages/shaka-perf/used_statistics.md) for the justification of the methods used.
-3. **True A/B isolation**. Control and experiment run simultaneously in separate Docker containers from separate git branches. No "run before, run after, hope nothing changed" — actual side-by-side comparison.
+1. **One test to rule them all**. Write a Playwright test once - get performance benchmarks, visual regression, accessibility audits, and network-activity tracking from the same `abTest` definition.
+2. **Statistically sound, adjusted for CPU noise.** Unlike when using other performance benchmarks, you don't have to reduce CPU noise. Control and experiment are sampled *simultaneously* so they hit the same instant of CPU activity, then analyzed with a paired Wilcoxon Signed-Rank test + paired Hodges-Lehmann estimator, with exact-distribution p-values at small n. You don't need a quiet machine, a dedicated CI box - shared noise cancels inside each pair. This makes perf tests extremely cheap and easy to setup. No other web-perf toolkit we could find (such as TracerBench, sitespeed.io) combines noise-aligned sampling with paired statistics this way. See [used_statistics.md](./packages/shaka-perf/used_statistics.md) for the justification of the methods used.
+3. **True A/B isolation**. Control and experiment run simultaneously in separate Docker containers from separate git branches. No "run before, run after, hope nothing changed" - actual side-by-side comparison.
 4. **~2 hours to full setup**. Write a Dockerfile, a short config, some Playwright tests, done. Works both locally and on CI.
 5. [WIP] **CI-native at scale**. Designed for parallel measurement collection across CI nodes and processes. 
 6. [WIP] **Auto-bisect regressions**. Point it at a commit range, it finds exactly which commit caused the regression. No manual binary search.
-8. [WIP] **Actually convenient Accessibility testing**. Doesn't just dump violations — maintains a structured allow-list baseline. CI fails only on new issues onl;y.
+8. [WIP] **Actually convenient Accessibility testing**. Doesn't just dump violations - maintains a structured allow-list baseline. CI fails only on new issues.
 
 ## TODO: host a demo with all the performance artifacts (Combine with RSC demo by Abanoub)
 
@@ -94,15 +94,15 @@ The GitHub Action will automatically build and publish the package to npm.
 ## License
 
 ShakaPerf is source-available under [The ShakaPerf License](./LICENSE.md)
-(ShakaCode Trust-Based Commercial Licensing) — no license keys, no
+(ShakaCode Trust-Based Commercial Licensing) - no license keys, no
 phone-home, enforced by trust.
 
 Free for everyone: reading and studying the source, a 45-day evaluation
 (agents welcome), education, personal projects, and supporting public
-open-source projects. Production use — including CI, PR checks, and
-coding-agent workflows — is also free for small organizations: under 10
+open-source projects. Production use - including CI, PR checks, and
+coding-agent workflows - is also free for small organizations: under 10
 people AND under $1M revenue AND under $1M raised, counted with
-affiliates. Larger or funded organizations need a paid subscription — see
+affiliates. Larger or funded organizations need a paid subscription - see
 [shakaperf.com/pricing](https://shakaperf.com/pricing). Once a version
 ships under these terms, those terms govern that version permanently.
 
