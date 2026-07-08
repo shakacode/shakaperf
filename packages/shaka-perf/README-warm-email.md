@@ -38,10 +38,11 @@ pass (model `sonnet`, one call, cached to
 deterministic built-in fallback so the report always renders. The cache stores
 only the plain AI text; the report is recomposed from the current data each
 render, so a re-audit that adds a tab is reflected without stale copy. Delete
-`client-narrative.json` to refresh the AI verdict copy. Existing
-`client-narrative-v2.json` caches are still read during the transition. The report pulls the
-Hanken Grotesk web font from Google Fonts (with a `system-ui` fallback if that
-CDN is unreachable); it is otherwise self-contained.
+`client-narrative.json` (or `client-narrative-v2.json` for audits created before
+this rename) to refresh the AI verdict copy. Existing `client-narrative-v2.json`
+caches are still read during the transition. The report pulls the Hanken Grotesk
+web font from Google Fonts (with a `system-ui` fallback if that CDN is
+unreachable); it is otherwise self-contained.
 
 Renders one card per page (worst ~5 in full, the rest as a one-line list):
 
