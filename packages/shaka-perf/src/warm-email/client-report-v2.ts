@@ -230,7 +230,7 @@ const HEAD_STYLE = `
   .v2-tab{transition:color .12s ease,border-color .12s ease}
   .v2-panel[hidden]{display:none}
   [data-disclosure][hidden]{display:none}
-  [data-disclose]{min-height:44px;min-width:44px;color:#26221d}
+  [data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}
   [data-disclose] .v2-mono-chip,[data-disclose].v2-mono-chip{color:#4a443c}
   .v2-shot{cursor:zoom-in}
   .v2-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
@@ -787,7 +787,7 @@ const SCRIPTS = `<script>
     b.addEventListener('click', function(){ if(document.getElementById('v2-panel-' + b.getAttribute('data-jump'))) show(b.getAttribute('data-jump')); });
   });
 
-  // Disclosure contract: control uses data-disclose="<target-id>"; target uses
+  // Disclosure contract: button uses data-disclose="<target-id>"; target uses
   // id="<target-id>" data-disclosure hidden. This handler owns aria-controls,
   // aria-expanded, and the target's hidden attribute; print CSS opens targets.
   function disclosureTarget(control){

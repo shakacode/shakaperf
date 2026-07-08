@@ -3168,7 +3168,7 @@ async function buildClientReportV2Model(
       conseq: agentCouldNotMeasure
         ? "The site's bot protection served our checker a challenge page, so we could not measure this."
         : agentAccessBlocked
-          ? 'AI crawlers are blocked, so your site may not appear in AI answers.'
+          ? 'AI crawlers are blocked, so AI answers will not recommend your site.'
           : agentStatus === 'good'
             ? 'AI crawlers can already read most of your site and are allowed in.'
             : agentStatus === 'fair'

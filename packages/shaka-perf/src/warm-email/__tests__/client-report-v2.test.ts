@@ -847,9 +847,9 @@ describe('renderClientReportV2', () => {
 
   it('ships shared disclosure toggle plumbing and print force-open CSS', () => {
     const html = renderClientReportV2(model());
-    expect(html).toContain('[data-disclose]{min-height:44px;min-width:44px;color:#26221d}');
+    expect(html).toContain('[data-disclose]{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:#26221d}');
     expect(html).toContain('[data-disclosure][hidden]{display:block!important}');
-    expect(html).toContain('Disclosure contract: control uses data-disclose="<target-id>"; target uses');
+    expect(html).toContain('Disclosure contract: button uses data-disclose="<target-id>"; target uses');
     expect(html).toContain("if(!target || !target.hasAttribute('data-disclosure')) return null;");
     expect(html).toContain("document.querySelectorAll('[data-disclose]').forEach(function(control){");
     expect(html).toContain("var control = e.target && e.target.closest && e.target.closest('[data-disclose]');");
