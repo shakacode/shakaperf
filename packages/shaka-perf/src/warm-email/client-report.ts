@@ -2612,6 +2612,8 @@ function agentRenderedWords(view: AgentPageView): number {
   return view.result.rendered.textWords;
 }
 
+const MIN_AGENT_COST_WORDS = 20;
+
 function boundedCoverageRatio(rawWords: number, renderedWords: number): number {
   if (renderedWords <= 0) return 0;
   return Math.max(0, Math.min(1, rawWords / renderedWords));
@@ -3124,16 +3126,17 @@ async function buildClientReportV2Model(
         const cardViews = agentMeasurable.filter((v) => v.struct.bucket !== 'good');
         const fineViews = agentMeasurable.filter((v) => v.struct.bucket === 'good');
         const reachableForCost = agentMeasurable.filter((v) => v.struct.rawReachable);
+        const claimableForCost = reachableForCost.filter((v) => agentRenderedWords(v) >= MIN_AGENT_COST_WORDS);
         const renderedWords = reachableForCost.reduce((sum, v) => sum + agentRenderedWords(v), 0);
         const allRenderedWords = agentMeasurable.reduce((sum, v) => sum + agentRenderedWords(v), 0);
-        const worstCostPage = [...reachableForCost].sort(compareAgentCostPage)[0];
+        const worstCostPage = [...claimableForCost].sort(compareAgentCostPage)[0];
         const worstRawWords = worstCostPage ? agentRawWords(worstCostPage) : 0;
         const worstRenderedWords = worstCostPage ? agentRenderedWords(worstCostPage) : 0;
         const worstCoveragePct = boundedCoveragePct(worstRawWords, worstRenderedWords);
         const worstMissingPct = 100 - worstCoveragePct;
         const worstPresentWords = boundedPresentWords(worstRawWords, worstRenderedWords);
         let agentCostState: V2CostBlock['state'];
-        if (allRenderedWords < 20 || (reachableForCost.length > 0 && renderedWords < 20)) {
+        if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
           agentCostState = 'noclaim';
         } else if (reachableForCost.length === 0) {
           agentCostState = 'blocked';

@@ -1021,6 +1021,55 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(agentPanelHtml).not.toContain('industry data');
   });
 
+  it('does not let a sub-20-word page become the measured AI cost headline', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'ssr',
+        name: 'SSR page',
+        startingPath: '/ssr',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 1000, renderedWords: 1000, textSample: 'Server rendered content is already present' },
+      },
+      {
+        id: 'thin',
+        name: 'Thin page',
+        startingPath: '/thin',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 2, renderedWords: 15, textSample: 'Tiny rendered page' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).not.toContain('87% of your page&#39;s text is missing');
+    expect(agentPanelHtml).not.toContain('only 2 of 15 words present');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+  });
+
+  it('keeps AI cost no-claim when all reachable pages are thin even if their aggregate word count is above the floor', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'thin-a',
+        name: 'Thin A',
+        startingPath: '/thin-a',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 15, textSample: 'Tiny rendered page A' },
+      },
+      {
+        id: 'thin-b',
+        name: 'Thin B',
+        startingPath: '/thin-b',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 10, textSample: 'Tiny rendered page B' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('almost no text to compare');
+    expect(agentPanelHtml).not.toContain('100% of your page&#39;s text is missing');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+  });
+
   it('does not render copy prompts or no-claim text when raw HTML could not be read', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
