@@ -76,6 +76,7 @@ export interface ClientReportFact {
   status: ClientReportStatus;
 }
 export interface ClientReportPerfCard {
+  id: string;
   name: string;
   path: string;
   liveUrl?: string;
@@ -90,6 +91,7 @@ export interface ClientReportPerfCard {
   totalFrames: number;
   facts: ClientReportFact[];
   plain?: string;
+  copyPrompt?: string;
 }
 export interface ClientReportPerfFineRow {
   name: string;
@@ -435,10 +437,11 @@ ${rows}
 
 function dataCostLines(cost: ClientReportCostBlock): string {
   if (!cost.dataCost) return '';
+  const estimateId = costId('cr', cost.tab, 'data-cost-estimate');
   return `        <div style="margin-top:10px; padding:11px 13px; border:1px solid #e0d9cd; border-radius:10px; background:#fbfaf8; max-width:64ch">
-          <div style="font-size:13.5px; line-height:1.45; color:#4a443c">${esc(cost.dataCost.measuredLine)}</div>
-          <div style="font-size:13.5px; line-height:1.45; color:#4a443c; margin-top:3px">${esc(cost.dataCost.estimatedLine)}</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#6f665c; margin-top:7px">${esc(cost.dataCost.formula)}</div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13.5px; line-height:1.45; color:#4a443c">${costChip('measured')}<span>${esc(cost.dataCost.measuredLine)}</span></div>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13.5px; line-height:1.45; color:#4a443c; margin-top:6px">${costChip('estimated')}<span>${esc(cost.dataCost.estimatedLine)}</span><button type="button" data-disclose="${esc(estimateId)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:32px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">how we estimated this</button></div>
+          <div id="${esc(estimateId)}" data-disclosure hidden style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#6f665c; margin-top:7px">${esc(cost.dataCost.formula)}</div>
         </div>`;
 }
 
@@ -600,11 +603,12 @@ function perfVideo(c: ClientReportPerfCard): string {
           </div>`;
 }
 
-function perfCard(c: ClientReportPerfCard): string {
+function perfCard(c: ClientReportPerfCard, index: number): string {
   const p = PAL[c.status];
   const facts = c.facts
     .map((ft) => `            <div style="font-size:13px; color:#6f665c; background:#f4f1ea; border-radius:8px; padding:6px 11px; white-space:nowrap"><b style="font-weight:700; color:${PAL[ft.status].fg}">${esc(ft.val)}</b> ${esc(ft.label)}</div>`)
     .join('\n');
+  const prompt = copyPromptControl(c.copyPrompt, costId('cr', 'perf-card', index, c.id), true);
   const video = perfVideo(c);
   const frames = c.frames.length
     ? `          <div style="flex:1; min-width:300px">
@@ -636,6 +640,7 @@ ${facts}
         ${c.sub ? `<p style="font-size:15.5px; line-height:1.55; color:#6f665c; margin:0 0 18px; max-width:62ch">${boldTimes(esc(c.sub))}</p>` : ''}
 ${watch}
         ${c.plain ? `<div style="font-size:15.5px; line-height:1.6; color:#4a443c; max-width:64ch; margin-top:2px">${boldTimes(esc(c.plain))}</div>` : ''}
+${prompt}
       </div>`;
 }
 

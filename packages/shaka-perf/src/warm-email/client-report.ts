@@ -49,7 +49,13 @@ import {
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
+  dataCostEstimatedLine,
+  dataCostFormula,
+  dataCostMeasuredLine,
+  perfCheckLine,
+  perfHeadline,
 } from './cost-strings';
+import { formatDataCostRangeFromKb } from './cost-model';
 import { buildCopyPrompt } from './copy-prompt';
 import {
   renderClientReportHtml,
@@ -1422,7 +1428,22 @@ function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
   return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
 }
 
-function perfCardModel(rp: RenderedPage, siteUrl: string): ClientReportPerfCard {
+const PERF_COPY_PROMPT_KINDS: ReadonlySet<ProblemKind> = new Set(['slow-lcp']);
+
+const PERF_COST_HEADLINE: Partial<Record<ProblemKind, (label: string, phrase: string | undefined, pageName: string) => string>> = {
+  'slow-lcp': (label, _phrase, pageName) => perfHeadline(label, pageName),
+  'layout-shift': (_label, phrase) => `${phrase ?? 'the layout jumps around'} on a mid-range phone`,
+  blank: (_label, phrase) => `${phrase ?? 'the screen stays blank'} on a mid-range phone`,
+  'late-paint': (_label, phrase) => `${phrase ?? 'nothing appears at first'} on a mid-range phone`,
+  sluggish: (_label, phrase) => `${phrase ?? 'the page is slow to react to taps'} on a mid-range phone`,
+};
+
+function perfCostHeadline(problem: Problem, label: string, phrase: string | undefined, page: PagePerf): string {
+  const pageName = page.name || page.startingPath || 'this page';
+  return (PERF_COST_HEADLINE[problem.kind] ?? ((_l, p) => p ?? problem.chip))(label, phrase, pageName);
+}
+
+function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptContext, includeCopyPrompt: boolean): ClientReportPerfCard {
   const { page, status, lead } = rp;
   const score = metricVal(page, 'LH Score');
   const clsV = metricVal(page, 'CLS');
@@ -1458,6 +1479,7 @@ function perfCardModel(rp: RenderedPage, siteUrl: string): ClientReportPerfCard 
 
   const poster = (rp.shots.find((s) => s.isLcp) ?? rp.shots[rp.shots.length - 1])?.dataUri;
   const card: ClientReportPerfCard = {
+    id: page.id,
     name: page.name,
     path: page.startingPath,
     status,
@@ -1474,6 +1496,10 @@ function perfCardModel(rp: RenderedPage, siteUrl: string): ClientReportPerfCard 
   if (poster) card.posterUri = poster;
   if (rp.captionCues && rp.captionCues.length) card.cues = rp.captionCues.map((c) => ({ t: Math.round(c.atMs), x: c.text }));
   if (page.summary) card.plain = dashSafe(page.summary);
+  if (includeCopyPrompt && PERF_COPY_PROMPT_KINDS.has(lead.kind)) {
+    const copyPrompt = perfCopyPromptForPage(page, siteUrl, promptCtx);
+    if (copyPrompt) card.copyPrompt = copyPrompt;
+  }
   return card;
 }
 
@@ -1602,6 +1628,15 @@ function agentFactor(cat: CategoryScore): { name: string; score: number; status:
 }
 
 const AI_AFFECTS_PROSE = 'AI search and answer tools usually read the HTML first. If your real page text only appears after browser code runs, they may miss what you sell, answer without your site, or cite a competitor instead.';
+const PERF_AFFECTS_PROSE = 'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.';
+const PSI_DEFAULT_THROTTLE_PROFILE = 'Slow-4G';
+
+interface PerfPromptContext {
+  host: string;
+  date: string;
+  viewportLabel: string;
+  throttleProfile: string;
+}
 
 interface AgentPromptContext {
   siteUrl: string;
@@ -1620,6 +1655,54 @@ function agentPromptHost(siteUrl: string, domain: string): string {
 
 function agentPromptDate(dateStr: string, generatedAt: string): string {
   return dateStr || generatedAt || 'date not recorded';
+}
+
+function perfViewportLabel(sc: SiteScorecard): string {
+  return sc.viewport ? `${sc.viewport.width}x${sc.viewport.height} mobile viewport` : 'mobile viewport';
+}
+
+function perfThrottleProfile(sc: SiteScorecard): string {
+  return sc.throttleProfile || PSI_DEFAULT_THROTTLE_PROFILE;
+}
+
+function normalizedProfile(profile: string): string {
+  return profile.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function sameAsPsiDefaultProfile(profile: string): boolean {
+  return normalizedProfile(profile) === normalizedProfile(PSI_DEFAULT_THROTTLE_PROFILE);
+}
+
+function perfPageUrl(siteUrl: string, page: PagePerf): string {
+  return liveUrlFor(siteUrl, page.startingPath || '/') || siteUrl;
+}
+
+function perfDataCostForPage(page: PagePerf | undefined): NonNullable<ClientReportCostBlock['dataCost']> | undefined {
+  if (!page) return undefined;
+  const downloadsKb = metricVal(page, 'downloads');
+  if (downloadsKb === undefined) return undefined;
+  const { measuredMb, estimatedUsd } = formatDataCostRangeFromKb(downloadsKb);
+  return {
+    measuredLine: dataCostMeasuredLine(measuredMb),
+    estimatedLine: dataCostEstimatedLine(estimatedUsd),
+    formula: dataCostFormula(measuredMb),
+  };
+}
+
+function perfCopyPromptForPage(page: PagePerf, siteUrl: string, ctx: PerfPromptContext): string | undefined {
+  const url = perfPageUrl(siteUrl, page);
+  const lcpMs = metricVal(page, 'LCP');
+  return buildCopyPrompt('perf', {
+    url,
+    host: ctx.host,
+    date: ctx.date,
+    viewportLabel: ctx.viewportLabel,
+    throttleProfile: ctx.throttleProfile,
+    lcpLabel: lcpMs !== undefined ? secs(lcpMs) : 'not measured',
+    jsKb: metricVal(page, 'js') ?? 0,
+    jsFileCount: metricVal(page, 'js-count') ?? 0,
+    kbBeforeLcp: metricVal(page, 'downloads-before-LCP'),
+  });
 }
 
 function agentPromptConditions(sc: SiteScorecard): string {
@@ -1777,9 +1860,19 @@ async function buildClientReportModel(
   const faviconTag = faviconLinkTag(faviconUri);
 
   // ---- PERFORMANCE ----
+  const perfPromptCtx: PerfPromptContext = {
+    host: agentPromptHost(sc.url, domain),
+    date: agentPromptDate(dateStr, sc.generatedAt),
+    viewportLabel: perfViewportLabel(sc),
+    throttleProfile: perfThrottleProfile(sc),
+  };
+  const perfCouldNotMeasure = ctx.measured.length === 0;
+  // No measured page -> never claim 'good' off zero data; stay neutral.
+  const perfStatus = reportPerfStatus(ctx.measured, perfCouldNotMeasure);
   const carded = ctx.detailed.filter((rp) => PROBLEM_KINDS.has(rp.lead.kind));
   const rankedCarded = [...carded].sort(comparePerfProblem);
-  const perfCards = rankedCarded.map((rp) => perfCardModel(rp, sc.url));
+  const includePerfCardPrompts = !perfCouldNotMeasure && perfStatus !== 'good';
+  const perfCards = rankedCarded.map((rp) => perfCardModel(rp, sc.url, perfPromptCtx, includePerfCardPrompts));
   const fineRows = [
     ...ctx.detailed.filter((rp) => !PROBLEM_KINDS.has(rp.lead.kind)),
     ...ctx.more,
@@ -1809,9 +1902,6 @@ async function buildClientReportModel(
   );
   // Show Performance whenever there's any page to list (failed pages land in perfFine).
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
-  const perfCouldNotMeasure = ctx.measured.length === 0;
-  // No measured page -> never claim 'good' off zero data; stay neutral.
-  const perfStatus = reportPerfStatus(ctx.measured, perfCouldNotMeasure);
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
   let siteDominantPerfProblem: ClientReportPerfProblemCandidate | undefined;
   for (const rp of ctx.measured) {
@@ -1821,6 +1911,30 @@ async function buildClientReportModel(
   }
   const perfProblemTx = siteDominantPerfProblem ? perfProblemPhrase(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
   const perfProblemMetricTx = siteDominantPerfProblem ? perfProblemMetric(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
+  let perfCost: ClientReportCostBlock | undefined;
+  if (hasPerf) {
+    if (perfStatus === 'good') {
+      perfCost = { tab: 'perf', state: 'zero' };
+    } else if (!perfCouldNotMeasure && siteDominantPerfProblem) {
+      const problemLabel = perfProblemMetricTx ?? perfProblemTx ?? siteDominantPerfProblem.problem.chip;
+      const problemPhrase = perfProblemTx ?? siteDominantPerfProblem.problem.chip;
+      const problemPage = siteDominantPerfProblem.page;
+      const problemUrl = perfPageUrl(sc.url, problemPage);
+      const dataCost = perfDataCostForPage(problemPage);
+      perfCost = {
+        tab: 'perf',
+        state: 'measured',
+        headline: perfCostHeadline(siteDominantPerfProblem.problem, problemLabel, problemPhrase, problemPage),
+        chip: 'measured',
+        checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(perfPromptCtx.throttleProfile), perfPromptCtx.throttleProfile),
+        affectsProse: PERF_AFFECTS_PROSE,
+        sitePrompt: PERF_COPY_PROMPT_KINDS.has(siteDominantPerfProblem.problem.kind)
+          ? perfCopyPromptForPage(problemPage, sc.url, perfPromptCtx)
+          : undefined,
+        ...(dataCost ? { dataCost } : {}),
+      };
+    }
+  }
 
   // ---- ACCESSIBILITY ----
   if (opts.summarizeA11y) await enrichA11ySummaries(resultsDir, sc.pages, opts.summarizeA11y);
@@ -2195,6 +2309,7 @@ async function buildClientReportModel(
     agentFine,
     agentBlocked,
     agentCouldNotMeasure,
+    ...(perfCost ? { perfCost } : {}),
     ...(agentCost ? { agentCost } : {}),
     narrative,
     outro,
