@@ -2612,13 +2612,21 @@ function agentRenderedWords(view: AgentPageView): number {
   return view.result.rendered.textWords;
 }
 
-function boundedCoveragePct(rawWords: number, renderedWords: number): number {
+function boundedCoverageRatio(rawWords: number, renderedWords: number): number {
   if (renderedWords <= 0) return 0;
-  return Math.round(Math.max(0, Math.min(1, rawWords / renderedWords)) * 100);
+  return Math.max(0, Math.min(1, rawWords / renderedWords));
+}
+
+function boundedCoveragePct(rawWords: number, renderedWords: number): number {
+  return Math.round(boundedCoverageRatio(rawWords, renderedWords) * 100);
 }
 
 function boundedPresentWords(rawWords: number, renderedWords: number): number {
   return Math.max(0, Math.min(rawWords, renderedWords));
+}
+
+function missingRenderedWords(view: AgentPageView): number {
+  return Math.max(0, agentRenderedWords(view) - boundedPresentWords(agentRawWords(view), agentRenderedWords(view)));
 }
 
 function agentPromptForView(view: AgentPageView, ctx: AgentPromptContext, coveragePct: number): string | undefined {
@@ -2640,10 +2648,12 @@ function agentPromptForView(view: AgentPageView, ctx: AgentPromptContext, covera
 }
 
 function compareAgentCostPage(a: AgentPageView, b: AgentPageView): number {
-  const missingA = Math.max(0, agentRenderedWords(a) - agentRawWords(a));
-  const missingB = Math.max(0, agentRenderedWords(b) - agentRawWords(b));
+  const coverageA = boundedCoverageRatio(agentRawWords(a), agentRenderedWords(a));
+  const coverageB = boundedCoverageRatio(agentRawWords(b), agentRenderedWords(b));
+  if (coverageA !== coverageB) return coverageA - coverageB;
+  const missingA = missingRenderedWords(a);
+  const missingB = missingRenderedWords(b);
   if (missingA !== missingB) return missingB - missingA;
-  if (a.struct.coverage !== b.struct.coverage) return a.struct.coverage - b.struct.coverage;
   return a.page.startingPath.localeCompare(b.page.startingPath);
 }
 
@@ -3114,25 +3124,26 @@ async function buildClientReportV2Model(
         const cardViews = agentMeasurable.filter((v) => v.struct.bucket !== 'good');
         const fineViews = agentMeasurable.filter((v) => v.struct.bucket === 'good');
         const reachableForCost = agentMeasurable.filter((v) => v.struct.rawReachable);
-        const rawWords = reachableForCost.reduce((sum, v) => sum + agentRawWords(v), 0);
         const renderedWords = reachableForCost.reduce((sum, v) => sum + agentRenderedWords(v), 0);
         const allRenderedWords = agentMeasurable.reduce((sum, v) => sum + agentRenderedWords(v), 0);
-        const coveragePct = boundedCoveragePct(rawWords, renderedWords);
-        const missingPct = 100 - coveragePct;
-        const presentWords = boundedPresentWords(rawWords, renderedWords);
         const worstCostPage = [...reachableForCost].sort(compareAgentCostPage)[0];
+        const worstRawWords = worstCostPage ? agentRawWords(worstCostPage) : 0;
+        const worstRenderedWords = worstCostPage ? agentRenderedWords(worstCostPage) : 0;
+        const worstCoveragePct = boundedCoveragePct(worstRawWords, worstRenderedWords);
+        const worstMissingPct = 100 - worstCoveragePct;
+        const worstPresentWords = boundedPresentWords(worstRawWords, worstRenderedWords);
         let agentCostState: V2CostBlock['state'];
         if (allRenderedWords < 20 || (reachableForCost.length > 0 && renderedWords < 20)) {
           agentCostState = 'noclaim';
         } else if (reachableForCost.length === 0) {
           agentCostState = 'blocked';
-        } else if (missingPct === 0 || agentStatus === 'good') {
+        } else if (worstMissingPct === 0) {
           agentCostState = 'zero';
         } else {
           agentCostState = 'measured';
         }
         agentCost = { tab: 'ai', state: agentCostState };
-        if (agentCostState === 'blocked' && reachableForCost.length === 0) {
+        if (agentCostState === 'blocked') {
           agentCost = {
             tab: 'ai',
             state: 'blocked',
@@ -3141,13 +3152,11 @@ async function buildClientReportV2Model(
         }
         if (agentCostState === 'measured' && worstCostPage) {
           const worstUrl = liveUrlFor(sc.url, worstCostPage.page.startingPath || '/') || worstCostPage.result.url || sc.url;
-          const worstRawWords = agentRawWords(worstCostPage);
-          const worstRenderedWords = agentRenderedWords(worstCostPage);
           agentCost = {
             tab: 'ai',
             state: 'measured',
-            headline: aiHeadline(missingPct, presentWords, renderedWords),
-            headlineSub: aiHeadlineSub(presentWords, renderedWords),
+            headline: aiHeadline(worstMissingPct, worstPresentWords, worstRenderedWords),
+            headlineSub: aiHeadlineSub(worstPresentWords, worstRenderedWords),
             chip: 'measured',
             checkLine: aiCheckLine(worstUrl),
             affectsProse: AI_AFFECTS_PROSE,
@@ -3156,7 +3165,7 @@ async function buildClientReportV2Model(
               host: agentPromptCtx.host,
               date: agentPromptCtx.date,
               conditions: agentPromptCtx.conditions,
-              coveragePct: boundedCoveragePct(worstRawWords, worstRenderedWords),
+              coveragePct: worstCoveragePct,
               rawWords: worstRawWords,
               renderedWords: worstRenderedWords,
               headings: worstCostPage.result.rendered.headings.total,

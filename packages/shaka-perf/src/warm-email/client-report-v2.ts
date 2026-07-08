@@ -899,7 +899,7 @@ ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
 ${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.agentCards.map(agentCard).join('\n')}
 ${agentFineList(m.agentFine)}
-${blockedSection(m.agentBlocked, m.agentCost?.state !== 'blocked')}`;
+${blockedSection(m.agentBlocked, !(m.agentCouldNotMeasure && m.agentCost?.state === 'blocked'))}`;
   return panelWrap('agent', body, multi, first);
 }
 
@@ -969,14 +969,15 @@ const SCRIPTS = `<script>
     document.body.appendChild(ta);
     ta.focus();
     ta.select();
-    try{ document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+    try{ return document.execCommand('copy'); }
+    catch(e){ return false; }
+    finally { document.body.removeChild(ta); }
   }
   function copyPromptText(text){
     if(navigator.clipboard && navigator.clipboard.writeText){
-      return navigator.clipboard.writeText(text).catch(function(){ fallbackCopyPrompt(text); });
+      return navigator.clipboard.writeText(text).then(function(){ return true; }).catch(function(){ return fallbackCopyPrompt(text); });
     }
-    fallbackCopyPrompt(text);
-    return Promise.resolve();
+    return Promise.resolve(fallbackCopyPrompt(text));
   }
   document.querySelectorAll('[data-copy-prompt]').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -986,8 +987,12 @@ const SCRIPTS = `<script>
       var label = btn.querySelector('[data-copy-label]') || btn;
       var original = btn.getAttribute('data-copy-original') || label.textContent || 'Copy';
       btn.setAttribute('data-copy-original', original);
-      copyPromptText(pre.textContent || '').then(function(){
-        label.textContent = 'Copied';
+      copyPromptText(pre.textContent || '').then(function(ok){
+        label.textContent = ok ? 'Copied' : 'Copy failed';
+        window.clearTimeout(btn._copyTimer);
+        btn._copyTimer = window.setTimeout(function(){ label.textContent = original; }, 2000);
+      }).catch(function(){
+        label.textContent = 'Copy failed';
         window.clearTimeout(btn._copyTimer);
         btn._copyTimer = window.setTimeout(function(){ label.textContent = original; }, 2000);
       });

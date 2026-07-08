@@ -941,7 +941,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
   });
 
-  it('uses text-weighted missing text for the AI cost headline, not a mean of page ratios', async () => {
+  it('uses the worst reachable page for the AI cost headline, check line, and prompt', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
         id: 'shell',
@@ -955,16 +955,70 @@ describe('renderClientReport v2 perf tile assembly', () => {
         name: 'SSR page',
         startingPath: '/ssr',
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
-        agent: { rawWords: 900, renderedWords: 900, textSample: 'Server rendered content is already present' },
+        agent: { rawWords: 900, renderedWords: 100, textSample: 'Server rendered content is already present' },
       },
     ]), { design: 'v2' });
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain('10% of your page&#39;s text is missing');
-    expect(agentPanelHtml).toContain('only 900 of 1000 words present');
-    expect(agentPanelHtml).not.toContain('50% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('100% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('only 0 of 100 words present');
+    expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
     expect(agentPanelHtml).toContain('check it yourself: open view-source:http://localhost/shell');
     expect(agentPanelHtml).toContain('0% content coverage: 0 raw HTML words vs 100 rendered words');
+  });
+
+  it('keeps a measured AI cost block when the overall agent score is good but page text is missing', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'mostly-readable',
+        name: 'Mostly readable',
+        startingPath: '/mostly-readable',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 80, renderedWords: 100, textSample: 'A sentence that appears after browser code runs' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('20% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('only 80 of 100 words present');
+    expect(agentPanelHtml).toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
+  });
+
+  it('derives zero AI cost through the v2 model only when reachable page text is fully present', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'ssr',
+        name: 'SSR page',
+        startingPath: '/ssr',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 120, renderedWords: 120, textSample: 'Server rendered content is already present' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
+  });
+
+  it('derives no-claim AI cost through the v2 model when reachable rendered text is too small', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'tiny',
+        name: 'Tiny page',
+        startingPath: '/tiny',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 12, textSample: 'Tiny page' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('almost no text to compare');
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
   });
 
   it('does not render copy prompts or no-claim text when raw HTML could not be read', async () => {
@@ -984,6 +1038,30 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(agentPanelHtml).not.toContain('almost no text to compare');
     expect(agentPanelHtml).not.toContain('Copy prompt');
     expect(agentPanelHtml).not.toContain('0 raw HTML words vs 220 rendered words');
+  });
+
+  it('keeps the bot-wall intro when blocked pages are listed beside a raw-fetch failure', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'blocked',
+        name: 'Blocked page',
+        startingPath: '/blocked',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 220, rawBlocked: true, textSample: 'Challenge page' },
+      },
+      {
+        id: 'raw-failed',
+        name: 'Raw failed page',
+        startingPath: '/raw-failed',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 220, rawOk: false, textSample: 'Rendered text exists but the raw fetch failed' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('We could not read the page the server sends, so this text gap was not measured.');
+    expect(agentPanelHtml).toContain('bot protection served our checker a challenge page instead of the real page');
+    expect(agentPanelHtml).toContain('Blocked page');
   });
 });
 
@@ -1081,7 +1159,9 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('navigator.clipboard.writeText(text)');
     expect(html).toContain("document.execCommand('copy')");
     expect(html).toContain('document.body.appendChild(ta)');
-    expect(html).toContain("label.textContent = 'Copied'");
+    expect(html).toContain("label.textContent = ok ? 'Copied' : 'Copy failed'");
+    expect(html).toContain("label.textContent = 'Copy failed'");
+    expect(html).toContain('}).catch(function(){');
     expect(html).toContain('window.setTimeout(function(){ label.textContent = original; }, 2000)');
   });
 
