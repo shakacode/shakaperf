@@ -24,7 +24,7 @@ const execFileAsync = promisify(execFile);
 const CLAUDE_TIMEOUT_MS = 90_000;
 const MAX_PROMPT_BYTES = 60_000;
 
-// Rewrites the v2 report's verdict copy (bottom line + per-tab verdicts) into
+// Rewrites the client report's verdict copy (bottom line + per-tab verdicts) into
 // tighter, site-specific prose via one `claude -p` call. Best-effort like the
 // a11y/agent summary passes: any failure returns null and the caller keeps the
 // deterministic copy. Default sonnet (haiku goes vague on this short, high-stakes

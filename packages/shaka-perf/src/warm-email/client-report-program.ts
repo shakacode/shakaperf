@@ -20,25 +20,15 @@ import type { NarrativeSummarizer } from './client-report-narrative';
 
 export const CLIENT_REPORT_FILENAME = 'client-report.html';
 
-// Shared design + narrative options for the client report, parsed from the CLI.
-// v2 (the redesign) is the default; `--design v1` renders the original report.
-// The AI narrative pass (v2 only) is on unless --no-ai-narrative. Used by the
-// `client-report`, `warm-email`, and `cold-email` commands so they agree.
-export function clientReportDesignOpts(opts: { design?: string; aiNarrative?: boolean }): { design: 'v1' | 'v2'; narrate?: NarrativeSummarizer } {
-  const raw = opts.design ?? 'v2';
-  if (raw !== 'v1' && raw !== 'v2') {
-    console.error(`--design must be 'v1' or 'v2' (got '${raw}').`);
-    process.exit(1);
-  }
-  return raw === 'v2' && opts.aiNarrative !== false ? { design: raw, narrate: claudeNarrator() } : { design: raw };
+// Shared narrative option for every client-report-producing command. The report
+// has one renderer now; the AI narrative pass is on unless --no-ai-narrative.
+export function clientReportNarrativeOpts(opts: { aiNarrative?: boolean }): { narrate?: NarrativeSummarizer } {
+  return opts.aiNarrative !== false ? { narrate: claudeNarrator() } : {};
 }
 
-// The two design flags every client-report-producing command exposes, kept
-// identical across the three commands.
-export function addDesignOptions(cmd: Command): Command {
-  return cmd
-    .option('--design <version>', 'Report design: v2 (the new design, default) or v1 (the original mobile-speed report)', 'v2')
-    .option('--no-ai-narrative', 'Skip the AI rewrite of the v2 report verdict copy (the built-in deterministic copy is always present); ignored for --design v1');
+// Kept identical across client-report, warm-email, and cold-email.
+export function addClientReportNarrativeOption(cmd: Command): Command {
+  return cmd.option('--no-ai-narrative', 'Skip the AI rewrite of the report verdict copy (the built-in deterministic copy is always present)');
 }
 
 // `shaka-perf client-report` - render the clean, client-facing report from a
@@ -52,7 +42,7 @@ export function createClientReportCommand(): Command {
     .option('--no-ai-captions', 'Skip the AI rewrite of the on-video captions (the built-in deterministic captions are always present)')
     .option('--no-ai-a11y', 'Skip the AI plain-language accessibility summaries (the cards fall back to a plain-language issue list)')
     .option('--no-ai-agent', 'Skip the AI plain-language Agent Ready summaries (the cards fall back to the plain findings list)');
-  return addDesignOptions(cmd)
+  return addClientReportNarrativeOption(cmd)
     .action(async function (this: Command) {
       const opts = this.opts();
       const resultsDir = path.resolve(opts.results);
@@ -66,7 +56,7 @@ export function createClientReportCommand(): Command {
         refineCaptions: opts.aiCaptions === false ? undefined : claudeCaptionRefiner(),
         summarizeA11y: opts.aiA11y === false ? undefined : claudeA11ySummarizer(),
         summarizeAgent: opts.aiAgent === false ? undefined : claudeAgentSummarizer(),
-        ...clientReportDesignOpts(opts),
+        ...clientReportNarrativeOpts(opts),
       });
       console.log(`Wrote client-facing report for ${pages} page(s): ${outPath}`);
     });

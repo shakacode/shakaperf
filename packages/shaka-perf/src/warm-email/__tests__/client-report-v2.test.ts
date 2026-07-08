@@ -746,7 +746,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
       };
     };
 
-    const first = await renderClientReport(dir, { design: 'v2', narrate });
+    const first = await renderClientReport(dir, { narrate });
     expect(first.html).toContain('Painfully slow');
     expect(calls).toBe(1);
 
@@ -754,7 +754,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(cache.schemaVersion).toBe(NARRATIVE_OVERLAY_SCHEMA_VERSION);
     expect(cache.bottomLine).toBe('The clear gap is mobile speed right now.');
 
-    const second = await renderClientReport(dir, { design: 'v2', narrate });
+    const second = await renderClientReport(dir, { narrate });
     expect(second.html).toContain('Painfully slow');
     expect(calls).toBe(1);
   });
@@ -821,7 +821,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
       },
     ],
   ] as const)('renders the %s dominant problem through the final perf tile', async (_kind, metrics, expected) => {
-    const { html } = await renderClientReport(writePerfResults(metrics), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults(metrics));
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain(expected.kicker);
     expect(perfTile).toContain(expected.wordTx);
@@ -832,7 +832,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
   });
 
   it('keeps a clean assembled perf tile generic and without a problem line', async () => {
-    const { html } = await renderClientReport(writePerfResults({ LCP: 1900, FCP: 800, CLS: 1, TBT: 50, 'LH Score': 98 }), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults({ LCP: 1900, FCP: 800, CLS: 1, TBT: 50, 'LH Score': 98 }));
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Mobile speed');
     expect(perfTile).toContain('Fine on phones');
@@ -843,7 +843,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
   });
 
   it('keeps the 3.7s LCP page card honest while the v2 narrative verdict reads fine', async () => {
-    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }));
     const perfTile = renderedTile(html, 'perf');
 
     expect(html).toContain('Fine on phones');
@@ -858,8 +858,8 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).not.toContain('visitors may give up');
   });
 
-  it('does not let the relaxed LCP band hide a late first paint in the rendered v2 report', async () => {
-    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 3600, 'LH Score': 76 }), { design: 'v2' });
+  it('does not let the relaxed LCP band hide a late first paint in the rendered report', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 3600, 'LH Score': 76 }));
 
     expect(html).toContain('Slow on phones');
     expect(html).toContain('Nothing appears for the first <strong>3.6s</strong>');
@@ -869,7 +869,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 3000, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
       { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 1900, FCP: 900, CLS: 15, TBT: 50, 'LH Score': 90 } },
-    ]), { design: 'v2' });
+    ]));
     const perfTile = renderedTile(html, 'perf');
 
     expect(perfTile).toContain('Layout jumps');
@@ -879,7 +879,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
   });
 
   it('uses the TBT rest problem for the exec tile when it drives a relaxed-LCP page status', async () => {
-    const { html } = await renderClientReport(writePerfResults({ LCP: 3500, FCP: 1200, TBT: 650, 'LH Score': 76 }), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3500, FCP: 1200, TBT: 650, 'LH Score': 76 }));
     const perfTile = renderedTile(html, 'perf');
 
     expect(perfTile).toContain('Slow to react');
@@ -895,14 +895,14 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 3000, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
       { id: 'home-scroll', name: 'Home scroll', startingPath: '/', metrics: { LCP: 3020, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 82 } },
-    ]), { design: 'v2' });
+    ]));
 
     expect(html).toContain('Loading fine &middot; 1 page');
     expect(html).not.toContain('The rest of the pages we checked &middot; 1 page');
   });
 
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
-    const { html } = await renderClientReport(writePerfResults({}), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults({}));
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Mobile speed');
     expect(perfTile).toContain('Could not measure');
@@ -914,7 +914,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
   });
 
   it('keeps a zero performance score in the tab header', async () => {
-    const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }), { design: 'v2' });
+    const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }));
     expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">0</div>');
   });
 
@@ -922,7 +922,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 2000, FCP: 900, 'LH Score': 95 } },
       { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35 } },
-    ]), { design: 'v2' });
+    ]));
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('>15.4s</div>');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
@@ -933,7 +933,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 8200, FCP: 1200, 'LH Score': 55 } },
       { id: 'details', name: 'Details', startingPath: '/details', metrics: { LCP: 1800, FCP: 900, CLS: 26, 'LH Score': 91 } },
-    ]), { design: 'v2' });
+    ]));
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain('Layout jumps');
     expect(perfTile).toContain('>0.26</div>');
@@ -957,7 +957,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 900, renderedWords: 100, textSample: 'Server rendered content is already present' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('100% of your page&#39;s text is missing');
@@ -976,7 +976,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 80, renderedWords: 100, textSample: 'A sentence that appears after browser code runs' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('20% of your page&#39;s text is missing');
@@ -994,7 +994,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 120, renderedWords: 120, textSample: 'Server rendered content is already present' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
@@ -1012,7 +1012,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 0, renderedWords: 12, textSample: 'Tiny page' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('almost no text to compare');
@@ -1037,7 +1037,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 2, renderedWords: 15, textSample: 'Tiny rendered page' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
@@ -1062,7 +1062,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 0, renderedWords: 10, textSample: 'Tiny rendered page B' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('almost no text to compare');
@@ -1079,7 +1079,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 0, renderedWords: 220, rawOk: false, textSample: 'Rendered text exists but the raw fetch failed' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('We could not read the page the server sends, so this text gap was not measured.');
@@ -1105,7 +1105,7 @@ describe('renderClientReport v2 perf tile assembly', () => {
         metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
         agent: { rawWords: 0, renderedWords: 220, rawOk: false, textSample: 'Rendered text exists but the raw fetch failed' },
       },
-    ]), { design: 'v2' });
+    ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('We could not read the page the server sends, so this text gap was not measured.');
