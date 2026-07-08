@@ -37,3 +37,18 @@
      /** @return {Promise<{timedOut: boolean}>} */
      const cleanupFn = async function() {
        log.verbose('waitFor', 'loadEventFired and network considered idle');
+@@ -493,4 +509,13 @@
+   const maxTimeoutPromise = new Promise((resolve, reject) => {
+     maxTimeoutHandle = setTimeout(resolve, maxWaitForLoadedMs);
+-  }).then(_ => {
++  }).then(async _ => {
++    // PATCH (shaka-perf): while the bench harness holds the gather open (a
++    // Playwright testFn is still driving the page), maxWaitForLoad must NOT
++    // fire and tear the page down underneath it — a testFn that outruns the
++    // cap would otherwise die mid-interaction ("Target page ... has been
++    // closed"). Wait the hold out first; a runaway testFn is bounded by the
++    // worker pool's hard timeout (`shared.timeoutMs`), not this load cap.
++    if (typeof globalThis !== 'undefined' && globalThis.__shakaperfHoldGather) {
++      await globalThis.__shakaperfHoldGather;
++    }
+     return async () => {
