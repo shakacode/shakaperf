@@ -21,7 +21,13 @@ import {
   type NarrativeFacts,
   type NarrativeSummarizer,
 } from '../client-report-narrative';
-import { BANNED_WORDS } from '../cost-strings';
+import {
+  AI_INDUSTRY_DATA_STATS,
+  BANNED_WORDS,
+  BOT_WALL_COPY,
+  NOTHING_TO_FIX,
+  findBannedWords,
+} from '../cost-strings';
 import {
   perfProblemPhrase,
   perfProblemTileCopy,
@@ -35,8 +41,8 @@ import {
   type Problem,
   type V2PagePerfStatusInput,
 } from '../client-report';
-import { findBannedWords } from '../cost-strings';
 import { renderClientReportV2, v2StatusWord, type ClientReportV2Model } from '../client-report-v2';
+import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type { PagePerf } from '../synthesis';
 
 function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
@@ -323,6 +329,65 @@ function displayMetric(label: string, value: number): string {
   return String(value);
 }
 
+function pageSignals(over: Partial<PageSignals> = {}): PageSignals {
+  const textWords = over.textWords ?? 400;
+  return {
+    title: 'Example page',
+    titlePresent: true,
+    metaDescription: 'Example page description',
+    metaDescriptionPresent: true,
+    canonical: true,
+    lang: 'en',
+    robotsMeta: '',
+    og: { title: true, description: true, image: true, type: true, siteName: true },
+    twitterCard: true,
+    structuredData: { blocks: 1, valid: 1, invalid: 0, types: ['Product'], microdataItems: 0 },
+    headings: { h1Count: 1, total: 3, orderOk: true },
+    landmarks: { main: true, nav: true, header: true, footer: true, article: false },
+    links: { total: 6, nondescriptive: 0 },
+    images: { total: 2, withAlt: 2 },
+    textChars: textWords * 6,
+    textWords,
+    ...over,
+  };
+}
+
+interface AgentFixture {
+  rawWords: number;
+  renderedWords: number;
+  textSample?: string;
+  rawOk?: boolean;
+  rawBlocked?: boolean;
+}
+
+function agentReadinessFixture(url: string, agent: AgentFixture): AgentReadinessResult {
+  const rendered = pageSignals({
+    textWords: agent.renderedWords,
+    ...(agent.textSample ? { textSample: agent.textSample } : {}),
+  });
+  const rawOk = agent.rawOk ?? true;
+  const rawBlocked = agent.rawBlocked ?? false;
+  const rawSignals = rawOk ? pageSignals({ textWords: agent.rawWords }) : null;
+  return {
+    url,
+    viewportLabel: 'phone',
+    viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 },
+    fetchedAt: '2026-06-24T00:00:00.000Z',
+    raw: {
+      ok: rawOk,
+      status: rawOk ? 200 : 500,
+      contentType: rawOk ? 'text/html' : undefined,
+      bytes: rawOk ? 1000 : undefined,
+      likelyBlocked: rawBlocked,
+      signals: rawSignals,
+    },
+    rendered,
+    rawHtmlBytes: 1000,
+    renderedHtmlBytes: 5000,
+    ...(rawBlocked ? { blocked: true } : {}),
+  };
+}
+
 function writePerfResults(metrics: Record<string, number>): string {
   return writePerfResultsForPages([
     {
@@ -334,7 +399,7 @@ function writePerfResults(metrics: Record<string, number>): string {
   ]);
 }
 
-function writePerfResultsForPages(pages: { id: string; name: string; startingPath: string; metrics: Record<string, number> }[]): string {
+function writePerfResultsForPages(pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture }[]): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-v2-report-'));
   tempResultDirs.push(dir);
   fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
@@ -358,6 +423,14 @@ function writePerfResultsForPages(pages: { id: string; name: string; startingPat
         })),
       },
     }, null, 2)}\n`);
+    if (page.agent) {
+      const url = `http://localhost${page.startingPath || '/'}`;
+      fs.writeFileSync(path.join(dir, page.id, 'agent-readiness.json'), `${JSON.stringify({
+        kind: 'ok',
+        stage: 'agent-readiness',
+        measurement: agentReadinessFixture(url, page.agent),
+      }, null, 2)}\n`);
+    }
   }
   return dir;
 }
@@ -867,6 +940,178 @@ describe('renderClientReport v2 perf tile assembly', () => {
     expect(perfTile).toContain('the layout jumps around');
     expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
   });
+
+  it('uses the worst reachable page for the AI cost headline, check line, and prompt', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'shell',
+        name: 'Shell page',
+        startingPath: '/shell',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 100, textSample: 'Important product details appear after browser code runs' },
+      },
+      {
+        id: 'ssr',
+        name: 'SSR page',
+        startingPath: '/ssr',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 900, renderedWords: 100, textSample: 'Server rendered content is already present' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('100% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('only 0 of 100 words present');
+    expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain('check it yourself: open view-source:http://localhost/shell');
+    expect(agentPanelHtml).toContain('0% content coverage: 0 raw HTML words vs 100 rendered words');
+  });
+
+  it('keeps a measured AI cost block when the overall agent score is good but page text is missing', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'mostly-readable',
+        name: 'Mostly readable',
+        startingPath: '/mostly-readable',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 80, renderedWords: 100, textSample: 'A sentence that appears after browser code runs' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('20% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('only 80 of 100 words present');
+    expect(agentPanelHtml).toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
+  });
+
+  it('derives zero AI cost through the v2 model only when reachable page text is fully present', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'ssr',
+        name: 'SSR page',
+        startingPath: '/ssr',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 120, renderedWords: 120, textSample: 'Server rendered content is already present' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
+  });
+
+  it('derives no-claim AI cost through the v2 model when reachable rendered text is too small', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'tiny',
+        name: 'Tiny page',
+        startingPath: '/tiny',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 12, textSample: 'Tiny page' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('almost no text to compare');
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
+  });
+
+  it('does not let a sub-20-word page become the measured AI cost headline', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'ssr',
+        name: 'SSR page',
+        startingPath: '/ssr',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 1000, renderedWords: 1000, textSample: 'Server rendered content is already present' },
+      },
+      {
+        id: 'thin',
+        name: 'Thin page',
+        startingPath: '/thin',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 2, renderedWords: 15, textSample: 'Tiny rendered page' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).not.toContain('87% of your page&#39;s text is missing');
+    expect(agentPanelHtml).not.toContain('only 2 of 15 words present');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+  });
+
+  it('keeps AI cost no-claim when all reachable pages are thin even if their aggregate word count is above the floor', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'thin-a',
+        name: 'Thin A',
+        startingPath: '/thin-a',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 15, textSample: 'Tiny rendered page A' },
+      },
+      {
+        id: 'thin-b',
+        name: 'Thin B',
+        startingPath: '/thin-b',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 10, textSample: 'Tiny rendered page B' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('almost no text to compare');
+    expect(agentPanelHtml).not.toContain('100% of your page&#39;s text is missing');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+  });
+
+  it('does not render copy prompts or no-claim text when raw HTML could not be read', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'raw-failed',
+        name: 'Raw failed page',
+        startingPath: '/raw-failed',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 220, rawOk: false, textSample: 'Rendered text exists but the raw fetch failed' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('We could not read the page the server sends, so this text gap was not measured.');
+    expect(agentPanelHtml).toContain('>not measured</span>');
+    expect(agentPanelHtml).not.toContain('almost no text to compare');
+    expect(agentPanelHtml).not.toContain('Copy prompt');
+    expect(agentPanelHtml).not.toContain('0 raw HTML words vs 220 rendered words');
+  });
+
+  it('keeps the bot-wall intro when blocked pages are listed beside a raw-fetch failure', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'blocked',
+        name: 'Blocked page',
+        startingPath: '/blocked',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 220, rawBlocked: true, textSample: 'Challenge page' },
+      },
+      {
+        id: 'raw-failed',
+        name: 'Raw failed page',
+        startingPath: '/raw-failed',
+        metrics: { LCP: 1900, FCP: 900, 'LH Score': 95 },
+        agent: { rawWords: 0, renderedWords: 220, rawOk: false, textSample: 'Rendered text exists but the raw fetch failed' },
+      },
+    ]), { design: 'v2' });
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('We could not read the page the server sends, so this text gap was not measured.');
+    expect(agentPanelHtml).toContain('bot protection served our checker a challenge page instead of the real page');
+    expect(agentPanelHtml).toContain('Blocked page');
+  });
 });
 
 describe('renderClientReportV2', () => {
@@ -959,6 +1204,14 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('target.hidden = !willOpen;');
     expect(html).toContain("control.setAttribute('aria-controls', target.id);");
     expect(html).toContain("control.setAttribute('aria-expanded', target.hidden ? 'false' : 'true');");
+    expect(html).toContain("document.querySelectorAll('[data-copy-prompt]').forEach(function(btn){");
+    expect(html).toContain('navigator.clipboard.writeText(text)');
+    expect(html).toContain("document.execCommand('copy')");
+    expect(html).toContain('document.body.appendChild(ta)');
+    expect(html).toContain("label.textContent = ok ? 'Copied' : 'Copy failed'");
+    expect(html).toContain("label.textContent = 'Copy failed'");
+    expect(html).toContain('}).catch(function(){');
+    expect(html).toContain('window.setTimeout(function(){ label.textContent = original; }, 2000)');
   });
 
   it('keeps rendered v2 static copy free of banned cost wording', () => {
@@ -974,6 +1227,63 @@ describe('renderClientReportV2', () => {
     }));
 
     expect(findBannedWords(html)).toEqual([]);
+  });
+
+  it('keeps rendered AI cost treatment free of banned cost wording', () => {
+    const html = renderClientReportV2(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        headline: "72% of your page's text is missing from the page the server sends, before any JavaScript runs",
+        headlineSub: 'only 180 of 642 words present',
+        checkLine: 'check it yourself: open view-source:https://www.example.com/cards and search for a sentence from your page',
+        affectsProse: 'AI search and answer tools usually read the HTML first.',
+        sitePrompt: 'Fix the initial HTML for the site.',
+        stats: [...AI_INDUSTRY_DATA_STATS],
+      },
+      narrative: {
+        bottomLineHtml: 'AI visibility is the main gap today.',
+        perf: { verdictWord: 'Slow on phones', verdictPara: 'Pages are slow on phones.' },
+        a11y: { verdictWord: '', verdictPara: '' },
+        agent: { verdictWord: 'Hard to read', verdictPara: 'AI crawlers miss important page text.' },
+      },
+    }));
+
+    expect(findBannedWords(html)).toEqual([]);
+  });
+
+  it('leaves perf and a11y panels byte-identical when only agentCost is added', () => {
+    const base = threeTabHeaderModel({
+      a11yCards: [
+        {
+          name: 'Products',
+          path: '/products',
+          score: 88,
+          status: 'fair',
+          sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
+          summary: 'Hard to use by keyboard.',
+          frames: [],
+          fixes: ['Darken the light text.'],
+        },
+      ],
+    });
+    const withoutCost = renderClientReportV2(base);
+    const withCost = renderClientReportV2({
+      ...base,
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        headline: "72% of your page's text is missing from the page the server sends, before any JavaScript runs",
+        headlineSub: 'only 180 of 642 words present',
+        checkLine: 'check it yourself: open view-source:https://www.example.com/cards and search for a sentence from your page',
+        affectsProse: 'AI search and answer tools usually read the HTML first.',
+        sitePrompt: 'Fix the initial HTML for the site.',
+        stats: [...AI_INDUSTRY_DATA_STATS],
+      },
+    });
+
+    expect(renderedPanel(withCost, 'perf')).toBe(renderedPanel(withoutCost, 'perf'));
+    expect(renderedPanel(withCost, 'a11y')).toBe(renderedPanel(withoutCost, 'a11y'));
   });
 
   it('renders a neutral "could not measure" accessibility tab (no frames, no findings) when a bot wall blocked the scan', () => {
@@ -1078,6 +1388,93 @@ describe('renderClientReportV2', () => {
     expect(html).toContain('width:79%');
     expect(html).toContain('Can AI reach your site at all?');
     expect(html).toContain('AI crawlers allowed');
+  });
+
+  it('renders the measured AI cost block, copy prompt controls, and industry data expander', () => {
+    const html = renderClientReportV2(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        headline: "72% of your page's text is missing from the page the server sends, before any JavaScript runs",
+        headlineSub: 'only 180 of 642 words present',
+        chip: 'measured',
+        checkLine: 'check it yourself: open view-source:https://www.example.com/cards and search for a sentence from your page',
+        affectsProse: 'AI search and answer tools usually read the HTML first.',
+        sitePrompt: 'Fix the initial HTML for the site.',
+        stats: [...AI_INDUSTRY_DATA_STATS],
+      },
+      agentCards: model().agentCards.map((card) => ({ ...card, copyPrompt: 'Fix this page card.' })),
+    }));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('72% of your page&#39;s text is missing');
+    expect(agentPanelHtml).toContain('only 180 of 642 words present');
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).toContain('check it yourself: open view-source:https://www.example.com/cards');
+    expect(agentPanelHtml).toContain('What this affects');
+    expect(agentPanelHtml).toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).toContain('data-copy-prompt="v2-ai-site-prompt"');
+    expect(agentPanelHtml).toContain('width:190px');
+    expect(agentPanelHtml).toContain('<pre id="v2-ai-site-prompt" data-disclosure hidden');
+    expect(agentPanelHtml).toContain('industry data');
+    expect(agentPanelHtml).toContain('Ahrefs, Dec 2025');
+    expect(agentPanelHtml).toContain('GSQI, Aug 2025');
+    expect(agentPanelHtml).toContain('data-copy-prompt="v2-agent-card-0-cards"');
+    expect(agentPanelHtml).toContain('width:118px');
+    expect(agentPanelHtml).toContain('Fix this page card.');
+  });
+
+  it('renders zero-state AI cost copy without prompt controls or industry data', () => {
+    const html = renderClientReportV2(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'zero',
+        sitePrompt: 'Do not show this prompt.',
+        stats: [...AI_INDUSTRY_DATA_STATS],
+      },
+    }));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Do not show this prompt.');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
+  });
+
+  it('renders blocked-state AI cost copy as not measured and hides computed numbers', () => {
+    const html = renderClientReportV2(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'blocked',
+        sitePrompt: 'Do not show this prompt.',
+      },
+    }));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(BOT_WALL_COPY).toContain('challenge page instead of the real page');
+    expect(agentPanelHtml).toContain('challenge page instead of the real page, so this could not be measured');
+    expect(agentPanelHtml).toContain('>not measured</span>');
+    expect(agentPanelHtml).not.toContain('Do not show this prompt.');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+  });
+
+  it('renders no-claim AI cost copy without prompt controls or industry data', () => {
+    const html = renderClientReportV2(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'noclaim',
+        sitePrompt: 'Do not show this prompt.',
+        stats: [...AI_INDUSTRY_DATA_STATS],
+      },
+    }));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain('almost no text to compare');
+    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('Do not show this prompt.');
+    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('industry data');
   });
 
   it('escapes page names so markup in data cannot break out', () => {

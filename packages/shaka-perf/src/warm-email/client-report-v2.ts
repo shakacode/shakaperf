@@ -7,6 +7,17 @@
  * License in LICENSE.md.
  */
 
+import {
+  COST_CHIP_LABELS,
+  COST_STATE_MATRIX,
+  INDUSTRY_DATA,
+  WHAT_THIS_AFFECTS,
+  type CostChip,
+  type IndustryDataStat,
+  type State as CostState,
+  type Tab as CostTab,
+} from './cost-strings';
+
 // Client report DESIGN v2 (the redesign): pure templating over a fully-assembled
 // `ClientReportV2Model` (built in ./client-report.ts, which does all the IO). v1
 // is the original report in ./client-report.ts. Type-only imports here = no import
@@ -135,6 +146,7 @@ export interface V2AgentCard {
   sub?: string;
   factors: V2AgentFactor[];
   fixes: string[];
+  copyPrompt?: string;
 }
 export interface V2AgentFineRow {
   name: string;
@@ -180,6 +192,23 @@ export interface V2StartHere {
   rest?: string; // one line covering the remaining pages
   lead?: string; // when set, render this plain sentence instead of the page list
 }
+export type SourcedStat = IndustryDataStat;
+export interface V2CostBlock {
+  tab: CostTab;
+  state: CostState;
+  headline?: string;
+  headlineSub?: string;
+  chip?: CostChip;
+  checkLine?: string;
+  affectsProse?: string;
+  sitePrompt?: string;
+  stats?: SourcedStat[];
+  dataCost?: {
+    measuredLine: string;
+    estimatedLine: string;
+    formula: string;
+  };
+}
 export interface ClientReportV2Model {
   domain: string;
   dateStr: string;
@@ -210,6 +239,9 @@ export interface ClientReportV2Model {
   agentFine: V2AgentFineRow[];
   agentBlocked: V2BlockedPage[];
   agentCouldNotMeasure: boolean;
+  perfCost?: V2CostBlock;
+  a11yCost?: V2CostBlock;
+  agentCost?: V2CostBlock;
   // Per-tab "Start here" priority lists (data-driven; optional).
   perfStartHere?: V2StartHere;
   a11yStartHere?: V2StartHere;
@@ -351,7 +383,111 @@ ${inner}
       </div>`;
 }
 
-function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, startHere?: V2StartHere, blocked?: boolean, score?: number): string {
+const COST_CHIP_STYLE: Record<CostChip, { fg: string; bg: string; line: string }> = {
+  measured: { fg: '#4a443c', bg: '#f4f1ea', line: '#e0d9cd' },
+  estimated: { fg: '#5c4a24', bg: '#f7f0df', line: '#e4d7b9' },
+  'not measured': { fg: '#6f665c', bg: '#f4f1ea', line: '#d8d0c3' },
+};
+
+function costChip(chip: CostChip | undefined): string {
+  if (!chip) return '';
+  const c = COST_CHIP_STYLE[chip];
+  return `<span style="display:inline-flex; align-items:center; flex:none; border:1px solid ${c.line}; border-radius:999px; background:${c.bg}; color:${c.fg}; padding:4px 8px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap">${esc(COST_CHIP_LABELS[chip])}</span>`;
+}
+
+function costId(...parts: (string | number | undefined)[]): string {
+  const base = parts
+    .filter((p) => p !== undefined)
+    .map((p) => String(p).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+    .filter(Boolean)
+    .join('-');
+  return base || 'cost';
+}
+
+function copyPromptControl(prompt: string | undefined, id: string, compact = false): string {
+  if (!prompt) return '';
+  const label = compact ? 'Copy prompt' : 'Copy prompt for your agent';
+  const width = compact ? '118px' : '190px';
+  const gap = compact ? '8px' : '10px';
+  return `        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:${gap}; margin-top:${compact ? '14px' : '16px'}">
+          <button type="button" data-copy-prompt="${esc(id)}" style="appearance:none; border:1px solid #26221d; background:#26221d; color:#fff; border-radius:8px; width:${width}; min-height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(label)}</span></button>
+          <button type="button" data-disclose="${esc(id)}" class="v2-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">view the prompt</button>
+        </div>
+        <pre id="${esc(id)}" data-disclosure hidden style="white-space:pre-wrap; overflow:auto; max-height:340px; margin:${compact ? '10px' : '12px'} 0 0; padding:14px 16px; border:1px solid #e0d9cd; border-radius:11px; background:#f4f1ea; color:#3a352e; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55">${esc(prompt)}</pre>`;
+}
+
+function industryData(stats: readonly SourcedStat[] | undefined, id: string): string {
+  if (!stats || stats.length === 0) return '';
+  const rows = stats
+    .map((s) => `          <li style="display:flex; gap:10px; font-size:13.5px; line-height:1.5; color:#4a443c">
+            <span style="color:#9b9286; flex:none">&rarr;</span>
+            <span>${esc(s.text)} <a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:#26221d; font-weight:600; text-decoration:underline">${esc(s.publisher)}, ${esc(s.date)}</a></span>
+          </li>`)
+    .join('\n');
+  return `        <div style="margin-top:16px">
+          <button type="button" data-disclose="${esc(id)}" class="v2-mono-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:8px 11px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#4a443c; cursor:pointer">${esc(INDUSTRY_DATA)}</button>
+          <div id="${esc(id)}" data-disclosure hidden style="margin-top:10px; padding:14px 16px; border:1px solid #e7e1d8; border-radius:11px; background:#fbfaf8">
+            <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px">
+${rows}
+            </ul>
+          </div>
+        </div>`;
+}
+
+function dataCostLines(cost: V2CostBlock): string {
+  if (!cost.dataCost) return '';
+  return `        <div style="margin-top:10px; padding:11px 13px; border:1px solid #e0d9cd; border-radius:10px; background:#fbfaf8; max-width:64ch">
+          <div style="font-size:13.5px; line-height:1.45; color:#4a443c">${esc(cost.dataCost.measuredLine)}</div>
+          <div style="font-size:13.5px; line-height:1.45; color:#4a443c; margin-top:3px">${esc(cost.dataCost.estimatedLine)}</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#6f665c; margin-top:7px">${esc(cost.dataCost.formula)}</div>
+        </div>`;
+}
+
+function costBlock(cost: V2CostBlock | undefined): string;
+function costBlock(cost: V2CostBlock | undefined, slot: 'top' | 'bottom'): string;
+function costBlock(cost: V2CostBlock | undefined, slot?: 'top' | 'bottom'): string {
+  if (!cost) return '';
+  const cell = COST_STATE_MATRIX[cost.tab][cost.state];
+  const chip = cost.chip ?? cell.chip;
+  const stateCopy = cell.copy;
+  const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? stateCopy;
+  const top = headline || chip || cost.checkLine
+    ? `      <div style="margin:0 0 16px; max-width:70ch">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
+          ${headline ? `<div style="font-size:${cell.rendersCostNumber ? '16.5px' : '15px'}; line-height:1.45; font-weight:${cell.rendersCostNumber ? '700' : '600'}; color:#26221d">${esc(headline)}</div>` : ''}
+          ${costChip(chip)}
+        </div>
+        ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#6f665c; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
+        ${cost.checkLine && cell.rendersCostNumber ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#6f665c">${esc(cost.checkLine)}</div>` : ''}
+${cell.rendersCostNumber ? dataCostLines(cost) : ''}
+      </div>`
+    : '';
+  const promptId = costId('v2', cost.tab, 'site-prompt');
+  const dataId = costId('v2', cost.tab, 'industry-data');
+  const prompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, promptId) : '';
+  const stats = cell.rendersIndustryDataExpander ? industryData(cost.stats, dataId) : '';
+  const bottom = cell.rendersFullTreatment && (cost.affectsProse || prompt || stats)
+    ? `      <div style="margin-top:16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:8px">${esc(WHAT_THIS_AFFECTS)}</div>
+        ${cost.affectsProse ? `<p style="font-size:15.5px; line-height:1.58; color:#3a352e; margin:0">${esc(cost.affectsProse)}</p>` : ''}
+${prompt}
+${stats}
+      </div>`
+    : '';
+  if (slot === 'top') return top;
+  if (slot === 'bottom') return bottom;
+  return `${top}${bottom}`;
+}
+
+function verdictHead(
+  question: string,
+  status: V2Status,
+  dim: V2DimNarrative,
+  startHere?: V2StartHere,
+  blocked?: boolean,
+  score?: number,
+  cost?: V2CostBlock,
+): string {
   const p = blocked ? NEUTRAL : PAL[status];
   const badge = blocked ? '' : scoreBadge(score, status);
   return `    <div style="margin-bottom:30px">
@@ -360,8 +496,10 @@ function verdictHead(question: string, status: V2Status, dim: V2DimNarrative, st
         <div style="font-size:26px; font-weight:800; letter-spacing:-.02em; color:${p.fg}">${esc(dim.verdictWord)}</div>
         ${badge}
       </div>
+      ${costBlock(cost, 'top')}
       <p style="font-size:17px; line-height:1.55; color:#3a352e; margin:0 0 16px; max-width:64ch">${emphasize(esc(dim.verdictPara))}</p>
       ${!blocked && startHere && (startHere.items.length || startHere.lead) ? startHereBlock(status, startHere) : ''}
+      ${costBlock(cost, 'bottom')}
     </div>`;
 }
 
@@ -525,7 +663,7 @@ ${items}
 
 function perfPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.perfCards.length;
-  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure, m.perfScore)}
+  const body = `${verdictHead('Is your site fast enough on a phone?', m.perfStatus, m.narrative.perf, m.perfStartHere, m.perfCouldNotMeasure, m.perfScore, m.perfCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.perfCards.map(perfCard).join('\n')}
 ${perfFineList(m.perfFine)}`;
@@ -633,7 +771,7 @@ ${items}
 
 // Pages walled by a bot challenge: shown as "could not measure", never scored or
 // counted. No frame - per the rule, a frame is shown only for a real measurement.
-function blockedSection(rows: V2BlockedPage[]): string {
+function blockedSection(rows: V2BlockedPage[], includeIntro = true): string {
   if (!rows.length) return '';
   const items = rows
     .map((r) => `      <div style="display:flex; align-items:center; gap:12px; padding:14px 0; border-top:1px solid #efeae2">
@@ -641,8 +779,12 @@ function blockedSection(rows: V2BlockedPage[]): string {
         <div style="font-size:15.5px; font-weight:600">${esc(r.name)} <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#9b9286; font-weight:400; margin-left:5px">${esc(r.path)}</span></div>
       </div>`)
     .join('\n');
+  const intro = includeIntro
+    ? `    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 12px; max-width:64ch">The site's bot protection served our checker a challenge page instead of the real page, so these could not be measured. Allowlist our checker and we will re-run a clean pass.</p>
+`
+    : '';
   return `${sectionKicker(`Could not measure &middot; ${rows.length} ${rows.length === 1 ? 'page' : 'pages'}`)}
-    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 12px; max-width:64ch">The site's bot protection served our checker a challenge page instead of the real page, so these could not be measured. Allowlist our checker and we will re-run a clean pass.</p>
+${intro}
     <div style="background:#ffffff; border:1px solid ${NEUTRAL.line}; border-radius:14px; padding:6px 22px">
 ${items}
     </div>`;
@@ -650,7 +792,7 @@ ${items}
 
 function a11yPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
-  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yStartHere, m.a11yCouldNotMeasure, m.a11yScore)}
+  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yStartHere, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
 ${a11yFineList(m.a11yFine)}
@@ -688,7 +830,7 @@ ${checks}
       </div>`;
 }
 
-function agentCard(c: V2AgentCard): string {
+function agentCard(c: V2AgentCard, index: number): string {
   const p = PAL[c.status];
   const factors = c.factors
     .map((f) => {
@@ -710,6 +852,7 @@ function agentCard(c: V2AgentCard): string {
 ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:15px; line-height:1.5; color:#4a443c"><span style="color:${PAL.good.fg}; font-weight:700; flex:none">&rarr;</span><span>${esc(fix)}</span></li>`).join('\n')}
         </ul>`
     : '';
+  const prompt = copyPromptControl(c.copyPrompt, costId('v2', 'agent-card', index, c.path), true);
   return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
           <div>
@@ -723,6 +866,7 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
         </div>
         <div style="font-size:16px; font-weight:600; line-height:1.4; margin-bottom:4px; letter-spacing:-.01em">${c.headlineHtml}</div>
         ${c.sub ? `<p style="font-size:15.5px; line-height:1.55; color:#6f665c; margin:0 0 18px; max-width:62ch">${esc(c.sub)}</p>` : ''}
+${prompt}
         ${factors ? `<div style="display:flex; flex-direction:column; gap:12px; margin-bottom:18px">\n${factors}\n        </div>` : ''}
 ${fixes}
       </div>`;
@@ -750,12 +894,12 @@ ${items}
 
 function agentPanel(m: ClientReportV2Model, multi: boolean, first: boolean): string {
   const needs = m.agentCards.length;
-  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore)}
+  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentStartHere, m.agentCouldNotMeasure, m.agentScore, m.agentCost)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
 ${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.agentCards.map(agentCard).join('\n')}
 ${agentFineList(m.agentFine)}
-${blockedSection(m.agentBlocked)}`;
+${blockedSection(m.agentBlocked, !(m.agentCouldNotMeasure && m.agentCost?.state === 'blocked'))}`;
   return panelWrap('agent', body, multi, first);
 }
 
@@ -813,6 +957,46 @@ const SCRIPTS = `<script>
     var willOpen = target.hidden;
     target.hidden = !willOpen;
     syncDisclosure(control, target);
+  });
+
+  function fallbackCopyPrompt(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try{ return document.execCommand('copy'); }
+    catch(e){ return false; }
+    finally { document.body.removeChild(ta); }
+  }
+  function copyPromptText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text).then(function(){ return true; }).catch(function(){ return fallbackCopyPrompt(text); });
+    }
+    return Promise.resolve(fallbackCopyPrompt(text));
+  }
+  document.querySelectorAll('[data-copy-prompt]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.getAttribute('data-copy-prompt');
+      var pre = id ? document.getElementById(id) : null;
+      if(!pre) return;
+      var label = btn.querySelector('[data-copy-label]') || btn;
+      var original = btn.getAttribute('data-copy-original') || label.textContent || 'Copy';
+      btn.setAttribute('data-copy-original', original);
+      copyPromptText(pre.textContent || '').then(function(ok){
+        label.textContent = ok ? 'Copied' : 'Copy failed';
+        window.clearTimeout(btn._copyTimer);
+        btn._copyTimer = window.setTimeout(function(){ label.textContent = original; }, 2000);
+      }).catch(function(){
+        label.textContent = 'Copy failed';
+        window.clearTimeout(btn._copyTimer);
+        btn._copyTimer = window.setTimeout(function(){ label.textContent = original; }, 2000);
+      });
+    });
   });
 
   // On-video captions: reveal each beat as the clip reaches its time, behind a
