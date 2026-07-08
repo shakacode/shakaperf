@@ -9,7 +9,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Command } from 'commander';
+import { Command, InvalidArgumentError, Option } from 'commander';
 
 import { writeClientReport } from './client-report';
 import { claudeCaptionRefiner } from './caption-ai';
@@ -20,6 +20,12 @@ import type { NarrativeSummarizer } from './client-report-narrative';
 
 export const CLIENT_REPORT_FILENAME = 'client-report.html';
 
+function warnDeprecatedDesignOption(value: string): string {
+  if (value !== 'v1' && value !== 'v2') throw new InvalidArgumentError("--design must be 'v1' or 'v2'.");
+  console.warn(`--design ${value} is deprecated; client-report now always renders the current report.`);
+  return value;
+}
+
 // Shared narrative option for every client-report-producing command. The report
 // has one renderer now; the AI narrative pass is on unless --no-ai-narrative.
 export function clientReportNarrativeOpts(opts: { aiNarrative?: boolean }): { narrate?: NarrativeSummarizer } {
@@ -28,7 +34,9 @@ export function clientReportNarrativeOpts(opts: { aiNarrative?: boolean }): { na
 
 // Kept identical across client-report, warm-email, and cold-email.
 export function addClientReportNarrativeOption(cmd: Command): Command {
-  return cmd.option('--no-ai-narrative', 'Skip the AI rewrite of the report verdict copy (the built-in deterministic copy is always present)');
+  return cmd
+    .option('--no-ai-narrative', 'Skip the AI rewrite of the report verdict copy (the built-in deterministic copy is always present)')
+    .addOption(new Option('--design <version>').hideHelp().argParser(warnDeprecatedDesignOption));
 }
 
 // `shaka-perf client-report` - render the clean, client-facing report from a
