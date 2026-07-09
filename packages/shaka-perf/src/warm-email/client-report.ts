@@ -99,6 +99,7 @@ import {
   dominantPerfProblem,
   reportPagePerfStatus,
   reportPerfStatus,
+  type PerfProblemKind,
   type Problem,
   type ProblemKind,
   type Status,
@@ -1430,7 +1431,11 @@ function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
 
 const PERF_COPY_PROMPT_KINDS: ReadonlySet<ProblemKind> = new Set(['slow-lcp']);
 
-const PERF_COST_HEADLINE: Partial<Record<ProblemKind, (label: string, phrase: string | undefined, pageName: string) => string>> = {
+function isPerfCostProblem(problem: Problem): problem is Problem & { kind: PerfProblemKind } {
+  return PROBLEM_KINDS.has(problem.kind);
+}
+
+const PERF_COST_HEADLINE: Record<PerfProblemKind, (label: string, phrase: string | undefined, pageName: string) => string> = {
   'slow-lcp': (label, _phrase, pageName) => perfHeadline(label, pageName),
   'layout-shift': (_label, phrase) => `${phrase ?? 'the layout jumps around'} on a mid-range phone`,
   blank: (_label, phrase) => `${phrase ?? 'the screen stays blank'} on a mid-range phone`,
@@ -1438,13 +1443,46 @@ const PERF_COST_HEADLINE: Partial<Record<ProblemKind, (label: string, phrase: st
   sluggish: (_label, phrase) => `${phrase ?? 'the page is slow to react to taps'} on a mid-range phone`,
 };
 
-function perfCostHeadline(problem: Problem, label: string, phrase: string | undefined, page: PagePerf): string {
+const PERF_AFFECTS_PROSE: Record<PerfProblemKind, { plain: string; withData?: string }> = {
+  'slow-lcp': {
+    plain: 'Slow main content makes mobile visitors wait and lose confidence before they can browse or buy.',
+    withData: 'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.',
+  },
+  'layout-shift': {
+    plain: 'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',
+  },
+  blank: {
+    plain: 'A blank start leaves visitors with no useful feedback and can make the page feel broken before anything appears.',
+  },
+  'late-paint': {
+    plain: 'Late first paint delays the first visible feedback, so visitors spend the start of the visit looking at an empty screen.',
+  },
+  sluggish: {
+    plain: 'Slow tap response makes the page feel stuck while visitors try to scroll, open menus, or start checkout.',
+  },
+};
+
+function perfCostHeadline(problem: Problem & { kind: PerfProblemKind }, label: string, phrase: string | undefined, page: PagePerf): string {
   const pageName = page.name || page.startingPath || 'this page';
-  return (PERF_COST_HEADLINE[problem.kind] ?? ((_l, p) => p ?? problem.chip))(label, phrase, pageName);
+  return PERF_COST_HEADLINE[problem.kind](label, phrase, pageName);
+}
+
+function perfAffectsProse(problem: Problem & { kind: PerfProblemKind }, hasDataCost: boolean): string {
+  const copy = PERF_AFFECTS_PROSE[problem.kind];
+  return hasDataCost && copy.withData ? copy.withData : copy.plain;
+}
+
+function cardPerfProblem(rp: RenderedPage): ClientReportPerfProblemCandidate | undefined {
+  const candidate = dominantPerfProblem(rp);
+  if (!candidate || candidate.status === 'good') return undefined;
+  return candidate;
 }
 
 function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptContext, includeCopyPrompt: boolean): ClientReportPerfCard {
-  const { page, status, lead } = rp;
+  const { page, lead } = rp;
+  const cardCandidate = cardPerfProblem(rp);
+  const cardStatus = cardCandidate?.status ?? reportPagePerfStatus(rp);
+  const cardProblem = cardCandidate?.problem.headline ? cardCandidate.problem : lead;
   const score = metricVal(page, 'LH Score');
   const clsV = metricVal(page, 'CLS');
   const beforeLcpKb = metricVal(page, 'downloads-before-LCP');
@@ -1472,8 +1510,8 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
   });
 
   const facts: ClientReportPerfCard['facts'] = [];
-  if (beforeLcpKb !== undefined) facts.push({ val: mb(beforeLcpKb), label: 'downloaded first', status });
-  else if (totalKb !== undefined) facts.push({ val: mb(totalKb), label: 'page weight', status });
+  if (beforeLcpKb !== undefined) facts.push({ val: mb(beforeLcpKb), label: 'downloaded first', status: cardStatus });
+  else if (totalKb !== undefined) facts.push({ val: mb(totalKb), label: 'page weight', status: cardStatus });
   if (score !== undefined) facts.push({ val: `${Math.round(score)}/100`, label: 'speed score', status: scoreStatus(score) });
   if (clsV !== undefined && clsV > CLS_GOOD) facts.push({ val: (clsV / 100).toFixed(2), label: 'layout-shift score', status: clsStatus(clsV) });
 
@@ -1482,21 +1520,21 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
     id: page.id,
     name: page.name,
     path: page.startingPath,
-    status,
-    headlineHtml: lead.headline,
-    videoCap: videoCaption(lead.kind, rp.lcpMs, rp.videoCoveredSec),
+    status: cardStatus,
+    headlineHtml: cardProblem.headline || lead.headline,
+    videoCap: videoCaption(cardProblem.kind, rp.lcpMs, rp.videoCoveredSec),
     frames,
     totalFrames: rp.totalFrames,
     facts,
   };
   const liveUrl = liveUrlFor(siteUrl, page.startingPath);
   if (liveUrl) card.liveUrl = liveUrl;
-  if (lead.note) card.sub = lead.note;
+  if (cardProblem.note) card.sub = cardProblem.note;
   if (rp.videoUri) card.videoUri = rp.videoUri;
   if (poster) card.posterUri = poster;
   if (rp.captionCues && rp.captionCues.length) card.cues = rp.captionCues.map((c) => ({ t: Math.round(c.atMs), x: c.text }));
   if (page.summary) card.plain = dashSafe(page.summary);
-  if (includeCopyPrompt && PERF_COPY_PROMPT_KINDS.has(lead.kind)) {
+  if (includeCopyPrompt && cardStatus !== 'good' && cardCandidate && PERF_COPY_PROMPT_KINDS.has(cardCandidate.problem.kind)) {
     const copyPrompt = perfCopyPromptForPage(page, siteUrl, promptCtx);
     if (copyPrompt) card.copyPrompt = copyPrompt;
   }
@@ -1628,7 +1666,6 @@ function agentFactor(cat: CategoryScore): { name: string; score: number; status:
 }
 
 const AI_AFFECTS_PROSE = 'AI search and answer tools usually read the HTML first. If your real page text only appears after browser code runs, they may miss what you sell, answer without your site, or cite a competitor instead.';
-const PERF_AFFECTS_PROSE = 'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.';
 const PSI_DEFAULT_THROTTLE_PROFILE = 'Slow-4G';
 
 interface PerfPromptContext {
@@ -1669,7 +1706,8 @@ function normalizedProfile(profile: string): string {
   return profile.toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-function sameAsPsiDefaultProfile(profile: string): boolean {
+function sameAsPsiDefaultProfile(profile: string | undefined): boolean {
+  if (!profile) return false;
   return normalizedProfile(profile) === normalizedProfile(PSI_DEFAULT_THROTTLE_PROFILE);
 }
 
@@ -1909,26 +1947,32 @@ async function buildClientReportModel(
     if (!candidate) continue;
     if (!siteDominantPerfProblem || compareClientReportPerfProblemCandidate(siteDominantPerfProblem, candidate) > 0) siteDominantPerfProblem = candidate;
   }
+  const perfCostProblem = rankedCarded
+    .map(cardPerfProblem)
+    .find((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
   const perfProblemTx = siteDominantPerfProblem ? perfProblemPhrase(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
   const perfProblemMetricTx = siteDominantPerfProblem ? perfProblemMetric(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
   let perfCost: ClientReportCostBlock | undefined;
   if (hasPerf) {
     if (perfStatus === 'good') {
       perfCost = { tab: 'perf', state: 'zero' };
-    } else if (!perfCouldNotMeasure && siteDominantPerfProblem) {
-      const problemLabel = perfProblemMetricTx ?? perfProblemTx ?? siteDominantPerfProblem.problem.chip;
-      const problemPhrase = perfProblemTx ?? siteDominantPerfProblem.problem.chip;
-      const problemPage = siteDominantPerfProblem.page;
+    } else if (!perfCouldNotMeasure && perfCostProblem && isPerfCostProblem(perfCostProblem.problem)) {
+      const problemTx = perfProblemPhrase(perfCostProblem.problem, perfCostProblem.page);
+      const problemMetricTx = perfProblemMetric(perfCostProblem.problem, perfCostProblem.page);
+      const problemLabel = problemMetricTx ?? problemTx ?? perfCostProblem.problem.chip;
+      const problemPhrase = problemTx ?? perfCostProblem.problem.chip;
+      const problemPage = perfCostProblem.page;
       const problemUrl = perfPageUrl(sc.url, problemPage);
       const dataCost = perfDataCostForPage(problemPage);
+      const checkProfile = sc.throttleProfile || 'a profile not recorded in this audit';
       perfCost = {
         tab: 'perf',
         state: 'measured',
-        headline: perfCostHeadline(siteDominantPerfProblem.problem, problemLabel, problemPhrase, problemPage),
+        headline: perfCostHeadline(perfCostProblem.problem, problemLabel, problemPhrase, problemPage),
         chip: 'measured',
-        checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(perfPromptCtx.throttleProfile), perfPromptCtx.throttleProfile),
-        affectsProse: PERF_AFFECTS_PROSE,
-        sitePrompt: PERF_COPY_PROMPT_KINDS.has(siteDominantPerfProblem.problem.kind)
+        checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
+        affectsProse: perfAffectsProse(perfCostProblem.problem, !!dataCost),
+        sitePrompt: PERF_COPY_PROMPT_KINDS.has(perfCostProblem.problem.kind)
           ? perfCopyPromptForPage(problemPage, sc.url, perfPromptCtx)
           : undefined,
         ...(dataCost ? { dataCost } : {}),

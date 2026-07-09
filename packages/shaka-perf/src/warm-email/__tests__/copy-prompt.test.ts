@@ -93,7 +93,7 @@ describe('buildCopyPrompt', () => {
     expect(prompt).toContain('https://example.com/products');
     expect(prompt).toContain('5.8s');
     expect(prompt).toContain('812 KB across 9 files');
-    expect(prompt).toContain('580 KB before LCP');
+    expect(prompt).toContain('Total transferred before LCP: 580 KB.');
     expect(prompt).toContain('confirm LCP is below 2.5s');
   });
 

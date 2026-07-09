@@ -190,14 +190,17 @@ function buildPerfPrompt(data: PerfCopyPromptData): string | undefined {
   const lcp = slot(data.lcpLabel, 48, 5);
   const jsKb = slot(formatNumber(data.jsKb), 24, 1);
   const jsFiles = slot(formatNumber(data.jsFileCount), 24, 1);
-  const beforeLcp = data.kbBeforeLcp == null ? 'not isolated' : `${slot(formatNumber(data.kbBeforeLcp), 24, 1)} KB before LCP`;
+  const beforeLcp = data.kbBeforeLcp == null
+    ? '- Total transferred before LCP: not isolated.'
+    : `- Total transferred before LCP: ${slot(formatNumber(data.kbBeforeLcp), 24, 1)} KB.`;
 
   return finalizePrompt([
     'Heavy client-side JavaScript delays the main content on a mid-range phone.',
     '',
     `Measured on ${url} (${date}, ${viewport}, ${throttle}):`,
     `- Main content time: ${lcp}.`,
-    `- JavaScript: ${jsKb} KB across ${jsFiles} files; ${beforeLcp}.`,
+    `- JavaScript: ${jsKb} KB across ${jsFiles} files.`,
+    beforeLcp,
     '',
     'Goal: Make the main content appear in under 2.5s on the same phone profile.',
     '',
