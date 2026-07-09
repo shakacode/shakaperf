@@ -25,7 +25,9 @@ import {
   AI_INDUSTRY_DATA_STATS,
   BANNED_WORDS,
   BOT_WALL_COPY,
+  FOOTER_GUARDRAIL,
   NOTHING_TO_FIX,
+  botWallFooterSentence,
   findBannedWords,
 } from '../cost-strings';
 import {
@@ -41,8 +43,19 @@ import {
   type Problem,
   type ClientReportPagePerfStatusInput,
 } from '../client-report';
+import {
+  isPerfCostProblem,
+  perfAffectsProse,
+  perfCostCopyPromptEnabled,
+  perfCostHeadline,
+} from '../client-report-model/perf';
 import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
+import type {
+  AccessibilityResult,
+  AccessibilityScan,
+  AccessibilityViolation,
+} from '../../audit/stages/accessibility/types';
 import type { PagePerf } from '../synthesis';
 
 function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
@@ -360,6 +373,22 @@ interface AgentFixture {
   rawBlocked?: boolean;
 }
 
+interface A11yViolationFixture {
+  ruleId: string;
+  impact: AccessibilityViolation['impact'];
+  selectors?: string[];
+  html?: string;
+  omitHtml?: boolean;
+}
+
+interface A11yFixture {
+  violations?: A11yViolationFixture[];
+  blocked?: boolean;
+  score?: number;
+  summary?: string;
+  fixes?: string[];
+}
+
 function agentReadinessFixture(url: string, agent: AgentFixture): AgentReadinessResult {
   const rendered = pageSignals({
     textWords: agent.renderedWords,
@@ -388,6 +417,39 @@ function agentReadinessFixture(url: string, agent: AgentFixture): AgentReadiness
   };
 }
 
+function accessibilityViolationFixture(v: A11yViolationFixture): AccessibilityViolation {
+  const selectors = v.selectors && v.selectors.length ? v.selectors : ['button.cta'];
+  return {
+    ruleId: v.ruleId,
+    impact: v.impact,
+    help: v.ruleId,
+    helpUrl: `https://dequeuniversity.com/rules/axe/${v.ruleId}`,
+    tags: [],
+    nodes: selectors.map((selector) => ({
+      target: [selector],
+      ...(v.omitHtml ? {} : { html: v.html ?? `<button class="cta">${v.ruleId}</button>` }),
+      failureSummary: '',
+    } as AccessibilityViolation['nodes'][number])),
+  };
+}
+
+function accessibilityResultFixture(url: string, a11y: A11yFixture): AccessibilityResult {
+  const violations = (a11y.violations ?? []).map(accessibilityViolationFixture);
+  const scan: AccessibilityScan = {
+    viewportLabel: 'phone',
+    viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 },
+    url,
+    violations,
+    ...(a11y.blocked ? { blocked: true } : {}),
+  };
+  return {
+    scans: [scan],
+    totalViolations: violations.length,
+    failOnViolation: true,
+    effectiveConfig: { tags: [], disableRules: [], includeRules: null },
+  };
+}
+
 interface PerfResultsOptions {
   throttleProfile?: string;
 }
@@ -404,7 +466,7 @@ function writePerfResults(metrics: Record<string, number>, opts: PerfResultsOpti
 }
 
 function writePerfResultsForPages(
-  pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture }[],
+  pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture; a11y?: A11yFixture }[],
   opts: PerfResultsOptions = {},
 ): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-cr-report-'));
@@ -441,6 +503,21 @@ function writePerfResultsForPages(
         stage: 'agent-readiness',
         measurement: agentReadinessFixture(url, page.agent),
       }, null, 2)}\n`);
+    }
+    if (page.a11y) {
+      const url = `http://localhost${page.startingPath || '/'}`;
+      fs.writeFileSync(path.join(dir, page.id, 'accessibility.json'), `${JSON.stringify({
+        kind: 'ok',
+        stage: 'accessibility',
+        measurement: accessibilityResultFixture(url, page.a11y),
+      }, null, 2)}\n`);
+      if (page.a11y.score !== undefined || page.a11y.summary || page.a11y.fixes?.length) {
+        fs.writeFileSync(path.join(dir, page.id, 'accessibility-client.json'), `${JSON.stringify({
+          score: page.a11y.score,
+          summary: page.a11y.summary,
+          fixes: page.a11y.fixes,
+        }, null, 2)}\n`);
+      }
     }
   }
   return dir;
@@ -513,6 +590,31 @@ describe('perfProblemTileCopy', () => {
 
   it('does not create problem copy for clean pages', () => {
     expect(perfProblemTileCopy(problem('clean'))).toBeUndefined();
+  });
+});
+
+describe('perf cost model helpers', () => {
+  it('keeps perf cost headline and affects copy in the perf model layer', () => {
+    const slow = problem('slow-lcp');
+    const shift = problem('layout-shift');
+
+    expect(isPerfCostProblem(slow)).toBe(true);
+    if (!isPerfCostProblem(slow) || !isPerfCostProblem(shift)) throw new Error('expected perf cost problems');
+    expect(perfCostHeadline(slow, '15.4s', undefined, perfPage({ LCP: 15400 }))).toBe(
+      '15.4s before your main content appears on a mid-range phone',
+    );
+    expect(perfAffectsProse(slow, true)).toBe(
+      'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.',
+    );
+    expect(perfAffectsProse(shift, false)).toBe(
+      'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',
+    );
+  });
+
+  it('limits perf copy prompts to the measured LCP repair prompt', () => {
+    expect(perfCostCopyPromptEnabled(problem('slow-lcp'))).toBe(true);
+    expect(perfCostCopyPromptEnabled(problem('layout-shift'))).toBe(false);
+    expect(perfCostCopyPromptEnabled(problem('clean'))).toBe(false);
   });
 });
 
@@ -1285,6 +1387,157 @@ describe('renderClientReport perf tile assembly', () => {
     expect(agentPanelHtml).toContain('bot protection served our checker a challenge page instead of the real page');
     expect(agentPanelHtml).toContain('Blocked page');
   });
+
+  it('builds a11y cost treatment and prompts for serious or critical barriers without numbers or expanders', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'products',
+        name: 'Products',
+        startingPath: '/products',
+        metrics: {},
+        a11y: {
+          score: 72,
+          summary: 'Important controls are hard to use.',
+          fixes: ['Label the checkout button.'],
+          violations: [
+            {
+              ruleId: 'button-name',
+              impact: 'critical',
+              selectors: ['button.checkout', 'button.icon-only', '#cart button'],
+              html: '<button class="checkout"><svg aria-hidden="true"></svg></button>',
+            },
+            {
+              ruleId: 'color-contrast',
+              impact: 'serious',
+              selectors: ['.price', '.promo-copy'],
+              html: '<p class="promo-copy">Limited offer</p>',
+            },
+          ],
+        },
+      },
+    ], { throttleProfile: 'Fast-3G' }));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('Critical accessibility barriers found');
+    expect(a11yPanelHtml).toContain('What this affects');
+    expect(a11yPanelHtml.match(/What this affects/g)?.length).toBe(1);
+    expect(a11yPanelHtml).toContain('Screen-reader users');
+    expect(a11yPanelHtml).toContain('Low-vision users');
+    expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-site-prompt"');
+    expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-card-0-products"');
+    expect(a11yPanelHtml).toContain('Top rule data: [button-name] (critical); selectors data: [button.checkout; button.icon-only].');
+    expect(a11yPanelHtml).toContain('Example markup data: [&lt;button class=&quot;checkout&quot;&gt;&lt;svg aria-hidden=&quot;true&quot;&gt;&lt;/svg&gt;&lt;/button&gt;].');
+    expect(a11yPanelHtml).not.toContain('industry data');
+    expect(a11yPanelHtml).not.toContain('how we estimated this');
+    expect(a11yPanelHtml).not.toContain('mobile data per visit');
+    expect(a11yPanelHtml).not.toContain('$0.');
+  });
+
+  it('skips malformed a11y node HTML while still building selectors-only prompts', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'products',
+        name: 'Products',
+        startingPath: '/products',
+        metrics: {},
+        a11y: {
+          violations: [
+            { ruleId: 'button-name', impact: 'critical', selectors: ['button.checkout'], omitHtml: true },
+          ],
+        },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-site-prompt"');
+    expect(a11yPanelHtml).toContain('Top rule data: [button-name] (critical); selectors data: [button.checkout].');
+    expect(a11yPanelHtml).toContain('Selectors data: [button.checkout].');
+  });
+
+  it('does not build a11y cost treatment for minor-only accessibility issues', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'home',
+        name: 'Home',
+        startingPath: '/',
+        metrics: {},
+        a11y: {
+          score: 96,
+          summary: 'Only small polish issues remain.',
+          violations: [
+            { ruleId: 'image-redundant-alt', impact: 'minor', selectors: ['img.logo'], html: '<img class="logo" alt="Logo image">' },
+          ],
+        },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).not.toContain('What this affects');
+    expect(a11yPanelHtml).not.toContain('cr-a11y-site-prompt');
+    expect(a11yPanelHtml).not.toContain('cr-a11y-card');
+    expect(a11yPanelHtml).not.toContain('Copy prompt');
+  });
+
+  it('writes footer guardrails only with measured cost blocks, uses honest throttle wording, and counts bot-walled pages', async () => {
+    const withCost = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'products',
+        name: 'Products',
+        startingPath: '/products',
+        metrics: {},
+        a11y: {
+          violations: [
+            { ruleId: 'label', impact: 'serious', selectors: ['input.email'], html: '<input class="email" type="email">' },
+          ],
+        },
+      },
+    ], { throttleProfile: 'Fast-3G' }));
+    expect(withCost.html).toContain('over the Fast-3G profile -');
+    expect(withCost.html).not.toContain('Fast-3G profile Google PageSpeed uses');
+    expect(withCost.html).toContain(FOOTER_GUARDRAIL);
+
+    const cleanPerf = await renderClientReport(writePerfResults({
+      LCP: 1900,
+      FCP: 800,
+      CLS: 1,
+      TBT: 50,
+      'LH Score': 98,
+      downloads: 12800,
+      js: 120,
+      'js-count': 2,
+    }));
+    expect(cleanPerf.html).not.toContain(FOOTER_GUARDRAIL);
+
+    const costFree = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'home',
+        name: 'Home',
+        startingPath: '/',
+        metrics: {},
+        a11y: {
+          violations: [
+            { ruleId: 'image-redundant-alt', impact: 'minor', selectors: ['img.logo'], html: '<img class="logo" alt="Logo image">' },
+          ],
+        },
+      },
+    ]));
+    expect(costFree.html).toContain('over the Slow-4G profile Google PageSpeed uses');
+    expect(costFree.html).not.toContain(FOOTER_GUARDRAIL);
+
+    const blocked = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'blocked',
+        name: 'Blocked page',
+        startingPath: '/blocked',
+        metrics: {},
+        a11y: { blocked: true },
+      },
+    ]));
+    const blockedPanelHtml = renderedPanel(blocked.html, 'a11y');
+    expect(blocked.html).not.toContain(FOOTER_GUARDRAIL);
+    expect(blocked.html).toContain(botWallFooterSentence(1));
+    expect(blockedPanelHtml.match(/bot protection served our checker a challenge page/g)?.length).toBe(1);
+  });
 });
 
 describe('renderClientReportHtml', () => {
@@ -1694,6 +1947,41 @@ describe('renderClientReportHtml', () => {
 
     expect(renderedPanel(withPerfCost, 'agent')).toBe(renderedPanel(withoutPerfCost, 'agent'));
     expect(renderedPanel(withPerfCost, 'a11y')).toBe(renderedPanel(withoutPerfCost, 'a11y'));
+  });
+
+  it('leaves AI and performance panels byte-identical when only a11yCost and a11y card prompts are added', () => {
+    const base = threeTabHeaderModel({
+      a11yCards: [
+        {
+          name: 'Products',
+          path: '/products',
+          score: 88,
+          status: 'fair',
+          sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
+          summary: 'Hard to use by keyboard.',
+          frames: [],
+          fixes: ['Label the checkout button.'],
+        },
+      ],
+      agentSite: model().agentSite,
+      agentCards: model().agentCards,
+      agentFine: model().agentFine,
+    });
+    const withoutA11yCost = renderClientReportHtml(base);
+    const withA11yCost = renderClientReportHtml({
+      ...base,
+      a11yCost: {
+        tab: 'a11y',
+        state: 'measured',
+        affectsProse: 'Unlabeled controls leave screen-reader users guessing what buttons, links, or fields do.',
+        sitePrompt: 'Fix the accessibility barriers.',
+      },
+      a11yCards: base.a11yCards.map((card) => ({ ...card, copyPrompt: 'Fix this accessibility card.' })),
+    });
+
+    expect(renderedPanel(withA11yCost, 'perf')).toBe(renderedPanel(withoutA11yCost, 'perf'));
+    expect(renderedPanel(withA11yCost, 'agent')).toBe(renderedPanel(withoutA11yCost, 'agent'));
+    expect(renderedPanel(withA11yCost, 'a11y')).toContain('data-copy-prompt="cr-a11y-card-0-products"');
   });
 
   it('renders zero-state AI cost copy without prompt controls or industry data', () => {

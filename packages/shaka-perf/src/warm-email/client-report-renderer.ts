@@ -115,6 +115,7 @@ export interface ClientReportA11yCard {
   summary?: string;
   frames: ClientReportA11yFrame[];
   fixes: string[];
+  copyPrompt?: string;
 }
 export interface ClientReportA11yFineRow {
   name: string;
@@ -707,7 +708,7 @@ function scoreBadge(score: number | undefined, status: ClientReportStatus): stri
           </div>`;
 }
 
-function a11yCard(c: ClientReportA11yCard): string {
+function a11yCard(c: ClientReportA11yCard, index: number): string {
   // A sev chip becomes a toggle ONLY for a severity that actually has boxes drawn
   // on this card's frames (moderate issues are mostly structural -> unboxed, so
   // their chip stays a plain count rather than a dead toggle).
@@ -735,6 +736,7 @@ ${c.frames.map(a11yShot).join('\n')}
 ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:15px; line-height:1.5; color:#4a443c"><span style="color:${PAL.fair.fg}; font-weight:700; flex:none">&rarr;</span><span>${esc(fix)}</span></li>`).join('\n')}
         </ul>`
     : '';
+  const prompt = copyPromptControl(c.copyPrompt, costId('cr', 'a11y-card', index, c.path), true);
   return `      <div class="cr-a11y-card" style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:22px 24px; margin-bottom:14px">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px">
           <div>
@@ -747,6 +749,7 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
         ${c.summary ? `<p style="font-size:15.5px; line-height:1.55; color:#3a352e; margin:0 0 18px; max-width:64ch">${esc(c.summary)}</p>` : ''}
 ${shots}
 ${fixes}
+${prompt}
       </div>`;
 }
 

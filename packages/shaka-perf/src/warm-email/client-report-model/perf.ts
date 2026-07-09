@@ -8,6 +8,7 @@
  */
 
 import type { ClientReportStatus } from '../client-report-renderer';
+import { perfHeadline } from '../cost-strings';
 import type { PagePerf } from '../synthesis';
 
 const LCP_GOOD_MS = 2500;
@@ -271,6 +272,10 @@ function isPerfProblemKind(kind: ProblemKind): kind is PerfProblemKind {
   return PROBLEM_KINDS.has(kind);
 }
 
+export function isPerfCostProblem(problem: Problem): problem is Problem & { kind: PerfProblemKind } {
+  return isPerfProblemKind(problem.kind);
+}
+
 export function perfProblemPhrase(lead: Problem, page: PagePerf): string | undefined {
   return isPerfProblemKind(lead.kind) ? PERF_PROBLEM_COPY[lead.kind].phrase(page) : undefined;
 }
@@ -288,6 +293,49 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
     metricSub: copy.metricSub,
     conseq: copy.conseq,
   };
+}
+
+const PERF_COST_HEADLINE: Record<PerfProblemKind, (label: string, phrase: string | undefined, pageName: string) => string> = {
+  'slow-lcp': (label, _phrase, pageName) => perfHeadline(label, pageName),
+  'layout-shift': (_label, phrase) => `${phrase ?? 'the layout jumps around'} on a mid-range phone`,
+  blank: (_label, phrase) => `${phrase ?? 'the screen stays blank'} on a mid-range phone`,
+  'late-paint': (_label, phrase) => `${phrase ?? 'nothing appears at first'} on a mid-range phone`,
+  sluggish: (_label, phrase) => `${phrase ?? 'the page is slow to react to taps'} on a mid-range phone`,
+};
+
+const PERF_AFFECTS_PROSE: Record<PerfProblemKind, { plain: string; withData?: string }> = {
+  'slow-lcp': {
+    plain: 'Slow main content makes mobile visitors wait and lose confidence before they can browse or buy.',
+    withData: 'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.',
+  },
+  'layout-shift': {
+    plain: 'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',
+  },
+  blank: {
+    plain: 'A blank start leaves visitors with no useful feedback and can make the page feel broken before anything appears.',
+  },
+  'late-paint': {
+    plain: 'Late first paint delays the first visible feedback, so visitors spend the start of the visit looking at an empty screen.',
+  },
+  sluggish: {
+    plain: 'Slow tap response makes the page feel stuck while visitors try to scroll, open menus, or start checkout.',
+  },
+};
+
+const PERF_COPY_PROMPT_KINDS: ReadonlySet<ProblemKind> = new Set(['slow-lcp']);
+
+export function perfCostHeadline(problem: Problem & { kind: PerfProblemKind }, label: string, phrase: string | undefined, page: PagePerf): string {
+  const pageName = page.name || page.startingPath || 'this page';
+  return PERF_COST_HEADLINE[problem.kind](label, phrase, pageName);
+}
+
+export function perfAffectsProse(problem: Problem & { kind: PerfProblemKind }, hasDataCost: boolean): string {
+  const copy = PERF_AFFECTS_PROSE[problem.kind];
+  return hasDataCost && copy.withData ? copy.withData : copy.plain;
+}
+
+export function perfCostCopyPromptEnabled(problem: Problem): boolean {
+  return PERF_COPY_PROMPT_KINDS.has(problem.kind);
 }
 
 export const CLIENT_REPORT_STATUS_RANK: Record<ClientReportStatus, number> = { good: 0, fair: 1, poor: 2 };
