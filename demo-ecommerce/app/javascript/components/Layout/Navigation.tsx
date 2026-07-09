@@ -50,13 +50,13 @@ const Navigation: React.FC = () => {
               component={Link}
               to={item.path}
               sx={{
-                color: isActive ? '#667eea' : '#666',
+                color: isActive ? '#4f46b5' : '#666',
                 fontWeight: isActive ? 600 : 500,
                 borderRadius: 2,
                 px: 2,
                 '&:hover': {
                   bgcolor: 'rgba(102, 126, 234, 0.08)',
-                  color: '#667eea',
+                  color: '#4f46b5',
                 },
               }}
             >
@@ -71,7 +71,7 @@ const Navigation: React.FC = () => {
         onClick={openMobileMenu}
         sx={{
           display: { xs: 'inline-flex', sm: 'none' },
-          color: '#667eea',
+          color: '#4f46b5',
           mr: 1,
           '&:hover': { bgcolor: 'rgba(102, 126, 234, 0.08)' },
         }}
@@ -82,7 +82,7 @@ const Navigation: React.FC = () => {
       <Drawer anchor="left" open={mobileMenuOpen} onClose={closeMobileMenu}>
         <Box sx={{ width: 260 }} role="presentation">
           <Box sx={{ px: 2, py: 2, borderBottom: '1px solid #e0e0e0' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            <Typography variant="subtitle1" component="p" sx={{ fontWeight: 700 }}>
               Demo Store
             </Typography>
           </Box>
@@ -99,7 +99,7 @@ const Navigation: React.FC = () => {
                   sx={{
                     '&.Mui-selected': {
                       bgcolor: 'rgba(102, 126, 234, 0.12)',
-                      color: '#667eea',
+                      color: '#4f46b5',
                     },
                     '&.Mui-selected:hover': {
                       bgcolor: 'rgba(102, 126, 234, 0.16)',

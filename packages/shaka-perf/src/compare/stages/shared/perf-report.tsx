@@ -44,28 +44,64 @@ export function PerfArtifactView({
     }))
     .filter(({ perf }) => hasRenderableData(perf));
   if (perfs.length === 0) return null;
-  const rows = perfs.filter(({ perf }) => significantMetrics(perf).length > 0 || hasAttachments(perf));
-  const noDifference = perfs.filter(({ perf }) => hasNoDifferenceMetrics(perf));
+  const rows = perfs.filter(({ perf }) => (
+    significantMetrics(perf).length > 0 ||
+    hasAttachments(perf) ||
+    hasNoDifferenceMetrics(perf)
+  ));
 
   return (
     <StageArtifact>
       <StageArtifactTitle verbatim>{title}</StageArtifactTitle>
       <div className="stage-stack">
         {rows.map((row, index) => (
-          <div key={`${row.viewportLabel}-${index}`} className="stage-stack__viewport">
-            <PerfBody perf={row.perf} />
-          </div>
+          <PerfViewportBlock
+            key={`${row.viewportLabel}-${index}`}
+            perf={row.perf}
+            viewportLabel={row.viewportLabel}
+          />
         ))}
-        <NoDifferenceNote perfs={noDifference} />
       </div>
     </StageArtifact>
   );
 }
 
-function PerfBody({ perf }: { perf: PerfArtifact }) {
+function PerfViewportBlock({ perf, viewportLabel }: PerfRow) {
+  const hasSignificantMetrics = significantMetrics(perf).length > 0;
+  const hasNoDifference = hasNoDifferenceMetrics(perf);
+  return (
+    <section className="stage-stack__viewport perf-viewport" aria-label={`${viewportLabel} performance`}>
+      <div className="perf-viewport__head">
+        <span className="perf-viewport__label">{viewportLabel} performance</span>
+      </div>
+      <PerfBody
+        perf={perf}
+        hasNoDifference={hasNoDifference}
+        hasSignificantMetrics={hasSignificantMetrics}
+        viewportLabel={viewportLabel}
+      />
+    </section>
+  );
+}
+
+function PerfBody({
+  perf,
+  hasNoDifference,
+  hasSignificantMetrics,
+  viewportLabel,
+}: {
+  perf: PerfArtifact;
+  hasNoDifference: boolean;
+  hasSignificantMetrics: boolean;
+  viewportLabel: string;
+}) {
   return (
     <>
-      <MetricsBody perf={perf} />
+      {hasSignificantMetrics ? (
+        <MetricsBody perf={perf} />
+      ) : hasNoDifference ? (
+        <NoDifferenceNote viewportLabel={viewportLabel} />
+      ) : null}
       {perf.timelinePreviewSvg && perf.timelineHref ? (
         <DetailedArtifactDialog
           variant="preview"
@@ -170,11 +206,10 @@ interface PerfRow {
   viewportLabel: string;
 }
 
-function NoDifferenceNote({ perfs }: { perfs: readonly PerfRow[] }) {
-  if (perfs.length === 0) return null;
+function NoDifferenceNote({ viewportLabel }: { viewportLabel: string }) {
   return (
     <StageNote
-      label={`${perfs.map((row) => row.viewportLabel.toUpperCase()).join(' & ')}:`}
+      label={`${viewportLabel}:`}
       body="No statistically significant differences."
     />
   );

@@ -33,25 +33,25 @@ const mockOrders = [
   { id: 'ORD-005', customer: 'Charlie Davis', date: '2024-01-13', total: 199.99, status: 'delivered' as OrderStatus },
 ];
 
-const getStatusColor = (status: OrderStatus) => {
+const statusChipSx = (status: OrderStatus) => {
   switch (status) {
     case 'pending':
-      return 'warning';
+      return { bgcolor: '#8a4b00', color: 'white' };
     case 'processing':
-      return 'info';
+      return { bgcolor: '#075985', color: 'white' };
     case 'shipped':
-      return 'primary';
+      return { bgcolor: '#4f46b5', color: 'white' };
     case 'delivered':
-      return 'success';
+      return { bgcolor: '#166534', color: 'white' };
     default:
-      return 'default';
+      return {};
   }
 };
 
 const OrderManagement: React.FC = () => {
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" component="h1" gutterBottom>
         Order Management
       </Typography>
       <Card>
@@ -77,8 +77,8 @@ const OrderManagement: React.FC = () => {
                     <TableCell align="center">
                       <Chip
                         label={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        color={getStatusColor(order.status)}
                         size="small"
+                        sx={statusChipSx(order.status)}
                       />
                     </TableCell>
                   </TableRow>

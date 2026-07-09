@@ -90,14 +90,14 @@ const ProductDetailPage: React.FC = () => {
                 <Chip
                   label="Featured"
                   size="small"
-                  sx={{ bgcolor: '#667eea', color: 'white' }}
+                  sx={{ bgcolor: '#4f46b5', color: 'white' }}
                 />
               )}
             </Box>
 
             <Chip label={product.category} variant="outlined" sx={{ mb: 2 }} />
 
-            <Typography variant="h3" sx={{ fontWeight: 700, color: '#667eea', mb: 2 }}>
+            <Typography variant="h3" component="p" sx={{ fontWeight: 700, color: '#4f46b5', mb: 2 }}>
               ${product.price.toFixed(2)}
             </Typography>
 
@@ -136,7 +136,7 @@ const ProductDetailPage: React.FC = () => {
                 component={Link}
                 to={`/products/${id}/reviews`}
                 startIcon={<RateReview />}
-                sx={{ borderColor: '#667eea', color: '#667eea' }}
+                sx={{ borderColor: '#4f46b5', color: '#4f46b5' }}
               >
                 Reviews
               </Button>
@@ -146,7 +146,7 @@ const ProductDetailPage: React.FC = () => {
                 component={Link}
                 to="/products"
                 startIcon={<ArrowBack />}
-                sx={{ borderColor: '#667eea', color: '#667eea' }}
+                sx={{ borderColor: '#4f46b5', color: '#4f46b5' }}
               >
                 Back to Products
               </Button>
@@ -173,7 +173,7 @@ const ProductDetailPage: React.FC = () => {
                   component={Link}
                   to={`/products/${id}/reviews`}
                   startIcon={<RateReview />}
-                  sx={{ borderColor: '#667eea', color: '#667eea' }}
+                  sx={{ borderColor: '#4f46b5', color: '#4f46b5' }}
                 >
                   Reviews
                 </Button>
@@ -184,7 +184,7 @@ const ProductDetailPage: React.FC = () => {
                   component={Link}
                   to="/products"
                   startIcon={<ArrowBack />}
-                  sx={{ borderColor: '#667eea', color: '#667eea' }}
+                  sx={{ borderColor: '#4f46b5', color: '#4f46b5' }}
                 >
                   Back
                 </Button>

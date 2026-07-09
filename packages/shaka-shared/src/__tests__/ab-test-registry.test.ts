@@ -133,7 +133,7 @@ describe('ab-test-registry', () => {
       );
 
       const tests = getRegisteredTests();
-      expect(tests[0].testTypes).toEqual(['visreg', 'audit', 'accessibility']);
+      expect(tests[0].testTypes).toEqual(['visreg', 'audit']);
     });
 
     it('accepts multiple testTypes', () => {
@@ -147,7 +147,18 @@ describe('ab-test-registry', () => {
       );
 
       const tests = getRegisteredTests();
-      expect(tests[0].testTypes).toEqual(['visreg', 'perf', 'audit', 'accessibility']);
+      expect(tests[0].testTypes).toEqual(['visreg', 'perf', 'audit']);
+    });
+
+    it('preserves explicit accessibility testTypes', () => {
+      abTest(
+        'Accessibility only',
+        { startingPath: '/', testTypes: ['accessibility'] },
+        async () => {},
+      );
+
+      const tests = getRegisteredTests();
+      expect(tests[0].testTypes).toEqual(['accessibility', 'audit']);
     });
   });
 

@@ -24,7 +24,7 @@ const stats = [
 const AdminDashboard: React.FC = () => {
   return (
     <Box>
-      <Typography data-cy="admin-dashboard-title" variant="h4" gutterBottom>
+      <Typography data-cy="admin-dashboard-title" variant="h4" component="h1" gutterBottom>
         Dashboard
       </Typography>
       <Grid container spacing={3}>
@@ -37,7 +37,7 @@ const AdminDashboard: React.FC = () => {
                     <Typography color="textSecondary" gutterBottom>
                       {stat.title}
                     </Typography>
-                    <Typography variant="h5">{stat.value}</Typography>
+                    <Typography variant="h5" component="p">{stat.value}</Typography>
                   </Box>
                   <Box sx={{ color: stat.color }}>{stat.icon}</Box>
                 </Box>
@@ -47,7 +47,7 @@ const AdminDashboard: React.FC = () => {
         ))}
       </Grid>
       <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" component="h2" gutterBottom>
           Recent Activity
         </Typography>
         <Card>

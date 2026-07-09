@@ -46,6 +46,7 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <Box
+      component="main"
       sx={{
         minHeight: '100vh',
         display: 'flex',
@@ -56,7 +57,7 @@ const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess }) => {
     >
       <Card sx={{ width: '100%', maxWidth: 420 }}>
         <CardContent>
-          <Typography variant="h5" gutterBottom>
+          <Typography variant="h5" component="h1" gutterBottom>
             Admin Login
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

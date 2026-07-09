@@ -721,6 +721,27 @@ input {
   border-top: 1px dashed var(--border);
 }
 
+.perf-viewport {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perf-viewport__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.perf-viewport__label {
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .card__code {
   margin: 0;
   padding: 12px 14px;

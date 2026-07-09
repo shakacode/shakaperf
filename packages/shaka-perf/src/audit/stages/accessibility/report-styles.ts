@@ -478,26 +478,90 @@ export const ACCESSIBILITY_PREVIEW_CSS = `
   color: var(--fg-muted);
   margin: 4px 0 6px;
 }
-.a11y-issue {
-  border-top: 1px solid var(--border);
-  padding: 8px 0;
+.a11y-rule-group {
+  margin-top: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
 }
-.a11y-issue:first-of-type {
-  border-top: 0;
+.a11y-dialog__filter + .a11y-rule-group,
+.a11y-dialog__summary + .a11y-rule-group {
+  margin-top: 0;
 }
-.a11y-issue summary {
+.a11y-rule-group[open] {
+  background: var(--bg);
+}
+.a11y-rule-group__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 10px 12px;
   cursor: pointer;
-  padding: 4px;
+  color: var(--fg-muted);
+  list-style: none;
 }
-.a11y-issue__rule {
+.a11y-rule-group__summary::-webkit-details-marker {
+  display: none;
+}
+.a11y-rule-group__summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-top: 6px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--fg-muted);
+  transition: transform 120ms ease;
+}
+.a11y-rule-group[open] > .a11y-rule-group__summary::before {
+  transform: rotate(90deg);
+}
+.a11y-rule-group__summary-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.a11y-rule-group__title-row,
+.a11y-rule-group__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+}
+.a11y-rule-group__rule {
+  color: var(--fg);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.a11y-rule-group__help {
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+.a11y-rule-group__meta span {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 1px 5px;
+  font-size: 10px;
   font-weight: 700;
 }
-.a11y-issue[data-active="true"] > summary {
+.a11y-rule-group[data-active="true"] > .a11y-rule-group__summary {
   background: rgba(37, 99, 235, 0.08);
   box-shadow: inset 3px 0 0 #2563eb;
 }
+.a11y-rule-group__issues {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px 31px;
+}
+.a11y-rule-group__docs {
+  justify-self: start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 .a11y-issue-node {
-  margin-top: 10px;
   padding: 8px;
   border: 1px solid transparent;
   cursor: pointer;
