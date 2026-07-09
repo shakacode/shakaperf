@@ -21,10 +21,6 @@ const loadableSwcPluginPath = require.resolve('@swc/plugin-loadable-components')
 baseClientWebpackConfig.module.rules.forEach((rule) => {
   if (!Array.isArray(rule.use)) return;
   rule.use.forEach((entry) => {
-    if (entry === 'style-loader') {
-      rule.use[rule.use.indexOf(entry)] = require.resolve('style-loader');
-      return;
-    }
     if (!entry || entry.loader !== 'builtin:swc-loader') return;
     entry.options = entry.options || {};
     entry.options.jsc = entry.options.jsc || {};
@@ -38,10 +34,6 @@ baseClientWebpackConfig.module.rules.forEach((rule) => {
 });
 
 const commonOptions = {
-  lazyCompilation: false,
-  experiments: {
-    lazyCompilation: false,
-  },
   resolve: {
     extensions: ['.css', '.ts', '.tsx'],
   },
