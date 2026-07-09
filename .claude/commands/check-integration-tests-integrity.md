@@ -1,6 +1,6 @@
 Review git diffs in `integration-tests/` to catch meaningful changes hidden among expected run-to-run variance.
 
-Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. Screenshot diffs are generated at review time by `compare-screenshots.mjs` (step 3).
+Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 3).
 
 Regressions between experiment and control are EXPECTED (experiment has lazy-loading disabled). Only flag changes between the PREVIOUS and CURRENT test run (i.e. git diffs). Whatever you do PLEASE DO NOT MENTION THAT THERE IS A DIFFERENCE OF EXPERIMENT VS CONTROL :pray:
 
@@ -12,7 +12,7 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
 2. Collect results from all agents and compile into the output format at the bottom.
 
-3. The verdict above is logs-only — it does NOT cover the visual changes. Generate the human screenshot diff report by running `yarn node integration-tests/compare-screenshots.mjs` (emits `integration-tests/snapshots/screenshot-diff-report.html`), then use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
+3. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
 
 ## Log diffs
 
@@ -83,9 +83,14 @@ signal.]
 
 ### Visual Review Required
 This skill does NOT judge the screenshot diffs. Review them yourself in the
-report at `integration-tests/snapshots/screenshot-diff-report.html` (generated
-in step 3). The logs verdict above says nothing about whether a render broke.
+report at `integration-tests/snapshots/screenshot-diff-report.html` (see
+step 3). The logs verdict above says nothing about whether a render broke.
 
-### Potential Issues (if any)
-1. [file: what changed and why it matters]
+### Changes
+[Summarize every meaningful change, one bullet each, as a clickable
+`path:line` link to the exact changed location — e.g.
+`integration-tests/snapshots/baseline-visreg.log:142` — followed by a short
+note on what changed and whether it is signal or noise. For binary screenshots
+(no line numbers) link the file path alone. If nothing meaningful changed, say
+so.]
 ```
