@@ -1,9 +1,9 @@
 
 >>> Copying current directory as experiment repo
 
-  ⏱ rsync experiment: 2.4s
-[roman-kuksin/revive-integration-tests 2c85b66] integration test snapshot
- 26 files changed, 3 insertions(+), 3590 deletions(-)
+  ⏱ rsync experiment: 2.7s
+[roman-kuksin/revive-integration-tests 03535f4] integration test snapshot
+ 26 files changed, 3 insertions(+), 4160 deletions(-)
  delete mode 100644 integration-tests/snapshots/audit-results/audit__01-overview.png
  delete mode 100644 integration-tests/snapshots/audit-results/audit__04-sources-expanded.png
  delete mode 100644 integration-tests/snapshots/audit-results/audit__05-artifact-lighthouse.png
@@ -34,14 +34,16 @@
 
 >>> Copying experiment repo as control
 
-  ⏱ rsync control: 1.2s
+  ⏱ rsync control: 1.1s
 
 >>> Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage
 
+  ⏱ modify experiment HomePage: 0.0s
 
 >>> Injecting broken selector into experiment products.abtest.ts
 
-[roman-kuksin/revive-integration-tests b4c22d6] integration test snapshot
+  ⏱ sabotage products.abtest.ts: 0.0s
+[roman-kuksin/revive-integration-tests 559644f] integration test snapshot
  2 files changed, 4 insertions(+), 4 deletions(-)
   ⏱ git commit experiment changes: 0.0s
 
@@ -69,7 +71,7 @@
 ➤ YN0008: │ shaka-perf@workspace:packages/shaka-perf must be rebuilt because its dependency tree changed
 ➤ YN0000: └ Completed in <TIMING>
 ➤ YN0000: · Done with warnings in <TIMING>
-  ⏱ yarn install: 6.2s
+  ⏱ yarn install: 6.0s
 
 >>> Building packages in temp clone
 
@@ -83,11 +85,11 @@ rendering chunks...
 [plugin vite:singlefile] Inlining: style-Bw55zds9.css
 computing gzip size...
 dist/index.html  330.77 kB │ gzip: 100.46 kB
-✓ built in 905ms
+✓ built in 821ms
 Assets copied to dist/
 The CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.
 Done in <TIMING>
-  ⏱ yarn build: 12.2s
+  ⏱ yarn build: 11.4s
 
 >>> run: yarn shaka-perf servers build
 
@@ -117,7 +119,7 @@ Next steps:
   yarn shaka-perf servers start-containers
 
 
-  ⏱ 108.5s
+  ⏱ 5.0s
 
 >>> run: yarn shaka-perf servers start-containers
 
@@ -138,7 +140,7 @@ Clearing stale volume contents...
 Starting twin containers...
 Waiting for containers to start...
 Checking container status...
-NAME                                                                                   IMAGE                                                                         COMMAND            SERVICE             CREATED         STATUS         PORTS
+NAME                                                                                   IMAGE                                                                         COMMAND            SERVICE             CREATED          STATUS         PORTS
 tmp--temp-shaka-perf-repos-for-tests--shaka-perf--demo-ecommerce-control-server-1      tmp--temp-shaka-perf-repos-for-tests--shaka-perf--demo-ecommerce:control      "sleep infinity"   control-server      <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3060->3000/tcp
 tmp--temp-shaka-perf-repos-for-tests--shaka-perf--demo-ecommerce-experiment-server-1   tmp--temp-shaka-perf-repos-for-tests--shaka-perf--demo-ecommerce:experiment   "sleep infinity"   experiment-server   <DOCKER_AGE>   Up <DOCKER_UPTIME>   0.0.0.0:3090->3000/tcp
 
@@ -150,22 +152,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
-[CONTROL]	Created 10 products
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
+[EXPERIMENT]	Created 10 products
 
 Both servers are ready!
 
@@ -191,7 +193,7 @@ Next steps:
       yarn shaka-perf servers stop-containers
 
 
-  ⏱ 12.3s
+  ⏱ 17.8s
 
 Running 2 tests using 1 worker
 
@@ -217,18 +219,21 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 1.7s
 
 >>> Waiting for ports 3060 + 3090
 
   ⏱ waitForPort(3060): 0.0s
   ⏱ waitForPort(3090): 2.0s
+  ⏱ Waiting for ports 3060 + 3090: 2.0s
 
 >>> Verifying experiment server (3090) has "Discover Your Style"
 
+  ⏱ Verifying experiment server (3090) has "Discover Your Style": 0.2s
 
 >>> Verifying control server (3060) has "Discover Your Style"
 
+  ⏱ Verifying control server (3060) has "Discover Your Style": 0.1s
 
 >>> Stopping puma in both containers
 
@@ -241,6 +246,7 @@ Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log
 
 >>> Modifying HomePage.tsx: "Discover Your Style" -> "Discover Your New Self"
 
+  ⏱ Modifying HomePage.tsx: "Discover Your Style" -> "Discover Your New Self": 0.0s
 
 >>> run: yarn shaka-perf servers sync-changes experiment
 
@@ -258,7 +264,7 @@ Summary:
 Successfully synced changes to experiment
 Files synced to: /home/<USER>/shaka-perf-volumes/tmp--temp-shaka-perf-repos-for-tests--shaka-perf--demo-ecommerce/experiment
 
-  ⏱ 1.8s
+  ⏱ 1.7s
 
 >>> run: yarn shaka-perf servers run-cmd-parallel -- bundle exec rake assets:precompile
 
@@ -309,8 +315,8 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	Entrypoint admin [big] 693 KiB = js/runtime-54b2d22c78e3ebe1.js 3.94 KiB js/995-71f09de28c17aa51.js 9.3 KiB js/962-5ac88121bf468d95.js 587 KiB js/850-da02f5d4321703de.js 50.8 KiB js/457-31c047a11e5bff55.js 12.2 KiB js/723-e20be48946d887ab.js 7.2 KiB js/504-866dfa0b0880d1c4.js 12.6 KiB js/admin-b46aba42e7038c0a.js 10.7 KiB css/admin-ef46db37.css 0 bytes + 9 assets
 [EXPERIMENT]	Entrypoint client [big] 625 KiB = js/runtime-54b2d22c78e3ebe1.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/client-2f1e1c35ddd426ea.js 1.99 KiB css/client-ef46db37.css 0 bytes + 6 assets
 [EXPERIMENT]	Entrypoint server [big] 623 KiB = js/runtime-54b2d22c78e3ebe1.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/server-be2063557da5ccce.js 301 bytes
-[EXPERIMENT]	orphan modules 2.72 MiB (javascript) 764 bytes (runtime) [orphan] 786 modules
-[EXPERIMENT]	runtime modules 9.6 KiB 15 modules
+[EXPERIMENT]	orphan modules 2.72 MiB (javascript) 558 bytes (runtime) [orphan] 784 modules
+[EXPERIMENT]	runtime modules 9.8 KiB 17 modules
 [EXPERIMENT]	cacheable modules 2.72 MiB (javascript) 49 bytes (css/mini-extract)
 [EXPERIMENT]	  built modules 1.64 MiB (javascript) 49 bytes (css/mini-extract) [built]
 [EXPERIMENT]	    modules by path ../.yarn/__virtual__/ 1.5 MiB 123 modules
@@ -356,7 +362,7 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	  │       js/server-be2063557da5ccce.js
 [EXPERIMENT]	
 [EXPERIMENT]	
-[EXPERIMENT]	Rspack 1.7.11 compiled with 2 warnings in 4.03 s
+[EXPERIMENT]	Rspack 1.7.11 compiled with 2 warnings in 3.71 s
 [EXPERIMENT]	
 [EXPERIMENT]	assets by status 3.16 KiB [cached] 4 assets
 [EXPERIMENT]	runtime modules 107 bytes 2 modules
@@ -365,7 +371,7 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 [EXPERIMENT]	[Shakapacker] Completed rspack build in <TIMING>s (<TIMING>s)
 [EXPERIMENT]	
 
-  ⏱ 10.2s
+  ⏱ 9.7s
 
 >>> Starting puma in both containers
 
@@ -375,25 +381,28 @@ Running in parallel: bundle exec rake assets:precompile in both containers
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 1.8s
 
 >>> run: yarn shaka-perf servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 1.7s
 
 >>> Waiting for ports 3060 + 3090
 
-  ⏱ waitForPort(3060): 2.0s
   ⏱ waitForPort(3090): 2.0s
+  ⏱ waitForPort(3060): 2.0s
+  ⏱ Waiting for ports 3060 + 3090: 2.0s
 
 >>> Verifying control (3060) still has "Discover Your Style"
 
+  ⏱ Verifying control (3060) still has "Discover Your Style": 0.1s
 
 >>> Verifying experiment (3090) has "Discover Your New Self"
 
+  ⏱ Verifying experiment (3090) has "Discover Your New Self": 0.1s
 
 >>> run: yarn shaka-perf servers start-containers
 
@@ -426,22 +435,22 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
-[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
-[CONTROL]	Created 10 products
-[EXPERIMENT]	Created 10 products
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [CONTROL]	Created 10 products
 [EXPERIMENT]	Created 10 products
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
+[EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
+[EXPERIMENT]	Created 10 products
+[CONTROL]	Created 10 products
 
 Both servers are ready!
 
@@ -467,7 +476,7 @@ Next steps:
       yarn shaka-perf servers stop-containers
 
 
-  ⏱ 22.2s
+  ⏱ 21.6s
 
 >>> Resetting git changes in temp clone
 
@@ -500,7 +509,8 @@ Updated 728 paths from the index
 Running sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : sed -i 's/Discover Your Style/It'\''s a "quoted" world/' app/javascript/components/pages/HomePage.tsx
 
-  ⏱ 1.8s
+  ⏱ 1.7s
+  ⏱ Using run-cmd with sed to replace "Discover Your Style" with "It's a \"quoted\" world": 1.7s
 
 >>> run: yarn shaka-perf servers run-cmd experiment "bundle exec rake assets:precompile"
 
@@ -544,8 +554,8 @@ assets by path . 121 KiB
 Entrypoint admin [big] 693 KiB = js/runtime-1e6cf97fc25895a9.js 3.94 KiB js/995-71f09de28c17aa51.js 9.3 KiB js/962-5ac88121bf468d95.js 587 KiB js/850-da02f5d4321703de.js 50.8 KiB js/457-31c047a11e5bff55.js 12.2 KiB js/723-e20be48946d887ab.js 7.2 KiB js/504-866dfa0b0880d1c4.js 12.6 KiB js/admin-b46aba42e7038c0a.js 10.7 KiB css/admin-ef46db37.css 0 bytes + 9 assets
 Entrypoint client [big] 625 KiB = js/runtime-1e6cf97fc25895a9.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/client-2f1e1c35ddd426ea.js 1.99 KiB css/client-ef46db37.css 0 bytes + 6 assets
 Entrypoint server [big] 623 KiB = js/runtime-1e6cf97fc25895a9.js 3.94 KiB js/962-5ac88121bf468d95.js 587 KiB js/316-7fef233677fe3459.js 16.8 KiB js/605-f37279adf78bfea3.js 15.7 KiB js/server-be2063557da5ccce.js 301 bytes
-orphan modules 2.72 MiB (javascript) 1.7 KiB (runtime) [orphan] 788 modules
-runtime modules 8.65 KiB 13 modules
+orphan modules 2.72 MiB (javascript) 580 bytes (runtime) [orphan] 784 modules
+runtime modules 9.78 KiB 17 modules
 cacheable modules 2.72 MiB (javascript) 49 bytes (css/mini-extract)
   built modules 1.64 MiB (javascript) 49 bytes (css/mini-extract) [built]
     modules by path ../.yarn/__virtual__/ 1.5 MiB 123 modules
@@ -591,7 +601,7 @@ WARNING in ⚠ entrypoint size limit: The following entrypoint(s) combined asset
   │       js/server-be2063557da5ccce.js
 
 
-Rspack 1.7.11 compiled with 2 warnings in 4.05 s
+Rspack 1.7.11 compiled with 2 warnings in 3.67 s
 
 assets by status 3.16 KiB [cached] 4 assets
 runtime modules 107 bytes 2 modules
@@ -600,7 +610,7 @@ Rspack 1.7.11 compiled successfully in <TIMING> ms
 [Shakapacker] Completed rspack build in <TIMING>s (<TIMING>s)
 
 
-  ⏱ 9.4s
+  ⏱ 8.7s
 
 >>> Starting puma in both containers
 
@@ -610,25 +620,28 @@ Rspack 1.7.11 compiled successfully in <TIMING> ms
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in control-server
  [CONTROL-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 1.7s
 
 >>> run: yarn shaka-perf servers run-cmd experiment "bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &"
 
 Running bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 & in experiment-server
  [EXPERIMENT-SERVER]  > docker exec : bundle exec puma -C config/puma.rb -b tcp://0.0.0.0:3000 > /tmp/puma.log 2>&1 &
 
-  ⏱ 1.9s
+  ⏱ 1.8s
 
 >>> Waiting for ports 3060 + 3090
 
   ⏱ waitForPort(3060): 0.0s
   ⏱ waitForPort(3090): 2.0s
+  ⏱ Waiting for ports 3060 + 3090: 2.0s
 
 >>> Verifying control (3060) still has "Discover Your Style"
 
+  ⏱ Verifying control (3060) still has "Discover Your Style": 0.1s
 
 >>> Verifying experiment (3090) has text with single and double quotes
 
+  ⏱ Verifying experiment (3090) has text with single and double quotes: 0.1s
 
 >>> run: yarn shaka-perf servers start-containers
 
@@ -661,10 +674,10 @@ Waiting for containers to be ready...
 
 Running setup commands...
 Running in parallel: bin/rails db:prepare && bin/rails db:seed in both containers
-[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
-[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	Running bin/rails db:prepare && bin/rails db:seed in control-server
 [CONTROL]	 [CONTROL-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
+[EXPERIMENT]	Running bin/rails db:prepare && bin/rails db:seed in experiment-server
+[EXPERIMENT]	 [EXPERIMENT-SERVER]  > docker exec : bin/rails db:prepare && bin/rails db:seed
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
 [CONTROL]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Package validation successful
 [EXPERIMENT]	I, [<TIMESTAMP> #<PID>]  INFO -- : [React on Rails] Validating package version and compatibility...
@@ -702,7 +715,7 @@ Next steps:
       yarn shaka-perf servers stop-containers
 
 
-  ⏱ 22.3s
+  ⏱ 21.6s
 
 >>> Resetting git changes in temp clone
 
@@ -710,7 +723,7 @@ Updated 0 paths from the index
   ⏱ git checkout experiment: 0.0s
 Updated 0 paths from the index
   ⏱ git checkout control: 0.1s
-  ✓  2 integration-tests/twin-servers.spec.ts:80:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>s)
+  ✓  2 integration-tests/twin-servers.spec.ts:83:5 › run-cmd preserves single and double quotes @twin-servers (<TIMING>s)
 Skipping teardown (SKIP_TEARDOWN=1)
 
   2 passed (<TIMING>m)
