@@ -67,8 +67,8 @@ export default defineConfig({
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 10, // Bumped to cut run-to-run variance (>=10 recommended)
-    pValueThreshold: 0.01, // Require p<1% to flag a regression (stricter than the 0.05 default)
+    numberOfMeasurements: 10,
+    pValueThreshold: 0.01,
   },
 
   audit: {
