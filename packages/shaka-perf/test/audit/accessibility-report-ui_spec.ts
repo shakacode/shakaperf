@@ -182,11 +182,12 @@ describe('accessibility report UI filters', () => {
 
     expect(html).toContain('class="a11y-rule-group" data-active="false"');
     expect(html).toContain(
-      'aria-label="color-contrast serious wcag2aa Fix it 2 affected nodes 1 screenshot marker"',
+      'aria-label="color-contrast serious wcag2aa Fix it 2 nodes"',
     );
     expect(html).toContain('class="a11y-rule-group__summary"');
-    expect(html).toContain('2 affected nodes');
-    expect(html).toContain('1 screenshot marker');
+    expect(html).toContain('2 nodes');
+    expect(html).not.toContain('affected node');
+    expect(html).not.toContain('screenshot marker');
     expect(html).toContain('class="a11y-rule-group__issues"');
     expect(html).toContain('class="a11y-issue-node"');
     expect(html).toContain('.secondary-link');

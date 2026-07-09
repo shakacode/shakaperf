@@ -333,14 +333,12 @@ function ViolationDetails({
   const issueIds = violation.nodes.map((_, index) => makeIssueId(violation.ruleId, index));
   const active = issueIds.includes(activeIssueId ?? '');
   const primaryIssueId = issueIds.find((issueId) => localizedIssueIds.has(issueId)) ?? issueIds[0];
-  const localizedCount = issueIds.filter((issueId) => localizedIssueIds.has(issueId)).length;
   const summaryLabel = [
     violation.ruleId,
     violation.impact ?? 'unknown impact',
     ...primaryViolationTags(violation, configuredTags).slice(0, 2),
     violation.help,
-    `${violation.nodes.length} affected node${violation.nodes.length === 1 ? '' : 's'}`,
-    `${localizedCount} screenshot marker${localizedCount === 1 ? '' : 's'}`,
+    nodeCountText(violation.nodes.length),
   ].join(' ');
   return (
     <details className="a11y-rule-group" data-active={active ? 'true' : 'false'}>
@@ -366,8 +364,7 @@ function ViolationDetails({
           </span>
           <span className="a11y-rule-group__help">{violation.help}</span>
           <span className="a11y-rule-group__meta">
-            <span>{violation.nodes.length} affected node{violation.nodes.length === 1 ? '' : 's'}</span>
-            <span>{localizedCount} screenshot marker{localizedCount === 1 ? '' : 's'}</span>
+            <span>{nodeCountText(violation.nodes.length)}</span>
           </span>
         </span>
       </summary>
@@ -389,6 +386,10 @@ function ViolationDetails({
       </div>
     </details>
   );
+}
+
+function nodeCountText(count: number): string {
+  return `${count} node${count === 1 ? '' : 's'}`;
 }
 
 function ViolationNode({
