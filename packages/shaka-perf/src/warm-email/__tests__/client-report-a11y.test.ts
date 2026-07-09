@@ -31,6 +31,11 @@ import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from '../../audit/stages/accessibility/types';
+import {
+  a11yAffectsProse,
+  a11yFixClause,
+  a11yPromptRules,
+} from '../client-report-model/a11y';
 
 function viol(impact: AccessibilityViolation['impact']): AccessibilityViolation {
   // One node so `places` (nodes.length) is a realistic 1, not 0, in enrich requests.
@@ -220,6 +225,68 @@ describe('a11yIssueLabel', () => {
 
   it('falls back for an unknown rule', () => {
     expect(a11yIssueLabel('some-future-rule')).toBe('other issues');
+  });
+});
+
+describe('client report a11y cost copy helpers', () => {
+  const vRule = (
+    ruleId: string,
+    impact: AccessibilityViolation['impact'] = 'serious',
+    nodes: AccessibilityViolation['nodes'] = [{ target: ['#x'], html: '<x>', failureSummary: '' }],
+  ): AccessibilityViolation => ({
+    ruleId,
+    impact,
+    help: 'h',
+    helpUrl: '',
+    tags: [],
+    nodes,
+  });
+
+  it('builds affects copy from top high-impact rule families', () => {
+    const prose = a11yAffectsProse(scan([
+      vRule('button-name', 'critical'),
+      vRule('color-contrast', 'serious'),
+      vRule('link-name', 'serious'),
+    ]));
+
+    expect(prose).toBe(
+      'Screen-reader users are left guessing what buttons, links, or fields do when controls are not labeled. Low-vision users can miss key content or calls to action when text contrast is too low.',
+    );
+  });
+
+  it('falls back safely for an unknown high-impact axe rule', () => {
+    expect(a11yAffectsProse(scan([vRule('future-axe-rule', 'critical')]))).toBe(
+      'Screen-reader and keyboard users can lose the context or controls they need to understand and operate the page.',
+    );
+  });
+
+  it('builds start-here fix clauses from the same rule family table', () => {
+    expect(a11yFixClause('color-contrast')).toBe('raise its text contrast so low-vision visitors can read it');
+    expect(a11yFixClause('landmark-unique')).toBe('label its page areas clearly so screen reader visitors can reach the main content and tell sections apart');
+    expect(a11yFixClause('heading-order')).toBe('fix its heading order so screen reader visitors can move through it');
+    expect(a11yFixClause('aria-hidden-focus')).toBe('label its controls clearly so screen reader visitors know what they do');
+    expect(a11yFixClause('future-axe-rule')).toBe('fix its accessibility barriers so screen reader and keyboard visitors can use it');
+  });
+
+  it('builds prompt rules without trusting malformed node fields', () => {
+    const malformedNode = {
+      target: ['button.checkout', ['button.icon', 42], 10],
+      failureSummary: '',
+    } as unknown as AccessibilityViolation['nodes'][number];
+    const htmlNode = {
+      target: ['#cart button'],
+      html: '<button>\n  Checkout\n</button>',
+      failureSummary: '',
+    };
+
+    expect(a11yPromptRules(scan([vRule('button-name', 'critical', [malformedNode, htmlNode])]))).toEqual([
+      {
+        ruleId: 'button-name',
+        impact: 'critical',
+        selectors: ['button.checkout', 'button.icon', '#cart button'],
+        htmlExample: '<button> Checkout </button>',
+      },
+    ]);
   });
 });
 

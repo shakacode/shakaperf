@@ -46,14 +46,15 @@ import { fetchSiteAccessSignals } from './agent-ready-site';
 import { scoreSite, type CategoryScore, type SiteAccessSignals } from './agent-ready-score';
 import {
   AI_INDUSTRY_DATA_STATS,
+  FOOTER_GUARDRAIL,
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
+  botWallFooterSentence,
   dataCostEstimatedLine,
   dataCostFormula,
   dataCostMeasuredLine,
   perfCheckLine,
-  perfHeadline,
 } from './cost-strings';
 import { formatDataCostRangeFromKb } from './cost-model';
 import { buildCopyPrompt } from './copy-prompt';
@@ -90,7 +91,11 @@ import {
   comparePerfProblem,
   compareClientReportPerfProblemCandidate,
   detectProblems,
+  isPerfCostProblem,
   metricVal,
+  perfAffectsProse,
+  perfCostCopyPromptEnabled,
+  perfCostHeadline,
   perfProblemMetric,
   perfProblemPhrase,
   perfProblemTileCopy,
@@ -99,12 +104,16 @@ import {
   dominantPerfProblem,
   reportPagePerfStatus,
   reportPerfStatus,
-  type PerfProblemKind,
   type Problem,
   type ProblemKind,
   type Status,
   type ClientReportPerfProblemCandidate,
 } from './client-report-model/perf';
+import {
+  a11yAffectsProse,
+  a11yFixClause,
+  a11yPromptRules,
+} from './client-report-model/a11y';
 
 export {
   detectProblems,
@@ -1429,49 +1438,6 @@ function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
   return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
 }
 
-const PERF_COPY_PROMPT_KINDS: ReadonlySet<ProblemKind> = new Set(['slow-lcp']);
-
-function isPerfCostProblem(problem: Problem): problem is Problem & { kind: PerfProblemKind } {
-  return PROBLEM_KINDS.has(problem.kind);
-}
-
-const PERF_COST_HEADLINE: Record<PerfProblemKind, (label: string, phrase: string | undefined, pageName: string) => string> = {
-  'slow-lcp': (label, _phrase, pageName) => perfHeadline(label, pageName),
-  'layout-shift': (_label, phrase) => `${phrase ?? 'the layout jumps around'} on a mid-range phone`,
-  blank: (_label, phrase) => `${phrase ?? 'the screen stays blank'} on a mid-range phone`,
-  'late-paint': (_label, phrase) => `${phrase ?? 'nothing appears at first'} on a mid-range phone`,
-  sluggish: (_label, phrase) => `${phrase ?? 'the page is slow to react to taps'} on a mid-range phone`,
-};
-
-const PERF_AFFECTS_PROSE: Record<PerfProblemKind, { plain: string; withData?: string }> = {
-  'slow-lcp': {
-    plain: 'Slow main content makes mobile visitors wait and lose confidence before they can browse or buy.',
-    withData: 'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.',
-  },
-  'layout-shift': {
-    plain: 'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',
-  },
-  blank: {
-    plain: 'A blank start leaves visitors with no useful feedback and can make the page feel broken before anything appears.',
-  },
-  'late-paint': {
-    plain: 'Late first paint delays the first visible feedback, so visitors spend the start of the visit looking at an empty screen.',
-  },
-  sluggish: {
-    plain: 'Slow tap response makes the page feel stuck while visitors try to scroll, open menus, or start checkout.',
-  },
-};
-
-function perfCostHeadline(problem: Problem & { kind: PerfProblemKind }, label: string, phrase: string | undefined, page: PagePerf): string {
-  const pageName = page.name || page.startingPath || 'this page';
-  return PERF_COST_HEADLINE[problem.kind](label, phrase, pageName);
-}
-
-function perfAffectsProse(problem: Problem & { kind: PerfProblemKind }, hasDataCost: boolean): string {
-  const copy = PERF_AFFECTS_PROSE[problem.kind];
-  return hasDataCost && copy.withData ? copy.withData : copy.plain;
-}
-
 function cardPerfProblem(rp: RenderedPage): ClientReportPerfProblemCandidate | undefined {
   const candidate = dominantPerfProblem(rp);
   if (!candidate || candidate.status === 'good') return undefined;
@@ -1534,7 +1500,7 @@ function perfCardModel(rp: RenderedPage, siteUrl: string, promptCtx: PerfPromptC
   if (poster) card.posterUri = poster;
   if (rp.captionCues && rp.captionCues.length) card.cues = rp.captionCues.map((c) => ({ t: Math.round(c.atMs), x: c.text }));
   if (page.summary) card.plain = dashSafe(page.summary);
-  if (includeCopyPrompt && cardStatus !== 'good' && cardCandidate && PERF_COPY_PROMPT_KINDS.has(cardCandidate.problem.kind)) {
+  if (includeCopyPrompt && cardStatus !== 'good' && cardCandidate && perfCostCopyPromptEnabled(cardCandidate.problem)) {
     const copyPrompt = perfCopyPromptForPage(page, siteUrl, promptCtx);
     if (copyPrompt) card.copyPrompt = copyPrompt;
   }
@@ -1591,17 +1557,6 @@ async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Pro
   }
 }
 
-// A plain imperative fix clause ("it" = the page) that weaves in who it helps.
-function a11yFixClause(ruleId: string): string {
-  if (ruleId === 'meta-refresh') return 'stop it from reloading on its own so screen reader and keyboard visitors are not thrown back to the top';
-  if (ruleId === 'color-contrast') return 'raise its text contrast so low-vision visitors can read it';
-  if (ruleId.startsWith('landmark') || ruleId === 'region') return 'label its page areas clearly so screen reader visitors can reach the main content and tell sections apart';
-  if (ruleId.startsWith('heading') || ruleId === 'page-has-heading-one' || ruleId === 'empty-heading') return 'fix its heading order so screen reader visitors can move through it';
-  if (ruleId === 'image-alt' || ruleId === 'svg-img-alt' || ruleId === 'input-image-alt') return 'add text descriptions to its images so screen reader visitors know what they show';
-  if (ruleId === 'button-name' || ruleId === 'link-name' || ruleId === 'label' || ruleId === 'select-name' || ruleId === 'aria-input-field-name' || ruleId.startsWith('aria-')) return 'label its controls clearly so screen reader visitors know what they do';
-  return 'fix its accessibility barriers so screen reader and keyboard visitors can use it';
-}
-
 // "Start here" as one plain sentence (not the "Page (label)" list the other tabs
 // use). `allSameFix` gates the "same fix" rollup so it is only claimed when the
 // other pages share the worst page's top fix.
@@ -1618,7 +1573,26 @@ function a11yStartHereLead(worst: A11yPageView, otherPages: number, allSameFix: 
   return `Start with your worst-affected page (${name}): ${clause}.${rest}`;
 }
 
-async function a11yCardModel(view: A11yPageView): Promise<ClientReportA11yCard> {
+interface A11yPromptContext {
+  host: string;
+  date: string;
+}
+
+function a11yPageUrl(siteUrl: string, view: A11yPageView): string {
+  return liveUrlFor(siteUrl, view.page.startingPath || '/') || view.scan.url || siteUrl;
+}
+
+function a11yCopyPromptForView(view: A11yPageView, siteUrl: string, ctx: A11yPromptContext): string | undefined {
+  return buildCopyPrompt('a11y', {
+    url: a11yPageUrl(siteUrl, view),
+    host: ctx.host,
+    date: ctx.date,
+    rawState: view.scan.blocked === true ? 'blocked' : 'ok',
+    topRules: a11yPromptRules(view.scan),
+  });
+}
+
+async function a11yCardModel(view: A11yPageView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
   const { page, scan, counts, client } = view;
   const crops = await a11yCropFrames(scan, true);
   const score = client?.score;
@@ -1656,6 +1630,10 @@ async function a11yCardModel(view: A11yPageView): Promise<ClientReportA11yCard> 
     fixes: client?.fixes?.length ? client.fixes.map(dashSafe) : a11yFallbackFixes(scan),
   };
   if (typeof score === 'number') card.score = score;
+  if (siteUrl && promptCtx) {
+    const copyPrompt = a11yCopyPromptForView(view, siteUrl, promptCtx);
+    if (copyPrompt) card.copyPrompt = copyPrompt;
+  }
   return card;
 }
 
@@ -1709,6 +1687,12 @@ function normalizedProfile(profile: string): string {
 function sameAsPsiDefaultProfile(profile: string | undefined): boolean {
   if (!profile) return false;
   return normalizedProfile(profile) === normalizedProfile(PSI_DEFAULT_THROTTLE_PROFILE);
+}
+
+function footnoteThrottlePhrase(profile: string): string {
+  return sameAsPsiDefaultProfile(profile)
+    ? `the ${profile} profile Google PageSpeed uses`
+    : `the ${profile} profile`;
 }
 
 function perfPageUrl(siteUrl: string, page: PagePerf): string {
@@ -1973,7 +1957,7 @@ async function buildClientReportModel(
         chip: 'measured',
         checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
         affectsProse: perfAffectsProse(perfCostProblem.problem, !!dataCost),
-        sitePrompt: PERF_COPY_PROMPT_KINDS.has(perfCostProblem.problem.kind)
+        sitePrompt: perfCostCopyPromptEnabled(perfCostProblem.problem)
           ? perfCopyPromptForPage(problemPage, sc.url, perfPromptCtx)
           : undefined,
         ...(dataCost ? { dataCost } : {}),
@@ -1996,7 +1980,11 @@ async function buildClientReportModel(
   const a11yCouldNotMeasure = a11yMeasurable.length === 0 && a11yBlockedViews.length > 0;
   const cardedA11y = a11yMeasurable.filter((v) => hasMajorA11yBarrier(v.counts));
   const fineA11y = a11yMeasurable.filter((v) => !hasMajorA11yBarrier(v.counts));
-  const a11yCards = await Promise.all(cardedA11y.map(a11yCardModel));
+  const a11yPromptCtx: A11yPromptContext = {
+    host: agentPromptHost(sc.url, domain),
+    date: agentPromptDate(dateStr, sc.generatedAt),
+  };
+  const a11yCards = await Promise.all(cardedA11y.map((view) => a11yCardModel(view, sc.url, a11yPromptCtx)));
   const a11yFine = fineA11y.map((v) => {
     const score = v.client?.score;
     const row: ClientReportModel['a11yFine'][number] = {
@@ -2034,6 +2022,19 @@ async function buildClientReportModel(
     const others = cardedA11y.slice(1);
     const allSameFix = others.length > 0 && others.every((v) => a11yFixClause(sortViolations(v.scan.violations)[0]?.ruleId ?? '') === worstClause);
     a11yStartHere = { items: [], lead: a11yStartHereLead(a11yWorst, others.length, allSameFix) };
+  }
+  let a11yCost: ClientReportCostBlock | undefined;
+  if (a11yCouldNotMeasure) {
+    // blockedSection already renders the refusal copy; this keeps the tab head to the not-measured chip.
+    a11yCost = { tab: 'a11y', state: 'blocked', headline: '' };
+  } else if (highImpactTotal > 0 && a11yWorst) {
+    a11yCost = {
+      tab: 'a11y',
+      state: 'measured',
+      headline: criticalTotal > 0 ? 'Critical accessibility barriers found' : 'Serious accessibility barriers found',
+      affectsProse: a11yAffectsProse(a11yWorst.scan),
+      sitePrompt: a11yCopyPromptForView(a11yWorst, sc.url, a11yPromptCtx),
+    };
   }
 
   // ---- AI VISIBILITY (Agent Ready) ----
@@ -2325,7 +2326,12 @@ async function buildClientReportModel(
     : `${aspects.slice(0, -1).join(', ')}, and ${aspects[aspects.length - 1]}`;
   const lede = `We loaded ${ctx.measured.length} of your pages the way a customer does - on a typical phone, on a normal cellular connection - and checked what decides whether visitors ${aspectList}.`;
   const outro = `The single fix behind most of this is making sure your full page content is present the moment the page loads - done well, it speeds the page up for real visitors${hasAgent ? ' and makes you readable to AI at the same time' : ''}. That is the work we do every day at ShakaCode; happy to walk through what we found.`;
-  const footnote = `Measured ${dateStr ? `${dateStr} ` : ''}on an emulated mid-range phone over the Slow-4G profile Google PageSpeed uses - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale' : ''}. Put together by ShakaCode.`;
+  const footnoteAddenda: string[] = [];
+  if ([perfCost, agentCost, a11yCost].some((cost) => cost?.state === 'measured')) footnoteAddenda.push(FOOTER_GUARDRAIL);
+  const botWalledPageCount = new Set([...a11yBlocked, ...agentBlocked].map((p) => `${p.path}|${p.name}`)).size;
+  if (botWalledPageCount > 0) footnoteAddenda.push(botWallFooterSentence(botWalledPageCount));
+  const footnoteBase = `Measured ${dateStr ? `${dateStr} ` : ''}on an emulated mid-range phone over ${footnoteThrottlePhrase(perfPromptCtx.throttleProfile)} - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale' : ''}. Put together by ShakaCode.`;
+  const footnote = footnoteAddenda.length ? `${footnoteBase} ${footnoteAddenda.map((s) => `${s}.`).join(' ')}` : footnoteBase;
   const agentScore = hasAgent && !agentCouldNotMeasure ? agentOverall : undefined;
 
   const model: ClientReportModel = {
@@ -2355,6 +2361,7 @@ async function buildClientReportModel(
     agentBlocked,
     agentCouldNotMeasure,
     ...(perfCost ? { perfCost } : {}),
+    ...(a11yCost ? { a11yCost } : {}),
     ...(agentCost ? { agentCost } : {}),
     narrative,
     outro,

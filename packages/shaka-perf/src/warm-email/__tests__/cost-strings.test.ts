@@ -125,8 +125,8 @@ describe('canonical cost copy', () => {
     expect(WHAT_THIS_AFFECTS).toBe('What this affects');
     expect(INDUSTRY_DATA).toBe('industry data');
     expect(NOTHING_TO_FIX).toBe('Nothing to fix here');
-    expect(FOOTER_GUARDRAIL).toBe('measured on your site - estimates are labeled and show their math - every number links to its source');
-    expect(botWallFooterSentence(2)).toBe('2 pages could not be measured because bot protection served our checker a challenge page instead of the real page');
+    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - estimates are labeled and show their math - every number links to its source');
+    expect(botWallFooterSentence(2)).toBe('2 pages had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page');
   });
 
   it('builds data-cost measured, estimated, and formula lines', () => {

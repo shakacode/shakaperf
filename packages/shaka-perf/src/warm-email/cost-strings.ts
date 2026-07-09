@@ -69,7 +69,7 @@ export const INDUSTRY_DATA = 'industry data';
 export const NOTHING_TO_FIX = 'Nothing to fix here';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
-export const FOOTER_GUARDRAIL = 'measured on your site - estimates are labeled and show their math - every number links to its source';
+export const FOOTER_GUARDRAIL = 'Measured on your site - estimates are labeled and show their math - every number links to its source';
 
 const noTreatment = (copy?: string, chip?: CostChip): CostStateCell => ({
   rendersFullTreatment: false,
@@ -161,7 +161,7 @@ export function perfCheckLine(url: string, sameProfile: boolean, usedProfile?: s
 
 export function botWallFooterSentence(n: number): string {
   const pageWord = n === 1 ? 'page' : 'pages';
-  return `${n} ${pageWord} could not be measured because bot protection served our checker a challenge page instead of the real page`;
+  return `${n} ${pageWord} had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page`;
 }
 
 export function dataCostMeasuredLine(mb: string): string {
