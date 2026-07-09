@@ -2621,6 +2621,8 @@ export function buildStartHere(
 interface PerfProblemTileCopy {
   kicker: string;
   wordTx: string;
+  benchmarkTx?: string;
+  benchmarkHtml?: string;
   metricSub: (avgLabel: string | undefined) => string;
   conseq: string;
 }
@@ -2631,6 +2633,8 @@ interface PerfProblemCopy extends PerfProblemTileCopy {
 }
 
 const avgLcpSuffix = (avgLabel: string | undefined): string => avgLabel ? `; average LCP is ${avgLabel}` : '';
+const CLS_BENCHMARK_TX = 'Google target: 0.10 or less; poor over 0.25.';
+const CLS_BENCHMARK_HTML = 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.';
 const metricSecs = (page: PagePerf, label: string): string | undefined => {
   const value = metricVal(page, label);
   return value === undefined ? undefined : secs(value);
@@ -2651,6 +2655,8 @@ const PERF_PROBLEM_COPY: Record<PerfProblemKind, PerfProblemCopy> = {
   'layout-shift': {
     kicker: 'Mobile stability',
     wordTx: 'Layout jumps',
+    benchmarkTx: CLS_BENCHMARK_TX,
+    benchmarkHtml: CLS_BENCHMARK_HTML,
     phrase: () => 'the layout jumps around',
     metric: (page) => {
       const clsV = metricVal(page, 'CLS');
@@ -2709,6 +2715,8 @@ export function perfProblemTileCopy(lead: Problem): PerfProblemTileCopy | undefi
   return {
     kicker: copy.kicker,
     wordTx: copy.wordTx,
+    ...(copy.benchmarkTx ? { benchmarkTx: copy.benchmarkTx } : {}),
+    ...(copy.benchmarkHtml ? { benchmarkHtml: copy.benchmarkHtml } : {}),
     metricSub: copy.metricSub,
     conseq: copy.conseq,
   };
@@ -3128,6 +3136,8 @@ async function buildClientReportV2Model(
       status: perfStatus,
       wordTx: perfWordTx,
       metric: perfProblemMetricTx ?? (ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a'),
+      ...(dominantPerfTileCopy?.benchmarkTx ? { benchmarkTx: dominantPerfTileCopy.benchmarkTx } : {}),
+      ...(dominantPerfTileCopy?.benchmarkHtml ? { benchmarkHtml: dominantPerfTileCopy.benchmarkHtml } : {}),
       ...(perfProblemTx ? { problemTx: perfProblemTx } : {}),
       metricSub: perfMetricSub,
       conseq: perfConseq,

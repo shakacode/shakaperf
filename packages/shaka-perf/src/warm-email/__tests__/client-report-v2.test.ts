@@ -310,6 +310,8 @@ describe('perfProblemTileCopy', () => {
       {
         kicker: 'Mobile stability',
         wordTx: 'Layout jumps',
+        benchmarkTx: 'Google target: 0.10 or less; poor over 0.25.',
+        benchmarkHtml: 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.',
         metricSub: 'worst page layout-shift score; average LCP is 5.3s',
         conseq: 'Content moves while the page loads, so visitors can lose their place or tap the wrong thing.',
       },
@@ -602,6 +604,8 @@ describe('renderClientReport v2 perf tile assembly', () => {
         kicker: 'Mobile stability',
         wordTx: 'Layout jumps',
         metric: '0.45',
+        benchmarkTx: 'Google target: 0.10 or less; poor over 0.25.',
+        benchmarkHtml: 'Google target: <span style="color:#2f7d4f; font-weight:700">0.10</span> or less; poor over <span style="color:#c0271f; font-weight:700">0.25</span>.',
         problemTx: 'the layout jumps around',
         metricSub: 'worst page layout-shift score; average LCP is 1.8s',
         absent: 'Slow on phones',
@@ -648,7 +652,15 @@ describe('renderClientReport v2 perf tile assembly', () => {
     const perfTile = renderedTile(html, 'perf');
     expect(perfTile).toContain(expected.kicker);
     expect(perfTile).toContain(expected.wordTx);
-    expect(perfTile).toContain(`>${expected.metric}</div>`);
+    const metricHtml = `>${expected.metric}</div>`;
+    expect(perfTile).toContain(metricHtml);
+    if ('benchmarkHtml' in expected) {
+      expect(perfTile).toContain(`${metricHtml}
+        <div style="font-size:12.5px; line-height:1.35; color:#6f665c; margin:-1px 0 5px">${expected.benchmarkHtml}</div>`);
+    } else if ('benchmarkTx' in expected) {
+      expect(perfTile).toContain(`${metricHtml}
+        <div style="font-size:12.5px; line-height:1.35; color:#6f665c; margin:-1px 0 5px">${expected.benchmarkTx}</div>`);
+    }
     expect(perfTile).toContain(expected.problemTx);
     expect(perfTile).toContain(expected.metricSub);
     expect(perfTile).not.toContain(expected.absent);
