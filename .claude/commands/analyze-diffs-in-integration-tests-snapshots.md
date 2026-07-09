@@ -2,7 +2,18 @@ Review git diffs in `integration-tests/` to catch meaningful changes hidden amon
 
 Snapshots contain ONLY the normalized `baseline-*.log` per suite and the stable-named report screenshots under each `<suite>-results/` dir. The integration-tests run also emits a `screenshot-diff-report.html` under `integration-tests/snapshots/` for visual review (step 3).
 
-Regressions between experiment and control are EXPECTED (experiment has lazy-loading disabled). Only flag changes between the PREVIOUS and CURRENT test run (i.e. git diffs). Whatever you do PLEASE DO NOT MENTION THAT THERE IS A DIFFERENCE OF EXPERIMENT VS CONTROL :pray:
+This check reports **WHAT changed between the previous and current test run**
+(the git diff). NAME every meaningful change; deciding whether it's expected or
+a bug is the user's call, so never drop a change because it "looks expected."
+Trap that has caused misses: the perf suite regresses on purpose, so treating
+its regressions as always-expected once hid a real diff — a changed SET of
+regressed metrics, `! ALERT` banner count, or flagged pages is a change and
+must be reported like any other.
+
+Two phrasing constraints (they change wording, never what you report): describe
+changes relative to the PREVIOUS run, not a fixed script; and PLEASE phrase a
+finding as "this run differs from the previous run," not "experiment differs
+from control" :pray:
 
 ## Steps
 
@@ -10,15 +21,15 @@ Regressions between experiment and control are EXPECTED (experiment has lazy-loa
 
    This check is **logs-only**: the agents judge the normalized transcripts, and the verdict is drawn from the logs alone. Screenshot diffs are NOT analyzed here — they are for the user to review by eye (see step 3).
 
-2. Collect results from all agents and compile into the output format at the bottom.
+2. Collect results from all agents and compile into the output format at the bottom, preserving every change they named. Before writing the **Changes** section, resolve each agent's quoted anchor text to a real `path:line` with `grep -n '<anchor text>' integration-tests/snapshots/<log>` — never a `git diff` hunk offset.
 
 3. The verdict above is logs-only — it does NOT cover the visual changes. The integration-tests run already generated the screenshot diff report at `integration-tests/snapshots/screenshot-diff-report.html`. Use AskUserQuestion to ask whether the user wants to open it in the browser. If they agree, open that path via Bash (`xdg-open <path>` on Linux, `open <path>` on macOS). If they decline, just print the path. Either way, make clear the screenshot changes still need the user's own eyes — the skill does not judge them.
 
 ## Log diffs
 
-Every baseline log is a normalized Playwright transcript: run-variable values (timestamps, most timings, home dirs, docker ages) are replaced with `<TIMING>`/`<TIMESTAMP>`-style stubs — the `⏱ <label>: <duration>s` stage markers deliberately survive so the timing analyst below can compare them. Any remaining diff is either noise or real signal. In ALL logs, these are always signal: `>>>` step banners appearing/disappearing, new `Error:`/`FAIL`/`Traceback` lines, a changed Playwright pass count, or a suite that no longer ends the way it did last run.
+Every baseline log is a normalized Playwright transcript: run-variable values (timestamps, most timings, home dirs, docker ages) are replaced with `<TIMING>`/`<TIMESTAMP>`-style stubs — the `⏱ <label>: <duration>s` stage markers deliberately survive so the timing analyst below can compare them. Report every meaningful change; leave out only pure run-variable churn (differing stubbed values, reordered concurrent-worker lines, changed hashes/pids/byte counts). Always reported: `>>>` step banners appearing/disappearing, new `Error:`/`FAIL`/`Traceback` lines, a changed Playwright pass count, a suite ending differently, and — in the perf log — a changed regression block (the count of `! ALERT … regression threshold` banners, the SET of `… estimated regression` metric lines, or the `FAILED: N perf regressions` count); state exactly which metrics/alerts/pages entered or left.
 
-The snapshot IS the expectation: judge each diff against the previous run, not against any fixed script of what the log "should" say. Your goal is to find the meaningful differences hidden in the noise.
+**Line-number discipline (agents):** a `git diff` hunk's `@@` header and the position inside a hunk are NOT file line numbers — counting within a hunk double-counts the removed+added pair (this produced a `:1182` anchor in an 803-line file). Don't emit diff line numbers; quote the exact text of each changed line as an anchor, and the coordinator resolves real `path:line` in step 2 by grepping it against the on-disk file.
 
 Diff every `baseline-*.log` in `integration-tests/snapshots/` — the set of suites changes over time, so enumerate whatever logs are on disk rather than assuming a fixed list. Each subagent gets one log and one command:
 
@@ -64,7 +75,11 @@ per stage, columns `Stage | OLD | NEW | Δ | Δ%`.
 ## Integration Tests Integrity Check
 
 ### Summary
-[One sentence, logs-only: "No issues found according to logs — however you must review the visual changes yourself" or "Found N potential issues in the logs (you must still review the visual changes yourself)".]
+[One sentence, logs-only, counting/naming what changed: either "No changes
+beyond run-variable noise in the logs — however you must review the visual
+changes yourself" or "The logs show N meaningful change(s) — [categories, e.g.
+new stage banners; perf regression set grew X → Y metrics] — you must still
+review the visual changes yourself."]
 
 ### Timing Comparison
 
@@ -76,10 +91,10 @@ baseline log with columns Stage | OLD | NEW | Δ | Δ%.]
 ### Log Analysis
 
 #### [baseline log]
-[State what actually changed in this diff — the meaningful added/removed lines,
-or "only run-variable noise (timings, hashes, ordering)" if every hunk was
-noise. Do not write "OK": name the changes, then say whether any look like real
-signal.]
+[Name what changed in this diff — the meaningful added/removed lines, or "only
+run-variable noise (timings, hashes, ordering)" if every hunk was noise. An
+optional "(likely instrumentation)" / "(likely variance)" tag may follow a
+change, but never replaces naming it.]
 
 ### Visual Review Required
 This skill does NOT judge the screenshot diffs. Review them yourself in the
@@ -87,10 +102,11 @@ report at `integration-tests/snapshots/screenshot-diff-report.html` (see
 step 3). The logs verdict above says nothing about whether a render broke.
 
 ### Changes
-[Summarize every meaningful change, one bullet each, as a clickable
-`path:line` link to the exact changed location — e.g.
-`integration-tests/snapshots/baseline-visreg.log:142` — followed by a short
-note on what changed and whether it is signal or noise. For binary screenshots
-(no line numbers) link the file path alone. If nothing meaningful changed, say
-so.]
+[One bullet per meaningful change, each a clickable `path:line` link to the
+changed location (resolved with `grep -n` per step 2, never a diff-hunk offset)
+— e.g. `integration-tests/snapshots/baseline-visreg.log:142` — plus a short
+note on what changed. For a changed perf regression set, spell out which
+metrics/alerts entered or left (e.g. "regressed metrics 7 → 15; added
+FCP/TTFB/TBT/hydration; ALERT banners 2 → 3"). Link binary screenshots by path
+alone. If nothing beyond run-variable noise changed, say so.]
 ```
