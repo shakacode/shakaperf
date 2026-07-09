@@ -8,17 +8,12 @@
  */
 
 import { writeFile } from 'node:fs/promises';
-import * as path from 'node:path';
-import { copy } from 'fs-extra';
 import chalk from 'chalk';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import * as engineTools from './engineTools';
 import { analyzeWhitePixels } from './compare/pixelmatch-inline';
-import retryCompare from './retryCompare';
-import preparePage from './preparePage';
-import { withLogPrefix } from './testContext';
-import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
-import type { PlaywrightPage, Scenario, Viewport, BrowserContext, Browser, TestPair, DecoratedCompareConfig } from '../types';
+import { runCompareAttempts } from './runCompareAttempts';
+import type { PlaywrightPage, Scenario, Viewport, Browser, TestPair, DecoratedCompareConfig } from '../types';
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
 interface CompareLogger {
@@ -29,11 +24,9 @@ interface CompareLogger {
   info: (color: string, message: string, ...rest: unknown[]) => void;
 }
 
-const TEST_TIMEOUT = 60000;
 const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
 const DEFAULT_EXPERIMENT_SCREENSHOT_DIR = 'experiment_screenshots';
 const DEFAULT_CONTROL_SCREENSHOT_DIR = 'control_screenshots';
-const SELECTOR_NOT_FOUND_PATH = '/capture/resources/notFound.png';
 const BODY_SELECTOR = 'body';
 const DOCUMENT_SELECTOR = 'document';
 const NOCLIP_SELECTOR = 'body:noclip';
@@ -105,7 +98,7 @@ function writeScenarioLogs (config: DecoratedCompareConfig, logFilePath: string,
 /**
  * Core comparison logic for live compare scenarios.
  */
-async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, refPage: PlaywrightPage, testPage: PlaywrightPage, refBrowserOrContext: BrowserContext, testBrowserOrContext: BrowserContext, logger: CompareLogger) {
+async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, browser: Browser, logger: CompareLogger) {
   const { scenarioDefaults = {} } = config;
   scenario = { ...scenarioDefaults, ...scenario };
 
@@ -119,34 +112,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
   config._configId = config.id || engineTools.genHash(config.configFileName);
 
-  const VP_W = viewport.width || viewport.viewport!.width;
-  const VP_H = viewport.height || viewport.viewport!.height;
-
-  // Set viewport on both pages
-  await Promise.all([
-    withLogPrefix(formatLogPrefix('control'), () => refPage.setViewportSize({ width: VP_W, height: VP_H })),
-    withLogPrefix(formatLogPrefix('experiment'), () => testPage.setViewportSize({ width: VP_W, height: VP_H })),
-  ]);
-
-  const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', TEST_TIMEOUT);
-  refPage.setDefaultNavigationTimeout(navTimeout);
-  testPage.setDefaultNavigationTimeout(navTimeout);
-
-  logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
-
-  // Run each side in a side-scoped AsyncLocalStorage context so log lines
-  // emitted from anywhere inside `preparePage` (and the helpers it calls)
-  // pick up the [control] / [experiment] group label automatically.
-  const [refResult, testResult] = await Promise.all([
-    withLogPrefix(formatLogPrefix('control'), () => preparePage(refPage, scenario.referenceUrl!, scenario, viewport, config, true, refBrowserOrContext)),
-    withLogPrefix(formatLogPrefix('experiment'), () => preparePage(testPage, scenario.url, scenario, viewport, config, false, testBrowserOrContext)),
-  ]);
-
-  // Use selectors from test page (the main subject), fall back to reference
-  const selectors = testResult.visregSelectorsExp;
-  const testSelectorMap = testResult.visregSelectorsExpMap;
-  const refSelectorMap = refResult.visregSelectorsExpMap;
-
   const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const pixelmatchThreshold = scenario.comparePixelmatchThreshold != null
     ? scenario.comparePixelmatchThreshold
@@ -155,86 +120,23 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     ? scenario.useBoundingBoxViewportForSelectors
     : undefined;
 
-  for (let selectorIndex = 0; selectorIndex < selectors.length; selectorIndex++) {
-    const selector = selectors[selectorIndex];
-    const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector);
+  logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
 
-    // Assign file paths to selectorMap entries
-    if (testSelectorMap[selector]) {
-      testSelectorMap[selector].filePath = testPair.test;
-    }
-    if (refSelectorMap[selector]) {
-      refSelectorMap[selector].filePath = testPair.reference;
-    }
+  // A single attempt loop where attempt 0 IS the initial capture and every
+  // retry rebuilds fresh, isolated sides the same way (see runCompareAttempts).
+  // Per-selector cross-matching and crash-resume live in there too; it hands
+  // back one outcome per selector for us to turn into a report entry.
+  const outcomes = await runCompareAttempts(
+    { captureScreenshot },
+    { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold, useBoundingBox },
+  );
+  const selectors = outcomes.map((o) => o.selector);
 
-    // Capture both screenshots to buffers
-    const [refBuffer, testBuffer] = await Promise.all([
-      withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refPage, selector, refSelectorMap, viewport, config, useBoundingBox)),
-      withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testPage, selector, testSelectorMap, viewport, config, useBoundingBox)),
-    ]);
+  for (const outcome of outcomes) {
+    const { selector, testPair, result, refFrame, testFrame } = outcome;
 
-    if (!refBuffer || !testBuffer) {
-      ensureDirectoryPath(testPair.reference);
-      ensureDirectoryPath(testPair.test);
-
-      if (!refBuffer && !testBuffer) {
-        // Both pages missing the selector — always a failure
-        logger.log('magenta', 'Selector "' + selector + '" not found on both reference and test pages');
-        await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.reference);
-        await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.test);
-        testPair.hadEngineError = true;
-        testPair.engineErrorMsg = `Selector "${selector}" not found on both reference and test pages`;
-      } else {
-        // Only one page missing the selector
-        logger.log('magenta', 'Selector "' + selector + '" not found on ' + (!refBuffer ? 'reference' : 'test') + ' page');
-        if (refBuffer) {
-          await writeFile(testPair.reference, refBuffer);
-        } else {
-          await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.reference);
-        }
-        if (testBuffer) {
-          await writeFile(testPair.test, testBuffer);
-        } else {
-          await copy(config.env.visregRoot + SELECTOR_NOT_FOUND_PATH, testPair.test);
-        }
-      }
-
-      compareConfig.testPairs.push(testPair);
-      continue;
-    }
-
-    // Crash-resumable, accumulate-and-cross-match comparison. retryCompare loads
-    // any frames earlier (possibly crashed) attempts persisted for this
-    // comparison, folds in this attempt's fresh initial pair, and cross-matches
-    // every control frame against every experiment frame — a match if ANY pair
-    // matches, otherwise the CLOSEST pair once both sides have spent the retry
-    // budget. It always resolves to a single result, so a flaky/restarted unit
-    // yields one report entry, not one per attempt.
-    const controlDir = path.dirname(testPair.reference);
-    const experimentDir = path.dirname(testPair.test);
-    const poolKey = path.basename(testPair.test, config._outputFileFormatSuffix);
-    const retryResult = await retryCompare({
-      captureScreenshot,
-      refPage,
-      testPage,
-      selector,
-      selectorMap: testSelectorMap,
-      viewport,
-      config,
-      scenario,
-      initialRefBuffer: refBuffer,
-      initialTestBuffer: testBuffer,
-      refBrowserOrContext,
-      testBrowserOrContext,
-      pixelmatchThreshold,
-      useBoundingBoxViewportForSelectors: useBoundingBox,
-      controlDir,
-      experimentDir,
-      poolKey,
-    });
-
-    const refAnalysis = analyzeWhitePixels(retryResult.refFrame.buffer);
-    const testAnalysis = analyzeWhitePixels(retryResult.testFrame.buffer);
+    const refAnalysis = analyzeWhitePixels(refFrame.buffer);
+    const testAnalysis = analyzeWhitePixels(testFrame.buffer);
     testPair.refWhitePixelPercent = refAnalysis.whitePixelPercent;
     testPair.testWhitePixelPercent = testAnalysis.whitePixelPercent;
     testPair.refIsBottomSeventyPercentWhite = refAnalysis.isBottomSeventyPercentWhite;
@@ -242,25 +144,25 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
 
     // The chosen (matching or closest) frames are already on disk in the
     // accumulation dirs — reference them in place, no re-write.
-    testPair.reference = retryResult.refFrame.path;
-    testPair.test = retryResult.testFrame.path;
+    testPair.reference = refFrame.path;
+    testPair.test = testFrame.path;
 
     // Save pixelmatch diff PNG (transparent BG, red changed pixels) if failed.
     // This becomes the diff thumbnail in the React report — clearer than the
     // resemble failed_diff (which overlays diffs on top of the test image).
-    if (!retryResult.pass && retryResult.diffBuffer) {
+    if (!result.pass && result.diffBuffer) {
       const diffPath = testPair.test.replace(/\.png$/, '_pixelmatch_diff.png');
       ensureDirectoryPath(diffPath);
-      await writeFile(diffPath, retryResult.diffBuffer);
+      await writeFile(diffPath, result.diffBuffer);
       testPair.pixelmatchDiffImage = diffPath;
     }
 
-    if (retryResult.pass) {
+    if (result.pass) {
       // Matched. `savedByRetries` distinguishes a clean first-capture match from
       // one that only matched via accumulated/cross-matched frames (the "Flaky
       // (saved by retries)" chip).
-      testPair.savedByRetries = retryResult.savedByRetries;
-      logger.log('green', (retryResult.savedByRetries ? 'PASS after retries: "' : 'PASS: "') + scenario.label + '" [' + selector + ']');
+      testPair.savedByRetries = outcome.savedByRetries;
+      logger.log('green', (outcome.savedByRetries ? 'PASS after retries: "' : 'PASS: "') + scenario.label + '" [' + selector + ']');
     } else {
       logger.log('red', 'FAIL: "' + scenario.label + '" [' + selector + ']');
     }
@@ -286,25 +188,11 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
   const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
   const logger = createLogger();
 
-  const { engineOptions = {} } = config;
-  const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
-  // storageState shape comes from user config — cast to satisfy Playwright's newContext
-  const storageState = (engineOptions.storageState || undefined) as string | undefined;
-
-  // Create two separate browser contexts
-  const refContext = await browser.newContext({ ignoreHTTPSErrors, storageState });
-  const testContext = await browser.newContext({ ignoreHTTPSErrors, storageState });
-  const refPage = await refContext.newPage();
-  const testPage = await testContext.newPage();
-
-  try {
-    return await processCompareView(
-      scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
-      viewport, config, refPage, testPage, refContext, testContext, logger
-    );
-  } finally {
-    logger.log('green', 'x Close Browser Contexts');
-    await refContext.close();
-    await testContext.close();
-  }
+  // The attempt loop (runCompareAttempts, via processCompareView) owns the
+  // per-attempt context lifecycle now — including attempt 0 — so it builds and
+  // tears down its own isolated sides. We just hand it the browser.
+  return await processCompareView(
+    scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
+    viewport, config, browser, logger
+  );
 };
