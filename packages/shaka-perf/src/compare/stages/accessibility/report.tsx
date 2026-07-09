@@ -166,10 +166,11 @@ const FINDING_STYLE: CSSProperties = {
 
 const FINDING_HEAD_STYLE: CSSProperties = {
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   gap: 7,
   minWidth: 0,
-  whiteSpace: 'nowrap',
+  lineHeight: 1.35,
 };
 
 const SIDE_COUNT_STYLE: CSSProperties = {
@@ -215,6 +216,15 @@ const COMPARE_A11Y_CSS = `
 .a11y-dialog__issues pre {
   max-width: 100%;
   overflow-x: hidden;
+}
+.a11y-issue__head {
+  min-width: 0;
+}
+.a11y-issue__rule {
+  overflow-wrap: anywhere;
+}
+.a11y-issue__meta {
+  color: var(--fg-muted);
 }
 .a11y-compare-card__inspect {
   display: inline-flex;
@@ -1107,8 +1117,7 @@ function RuleFindingGroupDetails({
           <span className="a11y-rule-group__title-row">
             <strong className="a11y-rule-group__rule">{group.ruleId}</strong>
             <span className="a11y-rule-group__meta">
-              <span>{group.findings.length} finding{group.findings.length === 1 ? '' : 's'}</span>
-              <span>{group.nodeCount} node{group.nodeCount === 1 ? '' : 's'}</span>
+              <span>{nodeCountText(group.nodeCount)}</span>
             </span>
           </span>
           <span className="a11y-rule-group__counts">
@@ -1212,7 +1221,6 @@ function FindingDetails({
   onSelect: (issueId: string, source: 'hotspot' | 'issue') => void;
   registerIssue: (issueId: string, element: HTMLElement | null) => void;
 }) {
-  const nodeCount = (finding.control?.nodes.length ?? 0) + (finding.experiment?.nodes.length ?? 0);
   const issueIds = [
     ...(finding.control?.nodes.map((_, index) => makeCompareIssueId(finding, 'control', index)) ?? []),
     ...(finding.experiment?.nodes.map((_, index) => makeCompareIssueId(finding, 'experiment', index)) ?? []),
@@ -1241,11 +1249,7 @@ function FindingDetails({
           <span style={{ color: impactColor(finding.impact), fontWeight: 700 }}>
             {finding.impact ?? 'unknown'}
           </span>
-          <span className="a11y-issue__meta">
-            {nodeCount} node{nodeCount === 1 ? '' : 's'}
-          </span>
           <CompareTagChips tags={primaryCompareTags(finding.tags)} max={2} />
-          <SideNodeSummary finding={finding} />
         </span>
         {previewTarget ? (
           <div style={FINDING_TARGET_STYLE}>
@@ -1278,21 +1282,6 @@ function FindingDetails({
   );
 }
 
-function SideNodeSummary({ finding }: { finding: AccessibilityCompareFinding }) {
-  return (
-    <>
-      <span style={SIDE_COUNT_STYLE}>
-        <span>control:</span>
-        <strong>{finding.control?.nodes.length ?? 0}</strong>
-      </span>
-      <span style={SIDE_COUNT_STYLE}>
-        <span>experiment:</span>
-        <strong>{finding.experiment?.nodes.length ?? 0}</strong>
-      </span>
-    </>
-  );
-}
-
 function SidePanel({
   activeIssueId,
   finding,
@@ -1308,10 +1297,12 @@ function SidePanel({
   registerIssue: (issueId: string, element: HTMLElement | null) => void;
   side: AccessibilityCompareSide;
 }) {
+  const nodeCount = findingSide?.nodes.length ?? 0;
   return (
     <section style={{ border: '1px solid var(--border-strong)', padding: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
         <strong>{side}</strong>
+        <span style={SIDE_COUNT_STYLE}>{nodeCountText(nodeCount)}</span>
       </div>
       {findingSide ? (
         <div style={{ marginTop: 8 }}>
@@ -1343,10 +1334,14 @@ function SidePanel({
           ))}
         </div>
       ) : (
-        <StageNote body={`No matching finding on ${side}.`} />
+        <StageNote body={`No matching nodes on ${side}.`} />
       )}
     </section>
   );
+}
+
+function nodeCountText(count: number): string {
+  return `${count} node${count === 1 ? '' : 's'}`;
 }
 
 function ScanErrors({ result }: { result: AccessibilityCompareResult }) {
