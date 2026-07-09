@@ -455,6 +455,16 @@ async function runConfiguredPipelineWithSelection(
     // shard pass against the same dir.
     if (!runtime.skipReport) {
       wipePersistedEngineErrors(resultsRoot);
+      // Pipeline-declared run-level derived dirs (e.g. audit's `.nyc_output/`,
+      // accumulated into by every unit) follow the same rules as the unit-dir
+      // wipe below: cleared only on a fresh local measuring run. Shards
+      // (`--skip-report`) share these dirs, so they are excluded above, and
+      // --keep-old-results / restart layer onto prior artifacts on purpose.
+      if (!preserveOldResults) {
+        for (const dir of pipeline.derivedResultsDirs ?? []) {
+          fs.rmSync(path.join(resultsRoot, dir), { recursive: true, force: true });
+        }
+      }
     }
   }
 

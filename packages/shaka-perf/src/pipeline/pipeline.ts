@@ -95,6 +95,16 @@ interface PipelineOptions {
   readonly artifactRoot?: string;
   readonly pipelineConfig?: unknown;
   readonly report: PipelineReport;
+  /**
+   * Run-level derived dirs (relative to the results root) that this
+   * pipeline's stages accumulate into across units — e.g. the audit stage
+   * mirrors per-unit coverage into `.nyc_output/`. The runner's wipe
+   * authority clears them before a fresh measuring run (never on
+   * `--report-only`, `--skip-report` shards, `--keep-old-results`, or
+   * restart), so entries from renamed/deleted tests can't leak into later
+   * runs. Stages must not wipe these themselves.
+   */
+  readonly derivedResultsDirs?: readonly string[];
 }
 
 interface PipelineBuilder {

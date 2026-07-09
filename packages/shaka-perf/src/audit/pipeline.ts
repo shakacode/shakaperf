@@ -58,6 +58,10 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     description: auditPipelineMetadata.description,
     pipelineConfig: input,
     report: auditPipelineReport,
+    // The audit stage mirrors each unit's coverage.json here (see
+    // mirrorCoverageToNycOutput); the runner wipes it before a fresh run so
+    // orphan slugs from renamed/deleted tests can't pollute the nyc report.
+    derivedResultsDirs: ['.nyc_output'],
   }, (pipeline) => {
     const workerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(workerPool, new AuditStage({
