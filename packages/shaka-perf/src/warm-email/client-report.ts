@@ -1950,8 +1950,9 @@ async function buildClientReportModel(
   const perfCostProblem = rankedCarded
     .map(cardPerfProblem)
     .find((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
-  const perfProblemTx = siteDominantPerfProblem ? perfProblemPhrase(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
-  const perfProblemMetricTx = siteDominantPerfProblem ? perfProblemMetric(siteDominantPerfProblem.problem, siteDominantPerfProblem.page) : undefined;
+  const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
+  const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
+  const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   let perfCost: ClientReportCostBlock | undefined;
   if (hasPerf) {
     if (perfStatus === 'good') {
@@ -2247,7 +2248,7 @@ async function buildClientReportModel(
     const defaultPerfConseq = perfStatus === 'good'
       ? 'Pages load fine on a phone, so visitors are not lost to waiting.'
       : `Phone visitors wait around ${ctx.avgMs !== undefined ? ctx.avgLabel : 'several seconds'} - long enough that many leave first.`;
-    const dominantPerfTileCopy = siteDominantPerfProblem ? perfProblemTileCopy(siteDominantPerfProblem.problem) : undefined;
+    const dominantPerfTileCopy = tilePerfProblem ? perfProblemTileCopy(tilePerfProblem.problem) : undefined;
     const perfKicker = dominantPerfTileCopy?.kicker ?? 'Mobile speed';
     const perfWordTx = perfCouldNotMeasure
       ? 'Could not measure'

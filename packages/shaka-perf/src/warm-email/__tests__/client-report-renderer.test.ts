@@ -1084,8 +1084,13 @@ describe('renderClientReport perf tile assembly', () => {
       { id: 'tbt-5', name: 'TBT 5', startingPath: '/tbt-5', metrics: { LCP: 1900, FCP: 900, TBT: 1660, 'LH Score': 72 } },
       { id: 'hidden-cls', name: 'Hidden CLS', startingPath: '/hidden-cls', metrics: { LCP: 1900, FCP: 900, CLS: 26, 'LH Score': 91 } },
     ], { throttleProfile: 'Slow-4G' }));
+    const perfTile = renderedTile(html, 'perf');
     const perfPanelHtml = renderedPanel(html, 'perf');
 
+    expect(perfTile).toContain('Slow to react');
+    expect(perfTile).toContain('slow to react to taps');
+    expect(perfTile).not.toContain('Layout jumps');
+    expect(perfTile).not.toContain('the layout jumps around');
     expect(perfPanelHtml).toContain('TBT 1');
     expect(perfPanelHtml).toContain('slow to react to taps on a mid-range phone');
     expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Ftbt-1');
