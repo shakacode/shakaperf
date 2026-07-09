@@ -388,7 +388,11 @@ function agentReadinessFixture(url: string, agent: AgentFixture): AgentReadiness
   };
 }
 
-function writePerfResults(metrics: Record<string, number>): string {
+interface PerfResultsOptions {
+  throttleProfile?: string;
+}
+
+function writePerfResults(metrics: Record<string, number>, opts: PerfResultsOptions = {}): string {
   return writePerfResultsForPages([
     {
       id: 'home',
@@ -396,14 +400,21 @@ function writePerfResults(metrics: Record<string, number>): string {
       startingPath: '/',
       metrics,
     },
-  ]);
+  ], opts);
 }
 
-function writePerfResultsForPages(pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture }[]): string {
+function writePerfResultsForPages(
+  pages: { id: string; name: string; startingPath: string; metrics: Record<string, number>; agent?: AgentFixture }[],
+  opts: PerfResultsOptions = {},
+): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-cr-report-'));
   tempResultDirs.push(dir);
   fs.writeFileSync(path.join(dir, 'report.json'), `${JSON.stringify({
-    meta: { experimentUrl: 'http://localhost', generatedAt: '2026-06-24T00:00:00.000Z' },
+    meta: {
+      experimentUrl: 'http://localhost',
+      generatedAt: '2026-06-24T00:00:00.000Z',
+      ...(opts.throttleProfile ? { throttleProfile: opts.throttleProfile } : {}),
+    },
     tests: pages.map((page) => ({
       id: page.id,
       name: page.name,
@@ -637,6 +648,7 @@ function model(over: Partial<ClientReportModel> = {}): ClientReportModel {
     perfCouldNotMeasure: false,
     perfCards: [
       {
+        id: 'insights',
         name: 'Insights index',
         path: '/insights',
         liveUrl: 'https://www.example.com/insights',
@@ -920,11 +932,14 @@ describe('renderClientReport perf tile assembly', () => {
   it('keeps an unmeasured assembled perf tile neutral and without a problem line', async () => {
     const { html } = await renderClientReport(writePerfResults({}));
     const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
     expect(perfTile).toContain('Mobile speed');
     expect(perfTile).toContain('Could not measure');
     expect(perfTile).toContain('>n/a</div>');
     expect(perfTile).toContain('no usable mobile speed data');
     expect(perfTile).not.toContain('font-size:13px; line-height:1.35; font-weight:700;');
+    expect(perfPanelHtml).not.toContain('challenge page instead of the real page, so this could not be measured');
+    expect(perfPanelHtml).not.toContain('>not measured</span>');
     expect(html).not.toContain('A bit slow on phones');
     expect(html).toContain('The audit did not return enough mobile speed data to make a speed claim.');
   });
@@ -945,16 +960,158 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain('worst page LCP; average LCP is 8.7s');
   });
 
+  it('builds perf cost from the dominant perf problem and the page download metrics', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 2000, FCP: 900, 'LH Score': 95, downloads: 5120, js: 120, 'js-count': 2 } },
+      { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35, downloads: 12800, 'downloads-before-LCP': 4096, js: 640, 'js-count': 9 } },
+    ], { throttleProfile: 'Slow-4G' }));
+    const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfTile).toContain('>15.4s</div>');
+    expect(perfTile).toContain('biggest piece takes 15.4s to load');
+    expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
+    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fproducts');
+    expect(perfPanelHtml).toContain('same phone and network profile we used');
+    expect(perfPanelHtml).toContain('What this affects');
+    expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
+    expect(perfPanelHtml).toContain('each visit to this page downloads 12.5 MB');
+    expect(perfPanelHtml).toContain('~= $0.03-0.08 of mobile data per visit');
+    expect(perfPanelHtml).not.toContain('$0.10-0.30');
+    expect(perfPanelHtml).not.toContain('~= $0.00');
+    expect(perfPanelHtml).toMatch(/>measured<\/span><span>each visit to this page downloads 12\.5 MB<\/span>/);
+    expect(perfPanelHtml).toMatch(/>estimated<\/span><span>~= \$0\.03-0\.08 of mobile data per visit<\/span><button type="button" data-disclose="cr-perf-data-cost-estimate"/);
+    expect(perfPanelHtml).toContain('how we estimated this');
+    expect(perfPanelHtml).toContain('Main content time: 15.4s.');
+    expect(perfPanelHtml).toContain('JavaScript: 640 KB across 9 files.');
+    expect(perfPanelHtml).toContain('Total transferred before LCP: 4096 KB.');
+    expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-products"');
+    expect(findBannedWords(perfPanelHtml)).toEqual([]);
+  });
+
+  it('does not claim PageSpeed uses the same profile when the audit did not record one', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 15400, FCP: 1200, 'LH Score': 35 }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain('Google&#39;s standard phone profile');
+    expect(perfPanelHtml).toContain('we used a profile not recorded in this audit, so numbers may differ');
+    expect(perfPanelHtml).not.toContain('same phone and network profile we used');
+  });
+
+  it('derives zero perf cost for a good report and does not render perf copy buttons', async () => {
+    const { html } = await renderClientReport(writePerfResults({
+      LCP: 1900,
+      FCP: 800,
+      CLS: 1,
+      TBT: 50,
+      'LH Score': 98,
+      downloads: 12800,
+      js: 120,
+      'js-count': 2,
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
+    expect(perfPanelHtml).not.toContain('cr-perf-card');
+    expect(perfPanelHtml).not.toContain('how we estimated this');
+  });
+
+  it('does not attach LCP fix prompts to non-LCP perf cards or good relaxed-LCP reports', async () => {
+    const layoutShift = await renderClientReport(writePerfResults({
+      LCP: 1900,
+      FCP: 900,
+      CLS: 45,
+      TBT: 50,
+      'LH Score': 91,
+      downloads: 12800,
+      js: 120,
+      'js-count': 2,
+    }));
+    const layoutShiftPanel = renderedPanel(layoutShift.html, 'perf');
+    expect(layoutShiftPanel).toContain('The page <strong>jumps around</strong> as it loads');
+    expect(layoutShiftPanel).toContain('Layout shifts make the page feel unstable');
+    expect(layoutShiftPanel).toContain('each visit to this page downloads 12.5 MB');
+    expect(layoutShiftPanel).not.toContain('cr-perf-site-prompt');
+    expect(layoutShiftPanel).not.toContain('cr-perf-card');
+
+    const relaxedLcp = await renderClientReport(writePerfResults({
+      LCP: 3700,
+      FCP: 1200,
+      CLS: 1,
+      TBT: 50,
+      'LH Score': 76,
+      downloads: 12800,
+      js: 120,
+      'js-count': 2,
+    }));
+    expect(renderedPanel(relaxedLcp.html, 'perf')).toContain(NOTHING_TO_FIX);
+    expect(renderedPanel(relaxedLcp.html, 'perf')).not.toContain('cr-perf-card');
+  });
+
+  it('does not attach an LCP fix prompt to a good relaxed-LCP card in a poor site report', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 3700, FCP: 1200, CLS: 1, TBT: 50, 'LH Score': 76, js: 120, 'js-count': 2 } },
+      { id: 'products', name: 'Products', startingPath: '/products', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35, js: 640, 'js-count': 9 } },
+    ], { throttleProfile: 'Slow-4G' }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-products"');
+    expect(perfPanelHtml).not.toContain('data-copy-prompt="cr-perf-card-1-home"');
+  });
+
+  it('does not borrow another page download metric for the perf data-cost row', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'slow', name: 'Slow page', startingPath: '/slow', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35, js: 640, 'js-count': 9 } },
+      { id: 'heavy', name: 'Heavy page', startingPath: '/heavy', metrics: { LCP: 1900, FCP: 900, 'LH Score': 95, downloads: 12800, js: 120, 'js-count': 2 } },
+    ]));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
+    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fslow');
+    expect(perfPanelHtml).not.toContain('each visit to this page downloads 12.5 MB');
+    expect(perfPanelHtml).not.toContain('~= $0.03-0.08 of mobile data per visit');
+  });
+
+  it('keeps the perf cost banner on a page that has a visible card', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      { id: 'tbt-1', name: 'TBT 1', startingPath: '/tbt-1', metrics: { LCP: 1900, FCP: 900, TBT: 1700, 'LH Score': 72 } },
+      { id: 'tbt-2', name: 'TBT 2', startingPath: '/tbt-2', metrics: { LCP: 1900, FCP: 900, TBT: 1690, 'LH Score': 72 } },
+      { id: 'tbt-3', name: 'TBT 3', startingPath: '/tbt-3', metrics: { LCP: 1900, FCP: 900, TBT: 1680, 'LH Score': 72 } },
+      { id: 'tbt-4', name: 'TBT 4', startingPath: '/tbt-4', metrics: { LCP: 1900, FCP: 900, TBT: 1670, 'LH Score': 72 } },
+      { id: 'tbt-5', name: 'TBT 5', startingPath: '/tbt-5', metrics: { LCP: 1900, FCP: 900, TBT: 1660, 'LH Score': 72 } },
+      { id: 'hidden-cls', name: 'Hidden CLS', startingPath: '/hidden-cls', metrics: { LCP: 1900, FCP: 900, CLS: 26, 'LH Score': 91 } },
+    ], { throttleProfile: 'Slow-4G' }));
+    const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfTile).toContain('Slow to react');
+    expect(perfTile).toContain('slow to react to taps');
+    expect(perfTile).not.toContain('Layout jumps');
+    expect(perfTile).not.toContain('the layout jumps around');
+    expect(perfPanelHtml).toContain('TBT 1');
+    expect(perfPanelHtml).toContain('slow to react to taps on a mid-range phone');
+    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Ftbt-1');
+    expect(perfPanelHtml).not.toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fhidden-cls');
+    expect(perfPanelHtml).not.toContain('the layout jumps around on a mid-range phone');
+  });
+
   it('prioritizes a poor-status problem over a higher-severity fair problem', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 8200, FCP: 1200, 'LH Score': 55 } },
       { id: 'details', name: 'Details', startingPath: '/details', metrics: { LCP: 1800, FCP: 900, CLS: 26, 'LH Score': 91 } },
     ]));
     const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
     expect(perfTile).toContain('Layout jumps');
     expect(perfTile).toContain('>0.26</div>');
     expect(perfTile).toContain('the layout jumps around');
     expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
+    expect(perfPanelHtml).toContain('the layout jumps around on a mid-range phone');
+    expect(perfPanelHtml).not.toContain('0.26 before your main content appears');
+    expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
   });
 
   it('uses the worst reachable page for the AI cost headline, check line, and prompt', async () => {
@@ -1438,6 +1595,105 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('data-copy-prompt="cr-agent-card-0-cards"');
     expect(agentPanelHtml).toContain('width:118px');
     expect(agentPanelHtml).toContain('Fix this page card.');
+  });
+
+  it('renders the measured perf cost block, data-cost chips, estimator toggle, and card prompt', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        headline: '15.4s before your main content appears on a mid-range phone',
+        chip: 'measured',
+        checkLine: 'check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights',
+        affectsProse: 'Slow main content and heavy downloads make mobile visitors wait.',
+        sitePrompt: 'Fix the site speed.',
+        dataCost: {
+          measuredLine: 'each visit to this page downloads 12.5 MB',
+          estimatedLine: '~= $0.03-0.08 of mobile data per visit',
+          formula: '12.5 MB measured on this page x $0.0026-$0.0060 per MB',
+        },
+      },
+      perfCards: model().perfCards.map((card) => ({ ...card, copyPrompt: 'Fix this performance card.' })),
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
+    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights');
+    expect(perfPanelHtml).toContain('What this affects');
+    expect(perfPanelHtml).toContain('Copy prompt for your agent');
+    expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
+    expect(perfPanelHtml).toContain('width:190px');
+    expect(perfPanelHtml).toMatch(/>measured<\/span><span>each visit to this page downloads 12\.5 MB<\/span>/);
+    expect(perfPanelHtml).toMatch(/>estimated<\/span><span>~= \$0\.03-0\.08 of mobile data per visit<\/span><button type="button" data-disclose="cr-perf-data-cost-estimate"/);
+    expect(perfPanelHtml).toContain('how we estimated this');
+    expect(perfPanelHtml).toContain('<div id="cr-perf-data-cost-estimate" data-disclosure hidden');
+    expect(perfPanelHtml).toContain('12.5 MB measured on this page x $0.0026-$0.0060 per MB');
+    expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-insights"');
+    expect(perfPanelHtml).toContain('width:118px');
+    expect(perfPanelHtml.indexOf('data-copy-prompt="cr-perf-card-0-insights"')).toBeGreaterThan(perfPanelHtml.indexOf('Loads extremely slowly.'));
+  });
+
+  it('renders zero-state perf cost copy without prompt controls or data-cost rows', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'zero',
+        sitePrompt: 'Do not show this prompt.',
+        dataCost: {
+          measuredLine: 'each visit to this page downloads 12.5 MB',
+          estimatedLine: '~= $0.03-0.08 of mobile data per visit',
+          formula: 'hidden',
+        },
+      },
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).not.toContain('Do not show this prompt.');
+    expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
+    expect(perfPanelHtml).not.toContain('each visit to this page downloads');
+    expect(perfPanelHtml).not.toContain('how we estimated this');
+  });
+
+  it('leaves AI and a11y panels byte-identical when only perfCost and perf card prompts are added', () => {
+    const base = threeTabHeaderModel({
+      perfCards: model().perfCards,
+      perfFine: model().perfFine,
+      a11yCards: [
+        {
+          name: 'Products',
+          path: '/products',
+          score: 88,
+          status: 'fair',
+          sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
+          summary: 'Hard to use by keyboard.',
+          frames: [],
+          fixes: ['Darken the light text.'],
+        },
+      ],
+      agentSite: model().agentSite,
+      agentCards: model().agentCards,
+      agentFine: model().agentFine,
+    });
+    const withoutPerfCost = renderClientReportHtml(base);
+    const withPerfCost = renderClientReportHtml({
+      ...base,
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        headline: '15.4s before your main content appears on a mid-range phone',
+        chip: 'measured',
+        checkLine: 'check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights',
+        affectsProse: 'Slow main content and heavy downloads make mobile visitors wait.',
+        sitePrompt: 'Fix the site speed.',
+      },
+      perfCards: base.perfCards.map((card) => ({ ...card, copyPrompt: 'Fix this performance card.' })),
+    });
+
+    expect(renderedPanel(withPerfCost, 'agent')).toBe(renderedPanel(withoutPerfCost, 'agent'));
+    expect(renderedPanel(withPerfCost, 'a11y')).toBe(renderedPanel(withoutPerfCost, 'a11y'));
   });
 
   it('renders zero-state AI cost copy without prompt controls or industry data', () => {
