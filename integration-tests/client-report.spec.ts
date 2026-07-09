@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, EXPERIMENT_CLONE_PATH, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, env, loud, startServers, waitForPort,
+  assertPlainNonZeroExit, env, loud, stage, startServers, waitForPort,
 } from './helpers';
 import {
   captureClientReportScreenshots,
@@ -69,11 +69,10 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   ).toBe(true);
 
   startServers();
-  loud(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`);
-  await Promise.all([
+  await stage(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`, () => Promise.all([
     waitForPort(CONTROL_PORT),
     waitForPort(EXPERIMENT_PORT),
-  ]);
+  ]));
 
   // Fresh audit over the filtered ab-tests. The audit engine wipes audit-results on
   // its own; this manual wipe is belt-and-braces so persisted engine errors
@@ -82,22 +81,23 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
     fs.rmSync(AUDIT_RESULTS_DIR, { recursive: true, force: true });
   }
 
-  loud(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped)`);
   // Expect a non-zero exit: the sabotaged products selector reliably errors
   // that one test. Swallow the throw and verify the artifacts below.
   let auditFailed = false;
-  try {
-    execSync(
-      `yarn shaka-perf audit --skip-stages ai_summary --testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
-      { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
-    );
-  } catch (e) {
-    auditFailed = true;
-    // Only a plain non-zero exit counts as "failed as designed" — a timeout
-    // kill or spawn failure must fail the spec, not masquerade as the
-    // engineered error.
-    assertPlainNonZeroExit(e, 'shaka-perf audit');
-  }
+  await stage(`Running shaka-perf audit over the filtered ab-tests (${AUDIT_TEST_PATH_PATTERN}, ai_summary skipped)`, () => {
+    try {
+      execSync(
+        `yarn shaka-perf audit --skip-stages ai_summary --testPathPattern ${JSON.stringify(AUDIT_TEST_PATH_PATTERN)}`,
+        { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 40 * 60 * 1000 },
+      );
+    } catch (e) {
+      auditFailed = true;
+      // Only a plain non-zero exit counts as "failed as designed" — a timeout
+      // kill or spawn failure must fail the spec, not masquerade as the
+      // engineered error.
+      assertPlainNonZeroExit(e, 'shaka-perf audit');
+    }
+  });
   if (!auditFailed) {
     throw new Error('Expected shaka-perf audit to exit non-zero (broken products selector), but it exited 0');
   }
@@ -119,11 +119,12 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
 
   // Render the v2 client report deterministically: every claude pass off, so
   // the verdict copy / captions / a11y summaries are the built-in fallbacks.
-  loud('Rendering v2 client report (all AI passes disabled)');
-  execSync(
-    'yarn shaka-perf client-report --results ./audit-results --no-ai-narrative --no-ai-captions --no-ai-a11y --no-ai-agent',
-    { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 10 * 60 * 1000 },
-  );
+  await stage('Rendering v2 client report (all AI passes disabled)', () => {
+    execSync(
+      'yarn shaka-perf client-report --results ./audit-results --no-ai-narrative --no-ai-captions --no-ai-a11y --no-ai-agent',
+      { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 10 * 60 * 1000 },
+    );
+  });
   const clientReportPath = path.join(AUDIT_RESULTS_DIR, 'client-report.html');
   expect(fs.existsSync(clientReportPath), 'client-report.html must be written').toBe(true);
 
@@ -137,22 +138,22 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
 
   // Deep-click the technical full-report.html: audit cards with metric chips,
   // accessibility findings, agent-readiness results, timeline filmstrips.
-  const auditShots = await captureReportScreenshots({
+  const auditShots = await stage('Deep-click technical full-report capture', () => captureReportScreenshots({
     page,
     reportHtmlPath: path.join(AUDIT_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'audit',
-  });
+  }));
 
   // Drive the v2 client report through its interactive states: overview with
   // status tiles + tab scores, each tab panel, tile jump, lightbox, severity
   // chip toggle.
-  const clientShots = await captureClientReportScreenshots({
+  const clientShots = await stage('Deep-click v2 client-report capture', () => captureClientReportScreenshots({
     page,
     reportHtmlPath: clientReportPath,
     outDir: SNAPSHOT_DIR,
     label: 'client',
-  });
+  }));
 
   // The audit ran all three categories, so the v2 report must have all three
   // status tiles and all three tab headers (Performance / Accessibility /

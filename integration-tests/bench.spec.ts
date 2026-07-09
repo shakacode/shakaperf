@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, loud, run, startServers, waitForPort,
+  assertPlainNonZeroExit, loud, run, stage, startServers, waitForPort,
 } from './helpers';
 import { captureReportScreenshots } from './report-capture';
 
@@ -23,37 +23,37 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   test.setTimeout(25 * 60 * 1000);
 
   startServers();
-  loud(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`);
-  await Promise.all([
+  await stage(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`, () => Promise.all([
     waitForPort(CONTROL_PORT),
     waitForPort(EXPERIMENT_PORT),
-  ]);
+  ]));
 
-  loud('Running shaka-perf compare --categories perf');
   // Expect a non-zero exit: the LazySection→div swap reliably regresses
   // HomePage perf. We still need the artifacts, so swallow the throw and
   // verify the report was produced below.
   let perfFailed = false;
-  try {
-    run(
-      [
-        'yarn shaka-perf compare',
-        '--categories perf',
-        '--testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"',
-      ].join(' '),
-      { timeout: 20 * 60 * 1000 },
-    );
-  } catch (e) {
-    perfFailed = true;
-    if (e && typeof e === 'object') {
-      const err = e as { stderr?: Buffer; stdout?: Buffer };
-      if (err.stdout) console.log(err.stdout.toString());
-      if (err.stderr) console.log(err.stderr.toString());
+  await stage('Running shaka-perf compare --categories perf', () => {
+    try {
+      run(
+        [
+          'yarn shaka-perf compare',
+          '--categories perf',
+          '--testPathPattern "./ab-tests/shop-now.abtest.ts|./ab-tests/homepage.abtest.ts"',
+        ].join(' '),
+        { timeout: 20 * 60 * 1000 },
+      );
+    } catch (e) {
+      perfFailed = true;
+      if (e && typeof e === 'object') {
+        const err = e as { stderr?: Buffer; stdout?: Buffer };
+        if (err.stdout) console.log(err.stdout.toString());
+        if (err.stderr) console.log(err.stderr.toString());
+      }
+      // Only a plain non-zero exit counts as "failed as designed" — a timeout
+      // kill or spawn failure must fail the spec, not masquerade as a regression.
+      assertPlainNonZeroExit(e, 'shaka-perf compare --categories perf');
     }
-    // Only a plain non-zero exit counts as "failed as designed" — a timeout
-    // kill or spawn failure must fail the spec, not masquerade as a regression.
-    assertPlainNonZeroExit(e, 'shaka-perf compare --categories perf');
-  }
+  });
   if (!perfFailed) {
     throw new Error('Expected shaka-perf compare --categories perf to exit non-zero (HomePage regression), but it exited 0');
   }
@@ -80,12 +80,12 @@ test('run shaka-perf compare --categories perf on twin servers @perf', async ({ 
   // Interact with the unified full-report.html and capture every distinct
   // state (dialogs, expanded source, filtered grid, timeline preview,
   // scrubber).
-  const shots = await captureReportScreenshots({
+  const shots = await stage('Deep-click full-report capture', () => captureReportScreenshots({
     page,
     reportHtmlPath: path.join(COMPARE_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'perf',
-  });
+  }));
 
   // Every capture interaction is optional-locator by design; this manifest
   // check is what makes a silently-vanished evidence class fail the suite.

@@ -113,6 +113,20 @@ export function timed(label: string, fn: () => void): void {
   console.log(`  ⏱ ${label}: ${elapsed}s`);
 }
 
+// Like `timed`, but prints the `>>>` stage banner first and awaits an
+// async body — so every spec stage emits both its banner and a `⏱` marker
+// even when its work is a `run()` that throws (a compare/audit expected to
+// exit non-zero never reaches run()'s own trailing timer). Returns the
+// body's value so a stage can hand back what it produced.
+export async function stage<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
+  loud(label);
+  const start = Date.now();
+  const result = await fn();
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`  ⏱ ${label}: ${elapsed}s`);
+  return result;
+}
+
 export function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
   const { cwd = DEMO_CWD, timeout = 10 * 60 * 1000 } = opts;
   loud(`run: ${cmd}`);

@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, loud, run, startServers, waitForPort,
+  assertPlainNonZeroExit, loud, run, stage, startServers, waitForPort,
 } from './helpers';
 import { captureReportScreenshots } from './report-capture';
 
@@ -23,32 +23,32 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
   test.setTimeout(20 * 60 * 1000);
 
   startServers();
-  loud(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`);
-  await Promise.all([
+  await stage(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`, () => Promise.all([
     waitForPort(CONTROL_PORT),
     waitForPort(EXPERIMENT_PORT),
-  ]);
+  ]));
 
   // Expect a non-zero exit: the hero padding change + broken-selector
   // injection reliably produce mismatches, and compare now propagates that
   // to the exit code. Swallow the throw so we can still verify the report.
-  loud('Running shaka-perf compare --categories visreg');
   let visregFailed = false;
-  try {
-    run('yarn shaka-perf compare --categories visreg', {
-      timeout: 15 * 60 * 1000,
-    });
-  } catch (e) {
-    visregFailed = true;
-    if (e && typeof e === 'object') {
-      const err = e as { stderr?: Buffer; stdout?: Buffer };
-      if (err.stdout) console.log(err.stdout.toString());
-      if (err.stderr) console.log(err.stderr.toString());
+  await stage('Running shaka-perf compare --categories visreg', () => {
+    try {
+      run('yarn shaka-perf compare --categories visreg', {
+        timeout: 15 * 60 * 1000,
+      });
+    } catch (e) {
+      visregFailed = true;
+      if (e && typeof e === 'object') {
+        const err = e as { stderr?: Buffer; stdout?: Buffer };
+        if (err.stdout) console.log(err.stdout.toString());
+        if (err.stderr) console.log(err.stderr.toString());
+      }
+      // Only a plain non-zero exit counts as "failed as designed" — a timeout
+      // kill or spawn failure must fail the spec, not masquerade as mismatches.
+      assertPlainNonZeroExit(e, 'shaka-perf compare --categories visreg');
     }
-    // Only a plain non-zero exit counts as "failed as designed" — a timeout
-    // kill or spawn failure must fail the spec, not masquerade as mismatches.
-    assertPlainNonZeroExit(e, 'shaka-perf compare --categories visreg');
-  }
+  });
   if (!visregFailed) {
     throw new Error('Expected shaka-perf compare --categories visreg to exit non-zero (mismatches), but it exited 0');
   }
@@ -80,12 +80,12 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
 
   // Interact with the unified full-report.html: filter toggles, visreg
   // scrubber, error log surface, test source expansion.
-  const shots = await captureReportScreenshots({
+  const shots = await stage('Deep-click full-report capture', () => captureReportScreenshots({
     page,
     reportHtmlPath: path.join(COMPARE_RESULTS_DIR, 'full-report.html'),
     outDir: SNAPSHOT_DIR,
     label: 'visreg',
-  });
+  }));
 
   // Every capture interaction is optional-locator by design; this manifest
   // check is what makes a silently-vanished evidence class fail the suite.

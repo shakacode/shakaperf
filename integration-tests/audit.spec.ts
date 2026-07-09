@@ -14,7 +14,7 @@ import * as path from 'path';
 import {
   DEMO_CWD, EXPERIMENT_CLONE_PATH,
   CONTROL_PORT, EXPERIMENT_PORT,
-  env, loud, restoreProductsSelector, startServers, waitForPort,
+  env, restoreProductsSelector, stage, startServers, waitForPort,
 } from './helpers';
 
 // `shaka-perf audit` writes per-test artifacts (Lighthouse reports,
@@ -39,11 +39,10 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
   test.setTimeout(25 * 60 * 1000);
 
   startServers();
-  loud(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`);
-  await Promise.all([
+  await stage(`Waiting for ports ${CONTROL_PORT} + ${EXPERIMENT_PORT}`, () => Promise.all([
     waitForPort(CONTROL_PORT),
     waitForPort(EXPERIMENT_PORT),
-  ]);
+  ]));
 
   // Two tests with multiple Playwright-driven clicks each: the products
   // filter test (Category dropdown + Electronics option) and the admin
@@ -66,7 +65,6 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
   // audit produces the click chips the OCR validator inspects.
   restoreProductsSelector();
 
-  loud('Running shaka-perf audit --filter for Products + Form Login');
   // Don't go through helpers.run() — it pipes stdio and only prints on
   // success, so audit failures arrive here as an opaque "Command
   // failed". Inherit stdio so the full audit log streams to the
@@ -74,10 +72,12 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
   // directly in CI output.
   // ai_summary is skipped: its claude-written sentences vary run to run,
   // which would churn the baseline log for zero OCR signal.
-  execSync(
-    'yarn shaka-perf audit --skip-stages ai_summary --filter="Products - Electronics Filter|Form Login"',
-    { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 20 * 60 * 1000 },
-  );
+  await stage('Running shaka-perf audit --filter for Products + Form Login', () => {
+    execSync(
+      'yarn shaka-perf audit --skip-stages ai_summary --filter="Products - Electronics Filter|Form Login"',
+      { cwd: DEMO_CWD, env, stdio: 'inherit', timeout: 20 * 60 * 1000 },
+    );
+  });
 
   // Every per-test directory should have timeline metadata describing at
   // least one frame, and every frame image the metadata references must
@@ -105,23 +105,24 @@ test('shaka-perf audit produces frames whose blue + red click chips coincide @au
   // the first/last metadata click-chip frames each also carry the red
   // in-page Click overlay (read from the frame pixels via OCR) for every
   // test, non-zero otherwise.
-  loud('Verifying blue/red click chip coincidence (metadata vs OCR)');
-  let stdout = '';
-  try {
-    stdout = execSync(`yarn node ${JSON.stringify(VERIFY_SCRIPT)} ${JSON.stringify(AUDIT_RESULTS_DIR)}`, {
-      cwd: EXPERIMENT_CLONE_PATH,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 5 * 60 * 1000,
-      encoding: 'utf-8',
-    });
-    console.log(stdout);
-  } catch (e) {
-    const err = e as { status?: number; stdout?: string; stderr?: string };
-    console.log(err.stdout ?? '');
-    console.log(err.stderr ?? '');
-    throw new Error(`verify-click-coincidence.mjs failed with exit ${err.status ?? 'unknown'} — blue/red chips do not coincide. See output above.`);
-  }
+  const stdout = await stage('Verifying blue/red click chip coincidence (metadata vs OCR)', () => {
+    try {
+      const out = execSync(`yarn node ${JSON.stringify(VERIFY_SCRIPT)} ${JSON.stringify(AUDIT_RESULTS_DIR)}`, {
+        cwd: EXPERIMENT_CLONE_PATH,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 5 * 60 * 1000,
+        encoding: 'utf-8',
+      });
+      console.log(out);
+      return out;
+    } catch (e) {
+      const err = e as { status?: number; stdout?: string; stderr?: string };
+      console.log(err.stdout ?? '');
+      console.log(err.stderr ?? '');
+      throw new Error(`verify-click-coincidence.mjs failed with exit ${err.status ?? 'unknown'} — blue/red chips do not coincide. See output above.`);
+    }
+  });
   // Belt-and-braces against a vacuous PASS: the validator hard-fails when it
   // validated zero click-chip tests, and this asserts the count line it
   // prints on success so a validator regression can't silently drop it.
