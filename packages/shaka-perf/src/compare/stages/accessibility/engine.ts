@@ -1,29 +1,33 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
 import * as path from 'node:path';
-import AxeBuilder from '@axe-core/playwright';
-import sharp from 'sharp';
-import { chromium, firefox, webkit } from 'playwright-core';
-import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
-import { runBeforeNavigateHooks } from '../../../before-navigate';
-import { clearBrowserData } from '../../../bench/core/clear-browser-data';
-import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
+import type { Browser } from 'playwright-core';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import {
   getLatestTestAnnotation,
   messageWithLatestTestAnnotation,
-  runWithLastAnnotation,
 } from '../../../test-annotation';
-import { scanLandedOnBotWall } from '../../../audit/bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../../audit/real-chrome';
 import {
   accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
-import { normalizeViolation } from '../../../audit/stages/accessibility/artifacts';
+import {
+  AccessibilityPageScanError,
+  captureAccessibilityScreenshotIfPossible,
+  launchAccessibilityBrowser,
+  scanAccessibilityPage,
+} from '../../../audit/stages/accessibility/scan';
 import type {
-  AccessibilityNodeBounds,
   AccessibilityViolation,
 } from '../../../audit/stages/accessibility/types';
 import type {
@@ -39,7 +43,6 @@ interface AccessibilityCompareSlotState extends PoolWorkerState {
   accessibilityCompareBrowser?: Browser;
 }
 
-type PageGotoOptions = NonNullable<Parameters<Page['goto']>[1]>;
 const MAX_NODE_HTML_CHARS = 500;
 const MAX_NODE_FAILURE_SUMMARY_CHARS = 2000;
 
@@ -62,21 +65,10 @@ export async function runAccessibilityCompareStage(
       disposeAccessibilityCompareBrowser,
     );
     if (!slot.accessibilityCompareBrowser) {
-      slot.accessibilityCompareBrowser = await launchBrowser(config, ctx.runtime.headed);
+      slot.accessibilityCompareBrowser = await launchAccessibilityBrowser(config, ctx.runtime.headed);
     }
     return scanAccessibilityComparison(ctx, slot.accessibilityCompareBrowser, config);
   }, { key: `${ctx.testAndViewportId}:accessibility` });
-}
-
-async function launchBrowser(config: AccessibilityStageConfig, headed = false): Promise<Browser> {
-  const engine = config.engineOptions.browser ?? 'chromium';
-  const launchOptions: LaunchOptions = {
-    headless: headed ? false : config.engineOptions.headless ?? true,
-    args: config.engineOptions.args,
-  };
-  if (engine === 'firefox') return firefox.launch(launchOptions);
-  if (engine === 'webkit') return webkit.launch(launchOptions);
-  return chromium.launch(applyRealChrome(launchOptions));
 }
 
 async function scanAccessibilityComparison(
@@ -117,68 +109,48 @@ async function scanSide(
   side: AccessibilityCompareSide,
   url: string,
 ): Promise<AccessibilitySideScan> {
-  let context: BrowserContext | undefined;
-  let page: Page | undefined;
   try {
-    context = await browser.newContext({
-      viewport: {
-        width: ctx.viewport.width,
-        height: ctx.viewport.height,
-      },
-      deviceScaleFactor: ctx.viewport.deviceScaleFactor,
-      isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
+    const result = await scanAccessibilityPage(ctx, browser, effective, config, {
+      url,
+      isControl: side === 'control',
+      screenshotFilename: `${side}-accessibility-screenshot.png`,
+      inlineEncodeWarningPrefix: '[shaka-perf compare a11y]',
+      captureFailure: async ({ page }) => ({
+        screenshot: await captureAccessibilityScreenshotIfPossible(
+          ctx,
+          page,
+          `${side}-failure-accessibility-screenshot.png`,
+          '[shaka-perf compare a11y]',
+        ),
+      }),
     });
-    page = await context.newPage();
-    if (config.engineOptions.waitTimeout) {
-      page.setDefaultTimeout(config.engineOptions.waitTimeout);
-      page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
-    }
-    await preparePageForAccessibilitySide(page, context, ctx, config, side, url);
-
-    let builder = new AxeBuilder({ page });
-    if (effective.includeRules && effective.includeRules.length > 0) {
-      builder = builder.withRules(effective.includeRules);
-    } else {
-      if (effective.tags.length > 0) builder = builder.withTags(effective.tags);
-      if (effective.disableRules.length > 0) builder = builder.disableRules(effective.disableRules);
-    }
-
-    const results = await builder.analyze();
-    const violations = results.violations.map(normalizeViolation);
-    await attachNodeBounds(page, violations);
-    const screenshot = await captureScreenshot(ctx, page, side);
-    const probe = await page
-      .evaluate(() => ({ title: document.title, html: document.documentElement.outerHTML.slice(0, 4000) }))
-      .catch(() => ({ title: '', html: '' }));
-    const blocked = scanLandedOnBotWall(probe, screenshot?.height, ctx.viewport.height);
     const rawFilename = `${side}-accessibility-report.json`;
     await ctx.artifacts.writeJson(rawFilename, {
       side,
       testName: ctx.test.name,
-      url: results.url ?? url,
-      blocked,
+      url: result.url,
+      blocked: result.blocked,
       effectiveConfig: {
         tags: effective.tags,
         disableRules: effective.disableRules,
         includeRules: effective.includeRules,
       },
-      axe: results,
+      axe: result.axeResults,
     });
     return {
       side,
-      url: results.url ?? url,
+      url: result.url,
       rawArtifactHref: relativeArtifactHref(ctx, rawFilename),
-      screenshot,
-      violations,
-      blocked,
+      screenshot: result.screenshot,
+      violations: result.violations,
+      blocked: result.blocked,
     };
   } catch (err) {
-    const screenshot = page ? await captureScreenshotIfPossible(ctx, page, `${side}-failure`) : undefined;
+    const scanError = err instanceof AccessibilityPageScanError ? err : null;
+    const cause = scanError?.cause ?? err;
     const error = messageWithLatestTestAnnotation(
-      (err as Error).message || String(err),
-      getLatestTestAnnotation(err),
+      (cause as Error).message || String(cause),
+      getLatestTestAnnotation(cause),
     );
     const rawFilename = `${side}-accessibility-error.json`;
     await ctx.artifacts.writeJson(rawFilename, {
@@ -191,150 +163,10 @@ async function scanSide(
       side,
       url,
       rawArtifactHref: relativeArtifactHref(ctx, rawFilename),
-      screenshot,
+      screenshot: scanError?.artifacts.screenshot,
       violations: [],
       error,
     };
-  } finally {
-    await context?.close().catch(() => {});
-  }
-}
-
-async function preparePageForAccessibilitySide(
-  page: Page,
-  context: BrowserContext,
-  ctx: TestContext,
-  config: AccessibilityStageConfig,
-  side: AccessibilityCompareSide,
-  url: string,
-): Promise<void> {
-  await context.clearCookies();
-  await runBeforeNavigateHooks(
-    {
-      context,
-      page,
-      url,
-      viewport: ctx.viewport,
-      isControl: side === 'control',
-      testType: 'accessibility',
-    },
-    ctx.test.options.beforeNavigate,
-  );
-  await clearBrowserData(context, url);
-  await page.goto(url, accessibilityGotoOptions(config));
-  await waitForBotWallToClear(page);
-  await runWithLastAnnotation((annotate) =>
-    ctx.test.testFn({
-      page,
-      browserContext: context,
-      isControl: side === 'control',
-      scenario: ctx.test,
-      viewport: ctx.viewport,
-      testType: 'accessibility',
-      annotate,
-    }),
-  );
-}
-
-function accessibilityGotoOptions(config: AccessibilityStageConfig): PageGotoOptions {
-  const candidate = config.engineOptions.gotoParameters;
-  if (candidate && typeof candidate === 'object') {
-    return candidate as PageGotoOptions;
-  }
-  return { waitUntil: 'networkidle' };
-}
-
-async function captureScreenshot(
-  ctx: TestContext,
-  page: Page,
-  prefix: string,
-): Promise<AccessibilitySideScan['screenshot']> {
-  const filename = `${prefix}-accessibility-screenshot.png`;
-  const shot = await page.screenshot({
-    type: 'png',
-    fullPage: true,
-    scale: 'css',
-  });
-  await ctx.artifacts.writeFile(filename, shot);
-  const meta = await sharp(shot).metadata();
-  const width = meta.width ?? ctx.viewport.width;
-  const height = meta.height ?? ctx.viewport.height;
-  const scale = Math.min(1, 960 / Math.max(1, width));
-  let imageDataUri: string | undefined;
-  try {
-    imageDataUri = await bufferToAvifDataUri(shot, 45, scale);
-  } catch (err) {
-    console.warn(
-      `[shaka-perf compare a11y] inline screenshot encode failed (${width}x${height}px); ` +
-        `card will render without crop frames: ${(err as Error).message}`,
-    );
-  }
-  return {
-    width,
-    height,
-    imageHref: relativeArtifactHref(ctx, filename),
-    imageDataUri,
-  };
-}
-
-async function captureScreenshotIfPossible(
-  ctx: TestContext,
-  page: Page,
-  prefix: string,
-): Promise<AccessibilitySideScan['screenshot'] | undefined> {
-  try {
-    return await captureScreenshot(ctx, page, prefix);
-  } catch {
-    return undefined;
-  }
-}
-
-async function attachNodeBounds(page: Page, violations: AccessibilityViolation[]): Promise<void> {
-  const targets = violations.flatMap((violation) => violation.nodes.map((node) => node.target));
-  if (targets.length === 0) return;
-  let boxes: (AccessibilityNodeBounds | null)[];
-  try {
-    boxes = await page.evaluate((targetList): (AccessibilityNodeBounds | null)[] => {
-      const sx = window.scrollX;
-      const sy = window.scrollY;
-      const r2 = (value: number): number => Math.round(value * 100) / 100;
-      return targetList.map((target): AccessibilityNodeBounds | null => {
-        // length > 1 = iframe descent; querySelector can't cross frames, so skip.
-        if (!Array.isArray(target) || target.length !== 1) return null;
-        const segment = target[0];
-        // string[] segment = shadow-DOM path (pierce each open shadow root).
-        const steps = typeof segment === 'string' ? [segment] : Array.isArray(segment) ? segment : [];
-        let element: Element | null = null;
-        let scope: Document | ShadowRoot = document;
-        for (let i = 0; i < steps.length; i += 1) {
-          const step = steps[i];
-          if (!step) { element = null; break; }
-          let found: Element | null = null;
-          try { found = scope.querySelector(step); } catch { found = null; }
-          if (!found) { element = null; break; }
-          element = found;
-          if (i < steps.length - 1) {
-            // Intermediate step must descend a shadow root; if none, bail.
-            if (!found.shadowRoot) { element = null; break; }
-            scope = found.shadowRoot;
-          }
-        }
-        if (!element) return null;
-        const rect = element.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return null;
-        return { x: r2(rect.x + sx), y: r2(rect.y + sy), width: r2(rect.width), height: r2(rect.height) };
-      });
-    }, targets);
-  } catch {
-    return;
-  }
-  let index = 0;
-  for (const violation of violations) {
-    for (const node of violation.nodes) {
-      const bounds = boxes[index];
-      index += 1;
-      if (bounds) node.bounds = bounds;
-    }
   }
 }
 
