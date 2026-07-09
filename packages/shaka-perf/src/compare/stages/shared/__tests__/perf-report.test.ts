@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';

@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+ * License in LICENSE.md.
+ */
+
 const mockChromiumLaunch = jest.fn();
 const mockFirefoxLaunch = jest.fn();
 const mockWebkitLaunch = jest.fn();
