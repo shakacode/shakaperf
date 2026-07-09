@@ -28,8 +28,11 @@ export default async function globalSetup() {
 
   // Copy current working directory as the experiment repo (includes uncommitted changes)
   loud('Copying current directory as experiment repo');
+  // audit-results/compare-results are gitignored scratch from local runs
+  // (can be hundreds of MB of AVIFs/videos) — the specs regenerate them
+  // inside the clone, so copying them would only slow the rsync down.
   timed('rsync experiment', () => execSync(
-    `rsync -a --exclude=node_modules "${ORIGINAL_REPO}/" "${EXPERIMENT_CLONE_PATH}/"`,
+    `rsync -a --exclude=node_modules --exclude=audit-results --exclude=compare-results "${ORIGINAL_REPO}/" "${EXPERIMENT_CLONE_PATH}/"`,
     { stdio: 'inherit' },
   ));
 
@@ -58,14 +61,19 @@ export default async function globalSetup() {
     'demo-ecommerce/app/javascript/components/pages/HomePage.tsx',
   );
   loud('Replacing <LazySection> with <div> and adjusting hero padding in experiment HomePage');
-  const homePageContent = fs.readFileSync(homePagePath, 'utf-8');
-  fs.writeFileSync(
-    homePagePath,
-    homePageContent
+  timed('modify experiment HomePage', () => {
+    const homePageContent = fs.readFileSync(homePagePath, 'utf-8');
+    const modifiedHomePage = homePageContent
       .replace(/<LazySection>/g, '<div>')
       .replace(/<\/LazySection>/g, '</div>')
-      .replace(/py: \{ xs: 6, md: 10 \}/, 'py: { xs: 6, md: 14 }'),
-  );
+      .replace(/py: \{ xs: 6, md: 10 \}/, 'py: { xs: 6, md: 14 }');
+    if (modifiedHomePage === homePageContent) {
+      // A silent no-op here would quietly defuse the perf regression + visreg
+      // mismatch every suite is engineered around — fail setup loudly instead.
+      throw new Error(`global-setup: HomePage.tsx no longer matches the LazySection/hero-padding patterns — update the replaces in ${__filename}`);
+    }
+    fs.writeFileSync(homePagePath, modifiedHomePage);
+  });
 
   // Inject a non-existent selector into the experiment's products abtest so
   // visreg tests exercise the "selector not found" engine-error path.
@@ -75,14 +83,19 @@ export default async function globalSetup() {
     'demo-ecommerce/ab-tests/products.abtest.ts',
   );
   loud('Injecting broken selector into experiment products.abtest.ts');
-  const productsAbtestContent = fs.readFileSync(productsAbtestPath, 'utf-8');
-  fs.writeFileSync(
-    productsAbtestPath,
-    productsAbtestContent.replace(
+  timed('sabotage products.abtest.ts', () => {
+    const productsAbtestContent = fs.readFileSync(productsAbtestPath, 'utf-8');
+    const sabotagedProducts = productsAbtestContent.replace(
       "await page.click('[data-cy=\"category-option-electronics\"]');",
       "await page.click('[data-cy=\"category-option-electronics-fake-broken-selector\"]');",
-    ),
-  );
+    );
+    if (sabotagedProducts === productsAbtestContent) {
+      // A silent no-op would defuse the engine-error path visreg and the
+      // client-report audit are engineered around — fail setup loudly instead.
+      throw new Error(`global-setup: products.abtest.ts no longer contains the electronics click to sabotage — update the replace in ${__filename}`);
+    }
+    fs.writeFileSync(productsAbtestPath, sabotagedProducts);
+  });
 
   timed('git commit experiment changes', () => execSync('git add -A && git commit --no-verify --allow-empty -m "integration test snapshot"', {
     cwd: EXPERIMENT_CLONE_PATH,

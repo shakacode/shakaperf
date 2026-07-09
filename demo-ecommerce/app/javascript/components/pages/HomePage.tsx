@@ -15,6 +15,7 @@ import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../shared/ProductCard';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import LazySection from '../shared/LazySection';
+import ExperimentA11yRegressions from '../shared/ExperimentA11yRegressions';
 
 const HomePage: React.FC = () => {
   const { products, loading, error } = useProducts();
@@ -26,7 +27,7 @@ const HomePage: React.FC = () => {
       <Box
         data-cy="hero-section"
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #4f46b5 0%, #764ba2 100%)',
           color: 'white',
           py: { xs: 6, md: 10 },
           mb: 6,
@@ -41,7 +42,7 @@ const HomePage: React.FC = () => {
             >
               Discover Your Style
             </Typography>
-            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }} style={{ marginBottom: "150px" }}>
+            <Typography variant="h6" component="p" sx={{ mb: 4, opacity: 0.9, fontWeight: 400 }} style={{ marginBottom: "150px" }}>
               Shop the latest trends with free shipping on orders over $50
             </Typography>
             <Button
@@ -52,7 +53,7 @@ const HomePage: React.FC = () => {
               size="large"
               sx={{
                 bgcolor: 'white',
-                color: '#667eea',
+                color: '#4f46b5',
                 px: 4,
                 py: 1.5,
                 fontWeight: 600,
@@ -66,6 +67,8 @@ const HomePage: React.FC = () => {
       </Box>
 
       <Container maxWidth="lg">
+        <ExperimentA11yRegressions />
+
         {/* Features Section */}
         <Box
           data-cy="features-section"
@@ -91,8 +94,8 @@ const HomePage: React.FC = () => {
                 bgcolor: 'white',
               }}
             >
-              <Box sx={{ color: '#667eea', mb: 1 }}>{feature.icon}</Box>
-              <Typography variant="subtitle1" fontWeight={600}>
+              <Box sx={{ color: '#4f46b5', mb: 1 }}>{feature.icon}</Box>
+              <Typography variant="subtitle1" component="h2" fontWeight={600}>
                 {feature.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -113,7 +116,7 @@ const HomePage: React.FC = () => {
                 component={Link}
                 to="/products"
                 endIcon={<ArrowForward />}
-                sx={{ color: '#667eea' }}
+                sx={{ color: '#4f46b5' }}
               >
                 View All
               </Button>

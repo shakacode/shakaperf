@@ -153,6 +153,8 @@ GEM
     nokogiri (1.18.10)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
+    nokogiri (1.18.10-arm64-darwin)
+      racc (~> 1.4)
     package_json (0.2.0)
     parallel (1.27.0)
     parser (3.3.10.0)
@@ -279,6 +281,7 @@ GEM
       sprockets (>= 3.0.0)
     sqlite3 (2.8.1)
       mini_portile2 (~> 2.8.0)
+    sqlite3 (2.8.1-arm64-darwin)
     stringio (3.2.0)
     thor (1.5.0)
     timeout (0.6.0)
@@ -309,6 +312,7 @@ PLATFORMS
   arm-linux
   arm-linux-musl
   arm64-darwin
+  arm64-darwin-23
   x86_64-darwin
   x86_64-linux
   x86_64-linux

@@ -35,7 +35,7 @@ const CartPage: React.FC = () => {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <ShoppingBag sx={{ fontSize: 80, color: 'grey.400', mb: 2 }} />
-          <Typography variant="h5" sx={{ mb: 2 }}>
+          <Typography variant="h5" component="h1" sx={{ mb: 2 }}>
             Your cart is empty
           </Typography>
           <Button
@@ -43,7 +43,7 @@ const CartPage: React.FC = () => {
             component={Link}
             to="/products"
             startIcon={<ArrowBack />}
-            sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+            sx={{ bgcolor: '#4f46b5', '&:hover': { bgcolor: '#4338ca' } }}
           >
             Continue Shopping
           </Button>
@@ -83,7 +83,7 @@ const CartPage: React.FC = () => {
                     <Box>
                       <Link
                         to={`/products/${item.product.id}`}
-                        style={{ color: '#667eea', textDecoration: 'none', fontWeight: 500 }}
+                        style={{ color: '#4f46b5', textDecoration: 'none', fontWeight: 500 }}
                       >
                         {item.product.name}
                       </Link>
@@ -99,6 +99,7 @@ const CartPage: React.FC = () => {
                 <TableCell align="center">
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                     <IconButton
+                      aria-label={`Decrease quantity for ${item.product.name}`}
                       size="small"
                       onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                     >
@@ -119,6 +120,7 @@ const CartPage: React.FC = () => {
                       }}
                     />
                     <IconButton
+                      aria-label={`Increase quantity for ${item.product.name}`}
                       size="small"
                       onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                     >
@@ -131,6 +133,7 @@ const CartPage: React.FC = () => {
                 </TableCell>
                 <TableCell align="center">
                   <IconButton
+                    aria-label={`Remove ${item.product.name} from cart`}
                     color="error"
                     onClick={() => removeFromCart(item.product.id)}
                   >
@@ -145,8 +148,8 @@ const CartPage: React.FC = () => {
 
       <Paper sx={{ p: 3, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h5">Total</Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: '#667eea' }}>
+          <Typography variant="h2" sx={{ fontSize: '1.5rem' }}>Total</Typography>
+          <Typography variant="h4" component="p" sx={{ fontWeight: 700, color: '#4f46b5' }}>
             ${total.toFixed(2)}
           </Typography>
         </Box>
@@ -157,7 +160,7 @@ const CartPage: React.FC = () => {
           <Button
             variant="contained"
             size="large"
-            sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+            sx={{ bgcolor: '#4f46b5', '&:hover': { bgcolor: '#4338ca' } }}
           >
             Proceed to Checkout
           </Button>

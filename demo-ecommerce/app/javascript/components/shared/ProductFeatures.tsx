@@ -115,6 +115,15 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
     setExpandedCategory(prev => prev === category ? null : category);
   }, []);
 
+  const handleCategoryKeyDown = useCallback((
+    event: React.KeyboardEvent,
+    category: string,
+  ) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleCategoryToggle(category);
+  }, [handleCategoryToggle]);
+
   const totalFeatures = useMemo(() => {
     return Object.values(FEATURE_CATEGORIES).reduce((acc, cat) =>
       acc + cat.features.filter(f => f.available).length, 0
@@ -123,7 +132,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
 
   return (
     <Paper elevation={0} sx={{ p: 3, mt: 3, border: '1px solid #e0e0e0', borderRadius: 2 }}>
-      <Typography variant="h6" fontWeight={600} gutterBottom>
+      <Typography variant="h6" component="h2" fontWeight={600} gutterBottom>
         {productName} Features & Details
       </Typography>
 
@@ -134,7 +143,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
 
       {/* Quality Metrics */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight={500} gutterBottom>
+        <Typography variant="subtitle1" component="h3" fontWeight={500} gutterBottom>
           Quality Metrics
         </Typography>
         <Stack spacing={2}>
@@ -145,6 +154,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
                 <Typography variant="body2" fontWeight={500}>{metric.value}%</Typography>
               </Box>
               <LinearProgress
+                aria-label={`${metric.label} quality score`}
                 variant="determinate"
                 value={metric.value}
                 sx={{
@@ -161,7 +171,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
 
       {/* Feature Categories */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight={500} gutterBottom>
+        <Typography variant="subtitle1" component="h3" fontWeight={500} gutterBottom>
           Feature Categories
         </Typography>
         {Object.entries(FEATURE_CATEGORIES).map(([key, category]) => (
@@ -171,6 +181,9 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
             variant="outlined"
           >
             <Box
+              aria-expanded={expandedCategory === key}
+              onKeyDown={(event) => handleCategoryKeyDown(event, key)}
+              role="button"
               sx={{
                 p: 2,
                 display: 'flex',
@@ -178,6 +191,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
                 gap: 2,
                 bgcolor: expandedCategory === key ? `${category.color}10` : 'transparent'
               }}
+              tabIndex={0}
               onClick={() => handleCategoryToggle(key)}
             >
               <category.icon sx={{ color: category.color }} />
@@ -211,7 +225,7 @@ const ProductFeatures: React.FC<ProductFeaturesProps> = ({ productName = 'Produc
 
       {/* Size Selection */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight={500} gutterBottom>
+        <Typography variant="subtitle1" component="h3" fontWeight={500} gutterBottom>
           <Straighten sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />
           Size Chart
         </Typography>

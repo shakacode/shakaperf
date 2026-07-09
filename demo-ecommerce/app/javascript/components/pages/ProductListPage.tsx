@@ -21,6 +21,7 @@ import type { SelectChangeEvent } from '@mui/material';
 import { useProducts } from '../../hooks/useProducts';
 import ProductCard from '../shared/ProductCard';
 import LoadingSpinner from '../shared/LoadingSpinner';
+import ExperimentA11yRegressions from '../shared/ExperimentA11yRegressions';
 
 const ProductListPage: React.FC = () => {
   const [category, setCategory] = useState<string>('');
@@ -58,6 +59,8 @@ const ProductListPage: React.FC = () => {
             </Select>
           </FormControl>
         </Box>
+
+        <ExperimentA11yRegressions />
 
         {loading && <LoadingSpinner />}
 

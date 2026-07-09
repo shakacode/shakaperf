@@ -20,12 +20,14 @@ export const ORIGINAL_REPO = path.resolve(__dirname, '..');
 // Live-mode escape hatch. When SKIP_GLOBAL_SETUP=1 is set the global
 // setup never creates the /tmp temp clones, so the helpers would point
 // every cwd at a non-existent path and execSync would throw ENOENT
-// before any spec body runs. Falling back to ORIGINAL_REPO lets specs
-// that just need a running demo-ecommerce (e.g. the audit spec) run
+// before any spec body runs. Falling back to ORIGINAL_REPO lets a spec
+// that just needs a running demo-ecommerce (the OCR audit spec) run
 // against the developer's local twin-server containers in seconds.
-// Specs that *modify* the clone (twin-servers.spec, bench.spec,
-// visreg.spec) still need the full setup and should not be combined
-// with SKIP_GLOBAL_SETUP=1.
+// Specs that DEPEND ON the changes global setup bakes into the clone —
+// twin-servers.spec, bench.spec, visreg.spec (LazySection swap, hero
+// padding, broken products selector), and client-report.spec (its audit
+// must exit non-zero via that broken selector; it self-skips in live
+// mode) — cannot run with SKIP_GLOBAL_SETUP=1.
 const TMP_EXPERIMENT = path.join(TMP_ROOT, 'shaka-perf');
 const TMP_CONTROL = path.join(TMP_ROOT, 'shaka-perf-control');
 export const EXPERIMENT_CLONE_PATH = (process.env.SKIP_GLOBAL_SETUP === '1' && !fs.existsSync(TMP_EXPERIMENT))
@@ -59,6 +61,44 @@ export const env: Record<string, string> = {
 };
 
 
+// The global setup injects a broken selector into the experiment clone's
+// products.abtest.ts (and COMMITS it) so visreg exercises the engine-error
+// path. The audit OCR spec needs that flow working again — this rewrites the
+// selector back as an UNCOMMITTED change, which base-test's afterEach
+// `git checkout .` reverts, so later suites still see the sabotage.
+export function restoreProductsSelector(): void {
+  const abtestPath = path.join(
+    EXPERIMENT_CLONE_PATH,
+    'demo-ecommerce/ab-tests/products.abtest.ts',
+  );
+  const content = fs.readFileSync(abtestPath, 'utf-8');
+  const restored = content.replace(
+    'category-option-electronics-fake-broken-selector',
+    'category-option-electronics',
+  );
+  if (restored !== content) {
+    fs.writeFileSync(abtestPath, restored);
+    loud('Restored working products.abtest.ts selector for this spec');
+  }
+}
+
+/**
+ * Guard for commands whose non-zero exit is the EXPECTED outcome. Call from
+ * the catch block: rethrows anything that is NOT a plain non-zero exit —
+ * timeout kills (signal), OOM kills, spawn failures (code) — so "failed as
+ * designed" can't be conflated with "crashed or timed out".
+ */
+export function assertPlainNonZeroExit(e: unknown, what: string): void {
+  const err = e as { status?: number | null; signal?: string | null; code?: string };
+  if (typeof err.status === 'number' && err.status !== 0 && !err.signal) return;
+  throw new Error(
+    `${what} was expected to fail with a plain non-zero exit, but got `
+    + `status=${err.status ?? 'null'} signal=${err.signal ?? 'none'} code=${err.code ?? 'none'} — `
+    + 'that is a crash/timeout/spawn failure, not the engineered failure',
+    { cause: e },
+  );
+}
+
 const GREEN_BOLD = '\x1b[1;32m';
 const RESET = '\x1b[0m';
 
@@ -71,6 +111,20 @@ export function timed(label: string, fn: () => void): void {
   fn();
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
   console.log(`  ⏱ ${label}: ${elapsed}s`);
+}
+
+// Like `timed`, but prints the `>>>` stage banner first and awaits an
+// async body — so every spec stage emits both its banner and a `⏱` marker
+// even when its work is a `run()` that throws (a compare/audit expected to
+// exit non-zero never reaches run()'s own trailing timer). Returns the
+// body's value so a stage can hand back what it produced.
+export async function stage<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
+  loud(label);
+  const start = Date.now();
+  const result = await fn();
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`  ⏱ ${label}: ${elapsed}s`);
+  return result;
 }
 
 export function run(cmd: string, opts: { cwd?: string; timeout?: number } = {}): string {
