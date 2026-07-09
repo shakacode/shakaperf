@@ -3,7 +3,7 @@
 # After running, use `git diff` to review changes to the baseline.
 #
 # Usage:
-#   ./integration-tests/run-integration-tests-and-update-snapshot-logs.sh \
+#   ./integration-tests/run-integration-tests-and-update-snapshots.sh \
 #       [--perf] [--visreg] [--twin-servers] [--audit]
 #
 # Snapshots contain ONLY reviewable, STABLE-NAMED artifacts — the normalized
@@ -62,8 +62,8 @@
 #   - New/removed screenshots under the results dirs — a missing shot
 #     means an interactive state stopped rendering.
 #
-# The `check-integration-tests-integrity` skill
-# (.claude/commands/check-integration-tests-integrity.md) automates this
+# The `analyze-diffs-in-integration-tests-snapshots` skill
+# (.claude/commands/analyze-diffs-in-integration-tests-snapshots.md) automates this
 # review — it documents the per-log and per-screenshot expectations, and it
 # also runs a timing comparison: two parallel subagents independently
 # extract Playwright durations from the old baseline vs. the new log and
