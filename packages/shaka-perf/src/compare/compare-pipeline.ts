@@ -312,6 +312,15 @@ function accessibilityChips(entries: ChipStageResults<AccessibilityChipResult>):
       tooltip: 'One or both accessibility scans failed, so no control-vs-experiment comparison was produced.',
     });
   }
+  if (summary.blocked > 0) {
+    chips.push({
+      tag: 'accessibility blocked',
+      text: `accessibility blocked: ${summary.blocked}`,
+      color: 'red',
+      sortingWeight: 6,
+      tooltip: 'Bot protection served a challenge page, so no control-vs-experiment accessibility comparison was produced.',
+    });
+  }
   if (summary.new > 0) {
     const failOnViolation = entries.some((entry) => entry.measurement.failOnViolation);
     chips.push({
@@ -377,6 +386,16 @@ function accessibilitySorts(entries: ChipStageResults<AccessibilityChipResult>):
       color: 'red',
     });
   }
+  if (summary.blocked > 0) {
+    sorts.push({
+      tag: 'a11y-blocked',
+      label: 'a11y blocked',
+      value: summary.blocked,
+      display: `${summary.blocked}`,
+      higherIsWorse: true,
+      color: 'red',
+    });
+  }
   if (summary.fixed > 0) {
     sorts.push({
       tag: 'a11y-fixed',
@@ -399,6 +418,7 @@ function combineAccessibilitySummaries(
     changed: 0,
     unchanged: 0,
     errors: 0,
+    blocked: 0,
     newByImpact: {},
     fixedByImpact: {},
     changedByImpact: {},
@@ -410,6 +430,7 @@ function combineAccessibilitySummaries(
     out.changed += summary.changed;
     out.unchanged += summary.unchanged;
     out.errors += summary.errors;
+    out.blocked += summary.blocked ?? 0;
     mergeImpactCounts(out.newByImpact, summary.newByImpact);
     mergeImpactCounts(out.fixedByImpact, summary.fixedByImpact);
     mergeImpactCounts(out.changedByImpact, summary.changedByImpact);

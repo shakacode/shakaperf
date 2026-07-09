@@ -9,7 +9,13 @@ import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
-import { runWithLastAnnotation } from '../../../test-annotation';
+import {
+  getLatestTestAnnotation,
+  messageWithLatestTestAnnotation,
+  runWithLastAnnotation,
+} from '../../../test-annotation';
+import { scanLandedOnBotWall } from '../../../audit/bot-wall';
+import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../../audit/real-chrome';
 import {
   accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
@@ -18,7 +24,6 @@ import {
 import { normalizeViolation } from '../../../audit/stages/accessibility/artifacts';
 import type {
   AccessibilityNodeBounds,
-  AccessibilityScan,
   AccessibilityViolation,
 } from '../../../audit/stages/accessibility/types';
 import type {
@@ -71,7 +76,7 @@ async function launchBrowser(config: AccessibilityStageConfig, headed = false): 
   };
   if (engine === 'firefox') return firefox.launch(launchOptions);
   if (engine === 'webkit') return webkit.launch(launchOptions);
-  return chromium.launch(launchOptions);
+  return chromium.launch(applyRealChrome(launchOptions));
 }
 
 async function scanAccessibilityComparison(
@@ -84,7 +89,7 @@ async function scanAccessibilityComparison(
     scanSide(ctx, browser, effective, config, 'control', ctx.controlURL),
     scanSide(ctx, browser, effective, config, 'experiment', ctx.experimentURL),
   ]);
-  const findings = control.error || experiment.error
+  const findings = control.error || experiment.error || control.blocked || experiment.blocked
     ? []
     : compareScans(control, experiment);
   const result = projectCompareResultForReport({
@@ -122,6 +127,8 @@ async function scanSide(
       },
       deviceScaleFactor: ctx.viewport.deviceScaleFactor,
       isMobile: ctx.viewport.formFactor === 'mobile',
+      // Real-Chrome only: serve the phone layout (no-op headless).
+      ...realChromeMobileEmulation(ctx.viewport.formFactor),
     });
     page = await context.newPage();
     if (config.engineOptions.waitTimeout) {
@@ -142,11 +149,16 @@ async function scanSide(
     const violations = results.violations.map(normalizeViolation);
     await attachNodeBounds(page, violations);
     const screenshot = await captureScreenshot(ctx, page, side);
+    const probe = await page
+      .evaluate(() => ({ title: document.title, html: document.documentElement.outerHTML.slice(0, 4000) }))
+      .catch(() => ({ title: '', html: '' }));
+    const blocked = scanLandedOnBotWall(probe, screenshot?.height, ctx.viewport.height);
     const rawFilename = `${side}-accessibility-report.json`;
     await ctx.artifacts.writeJson(rawFilename, {
       side,
       testName: ctx.test.name,
       url: results.url ?? url,
+      blocked,
       effectiveConfig: {
         tags: effective.tags,
         disableRules: effective.disableRules,
@@ -160,10 +172,14 @@ async function scanSide(
       rawArtifactHref: relativeArtifactHref(ctx, rawFilename),
       screenshot,
       violations,
+      blocked,
     };
   } catch (err) {
-    const screenshot = page ? await captureScreenshot(ctx, page, `${side}-failure`) : undefined;
-    const error = (err as Error).message || String(err);
+    const screenshot = page ? await captureScreenshotIfPossible(ctx, page, `${side}-failure`) : undefined;
+    const error = messageWithLatestTestAnnotation(
+      (err as Error).message || String(err),
+      getLatestTestAnnotation(err),
+    );
     const rawFilename = `${side}-accessibility-error.json`;
     await ctx.artifacts.writeJson(rawFilename, {
       side,
@@ -206,6 +222,7 @@ async function preparePageForAccessibilitySide(
   );
   await clearBrowserData(context, url);
   await page.goto(url, accessibilityGotoOptions(config));
+  await waitForBotWallToClear(page);
   await runWithLastAnnotation((annotate) =>
     ctx.test.testFn({
       page,
@@ -243,59 +260,82 @@ async function captureScreenshot(
   const width = meta.width ?? ctx.viewport.width;
   const height = meta.height ?? ctx.viewport.height;
   const scale = Math.min(1, 960 / Math.max(1, width));
+  let imageDataUri: string | undefined;
+  try {
+    imageDataUri = await bufferToAvifDataUri(shot, 45, scale);
+  } catch (err) {
+    console.warn(
+      `[shaka-perf compare a11y] inline screenshot encode failed (${width}x${height}px); ` +
+        `card will render without crop frames: ${(err as Error).message}`,
+    );
+  }
   return {
     width,
     height,
     imageHref: relativeArtifactHref(ctx, filename),
-    imageDataUri: await bufferToAvifDataUri(shot, 45, scale),
+    imageDataUri,
   };
 }
 
-async function attachNodeBounds(page: Page, violations: AccessibilityViolation[]): Promise<void> {
-  await Promise.all(violations.flatMap((violation) =>
-    violation.nodes.map(async (node) => {
-      const bounds = await resolveNodeBounds(page, node.target);
-      if (bounds) node.bounds = bounds;
-    }),
-  ));
+async function captureScreenshotIfPossible(
+  ctx: TestContext,
+  page: Page,
+  prefix: string,
+): Promise<AccessibilitySideScan['screenshot'] | undefined> {
+  try {
+    return await captureScreenshot(ctx, page, prefix);
+  } catch {
+    return undefined;
+  }
 }
 
-async function resolveNodeBounds(
-  page: Page,
-  target: AccessibilityScan['violations'][number]['nodes'][number]['target'],
-): Promise<AccessibilityNodeBounds | undefined> {
-  for (const selector of candidateSelectors(target)) {
-    try {
-      const locator = page.locator(selector).first();
-      const [box, scroll] = await Promise.all([
-        locator.boundingBox({ timeout: 500 }),
-        page.evaluate(() => ({ x: window.scrollX, y: window.scrollY })),
-      ]);
-      if (!box || box.width <= 0 || box.height <= 0) continue;
-      return {
-        x: round(box.x + scroll.x),
-        y: round(box.y + scroll.y),
-        width: round(box.width),
-        height: round(box.height),
-      };
-    } catch {
-      // axe targets can include frame/shadow descents that are not plain CSS.
+async function attachNodeBounds(page: Page, violations: AccessibilityViolation[]): Promise<void> {
+  const targets = violations.flatMap((violation) => violation.nodes.map((node) => node.target));
+  if (targets.length === 0) return;
+  let boxes: (AccessibilityNodeBounds | null)[];
+  try {
+    boxes = await page.evaluate((targetList): (AccessibilityNodeBounds | null)[] => {
+      const sx = window.scrollX;
+      const sy = window.scrollY;
+      const r2 = (value: number): number => Math.round(value * 100) / 100;
+      return targetList.map((target): AccessibilityNodeBounds | null => {
+        // length > 1 = iframe descent; querySelector can't cross frames, so skip.
+        if (!Array.isArray(target) || target.length !== 1) return null;
+        const segment = target[0];
+        // string[] segment = shadow-DOM path (pierce each open shadow root).
+        const steps = typeof segment === 'string' ? [segment] : Array.isArray(segment) ? segment : [];
+        let element: Element | null = null;
+        let scope: Document | ShadowRoot = document;
+        for (let i = 0; i < steps.length; i += 1) {
+          const step = steps[i];
+          if (!step) { element = null; break; }
+          let found: Element | null = null;
+          try { found = scope.querySelector(step); } catch { found = null; }
+          if (!found) { element = null; break; }
+          element = found;
+          if (i < steps.length - 1) {
+            // Intermediate step must descend a shadow root; if none, bail.
+            if (!found.shadowRoot) { element = null; break; }
+            scope = found.shadowRoot;
+          }
+        }
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return null;
+        return { x: r2(rect.x + sx), y: r2(rect.y + sy), width: r2(rect.width), height: r2(rect.height) };
+      });
+    }, targets);
+  } catch {
+    return;
+  }
+  let index = 0;
+  for (const violation of violations) {
+    for (const node of violation.nodes) {
+      const bounds = boxes[index];
+      index += 1;
+      if (bounds) node.bounds = bounds;
     }
   }
-  return undefined;
-}
-
-function candidateSelectors(target: AccessibilityScan['violations'][number]['nodes'][number]['target']): string[] {
-  const selectors: string[] = [];
-  for (const segment of target) {
-    if (typeof segment === 'string') selectors.push(segment);
-    else selectors.push(...segment);
-  }
-  return [...new Set(selectors.reverse().filter(Boolean))];
-}
-
-function round(value: number): number {
-  return Math.round(value * 100) / 100;
 }
 
 interface GroupedFinding {
@@ -385,7 +425,7 @@ function normalizedNodePayload(nodes: AccessibilityFindingSide['nodes']): string
 
 function targetKey(target: AccessibilityViolation['nodes'][number]['target']): string {
   return JSON.stringify(target.map((segment) =>
-    Array.isArray(segment) ? segment.map(normalizeText).sort() : normalizeText(segment),
+    Array.isArray(segment) ? segment.map(normalizeText) : normalizeText(segment),
   ));
 }
 
@@ -404,6 +444,7 @@ export function summarizeFindings(
     changed: 0,
     unchanged: 0,
     errors: (control.error ? 1 : 0) + (experiment.error ? 1 : 0),
+    blocked: (control.blocked ? 1 : 0) + (experiment.blocked ? 1 : 0),
     newByImpact: {},
     fixedByImpact: {},
     changedByImpact: {},

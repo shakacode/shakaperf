@@ -489,7 +489,9 @@ export function AccessibilityCompareArtifactView({
   measurements: readonly StageRenderEntry<AccessibilityCompareResult>[];
 }) {
   const rows = measurements.filter((entry) =>
-    entry.measurement.summary.errors > 0 || entry.measurement.findings.length > 0,
+    entry.measurement.summary.errors > 0 ||
+    entry.measurement.summary.blocked > 0 ||
+    entry.measurement.findings.length > 0,
   );
   if (rows.length === 0) return null;
 
@@ -533,6 +535,9 @@ function AccessibilityCompareViewport({
             {result.summary.errors > 0 ? (
               <StatusPill color="#b91c1c" count={result.summary.errors} label="scan error" />
             ) : null}
+            {result.summary.blocked > 0 ? (
+              <StatusPill color="#92400e" count={result.summary.blocked} label="bot blocked" />
+            ) : null}
             <FullReportOnly>
               <RawLinks result={result} />
             </FullReportOnly>
@@ -551,8 +556,9 @@ function AccessibilityCompareViewport({
         </div>
 
         {result.control.error || result.experiment.error ? <ScanErrors result={result} /> : null}
+        {result.control.blocked || result.experiment.blocked ? <BlockedScans result={result} /> : null}
 
-        {result.findings.length === 0 && result.summary.errors === 0 ? (
+        {result.findings.length === 0 && result.summary.errors === 0 && result.summary.blocked === 0 ? (
           <StageNote body="No accessibility difference between control and experiment." />
         ) : null}
       </div>
@@ -978,6 +984,9 @@ function CompareScreenshotPanel({
       </div>
       <div style={{ color: 'var(--fg-muted)', overflowWrap: 'anywhere' }}>{sideScan.url}</div>
       {sideScan.error ? <StageNote label={title} body={sideScan.error} /> : null}
+      {sideScan.blocked ? (
+        <StageNote label={title} body="Bot protection served a challenge page, so this side could not be measured." />
+      ) : null}
       {source && sideScan.screenshot ? (
         <div style={{ marginTop: 10, overflow: 'visible', border: '1px solid var(--border)' }}>
           <div
@@ -1353,6 +1362,19 @@ function ScanErrors({ result }: { result: AccessibilityCompareResult }) {
   );
 }
 
+function BlockedScans({ result }: { result: AccessibilityCompareResult }) {
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      {result.control.blocked ? (
+        <StageNote label="control" body="Bot protection served a challenge page, so this side could not be measured." />
+      ) : null}
+      {result.experiment.blocked ? (
+        <StageNote label="experiment" body="Bot protection served a challenge page, so this side could not be measured." />
+      ) : null}
+    </div>
+  );
+}
+
 function RawLinks({ result }: { result: AccessibilityCompareResult }) {
   const links = [
     ['control raw', result.control.rawArtifactHref],
@@ -1387,6 +1409,7 @@ function firstFindingTarget(finding: AccessibilityCompareFinding): Accessibility
 
 function headlineText(result: AccessibilityCompareResult): string {
   if (result.summary.errors > 0) return 'Accessibility scan did not complete';
+  if (result.summary.blocked > 0) return 'Accessibility could not be measured';
   if (result.summary.new > 0) return 'Accessibility regressed in experiment';
   if (result.summary.changed > 0) return 'Accessibility changed between versions';
   if (result.summary.fixed > 0) return 'Accessibility improved in experiment';
@@ -1414,6 +1437,7 @@ function sideSubtitle(
 
 function sideCleanText(result: AccessibilityCompareResult, side: AccessibilityCompareSide): string {
   if (result.summary.errors > 0) return 'No screenshot findings available because this side did not scan cleanly.';
+  if (result.summary.blocked > 0) return 'No screenshot findings available because bot protection blocked measurement.';
   if (side === 'control' && result.summary.new > 0) return 'No control-side match. These findings are new in experiment.';
   if (side === 'experiment' && result.summary.fixed > 0) return 'No experiment-side match. These findings were fixed.';
   return 'No visible accessibility differences on this side.';

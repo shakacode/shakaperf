@@ -1178,6 +1178,7 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   let accessibilityViolations = 0;
   let accessibilityRegressions = 0;
   let accessibilityErrors = 0;
+  let accessibilityBlocked = 0;
   let errors = 0;
   for (const t of data.tests) {
     if (t.outcomes.some((outcome) => outcome.kind === 'error') || hasChipTag(t, 'broken')) errors++;
@@ -1186,6 +1187,7 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
     if (hasChipTag(t, 'accessibility violation')) accessibilityViolations++;
     if (hasChipTag(t, 'accessibility regression')) accessibilityRegressions++;
     if (hasChipTag(t, 'accessibility error')) accessibilityErrors++;
+    if (hasChipTag(t, 'accessibility blocked')) accessibilityBlocked++;
   }
   if (data.meta.errors.length > 0) errors += data.meta.errors.length;
   const parts: string[] = [];
@@ -1205,6 +1207,11 @@ function summarizeFailures(data: ReportData): { hasFailures: boolean; failureSum
   if (accessibilityErrors > 0) {
     parts.push(
       `${accessibilityErrors} accessibility scan error${accessibilityErrors === 1 ? '' : 's'}`,
+    );
+  }
+  if (accessibilityBlocked > 0) {
+    parts.push(
+      `${accessibilityBlocked} accessibility scan${accessibilityBlocked === 1 ? '' : 's'} blocked by bot protection`,
     );
   }
   return {

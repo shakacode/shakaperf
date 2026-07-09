@@ -26,6 +26,7 @@ describe('compare accessibility pipeline integration', () => {
       changed: 1,
       unchanged: 3,
       errors: 0,
+      blocked: 0,
       newByImpact: { critical: 1, serious: 1 },
       fixedByImpact: { moderate: 1 },
       changedByImpact: { serious: 1 },
@@ -86,6 +87,7 @@ describe('compare accessibility pipeline integration', () => {
           changed: 0,
           unchanged: 0,
           errors: 0,
+          blocked: 0,
           newByImpact: { serious: 1 },
           fixedByImpact: {},
           changedByImpact: {},
@@ -112,6 +114,7 @@ describe('compare accessibility pipeline integration', () => {
       changed: 0,
       unchanged: 0,
       errors: 1,
+      blocked: 0,
       newByImpact: {},
       fixedByImpact: {},
       changedByImpact: {},
@@ -145,6 +148,52 @@ describe('compare accessibility pipeline integration', () => {
     }]).get(test) ?? [];
     expect(sorts.map((sort) => [sort.tag, sort.value])).toEqual([
       ['a11y-errors', 1],
+    ]);
+  });
+
+  it('emits accessibility blocked chips and sort dimensions for bot-protected scans', () => {
+    const pipeline = createComparePipeline(baseConfig());
+    const test = testDefinition();
+    const result = accessibilityResult({
+      new: 0,
+      fixed: 0,
+      changed: 0,
+      unchanged: 0,
+      errors: 0,
+      blocked: 1,
+      newByImpact: {},
+      fixedByImpact: {},
+      changedByImpact: {},
+    });
+
+    const chips = pipeline.chipsForAllTests([{
+      test,
+      results: {
+        visreg: [],
+        accessibility: [entry(result)],
+        'perf-warmup': [],
+        perf: [],
+        'perf-low-noise': [],
+      },
+    }]).get(test) ?? [];
+    expect(chips[0]).toMatchObject({
+      tag: 'accessibility blocked',
+      color: 'red',
+      text: 'accessibility blocked: 1',
+    });
+
+    const sorts = pipeline.sortsForAllTests([{
+      test,
+      results: {
+        visreg: [],
+        accessibility: [entry(result)],
+        'perf-warmup': [],
+        perf: [],
+        'perf-low-noise': [],
+      },
+    }]).get(test) ?? [];
+    expect(sorts.map((sort) => [sort.tag, sort.value])).toEqual([
+      ['a11y-blocked', 1],
     ]);
   });
 });

@@ -20,6 +20,7 @@ export interface AccessibilitySideScan {
   screenshot?: AccessibilityCompareScreenshot;
   violations: AccessibilityViolation[];
   error?: string;
+  blocked?: boolean;
 }
 
 export interface AccessibilityFindingSide {
@@ -51,6 +52,7 @@ export interface AccessibilityCompareSummary {
   changed: number;
   unchanged: number;
   errors: number;
+  blocked: number;
   newByImpact: Record<string, number>;
   fixedByImpact: Record<string, number>;
   changedByImpact: Record<string, number>;
