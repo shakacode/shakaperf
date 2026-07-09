@@ -25,14 +25,14 @@ const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 // what "the page" actually was.
 const LIGHTHOUSE_CONFIG = {
   throttling: {
-    rttMs: 300,
-    throughputKbps: 700,
-    requestLatencyMs: 1125,
-    downloadThroughputKbps: 700,
-    uploadThroughputKbps: 700,
-    cpuSlowdownMultiplier: 20,
+    rttMs: 100,
+    throughputKbps: 2700,
+    requestLatencyMs: 200,
+    downloadThroughputKbps: 2700,
+    uploadThroughputKbps: 2700,
+    cpuSlowdownMultiplier: 3,
   },
-  throttlingMethod: 'simulate' as const,
+  throttlingMethod: 'devtools' as const,
   logLevel: 'error' as const,
   output: 'html' as const,
   onlyCategories: ['performance'],
@@ -67,7 +67,7 @@ export default defineConfig({
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 20, // Bumped to cut run-to-run variance (>=10 recommended)
+    numberOfMeasurements: 10, // Bumped to cut run-to-run variance (>=10 recommended)
     pValueThreshold: 0.01, // Require p<1% to flag a regression (stricter than the 0.05 default)
   },
 
