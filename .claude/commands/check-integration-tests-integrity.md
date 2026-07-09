@@ -76,8 +76,10 @@ baseline log with columns Stage | OLD | NEW | Δ | Δ%.]
 ### Log Analysis
 
 #### [baseline log]
-Status: OK | ISSUES FOUND
-[Brief details if issues found]
+[State what actually changed in this diff — the meaningful added/removed lines,
+or "only run-variable noise (timings, hashes, ordering)" if every hunk was
+noise. Do not write "OK": name the changes, then say whether any look like real
+signal.]
 
 ### Visual Review Required
 This skill does NOT judge the screenshot diffs. Review them yourself in the
