@@ -219,7 +219,11 @@ async function prepareAccessibilityPage(
   config: AccessibilityStageConfig,
   options: AccessibilityPageScanOptions,
 ): Promise<void> {
+  // Clear all browser state BEFORE the pre-navigation hooks: `beforeNavigate`
+  // may seed an auth cookie that must survive into the navigation. Clearing
+  // after beforeNavigate would wipe it and land the scan logged-out.
   await context.clearCookies();
+  await clearBrowserData(context, options.url);
   await runBeforeNavigateHooks(
     {
       context,
@@ -231,7 +235,6 @@ async function prepareAccessibilityPage(
     },
     ctx.test.options.beforeNavigate,
   );
-  await clearBrowserData(context, options.url);
   await page.goto(options.url, accessibilityGotoOptions(config));
   await waitForBotWallToClear(page);
   await runWithLastAnnotation((annotate) =>

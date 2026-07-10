@@ -256,7 +256,13 @@ class LighthouseWorkerSampler {
 
     try {
       const context = browser.contexts()[0];
+      // Clear all browser state (cookies, cache, per-origin storage) BEFORE the
+      // pre-navigation hooks: `beforeNavigate` may seed an auth cookie (e.g.
+      // signInBeforeNavigate) that must survive into the measured navigation.
+      // Clearing after beforeNavigate would wipe that cookie and land the first
+      // render logged-out.
       await context.clearCookies();
+      await clearBrowserData(context, url);
       await attachInteractionOverlay(context);
       // Pre-navigation hooks (global shared.beforeNavigate + per-test). Runs
       // before Lighthouse navigates so route-blocking/init-scripts cover the
@@ -271,7 +277,6 @@ class LighthouseWorkerSampler {
         },
         testDef.options.beforeNavigate,
       );
-      await clearBrowserData(context, url);
 
       let releaseTracking: () => void = () => {};
       const canStopTracking = new Promise<void>((resolve) => {
