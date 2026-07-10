@@ -603,7 +603,7 @@ function tinyResultLine(floor: number): string {
 
 function calculatorCard(calculator: CostCalculatorConfig, tab: CostTab): string {
   const id = costId('cr', tab, 'calculator');
-  const prefill = calculator.mobileSharePrefill * 100;
+  const prefill = Number((calculator.mobileSharePrefill * 100).toFixed(2));
   const bands = calculator.bands.map((band, index) => {
     const inputId = `${id}-band-${costId(band.id)}`;
     const label = `${band.id.charAt(0).toUpperCase()}${band.id.slice(1)}: ${percentageLabel(band.lo)}-${percentageLabel(band.hi)}`;
@@ -1294,9 +1294,8 @@ const SCRIPTS = `<script>
     });
   });
 
-  // Calculator arithmetic mirrors computeRecoveryRange in the model. The model
-  // serializes every variable input below, so this self-contained report has no
-  // second source of truth and never needs a network request.
+  // Calculator arithmetic mirrors computeRecoveryRange. The renderer serializes
+  // its calculator inputs below, so the inline script never hardcodes them.
   document.querySelectorAll('[data-calculator]').forEach(function(card){
     var inquiries = card.querySelector('[data-calc-inquiries]');
     var value = card.querySelector('[data-calc-value]');

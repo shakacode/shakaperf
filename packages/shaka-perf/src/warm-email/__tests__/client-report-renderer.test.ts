@@ -1935,7 +1935,7 @@ describe('renderClientReportHtml', () => {
         fix: { tone: 'primary', text: 'Make the main page content arrive sooner.' },
         sitePrompt: 'Improve the main page load path.',
         calculator: {
-          mobileSharePrefill: 0.64,
+          mobileSharePrefill: 0.57,
           bands: RECOVERY_BANDS,
           materialityFloorUsdPerMonth: 75,
           inquiryNoun: 'inquiries',
@@ -1965,7 +1965,9 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('data-calculator');
     expect(perfPanelHtml).toContain('data-calc-floor="75"');
     expect(perfPanelHtml).toContain(`data-calc-recovery-cap="${RECOVERY_CAP}"`);
-    expect(perfPanelHtml).toContain('data-calc-prefill="64"');
+    expect(perfPanelHtml).toContain('data-calc-prefill="57"');
+    expect(perfPanelHtml).toContain('value="57"');
+    expect(perfPanelHtml).not.toContain('56.99999999999999');
     expect(perfPanelHtml).toContain('data-calc-tiny="Under $75 a month at your numbers');
     expect(perfPanelHtml).toContain('data-calc-bands="[{&quot;id&quot;:&quot;cautious&quot;,&quot;lo&quot;:0.02,&quot;hi&quot;:0.05}');
     expect(perfPanelHtml).toContain('data-calc-output aria-live="polite" hidden');
