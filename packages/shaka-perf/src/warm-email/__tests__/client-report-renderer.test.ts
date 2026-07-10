@@ -23,10 +23,13 @@ import {
 } from '../client-report-narrative';
 import {
   AI_INDUSTRY_DATA_STATS,
+  AI_ZERO_COPY,
   BANNED_WORDS,
   BOT_WALL_COPY,
   FOOTER_GUARDRAIL,
+  NO_MATERIAL_LOSS,
   NOTHING_TO_FIX,
+  PERF_ZERO_COPY,
   botWallFooterSentence,
   findBannedWords,
 } from '../cost-strings';
@@ -605,10 +608,10 @@ describe('perf cost model helpers', () => {
     expect(perfCostHeadline(slow, '15.4s', undefined, perfPage({ LCP: 15400 }))).toBe(
       '15.4s before your main content appears on a mid-range phone',
     );
-    expect(perfAffectsProse(slow, true)).toBe(
-      'Slow main content and heavy downloads make mobile visitors wait, spend more data, and lose confidence before they can browse or buy.',
+    expect(perfAffectsProse(slow)).toBe(
+      'Slow main content makes mobile visitors wait and lose confidence before they can browse or buy.',
     );
-    expect(perfAffectsProse(shift, false)).toBe(
+    expect(perfAffectsProse(shift)).toBe(
       'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',
     );
   });
@@ -1090,13 +1093,8 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfPanelHtml).toContain('same phone and network profile we used');
     expect(perfPanelHtml).toContain('What this affects');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
-    expect(perfPanelHtml).toContain('each visit to this page downloads 12.5 MB');
-    expect(perfPanelHtml).toContain('~= $0.03-0.08 of mobile data per visit');
-    expect(perfPanelHtml).not.toContain('$0.10-0.30');
-    expect(perfPanelHtml).not.toContain('~= $0.00');
-    expect(perfPanelHtml).toMatch(/>measured<\/span><span>each visit to this page downloads 12\.5 MB<\/span>/);
-    expect(perfPanelHtml).toMatch(/>estimated<\/span><span>~= \$0\.03-0\.08 of mobile data per visit<\/span><button type="button" data-disclose="cr-perf-data-cost-estimate"/);
-    expect(perfPanelHtml).toContain('how we estimated this');
+    expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
+    expect(perfPanelHtml).not.toContain('how we estimated this');
     expect(perfPanelHtml).toContain('Main content time: 15.4s.');
     expect(perfPanelHtml).toContain('JavaScript: 640 KB across 9 files.');
     expect(perfPanelHtml).toContain('Total transferred before LCP: 4096 KB.');
@@ -1126,7 +1124,7 @@ describe('renderClientReport perf tile assembly', () => {
     }));
     const perfPanelHtml = renderedPanel(html, 'perf');
 
-    expect(perfPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(perfPanelHtml).toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
     expect(perfPanelHtml).toContain('>measured</span>');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
     expect(perfPanelHtml).not.toContain('cr-perf-card');
@@ -1147,7 +1145,6 @@ describe('renderClientReport perf tile assembly', () => {
     const layoutShiftPanel = renderedPanel(layoutShift.html, 'perf');
     expect(layoutShiftPanel).toContain('The page <strong>jumps around</strong> as it loads');
     expect(layoutShiftPanel).toContain('Layout shifts make the page feel unstable');
-    expect(layoutShiftPanel).toContain('each visit to this page downloads 12.5 MB');
     expect(layoutShiftPanel).not.toContain('cr-perf-site-prompt');
     expect(layoutShiftPanel).not.toContain('cr-perf-card');
 
@@ -1161,7 +1158,8 @@ describe('renderClientReport perf tile assembly', () => {
       js: 120,
       'js-count': 2,
     }));
-    expect(renderedPanel(relaxedLcp.html, 'perf')).toContain(NOTHING_TO_FIX);
+    expect(renderedPanel(relaxedLcp.html, 'perf')).toContain(NO_MATERIAL_LOSS);
+    expect(renderedPanel(relaxedLcp.html, 'perf')).not.toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
     expect(renderedPanel(relaxedLcp.html, 'perf')).not.toContain('cr-perf-card');
   });
 
@@ -1174,19 +1172,6 @@ describe('renderClientReport perf tile assembly', () => {
 
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-products"');
     expect(perfPanelHtml).not.toContain('data-copy-prompt="cr-perf-card-1-home"');
-  });
-
-  it('does not borrow another page download metric for the perf data-cost row', async () => {
-    const { html } = await renderClientReport(writePerfResultsForPages([
-      { id: 'slow', name: 'Slow page', startingPath: '/slow', metrics: { LCP: 15400, FCP: 1200, 'LH Score': 35, js: 640, 'js-count': 9 } },
-      { id: 'heavy', name: 'Heavy page', startingPath: '/heavy', metrics: { LCP: 1900, FCP: 900, 'LH Score': 95, downloads: 12800, js: 120, 'js-count': 2 } },
-    ]));
-    const perfPanelHtml = renderedPanel(html, 'perf');
-
-    expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
-    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fslow');
-    expect(perfPanelHtml).not.toContain('each visit to this page downloads 12.5 MB');
-    expect(perfPanelHtml).not.toContain('~= $0.03-0.08 of mobile data per visit');
   });
 
   it('keeps the perf cost banner on a page that has a visible card', async () => {
@@ -1284,7 +1269,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
     expect(agentPanelHtml).toContain('>measured</span>');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
     expect(agentPanelHtml).not.toContain('industry data');
@@ -1327,7 +1312,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
     expect(agentPanelHtml).not.toContain('87% of your page&#39;s text is missing');
     expect(agentPanelHtml).not.toContain('only 2 of 15 words present');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
@@ -1441,7 +1426,6 @@ describe('renderClientReport perf tile assembly', () => {
     expect(a11yPanelHtml).toContain('Example markup data: [&lt;button class=&quot;checkout&quot;&gt;&lt;svg aria-hidden=&quot;true&quot;&gt;&lt;/svg&gt;&lt;/button&gt;].');
     expect(a11yPanelHtml).not.toContain('industry data');
     expect(a11yPanelHtml).not.toContain('how we estimated this');
-    expect(a11yPanelHtml).not.toContain('mobile data per visit');
     expect(a11yPanelHtml).not.toContain('$0.');
   });
 
@@ -1862,7 +1846,7 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('Fix this page card.');
   });
 
-  it('renders the measured perf cost block, data-cost chips, estimator toggle, and card prompt', () => {
+  it('renders the measured perf cost block and card prompt without data-cost output', () => {
     const html = renderClientReportHtml(model({
       perfCost: {
         tab: 'perf',
@@ -1870,13 +1854,8 @@ describe('renderClientReportHtml', () => {
         headline: '15.4s before your main content appears on a mid-range phone',
         chip: 'measured',
         checkLine: 'check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights',
-        affectsProse: 'Slow main content and heavy downloads make mobile visitors wait.',
+        affectsProse: 'Slow main content makes mobile visitors wait.',
         sitePrompt: 'Fix the site speed.',
-        dataCost: {
-          measuredLine: 'each visit to this page downloads 12.5 MB',
-          estimatedLine: '~= $0.03-0.08 of mobile data per visit',
-          formula: '12.5 MB measured on this page x $0.0026-$0.0060 per MB',
-        },
       },
       perfCards: model().perfCards.map((card) => ({ ...card, copyPrompt: 'Fix this performance card.' })),
     }));
@@ -1889,36 +1868,27 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('Copy prompt for your agent');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
     expect(perfPanelHtml).toContain('width:190px');
-    expect(perfPanelHtml).toMatch(/>measured<\/span><span>each visit to this page downloads 12\.5 MB<\/span>/);
-    expect(perfPanelHtml).toMatch(/>estimated<\/span><span>~= \$0\.03-0\.08 of mobile data per visit<\/span><button type="button" data-disclose="cr-perf-data-cost-estimate"/);
-    expect(perfPanelHtml).toContain('how we estimated this');
-    expect(perfPanelHtml).toContain('<div id="cr-perf-data-cost-estimate" data-disclosure hidden');
-    expect(perfPanelHtml).toContain('12.5 MB measured on this page x $0.0026-$0.0060 per MB');
+    expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
+    expect(perfPanelHtml).not.toContain('how we estimated this');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-insights"');
     expect(perfPanelHtml).toContain('width:118px');
     expect(perfPanelHtml.indexOf('data-copy-prompt="cr-perf-card-0-insights"')).toBeGreaterThan(perfPanelHtml.indexOf('Loads extremely slowly.'));
   });
 
-  it('renders zero-state perf cost copy without prompt controls or data-cost rows', () => {
+  it('renders the new zero-state perf cost copy without prompt controls', () => {
     const html = renderClientReportHtml(model({
       perfCost: {
         tab: 'perf',
         state: 'zero',
         sitePrompt: 'Do not show this prompt.',
-        dataCost: {
-          measuredLine: 'each visit to this page downloads 12.5 MB',
-          estimatedLine: '~= $0.03-0.08 of mobile data per visit',
-          formula: 'hidden',
-        },
       },
     }));
     const perfPanelHtml = renderedPanel(html, 'perf');
 
-    expect(perfPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(perfPanelHtml).toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
     expect(perfPanelHtml).toContain('>measured</span>');
     expect(perfPanelHtml).not.toContain('Do not show this prompt.');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
-    expect(perfPanelHtml).not.toContain('each visit to this page downloads');
     expect(perfPanelHtml).not.toContain('how we estimated this');
   });
 
@@ -1996,7 +1966,7 @@ describe('renderClientReportHtml', () => {
     expect(renderedPanel(withA11yCost, 'a11y')).toContain('data-copy-prompt="cr-a11y-card-0-products"');
   });
 
-  it('renders zero-state AI cost copy without prompt controls or industry data', () => {
+  it('renders the new zero-state AI cost copy without prompt controls or industry data', () => {
     const html = renderClientReportHtml(model({
       agentCost: {
         tab: 'ai',
@@ -2007,7 +1977,7 @@ describe('renderClientReportHtml', () => {
     }));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(NOTHING_TO_FIX);
+    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
     expect(agentPanelHtml).toContain('>measured</span>');
     expect(agentPanelHtml).not.toContain('Do not show this prompt.');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');

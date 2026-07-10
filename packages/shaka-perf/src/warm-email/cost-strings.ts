@@ -7,8 +7,6 @@
  * License in LICENSE.md.
  */
 
-import { MOBILE_DATA_PRICE_USD_PER_MB_HIGH, MOBILE_DATA_PRICE_USD_PER_MB_LOW } from './cost-model';
-
 export const BANNED_WORDS = ['assistants', 'absent', 'costing', 'channel', 'zero-click', 'modeled', 'Pew'] as const;
 
 export function findBannedWords(text: string): string[] {
@@ -19,11 +17,11 @@ export function findBannedWords(text: string): string[] {
   });
 }
 
-export type CostChip = 'measured' | 'estimated' | 'not measured';
+export type CostChip = 'measured' | 'estimated' | 'your estimate' | 'not measured';
 
 export interface CostChipCopy {
   label: string;
-  intent: 'site measurement' | 'calculated estimate' | 'blocked measurement';
+  intent: 'site measurement' | 'calculated estimate' | 'owner arithmetic' | 'blocked measurement';
   estimatorToggle: boolean;
 }
 
@@ -38,6 +36,11 @@ export const COST_CHIPS: Record<CostChip, CostChipCopy> = {
     intent: 'calculated estimate',
     estimatorToggle: true,
   },
+  'your estimate': {
+    label: 'your estimate',
+    intent: 'owner arithmetic',
+    estimatorToggle: false,
+  },
   'not measured': {
     label: 'not measured',
     intent: 'blocked measurement',
@@ -48,6 +51,7 @@ export const COST_CHIPS: Record<CostChip, CostChipCopy> = {
 export const COST_CHIP_LABELS: Record<CostChip, string> = {
   measured: COST_CHIPS.measured.label,
   estimated: COST_CHIPS.estimated.label,
+  'your estimate': COST_CHIPS['your estimate'].label,
   'not measured': COST_CHIPS['not measured'].label,
 };
 
@@ -62,14 +66,22 @@ export interface CostStateCell {
   chip?: CostChip;
   copy?: string;
   rendersPercentageClaim?: boolean;
+  // Wave 2 consumes these additive flags.
+  rendersBenchmarkScale?: boolean;
+  rendersCalculator?: boolean;
+  rendersCheckLine?: boolean;
 }
 
 export const WHAT_THIS_AFFECTS = 'What this affects';
+export const WHAT_THIS_COSTS_YOU = 'What this costs you';
 export const INDUSTRY_DATA = 'industry data';
 export const NOTHING_TO_FIX = 'Nothing to fix here';
+export const PERF_ZERO_COPY = "Under Google's 2.5-second line on every page we measured - no material loss here.";
+export const AI_ZERO_COPY = 'AI tools can already read your site - no material loss here.';
+export const NO_MATERIAL_LOSS = 'No material loss here.';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
-export const FOOTER_GUARDRAIL = 'Measured on your site - estimates are labeled and show their math - every number links to its source';
+export const FOOTER_GUARDRAIL = 'Measured on your site - every number links to its source';
 
 const noTreatment = (copy?: string, chip?: CostChip): CostStateCell => ({
   rendersFullTreatment: false,
@@ -89,10 +101,15 @@ export const COST_STATE_MATRIX: Record<Tab, Record<State, CostStateCell>> = {
       rendersIndustryDataExpander: true,
       chip: 'measured',
       rendersPercentageClaim: true,
+      rendersBenchmarkScale: true,
+      rendersCheckLine: true,
     },
     zero: {
-      ...noTreatment(NOTHING_TO_FIX, 'measured'),
+      ...noTreatment(AI_ZERO_COPY, 'measured'),
+      rendersIndustryDataExpander: true,
       rendersPercentageClaim: false,
+      rendersBenchmarkScale: true,
+      rendersCheckLine: true,
     },
     blocked: {
       ...noTreatment(BOT_WALL_COPY, 'not measured'),
@@ -108,10 +125,17 @@ export const COST_STATE_MATRIX: Record<Tab, Record<State, CostStateCell>> = {
       rendersFullTreatment: true,
       rendersCostNumber: true,
       rendersCopyPromptButton: true,
-      rendersIndustryDataExpander: false,
-      chip: 'estimated',
+      rendersIndustryDataExpander: true,
+      chip: 'measured',
+      rendersBenchmarkScale: true,
+      rendersCalculator: true,
+      rendersCheckLine: true,
     },
-    zero: noTreatment(NOTHING_TO_FIX, 'measured'),
+    zero: {
+      ...noTreatment(PERF_ZERO_COPY, 'measured'),
+      rendersBenchmarkScale: true,
+      rendersCheckLine: true,
+    },
     blocked: noTreatment(BOT_WALL_COPY, 'not measured'),
     noclaim: noTreatment(undefined, 'measured'),
   },
@@ -123,8 +147,12 @@ export const COST_STATE_MATRIX: Record<Tab, Record<State, CostStateCell>> = {
       rendersIndustryDataExpander: false,
       chip: 'measured',
       copy: WHAT_THIS_AFFECTS,
+      rendersBenchmarkScale: true,
     },
-    zero: noTreatment(undefined, 'measured'),
+    zero: {
+      ...noTreatment(undefined, 'measured'),
+      rendersBenchmarkScale: true,
+    },
     blocked: noTreatment(BOT_WALL_COPY, 'not measured'),
     noclaim: noTreatment(undefined, 'measured'),
   },
@@ -164,20 +192,27 @@ export function botWallFooterSentence(n: number): string {
   return `${n} ${pageWord} had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page`;
 }
 
-export function dataCostMeasuredLine(mb: string): string {
-  return `each visit to this page downloads ${mb}`;
+export function perfGapHeadline(measuredLabel: string, multipleLabel: string | undefined, pageName: string): string {
+  if (multipleLabel) {
+    return `${pageName} shows its main content after ${measuredLabel} on a mid-range phone - ${multipleLabel} past Google's 2.5-second good line`;
+  }
+  return `${pageName} shows its main content after ${measuredLabel} on a mid-range phone`;
 }
 
-export function dataCostEstimatedLine(usd: string): string {
-  return `${usd} of mobile data per visit`;
+export function perfStudiesIntro(): string {
+  return 'None of these numbers are yours. They are what the same kind of wait did on sites that measured it.';
 }
 
-function formatPricePerMb(usd: number): string {
-  return `$${usd.toFixed(4)}`;
+export function perfStudiesFooter(): string {
+  return 'Why this report prints no "N of 100 visitors leave" figure for your pages: these studies ran on other sites and much smaller gaps, and stretching them across your gap would pass 100%. We use them for direction and rough size only.';
 }
 
-export function dataCostFormula(mb: string): string {
-  return `${mb} measured on this page x ${formatPricePerMb(MOBILE_DATA_PRICE_USD_PER_MB_LOW)}-${formatPricePerMb(MOBILE_DATA_PRICE_USD_PER_MB_HIGH)} per MB (cable.co.uk worldwide average / US price)`;
+export function a11yNoNumberLine(): string {
+  return 'We put no visitor count on this - no study we trust can honestly count who leaves over these barriers, so we do not pretend to.';
+}
+
+export function aiSingleCountLine(): string {
+  return 'Visitor loss is counted once in this report, on the Performance tab. This tab answers one question: can AI tools read you?';
 }
 
 export interface IndustryDataStat {
@@ -185,7 +220,39 @@ export interface IndustryDataStat {
   publisher: string;
   date: string;
   url: string;
+  method?: 'controlled test' | 'correlation';
 }
+
+export const PERF_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [
+  {
+    text: 'a controlled test that improved LCP 31% lifted the lead-to-visit rate 15%',
+    publisher: 'Vodafone with Google',
+    date: '2021',
+    url: 'https://web.dev/case-studies/vodafone',
+    method: 'controlled test',
+  },
+  {
+    text: 'a 0.1-second improvement across four mobile speed metrics came with 21.6% more visitors reaching the form-submission step on lead-generation sites, across 30M+ sessions',
+    publisher: 'Deloitte, Milliseconds Make Millions',
+    date: '2020',
+    url: 'https://web.dev/case-studies/milliseconds-make-millions',
+    method: 'correlation',
+  },
+  {
+    text: 'a 2-second delay roughly doubled bounce rates (+103%)',
+    publisher: 'Akamai / SOASTA',
+    date: '2017',
+    url: 'https://www.akamai.com/newsroom/press-release/akamai-releases-spring-2017-state-of-online-retail-performance-report',
+    method: 'correlation',
+  },
+  {
+    text: 'about 10% of visitors are lost for every extra second a page takes',
+    publisher: 'BBC engineering',
+    date: '2018',
+    url: 'https://www.creativebloq.com/features/how-the-bbc-builds-websites-that-scale',
+    method: 'correlation',
+  },
+];
 
 export const AI_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [
   {
@@ -221,3 +288,26 @@ export const AI_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [
 ];
 
 export const A11Y_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [];
+
+export const CALC_TITLE = 'What is the wait worth to you? - optional, your numbers, your math';
+export const CALC_INQUIRIES_LABEL = 'About how many inquiries does the website bring you in a typical month?';
+export const CALC_VALUE_LABEL = 'Roughly what is one new inquiry worth to you, in dollars?';
+export const CALC_SHARE_LABEL = 'Share of visits from phones';
+export const CALC_DIAL_LABEL = 'If the site got fast, how much of the lost response comes back?';
+
+export function calcCapNote(): string {
+  return 'The 15% top of this dial is not ours: Vodafone measured a 15% improvement in the lead-to-visit rate in a controlled test after improving LCP 31%. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.';
+}
+
+export const CALC_PRIVACY_LINE = 'Numbers you type stay in this file. It makes no network requests and stores nothing.';
+export const CALC_PARTIAL_LINE = 'Fill the fields to see the math - until then, no dollar figure is honest.';
+
+export function calcBreakEvenLine(usdYearLabel: string): string {
+  return `If a faster site brought back just one extra inquiry a month, that is ${usdYearLabel} a year.`;
+}
+
+export function calcTinyResultLine(): string {
+  return 'Under $50 a month at your numbers - speed is not where your money is; fix it for your visitors, not for revenue.';
+}
+
+export const CALC_HONESTY_FOOTER = 'This is your arithmetic, not our measurement. Change any number above and it changes.';

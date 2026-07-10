@@ -47,16 +47,14 @@ import { scoreSite, type CategoryScore, type SiteAccessSignals } from './agent-r
 import {
   AI_INDUSTRY_DATA_STATS,
   FOOTER_GUARDRAIL,
+  NO_MATERIAL_LOSS,
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
   botWallFooterSentence,
-  dataCostEstimatedLine,
-  dataCostFormula,
-  dataCostMeasuredLine,
   perfCheckLine,
 } from './cost-strings';
-import { formatDataCostRangeFromKb } from './cost-model';
+import { BENCHMARK_LINES } from './client-report-model/cost';
 import { buildCopyPrompt } from './copy-prompt';
 import {
   renderClientReportHtml,
@@ -1699,18 +1697,6 @@ function perfPageUrl(siteUrl: string, page: PagePerf): string {
   return liveUrlFor(siteUrl, page.startingPath || '/') || siteUrl;
 }
 
-function perfDataCostForPage(page: PagePerf | undefined): NonNullable<ClientReportCostBlock['dataCost']> | undefined {
-  if (!page) return undefined;
-  const downloadsKb = metricVal(page, 'downloads');
-  if (downloadsKb === undefined) return undefined;
-  const { measuredMb, estimatedUsd } = formatDataCostRangeFromKb(downloadsKb);
-  return {
-    measuredLine: dataCostMeasuredLine(measuredMb),
-    estimatedLine: dataCostEstimatedLine(estimatedUsd),
-    formula: dataCostFormula(measuredMb),
-  };
-}
-
 function perfCopyPromptForPage(page: PagePerf, siteUrl: string, ctx: PerfPromptContext): string | undefined {
   const url = perfPageUrl(siteUrl, page);
   const lcpMs = metricVal(page, 'LCP');
@@ -1940,7 +1926,15 @@ async function buildClientReportModel(
   let perfCost: ClientReportCostBlock | undefined;
   if (hasPerf) {
     if (perfStatus === 'good') {
-      perfCost = { tab: 'perf', state: 'zero' };
+      const everyMeasuredLcpUnderGoodLine = ctx.measured.every((rp) => {
+        const lcpMs = metricVal(rp.page, 'LCP');
+        return lcpMs !== undefined && lcpMs <= BENCHMARK_LINES.lcpMs.good;
+      });
+      perfCost = {
+        tab: 'perf',
+        state: 'zero',
+        ...(everyMeasuredLcpUnderGoodLine ? {} : { headline: NO_MATERIAL_LOSS }),
+      };
     } else if (!perfCouldNotMeasure && perfCostProblem && isPerfCostProblem(perfCostProblem.problem)) {
       const problemTx = perfProblemPhrase(perfCostProblem.problem, perfCostProblem.page);
       const problemMetricTx = perfProblemMetric(perfCostProblem.problem, perfCostProblem.page);
@@ -1948,7 +1942,6 @@ async function buildClientReportModel(
       const problemPhrase = problemTx ?? perfCostProblem.problem.chip;
       const problemPage = perfCostProblem.page;
       const problemUrl = perfPageUrl(sc.url, problemPage);
-      const dataCost = perfDataCostForPage(problemPage);
       const checkProfile = sc.throttleProfile || 'a profile not recorded in this audit';
       perfCost = {
         tab: 'perf',
@@ -1956,11 +1949,10 @@ async function buildClientReportModel(
         headline: perfCostHeadline(perfCostProblem.problem, problemLabel, problemPhrase, problemPage),
         chip: 'measured',
         checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
-        affectsProse: perfAffectsProse(perfCostProblem.problem, !!dataCost),
+        affectsProse: perfAffectsProse(perfCostProblem.problem),
         sitePrompt: perfCostCopyPromptEnabled(perfCostProblem.problem)
           ? perfCopyPromptForPage(problemPage, sc.url, perfPromptCtx)
           : undefined,
-        ...(dataCost ? { dataCost } : {}),
       };
     }
   }

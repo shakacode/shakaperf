@@ -9,24 +9,42 @@
 
 import {
   AI_INDUSTRY_DATA_STATS,
+  AI_ZERO_COPY,
   A11Y_INDUSTRY_DATA_STATS,
   BOT_WALL_COPY,
+  CALC_DIAL_LABEL,
+  CALC_HONESTY_FOOTER,
+  CALC_INQUIRIES_LABEL,
+  CALC_PARTIAL_LINE,
+  CALC_PRIVACY_LINE,
+  CALC_SHARE_LABEL,
+  CALC_TITLE,
+  CALC_VALUE_LABEL,
   COST_CHIPS,
   COST_STATE_MATRIX,
   FOOTER_GUARDRAIL,
   INDUSTRY_DATA,
+  NO_MATERIAL_LOSS,
   NOTHING_TO_FIX,
+  PERF_INDUSTRY_DATA_STATS,
+  PERF_ZERO_COPY,
   WHAT_THIS_AFFECTS,
+  WHAT_THIS_COSTS_YOU,
+  a11yNoNumberLine,
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
+  aiSingleCountLine,
   botWallFooterSentence,
-  dataCostEstimatedLine,
-  dataCostFormula,
-  dataCostMeasuredLine,
+  calcBreakEvenLine,
+  calcCapNote,
+  calcTinyResultLine,
   findBannedWords,
   perfCheckLine,
+  perfGapHeadline,
   perfHeadline,
+  perfStudiesFooter,
+  perfStudiesIntro,
   type State,
   type Tab,
 } from '../cost-strings';
@@ -58,18 +76,26 @@ describe('cost chips', () => {
     expect(COST_CHIPS['not measured'].label).toBe('not measured');
     expect(COST_CHIPS['not measured'].intent).toBe('blocked measurement');
   });
+
+  it('marks owner arithmetic as your estimate without an estimator toggle', () => {
+    expect(COST_CHIPS['your estimate']).toEqual({
+      label: 'your estimate',
+      intent: 'owner arithmetic',
+      estimatorToggle: false,
+    });
+  });
 });
 
 describe('cost state matrix', () => {
   const expected: Record<Tab, Record<State, [boolean, boolean, boolean, boolean]>> = {
     ai: {
       measured: [true, true, true, true],
-      zero: [false, false, false, false],
+      zero: [false, false, false, true],
       blocked: [false, false, false, false],
       noclaim: [false, false, false, false],
     },
     perf: {
-      measured: [true, true, true, false],
+      measured: [true, true, true, true],
       zero: [false, false, false, false],
       blocked: [false, false, false, false],
       noclaim: [false, false, false, false],
@@ -97,10 +123,25 @@ describe('cost state matrix', () => {
   });
 
   it('keeps state-specific copy and chips in the table', () => {
-    expect(COST_STATE_MATRIX.ai.zero).toMatchObject({ copy: NOTHING_TO_FIX, chip: 'measured' });
+    expect(COST_STATE_MATRIX.ai.zero).toMatchObject({ copy: AI_ZERO_COPY, chip: 'measured' });
+    expect(COST_STATE_MATRIX.perf.zero).toMatchObject({ copy: PERF_ZERO_COPY, chip: 'measured' });
+    expect(COST_STATE_MATRIX.perf.measured.chip).toBe('measured');
     expect(COST_STATE_MATRIX.ai.blocked).toMatchObject({ copy: BOT_WALL_COPY, chip: 'not measured' });
     expect(COST_STATE_MATRIX.ai.noclaim).toMatchObject({ copy: 'almost no text to compare', rendersPercentageClaim: false });
     expect(COST_STATE_MATRIX.a11y.measured).toMatchObject({ copy: WHAT_THIS_AFFECTS, chip: 'measured' });
+  });
+
+  it('enables the calculator only for measured performance and benchmark scales for every zero state', () => {
+    const calculatorCells = (Object.keys(COST_STATE_MATRIX) as Tab[]).flatMap((tab) =>
+      (Object.keys(COST_STATE_MATRIX[tab]) as State[])
+        .filter((state) => COST_STATE_MATRIX[tab][state].rendersCalculator)
+        .map((state) => `${tab}.${state}`),
+    );
+
+    expect(calculatorCells).toEqual(['perf.measured']);
+    for (const tab of Object.keys(COST_STATE_MATRIX) as Tab[]) {
+      expect(COST_STATE_MATRIX[tab].zero.rendersBenchmarkScale).toBe(true);
+    }
   });
 });
 
@@ -125,18 +166,98 @@ describe('canonical cost copy', () => {
     expect(WHAT_THIS_AFFECTS).toBe('What this affects');
     expect(INDUSTRY_DATA).toBe('industry data');
     expect(NOTHING_TO_FIX).toBe('Nothing to fix here');
-    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - estimates are labeled and show their math - every number links to its source');
+    expect(WHAT_THIS_COSTS_YOU).toBe('What this costs you');
+    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - every number links to its source');
     expect(botWallFooterSentence(2)).toBe('2 pages had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page');
   });
 
-  it('builds data-cost measured, estimated, and formula lines', () => {
-    expect(dataCostMeasuredLine('12.5 MB')).toBe('each visit to this page downloads 12.5 MB');
-    expect(dataCostEstimatedLine('~= $0.03-0.08')).toBe('~= $0.03-0.08 of mobile data per visit');
-    expect(dataCostFormula('12.5 MB')).toBe('12.5 MB measured on this page x $0.0026-$0.0060 per MB (cable.co.uk worldwide average / US price)');
+  it('builds benchmark, study, count, and calculator copy', () => {
+    expect(perfGapHeadline('10.3s', '4.1x', 'Home')).toBe(
+      "Home shows its main content after 10.3s on a mid-range phone - 4.1x past Google's 2.5-second good line",
+    );
+    expect(perfGapHeadline('2.4s', undefined, 'Home')).toBe(
+      'Home shows its main content after 2.4s on a mid-range phone',
+    );
+    expect(perfStudiesIntro()).toContain('None of these numbers are yours.');
+    expect(perfStudiesFooter()).toContain('We use them for direction and rough size only.');
+    expect(a11yNoNumberLine()).toContain('We put no visitor count on this');
+    expect(aiSingleCountLine()).toContain('Visitor loss is counted once');
+    expect(calcCapNote()).toBe(
+      'The 15% top of this dial is not ours: Vodafone measured a 15% improvement in the lead-to-visit rate in a controlled test after improving LCP 31%. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.',
+    );
+    expect(calcBreakEvenLine('$6,000')).toBe(
+      'If a faster site brought back just one extra inquiry a month, that is $6,000 a year.',
+    );
+    expect(calcTinyResultLine()).toContain('Under $50 a month at your numbers');
+  });
+
+  it('keeps every new exported copy string free of banned vocabulary', () => {
+    const strings = [
+      WHAT_THIS_COSTS_YOU,
+      PERF_ZERO_COPY,
+      AI_ZERO_COPY,
+      NO_MATERIAL_LOSS,
+      perfGapHeadline('10.3s', '4.1x', 'Home'),
+      perfGapHeadline('2.4s', undefined, 'Home'),
+      perfStudiesIntro(),
+      perfStudiesFooter(),
+      a11yNoNumberLine(),
+      aiSingleCountLine(),
+      CALC_TITLE,
+      CALC_INQUIRIES_LABEL,
+      CALC_VALUE_LABEL,
+      CALC_SHARE_LABEL,
+      CALC_DIAL_LABEL,
+      calcCapNote(),
+      CALC_PRIVACY_LINE,
+      CALC_PARTIAL_LINE,
+      calcBreakEvenLine('$6,000'),
+      calcTinyResultLine(),
+      CALC_HONESTY_FOOTER,
+      FOOTER_GUARDRAIL,
+      COST_CHIPS['your estimate'].label,
+      COST_CHIPS['your estimate'].intent,
+      ...PERF_INDUSTRY_DATA_STATS.flatMap((stat) => Object.values(stat)),
+    ];
+
+    expect(strings.flatMap((text) => findBannedWords(text))).toEqual([]);
   });
 });
 
 describe('industry data stats', () => {
+  it('exports exactly the sourced performance stat lines', () => {
+    expect(PERF_INDUSTRY_DATA_STATS).toEqual([
+      {
+        text: 'a controlled test that improved LCP 31% lifted the lead-to-visit rate 15%',
+        publisher: 'Vodafone with Google',
+        date: '2021',
+        url: 'https://web.dev/case-studies/vodafone',
+        method: 'controlled test',
+      },
+      {
+        text: 'a 0.1-second improvement across four mobile speed metrics came with 21.6% more visitors reaching the form-submission step on lead-generation sites, across 30M+ sessions',
+        publisher: 'Deloitte, Milliseconds Make Millions',
+        date: '2020',
+        url: 'https://web.dev/case-studies/milliseconds-make-millions',
+        method: 'correlation',
+      },
+      {
+        text: 'a 2-second delay roughly doubled bounce rates (+103%)',
+        publisher: 'Akamai / SOASTA',
+        date: '2017',
+        url: 'https://www.akamai.com/newsroom/press-release/akamai-releases-spring-2017-state-of-online-retail-performance-report',
+        method: 'correlation',
+      },
+      {
+        text: 'about 10% of visitors are lost for every extra second a page takes',
+        publisher: 'BBC engineering',
+        date: '2018',
+        url: 'https://www.creativebloq.com/features/how-the-bbc-builds-websites-that-scale',
+        method: 'correlation',
+      },
+    ]);
+  });
+
   it('exports exactly the sourced AI stat lines', () => {
     expect(AI_INDUSTRY_DATA_STATS).toEqual([
       {
