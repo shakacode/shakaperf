@@ -26,6 +26,7 @@ export interface SiteAccessSignals {
   };
   sitemap: boolean; // a sitemap is declared in robots.txt or /sitemap.xml exists
   llmsTxt: boolean; // /llms.txt exists
+  llmsTxtConfirmedAbsent?: boolean; // a report-time response confirms no usable guide
 }
 
 export type Bucket = 'good' | 'fair' | 'poor';

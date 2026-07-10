@@ -219,6 +219,10 @@ export async function fetchSiteAccessSignals(siteUrl: string): Promise<SiteAcces
     llmsRes.status < 400 &&
     llmsRes.text.trim().length > 0 &&
     !/^\s*<!doctype html|^\s*<html/i.test(llmsRes.text);
+  const llmsTxtConfirmedAbsent =
+    !!llmsRes &&
+    !llmsTxt &&
+    (llmsRes.status === 404 || llmsRes.status === 410 || (llmsRes.status >= 200 && llmsRes.status < 300));
 
   if (!robotsFetched && !sitemap && !llmsTxt) {
     // Nothing answered. Still return a signal so the score treats access as open
@@ -230,5 +234,6 @@ export async function fetchSiteAccessSignals(siteUrl: string): Promise<SiteAcces
     robots: { fetched: robotsFetched, blocksAiBots: robots.blocksAiBots, blocksAll: robots.blocksAll },
     sitemap,
     llmsTxt,
+    llmsTxtConfirmedAbsent,
   };
 }

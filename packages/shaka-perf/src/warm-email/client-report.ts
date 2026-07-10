@@ -48,13 +48,35 @@ import {
   AI_INDUSTRY_DATA_STATS,
   FOOTER_GUARDRAIL,
   NO_MATERIAL_LOSS,
+  PERF_INDUSTRY_DATA_STATS,
+  aiSingleCountLine,
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
+  a11yNoNumberLine,
   botWallFooterSentence,
   perfCheckLine,
+  perfGapHeadline,
+  perfStudiesFooter,
+  perfStudiesIntro,
 } from './cost-strings';
-import { BENCHMARK_LINES } from './client-report-model/cost';
+import { DEFAULT_MOBILE_TRAFFIC_SHARE } from './cost-model';
+import {
+  BENCHMARK_LINES,
+  MATERIALITY_FLOOR_USD_PER_MONTH,
+  MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO,
+  RECOVERY_BANDS,
+  a11yContrastGap,
+  a11yFixText,
+  bookingLine,
+  countedZeroLine,
+  moneyPage,
+  perfFixText,
+  perfGap,
+  perfGapSubLines,
+  perfStakesProse,
+  worstContrastRatio,
+} from './client-report-model/cost';
 import { buildCopyPrompt } from './copy-prompt';
 import {
   renderClientReportHtml,
@@ -102,6 +124,7 @@ import {
   dominantPerfProblem,
   reportPagePerfStatus,
   reportPerfStatus,
+  selectPerfCostAnchor,
   type Problem,
   type ProblemKind,
   type Status,
@@ -544,12 +567,13 @@ export function videoCaption(leadKind: ProblemKind, lcpMs: number | undefined, c
 // straight to the played `video.currentTime`. Cues are the load STORY BEATS -
 // the same handful of moments the filmstrip force-keeps - not one-per-frame, so
 // the narration reads as a few clear captions, never a per-frame flicker.
-export type CueKind = 'blank' | 'first-content' | 'main' | 'jump' | 'loaded';
+export type CueKind = 'blank' | 'first-content' | 'main' | 'jump' | 'loaded' | 'google-good-line';
 
 export interface CaptionCue {
   atMs: number;
   kind: CueKind;
   text: string; // the deterministic phrase; an optional AI pass may rewrite it
+  rewriteable?: boolean;
 }
 
 // When two beats land within this of each other (a fast page where first paint
@@ -567,6 +591,7 @@ const CUE_PRIORITY: Record<CueKind, number> = {
   jump: 4,
   'first-content': 3,
   loaded: 2,
+  'google-good-line': 1,
 };
 
 // Deterministic, present-tense, plain-language caption per beat. Kept honest and
@@ -587,6 +612,8 @@ function cueText(kind: CueKind, atMs: number, lcpMs: number | undefined): string
       return 'The layout jumps as content pushes in';
     case 'loaded':
       return 'The page has finished loading';
+    case 'google-good-line':
+      return "Google's good line passes here.";
   }
 }
 
@@ -600,7 +627,17 @@ export function buildCaptionCues(
   fcpMs: number | undefined,
   windowMs: number,
 ): CaptionCue[] {
-  if (frames.length === 0) return [];
+  const googleGoodLineCue = (): CaptionCue => ({
+    atMs: BENCHMARK_LINES.lcpMs.good,
+    kind: 'google-good-line',
+    text: "Google's good line passes here.",
+    rewriteable: false,
+  });
+  if (frames.length === 0) {
+    return lcpMs !== undefined && lcpMs > BENCHMARK_LINES.lcpMs.good && windowMs >= BENCHMARK_LINES.lcpMs.good
+      ? [googleGoodLineCue()]
+      : [];
+  }
   const start = frames[0].timeMs;
   const cap = windowMs > 0 ? windowMs : frames[frames.length - 1].timeMs;
   const cue = (atMs: number, kind: CueKind): CaptionCue => ({ atMs, kind, text: cueText(kind, atMs, lcpMs) });
@@ -628,6 +665,10 @@ export function buildCaptionCues(
 
   // The settled end of the meaningful window closes the story.
   raw.push(cue(cap, 'loaded'));
+
+  if (lcpMs !== undefined && lcpMs > BENCHMARK_LINES.lcpMs.good && cap >= BENCHMARK_LINES.lcpMs.good) {
+    raw.push(googleGoodLineCue());
+  }
 
   // Drop anything past the trimmed clip, sort, then collapse near-coincident
   // beats to the single highest-priority one AT ITS OWN time - so "the main
@@ -1049,6 +1090,7 @@ export function a11yIssuesHtml(violations: readonly AccessibilityViolation[]): s
 export interface ClientReportResult {
   html: string;
   pageCount: number;
+  model: ClientReportModel;
 }
 
 // The audited site's own favicon, inlined so the hosted report's browser tab
@@ -1265,6 +1307,12 @@ export interface RenderClientReportOptions {
   // the claude-backed one unless --no-ai-narrative. Best-effort + cached: a missing
   // /slow/failed claude leaves the built-in deterministic verdict copy in place.
   narrate?: NarrativeSummarizer;
+  // Optional path for the carded page where the owner starts an inquiry or booking.
+  moneyPage?: string;
+}
+
+export function captionCuesForRewrite(cues: readonly CaptionCue[]): CaptionCue[] {
+  return cues.filter((cue) => cue.rewriteable !== false);
 }
 
 export async function renderClientReport(
@@ -1362,21 +1410,25 @@ export async function renderClientReport(
   // leave the deterministic captions in place (handled inside refineCaptions).
   if (opts.refineCaptions) {
     const targets = detailed.filter((d) => d.captionCues && d.captionCues.length > 0);
-    if (targets.length > 0) {
+    const rewriteTargets = targets.map((target) => ({ target, cues: captionCuesForRewrite(target.captionCues!) }))
+      .filter((target) => target.cues.length > 0);
+    if (rewriteTargets.length > 0) {
       const refined = await opts.refineCaptions(
-        targets.map((d) => ({
-          pageName: d.page.name,
-          problem: stripTags(d.lead.headline),
-          cues: d.captionCues!.map((c) => ({ kind: c.kind, atSec: secs(c.atMs), text: c.text })),
+        rewriteTargets.map(({ target, cues }) => ({
+          pageName: target.page.name,
+          problem: stripTags(target.lead.headline),
+          cues: cues.map((cue) => ({ kind: cue.kind, atSec: secs(cue.atMs), text: cue.text })),
         })),
       );
       if (refined) {
-        targets.forEach((d, i) => {
+        rewriteTargets.forEach(({ target, cues }, i) => {
           const texts = refined[i];
-          if (!texts || texts.length !== d.captionCues!.length) return; // shape mismatch: keep deterministic
-          d.captionCues = d.captionCues!.map((c, j) => {
-            const t = texts[j]?.trim();
-            return t ? { ...c, text: dashSafe(t) } : c;
+          if (!texts || texts.length !== cues.length) return; // shape mismatch: keep deterministic
+          let rewritten = 0;
+          target.captionCues = target.captionCues!.map((cue) => {
+            if (cue.rewriteable === false) return cue;
+            const text = texts[rewritten++]?.trim();
+            return text ? { ...cue, text: dashSafe(text) } : cue;
           });
         });
       }
@@ -1389,7 +1441,7 @@ export async function renderClientReport(
     { detailed, more, measured, avgMs, avgLabel, slowCount, jumpyCount },
     opts,
   );
-  return { html: renderClientReportHtml(model), pageCount: rendered.length };
+  return { html: renderClientReportHtml(model), pageCount: rendered.length, model };
 }
 
 // ---- Client report model assembly ----
@@ -1917,9 +1969,14 @@ async function buildClientReportModel(
     if (!candidate) continue;
     if (!siteDominantPerfProblem || compareClientReportPerfProblemCandidate(siteDominantPerfProblem, candidate) > 0) siteDominantPerfProblem = candidate;
   }
-  const perfCostProblem = rankedCarded
+  const rankedPerfCostCandidates = rankedCarded
     .map(cardPerfProblem)
-    .find((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
+    .filter((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
+  // The homepage is the owner's most recognizable page, so it anchors the
+  // reframe whenever it is carded and misses Google's good LCP line. Otherwise
+  // retain the established dominant-problem ranking.
+  const perfCostProblem = rankedPerfCostCandidates[0];
+  const perfCostAnchor = selectPerfCostAnchor(rankedPerfCostCandidates, BENCHMARK_LINES.lcpMs.good);
   const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
   const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
@@ -1935,24 +1992,74 @@ async function buildClientReportModel(
         state: 'zero',
         ...(everyMeasuredLcpUnderGoodLine ? {} : { headline: NO_MATERIAL_LOSS }),
       };
-    } else if (!perfCouldNotMeasure && perfCostProblem && isPerfCostProblem(perfCostProblem.problem)) {
-      const problemTx = perfProblemPhrase(perfCostProblem.problem, perfCostProblem.page);
-      const problemMetricTx = perfProblemMetric(perfCostProblem.problem, perfCostProblem.page);
-      const problemLabel = problemMetricTx ?? problemTx ?? perfCostProblem.problem.chip;
-      const problemPhrase = problemTx ?? perfCostProblem.problem.chip;
-      const problemPage = perfCostProblem.page;
-      const problemUrl = perfPageUrl(sc.url, problemPage);
+    } else if (!perfCouldNotMeasure && perfCostAnchor && isPerfCostProblem(perfCostAnchor.problem)) {
+      // Keep the renderer-owned headline, prompt, and verification link on the
+      // established dominant page. The homepage-aware anchor supplies only the
+      // new reframe extras.
+      const legacyProblem = perfCostProblem ?? perfCostAnchor;
+      const legacyPerfProblem = isPerfCostProblem(legacyProblem.problem)
+        ? legacyProblem.problem
+        : perfCostAnchor.problem;
+      const legacyProblemTx = perfProblemPhrase(legacyProblem.problem, legacyProblem.page);
+      const legacyProblemMetricTx = perfProblemMetric(legacyProblem.problem, legacyProblem.page);
+      const legacyProblemLabel = legacyProblemMetricTx ?? legacyProblemTx ?? legacyPerfProblem.chip;
+      const legacyProblemPhrase = legacyProblemTx ?? legacyPerfProblem.chip;
+      const anchorPage = perfCostAnchor.page;
+      const problemUrl = perfPageUrl(sc.url, legacyProblem.page);
       const checkProfile = sc.throttleProfile || 'a profile not recorded in this audit';
+      const perfFactPages = ctx.measured.map(({ page }) => ({
+        name: page.name,
+        lcpMs: metricVal(page, 'LCP'),
+        jsKb: metricVal(page, 'js'),
+        downloadsBeforeLcpKb: metricVal(page, 'downloads-before-LCP'),
+        downloadsKb: metricVal(page, 'downloads'),
+      }));
+      const anchorFacts = {
+        name: anchorPage.name,
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        jsKb: metricVal(anchorPage, 'js'),
+        downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
+        downloadsKb: metricVal(anchorPage, 'downloads'),
+      };
+      const gap = perfGap(perfCostAnchor.problem.kind, {
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        cls: metricVal(anchorPage, 'CLS') !== undefined ? metricVal(anchorPage, 'CLS')! / 100 : undefined,
+        fcpMs: metricVal(anchorPage, 'FCP'),
+        tbtMs: metricVal(anchorPage, 'TBT'),
+      });
+      const bookingPage = moneyPage(
+        rankedCarded.map((rp) => ({ name: rp.page.name, startingPath: rp.page.startingPath, lcpMs: metricVal(rp.page, 'LCP') })),
+        opts.moneyPage,
+      );
+      const zeroLine = countedZeroLine(perfFactPages);
       perfCost = {
         tab: 'perf',
         state: 'measured',
-        headline: perfCostHeadline(perfCostProblem.problem, problemLabel, problemPhrase, problemPage),
+        headline: perfCostHeadline(legacyPerfProblem, legacyProblemLabel, legacyProblemPhrase, legacyProblem.page),
         chip: 'measured',
         checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
-        affectsProse: perfAffectsProse(perfCostProblem.problem),
-        sitePrompt: perfCostCopyPromptEnabled(perfCostProblem.problem)
-          ? perfCopyPromptForPage(problemPage, sc.url, perfPromptCtx)
+        affectsProse: perfAffectsProse(legacyPerfProblem),
+        sitePrompt: perfCostCopyPromptEnabled(legacyPerfProblem)
+          ? perfCopyPromptForPage(legacyProblem.page, sc.url, perfPromptCtx)
           : undefined,
+        ...(gap ? { gap } : {}),
+        gapSubLines: perfGapSubLines(perfFactPages, anchorFacts),
+        ...(bookingPage ? { bookingLine: bookingLine(bookingPage) } : {}),
+        stakes: {
+          kind: 'at-risk',
+          prose: perfStakesProse(perfCostAnchor.problem.kind),
+          studies: PERF_INDUSTRY_DATA_STATS,
+          expanderIntro: perfStudiesIntro(),
+          expanderFooter: perfStudiesFooter(),
+        },
+        fix: { tone: 'primary', text: perfFixText(perfFactPages, perfCostAnchor.problem.kind) },
+        calculator: {
+          mobileSharePrefill: DEFAULT_MOBILE_TRAFFIC_SHARE,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: MATERIALITY_FLOOR_USD_PER_MONTH,
+          inquiryNoun: 'inquiry',
+        },
+        ...(zeroLine ? { countedZeroLine: zeroLine } : {}),
       };
     }
   }
@@ -2016,6 +2123,11 @@ async function buildClientReportModel(
     a11yStartHere = { items: [], lead: a11yStartHereLead(a11yWorst, others.length, allSameFix) };
   }
   let a11yCost: ClientReportCostBlock | undefined;
+  const a11yFindingScans = a11yMeasurable.map((view) => view.scan);
+  const a11yFix = a11yFixText(a11yFindingScans);
+  const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
+  const a11yAffects = (scan: AccessibilityScan): string =>
+    [a11yAffectsProse(scan), a11yNoNumberLine()].filter(Boolean).join(' ');
   if (a11yCouldNotMeasure) {
     // blockedSection already renders the refusal copy; this keeps the tab head to the not-measured chip.
     a11yCost = { tab: 'a11y', state: 'blocked', headline: '' };
@@ -2024,8 +2136,24 @@ async function buildClientReportModel(
       tab: 'a11y',
       state: 'measured',
       headline: criticalTotal > 0 ? 'Critical accessibility barriers found' : 'Serious accessibility barriers found',
-      affectsProse: a11yAffectsProse(a11yWorst.scan),
+      affectsProse: a11yAffects(a11yWorst.scan),
       sitePrompt: a11yCopyPromptForView(a11yWorst, sc.url, a11yPromptCtx),
+      ...(a11yGap ? { gap: a11yGap } : {}),
+      ...(a11yFix ? { fix: { tone: 'secondary' as const, text: a11yFix } } : {}),
+    };
+  } else if (fineA11y.some((view) => view.scan.violations.length > 0)) {
+    const strongestMinorScan = fineA11y.find((view) => view.scan.violations.length > 0)!.scan;
+    a11yCost = {
+      tab: 'a11y',
+      state: 'zero',
+      headline: NO_MATERIAL_LOSS,
+      affectsProse: a11yAffects(strongestMinorScan),
+      stakes: {
+        kind: 'no-material-loss',
+        prose: `${NO_MATERIAL_LOSS} Nothing we measured is turning visitors away today - that is rarer than it sounds, and worth protecting.`,
+      },
+      ...(a11yGap ? { gap: a11yGap } : {}),
+      ...(a11yFix ? { fix: { tone: 'secondary' as const, text: a11yFix } } : {}),
     };
   }
 
@@ -2093,14 +2221,22 @@ async function buildClientReportModel(
         const worstRawWords = worstCostPage ? agentRawWords(worstCostPage) : 0;
         const worstRenderedWords = worstCostPage ? agentRenderedWords(worstCostPage) : 0;
         const worstCoveragePct = boundedCoveragePct(worstRawWords, worstRenderedWords);
+        const worstMissingShare = 1 - boundedCoverageRatio(worstRawWords, worstRenderedWords);
         const worstMissingPct = 100 - worstCoveragePct;
         const worstPresentWords = boundedPresentWords(worstRawWords, worstRenderedWords);
+        const aiAffects = `${AI_AFFECTS_PROSE} ${aiSingleCountLine()}`;
+        const aiFix = siteSignals?.llmsTxtConfirmedAbsent === true
+          ? {
+            tone: 'secondary' as const,
+            text: 'One optional addition: an llms.txt file - a short plain-text guide some AI crawlers read to find your key pages. Minutes to add, small upside, zero risk.',
+          }
+          : undefined;
         let agentCostState: ClientReportCostBlock['state'];
         if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
           agentCostState = 'noclaim';
         } else if (reachableForCost.length === 0) {
           agentCostState = 'blocked';
-        } else if (worstMissingPct === 0) {
+        } else if (worstMissingShare <= MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO) {
           agentCostState = 'zero';
         } else {
           agentCostState = 'measured';
@@ -2122,7 +2258,7 @@ async function buildClientReportModel(
             headlineSub: aiHeadlineSub(worstPresentWords, worstRenderedWords),
             chip: 'measured',
             checkLine: aiCheckLine(worstUrl),
-            affectsProse: AI_AFFECTS_PROSE,
+            affectsProse: aiAffects,
             sitePrompt: buildCopyPrompt('ai', {
               url: worstUrl,
               host: agentPromptCtx.host,
@@ -2137,6 +2273,26 @@ async function buildClientReportModel(
               rawState: agentRawStateForPrompt(worstCostPage),
             }),
             stats: [...AI_INDUSTRY_DATA_STATS],
+            stakes: {
+              kind: 'at-risk',
+              prose: AI_AFFECTS_PROSE,
+              studies: AI_INDUSTRY_DATA_STATS,
+            },
+            ...(aiFix ? { fix: aiFix } : {}),
+          };
+        } else if (agentCostState === 'zero' && worstCostPage) {
+          agentCost = {
+            tab: 'ai',
+            state: 'zero',
+            headlineSub: aiHeadlineSub(worstPresentWords, worstRenderedWords),
+            affectsProse: aiAffects,
+            stakes: {
+              kind: 'no-material-loss',
+              prose: 'When someone asks ChatGPT, Claude, or Perplexity about what you do, your pages can be read and quoted. Many sites fail this check outright.',
+              studies: AI_INDUSTRY_DATA_STATS,
+              expanderIntro: 'These are the studies behind this check - they describe a risk your site is not exposed to.',
+            },
+            ...(aiFix ? { fix: aiFix } : {}),
           };
         }
         agentCards = cardViews.map((v) => agentCardModel(v, agentPromptCtx));
@@ -2195,6 +2351,14 @@ async function buildClientReportModel(
       worst: rankedCarded.slice(0, 3).map((rp) => ({ name: rp.page.name, problem: stripTags(rp.lead.headline) })),
     };
     if (ctx.avgMs !== undefined) perfFact.avgLabel = ctx.avgLabel;
+    if (perfCost?.gap?.multipleLabel) perfFact.benchmarkMultiples = [perfCost.gap.multipleLabel];
+    if (perfCostAnchor?.problem.kind === 'slow-lcp' && perfCost?.gap) {
+      perfFact.gapHeadline = perfGapHeadline(
+        perfCost.gap.measuredLabel,
+        perfCost.gap.multipleLabel,
+        perfCostAnchor.page.name,
+      );
+    }
     if (perfCouldNotMeasure) perfFact.couldNotMeasure = true;
     facts.perf = perfFact;
   }

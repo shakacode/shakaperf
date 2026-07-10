@@ -140,8 +140,8 @@ describe('buildCaptionCues', () => {
     // HOMEPAGE_LIKE: blank@0, first content ~1.5s, a visible shift @6519,
     // LCP@13923, window ends at LCP+1200.
     const cues = buildCaptionCues(HOMEPAGE_LIKE, 13923, 1531, 13923 + 1200);
-    expect(cues.map((c) => c.kind)).toEqual(['blank', 'first-content', 'jump', 'main', 'loaded']);
-    expect(cues.map((c) => c.atMs)).toEqual([0, 1517, 6519, 13923, 15123]);
+    expect(cues.map((c) => c.kind)).toEqual(['blank', 'first-content', 'google-good-line', 'jump', 'main', 'loaded']);
+    expect(cues.map((c) => c.atMs)).toEqual([0, 1517, 2500, 6519, 13923, 15123]);
     // The cue time is the video clock: it must equal the underlying frame time.
     expect(cues.find((c) => c.kind === 'main')!.atMs).toBe(13923);
   });
@@ -223,8 +223,18 @@ describe('buildCaptionCues', () => {
     expect(cues.some((c) => c.kind === 'main')).toBe(false);
   });
 
-  it('returns no cues for a frameless audit (nothing to sync to)', () => {
-    expect(buildCaptionCues([], 13900, 1500, 13900)).toEqual([]);
+  it('keeps the fixed good-line cue for a slow frameless video', () => {
+    expect(buildCaptionCues([], 13900, 1500, 13900)).toEqual([
+      { atMs: 2500, kind: 'google-good-line', text: "Google's good line passes here.", rewriteable: false },
+    ]);
+    expect(buildCaptionCues([], 2000, 1500, 2000)).toEqual([]);
+  });
+
+  it('deduplicates a good-line cue that lands beside another caption beat', () => {
+    const frames: Frame[] = [frame(0), frame(2100), frame(4100, { isLcp: true })];
+    const cues = buildCaptionCues(frames, 4100, 2100, 5300);
+    expect(cues.some((cue) => cue.kind === 'google-good-line')).toBe(false);
+    expect(cues.map((cue) => cue.kind)).toEqual(['blank', 'first-content', 'main', 'loaded']);
   });
 
   it('always opens on the blank beat', () => {

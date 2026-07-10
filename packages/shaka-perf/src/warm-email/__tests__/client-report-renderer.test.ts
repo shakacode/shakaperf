@@ -1094,7 +1094,9 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfPanelHtml).toContain('>measured</span>');
     expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fproducts');
     expect(perfPanelHtml).toContain('same phone and network profile we used');
-    expect(perfPanelHtml).toContain('What this affects');
+    expect(perfPanelHtml).toContain('What this costs you');
+    expect(perfPanelHtml).toContain('At stake');
+    expect(perfPanelHtml).toContain('industry data');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
     expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
     expect(perfPanelHtml).not.toContain('how we estimated this');
@@ -1147,7 +1149,8 @@ describe('renderClientReport perf tile assembly', () => {
     }));
     const layoutShiftPanel = renderedPanel(layoutShift.html, 'perf');
     expect(layoutShiftPanel).toContain('The page <strong>jumps around</strong> as it loads');
-    expect(layoutShiftPanel).toContain('Layout shifts make the page feel unstable');
+    expect(layoutShiftPanel).toContain('Layout shifts like this make visitors lose their place');
+    expect(layoutShiftPanel).toContain('The target: layout shift under 0.10 on the same phone profile.');
     expect(layoutShiftPanel).not.toContain('cr-perf-site-prompt');
     expect(layoutShiftPanel).not.toContain('cr-perf-card');
 
@@ -1275,7 +1278,8 @@ describe('renderClientReport perf tile assembly', () => {
     expect(agentPanelHtml).toContain(AI_ZERO_COPY);
     expect(agentPanelHtml).toContain('>measured</span>');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
-    expect(agentPanelHtml).not.toContain('industry data');
+    expect(agentPanelHtml).toContain('industry data');
+    expect(agentPanelHtml).toContain('These are the studies behind this check');
   });
 
   it('derives no-claim AI cost through the client report model when reachable rendered text is too small', async () => {
@@ -1419,10 +1423,10 @@ describe('renderClientReport perf tile assembly', () => {
     const a11yPanelHtml = renderedPanel(html, 'a11y');
 
     expect(a11yPanelHtml).toContain('Critical accessibility barriers found');
-    expect(a11yPanelHtml).toContain('What this affects');
-    expect(a11yPanelHtml.match(/What this affects/g)?.length).toBe(1);
-    expect(a11yPanelHtml).toContain('Screen-reader users');
-    expect(a11yPanelHtml).toContain('Low-vision users');
+    expect(a11yPanelHtml).toContain('What this costs you');
+    expect(a11yPanelHtml).toContain('Worth doing anyway');
+    expect(a11yPanelHtml).toContain('People with disabilities');
+    expect(a11yPanelHtml).toContain('screen reader');
     expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-site-prompt"');
     expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-card-0-products"');
     expect(a11yPanelHtml).toContain('Top rule data: [button-name] (critical); selectors data: [button.checkout; button.icon-only].');

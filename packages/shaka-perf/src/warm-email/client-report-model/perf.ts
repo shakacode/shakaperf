@@ -448,6 +448,16 @@ export function compareClientReportPerfProblemCandidate(a: ClientReportPerfProbl
   return b.severity - a.severity;
 }
 
+export function selectPerfCostAnchor(
+  candidates: readonly ClientReportPerfProblemCandidate[],
+  lcpGoodMs: number,
+): ClientReportPerfProblemCandidate | undefined {
+  const homepage = candidates.find((candidate) =>
+    candidate.page.startingPath === '/' && (metricVal(candidate.page, 'LCP') ?? 0) > lcpGoodMs,
+  );
+  return homepage ?? candidates[0];
+}
+
 export function dominantPerfProblem(r: ClientReportPagePerfStatusInput): ClientReportPerfProblemCandidate | undefined {
   return perfProblemCandidates(r)
     .filter((candidate) => candidate.status !== 'good')

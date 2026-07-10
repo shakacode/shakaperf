@@ -32,6 +32,8 @@ export interface NarrativeFacts {
     slowCount: number;
     jumpyCount: number;
     worst: { name: string; problem: string }[]; // worst-first, plain problem text
+    benchmarkMultiples?: string[];
+    gapHeadline?: string;
     couldNotMeasure?: boolean; // reserved; perf block-detection is a follow-up
   };
   a11y?: {
@@ -175,6 +177,7 @@ function bottomLineText(f: NarrativeFacts): string {
   const goodClause = goods.length
     ? `Your site ${goods.length === 1 ? goods[0] : `${goods.slice(0, -1).join(', ')} and ${goods[goods.length - 1]}`}. `
     : '';
+  if (f.worstDim === 'perf' && f.perf?.gapHeadline) return `${goodClause}${f.perf.gapHeadline}.${blockedNote}`;
   const reason =
     f.worstDim === 'perf'
       ? 'the thing most likely to be costing you customers right now'
@@ -329,6 +332,7 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     } else {
       if (f.perf.avgLabel) lines.push(`  typical wait for the main content: ${f.perf.avgLabel}`);
       lines.push(`  pages a visitor waits on: ${f.perf.slowCount}; pages that visibly jump: ${f.perf.jumpyCount}`);
+      if (f.perf.benchmarkMultiples?.length) lines.push(`  benchmark gap: ${f.perf.benchmarkMultiples.join(', ')}`);
       if (f.perf.worst.length) lines.push(`  worst pages: ${f.perf.worst.map((w) => `${fence(w.name)} (${fence(w.problem)})`).join('; ')}`);
     }
   }
