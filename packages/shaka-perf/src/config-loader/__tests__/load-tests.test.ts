@@ -56,6 +56,30 @@ describe('loadTests', () => {
     ).rejects.toThrow(/No tests registered/);
   });
 
+  it('keeps concurrent calls isolated (no cross-caller registration bleed)', async () => {
+    // The compare pipeline runs per-unit engine invocations on a parallel
+    // pool; each calls loadTests. Unserialized, the clear → import → read
+    // sections interleave over the process-global registry and a caller's
+    // post-import read picks up sibling callers' registrations — returning
+    // (and reporting, and thumbnailing) tests it never asked for, or the
+    // same test once per concurrent caller.
+    mkfile('concurrent-a.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      abTest('Concurrent A', { startingPath: '/a' }, async () => {});
+    `);
+    mkfile('concurrent-b.abtest.js', `
+      const { abTest } = require('${sharedModulePath}');
+      abTest('Concurrent B', { startingPath: '/b' }, async () => {});
+    `);
+
+    const [a, b] = await Promise.all([
+      loadTests({ filter: path.join(tmpDir, 'concurrent-a.abtest.js') }),
+      loadTests({ filter: path.join(tmpDir, 'concurrent-b.abtest.js') }),
+    ]);
+    expect(a.map(t => t.name)).toEqual(['Concurrent A']);
+    expect(b.map(t => t.name)).toEqual(['Concurrent B']);
+  });
+
   it('keeps prior registrations for files that do not re-register in a repeated load', async () => {
     const relPath = 'cached.abtest.js';
     const absPath = path.join(tmpDir, relPath);

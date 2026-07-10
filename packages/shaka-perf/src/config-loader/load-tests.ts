@@ -65,11 +65,26 @@ function resolveFilterAsTestFile(filter: string): string | null {
   return null;
 }
 
+// loadTests mutates the process-global abTest registry (clear → import →
+// read). Concurrent callers — the compare pipeline runs one visreg engine
+// invocation per unit on a parallel pool, each calling loadTests — interleave
+// inside the awaited import and every caller reads the union of everyone's
+// registrations, duplicating each test (and its comparisons, report entries,
+// and thumbnails). Serialize the whole critical section instead.
+let loadTestsLock: Promise<unknown> = Promise.resolve();
+
 /**
  * Clears the registry, discovers or loads test files, and returns the registered tests.
  * Throws if no files are found or no tests are registered.
+ * Safe to call concurrently: calls are serialized (see loadTestsLock).
  */
-export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestDefinition[]> {
+export function loadTests(options: LoadTestsOptions = {}): Promise<AbTestDefinition[]> {
+  const result = loadTestsLock.then(() => loadTestsExclusive(options));
+  loadTestsLock = result.catch(() => undefined);
+  return result;
+}
+
+async function loadTestsExclusive(options: LoadTestsOptions): Promise<AbTestDefinition[]> {
   const { testPathPattern, filter, testType, log } = options;
 
   const filterAsFile = filter ? resolveFilterAsTestFile(filter) : null;
