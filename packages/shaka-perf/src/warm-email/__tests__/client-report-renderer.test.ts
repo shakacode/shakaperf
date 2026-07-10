@@ -26,10 +26,12 @@ import {
   AI_ZERO_COPY,
   BANNED_WORDS,
   BOT_WALL_COPY,
+  CALC_TITLE,
   FOOTER_GUARDRAIL,
   NO_MATERIAL_LOSS,
   NOTHING_TO_FIX,
   PERF_ZERO_COPY,
+  WHAT_THIS_COSTS_YOU,
   botWallFooterSentence,
   findBannedWords,
 } from '../cost-strings';
@@ -52,6 +54,7 @@ import {
   perfCostCopyPromptEnabled,
   perfCostHeadline,
 } from '../client-report-model/perf';
+import { RECOVERY_BANDS, RECOVERY_CAP } from '../client-report-model/cost';
 import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type {
@@ -1576,6 +1579,25 @@ describe('renderClientReportHtml', () => {
     expect(html).not.toContain('data-tab="a11y"'); // a11y absent in this model
   });
 
+  it('orders tabs, panels, and tiles from tabOrder, with the current order as the fallback', () => {
+    const ordered = renderClientReportHtml(threeTabHeaderModel({ tabOrder: ['agent', 'a11y', 'perf'] }));
+    const defaultOrder = renderClientReportHtml(threeTabHeaderModel());
+
+    expect(ordered.indexOf('data-tab="agent"')).toBeLessThan(ordered.indexOf('data-tab="a11y"'));
+    expect(ordered.indexOf('data-tab="a11y"')).toBeLessThan(ordered.indexOf('data-tab="perf"'));
+    expect(ordered.indexOf('id="cr-panel-agent"')).toBeLessThan(ordered.indexOf('id="cr-panel-a11y"'));
+    expect(ordered.indexOf('id="cr-panel-a11y"')).toBeLessThan(ordered.indexOf('id="cr-panel-perf"'));
+    expect(ordered.indexOf('data-jump="agent"')).toBeLessThan(ordered.indexOf('data-jump="a11y"'));
+    expect(ordered.indexOf('data-jump="a11y"')).toBeLessThan(ordered.indexOf('data-jump="perf"'));
+    expect(ordered).toContain('id="cr-panel-agent" role="tabpanel">');
+    expect(defaultOrder.indexOf('data-tab="perf"')).toBeLessThan(defaultOrder.indexOf('data-tab="a11y"'));
+    expect(defaultOrder.indexOf('data-tab="a11y"')).toBeLessThan(defaultOrder.indexOf('data-tab="agent"'));
+
+    const duplicateOrder = renderClientReportHtml(threeTabHeaderModel({ tabOrder: ['agent', 'agent', 'perf'] }));
+    expect(duplicateOrder.match(/data-tab="agent"/g)).toHaveLength(1);
+    expect(duplicateOrder.match(/id="cr-panel-agent"/g)).toHaveLength(1);
+  });
+
   it('renders one score badge in each tab header when all three tab scores are present', () => {
     const html = renderClientReportHtml(threeTabHeaderModel({
       perfScore: 42,
@@ -1873,6 +1895,203 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-insights"');
     expect(perfPanelHtml).toContain('width:118px');
     expect(perfPanelHtml.indexOf('data-copy-prompt="cr-perf-card-0-insights"')).toBeGreaterThan(perfPanelHtml.indexOf('Loads extremely slowly.'));
+  });
+
+  it('renders the measured cost grammar, benchmark scale, studies, and calculator from model data', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        headline: '8.4s before your main content appears on a mid-range phone',
+        headlineSub: 'Home is the slowest page we measured.',
+        checkLine: 'check this on the same profile',
+        gap: {
+          metricLabel: 'Main content time',
+          measuredLabel: '8.4s',
+          goodLabel: 'good: 2.5s or less',
+          poorLabel: 'poor: over 4.0s',
+          multipleLabel: '3.4x',
+          zone: 'poor',
+          lineOwner: 'Google',
+          lineUrl: 'https://web.dev/articles/lcp',
+        },
+        gapSubLines: ['Main content is 5.9s past the good line.'],
+        bookingLine: 'Calls from phone visitors are waiting on this page.',
+        stakes: {
+          kind: 'at-risk',
+          prose: 'Long waits can lose the people who were ready to ask for help.',
+          expanderIntro: 'These studies are direction, not your visitor count.',
+          expanderFooter: 'They establish the range we are willing to discuss.',
+          studies: [
+            {
+              text: 'A faster page raised lead visits in a controlled test.',
+              publisher: 'Example research',
+              date: '2026',
+              url: 'https://example.com/study',
+              method: 'controlled test',
+            },
+          ],
+        },
+        fix: { tone: 'primary', text: 'Make the main page content arrive sooner.' },
+        sitePrompt: 'Improve the main page load path.',
+        calculator: {
+          mobileSharePrefill: 0.64,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 75,
+          inquiryNoun: 'inquiries',
+        },
+        countedZeroLine: 'Visitor loss is counted once in this report.',
+      },
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain(WHAT_THIS_COSTS_YOU);
+    expect(perfPanelHtml).toContain('>Measured</div>');
+    expect(perfPanelHtml).toContain('>At stake</div>');
+    expect(perfPanelHtml).toContain('>The fix</div>');
+    expect(perfPanelHtml).toContain('check this on the same profile');
+    expect(perfPanelHtml).toContain('Main content is 5.9s past the good line.');
+    expect(perfPanelHtml).toContain('Calls from phone visitors are waiting on this page.');
+    expect(perfPanelHtml).toContain('data-benchmark-zone="poor"');
+    expect(perfPanelHtml).toContain('you: 8.4s - 3.4x the good line');
+    expect(perfPanelHtml).toContain('good: 2.5s or less');
+    expect(perfPanelHtml).toContain('poor: over 4.0s');
+    expect(perfPanelHtml).toContain('>Google</a>');
+    expect(perfPanelHtml).toContain('These studies are direction, not your visitor count.');
+    expect(perfPanelHtml).toContain('controlled test</span>');
+    expect(perfPanelHtml.indexOf('>Measured</div>')).toBeLessThan(perfPanelHtml.indexOf('>At stake</div>'));
+    expect(perfPanelHtml.indexOf('>At stake</div>')).toBeLessThan(perfPanelHtml.indexOf(CALC_TITLE));
+    expect(perfPanelHtml.indexOf(CALC_TITLE)).toBeLessThan(perfPanelHtml.indexOf('>The fix</div>'));
+    expect(perfPanelHtml).toContain('data-calculator');
+    expect(perfPanelHtml).toContain('data-calc-floor="75"');
+    expect(perfPanelHtml).toContain(`data-calc-recovery-cap="${RECOVERY_CAP}"`);
+    expect(perfPanelHtml).toContain('data-calc-prefill="64"');
+    expect(perfPanelHtml).toContain('data-calc-tiny="Under $75 a month at your numbers');
+    expect(perfPanelHtml).toContain('data-calc-bands="[{&quot;id&quot;:&quot;cautious&quot;,&quot;lo&quot;:0.02,&quot;hi&quot;:0.05}');
+    expect(perfPanelHtml).toContain('data-calc-output aria-live="polite" hidden');
+    expect(perfPanelHtml).toContain('role="radiogroup"');
+    expect(perfPanelHtml).toContain('value="cautious" data-calc-band checked');
+    expect(perfPanelHtml.match(/>your estimate<\/span>/g)).toHaveLength(1);
+    expect(html).toContain('band.hi > recoveryCap');
+    expect(html).toContain('breakEvenUsdYear');
+  });
+
+  it('uses matrix flags to keep zero check lines and omit absent scales and calculators', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'zero',
+        checkLine: 'check the clean result yourself',
+        gapSubLines: ['No extra wait remains.'],
+        calculator: {
+          mobileSharePrefill: 0.5,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 50,
+          inquiryNoun: 'inquiries',
+        },
+      },
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    expect(perfPanelHtml).toContain('check the clean result yourself');
+    expect(perfPanelHtml).toContain('No extra wait remains.');
+    expect(perfPanelHtml).not.toContain('data-benchmark-zone');
+    expect(perfPanelHtml).not.toContain('data-calculator');
+  });
+
+  it('keeps no-material-loss proof green and restricts the calculator to measured performance', () => {
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'zero',
+        stakes: {
+          kind: 'no-material-loss',
+          prose: 'No material loss is visible in the pages we measured.',
+          studies: [{
+            text: 'A controlled test set the recovery cap.',
+            publisher: 'Example research',
+            date: '2026',
+            url: 'https://example.com/study',
+            method: 'controlled test',
+          }],
+        },
+      },
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        calculator: {
+          mobileSharePrefill: 0.5,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 50,
+          inquiryNoun: 'inquiries',
+        },
+      },
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(perfPanelHtml).toContain('No material loss is visible in the pages we measured.');
+    expect(perfPanelHtml).toContain('background:#e9f4ec');
+    expect(perfPanelHtml).toContain('data-disclose="cr-perf-stakes-data"');
+    expect(perfPanelHtml).toContain('controlled test</span>');
+    expect(agentPanelHtml).not.toContain('data-calculator');
+  });
+
+  it('renders blocked cost states as measured-only grammar rows', () => {
+    const html = renderClientReportHtml(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'blocked',
+        chip: 'measured',
+        gap: {
+          metricLabel: 'Content coverage',
+          measuredLabel: 'not available',
+          goodLabel: 'good',
+          poorLabel: 'poor',
+          zone: 'poor',
+          lineOwner: 'Example',
+          lineUrl: 'https://example.com/line',
+        },
+        stakes: { kind: 'at-risk', prose: 'This must stay hidden.' },
+        fix: { tone: 'primary', text: 'This must stay hidden too.' },
+        gapSubLines: ['This must stay hidden below the refusal.'],
+        bookingLine: 'This must stay hidden in a booking row.',
+        countedZeroLine: 'This must stay hidden as well.',
+      },
+    }));
+    const agentPanelHtml = renderedPanel(html, 'agent');
+
+    expect(agentPanelHtml).toContain(WHAT_THIS_COSTS_YOU);
+    expect(agentPanelHtml).toContain('>Measured</div>');
+    expect(agentPanelHtml).toContain('challenge page instead of the real page, so this could not be measured');
+    expect(agentPanelHtml).toContain('>not measured</span>');
+    expect(agentPanelHtml).not.toContain('>measured</span>');
+    expect(agentPanelHtml).not.toContain('>At stake</div>');
+    expect(agentPanelHtml).not.toContain('>The fix</div>');
+    expect(agentPanelHtml).not.toContain('data-benchmark-zone');
+    expect(agentPanelHtml).not.toContain('This must stay hidden');
+  });
+
+  it('renders primary and secondary fix prompt variants', () => {
+    const baseCost = {
+      tab: 'perf' as const,
+      state: 'measured' as const,
+      headline: '8.4s before your main content appears on a mid-range phone',
+      sitePrompt: 'Improve the main page load path.',
+    };
+    const primary = renderedPanel(renderClientReportHtml(model({
+      perfCost: { ...baseCost, fix: { tone: 'primary', text: 'Prioritize the main-content delay.' } },
+    })), 'perf');
+    const secondary = renderedPanel(renderClientReportHtml(model({
+      perfCost: { ...baseCost, fix: { tone: 'secondary', text: 'Keep this tidy for visitors.' } },
+    })), 'perf');
+
+    expect(primary).toContain('>The fix</div>');
+    expect(primary).toContain('data-copy-prompt="cr-perf-site-prompt"');
+    expect(primary).not.toContain('data-copy-tone="secondary"');
+    expect(secondary).toContain('>Worth doing anyway</div>');
+    expect(secondary).toContain('data-copy-tone="secondary"');
+    expect(secondary).toContain('background:#ffffff; color:#26221d');
   });
 
   it('renders the new zero-state perf cost copy without prompt controls', () => {
