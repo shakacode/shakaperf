@@ -8,16 +8,28 @@
  */
 
 import {
+  CALC_DIAL_LABEL,
+  CALC_HONESTY_FOOTER,
+  CALC_INQUIRIES_LABEL,
+  CALC_PARTIAL_LINE,
+  CALC_PRIVACY_LINE,
+  CALC_SHARE_LABEL,
+  CALC_TITLE,
+  CALC_VALUE_LABEL,
   COST_CHIP_LABELS,
   COST_STATE_MATRIX,
   INDUSTRY_DATA,
   WHAT_THIS_AFFECTS,
+  WHAT_THIS_COSTS_YOU,
+  calcBreakEvenLine,
+  calcCapNote,
+  calcTinyResultLine,
   type CostChip,
   type IndustryDataStat,
   type State as CostState,
   type Tab as CostTab,
 } from './cost-strings';
-import type { CostBlockExtras } from './client-report-model/cost';
+import { RECOVERY_CAP, type CostBlockExtras, type CostCalculatorConfig, type CostGap, type CostStakes } from './client-report-model/cost';
 
 // Client report renderer: pure templating over a fully-assembled
 // `ClientReportModel` (built in ./client-report.ts, which does all the IO).
@@ -239,6 +251,8 @@ export interface ClientReportModel {
   agentFine: ClientReportAgentFineRow[];
   agentBlocked: ClientReportBlockedPage[];
   agentCouldNotMeasure: boolean;
+  // Wave 3 supplies this severity order. Keep the existing order when absent.
+  tabOrder?: Array<'perf' | 'a11y' | 'agent'>;
   perfCost?: ClientReportCostBlock;
   a11yCost?: ClientReportCostBlock;
   agentCost?: ClientReportCostBlock;
@@ -285,7 +299,7 @@ const HEAD_STYLE = `
   .cr-lb-prev{left:16px} .cr-lb-next{right:16px}
   .cr-lb-close:hover,.cr-lb-arrow:not(:disabled):hover{background:rgba(255,255,255,.26)}
   .cr-lb-arrow:disabled{opacity:.42;cursor:default}
-  @media print{.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}}
+  @media print{.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}.cr-tabs{display:none!important}.cr-calculator-output[hidden]{display:none!important}.cr-calculator-card:not(.cr-calculator-has-output) .cr-calculator-fields{display:none!important}}
   @media (max-width:760px){
     .cr-tiles{grid-template-columns:1fr!important}
     .cr-wrap h1{font-size:30px!important}
@@ -331,11 +345,34 @@ function tile(t: ClientReportTile): string {
       </button>`;
 }
 
+type ClientReportSection = 'perf' | 'a11y' | 'agent';
+
+const DEFAULT_SECTION_ORDER: readonly ClientReportSection[] = ['perf', 'a11y', 'agent'];
+
+function orderedSections(m: ClientReportModel): ClientReportSection[] {
+  const configured = [...(m.tabOrder ?? []), ...DEFAULT_SECTION_ORDER]
+    .filter((section, index, all) => all.indexOf(section) === index);
+  return configured.filter((section) => (
+    (section === 'perf' && m.hasPerf)
+    || (section === 'a11y' && m.hasA11y)
+    || (section === 'agent' && m.hasAgent)
+  ));
+}
+
 function tiles(m: ClientReportModel): string {
   if (m.tiles.length === 0) return '';
-  const cols = Math.min(3, m.tiles.length);
+  const order = orderedSections(m);
+  const displayTiles = m.tiles
+    .map((tile, index) => ({ tile, index }))
+    .sort((a, b) => {
+      const aIndex = order.indexOf(a.tile.target);
+      const bIndex = order.indexOf(b.tile.target);
+      return (aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex) - (bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex) || a.index - b.index;
+    })
+    .map(({ tile }) => tile);
+  const cols = Math.min(3, displayTiles.length);
   return `  <div class="cr-tiles" style="display:grid; grid-template-columns:repeat(${cols},1fr); gap:14px; margin-bottom:8px">
-${m.tiles.map(tile).join('\n')}
+${displayTiles.map(tile).join('\n')}
   </div>`;
 }
 
@@ -349,10 +386,11 @@ function tabButton(target: string, label: string, status: ClientReportStatus, ac
 }
 
 function tabs(m: ClientReportModel): string {
-  const present: { target: string; label: string; status: ClientReportStatus; blocked?: boolean }[] = [];
-  if (m.hasPerf) present.push({ target: 'perf', label: 'Performance', status: m.perfStatus, blocked: m.perfCouldNotMeasure });
-  if (m.hasA11y) present.push({ target: 'a11y', label: 'Accessibility', status: m.a11yStatus, blocked: m.a11yCouldNotMeasure });
-  if (m.hasAgent) present.push({ target: 'agent', label: 'AI visibility', status: m.agentStatus, blocked: m.agentCouldNotMeasure });
+  const present = orderedSections(m).map((target) => {
+    if (target === 'perf') return { target, label: 'Performance', status: m.perfStatus, blocked: m.perfCouldNotMeasure };
+    if (target === 'a11y') return { target, label: 'Accessibility', status: m.a11yStatus, blocked: m.a11yCouldNotMeasure };
+    return { target, label: 'AI visibility', status: m.agentStatus, blocked: m.agentCouldNotMeasure };
+  });
   if (present.length < 2) return ''; // a single section needs no tab bar
   const first = present[0].target;
   return `  <div class="cr-tabs" style="display:flex; gap:2px; border-bottom:1px solid #e7e1d8; margin:42px 0 28px; position:sticky; top:0; background:#f7f5f0; z-index:5; padding-top:6px">
@@ -408,44 +446,69 @@ function costId(...parts: (string | number | undefined)[]): string {
   return base || 'cost';
 }
 
-function copyPromptControl(prompt: string | undefined, id: string, compact = false): string {
+function copyPromptControl(prompt: string | undefined, id: string, compact = false, tone: 'primary' | 'secondary' = 'primary'): string {
   if (!prompt) return '';
   const label = compact ? 'Copy prompt' : 'Copy prompt for your agent';
   const width = compact ? '118px' : '190px';
   const gap = compact ? '8px' : '10px';
+  const secondary = tone === 'secondary';
+  const toneAttr = secondary ? ' data-copy-tone="secondary"' : '';
+  const buttonStyle = secondary
+    ? 'border:1px solid #26221d; background:#ffffff; color:#26221d'
+    : 'border:1px solid #26221d; background:#26221d; color:#fff';
   return `        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:${gap}; margin-top:${compact ? '14px' : '16px'}">
-          <button type="button" data-copy-prompt="${esc(id)}" style="appearance:none; border:1px solid #26221d; background:#26221d; color:#fff; border-radius:8px; width:${width}; min-height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(label)}</span></button>
+          <button type="button" data-copy-prompt="${esc(id)}"${toneAttr} style="appearance:none; ${buttonStyle}; border-radius:8px; width:${width}; min-height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer"><span data-copy-label>${esc(label)}</span></button>
           <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">view the prompt</button>
         </div>
         <pre id="${esc(id)}" data-disclosure hidden style="white-space:pre-wrap; overflow:auto; max-height:340px; margin:${compact ? '10px' : '12px'} 0 0; padding:14px 16px; border:1px solid #e0d9cd; border-radius:11px; background:#f4f1ea; color:#3a352e; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.55">${esc(prompt)}</pre>`;
 }
 
-function industryData(stats: readonly SourcedStat[] | undefined, id: string): string {
+interface IndustryDataOptions {
+  expanderIntro?: string;
+  expanderFooter?: string;
+  showMethodTags?: boolean;
+}
+
+function industryData(stats: readonly SourcedStat[] | undefined, id: string, options?: IndustryDataOptions): string {
   if (!stats || stats.length === 0) return '';
   const rows = stats
-    .map((s) => `          <li style="display:flex; gap:10px; font-size:13.5px; line-height:1.5; color:#4a443c">
+    .map((s) => {
+      const method = options?.showMethodTags && s.method
+        ? ` <span style="display:inline-block; border:1px solid #d8d0c3; border-radius:999px; padding:1px 5px; color:#5e5549; font-family:'JetBrains Mono',monospace; font-size:10px; line-height:1.35; white-space:nowrap">${esc(s.method)}</span>`
+        : '';
+      return `          <li style="display:flex; gap:10px; font-size:13.5px; line-height:1.5; color:#4a443c">
             <span style="color:#9b9286; flex:none">&rarr;</span>
-            <span>${esc(s.text)} <a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:#26221d; font-weight:600; text-decoration:underline">${esc(s.publisher)}, ${esc(s.date)}</a></span>
-          </li>`)
+            <span>${esc(s.text)} <a href="${esc(s.url)}" target="_blank" rel="noopener" style="color:#26221d; font-weight:600; text-decoration:underline">${esc(s.publisher)}, ${esc(s.date)}</a>${method}</span>
+          </li>`;
+    })
     .join('\n');
   return `        <div style="margin-top:16px">
           <button type="button" data-disclose="${esc(id)}" class="cr-mono-chip" style="appearance:none; border:1px solid #e0d9cd; background:#f4f1ea; border-radius:999px; padding:8px 11px; min-height:38px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#4a443c; cursor:pointer">${esc(INDUSTRY_DATA)}</button>
           <div id="${esc(id)}" data-disclosure hidden style="margin-top:10px; padding:14px 16px; border:1px solid #e7e1d8; border-radius:11px; background:#fbfaf8">
+            ${options?.expanderIntro ? `<p style="font-size:13.5px; line-height:1.5; color:#4a443c; margin:0 0 10px">${esc(options.expanderIntro)}</p>` : ''}
             <ul style="margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px">
 ${rows}
             </ul>
+            ${options?.expanderFooter ? `<p style="font-size:13px; line-height:1.5; color:#5e5549; margin:12px 0 0; padding-top:12px; border-top:1px solid #e7e1d8">${esc(options.expanderFooter)}</p>` : ''}
           </div>
         </div>`;
 }
 
-function costBlock(cost: ClientReportCostBlock | undefined): string;
-function costBlock(cost: ClientReportCostBlock | undefined, slot: 'top' | 'bottom'): string;
-function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bottom'): string {
-  if (!cost) return '';
+function costUsesGrammar(cost: ClientReportCostBlock): boolean {
+  return cost.state === 'blocked'
+    || Boolean(cost.gap)
+    || Boolean(cost.gapSubLines?.length)
+    || Boolean(cost.bookingLine)
+    || Boolean(cost.stakes)
+    || Boolean(cost.fix)
+    || Boolean(cost.calculator)
+    || Boolean(cost.countedZeroLine);
+}
+
+function legacyCostBlock(cost: ClientReportCostBlock, slot?: 'top' | 'bottom'): string {
   const cell = COST_STATE_MATRIX[cost.tab][cost.state];
   const chip = cost.chip ?? cell.chip;
-  const stateCopy = cell.copy;
-  const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? stateCopy;
+  const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? cell.copy;
   const top = headline || chip || cost.checkLine
     ? `      <div style="margin:0 0 16px; max-width:70ch">
         <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
@@ -453,13 +516,11 @@ function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bott
           ${costChip(chip)}
         </div>
         ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#6f665c; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
-        ${cost.checkLine && cell.rendersCostNumber ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#6f665c">${esc(cost.checkLine)}</div>` : ''}
+        ${cost.checkLine && cell.rendersCheckLine ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#6f665c">${esc(cost.checkLine)}</div>` : ''}
       </div>`
     : '';
-  const promptId = costId('cr', cost.tab, 'site-prompt');
-  const dataId = costId('cr', cost.tab, 'industry-data');
-  const prompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, promptId) : '';
-  const stats = cell.rendersIndustryDataExpander ? industryData(cost.stats, dataId) : '';
+  const prompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, costId('cr', cost.tab, 'site-prompt')) : '';
+  const stats = cell.rendersIndustryDataExpander ? industryData(cost.stats, costId('cr', cost.tab, 'industry-data')) : '';
   const bottom = cell.rendersFullTreatment && (cost.affectsProse || prompt || stats)
     ? `      <div style="margin-top:16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
         <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:8px">${esc(WHAT_THIS_AFFECTS)}</div>
@@ -473,6 +534,153 @@ ${stats}
   return `${top}${bottom}`;
 }
 
+function benchmarkScale(gap: CostGap): string {
+  const zoneCenter: Record<CostGap['zone'], number> = { good: 20, mid: 55, poor: 85 };
+  const marker = Math.max(4, Math.min(96, zoneCenter[gap.zone]));
+  const multiple = gap.multipleLabel ? ` - ${gap.multipleLabel} the good line` : '';
+  return `          <div data-benchmark-zone="${esc(gap.zone)}" style="margin-top:13px; max-width:620px" aria-label="${esc(`${gap.metricLabel}: ${gap.measuredLabel}`)}">
+            <div style="position:relative; padding-top:25px">
+              <div style="height:12px; overflow:hidden; display:flex; border:1px solid #d8d0c3; border-radius:999px; background:#ffffff">
+                <span style="width:40%; background:${PAL.good.bg}"></span><span style="width:30%; background:${PAL.fair.bg}"></span><span style="width:30%; background:${PAL.poor.bg}"></span>
+              </div>
+              <div style="position:absolute; top:0; left:${marker}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; white-space:nowrap">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; color:#26221d">${esc(`you: ${gap.measuredLabel}${multiple}`)}</span>
+                <span style="width:2px; height:13px; margin-top:2px; background:#26221d"></span>
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#5e5549"><span>${esc(gap.goodLabel)}</span><span>${esc(gap.poorLabel)}</span></div>
+            <div style="margin-top:7px; font-size:11.5px; line-height:1.45; color:#5e5549">Benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#3a352e; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a></div>
+          </div>`;
+}
+
+function costGrammarRow(label: string, content: string): string {
+  return `        <div style="display:grid; grid-template-columns:minmax(92px, 108px) minmax(0, 1fr); gap:14px; padding:16px 0; border-top:1px solid #e7e1d8">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#5e5549; padding-top:3px">${esc(label)}</div>
+          <div>${content}</div>
+        </div>`;
+}
+
+function measuredRow(cost: ClientReportCostBlock): string {
+  const cell = COST_STATE_MATRIX[cost.tab][cost.state];
+  const blocked = cost.state === 'blocked';
+  const chip = blocked ? cell.chip : cost.chip ?? cell.chip;
+  const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? cell.copy;
+  const subLines = cost.state !== 'blocked' ? cost.gapSubLines?.map((line) => `<div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#5e5549; margin-top:5px">${esc(line)}</div>`).join('') ?? '' : '';
+  const booking = cost.state !== 'blocked' && cost.bookingLine
+    ? `<div style="margin-top:12px; padding:10px 12px; border:1px solid #e0d9cd; border-radius:8px; background:#fbfaf8; font-size:13.5px; line-height:1.5; color:#3a352e">${esc(cost.bookingLine)}</div>`
+    : '';
+  const content = `            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
+              ${headline ? `<div style="font-size:${cell.rendersCostNumber ? '16.5px' : '15px'}; line-height:1.45; font-weight:${cell.rendersCostNumber ? '700' : '600'}; color:#26221d">${esc(headline)}</div>` : ''}
+              ${costChip(chip)}
+            </div>
+            ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#5e5549; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
+            ${cost.checkLine && cell.rendersCheckLine ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#5e5549">${esc(cost.checkLine)}</div>` : ''}
+            ${cell.rendersBenchmarkScale && cost.gap ? benchmarkScale(cost.gap) : ''}
+            ${subLines}
+            ${booking}`;
+  return costGrammarRow('Measured', content);
+}
+
+function stakesRow(stakes: CostStakes, tab: CostTab): string {
+  const studies = industryData(stakes.studies, costId('cr', tab, 'stakes-data'), {
+    expanderIntro: stakes.expanderIntro,
+    expanderFooter: stakes.expanderFooter,
+    showMethodTags: true,
+  });
+  const prose = stakes.kind === 'no-material-loss'
+    ? `<div style="padding:12px 14px; border:1px solid ${PAL.good.line}; border-radius:9px; background:${PAL.good.bg}; color:${PAL.good.fg}; font-size:15px; line-height:1.55">${esc(stakes.prose)}</div>`
+    : `<p style="font-size:15px; line-height:1.58; color:#3a352e; margin:0">${esc(stakes.prose)}</p>`;
+  return costGrammarRow('At stake', `${prose}${studies}`);
+}
+
+function percentageLabel(value: number): string {
+  return `${Number((value * 100).toFixed(2))}%`;
+}
+
+function tinyResultLine(floor: number): string {
+  return calcTinyResultLine().replace('$50', '$' + floor.toLocaleString('en-US', { maximumFractionDigits: 2 }));
+}
+
+function calculatorCard(calculator: CostCalculatorConfig, tab: CostTab): string {
+  const id = costId('cr', tab, 'calculator');
+  const prefill = Number((calculator.mobileSharePrefill * 100).toFixed(2));
+  const bands = calculator.bands.map((band, index) => {
+    const inputId = `${id}-band-${costId(band.id)}`;
+    const label = `${band.id.charAt(0).toUpperCase()}${band.id.slice(1)}: ${percentageLabel(band.lo)}-${percentageLabel(band.hi)}`;
+    return `              <label for="${esc(inputId)}" style="display:flex; align-items:center; gap:7px; font-size:13px; line-height:1.4; color:#3a352e; cursor:pointer"><input id="${esc(inputId)}" type="radio" name="${esc(`${id}-band`)}" value="${esc(band.id)}" data-calc-band${band.id === 'cautious' || (index === 0 && !calculator.bands.some((candidate) => candidate.id === 'cautious')) ? ' checked' : ''}> ${esc(label)}</label>`;
+  }).join('\n');
+  return `        <div class="cr-calculator-card" data-calculator data-calc-bands="${esc(JSON.stringify(calculator.bands))}" data-calc-floor="${esc(String(calculator.materialityFloorUsdPerMonth))}" data-calc-recovery-cap="${esc(String(RECOVERY_CAP))}" data-calc-prefill="${esc(String(prefill))}" data-calc-noun="${esc(calculator.inquiryNoun)}" data-calc-partial="${esc(CALC_PARTIAL_LINE)}" data-calc-tiny="${esc(tinyResultLine(calculator.materialityFloorUsdPerMonth))}" data-calc-break-even-template="${esc(calcBreakEvenLine('__VALUE__'))}" style="margin:0 0 2px; padding:18px 20px; border:1px dashed #a69b8d; border-radius:12px; background:#fbfaf8; max-width:72ch">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#3a352e; margin-bottom:7px">${esc(CALC_TITLE)}</div>
+          <p style="font-size:13px; line-height:1.5; color:#4a443c; margin:0">${esc(CALC_PRIVACY_LINE)}</p>
+          <div class="cr-calculator-fields" style="margin-top:15px; display:grid; gap:13px">
+            <div>
+              <label for="${esc(`${id}-inquiries`)}" style="display:block; font-size:13px; font-weight:600; line-height:1.45; color:#3a352e; margin-bottom:5px">${esc(CALC_INQUIRIES_LABEL)}</label>
+              <input id="${esc(`${id}-inquiries`)}" data-calc-inquiries type="number" min="0" step="1" inputmode="decimal" style="width:100%; max-width:260px; min-height:38px; border:1px solid #bcb3a7; border-radius:7px; background:#ffffff; color:#26221d; padding:7px 9px; font:inherit">
+            </div>
+            <div>
+              <label for="${esc(`${id}-value`)}" style="display:block; font-size:13px; font-weight:600; line-height:1.45; color:#3a352e; margin-bottom:5px">${esc(CALC_VALUE_LABEL)}</label>
+              <input id="${esc(`${id}-value`)}" data-calc-value type="number" min="0" step="1" inputmode="decimal" style="width:100%; max-width:260px; min-height:38px; border:1px solid #bcb3a7; border-radius:7px; background:#ffffff; color:#26221d; padding:7px 9px; font:inherit">
+            </div>
+            <div>
+              <label for="${esc(`${id}-share`)}" style="display:block; font-size:13px; font-weight:600; line-height:1.45; color:#3a352e; margin-bottom:5px">${esc(CALC_SHARE_LABEL)}</label>
+              <input id="${esc(`${id}-share`)}" data-calc-share type="number" min="0" max="100" step="1" inputmode="decimal" value="${esc(String(prefill))}" style="width:100%; max-width:260px; min-height:38px; border:1px solid #bcb3a7; border-radius:7px; background:#ffffff; color:#26221d; padding:7px 9px; font:inherit">
+            </div>
+            <fieldset role="radiogroup" aria-label="${esc(CALC_DIAL_LABEL)}" style="margin:0; padding:0; border:0">
+              <legend style="font-size:13px; font-weight:600; line-height:1.45; color:#3a352e; margin:0 0 7px">${esc(CALC_DIAL_LABEL)}</legend>
+              <div style="display:flex; flex-wrap:wrap; gap:10px 16px">
+${bands}
+              </div>
+            </fieldset>
+            <p style="font-size:12px; line-height:1.5; color:#4a443c; margin:0">${esc(calcCapNote())}</p>
+          </div>
+          <div class="cr-calculator-output" data-calc-output aria-live="polite" hidden style="margin-top:16px; padding-top:14px; border-top:1px solid #ddd6ca">
+            <div data-calc-lines style="white-space:pre-line; font-size:13.5px; line-height:1.55; color:#26221d"></div>
+            <div style="margin-top:11px; font-size:12px; line-height:1.5; color:#4a443c">${esc(CALC_HONESTY_FOOTER)}</div>
+            <div style="margin-top:9px">${costChip('your estimate')}</div>
+          </div>
+        </div>`;
+}
+
+function costGrammarBlock(cost: ClientReportCostBlock): string {
+  const cell = COST_STATE_MATRIX[cost.tab][cost.state];
+  const blocked = cost.state === 'blocked';
+  const prompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, costId('cr', cost.tab, 'site-prompt'), false, cost.fix?.tone ?? 'primary') : '';
+  const fallbackPrompt = cell.rendersCopyPromptButton ? copyPromptControl(cost.sitePrompt, costId('cr', cost.tab, 'site-prompt')) : '';
+  const fallbackStats = cell.rendersIndustryDataExpander ? industryData(cost.stats, costId('cr', cost.tab, 'industry-data')) : '';
+  const fallback = !blocked && !cost.fix && cell.rendersFullTreatment && (cost.affectsProse || fallbackPrompt || fallbackStats)
+    ? `        <div style="margin:0 0 2px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:8px">${esc(WHAT_THIS_AFFECTS)}</div>
+          ${cost.affectsProse ? `<p style="font-size:15.5px; line-height:1.58; color:#3a352e; margin:0">${esc(cost.affectsProse)}</p>` : ''}
+${fallbackPrompt}
+${fallbackStats}
+        </div>`
+    : '';
+  const fixContent = !blocked && cost.fix && (cost.fix.text || prompt)
+    ? costGrammarRow(cost.fix.tone === 'secondary' ? 'Worth doing anyway' : 'The fix', `${cost.fix.text ? `<p style="font-size:15px; line-height:1.58; color:#3a352e; margin:0">${esc(cost.fix.text)}</p>` : ''}${prompt}`)
+    : '';
+  const calculator = !blocked && cell.rendersCalculator && cost.calculator ? calculatorCard(cost.calculator, cost.tab) : '';
+  const countedZero = !blocked && cost.countedZeroLine
+    ? `<div style="margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#5e5549">${esc(cost.countedZeroLine)}</div>`
+    : '';
+  return `      <div style="margin:0 0 16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:4px">${esc(WHAT_THIS_COSTS_YOU)}</div>
+${measuredRow(cost)}
+${!blocked && cost.stakes ? stakesRow(cost.stakes, cost.tab) : ''}
+${calculator}
+${fixContent}
+${fallback}
+${countedZero}
+      </div>`;
+}
+
+function costBlock(cost: ClientReportCostBlock | undefined): string;
+function costBlock(cost: ClientReportCostBlock | undefined, slot: 'top' | 'bottom'): string;
+function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bottom'): string {
+  if (!cost) return '';
+  if (costUsesGrammar(cost)) return costGrammarBlock(cost);
+  return legacyCostBlock(cost, slot);
+}
+
 function verdictHead(
   question: string,
   status: ClientReportStatus,
@@ -484,16 +692,17 @@ function verdictHead(
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
   const badge = blocked ? '' : scoreBadge(score, status);
+  const grammar = cost ? costUsesGrammar(cost) : false;
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
         <div style="font-size:26px; font-weight:800; letter-spacing:-.02em; color:${p.fg}">${esc(dim.verdictWord)}</div>
         ${badge}
       </div>
-      ${costBlock(cost, 'top')}
+      ${grammar ? costBlock(cost) : costBlock(cost, 'top')}
       <p style="font-size:17px; line-height:1.55; color:#3a352e; margin:0 0 16px; max-width:64ch">${emphasize(esc(dim.verdictPara))}</p>
       ${!blocked && startHere && (startHere.items.length || startHere.lead) ? startHereBlock(status, startHere) : ''}
-      ${costBlock(cost, 'bottom')}
+      ${grammar ? '' : costBlock(cost, 'bottom')}
     </div>`;
 }
 
@@ -1084,18 +1293,96 @@ const SCRIPTS = `<script>
       card.querySelectorAll('.cr-box-' + sev).forEach(function(b){ b.style.display = off ? 'none' : ''; });
     });
   });
+
+  // Calculator arithmetic mirrors computeRecoveryRange. The renderer serializes
+  // its calculator inputs below, so the inline script never hardcodes them.
+  document.querySelectorAll('[data-calculator]').forEach(function(card){
+    var inquiries = card.querySelector('[data-calc-inquiries]');
+    var value = card.querySelector('[data-calc-value]');
+    var share = card.querySelector('[data-calc-share]');
+    var output = card.querySelector('[data-calc-output]');
+    var lines = card.querySelector('[data-calc-lines]');
+    if(!inquiries || !value || !share || !output || !lines) return;
+    var bands, floor = Number(card.getAttribute('data-calc-floor'));
+    var recoveryCap = Number(card.getAttribute('data-calc-recovery-cap'));
+    var prefill = Number(card.getAttribute('data-calc-prefill'));
+    try{ bands = JSON.parse(card.getAttribute('data-calc-bands') || '[]'); }catch(e){ return; }
+    if(!Array.isArray(bands) || !Number.isFinite(floor) || !Number.isFinite(recoveryCap) || !Number.isFinite(prefill)) return;
+    if(!share.value) share.value = String(prefill);
+    var touched = false;
+    function numberLabel(n){ return n.toLocaleString('en-US', { maximumFractionDigits: 1 }); }
+    function dollars(n){ return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+    function hide(){ output.hidden = true; lines.textContent = ''; card.classList.remove('cr-calculator-has-output'); }
+    function partial(){
+      output.hidden = false;
+      lines.textContent = card.getAttribute('data-calc-partial') || '';
+      card.classList.add('cr-calculator-has-output');
+    }
+    function selectedBand(){
+      var checked = card.querySelector('[data-calc-band]:checked');
+      if(!checked) return null;
+      for(var i=0;i<bands.length;i++){ if(bands[i].id === checked.value) return bands[i]; }
+      return null;
+    }
+    function sync(){
+      if(!touched){ hide(); return; }
+      var inquiriesText = inquiries.value.trim();
+      var valueText = value.value.trim();
+      var shareText = share.value.trim();
+      var monthlyInquiries = Number(inquiriesText);
+      var mobileShare = Number(shareText) / 100;
+      var hasValue = valueText !== '';
+      var valuePerInquiryUsd = Number(valueText);
+      var band = selectedBand();
+      if(
+        !inquiriesText || !shareText || !band
+        || !Number.isFinite(monthlyInquiries) || monthlyInquiries <= 0
+        || !Number.isFinite(mobileShare) || mobileShare < 0 || mobileShare > 1
+        || !Number.isFinite(band.lo) || !Number.isFinite(band.hi) || band.lo < 0 || band.hi < band.lo || band.hi > recoveryCap
+        || (hasValue && (!Number.isFinite(valuePerInquiryUsd) || valuePerInquiryUsd < 0))
+      ){ partial(); return; }
+      // Mirror computeRecoveryRange: phone share, recovery band, monthly value, then yearly value.
+      var mobileInquiries = monthlyInquiries * mobileShare;
+      var recoveredLo = mobileInquiries * band.lo;
+      var recoveredHi = mobileInquiries * band.hi;
+      var usdMonthLo = hasValue ? recoveredLo * valuePerInquiryUsd : null;
+      var usdMonthHi = hasValue ? recoveredHi * valuePerInquiryUsd : null;
+      var usdYearLo = hasValue ? usdMonthLo * 12 : null;
+      var usdYearHi = hasValue ? usdMonthHi * 12 : null;
+      var breakEvenUsdYear = hasValue ? valuePerInquiryUsd * 12 : null;
+      if(!Number.isFinite(mobileInquiries) || !Number.isFinite(recoveredLo) || !Number.isFinite(recoveredHi) || (hasValue && (!Number.isFinite(usdMonthLo) || !Number.isFinite(usdMonthHi) || !Number.isFinite(usdYearLo) || !Number.isFinite(usdYearHi) || !Number.isFinite(breakEvenUsdYear)))){ partial(); return; }
+      var noun = card.getAttribute('data-calc-noun') || 'inquiries';
+      var result = [];
+      if(hasValue){
+        var breakEven = (card.getAttribute('data-calc-break-even-template') || '').replace('__VALUE__', dollars(breakEvenUsdYear));
+        if(breakEven) result.push(breakEven);
+      }
+      result.push(numberLabel(monthlyInquiries) + ' ' + noun + ' x ' + numberLabel(mobileShare * 100) + '% on phones = ' + numberLabel(mobileInquiries) + ' mobile ' + noun);
+      result.push(numberLabel(mobileInquiries) + ' x ' + numberLabel(band.lo * 100) + '-' + numberLabel(band.hi * 100) + '% won back = ' + numberLabel(recoveredLo) + ' to ' + numberLabel(recoveredHi) + ' more ' + noun + ' a month');
+      if(hasValue){
+        if(usdMonthHi < floor){ result.push(card.getAttribute('data-calc-tiny') || ''); }
+        else result.push(numberLabel(recoveredLo) + ' to ' + numberLabel(recoveredHi) + ' x ' + dollars(valuePerInquiryUsd) + ' = ' + dollars(usdMonthLo) + ' to ' + dollars(usdMonthHi) + ' a month (about ' + dollars(usdYearLo) + ' to ' + dollars(usdYearHi) + ' a year)');
+      }
+      output.hidden = false;
+      lines.textContent = result.filter(function(line){ return line; }).join('\\n');
+      card.classList.add('cr-calculator-has-output');
+    }
+    [inquiries, value, share].forEach(function(field){ field.addEventListener('input', function(){ touched = true; sync(); }); });
+    card.querySelectorAll('[data-calc-band]').forEach(function(field){ field.addEventListener('change', function(){ touched = true; sync(); }); });
+    sync();
+  });
 })();
 </script>`;
 
 export function renderClientReportHtml(m: ClientReportModel): string {
-  const sections: { has: boolean; html: (multi: boolean, first: boolean) => string }[] = [
-    { has: m.hasPerf, html: (multi: boolean, first: boolean) => perfPanel(m, multi, first) },
-    { has: m.hasA11y, html: (multi: boolean, first: boolean) => a11yPanel(m, multi, first) },
-    { has: m.hasAgent, html: (multi: boolean, first: boolean) => agentPanel(m, multi, first) },
-  ].filter((s) => s.has);
+  const sections = orderedSections(m).map((section) => {
+    if (section === 'perf') return (multi: boolean, first: boolean) => perfPanel(m, multi, first);
+    if (section === 'a11y') return (multi: boolean, first: boolean) => a11yPanel(m, multi, first);
+    return (multi: boolean, first: boolean) => agentPanel(m, multi, first);
+  });
   const multi = sections.length > 1;
   // First present section is shown on load (from order, not a hardcoded perf-first).
-  const panels = sections.map((s, i) => s.html(multi, i === 0)).join('\n\n');
+  const panels = sections.map((render, i) => render(multi, i === 0)).join('\n\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
