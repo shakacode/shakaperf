@@ -8,6 +8,7 @@
  */
 
 import type { ClientReportStatus } from '../client-report-renderer';
+import type { PerfProblemKind } from './perf';
 
 /**
  * Published performance and accessibility lines.
@@ -24,6 +25,8 @@ export const BENCHMARK_LINES = {
   tbtMs: { good: 200, poor: 600 },
   contrast: 4.5,
 } as const;
+
+export const MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO = 0.10;
 
 interface DecimalFraction {
   numerator: bigint;
@@ -85,13 +88,13 @@ export interface CostStudy {
   publisher: string;
   date: string;
   url: string;
-  method: 'controlled test' | 'correlation';
+  method?: 'controlled test' | 'correlation';
 }
 
 export interface CostStakes {
   kind: 'at-risk' | 'no-material-loss';
   prose: string;
-  studies?: CostStudy[];
+  studies?: readonly CostStudy[];
   expanderIntro?: string;
   expanderFooter?: string;
 }
@@ -204,4 +207,284 @@ export interface CostBlockExtras {
 export function dimSeverityRank(status: ClientReportStatus, couldNotMeasure: boolean): number {
   if (couldNotMeasure) return 2;
   return { poor: 0, fair: 1, good: 3 }[status];
+}
+
+export type PerfGapKind = 'slow-lcp' | 'layout-shift' | 'blank' | 'late-paint' | 'sluggish';
+
+export interface PerfGapMetrics {
+  lcpMs?: number;
+  cls?: number;
+  fcpMs?: number;
+  tbtMs?: number;
+}
+
+interface PerfGapSpec {
+  metricLabel: string;
+  line: { good: number; poor: number };
+  lineOwner: string;
+  lineUrl: string;
+  label: (value: number) => string;
+}
+
+const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
+  'slow-lcp': {
+    metricLabel: 'Main content',
+    line: BENCHMARK_LINES.lcpMs,
+    lineOwner: "Google's Core Web Vitals",
+    lineUrl: 'https://web.dev/articles/lcp',
+    label: (value) => `${(value / 1000).toFixed(1)}s`,
+  },
+  'layout-shift': {
+    metricLabel: 'Layout shift',
+    line: BENCHMARK_LINES.cls,
+    lineOwner: "Google's Core Web Vitals",
+    lineUrl: 'https://web.dev/articles/cls',
+    label: (value) => value.toFixed(2),
+  },
+  blank: {
+    metricLabel: 'First content',
+    line: BENCHMARK_LINES.fcpMs,
+    lineOwner: "Google's Core Web Vitals",
+    lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+    label: (value) => `${(value / 1000).toFixed(1)}s`,
+  },
+  'late-paint': {
+    metricLabel: 'First content',
+    line: BENCHMARK_LINES.fcpMs,
+    lineOwner: "Google's Core Web Vitals",
+    lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+    label: (value) => `${(value / 1000).toFixed(1)}s`,
+  },
+  sluggish: {
+    metricLabel: 'Tap delay',
+    line: BENCHMARK_LINES.tbtMs,
+    lineOwner: "Google's Core Web Vitals",
+    lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time',
+    label: (value) => `${(value / 1000).toFixed(1)}s`,
+  },
+};
+
+function finiteMetric(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isFinite(value) ? value : undefined;
+}
+
+function perfGapValue(kind: PerfGapKind, metrics: PerfGapMetrics): number | undefined {
+  switch (kind) {
+    case 'slow-lcp': return finiteMetric(metrics.lcpMs);
+    case 'layout-shift': return finiteMetric(metrics.cls);
+    case 'blank':
+    case 'late-paint': return finiteMetric(metrics.fcpMs);
+    case 'sluggish': return finiteMetric(metrics.tbtMs);
+  }
+}
+
+export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | undefined {
+  const value = perfGapValue(kind, metrics);
+  if (value === undefined) return undefined;
+  const spec = PERF_GAP_SPECS[kind];
+  return {
+    metricLabel: spec.metricLabel,
+    measuredLabel: spec.label(value),
+    goodLabel: spec.label(spec.line.good),
+    poorLabel: spec.label(spec.line.poor),
+    ...(benchmarkMultiple(value, spec.line.good) ? { multipleLabel: benchmarkMultiple(value, spec.line.good) } : {}),
+    zone: benchmarkZone(value, spec.line),
+    lineOwner: spec.lineOwner,
+    lineUrl: spec.lineUrl,
+  };
+}
+
+export interface PerfFactPage {
+  name: string;
+  lcpMs?: number;
+  jsKb?: number;
+  downloadsBeforeLcpKb?: number;
+  downloadsKb?: number;
+}
+
+function mb(kb: number): string {
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function mbNumber(kb: number): string {
+  return (kb / 1024).toFixed(1);
+}
+
+export function perfGapSubLines(pages: readonly PerfFactPage[], anchor: PerfFactPage): string[] {
+  const lines: string[] = [];
+  const lcpPages = pages.filter((page): page is PerfFactPage & { lcpMs: number } => finiteMetric(page.lcpMs) !== undefined);
+  const slowest = [...lcpPages].sort((a, b) => b.lcpMs - a.lcpMs)[0];
+  if (slowest) {
+    const multiple = benchmarkMultiple(slowest.lcpMs, BENCHMARK_LINES.lcpMs.good);
+    if (multiple) lines.push(`slowest page: ${slowest.name}, ${(slowest.lcpMs / 1000).toFixed(1)}s - ${multiple} the line`);
+  }
+  if (lcpPages.length > 1) {
+    const average = lcpPages.reduce((sum, page) => sum + page.lcpMs, 0) / lcpPages.length;
+    const multiple = benchmarkMultiple(average, BENCHMARK_LINES.lcpMs.good);
+    if (multiple) lines.push(`site average: ${(average / 1000).toFixed(1)}s - ${multiple} the line`);
+  }
+  const before = finiteMetric(anchor.downloadsBeforeLcpKb);
+  const total = finiteMetric(anchor.downloadsKb);
+  if (before !== undefined && total !== undefined) {
+    lines.push(`the phone pulls ${mb(before)} before the main content shows, ${mb(total)} in total`);
+  }
+  return lines;
+}
+
+const PERF_FIX_TARGET: Record<PerfProblemKind, string> = {
+  'slow-lcp': 'The target: main content under 2.5 seconds on the same phone profile.',
+  'layout-shift': 'The target: layout shift under 0.10 on the same phone profile.',
+  blank: 'The target: something visible under 1.8 seconds on the same phone profile.',
+  'late-paint': 'The target: something visible under 1.8 seconds on the same phone profile.',
+  sluggish: 'The target: time spent blocking the main thread under 0.2 seconds on the same phone profile.',
+};
+
+const PERF_STAKES_PROSE: Record<PerfProblemKind, string> = {
+  'slow-lcp': 'Waits like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+  'layout-shift': 'Layout shifts like this make visitors lose their place, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+  blank: 'Blank starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+  'late-paint': 'Slow starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+  sluggish: 'Slow interactions like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+};
+
+export function perfFixText(pages: readonly PerfFactPage[], kind: PerfProblemKind = 'slow-lcp'): string {
+  const jsValues = pages.map((page) => finiteMetric(page.jsKb)).filter((value): value is number => value !== undefined);
+  const downloads = pages.map((page) => finiteMetric(page.downloadsKb)).filter((value): value is number => value !== undefined);
+  const clauses: string[] = [];
+  if (jsValues.length > 0) {
+    const subject = jsValues.length === pages.length ? 'every page carries' : 'the pages with JavaScript data carry';
+    clauses.push(`${subject} ${mbNumber(Math.min(...jsValues))}-${mbNumber(Math.max(...jsValues))} MB of JavaScript`);
+  }
+  if (downloads.length > 0) clauses.push(`the heaviest page moves ${mb(Math.max(...downloads))} in total`);
+  const target = PERF_FIX_TARGET[kind];
+  return clauses.length ? `${target} The dominant cause we measured: ${clauses.join(', and ')}.` : target;
+}
+
+export function perfStakesProse(kind: PerfProblemKind): string {
+  return PERF_STAKES_PROSE[kind];
+}
+
+export function countedZeroLine(pages: readonly PerfFactPage[]): string | undefined {
+  const nearLine = pages
+    .filter((page): page is PerfFactPage & { lcpMs: number } => {
+      const value = finiteMetric(page.lcpMs);
+      return value !== undefined && value >= BENCHMARK_LINES.lcpMs.good * 0.8 && value <= BENCHMARK_LINES.lcpMs.good;
+    })
+    .map((page) => `${page.name} (${(page.lcpMs / 1000).toFixed(1)}s)`);
+  if (nearLine.length === 0) return undefined;
+  const verb = nearLine.length === 1 ? 'sits' : 'sit';
+  const pronoun = nearLine.length === 1 ? 'It is' : 'They are';
+  const slowPage = nearLine.length === 1 ? 'a slow page' : 'slow pages';
+  return `Counted as zero above: ${nearLine.join(', ')} ${verb} close to the line. ${pronoun} included in the site average, but not counted as ${slowPage} above.`;
+}
+
+export function moneyPage<T extends { name: string; startingPath: string; lcpMs?: number }>(
+  pages: readonly T[],
+  overridePath?: string,
+): (T & { lcpMs: number }) | undefined {
+  const normalizePath = (value: string): string => {
+    const trimmed = value.trim().replace(/\/+$/, '');
+    if (!trimmed || trimmed === '/') return '/';
+    return `/${trimmed.replace(/^\/+/, '')}`;
+  };
+  const normalizedOverride = overridePath === undefined ? undefined : normalizePath(overridePath);
+  const matching = normalizedOverride
+    ? pages.find((page) => normalizePath(page.startingPath) === normalizedOverride)
+    : pages.find((page) => /\b(?:book(?:ing)?|appointments?|schedule|contact|locations?|reserve|reservations?|quote|inquir(?:y|ies))\b/i.test(`${page.name} ${page.startingPath}`));
+  if (!matching) return undefined;
+  const lcpMs = finiteMetric(matching.lcpMs);
+  return lcpMs !== undefined && lcpMs > BENCHMARK_LINES.lcpMs.good
+    ? { ...matching, lcpMs }
+    : undefined;
+}
+
+export function bookingLine(page: { name: string; lcpMs: number }): string {
+  return `${page.name} is the page where booking starts. It shows its main content after ${(page.lcpMs / 1000).toFixed(1)}s - a visitor who gives up here is an inquiry that never begins.`;
+}
+
+export interface A11yFindingScan {
+  violations: readonly {
+    ruleId: string;
+    failureSummary?: string;
+    nodes?: readonly { failureSummary?: string }[];
+  }[];
+}
+
+function countFindingPages(scans: readonly A11yFindingScan[], matches: (ruleId: string) => boolean): number {
+  return scans.filter((scan) => scan.violations.some((violation) => matches(violation.ruleId))).length;
+}
+
+const a11yPageCount = (count: number): string => `${count} ${count === 1 ? 'page' : 'pages'}`;
+
+export function a11yFixText(scans: readonly A11yFindingScan[]): string | undefined {
+  const findings = [
+    [
+      countFindingPages(scans, (ruleId) => ruleId === 'color-contrast'),
+      (count: number) => `contrast below the 4.5:1 WCAG line on ${a11yPageCount(count)}`,
+    ],
+    [
+      countFindingPages(scans, (ruleId) => /^(button-name|link-name|label|select-name|aria-input-field-name)$/.test(ruleId)),
+      (count: number) => `unlabeled controls on ${a11yPageCount(count)}`,
+    ],
+    [
+      countFindingPages(scans, (ruleId) => /^aria-/.test(ruleId) && ruleId !== 'aria-input-field-name'),
+      (count: number) => `controls with accessibility markup screen readers cannot use on ${a11yPageCount(count)}`,
+    ],
+    [
+      countFindingPages(scans, (ruleId) => /^(region|landmark)/.test(ruleId)),
+      (count: number) => `unlabeled page sections on ${a11yPageCount(count)}`,
+    ],
+    [
+      countFindingPages(scans, (ruleId) => /^(page-has-heading-one|empty-heading|heading)/.test(ruleId)),
+      (count: number) => `heading structure that is harder to navigate on ${a11yPageCount(count)}`,
+    ],
+    [
+      countFindingPages(scans, (ruleId) => /^(image-alt|svg-img-alt|input-image-alt)/.test(ruleId)),
+      (count: number) => `images without text descriptions on ${a11yPageCount(count)}`,
+    ],
+  ] as const;
+  const concrete = findings
+    .filter(([count]) => count > 0)
+    .slice(0, 2)
+    .map(([count, label]) => label(count));
+  return concrete.length ? `Fix the concrete findings we measured: ${concrete.join('; ')}.` : undefined;
+}
+
+export function worstContrastRatio(scans: readonly A11yFindingScan[]): number | undefined {
+  const ratios: number[] = [];
+  for (const scan of scans) {
+    for (const violation of scan.violations) {
+      if (violation.ruleId !== 'color-contrast') continue;
+      const summaries = [
+        violation.failureSummary,
+        ...(violation.nodes ?? []).map((node) => node.failureSummary),
+      ].filter((summary): summary is string => !!summary);
+      for (const summary of summaries) {
+        const matches = [
+          ...summary.matchAll(/contrast(?: ratio)?\s*(?:of|:)\s*(\d+(?:\.\d+)?)(?:\s*:\s*1)?/gi),
+          ...summary.matchAll(/\b(\d+(?:\.\d+)?)\s*:\s*1\b/g),
+        ];
+        for (const match of matches) {
+          const value = Number(match[1]);
+          if (Number.isFinite(value) && value > 0 && value < BENCHMARK_LINES.contrast) ratios.push(value);
+        }
+      }
+    }
+  }
+  return ratios.length ? Math.min(...ratios) : undefined;
+}
+
+export function a11yContrastGap(ratio: number | undefined): CostGap | undefined {
+  if (ratio === undefined || !Number.isFinite(ratio) || ratio <= 0) return undefined;
+  const multiple = benchmarkMultiple(BENCHMARK_LINES.contrast, ratio);
+  return {
+    metricLabel: 'Text contrast',
+    measuredLabel: `${ratio.toFixed(2)}:1`,
+    goodLabel: '4.50:1',
+    poorLabel: 'below 4.50:1',
+    ...(multiple ? { multipleLabel: `${multiple} below the line` } : {}),
+    zone: ratio >= BENCHMARK_LINES.contrast ? 'good' : 'poor',
+    lineOwner: 'WCAG AA',
+    lineUrl: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html',
+  };
 }

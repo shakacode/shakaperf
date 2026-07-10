@@ -29,6 +29,18 @@ describe('narrative: could not measure (bot wall)', () => {
     expect(n.bottomLineHtml.toLowerCase()).not.toContain('accessibility');
   });
 
+  it('keeps the blocked-check disclosure with a specific performance gap headline', () => {
+    const n = buildDeterministicNarrative({
+      domain: 'x.com',
+      worstDim: 'perf',
+      perf: { ...perfPoor, gapHeadline: 'Home shows its main content after 5.0s' },
+      a11y: blockedA11y,
+    });
+    expect(n.bottomLineHtml).toContain('Home shows its main content after');
+    expect(n.bottomLineHtml).toContain('5.0s');
+    expect(n.bottomLineHtml.toLowerCase()).toContain('bot protection');
+  });
+
   it('says the whole site could not be measured when every dimension is blocked', () => {
     const n = buildDeterministicNarrative({ domain: 'x.com', worstDim: 'a11y', a11y: blockedA11y, agent: blockedAgent });
     expect(n.bottomLineHtml.toLowerCase()).toContain('could not measure');

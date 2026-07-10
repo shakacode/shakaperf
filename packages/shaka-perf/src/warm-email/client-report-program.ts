@@ -47,6 +47,7 @@ export function createClientReportCommand(): Command {
     .description('Render a clean, client-facing site-health report (filmstrips + plain language) from a saved audit-results dir')
     .requiredOption('--results <dir>', 'Path to a saved audit-results directory (must contain report.json)')
     .option('--out <path>', `Output path for the HTML (default: <results>/${CLIENT_REPORT_FILENAME})`)
+    .option('--money-page <path>', 'Path of the carded page where an inquiry or booking starts')
     .option('--no-ai-captions', 'Skip the AI rewrite of the on-video captions (the built-in deterministic captions are always present)')
     .option('--no-ai-a11y', 'Skip the AI plain-language accessibility summaries (the cards fall back to a plain-language issue list)')
     .option('--no-ai-agent', 'Skip the AI plain-language Agent Ready summaries (the cards fall back to the plain findings list)');
@@ -65,6 +66,7 @@ export function createClientReportCommand(): Command {
         summarizeA11y: opts.aiA11y === false ? undefined : claudeA11ySummarizer(),
         summarizeAgent: opts.aiAgent === false ? undefined : claudeAgentSummarizer(),
         ...clientReportNarrativeOpts(opts),
+        ...(opts.moneyPage ? { moneyPage: opts.moneyPage } : {}),
       });
       console.log(`Wrote client-facing report for ${pages} page(s): ${outPath}`);
     });

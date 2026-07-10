@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 
-import { addClientReportNarrativeOption, clientReportNarrativeOpts } from '../client-report-program';
+import { addClientReportNarrativeOption, clientReportNarrativeOpts, createClientReportCommand } from '../client-report-program';
 
 function command(): Command {
   return addClientReportNarrativeOption(new Command('report').exitOverride()).configureOutput({
@@ -53,5 +53,11 @@ describe('client report program options', () => {
 
   it('still rejects invalid --design values', () => {
     expect(() => command().parse(['--design', 'next'], { from: 'user' })).toThrow();
+  });
+
+  it('offers an optional money-page path for the booking-line override', () => {
+    const option = createClientReportCommand().options.find((candidate) => candidate.long === '--money-page');
+    expect(option?.mandatory).toBe(false);
+    expect(option?.required).toBe(true);
   });
 });
