@@ -17,6 +17,7 @@ import {
   type State as CostState,
   type Tab as CostTab,
 } from './cost-strings';
+import type { CostBlockExtras } from './client-report-model/cost';
 
 // Client report renderer: pure templating over a fully-assembled
 // `ClientReportModel` (built in ./client-report.ts, which does all the IO).
@@ -197,7 +198,7 @@ export interface ClientReportStartHere {
   lead?: string; // when set, render this plain sentence instead of the page list
 }
 export type SourcedStat = IndustryDataStat;
-export interface ClientReportCostBlock {
+export interface ClientReportCostBlock extends CostBlockExtras {
   tab: CostTab;
   state: CostState;
   headline?: string;
@@ -207,11 +208,6 @@ export interface ClientReportCostBlock {
   affectsProse?: string;
   sitePrompt?: string;
   stats?: SourcedStat[];
-  dataCost?: {
-    measuredLine: string;
-    estimatedLine: string;
-    formula: string;
-  };
 }
 export interface ClientReportModel {
   domain: string;
@@ -393,6 +389,7 @@ ${inner}
 const COST_CHIP_STYLE: Record<CostChip, { fg: string; bg: string; line: string }> = {
   measured: { fg: '#4a443c', bg: '#f4f1ea', line: '#e0d9cd' },
   estimated: { fg: '#5c4a24', bg: '#f7f0df', line: '#e4d7b9' },
+  'your estimate': { fg: '#4a3a6b', bg: '#f1ecfa', line: '#ddd2f0' },
   'not measured': { fg: '#6f665c', bg: '#f4f1ea', line: '#d8d0c3' },
 };
 
@@ -441,16 +438,6 @@ ${rows}
         </div>`;
 }
 
-function dataCostLines(cost: ClientReportCostBlock): string {
-  if (!cost.dataCost) return '';
-  const estimateId = costId('cr', cost.tab, 'data-cost-estimate');
-  return `        <div style="margin-top:10px; padding:11px 13px; border:1px solid #e0d9cd; border-radius:10px; background:#fbfaf8; max-width:64ch">
-          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13.5px; line-height:1.45; color:#4a443c">${costChip('measured')}<span>${esc(cost.dataCost.measuredLine)}</span></div>
-          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:13.5px; line-height:1.45; color:#4a443c; margin-top:6px">${costChip('estimated')}<span>${esc(cost.dataCost.estimatedLine)}</span><button type="button" data-disclose="${esc(estimateId)}" class="cr-mono-chip" style="appearance:none; border:0; background:transparent; padding:0 2px; min-height:32px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#6f665c; text-decoration:underline; cursor:pointer">how we estimated this</button></div>
-          <div id="${esc(estimateId)}" data-disclosure hidden style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#6f665c; margin-top:7px">${esc(cost.dataCost.formula)}</div>
-        </div>`;
-}
-
 function costBlock(cost: ClientReportCostBlock | undefined): string;
 function costBlock(cost: ClientReportCostBlock | undefined, slot: 'top' | 'bottom'): string;
 function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bottom'): string {
@@ -467,7 +454,6 @@ function costBlock(cost: ClientReportCostBlock | undefined, slot?: 'top' | 'bott
         </div>
         ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#6f665c; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
         ${cost.checkLine && cell.rendersCostNumber ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#6f665c">${esc(cost.checkLine)}</div>` : ''}
-${cell.rendersCostNumber ? dataCostLines(cost) : ''}
       </div>`
     : '';
   const promptId = costId('cr', cost.tab, 'site-prompt');
