@@ -81,7 +81,7 @@ export const AI_ZERO_COPY = 'AI tools can already read your site - no material l
 export const NO_MATERIAL_LOSS = 'No material loss here.';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
-export const FOOTER_GUARDRAIL = 'Measured on your site - estimates are labeled and show their math - every number links to its source';
+export const FOOTER_GUARDRAIL = 'Measured on your site - every number links to its source';
 
 const noTreatment = (copy?: string, chip?: CostChip): CostStateCell => ({
   rendersFullTreatment: false,

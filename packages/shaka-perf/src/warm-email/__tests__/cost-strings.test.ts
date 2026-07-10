@@ -167,7 +167,7 @@ describe('canonical cost copy', () => {
     expect(INDUSTRY_DATA).toBe('industry data');
     expect(NOTHING_TO_FIX).toBe('Nothing to fix here');
     expect(WHAT_THIS_COSTS_YOU).toBe('What this costs you');
-    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - estimates are labeled and show their math - every number links to its source');
+    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - every number links to its source');
     expect(botWallFooterSentence(2)).toBe('2 pages had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page');
   });
 

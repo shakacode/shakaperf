@@ -96,6 +96,19 @@ describe('computeRecoveryRange', () => {
     });
   });
 
+  it('treats zero mobile share as immaterial without needing a dollar value', () => {
+    expect(computeRecoveryRange({
+      monthlyInquiries: 62,
+      mobileShare: 0,
+      band: RECOVERY_BANDS[0],
+    })).toEqual({
+      mobileInquiries: 0,
+      recoveredLo: 0,
+      recoveredHi: 0,
+      material: false,
+    });
+  });
+
   it('marks dollar results below the monthly floor as immaterial', () => {
     const result = computeRecoveryRange({
       monthlyInquiries: 10,

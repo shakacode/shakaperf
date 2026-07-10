@@ -169,7 +169,7 @@ export function computeRecoveryRange(i: RecoveryInputs): RecoveryRange | undefin
   const recoveredHi = mobileInquiries * band.hi;
   if (![mobileInquiries, recoveredLo, recoveredHi].every(Number.isFinite)) return undefined;
   if (valuePerInquiryUsd === undefined) {
-    return { mobileInquiries, recoveredLo, recoveredHi, material: true };
+    return { mobileInquiries, recoveredLo, recoveredHi, material: recoveredHi > 0 };
   }
 
   const usdMonthLo = recoveredLo * valuePerInquiryUsd;
