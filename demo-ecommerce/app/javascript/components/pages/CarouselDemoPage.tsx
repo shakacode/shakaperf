@@ -77,40 +77,47 @@ const CarouselDemoPage: React.FC = () => {
                 },
               }}
             >
-              {duplicatedSlides.map((slide, index) => (
-                <Box key={`${slide.id}-${index}`} sx={{ minWidth: '100%', position: 'relative' }}>
+              {duplicatedSlides.map((slide, index) => {
+                const duplicatedForLoop = index >= slides.length;
+                return (
                   <Box
-                    component="img"
-                    data-cy="carousel-slide-image"
-                    src={slide.imageUrl}
-                    alt={slide.title}
-                    sx={{
-                      width: '100%',
-                      height: { xs: 240, md: 440 },
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      background:
-                        'linear-gradient(180deg, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.55) 100%)',
-                      display: 'flex',
-                      alignItems: 'flex-end',
-                      p: { xs: 2, md: 4 },
-                    }}
+                    key={`${slide.id}-${index}`}
+                    aria-hidden={duplicatedForLoop ? 'true' : undefined}
+                    sx={{ minWidth: '100%', position: 'relative' }}
                   >
-                    <Box>
-                      <Typography variant="h4" sx={{ color: 'white', fontWeight: 700 }}>
-                        {slide.title}
-                      </Typography>
-                      <Typography sx={{ color: 'rgba(255,255,255,0.9)' }}>{slide.subtitle}</Typography>
+                    <Box
+                      component="img"
+                      data-cy="carousel-slide-image"
+                      src={slide.imageUrl}
+                      alt={duplicatedForLoop ? '' : slide.title}
+                      sx={{
+                        width: '100%',
+                        height: { xs: 240, md: 440 },
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(180deg, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.55) 100%)',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        p: { xs: 2, md: 4 },
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="h4" component="h2" sx={{ color: 'white', fontWeight: 700 }}>
+                          {slide.title}
+                        </Typography>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.9)' }}>{slide.subtitle}</Typography>
+                      </Box>
                     </Box>
                   </Box>
-                </Box>
-              ))}
+                );
+              })}
             </Box>
           </Box>
         </Paper>

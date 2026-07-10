@@ -2266,6 +2266,8 @@ async function buildClientReportModel(
       status: perfStatus,
       wordTx: perfWordTx,
       metric: perfProblemMetricTx ?? (ctx.avgMs !== undefined ? ctx.avgLabel : 'n/a'),
+      ...(dominantPerfTileCopy?.benchmarkTx ? { benchmarkTx: dominantPerfTileCopy.benchmarkTx } : {}),
+      ...(dominantPerfTileCopy?.benchmarkHtml ? { benchmarkHtml: dominantPerfTileCopy.benchmarkHtml } : {}),
       ...(perfProblemTx ? { problemTx: perfProblemTx } : {}),
       metricSub: perfMetricSub,
       conseq: perfConseq,

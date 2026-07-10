@@ -171,23 +171,11 @@ class LighthouseWorkerSampler {
     // if the loader hook didn't apply — otherwise the run produces a vanilla
     // trace that silently excludes post-load testFn interactions.
     const { defaultConfig } = await importPatchedLighthouse();
-    // Throttling comes from DEFAULT_LH_CONFIG (Slow 4G). Only the CPU multiplier
-    // can deviate: a positive SHAKAPERF_CPU_MULTIPLIER, else 6 under CI, else the
-    // default. A non-positive / non-numeric env value warns and is ignored.
-    const rawCpuMultiplier = process.env.SHAKAPERF_CPU_MULTIPLIER;
-    const envCpuMultiplier = Number(rawCpuMultiplier);
-    const hasEnvCpuMultiplier = Number.isFinite(envCpuMultiplier) && envCpuMultiplier > 0;
-    if (rawCpuMultiplier && !hasEnvCpuMultiplier) {
-      console.warn(`shaka-perf: ignoring SHAKAPERF_CPU_MULTIPLIER="${rawCpuMultiplier}" (expected a positive number)`);
-    }
-    const cpuOverride = hasEnvCpuMultiplier ? envCpuMultiplier : (process.env.CI ? 6 : undefined);
+    // Throttling comes from DEFAULT_LH_CONFIG (Slow 4G); a user's
+    // `lighthouseConfig` overlays it at the call site.
     return {
       ...defaultConfig?.settings,
       ...DEFAULT_LH_CONFIG,
-      throttling: {
-        ...DEFAULT_LH_CONFIG.throttling as object,
-        ...(cpuOverride !== undefined ? { cpuSlowdownMultiplier: cpuOverride } : {}),
-      },
       port: this.chrome!.port,
     };
   }

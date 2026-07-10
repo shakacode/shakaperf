@@ -81,9 +81,10 @@ workflows:
 Docker image names are derived by `shaka-perf servers` from the resolved
 project path (`images.control` and `images.experiment`), so consumers do not
 provide Docker image names to the orb. Health checks default to the resolved
-`ports.control` and `ports.experiment` values from `abtests.config.ts`; pin
-`SHAKAPERF_CONTROL_PORT` and `SHAKAPERF_EXPERIMENT_PORT` in CI when you need a
-fixed pair.
+`ports.control` and `ports.experiment` values from `abtests.config.ts`; when CI
+needs a fixed pair, set `SHAKAPERF_CONTROL_PORT` / `SHAKAPERF_EXPERIMENT_PORT`
+(respected by the generated config — the pin lives in that file, not in
+shaka-perf, so a project that removed it needs its own equivalent).
 
 ## Scheduled Nightly Perf Tests
 

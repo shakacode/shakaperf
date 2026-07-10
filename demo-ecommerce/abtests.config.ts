@@ -13,10 +13,20 @@ import { assignPortsAutomatically, defineConfig } from 'shaka-shared';
 // Auto-assign the control/experiment host ports from a required preferred pair.
 // If either port is in use, BOTH shift up by 1 together — preserving their gap —
 // until the first free pair is found; the pair is then remembered per project
-// (in ~/.shaka-perf/ports.json) so it stays stable across runs. Set
-// SHAKAPERF_CONTROL_PORT / SHAKAPERF_EXPERIMENT_PORT to override. The same pair
+// (in ~/.shaka-perf/ports.json) so it stays stable across runs. The same pair
 // feeds the URLs below and twinServers.ports, so they can't drift.
-const { control: CONTROL_PORT, experiment: EXPERIMENT_PORT } = assignPortsAutomatically({ control: 3060, experiment: 3090 });
+//
+// DEMO_CONTROL_PORT / DEMO_EXPERIMENT_PORT pin an exact pair — this config's
+// own contract with the integration-test harness (helpers.ts), which resolves
+// the pair up front so config evaluation, waitForPort(), and page.goto() in
+// its child processes all agree. Plain TS: any project wanting env overrides
+// writes them here, in its own config, like this.
+const pinnedControl = Number(process.env.DEMO_CONTROL_PORT);
+const pinnedExperiment = Number(process.env.DEMO_EXPERIMENT_PORT);
+const { control: CONTROL_PORT, experiment: EXPERIMENT_PORT } =
+  pinnedControl > 0 && pinnedExperiment > 0
+    ? { control: pinnedControl, experiment: pinnedExperiment }
+    : assignPortsAutomatically({ control: 3060, experiment: 3090 });
 
 const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 
@@ -25,14 +35,14 @@ const PARALLELISM = Math.max(1, Math.floor(os.cpus().length / 2));
 // what "the page" actually was.
 const LIGHTHOUSE_CONFIG = {
   throttling: {
-    rttMs: 300,
-    throughputKbps: 700,
-    requestLatencyMs: 1125,
-    downloadThroughputKbps: 700,
-    uploadThroughputKbps: 700,
-    cpuSlowdownMultiplier: 20,
+    rttMs: 100,
+    throughputKbps: 2700,
+    requestLatencyMs: 200,
+    downloadThroughputKbps: 2700,
+    uploadThroughputKbps: 2700,
+    cpuSlowdownMultiplier: 3,
   },
-  throttlingMethod: 'simulate' as const,
+  throttlingMethod: 'devtools' as const,
   logLevel: 'error' as const,
   output: 'html' as const,
   onlyCategories: ['performance'],
@@ -67,7 +77,8 @@ export default defineConfig({
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 8, // Just to make CI faster
+    numberOfMeasurements: 10,
+    pValueThreshold: 0.01,
   },
 
   audit: {

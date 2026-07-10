@@ -55,33 +55,9 @@ export interface AssignPortsOptions {
 export interface AssignPortsDeps {
   settingsPath?: string;
   isPortInUse?: (port: number) => boolean;
-  env?: NodeJS.ProcessEnv;
 }
 
 const MAX_PORT = 65535;
-
-// Env vars checked (in order) for a base port — the start of a consecutive port
-// block allocated per workspace by a concurrent-agent tool. The control and
-// experiment host ports are derived from it deterministically (no probing, no
-// persistence): the workspace owns the whole block, so two agents in two
-// workspaces get non-overlapping pairs without coordinating through the shared
-// ports.json. `SHAKAPERF_BASE_PORT` is the canonical override any tool can set;
-// `CONDUCTOR_PORT` is injected automatically per workspace by Conductor.build
-// (https://conductor.build) — an unofficial contract, so set SHAKAPERF_BASE_PORT
-// to override if a future Conductor release changes its meaning. This mirrors
-// react_on_rails' REACT_ON_RAILS_BASE_PORT/CONDUCTOR_PORT port selection.
-//
-// CONTRACT: we consume a two-port block — control = base, experiment = base + 1.
-// The allocator must space the bases it hands out by at least 2, or adjacent
-// workspaces overlap: bases 5000 and 5001 give {5000,5001} and {5001,5002},
-// which collide on 5001. Conductor allocates a wide block per workspace, so this
-// holds in practice. This path is deliberately probe-free and non-persisted, so
-// it can't detect a violation — pin SHAKAPERF_BASE_PORT if your tool packs base
-// ports more tightly than that.
-const BASE_PORT_ENV_VARS = ['SHAKAPERF_BASE_PORT', 'CONDUCTOR_PORT'] as const;
-const BASE_PORT_EXPERIMENT_OFFSET = 1;
-// Ports 1..1023 require root to bind on Linux/macOS.
-const PRIVILEGED_PORT_MAX = 1023;
 
 interface PortSettings {
   assignments: Record<string, AssignedPorts>;
@@ -123,97 +99,6 @@ function lsofPortInUse(port: number): boolean {
   }
 }
 
-/**
- * Parse one explicit-port env var (`SHAKAPERF_CONTROL_PORT` /
- * `SHAKAPERF_EXPERIMENT_PORT`). Returns the port when present and valid; null
- * when absent or blank (silently). Validation mirrors `readBasePortOverride`
- * for malformed and privileged values, but explicit ports may use the full
- * `1..MAX_PORT` range because no derived experiment offset is added. Keeps a
- * typo'd value from being swallowed silently.
- */
-function parseExplicitPort(env: NodeJS.ProcessEnv, varName: string): number | null {
-  const raw = env[varName];
-  if (raw == null) return null;
-  const stripped = raw.trim();
-  if (stripped === '') return null;
-  const port = Number(stripped);
-  if (!/^\d+$/.test(stripped) || port < 1 || port > MAX_PORT) {
-    console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid port (1..${MAX_PORT}); ignoring.`);
-    return null;
-  }
-  if (port <= PRIVILEGED_PORT_MAX) {
-    console.warn(
-      `assignPortsAutomatically: ${varName}="${raw}" is in the privileged range ` +
-        `(1..${PRIVILEGED_PORT_MAX}); binding will fail without root.`,
-    );
-  }
-  return port;
-}
-
-function readEnvOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
-  const control = parseExplicitPort(env, 'SHAKAPERF_CONTROL_PORT');
-  const experiment = parseExplicitPort(env, 'SHAKAPERF_EXPERIMENT_PORT');
-  if (control != null && experiment != null) {
-    return { control, experiment };
-  }
-  // Both vars are required to pin an explicit pair. If one side parsed as valid
-  // and the other side was absent/blank, warn that the whole override was
-  // dropped. Malformed non-blank values already emitted a specific warning in
-  // parseExplicitPort, so avoid adding a second generic message.
-  const isPresent = (value?: string): boolean => value != null && value.trim() !== '';
-  const controlPresent = isPresent(env.SHAKAPERF_CONTROL_PORT);
-  const experimentPresent = isPresent(env.SHAKAPERF_EXPERIMENT_PORT);
-  if ((control != null && !experimentPresent) || (experiment != null && !controlPresent)) {
-    console.warn(
-      'assignPortsAutomatically: both SHAKAPERF_CONTROL_PORT and ' +
-        'SHAKAPERF_EXPERIMENT_PORT must be set to valid ports to pin an explicit ' +
-        'pair; falling through to automatic assignment.',
-    );
-  }
-  return null;
-}
-
-/**
- * Derive the control/experiment pair from a base-port block env var (see
- * `BASE_PORT_ENV_VARS`). Returns null when no base var is set so the caller
- * falls through to the sticky/scan path. An invalid value (non-integer or out of
- * range) warns and is skipped — the next var in the chain still gets a chance,
- * mirroring how an explicit-pair override would simply not match.
- */
-function readBasePortOverride(env: NodeJS.ProcessEnv): AssignedPorts | null {
-  // Largest derived offset must stay within the valid TCP range.
-  const maxBase = MAX_PORT - BASE_PORT_EXPERIMENT_OFFSET;
-  for (const varName of BASE_PORT_ENV_VARS) {
-    const raw = env[varName];
-    if (raw == null) continue;
-    const stripped = raw.trim();
-    if (stripped === '') continue;
-    if (!/^\d+$/.test(stripped)) {
-      console.warn(`assignPortsAutomatically: ${varName}="${raw}" is not a valid integer; ignoring.`);
-      continue;
-    }
-    const base = Number(stripped);
-    if (base < 1 || base > maxBase) {
-      console.warn(
-        `assignPortsAutomatically: ${varName}="${raw}" is out of range (1..${maxBase}, ` +
-          `leaving room for the +${BASE_PORT_EXPERIMENT_OFFSET} experiment offset); ignoring.`,
-      );
-      continue;
-    }
-    if (base <= PRIVILEGED_PORT_MAX) {
-      console.warn(
-        `assignPortsAutomatically: ${varName}="${raw}" is in the privileged range ` +
-          `(1..${PRIVILEGED_PORT_MAX}); binding will fail without root.`,
-      );
-    }
-    return {
-      control: base,
-      experiment: base + BASE_PORT_EXPERIMENT_OFFSET,
-    };
-  }
-  return null;
-}
-
 export function assignPortsAutomatically(
   options: AssignPortsOptions,
   deps: AssignPortsDeps = {},
@@ -231,21 +116,6 @@ export function assignPortsAutomatically(
   if (preferredControl === preferredExperiment) {
     throw new Error('assignPortsAutomatically: control and experiment preferred ports must differ');
   }
-
-  const env = deps.env ?? process.env;
-
-  // Explicit env override wins and is never persisted — lets CI or a user pin
-  // exact ports without disturbing the remembered assignments.
-  const override = readEnvOverride(env);
-  if (override) return override;
-
-  // Base-port block (CONDUCTOR_PORT etc.): each concurrent workspace owns a
-  // distinct block, so derive the pair deterministically and skip the
-  // sticky/scan path entirely. Not persisted — the block, not ports.json, is the
-  // source of truth, and a stale entry under this cwd would otherwise shadow a
-  // re-allocated block on the next run.
-  const fromBasePort = readBasePortOverride(env);
-  if (fromBasePort) return fromBasePort;
 
   const settingsPath = deps.settingsPath ?? defaultSettingsPath();
   const isPortInUse = deps.isPortInUse ?? lsofPortInUse;

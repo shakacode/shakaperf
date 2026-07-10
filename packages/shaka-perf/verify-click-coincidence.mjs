@@ -8,23 +8,38 @@
  * License in LICENSE.md.
  */
 
-// Verify the first/last red "Click" overlay frame coincides with the
-// first/last blue "click NNms" chip frame, in every test's kept AVIFs.
+// Cross-validate the two independent records of every audited click:
 //
-// For each AVIF: find the chip's solid-colour bounding box (blue chip in
-// the top half, red chip in the bottom-right quadrant), crop tight to it,
-// OCR with tesseract.js, grep `\bclick\b`. Tight cropping is the
-// difference between "chip dominates the field of view" (tesseract reads
-// it at ~90 % conf) and "chip is a postage stamp in empty space"
-// (tesseract returns "" or "."). Page colour decorations elsewhere are
-// excluded by quadrant restriction.
+//   BLUE — the measured "click NNms" interaction chip. Since the
+//   annotated-timeline moved chips out of the frame pixels ("Annotation
+//   labels/rects are persisted as metadata and rendered later by React"),
+//   the blue chips live in each test's artifacts/timeline_frames.json as
+//   `pw-interaction` annotations pinned to a kept frame.
+//
+//   RED — the in-page "Click" overlay chip that interaction-overlay.ts
+//   injects into the live page during recording. It IS baked into the
+//   screencast pixels, so it's still read from the frame image
+//   (bottom-right corner: find the red solid-colour bounding box, crop
+//   tight to it, OCR with tesseract.js, grep for "click"). Tight cropping
+//   is the difference between "chip dominates the field of view"
+//   (tesseract reads it at ~90 % conf) and "chip is a postage stamp in
+//   empty space" (tesseract returns "" or "."). Red key-press chips OCR
+//   as their key name and deliberately don't match.
+//
+// The contract: the first and last blue-chip frames must each also carry
+// a red Click overlay — i.e. the trace-derived interaction timing agrees
+// with what the page visibly showed when the frame was captured.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
 
-const RESULTS = process.argv[2] ?? '/Users/romex/shakaperf_2/demo-ecommerce/audit-results';
+const RESULTS = process.argv[2];
+if (!RESULTS) {
+  console.error('usage: verify-click-coincidence.mjs <audit-results-dir>');
+  process.exit(2);
+}
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-ocr-'));
 process.on('exit', () => { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {} });
@@ -47,12 +62,12 @@ const isRedChip = (r, g, b) => r > 200 && g < 100 && b < 100;
 
 /**
  * Compute the bounding box of pixels matching `pred` within the given
- * fractional region of the AVIF. Used to tightly crop the small red
+ * fractional region of the frame image. Used to tightly crop the small red
  * chip in the bottom-right quadrant before OCR — loose crops drown
  * tesseract in empty pixels and it returns ""/".".
  */
-async function bboxOf(avifPath, pred, region) {
-  const { data, info } = await sharp(avifPath).raw().toBuffer({ resolveWithObject: true });
+async function bboxOf(imagePath, pred, region) {
+  const { data, info } = await sharp(imagePath).raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height, chan = info.channels;
   const x0 = Math.floor(W * region.left), x1 = Math.floor(W * region.right);
   const y0 = Math.floor(H * region.top), y1 = Math.floor(H * region.bottom);
@@ -74,59 +89,37 @@ async function bboxOf(avifPath, pred, region) {
   return { left, top, width: Math.min(W, maxX + PAD) - left, height: Math.min(H, maxY + PAD) - top };
 }
 
-async function ocrCornerForClick(avifPath, corner) {
-  const meta = await sharp(avifPath).metadata();
+async function ocrRedCornerForClick(imagePath) {
+  const meta = await sharp(imagePath).metadata();
   const W = meta.width ?? 0, H = meta.height ?? 0;
-  // Pre-paint 0.00ms blank frames and malformed AVIFs have degenerate
+  // Pre-paint 0.00ms blank frames and malformed images have degenerate
   // dimensions; treat as "no chip" rather than crash on extract.
   if (W < 40 || H < 40) return false;
 
-  let crop;
-  if (corner === 'tl') {
-    // Top-left chip strip: 35 % wide × 15 % tall, anchored at (0,0).
-    // 15 % at 450 px = 67 px — fits the chip (~50 px tall in 720-wide
-    // screencast) and clears the Orders / side-panel blue rectangles
-    // that live 80+ px down, which the broader 35×35 crop swept in
-    // and turned into noise.
-    crop = {
-      left: 0, top: 0,
-      width: Math.min(W, Math.round(W * 0.35)),
-      height: Math.min(H, Math.round(H * 0.15)),
-    };
-  } else {
-    // Bottom-right chip: hunt for the red-coloured pixels in the
-    // tight bottom-right corner and crop tight to them. The overlay
-    // anchors the chip at `right: 24px; bottom: 24px` with vw-sized
-    // dimensions ≈80 × 40 px in the 720-wide screencast; restricting
-    // the search to the last 15 % × 15 % keeps red product photos
-    // (apple-watch faces, "Featured" tags, hover icons) out of the
-    // bounding box. The chip lives entirely inside this corner for
-    // every viewport (desktop 720 × 450 and phone 720 × 1280).
-    const bbox = await bboxOf(avifPath, isRedChip, { left: 0.85, top: 0.85, right: 1, bottom: 1 });
-    if (!bbox) return false;
-    crop = bbox;
-  }
+  // Bottom-right chip: hunt for the red-coloured pixels in the
+  // tight bottom-right corner and crop tight to them. The overlay
+  // anchors the chip at `right: 24px; bottom: 24px` with vw-sized
+  // dimensions sized against a nominal 720-wide page; the screencast
+  // frames this script reads are downscaled to 500 px wide
+  // (timeline_frame_*.webp — e.g. 500×314 desktop, 500×890 phone), so
+  // the chip lands at ≈56 × 28 px, ≈17 px in from the corner — inside
+  // the last 15 % (75 px) horizontally on every viewport, and well
+  // inside 15 % vertically. Restricting the search to that corner
+  // keeps red page content (product photos, "Featured" tags, hover
+  // icons) out of the bounding box.
+  const bbox = await bboxOf(imagePath, isRedChip, { left: 0.85, top: 0.85, right: 1, bottom: 1 });
+  if (!bbox) return false;
 
-  const out = path.join(tmpDir, `${corner}.png`);
+  const out = path.join(tmpDir, 'br.png');
   // No try/catch around the sharp pipeline: this script is a verifier
   // and any sharp failure (degenerate crop from bboxOf, decoder
   // regression, truncated file, out-of-bounds extract) is a real bug
   // we want to surface as a stack trace — not silently swallow as
   // "no chip detected" and then report a green PASS on broken
   // captures.
-  let pipe = sharp(avifPath).extract(crop).resize({ width: crop.width * 4 });
-  if (corner === 'tl') {
-    // Top-left blue chip: grayscale → threshold@200 → negate. White
-    // chip text (luma 255) and white page bg both clear the threshold;
-    // the blue chip bg (luma ~110) and any dark page text drop to 0.
-    // After negate, the chip becomes BLACK TEXT ON WHITE — tesseract's
-    // native expectation — while the rest of the crop inverts to
-    // unreadable white-on-black so the chip dominates.
-    pipe = pipe.grayscale().threshold(200).negate({ alpha: false });
-  }
-  // Bottom-right red chip: leave colour intact — empirically OCRs
-  // better straight out of the AVIF at PSM 11 than after preprocessing.
-  await pipe.png().toFile(out);
+  // Leave colour intact — the red chip empirically OCRs better straight
+  // out of the frame than after preprocessing.
+  await sharp(imagePath).extract(bbox).resize({ width: bbox.width * 4 }).png().toFile(out);
   for (const psm of ['6', '11', '8', '7']) {
     await worker.setParameters({ tessedit_pageseg_mode: psm });
     const { data: { text } } = await worker.recognize(out);
@@ -135,20 +128,25 @@ async function ocrCornerForClick(avifPath, corner) {
   return false;
 }
 
+const isClickChip = (a) => a.kind === 'pw-interaction' && /^click \d+(\.\d+)?ms$/.test(a.label);
+
 let allPass = true;
+let validatedCount = 0;
 for (const sub of fs.readdirSync(RESULTS)) {
   const dir = path.join(RESULTS, sub, 'artifacts');
-  if (!fs.existsSync(dir)) continue;
-  const frames = fs.readdirSync(dir)
-    .filter((f) => f.startsWith('timeline_frame_') && f.endsWith('.avif'))
-    .map((f) => ({ file: f, timeMs: parseFloat(f.match(/_(\d+\.\d+)ms\.avif$/)?.[1] ?? '0') }))
+  const metadataPath = path.join(dir, 'timeline_frames.json');
+  if (!fs.existsSync(metadataPath)) continue;
+  const frames = [...JSON.parse(fs.readFileSync(metadataPath, 'utf-8'))]
     .sort((a, b) => a.timeMs - b.timeMs);
   if (frames.length === 0) continue;
+  // Tests with no clicks (pure-navigation flows) have nothing to
+  // cross-validate — key presses render their key name, not "Click".
+  if (!frames.some((fr) => (fr.annotations ?? []).some(isClickChip))) continue;
+  validatedCount++;
   const blue = [], red = [];
   for (const fr of frames) {
-    const p = path.join(dir, fr.file);
-    if (await ocrCornerForClick(p, 'tl')) blue.push(fr.timeMs);
-    if (await ocrCornerForClick(p, 'br')) red.push(fr.timeMs);
+    if ((fr.annotations ?? []).some(isClickChip)) blue.push(fr.timeMs);
+    if (await ocrRedCornerForClick(path.join(dir, fr.imageFilename))) red.push(fr.timeMs);
   }
   // The contract is "every click's blue chip frame is also a red
   // overlay frame" — i.e. for each click we want to see both
@@ -167,5 +165,15 @@ for (const sub of fs.readdirSync(RESULTS)) {
   if (!firstOk || !lastOk) allPass = false;
 }
 await worker.terminate();
-console.log(`\n${allPass ? 'PASS' : 'FAIL'}`);
+// A run that validated NOTHING must not pass: if the annotated-timeline
+// stage stops emitting `pw-interaction` click annotations (or the label
+// format drifts away from isClickChip), every test dir would skip and a
+// bare `allPass` would report a vacuous PASS for the exact regression this
+// script exists to catch.
+if (validatedCount === 0) {
+  console.log('\nFAIL: no test with click chips found in the metadata — nothing was validated');
+  process.exit(1);
+}
+console.log(`\nvalidated ${validatedCount} test(s) with click chips`);
+console.log(`${allPass ? 'PASS' : 'FAIL'}`);
 process.exit(allPass ? 0 : 1);

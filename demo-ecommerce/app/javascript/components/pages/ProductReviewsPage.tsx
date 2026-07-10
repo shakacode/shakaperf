@@ -97,15 +97,15 @@ const ProductReviewsPage: React.FC = () => {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Breadcrumbs sx={{ mb: 3 }}>
-        <Link to="/" style={{ color: '#667eea', textDecoration: 'none' }}>
+        <Link to="/" style={{ color: '#4f46b5', textDecoration: 'none' }}>
           Home
         </Link>
-        <Link to="/products" style={{ color: '#667eea', textDecoration: 'none' }}>
+        <Link to="/products" style={{ color: '#4f46b5', textDecoration: 'none' }}>
           Products
         </Link>
         <Link
           to={`/products/${id}`}
-          style={{ color: '#667eea', textDecoration: 'none' }}
+          style={{ color: '#4f46b5', textDecoration: 'none' }}
         >
           {product.name}
         </Link>
@@ -116,7 +116,7 @@ const ProductReviewsPage: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
           Customer Reviews
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
+        <Typography variant="subtitle1" component="p" color="text.secondary">
           {product.name}
         </Typography>
       </Box>
@@ -126,7 +126,7 @@ const ProductReviewsPage: React.FC = () => {
         sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #e0e0e0', display: 'flex', gap: 3, alignItems: 'center' }}
       >
         <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="h2" sx={{ fontWeight: 700, color: '#667eea', lineHeight: 1 }}>
+          <Typography variant="h2" component="p" sx={{ fontWeight: 700, color: '#4f46b5', lineHeight: 1 }}>
             {avgRating.toFixed(1)}
           </Typography>
           <StarRating rating={Math.round(avgRating)} />
@@ -141,11 +141,11 @@ const ProductReviewsPage: React.FC = () => {
           <React.Fragment key={review.id}>
             <Box sx={{ py: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                <Avatar sx={{ bgcolor: '#667eea', width: 36, height: 36, fontSize: 14 }}>
+                <Avatar sx={{ bgcolor: '#4f46b5', width: 36, height: 36, fontSize: 14 }}>
                   {review.author[0]}
                 </Avatar>
                 <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                  <Typography variant="subtitle2" component="p" sx={{ fontWeight: 600 }}>
                     {review.author}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -156,7 +156,7 @@ const ProductReviewsPage: React.FC = () => {
                   <StarRating rating={review.rating} />
                 </Box>
               </Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              <Typography variant="subtitle2" component="h2" sx={{ fontWeight: 600, mb: 0.5 }}>
                 {review.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -174,7 +174,7 @@ const ProductReviewsPage: React.FC = () => {
           component={Link}
           to={`/products/${id}`}
           startIcon={<ArrowBack />}
-          sx={{ borderColor: '#667eea', color: '#667eea' }}
+          sx={{ borderColor: '#4f46b5', color: '#4f46b5' }}
         >
           Back to Product
         </Button>
@@ -183,7 +183,7 @@ const ProductReviewsPage: React.FC = () => {
           component={Link}
           to="/deals"
           startIcon={<LocalOffer />}
-          sx={{ bgcolor: '#667eea', '&:hover': { bgcolor: '#5a6fd6' } }}
+          sx={{ bgcolor: '#4f46b5', '&:hover': { bgcolor: '#4338ca' } }}
         >
           View Deals
         </Button>
