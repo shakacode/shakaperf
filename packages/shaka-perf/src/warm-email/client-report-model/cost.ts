@@ -18,6 +18,7 @@ import type { ClientReportStatus } from '../client-report-renderer';
  */
 export const BENCHMARK_LINES = {
   lcpMs: { good: 2500, poor: 4000 },
+  // Published raw CLS units; audit consumers must normalize the stored /100 value.
   cls: { good: 0.10, poor: 0.25 },
   fcpMs: { good: 1800, poor: 3000 },
   tbtMs: { good: 200, poor: 600 },

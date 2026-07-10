@@ -66,6 +66,7 @@ export interface CostStateCell {
   chip?: CostChip;
   copy?: string;
   rendersPercentageClaim?: boolean;
+  // Wave 2 consumes these additive flags.
   rendersBenchmarkScale?: boolean;
   rendersCalculator?: boolean;
   rendersCheckLine?: boolean;
@@ -80,7 +81,7 @@ export const AI_ZERO_COPY = 'AI tools can already read your site - no material l
 export const NO_MATERIAL_LOSS = 'No material loss here.';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
-export const FOOTER_GUARDRAIL = 'Measured on your site - estimates are labeled and show their math - dollar figures appear only after you type your own numbers - every number links to its source';
+export const FOOTER_GUARDRAIL = 'Measured on your site - estimates are labeled and show their math - every number links to its source';
 
 const noTreatment = (copy?: string, chip?: CostChip): CostStateCell => ({
   rendersFullTreatment: false,
@@ -224,14 +225,14 @@ export interface IndustryDataStat {
 
 export const PERF_INDUSTRY_DATA_STATS: readonly IndustryDataStat[] = [
   {
-    text: 'a controlled test that made pages 31% faster lifted lead volume 15%',
+    text: 'a controlled test that improved LCP 31% lifted the lead-to-visit rate 15%',
     publisher: 'Vodafone with Google',
     date: '2021',
     url: 'https://web.dev/case-studies/vodafone',
     method: 'controlled test',
   },
   {
-    text: 'a 0.1-second mobile speed improvement came with 8.3% lower bounce on lead-generation sites, across 30M+ sessions',
+    text: 'a 0.1-second improvement across four mobile speed metrics came with 21.6% more visitors reaching the form-submission step on lead-generation sites, across 30M+ sessions',
     publisher: 'Deloitte, Milliseconds Make Millions',
     date: '2020',
     url: 'https://web.dev/case-studies/milliseconds-make-millions',
@@ -295,7 +296,7 @@ export const CALC_SHARE_LABEL = 'Share of visits from phones';
 export const CALC_DIAL_LABEL = 'If the site got fast, how much of the lost response comes back?';
 
 export function calcCapNote(): string {
-  return 'The 15% top of this dial is not ours: it is what Vodafone measured in a controlled test after making its pages 31% faster. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.';
+  return 'The 15% top of this dial is not ours: Vodafone measured a 15% improvement in the lead-to-visit rate in a controlled test after improving LCP 31%. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.';
 }
 
 export const CALC_PRIVACY_LINE = 'Numbers you type stay in this file. It makes no network requests and stores nothing.';

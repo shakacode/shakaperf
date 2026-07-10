@@ -167,7 +167,7 @@ describe('canonical cost copy', () => {
     expect(INDUSTRY_DATA).toBe('industry data');
     expect(NOTHING_TO_FIX).toBe('Nothing to fix here');
     expect(WHAT_THIS_COSTS_YOU).toBe('What this costs you');
-    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - estimates are labeled and show their math - dollar figures appear only after you type your own numbers - every number links to its source');
+    expect(FOOTER_GUARDRAIL).toBe('Measured on your site - estimates are labeled and show their math - every number links to its source');
     expect(botWallFooterSentence(2)).toBe('2 pages had at least one report section that could not be measured because bot protection served our checker a challenge page instead of the real page');
   });
 
@@ -182,7 +182,9 @@ describe('canonical cost copy', () => {
     expect(perfStudiesFooter()).toContain('We use them for direction and rough size only.');
     expect(a11yNoNumberLine()).toContain('We put no visitor count on this');
     expect(aiSingleCountLine()).toContain('Visitor loss is counted once');
-    expect(calcCapNote()).toContain('The 15% top of this dial is not ours');
+    expect(calcCapNote()).toBe(
+      'The 15% top of this dial is not ours: Vodafone measured a 15% improvement in the lead-to-visit rate in a controlled test after improving LCP 31%. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.',
+    );
     expect(calcBreakEvenLine('$6,000')).toBe(
       'If a faster site brought back just one extra inquiry a month, that is $6,000 a year.',
     );
@@ -226,14 +228,14 @@ describe('industry data stats', () => {
   it('exports exactly the sourced performance stat lines', () => {
     expect(PERF_INDUSTRY_DATA_STATS).toEqual([
       {
-        text: 'a controlled test that made pages 31% faster lifted lead volume 15%',
+        text: 'a controlled test that improved LCP 31% lifted the lead-to-visit rate 15%',
         publisher: 'Vodafone with Google',
         date: '2021',
         url: 'https://web.dev/case-studies/vodafone',
         method: 'controlled test',
       },
       {
-        text: 'a 0.1-second mobile speed improvement came with 8.3% lower bounce on lead-generation sites, across 30M+ sessions',
+        text: 'a 0.1-second improvement across four mobile speed metrics came with 21.6% more visitors reaching the form-submission step on lead-generation sites, across 30M+ sessions',
         publisher: 'Deloitte, Milliseconds Make Millions',
         date: '2020',
         url: 'https://web.dev/case-studies/milliseconds-make-millions',
