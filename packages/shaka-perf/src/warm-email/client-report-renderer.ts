@@ -54,6 +54,10 @@ export const clientReportStatusWord = (s: ClientReportStatus): string => (s === 
 // walled the audit) - deliberately not good/fair/poor so it never reads as a pass.
 const NEUTRAL = { fg: '#6f665c', bg: '#f4f1ea', line: '#e0d9cd', soft: '#f6f4f0' };
 
+// This is the one new cost-block microcopy string. It is deliberately plain so
+// the disclosure promises its payoff before someone opens it.
+const COST_DETAILS_LABEL = 'See what this costs you';
+
 // Neutrals (design tokens).
 const INK = '#26221d';
 const FAINT = '#9b9286';
@@ -537,20 +541,25 @@ ${stats}
 function benchmarkScale(gap: CostGap): string {
   const zoneCenter: Record<CostGap['zone'], number> = { good: 20, mid: 55, poor: 85 };
   const marker = Math.max(4, Math.min(96, zoneCenter[gap.zone]));
-  const multiple = gap.multipleLabel ? ` - ${gap.multipleLabel} the good line` : '';
+  const markerLabel = benchmarkMarkerLabel(gap);
   return `          <div data-benchmark-zone="${esc(gap.zone)}" style="margin-top:13px; max-width:620px" aria-label="${esc(`${gap.metricLabel}: ${gap.measuredLabel}`)}">
             <div style="position:relative; padding-top:25px">
               <div style="height:12px; overflow:hidden; display:flex; border:1px solid #d8d0c3; border-radius:999px; background:#ffffff">
                 <span style="width:40%; background:${PAL.good.bg}"></span><span style="width:30%; background:${PAL.fair.bg}"></span><span style="width:30%; background:${PAL.poor.bg}"></span>
               </div>
               <div style="position:absolute; top:0; left:${marker}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; white-space:nowrap">
-                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; color:#26221d">${esc(`you: ${gap.measuredLabel}${multiple}`)}</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; color:#26221d">${esc(markerLabel)}</span>
                 <span style="width:2px; height:13px; margin-top:2px; background:#26221d"></span>
               </div>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#5e5549"><span>${esc(gap.goodLabel)}</span><span>${esc(gap.poorLabel)}</span></div>
             <div style="margin-top:7px; font-size:11.5px; line-height:1.45; color:#5e5549">Benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#3a352e; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a></div>
           </div>`;
+}
+
+function benchmarkMarkerLabel(gap: CostGap): string {
+  const multiple = gap.multipleLabel ? ` - ${gap.multipleLabel} the good line` : '';
+  return `you: ${gap.measuredLabel}${multiple}`;
 }
 
 function costGrammarRow(label: string, content: string): string {
@@ -560,7 +569,7 @@ function costGrammarRow(label: string, content: string): string {
         </div>`;
 }
 
-function measuredRow(cost: ClientReportCostBlock): string {
+function measuredRow(cost: ClientReportCostBlock, showHeadline = true): string {
   const cell = COST_STATE_MATRIX[cost.tab][cost.state];
   const blocked = cost.state === 'blocked';
   const chip = blocked ? cell.chip : cost.chip ?? cell.chip;
@@ -570,7 +579,7 @@ function measuredRow(cost: ClientReportCostBlock): string {
     ? `<div style="margin-top:12px; padding:10px 12px; border:1px solid #e0d9cd; border-radius:8px; background:#fbfaf8; font-size:13.5px; line-height:1.5; color:#3a352e">${esc(cost.bookingLine)}</div>`
     : '';
   const content = `            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
-              ${headline ? `<div style="font-size:${cell.rendersCostNumber ? '16.5px' : '15px'}; line-height:1.45; font-weight:${cell.rendersCostNumber ? '700' : '600'}; color:#26221d">${esc(headline)}</div>` : ''}
+              ${showHeadline && headline ? `<div style="font-size:${cell.rendersCostNumber ? '16.5px' : '15px'}; line-height:1.45; font-weight:${cell.rendersCostNumber ? '700' : '600'}; color:#26221d">${esc(headline)}</div>` : ''}
               ${costChip(chip)}
             </div>
             ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#5e5549; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
@@ -662,14 +671,38 @@ ${fallbackStats}
   const countedZero = !blocked && cost.countedZeroLine
     ? `<div style="margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#5e5549">${esc(cost.countedZeroLine)}</div>`
     : '';
-  return `      <div style="margin:0 0 16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
+  if (blocked) {
+    return `      <div style="margin:0 0 16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
         <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:4px">${esc(WHAT_THIS_COSTS_YOU)}</div>
 ${measuredRow(cost)}
+      </div>`;
+  }
+  const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? cell.copy;
+  const detailId = costId('cr', cost.tab, 'cost-details');
+  const benchmarkSummary = cost.gap
+    ? `          <div data-cost-summary-benchmark style="display:flex; flex-wrap:wrap; align-items:baseline; gap:7px; margin-top:12px">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#5e5549">Benchmark</span>
+            <span style="font-size:23px; line-height:1; font-weight:800; letter-spacing:-.02em; color:#26221d">${esc(cost.gap.multipleLabel ?? cost.gap.measuredLabel)}</span>
+          </div>`
+    : '';
+  return `      <div style="margin:0 0 16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:4px">${esc(WHAT_THIS_COSTS_YOU)}</div>
+        <div data-cost-summary>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px">
+            ${headline ? `<div style="font-size:${cell.rendersCostNumber ? '19px' : '16px'}; line-height:1.35; font-weight:800; letter-spacing:${cell.rendersCostNumber ? '-.01em' : '0'}; color:#26221d">${esc(headline)}</div>` : ''}
+            ${costChip(blocked ? cell.chip : cost.chip ?? cell.chip)}
+          </div>
+${benchmarkSummary}
+          <button type="button" data-disclose="${esc(detailId)}" style="appearance:none; margin-top:16px; border:1px solid #26221d; border-radius:8px; background:#26221d; color:#fff; min-height:40px; padding:0 13px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.04em; cursor:pointer">${esc(COST_DETAILS_LABEL)}</button>
+        </div>
+        <div id="${esc(detailId)}" data-disclosure hidden style="margin-top:18px">
+${measuredRow(cost, false)}
 ${!blocked && cost.stakes ? stakesRow(cost.stakes, cost.tab) : ''}
 ${calculator}
 ${fixContent}
 ${fallback}
 ${countedZero}
+        </div>
       </div>`;
 }
 

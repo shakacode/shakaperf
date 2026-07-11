@@ -1214,7 +1214,8 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain('>0.26</div>');
     expect(perfTile).toContain('the layout jumps around');
     expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
-    expect(perfPanelHtml).toContain('the layout jumps around on a mid-range phone');
+    expect(perfPanelHtml).toContain('8.2s before your main content appears on a mid-range phone');
+    expect(perfPanelHtml).not.toContain('the layout jumps around on a mid-range phone');
     expect(perfPanelHtml).not.toContain('0.26 before your main content appears');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
   });
@@ -1894,6 +1895,7 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('Copy prompt for your agent');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
     expect(perfPanelHtml).toContain('width:190px');
+    expect(perfPanelHtml).not.toContain('cr-perf-cost-details');
     expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
     expect(perfPanelHtml).not.toContain('how we estimated this');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-insights"');
@@ -1901,7 +1903,7 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml.indexOf('data-copy-prompt="cr-perf-card-0-insights"')).toBeGreaterThan(perfPanelHtml.indexOf('Loads extremely slowly.'));
   });
 
-  it('renders the measured cost grammar, benchmark scale, studies, and calculator from model data', () => {
+  it('progressively discloses the measured cost grammar while keeping its full detail in the DOM', () => {
     const html = renderClientReportHtml(model({
       perfCost: {
         tab: 'perf',
@@ -1948,8 +1950,17 @@ describe('renderClientReportHtml', () => {
       },
     }));
     const perfPanelHtml = renderedPanel(html, 'perf');
+    const detailStart = perfPanelHtml.indexOf('<div id="cr-perf-cost-details" data-disclosure hidden');
 
     expect(perfPanelHtml).toContain(WHAT_THIS_COSTS_YOU);
+    expect(perfPanelHtml).toContain('data-cost-summary');
+    expect(perfPanelHtml).toContain('data-cost-summary-benchmark');
+    expect(perfPanelHtml).toContain('>3.4x</span>');
+    expect(perfPanelHtml).toContain('>See what this costs you</button>');
+    expect(findBannedWords(perfPanelHtml)).toEqual([]);
+    expect(perfPanelHtml).toContain('data-disclose="cr-perf-cost-details"');
+    expect(detailStart).toBeGreaterThan(perfPanelHtml.indexOf('>See what this costs you</button>'));
+    expect(perfPanelHtml.indexOf('8.4s before your main content appears on a mid-range phone')).toBeLessThan(detailStart);
     expect(perfPanelHtml).toContain('>Measured</div>');
     expect(perfPanelHtml).toContain('>At stake</div>');
     expect(perfPanelHtml).toContain('>The fix</div>');
@@ -1967,6 +1978,10 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml.indexOf('>At stake</div>')).toBeLessThan(perfPanelHtml.indexOf(CALC_TITLE));
     expect(perfPanelHtml.indexOf(CALC_TITLE)).toBeLessThan(perfPanelHtml.indexOf('>The fix</div>'));
     expect(perfPanelHtml).toContain('data-calculator');
+    expect(perfPanelHtml.indexOf('data-benchmark-zone="poor"')).toBeGreaterThan(detailStart);
+    expect(perfPanelHtml.indexOf('>At stake</div>')).toBeGreaterThan(detailStart);
+    expect(perfPanelHtml.indexOf('data-calculator')).toBeGreaterThan(detailStart);
+    expect(perfPanelHtml.indexOf('>The fix</div>')).toBeGreaterThan(detailStart);
     expect(perfPanelHtml).toContain('data-calc-floor="75"');
     expect(perfPanelHtml).toContain(`data-calc-recovery-cap="${RECOVERY_CAP}"`);
     expect(perfPanelHtml).toContain('data-calc-prefill="57"');
@@ -1978,8 +1993,36 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('role="radiogroup"');
     expect(perfPanelHtml).toContain('value="cautious" data-calc-band checked');
     expect(perfPanelHtml.match(/>your estimate<\/span>/g)).toHaveLength(1);
+    expect(html).toContain('@media print{.cr-panel[hidden],[data-disclosure][hidden]{display:block!important}');
     expect(html).toContain('band.hi > recoveryCap');
     expect(html).toContain('breakEvenUsdYear');
+  });
+
+  it('keeps an a11y benchmark multiple self-qualified in the collapsed summary', () => {
+    const html = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCost: {
+        tab: 'a11y',
+        state: 'measured',
+        headline: 'Text contrast is hard to read on some pages',
+        gap: {
+          metricLabel: 'Text contrast',
+          measuredLabel: '3.00:1',
+          goodLabel: '4.50:1',
+          poorLabel: 'below 4.50:1',
+          multipleLabel: '1.5x below the line',
+          zone: 'poor',
+          lineOwner: 'WCAG AA',
+          lineUrl: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html',
+        },
+      },
+    }));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+    const summaryHtml = a11yPanelHtml.slice(0, a11yPanelHtml.indexOf('<div id="cr-a11y-cost-details"'));
+
+    expect(summaryHtml).toContain('data-cost-summary-benchmark');
+    expect(summaryHtml).toContain('>1.5x below the line</span>');
+    expect(summaryHtml).not.toContain('below the line the good line');
   });
 
   it('uses matrix flags to keep zero check lines and omit absent scales and calculators', () => {
@@ -2071,6 +2114,8 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).toContain('challenge page instead of the real page, so this could not be measured');
     expect(agentPanelHtml).toContain('>not measured</span>');
+    expect(agentPanelHtml).not.toContain('cr-ai-cost-details');
+    expect(agentPanelHtml).not.toContain('See what this costs you');
     expect(agentPanelHtml).not.toContain('>measured</span>');
     expect(agentPanelHtml).not.toContain('>At stake</div>');
     expect(agentPanelHtml).not.toContain('>The fix</div>');
