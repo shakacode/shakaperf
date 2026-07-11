@@ -612,7 +612,7 @@ describe('perf cost model helpers', () => {
       '15.4s before your main content appears on a mid-range phone',
     );
     expect(perfAffectsProse(slow)).toBe(
-      'Slow main content makes mobile visitors wait and lose confidence before they can browse or buy.',
+      'Slow main content makes mobile visitors wait and give up before they reach the contact or booking form.',
     );
     expect(perfAffectsProse(shift)).toBe(
       'Layout shifts make the page feel unstable: content and controls move while visitors are reading or trying to tap.',

@@ -70,6 +70,7 @@ import {
   a11yFixText,
   bookingLine,
   countedZeroLine,
+  dimSeverityRank,
   moneyPage,
   perfFixText,
   perfGap,
@@ -2492,12 +2493,25 @@ async function buildClientReportModel(
   const footnote = footnoteAddenda.length ? `${footnoteBase} ${footnoteAddenda.map((s) => `${s}.`).join(' ')}` : footnoteBase;
   const agentScore = hasAgent && !agentCouldNotMeasure ? agentOverall : undefined;
 
+  // Tabs render worst-first (poor -> fair -> could-not-measure -> good; ties keep
+  // canonical perf, a11y, agent). The renderer appends any missing tab in default
+  // order, so listing only the present tabs here is enough.
+  const tabOrder = ([
+    ...(hasPerf ? [{ dim: 'perf' as const, rank: dimSeverityRank(perfStatus, perfCouldNotMeasure) }] : []),
+    ...(hasA11y ? [{ dim: 'a11y' as const, rank: dimSeverityRank(a11yStatus, a11yCouldNotMeasure) }] : []),
+    ...(hasAgent ? [{ dim: 'agent' as const, rank: dimSeverityRank(agentStatus, agentCouldNotMeasure) }] : []),
+  ])
+    .map((entry, index) => ({ ...entry, index }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.dim);
+
   const model: ClientReportModel = {
     domain,
     dateStr,
     faviconLinkTag: faviconTag,
     lede,
     tiles,
+    tabOrder,
     hasPerf,
     perfStatus,
     ...(perfScore !== undefined ? { perfScore } : {}),
