@@ -1203,7 +1203,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfPanelHtml).not.toContain('the layout jumps around on a mid-range phone');
   });
 
-  it('prioritizes a poor-status problem over a higher-severity fair problem', async () => {
+  it('keeps the tile worst issue separate from the homepage-anchored cost story', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       { id: 'home', name: 'Home', startingPath: '/', metrics: { LCP: 8200, FCP: 1200, 'LH Score': 55 } },
       { id: 'details', name: 'Details', startingPath: '/details', metrics: { LCP: 1800, FCP: 900, CLS: 26, 'LH Score': 91 } },
@@ -1978,7 +1978,8 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('data-calculator');
     expect(perfPanelHtml).toContain('class="cr-calculator-card"');
     expect(perfPanelHtml).toContain('data-calculator-tool');
-    expect(perfPanelHtml).toContain('border:2px solid #a69b8d');
+    expect(html).toContain('.cr-calculator-card input[type="number"]:focus-visible');
+    expect(html).toContain('.cr-calculator-card input[type="radio"]:focus-visible');
     expect(perfPanelHtml).toContain('data-calc-floor="75"');
     expect(perfPanelHtml).toContain(`data-calc-recovery-cap="${RECOVERY_CAP}"`);
     expect(perfPanelHtml).toContain('data-calc-prefill="57"');

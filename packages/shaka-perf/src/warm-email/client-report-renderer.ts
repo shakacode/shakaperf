@@ -59,6 +59,9 @@ const INK = '#26221d';
 const FAINT = '#9b9286';
 const LINE = '#e7e1d8';
 const BENCHMARK_MARKER = 'You are here';
+const COST_TIER_LABEL_WIDTH = 116;
+const COST_TIER_GAP = 20;
+const COST_TIER_CONTENT_OFFSET = COST_TIER_LABEL_WIDTH + COST_TIER_GAP;
 
 // ---- model (assembled in client-report.ts) ----
 
@@ -283,8 +286,9 @@ const HEAD_STYLE = `
   .cr-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
   .cr-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
   .cr-sev-chip.cr-sev-off{opacity:.4;text-decoration:line-through}
-  .cr-calculator-card input{transition:border-color .12s ease,box-shadow .12s ease}
-  .cr-calculator-card input:focus{outline:0;border-color:#26221d!important;box-shadow:0 0 0 3px rgba(38,34,29,.12)}
+  .cr-calculator-card input[type="number"]{transition:border-color .12s ease,box-shadow .12s ease}
+  .cr-calculator-card input[type="number"]:focus-visible{outline:0;border-color:#26221d!important;box-shadow:0 0 0 3px rgba(38,34,29,.30)}
+  .cr-calculator-card input[type="radio"]:focus-visible{outline:2px solid #26221d;outline-offset:2px}
   /* on-video captions: a dark lower-third scrim so the white beat text stays
      legible during playback (independent of hover). */
   .cr-vidcap{position:absolute;left:0;right:0;bottom:0;padding:30px 12px 50px;background:linear-gradient(to top,rgba(8,11,15,.92) 0%,rgba(8,11,15,.74) 42%,rgba(8,11,15,0) 100%);text-align:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
@@ -575,7 +579,7 @@ function costGrammarRow(label: string, content: string, tier: 'measured' | 'stak
     stakes: '#6f665c',
     fix: '#3a352e',
   } as const;
-  return `        <div class="cr-cost-tier cr-cost-tier-${tier}" data-cost-tier="${tier}" style="display:grid; grid-template-columns:minmax(100px, 116px) minmax(0, 1fr); gap:20px; ${tierStyles[tier]}">
+  return `        <div class="cr-cost-tier cr-cost-tier-${tier}" data-cost-tier="${tier}" style="display:grid; grid-template-columns:minmax(100px, ${COST_TIER_LABEL_WIDTH}px) minmax(0, 1fr); gap:${COST_TIER_GAP}px; ${tierStyles[tier]}">
           <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:${labelColors[tier]}; padding-top:4px">${esc(label)}</div>
           <div>${content}</div>
         </div>`;
@@ -676,8 +680,11 @@ ${fallbackPrompt}
 ${fallbackStats}
         </div>`
     : '';
+  const fixTextStyle = cost.fix?.tone === 'secondary'
+    ? 'font-size:15px; line-height:1.58; color:#3a352e; margin:0'
+    : 'font-size:16px; line-height:1.58; color:#26221d; margin:0; font-weight:600';
   const fixContent = !blocked && cost.fix && (cost.fix.text || prompt)
-    ? costGrammarRow(cost.fix.tone === 'secondary' ? 'Worth doing anyway' : 'The fix', `${cost.fix.text ? `<p style="font-size:16px; line-height:1.58; color:#26221d; margin:0; font-weight:600">${esc(cost.fix.text)}</p>` : ''}${prompt}`, 'fix')
+    ? costGrammarRow(cost.fix.tone === 'secondary' ? 'Worth doing anyway' : 'The fix', `${cost.fix.text ? `<p style="${fixTextStyle}">${esc(cost.fix.text)}</p>` : ''}${prompt}`, 'fix')
     : '';
   const calculator = !blocked && cell.rendersCalculator && cost.calculator ? calculatorCard(cost.calculator, cost.tab) : '';
   const countedZero = !blocked && cost.countedZeroLine
@@ -687,7 +694,7 @@ ${fallbackStats}
         <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#6f665c; margin-bottom:0">${esc(WHAT_THIS_COSTS_YOU)}</div>
 ${measuredRow(cost)}
 ${!blocked && cost.stakes ? stakesRow(cost.stakes, cost.tab) : ''}
-${calculator ? `        <div class="cr-cost-tool" style="margin:4px 0 26px 136px">${calculator}</div>` : ''}
+${calculator ? `        <div class="cr-cost-tool" style="margin:4px 0 26px ${COST_TIER_CONTENT_OFFSET}px">${calculator}</div>` : ''}
 ${fixContent}
 ${fallback}
 ${countedZero}
