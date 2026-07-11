@@ -1974,8 +1974,8 @@ async function buildClientReportModel(
     .map(cardPerfProblem)
     .filter((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
   // The homepage is the owner's most recognizable page, so it anchors the
-  // reframe whenever it is carded and misses Google's good LCP line. Otherwise
-  // retain the established dominant-problem ranking.
+  // measured cost story whenever it is carded and misses Google's good LCP
+  // line. Otherwise retain the established dominant-problem ranking.
   const perfCostProblem = rankedPerfCostCandidates[0];
   const perfCostAnchor = selectPerfCostAnchor(rankedPerfCostCandidates, BENCHMARK_LINES.lcpMs.good);
   const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
@@ -1994,19 +1994,19 @@ async function buildClientReportModel(
         ...(everyMeasuredLcpUnderGoodLine ? {} : { headline: NO_MATERIAL_LOSS }),
       };
     } else if (!perfCouldNotMeasure && perfCostAnchor && isPerfCostProblem(perfCostAnchor.problem)) {
-      // Keep the renderer-owned headline, prompt, and verification link on the
-      // established dominant page. The homepage-aware anchor supplies only the
-      // new reframe extras.
-      const legacyProblem = perfCostProblem ?? perfCostAnchor;
-      const legacyPerfProblem = isPerfCostProblem(legacyProblem.problem)
-        ? legacyProblem.problem
+      // The anchor drives the headline and metric-specific reframe copy so the
+      // measured block tells one story. Supporting prompt and verification
+      // details stay on the established dominant page.
+      const supportingProblem = perfCostProblem ?? perfCostAnchor;
+      const supportingPerfProblem = isPerfCostProblem(supportingProblem.problem)
+        ? supportingProblem.problem
         : perfCostAnchor.problem;
-      const legacyProblemTx = perfProblemPhrase(legacyProblem.problem, legacyProblem.page);
-      const legacyProblemMetricTx = perfProblemMetric(legacyProblem.problem, legacyProblem.page);
-      const legacyProblemLabel = legacyProblemMetricTx ?? legacyProblemTx ?? legacyPerfProblem.chip;
-      const legacyProblemPhrase = legacyProblemTx ?? legacyPerfProblem.chip;
       const anchorPage = perfCostAnchor.page;
-      const problemUrl = perfPageUrl(sc.url, legacyProblem.page);
+      const anchorProblemTx = perfProblemPhrase(perfCostAnchor.problem, anchorPage);
+      const anchorProblemMetricTx = perfProblemMetric(perfCostAnchor.problem, anchorPage);
+      const anchorProblemLabel = anchorProblemMetricTx ?? anchorProblemTx ?? perfCostAnchor.problem.chip;
+      const anchorProblemPhrase = anchorProblemTx ?? perfCostAnchor.problem.chip;
+      const problemUrl = perfPageUrl(sc.url, supportingProblem.page);
       const checkProfile = sc.throttleProfile || 'a profile not recorded in this audit';
       const perfFactPages = ctx.measured.map(({ page }) => ({
         name: page.name,
@@ -2036,12 +2036,12 @@ async function buildClientReportModel(
       perfCost = {
         tab: 'perf',
         state: 'measured',
-        headline: perfCostHeadline(legacyPerfProblem, legacyProblemLabel, legacyProblemPhrase, legacyProblem.page),
+        headline: perfCostHeadline(perfCostAnchor.problem, anchorProblemLabel, anchorProblemPhrase, anchorPage),
         chip: 'measured',
         checkLine: perfCheckLine(problemUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
-        affectsProse: perfAffectsProse(legacyPerfProblem),
-        sitePrompt: perfCostCopyPromptEnabled(legacyPerfProblem)
-          ? perfCopyPromptForPage(legacyProblem.page, sc.url, perfPromptCtx)
+        affectsProse: perfAffectsProse(supportingPerfProblem),
+        sitePrompt: perfCostCopyPromptEnabled(supportingPerfProblem)
+          ? perfCopyPromptForPage(supportingProblem.page, sc.url, perfPromptCtx)
           : undefined,
         ...(gap ? { gap } : {}),
         gapSubLines: perfGapSubLines(perfFactPages, anchorFacts),
