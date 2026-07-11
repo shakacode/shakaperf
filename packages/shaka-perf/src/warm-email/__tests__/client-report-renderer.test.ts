@@ -1214,8 +1214,8 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain('>0.26</div>');
     expect(perfTile).toContain('the layout jumps around');
     expect(perfTile).not.toContain('biggest piece takes 8.2s to load');
-    expect(perfPanelHtml).toContain('the layout jumps around on a mid-range phone');
-    expect(perfPanelHtml).not.toContain('0.26 before your main content appears');
+    expect(perfPanelHtml).toContain('8.2s before your main content appears on a mid-range phone');
+    expect(perfPanelHtml).not.toContain('the layout jumps around on a mid-range phone');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
   });
 
@@ -1953,11 +1953,20 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('>Measured</div>');
     expect(perfPanelHtml).toContain('>At stake</div>');
     expect(perfPanelHtml).toContain('>The fix</div>');
+    expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-measured" data-cost-tier="measured"');
+    expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-stakes" data-cost-tier="stakes"');
+    expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-fix" data-cost-tier="fix"');
     expect(perfPanelHtml).toContain('check this on the same profile');
     expect(perfPanelHtml).toContain('Main content is 5.9s past the good line.');
     expect(perfPanelHtml).toContain('Calls from phone visitors are waiting on this page.');
     expect(perfPanelHtml).toContain('data-benchmark-zone="poor"');
-    expect(perfPanelHtml).toContain('you: 8.4s - 3.4x the good line');
+    expect(perfPanelHtml).toContain('class="cr-benchmark-hero"');
+    expect(perfPanelHtml).toContain('data-benchmark-scale');
+    expect(perfPanelHtml).toContain('data-benchmark-marker');
+    expect(perfPanelHtml).toContain('>You are here</span>');
+    expect(perfPanelHtml).toContain('data-benchmark-multiple');
+    expect(perfPanelHtml).toContain('>3.4x</strong>');
+    expect(perfPanelHtml).toContain('you: 8.4s -');
     expect(perfPanelHtml).toContain('good: 2.5s or less');
     expect(perfPanelHtml).toContain('poor: over 4.0s');
     expect(perfPanelHtml).toContain('>Google</a>');
@@ -1967,6 +1976,9 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml.indexOf('>At stake</div>')).toBeLessThan(perfPanelHtml.indexOf(CALC_TITLE));
     expect(perfPanelHtml.indexOf(CALC_TITLE)).toBeLessThan(perfPanelHtml.indexOf('>The fix</div>'));
     expect(perfPanelHtml).toContain('data-calculator');
+    expect(perfPanelHtml).toContain('class="cr-calculator-card"');
+    expect(perfPanelHtml).toContain('data-calculator-tool');
+    expect(perfPanelHtml).toContain('border:2px solid #a69b8d');
     expect(perfPanelHtml).toContain('data-calc-floor="75"');
     expect(perfPanelHtml).toContain(`data-calc-recovery-cap="${RECOVERY_CAP}"`);
     expect(perfPanelHtml).toContain('data-calc-prefill="57"');

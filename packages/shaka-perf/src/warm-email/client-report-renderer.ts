@@ -58,6 +58,7 @@ const NEUTRAL = { fg: '#6f665c', bg: '#f4f1ea', line: '#e0d9cd', soft: '#f6f4f0'
 const INK = '#26221d';
 const FAINT = '#9b9286';
 const LINE = '#e7e1d8';
+const BENCHMARK_MARKER = 'You are here';
 
 // ---- model (assembled in client-report.ts) ----
 
@@ -282,6 +283,8 @@ const HEAD_STYLE = `
   .cr-sev-chip{transition:opacity .12s ease,box-shadow .12s ease}
   .cr-sev-chip:hover{box-shadow:0 0 0 2px rgba(38,34,29,.14)}
   .cr-sev-chip.cr-sev-off{opacity:.4;text-decoration:line-through}
+  .cr-calculator-card input{transition:border-color .12s ease,box-shadow .12s ease}
+  .cr-calculator-card input:focus{outline:0;border-color:#26221d!important;box-shadow:0 0 0 3px rgba(38,34,29,.12)}
   /* on-video captions: a dark lower-third scrim so the white beat text stays
      legible during playback (independent of hover). */
   .cr-vidcap{position:absolute;left:0;right:0;bottom:0;padding:30px 12px 50px;background:linear-gradient(to top,rgba(8,11,15,.92) 0%,rgba(8,11,15,.74) 42%,rgba(8,11,15,0) 100%);text-align:center;opacity:0;transition:opacity .25s ease;pointer-events:none}
@@ -303,6 +306,8 @@ const HEAD_STYLE = `
   @media (max-width:760px){
     .cr-tiles{grid-template-columns:1fr!important}
     .cr-wrap h1{font-size:30px!important}
+    .cr-cost-tier{grid-template-columns:1fr!important;gap:8px!important}
+    .cr-cost-tool{margin-left:0!important}
   }`;
 
 // ---- shared bits ----
@@ -537,25 +542,41 @@ ${stats}
 function benchmarkScale(gap: CostGap): string {
   const zoneCenter: Record<CostGap['zone'], number> = { good: 20, mid: 55, poor: 85 };
   const marker = Math.max(4, Math.min(96, zoneCenter[gap.zone]));
-  const multiple = gap.multipleLabel ? ` - ${gap.multipleLabel} the good line` : '';
-  return `          <div data-benchmark-zone="${esc(gap.zone)}" style="margin-top:13px; max-width:620px" aria-label="${esc(`${gap.metricLabel}: ${gap.measuredLabel}`)}">
-            <div style="position:relative; padding-top:25px">
-              <div style="height:12px; overflow:hidden; display:flex; border:1px solid #d8d0c3; border-radius:999px; background:#ffffff">
+  const palette = gap.zone === 'mid' ? PAL.fair : PAL[gap.zone];
+  return `            <div class="cr-benchmark-hero" data-benchmark-zone="${esc(gap.zone)}" data-benchmark-scale style="margin:0 0 18px; padding:18px 18px 15px; border:1px solid ${palette.line}; border-radius:12px; background:${palette.soft}; max-width:620px" aria-label="${esc(`${gap.metricLabel}: ${gap.measuredLabel}`)}">
+            <div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:5px 8px; margin-bottom:15px">
+              <span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:${palette.fg}">${esc(gap.metricLabel)}</span>
+              <span style="font-size:12px; line-height:1.4; color:#5e5549">${esc(gap.measuredLabel)}</span>
+            </div>
+            <div style="position:relative; padding-top:39px">
+              <div style="height:16px; overflow:hidden; display:flex; border:1px solid #d8d0c3; border-radius:999px; background:#ffffff">
                 <span style="width:40%; background:${PAL.good.bg}"></span><span style="width:30%; background:${PAL.fair.bg}"></span><span style="width:30%; background:${PAL.poor.bg}"></span>
               </div>
-              <div style="position:absolute; top:0; left:${marker}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; white-space:nowrap">
-                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; color:#26221d">${esc(`you: ${gap.measuredLabel}${multiple}`)}</span>
-                <span style="width:2px; height:13px; margin-top:2px; background:#26221d"></span>
+              <div data-benchmark-marker style="position:absolute; top:0; left:${marker}%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; white-space:nowrap">
+                <span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:#5e5549">${esc(BENCHMARK_MARKER)}</span>
+                <span style="width:3px; height:10px; margin-top:3px; background:#26221d"></span>
+                <span style="width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #26221d"></span>
               </div>
             </div>
-            <div style="display:flex; justify-content:space-between; margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#5e5549"><span>${esc(gap.goodLabel)}</span><span>${esc(gap.poorLabel)}</span></div>
-            <div style="margin-top:7px; font-size:11.5px; line-height:1.45; color:#5e5549">Benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#3a352e; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a></div>
+            <div style="display:flex; justify-content:space-between; gap:12px; margin-top:7px; font-family:'JetBrains Mono',monospace; font-size:10px; line-height:1.4; color:#5e5549"><span>${esc(gap.goodLabel)}</span><span style="text-align:right">${esc(gap.poorLabel)}</span></div>
+            ${gap.multipleLabel ? `<div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:4px; margin-top:14px"><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#5e5549">${esc(`you: ${gap.measuredLabel} -`)}</span><strong data-benchmark-multiple style="font-size:28px; line-height:1; letter-spacing:-.035em; color:${palette.fg}">${esc(gap.multipleLabel)}</strong><span style="font-size:13px; font-weight:600; color:#3a352e">the good line</span></div>` : ''}
+            <div class="cr-benchmark-source" style="margin-top:12px; font-size:10.5px; line-height:1.45; color:#6f665c">Benchmark: <a href="${esc(gap.lineUrl)}" target="_blank" rel="noopener" style="color:#5e5549; font-weight:600; text-decoration:underline">${esc(gap.lineOwner)}</a></div>
           </div>`;
 }
 
-function costGrammarRow(label: string, content: string): string {
-  return `        <div style="display:grid; grid-template-columns:minmax(92px, 108px) minmax(0, 1fr); gap:14px; padding:16px 0; border-top:1px solid #e7e1d8">
-          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#5e5549; padding-top:3px">${esc(label)}</div>
+function costGrammarRow(label: string, content: string, tier: 'measured' | 'stakes' | 'fix'): string {
+  const tierStyles = {
+    measured: 'padding:22px 0 30px',
+    stakes: 'padding:25px 0 20px; border-top:1px solid #e7e1d8',
+    fix: 'padding:28px 0 4px; border-top:1px solid #e7e1d8',
+  } as const;
+  const labelColors = {
+    measured: '#26221d',
+    stakes: '#6f665c',
+    fix: '#3a352e',
+  } as const;
+  return `        <div class="cr-cost-tier cr-cost-tier-${tier}" data-cost-tier="${tier}" style="display:grid; grid-template-columns:minmax(100px, 116px) minmax(0, 1fr); gap:20px; ${tierStyles[tier]}">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:${labelColors[tier]}; padding-top:4px">${esc(label)}</div>
           <div>${content}</div>
         </div>`;
 }
@@ -565,20 +586,20 @@ function measuredRow(cost: ClientReportCostBlock): string {
   const blocked = cost.state === 'blocked';
   const chip = blocked ? cell.chip : cost.chip ?? cell.chip;
   const headline = cell.rendersCostNumber ? cost.headline : cost.headline ?? cell.copy;
-  const subLines = cost.state !== 'blocked' ? cost.gapSubLines?.map((line) => `<div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#5e5549; margin-top:5px">${esc(line)}</div>`).join('') ?? '' : '';
+  const subLines = cost.state !== 'blocked' ? cost.gapSubLines?.map((line) => `<div data-gap-detail style="font-family:'JetBrains Mono',monospace; font-size:10.5px; line-height:1.5; color:#6f665c; margin-top:5px">${esc(line)}</div>`).join('') ?? '' : '';
   const booking = cost.state !== 'blocked' && cost.bookingLine
-    ? `<div style="margin-top:12px; padding:10px 12px; border:1px solid #e0d9cd; border-radius:8px; background:#fbfaf8; font-size:13.5px; line-height:1.5; color:#3a352e">${esc(cost.bookingLine)}</div>`
+    ? `<div style="margin-top:14px; padding:10px 12px; border-left:2px solid #d8d0c3; background:#fbfaf8; font-size:12.5px; line-height:1.5; color:#4a443c">${esc(cost.bookingLine)}</div>`
     : '';
-  const content = `            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
+  const content = `            ${cell.rendersBenchmarkScale && cost.gap ? benchmarkScale(cost.gap) : ''}
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-bottom:${cost.headlineSub && cell.rendersCostNumber ? '5px' : '0'}">
               ${headline ? `<div style="font-size:${cell.rendersCostNumber ? '16.5px' : '15px'}; line-height:1.45; font-weight:${cell.rendersCostNumber ? '700' : '600'}; color:#26221d">${esc(headline)}</div>` : ''}
               ${costChip(chip)}
             </div>
             ${cost.headlineSub && cell.rendersCostNumber ? `<div style="font-size:14px; line-height:1.45; color:#5e5549; margin-bottom:8px">${esc(cost.headlineSub)}</div>` : ''}
             ${cost.checkLine && cell.rendersCheckLine ? `<div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.5; color:#5e5549">${esc(cost.checkLine)}</div>` : ''}
-            ${cell.rendersBenchmarkScale && cost.gap ? benchmarkScale(cost.gap) : ''}
             ${subLines}
             ${booking}`;
-  return costGrammarRow('Measured', content);
+  return costGrammarRow('Measured', content, 'measured');
 }
 
 function stakesRow(stakes: CostStakes, tab: CostTab): string {
@@ -590,7 +611,7 @@ function stakesRow(stakes: CostStakes, tab: CostTab): string {
   const prose = stakes.kind === 'no-material-loss'
     ? `<div style="padding:12px 14px; border:1px solid ${PAL.good.line}; border-radius:9px; background:${PAL.good.bg}; color:${PAL.good.fg}; font-size:15px; line-height:1.55">${esc(stakes.prose)}</div>`
     : `<p style="font-size:15px; line-height:1.58; color:#3a352e; margin:0">${esc(stakes.prose)}</p>`;
-  return costGrammarRow('At stake', `${prose}${studies}`);
+  return costGrammarRow('At stake', `${prose}${studies}`, 'stakes');
 }
 
 function percentageLabel(value: number): string {
@@ -609,10 +630,10 @@ function calculatorCard(calculator: CostCalculatorConfig, tab: CostTab): string 
     const label = `${band.id.charAt(0).toUpperCase()}${band.id.slice(1)}: ${percentageLabel(band.lo)}-${percentageLabel(band.hi)}`;
     return `              <label for="${esc(inputId)}" style="display:flex; align-items:center; gap:7px; font-size:13px; line-height:1.4; color:#3a352e; cursor:pointer"><input id="${esc(inputId)}" type="radio" name="${esc(`${id}-band`)}" value="${esc(band.id)}" data-calc-band${band.id === 'cautious' || (index === 0 && !calculator.bands.some((candidate) => candidate.id === 'cautious')) ? ' checked' : ''}> ${esc(label)}</label>`;
   }).join('\n');
-  return `        <div class="cr-calculator-card" data-calculator data-calc-bands="${esc(JSON.stringify(calculator.bands))}" data-calc-floor="${esc(String(calculator.materialityFloorUsdPerMonth))}" data-calc-recovery-cap="${esc(String(RECOVERY_CAP))}" data-calc-prefill="${esc(String(prefill))}" data-calc-noun="${esc(calculator.inquiryNoun)}" data-calc-partial="${esc(CALC_PARTIAL_LINE)}" data-calc-tiny="${esc(tinyResultLine(calculator.materialityFloorUsdPerMonth))}" data-calc-break-even-template="${esc(calcBreakEvenLine('__VALUE__'))}" style="margin:0 0 2px; padding:18px 20px; border:1px dashed #a69b8d; border-radius:12px; background:#fbfaf8; max-width:72ch">
-          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#3a352e; margin-bottom:7px">${esc(CALC_TITLE)}</div>
+  return `        <div class="cr-calculator-card" data-calculator data-calculator-tool data-calc-bands="${esc(JSON.stringify(calculator.bands))}" data-calc-floor="${esc(String(calculator.materialityFloorUsdPerMonth))}" data-calc-recovery-cap="${esc(String(RECOVERY_CAP))}" data-calc-prefill="${esc(String(prefill))}" data-calc-noun="${esc(calculator.inquiryNoun)}" data-calc-partial="${esc(CALC_PARTIAL_LINE)}" data-calc-tiny="${esc(tinyResultLine(calculator.materialityFloorUsdPerMonth))}" data-calc-break-even-template="${esc(calcBreakEvenLine('__VALUE__'))}" style="margin:0; padding:20px; border:2px solid #a69b8d; border-radius:14px; background:#f4f1ea; box-shadow:0 8px 20px rgba(38,34,29,.06); max-width:72ch">
+          <div style="display:flex; align-items:center; gap:9px; margin-bottom:8px"><span style="width:9px; height:9px; border-radius:50%; background:#26221d"></span><div style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#26221d">${esc(CALC_TITLE)}</div></div>
           <p style="font-size:13px; line-height:1.5; color:#4a443c; margin:0">${esc(CALC_PRIVACY_LINE)}</p>
-          <div class="cr-calculator-fields" style="margin-top:15px; display:grid; gap:13px">
+          <div class="cr-calculator-fields" style="margin-top:17px; padding-top:16px; border-top:1px solid #d8d0c3; display:grid; gap:13px">
             <div>
               <label for="${esc(`${id}-inquiries`)}" style="display:block; font-size:13px; font-weight:600; line-height:1.45; color:#3a352e; margin-bottom:5px">${esc(CALC_INQUIRIES_LABEL)}</label>
               <input id="${esc(`${id}-inquiries`)}" data-calc-inquiries type="number" min="0" step="1" inputmode="decimal" style="width:100%; max-width:260px; min-height:38px; border:1px solid #bcb3a7; border-radius:7px; background:#ffffff; color:#26221d; padding:7px 9px; font:inherit">
@@ -656,17 +677,17 @@ ${fallbackStats}
         </div>`
     : '';
   const fixContent = !blocked && cost.fix && (cost.fix.text || prompt)
-    ? costGrammarRow(cost.fix.tone === 'secondary' ? 'Worth doing anyway' : 'The fix', `${cost.fix.text ? `<p style="font-size:15px; line-height:1.58; color:#3a352e; margin:0">${esc(cost.fix.text)}</p>` : ''}${prompt}`)
+    ? costGrammarRow(cost.fix.tone === 'secondary' ? 'Worth doing anyway' : 'The fix', `${cost.fix.text ? `<p style="font-size:16px; line-height:1.58; color:#26221d; margin:0; font-weight:600">${esc(cost.fix.text)}</p>` : ''}${prompt}`, 'fix')
     : '';
   const calculator = !blocked && cell.rendersCalculator && cost.calculator ? calculatorCard(cost.calculator, cost.tab) : '';
   const countedZero = !blocked && cost.countedZeroLine
     ? `<div style="margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; line-height:1.5; color:#5e5549">${esc(cost.countedZeroLine)}</div>`
     : '';
-  return `      <div style="margin:0 0 16px; padding:18px 20px; border:1px solid #e7e1d8; border-radius:13px; background:#ffffff; max-width:72ch">
-        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#9b9286; margin-bottom:4px">${esc(WHAT_THIS_COSTS_YOU)}</div>
+  return `      <div class="cr-cost-grammar" style="margin:0 0 18px; padding:22px 24px 24px; border:1px solid #e0d9cd; border-radius:15px; background:#ffffff; box-shadow:0 6px 18px rgba(38,34,29,.035); max-width:72ch">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#6f665c; margin-bottom:0">${esc(WHAT_THIS_COSTS_YOU)}</div>
 ${measuredRow(cost)}
 ${!blocked && cost.stakes ? stakesRow(cost.stakes, cost.tab) : ''}
-${calculator}
+${calculator ? `        <div class="cr-cost-tool" style="margin:4px 0 26px 136px">${calculator}</div>` : ''}
 ${fixContent}
 ${fallback}
 ${countedZero}
