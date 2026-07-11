@@ -205,7 +205,7 @@ describe('cost-of-pain reframe model', () => {
         inquiryNoun: 'inquiry',
       },
     });
-    expect(cost?.headline).toContain('12.0s before your main content appears');
+    expect(cost?.headline).toContain('4.2s before your main content appears');
     expect(cost?.checkLine).toContain('url=http%3A%2F%2Flocalhost%3A1%2Fbook');
     expect(cost?.gapSubLines).toEqual([
       'slowest page: Book now, 12.0s - 4.8x the line',
@@ -216,6 +216,43 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.narrative.bottomLineHtml).toContain('Home shows its main content after');
     expect(result.model.narrative.bottomLineHtml).toContain('1.6x past Google&#39;s 2.5-second good line.');
     expect(findBannedWords(JSON.stringify(cost))).toEqual([]);
+  });
+
+  it('keeps the headline, gap, stakes, and fix on the homepage anchor when layout shift ranks first', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { LCP: 4500, FCP: 1200, CLS: 2, TBT: 80 } }),
+      basePage({
+        id: 'unstable',
+        name: 'Unstable page',
+        startingPath: '/unstable',
+        metrics: { LCP: 2300, FCP: 1000, CLS: 60, TBT: 80 },
+      }),
+    ]));
+    const cost = result.model.perfCost;
+
+    expect(result.model.perfCards.find((card) => card.path === '/unstable')?.headlineHtml).toContain('jumps around');
+    expect(cost).toMatchObject({
+      state: 'measured',
+      headline: '4.5s before your main content appears on a mid-range phone',
+      gap: { metricLabel: 'Main content', measuredLabel: '4.5s' },
+      stakes: { prose: expect.stringContaining('Waits like this') },
+      fix: { text: expect.stringContaining('The target: main content under 2.5 seconds') },
+    });
+  });
+
+  it('keeps the unchanged layout-shift headline aligned when the anchor is already top-ranked', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { LCP: 2300, FCP: 1000, CLS: 60, TBT: 80 } }),
+    ]));
+    const cost = result.model.perfCost;
+
+    expect(cost).toMatchObject({
+      state: 'measured',
+      headline: 'the layout jumps around on a mid-range phone',
+      gap: { metricLabel: 'Layout shift', measuredLabel: '0.60' },
+      stakes: { prose: expect.stringContaining('Layout shifts like this') },
+      fix: { text: expect.stringContaining('The target: layout shift under 0.10 on the same phone profile') },
+    });
   });
 
   it('uses the money-page override and omits a booking line when neither selection finds a card', async () => {
