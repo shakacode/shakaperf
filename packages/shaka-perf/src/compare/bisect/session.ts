@@ -308,6 +308,7 @@ function createDefaultDependencies(options: {
     beginSession: () => proxyStrict(options.twinServers, {
       cmd: 'bisect-begin',
       token: bisectToken,
+      ownerPid: process.pid,
     }),
     endSession: () => proxyStrict(options.twinServers, {
       cmd: 'bisect-end',
