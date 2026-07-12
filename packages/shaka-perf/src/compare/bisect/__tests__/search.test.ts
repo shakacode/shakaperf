@@ -82,12 +82,12 @@ describe('bisect scheduler', () => {
   });
 
   it('selects the first target by category priority and stable id', () => {
-    const work = nextCandidate(session([
+    const work = nextCandidate(applyCachedObservations(session([
       bisectTarget('zebra', 'visreg', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('alpha', 'visreg', { goodIndex: 0, badIndex: 2 }),
       bisectTarget('tbt', 'perf'),
       bisectTarget('button-name', 'accessibility'),
-    ]));
+    ])));
 
     expect(work?.sha).toBe('a');
     expect(work?.targetIds).toEqual(['zebra', 'alpha', 'tbt', 'button-name']);
@@ -101,21 +101,25 @@ describe('bisect scheduler', () => {
   });
 
   it('groups every active target whose interval contains the candidate', () => {
-    const work = nextCandidate(session([
+    const work = nextCandidate(applyCachedObservations(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 4 }),
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('button-name', 'accessibility', { goodIndex: 2, badIndex: 4 }),
-    ]));
+    ])));
 
     expect(work).toMatchObject({ sha: 'b', targetIds: ['visual', 'tbt', 'button-name'] });
   });
 
   it('subtracts targets with cached observations at the candidate', () => {
-    const work = nextCandidate(session([
-      bisectTarget('visual', 'visreg', { observations: { b: observation('visual', true) } }),
-      bisectTarget('tbt', 'perf'),
-      bisectTarget('button-name', 'accessibility'),
-    ]));
+    const work = nextCandidate(applyCachedObservations(session([
+      bisectTarget('visual', 'visreg', {
+        goodIndex: 1,
+        badIndex: 3,
+        observations: { b: observation('visual', true) },
+      }),
+      bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
+      bisectTarget('button-name', 'accessibility', { goodIndex: 1, badIndex: 3 }),
+    ])));
 
     expect(work).toMatchObject({ sha: 'b', targetIds: ['tbt', 'button-name'] });
     expect(work?.categories).toEqual(['perf', 'accessibility']);
@@ -150,7 +154,7 @@ describe('bisect scheduler', () => {
     });
   });
 
-  it('requires no rerun when every candidate observation is cached', () => {
+  it('requires no rerun and exposes persistable found boundaries when every candidate is cached', () => {
     const normalized = applyCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
@@ -164,9 +168,32 @@ describe('bisect scheduler', () => {
       }),
     ]));
 
-    expect(target(normalized, 'visual')).toMatchObject({ status: 'found', firstBadSha: 'b' });
-    expect(target(normalized, 'tbt')).toMatchObject({ status: 'found', firstBadSha: 'c' });
+    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSession;
+
+    expect(target(persisted, 'visual')).toMatchObject({
+      status: 'found',
+      goodIndex: 1,
+      badIndex: 2,
+      firstBadSha: 'b',
+    });
+    expect(target(persisted, 'tbt')).toMatchObject({
+      status: 'found',
+      goodIndex: 2,
+      badIndex: 3,
+      firstBadSha: 'c',
+    });
     expect(nextCandidate(normalized)).toBeNull();
+  });
+
+  it('requires a normalized session before scheduling at compile time', () => {
+    const rawSession = session([bisectTarget('visual', 'visreg')]);
+
+    if (false) {
+      // @ts-expect-error nextCandidate requires cached observations to be normalized first
+      nextCandidate(rawSession);
+    }
+
+    expect(nextCandidate(applyCachedObservations(rawSession))?.sha).toBe('b');
   });
 
   it('finds the first bad commit when boundaries become adjacent', () => {
@@ -205,13 +232,13 @@ describe('bisect scheduler', () => {
   });
 
   it('skips invalid targets', () => {
-    const work = nextCandidate(session([
+    const work = nextCandidate(applyCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         status: 'invalid',
         invalidReason: 'Present at known-good commit',
       }),
       bisectTarget('tbt', 'perf'),
-    ]));
+    ])));
 
     expect(work).toMatchObject({ sha: 'b', targetIds: ['tbt'], categories: ['perf'] });
   });
