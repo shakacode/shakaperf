@@ -30,7 +30,7 @@ import { endpointPaths } from './paths';
  * the caller should fall back to local execution.
  */
 export type ProxyAttemptOutcome =
-  | { proxied: true; code: number; error?: string }
+  | { proxied: true; code: number; error?: string; data?: unknown }
   | { proxied: false; reason: string };
 
 export interface TryProxyOptions {
@@ -143,7 +143,7 @@ export async function tryProxy(opts: TryProxyOptions): Promise<ProxyAttemptOutco
         finish(logFallback({ verbose, reason: `malformed response: ${(err as Error).message}` }));
         return;
       }
-      finish({ proxied: true, code: frame.code, error: frame.error });
+      finish({ proxied: true, code: frame.code, error: frame.error, data: frame.data });
     });
     // Post-connect terminal events (`error`, `end` without an `exit` frame)
     // both mean "server died after accepting the request" — we MUST NOT
@@ -164,6 +164,17 @@ export async function tryProxy(opts: TryProxyOptions): Promise<ProxyAttemptOutco
       finish({ proxied: true, code: EXIT_SERVER_DIED, error: 'server died mid-dispatch (closed connection without exit frame)' });
     });
   });
+}
+
+export async function requireBisectProxy<T>(options: TryProxyOptions): Promise<T> {
+  const outcome = await tryProxy(options);
+  if (!outcome.proxied) {
+    throw new Error('compare bisect requires a running shaka-perf servers session');
+  }
+  if (outcome.code !== 0) {
+    throw new Error(outcome.error ?? `Twin-server action exited ${outcome.code}`);
+  }
+  return outcome.data as T;
 }
 
 function readManifest(file: string): ServerManifest | null {

@@ -34,8 +34,9 @@ import type {
 import { loadConfig as loadTwinServersConfig, resolveConfig } from '../../twin-servers/config';
 import type { ResolvedConfig } from '../../twin-servers/types';
 import { readBuildManifest, type BuildManifest } from '../../twin-servers/helpers/rebuild-check';
-import { tryProxy } from '../../twin-servers/ipc/client';
-import { EXIT_NEVER_DISPATCHED, EXIT_OK, PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/ipc/protocol';
+import { requireBisectProxy } from '../../twin-servers/ipc/client';
+import { PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/ipc/protocol';
+import type { BisectRefreshResult } from '../../twin-servers/commands/bisect-session';
 
 type RefreshMode = CommitRun['refreshMode'];
 
@@ -385,16 +386,16 @@ function createDefaultDependencies(options: {
   gitRange: PreparedGitRange;
   headed: boolean;
 }): ExecuteBisectDependencies {
-  const bisectToken = randomUUID();
+  const bisectSessionId = randomUUID();
   return {
-    beginSession: () => proxyStrict(options.twinServers, {
+    beginSession: () => proxyBisect<void>(options.twinServers, {
       cmd: 'bisect-begin',
-      token: bisectToken,
+      sessionId: bisectSessionId,
       ownerPid: process.pid,
     }),
-    endSession: () => proxyStrict(options.twinServers, {
+    endSession: () => proxyBisect<void>(options.twinServers, {
       cmd: 'bisect-end',
-      token: bisectToken,
+      sessionId: bisectSessionId,
     }),
     checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
       allowedPaths: [options.resultsDirectory],
@@ -411,7 +412,12 @@ function createDefaultDependencies(options: {
         previousSha,
         candidateSha: originalSha,
       });
-      await refreshExperimentViaMenu(options.twinServers, options.config, preferredRefreshMode(options.config), bisectToken);
+      await refreshExperimentViaMenu(
+        options.twinServers,
+        options.config,
+        preferredRefreshMode(options.config),
+        bisectSessionId,
+      );
     },
     materialize: async ({ previousSha, candidateSha }) => {
       if (previousSha === null) {
@@ -435,7 +441,7 @@ function createDefaultDependencies(options: {
       options.twinServers,
       options.config,
       request.preferredMode,
-      bisectToken,
+      bisectSessionId,
     ),
     compare: (request) => runCompareForCandidate({
       cwd: options.cwd,
@@ -574,39 +580,15 @@ async function refreshExperimentViaMenu(
   twinServers: ResolvedConfig,
   config: AbTestsConfig,
   preferredMode: RefreshMode,
-  token: string,
+  sessionId: string,
 ): Promise<RefreshResult> {
-  if (preferredMode === 'container') {
-    await proxyStrict(twinServers, {
-      cmd: 'bisect-refresh',
-      token,
-      mode: 'container',
-      commands: [],
-      noCache: false,
-    });
-    return { mode: 'container', usedFallback: false };
-  }
-
-  try {
-    await proxyStrict(twinServers, {
-      cmd: 'bisect-refresh',
-      token,
-      mode: 'commands',
-      commands: config.bisect.rebuildCommands.map((command) => command.command),
-      noCache: false,
-    });
-    return { mode: 'commands', usedFallback: false };
-  } catch (error) {
-    console.warn(`[compare bisect] command refresh failed: ${(error as Error).message}`);
-    await proxyStrict(twinServers, {
-      cmd: 'bisect-refresh',
-      token,
-      mode: 'container',
-      commands: [],
-      noCache: false,
-    });
-    return { mode: 'container', usedFallback: true };
-  }
+  return proxyBisect<BisectRefreshResult>(twinServers, {
+    cmd: 'bisect-refresh',
+    sessionId,
+    mode: preferredMode,
+    rebuildCommands: config.bisect.rebuildCommands.map((command) => command.command),
+    noCache: false,
+  });
 }
 
 async function cleanupBisect(options: {
@@ -640,21 +622,15 @@ async function cleanupBisect(options: {
   throw cleanupError;
 }
 
-async function proxyStrict(
+async function proxyBisect<T>(
   twinServers: ResolvedConfig,
   payload: ProxyRequestPayload,
-): Promise<void> {
-  const outcome = await tryProxy({
+): Promise<T> {
+  return requireBisectProxy<T>({
     slug: twinServers.projectSlug,
     request: { v: PROTOCOL_VERSION, ...payload },
     verbose: false,
   });
-  if (!outcome.proxied || outcome.code === EXIT_NEVER_DISPATCHED) {
-    throw new Error('compare bisect requires an active `shaka-perf servers` menu session');
-  }
-  if (outcome.code !== EXIT_OK) {
-    throw new Error(outcome.error ?? `proxied ${payload.cmd} exited ${outcome.code}`);
-  }
 }
 
 function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSession {

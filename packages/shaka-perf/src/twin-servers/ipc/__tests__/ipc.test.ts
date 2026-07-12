@@ -11,11 +11,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { startProxyServer, type ProxyDispatcher } from '../server';
-import { tryProxy } from '../client';
+import { requireBisectProxy, tryProxy } from '../client';
 import { endpointPaths } from '../paths';
 import { PROTOCOL_VERSION } from '../protocol';
 import { createDispatcher } from '../dispatch';
-import { BisectLease, MenuBusyError, type MenuController } from '../../commands/servers-menu';
+import { MenuBusyError, type MenuController } from '../../commands/servers-menu';
+import type { BisectRefreshResult } from '../../commands/bisect-session';
 import type { ResolvedConfig } from '../../types';
 
 /**
@@ -64,6 +65,45 @@ describe('ipc proxy', () => {
       } finally {
         await proxy.close();
       }
+    });
+  });
+
+  it('returns typed response data from a required bisect proxy', async () => {
+    await withHome(async () => {
+      const slug = 'bisect-data';
+      const result: BisectRefreshResult = { mode: 'container', usedFallback: true };
+      const dispatch: ProxyDispatcher = async () => result;
+      const proxy = await startProxyServer({ config: fakeConfig(slug), dispatch });
+
+      try {
+        await expect(requireBisectProxy<BisectRefreshResult>({
+          slug,
+          request: {
+            v: PROTOCOL_VERSION,
+            cmd: 'bisect-refresh',
+            sessionId: 'session-1',
+            mode: 'commands',
+            rebuildCommands: ['yarn build'],
+            noCache: false,
+          },
+        })).resolves.toEqual(result);
+      } finally {
+        await proxy.close();
+      }
+    });
+  });
+
+  it('requires a running proxy for compare bisect actions', async () => {
+    await withHome(async () => {
+      await expect(requireBisectProxy({
+        slug: 'missing-bisect-server',
+        request: {
+          v: PROTOCOL_VERSION,
+          cmd: 'bisect-begin',
+          sessionId: 'session-1',
+          ownerPid: process.pid,
+        },
+      })).rejects.toThrow(/requires a running shaka-perf servers session/);
     });
   });
 
@@ -257,14 +297,15 @@ describe('ipc dispatcher', () => {
         calls.push('run-one-off');
         return runner();
       },
-      async beginBisectSession(token, ownerPid?: number) {
-        calls.push(`begin:${token}:${ownerPid}`);
+      async beginBisectSession(sessionId, ownerPid) {
+        calls.push(`begin:${sessionId}:${ownerPid}`);
       },
       async refreshBisectExperiment(request) {
-        calls.push(`refresh:${request.token}:${request.mode}:${request.commands.join('|')}`);
+        calls.push(`refresh:${request.sessionId}:${request.mode}:${request.rebuildCommands.join('|')}`);
+        return { mode: 'container', usedFallback: true };
       },
-      async endBisectSession(token) {
-        calls.push(`end:${token}`);
+      async endBisectSession(sessionId) {
+        calls.push(`end:${sessionId}`);
       },
     };
     const dispatch = createDispatcher(fakeConfig('bisect-dispatch'), () => controller);
@@ -272,32 +313,24 @@ describe('ipc dispatcher', () => {
     await dispatch({
       v: PROTOCOL_VERSION,
       cmd: 'bisect-begin',
-      token: 't1',
+      sessionId: 't1',
       ownerPid: process.pid,
     });
-    await dispatch({
+    const result = await dispatch({
       v: PROTOCOL_VERSION,
       cmd: 'bisect-refresh',
-      token: 't1',
+      sessionId: 't1',
       mode: 'commands',
-      commands: ['yarn build'],
+      rebuildCommands: ['yarn build'],
       noCache: false,
     });
-    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', token: 't1' });
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', sessionId: 't1' });
 
     expect(calls).toEqual([
       `begin:t1:${process.pid}`,
       'refresh:t1:commands:yarn build',
       'end:t1',
     ]);
-  });
-});
-
-describe('BisectLease', () => {
-  it('becomes inactive when its owner process no longer exists', () => {
-    const lease = new BisectLease();
-    lease.begin('abandoned', 2_147_483_647);
-
-    expect(lease.active).toBe(false);
+    expect(result).toEqual({ mode: 'container', usedFallback: true });
   });
 });
