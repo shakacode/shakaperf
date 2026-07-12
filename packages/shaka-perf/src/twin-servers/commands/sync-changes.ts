@@ -13,6 +13,7 @@ import type { ResolvedConfig } from '../types';
 import { getChangedFiles, getGitRootDirectory } from '../helpers/git';
 import { printBanner, printSuccess, printError, printWarning, printInfo } from '../helpers/ui';
 import { dockerBuildDirForSide } from '../helpers/project-paths';
+import { readBuildManifest } from '../helpers/rebuild-check';
 
 export interface SyncChangesOptions {
   verbose?: boolean;
@@ -41,7 +42,8 @@ export async function syncChanges(
     ? config.volumes.control
     : config.volumes.experiment;
 
-  // Get git root to ensure file paths are correct
+  // Git reports paths from the repository root, while the bind mount and
+  // build manifest are relative to the Docker build context.
   const sideBuildDir = dockerBuildDirForSide(config, target);
   const gitRoot = getGitRootDirectory(sideBuildDir);
   const sourceDir = gitRoot || sideBuildDir;
@@ -69,19 +71,49 @@ export async function syncChanges(
   console.log('');
 
   let copiedCount = 0;
-  let skippedCount = 0;
+  let deletedCount = 0;
+  let skippedDeletionCount = 0;
+  let skippedOutsideBuildContextCount = 0;
   let errorCount = 0;
+  const buildManifest = readBuildManifest(targetDir);
+  const imageFiles = buildManifest ? new Set(buildManifest.files) : null;
 
   for (const relativeFilePath of changedFiles) {
-    const sourcePath = path.join(sourceDir, relativeFilePath);
-    const destPath = path.join(targetDir, relativeFilePath);
-
-    // Skip if source file doesn't exist (deleted file)
-    if (!fs.existsSync(sourcePath)) {
+    const sourcePath = path.resolve(sourceDir, relativeFilePath);
+    const relativeBuildPath = path.relative(sideBuildDir, sourcePath);
+    if (
+      relativeBuildPath === '..' ||
+      relativeBuildPath.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relativeBuildPath)
+    ) {
       if (verbose) {
-        console.log(`  Skipped (deleted): ${relativeFilePath}`);
+        console.log(`  Skipped (outside build context): ${relativeFilePath}`);
       }
-      skippedCount++;
+      skippedOutsideBuildContextCount++;
+      continue;
+    }
+    const destPath = path.join(targetDir, relativeBuildPath);
+
+    // Apply deletions to the bind mount so the container matches the source.
+    if (!fs.existsSync(sourcePath)) {
+      const posixPath = relativeBuildPath.split(path.sep).join('/');
+      if (!imageFiles || !imageFiles.has(posixPath)) {
+        if (verbose) {
+          console.log(`  Skipped (not in build manifest): ${relativeFilePath}`);
+        }
+        skippedDeletionCount++;
+        continue;
+      }
+      try {
+        fs.rmSync(destPath, { force: true });
+        if (verbose) {
+          console.log(`  Deleted: ${relativeFilePath}`);
+        }
+        deletedCount++;
+      } catch (error) {
+        printError(`Failed to delete ${relativeFilePath}: ${(error as Error).message}`);
+        errorCount++;
+      }
       continue;
     }
 
@@ -108,16 +140,25 @@ export async function syncChanges(
   console.log('');
   console.log(`Summary:`);
   console.log(`  Copied: ${copiedCount} files`);
-  if (skippedCount > 0) {
-    console.log(`  Skipped (deleted): ${skippedCount} files`);
+  if (deletedCount > 0) {
+    console.log(`  Deleted: ${deletedCount} files`);
+  }
+  if (skippedDeletionCount > 0) {
+    console.log(`  Skipped (not in build manifest): ${skippedDeletionCount} files`);
+  }
+  if (skippedOutsideBuildContextCount > 0) {
+    console.log(`  Skipped (outside build context): ${skippedOutsideBuildContextCount} files`);
   }
   if (errorCount > 0) {
     printWarning(`Errors: ${errorCount} files`);
   }
   console.log('');
 
-  if (errorCount === 0) {
+  const skippedCount = skippedDeletionCount + skippedOutsideBuildContextCount;
+  if (errorCount === 0 && skippedCount === 0) {
     printSuccess(`Successfully synced changes to ${target}`);
+  } else if (errorCount === 0) {
+    printWarning(`Synced with ${skippedCount} skipped change${skippedCount === 1 ? '' : 's'}`);
   } else {
     printWarning(`Synced with ${errorCount} errors`);
   }

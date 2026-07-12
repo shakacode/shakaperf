@@ -20,22 +20,24 @@ describe('getChangedFiles', () => {
 
   it('returns changed and untracked files combined', () => {
     mockExecSync
-      .mockReturnValueOnce('file1.ts\nfile2.ts')  // git diff
-      .mockReturnValueOnce('file3.ts');            // untracked
+      .mockReturnValueOnce('file1.ts\nfile2.ts') // git diff
+      .mockReturnValueOnce('file3.ts') // git diff --cached
+      .mockReturnValueOnce('file4.ts'); // untracked
 
     const files = getChangedFiles('/repo');
 
-    expect(files).toEqual(['file1.ts', 'file2.ts', 'file3.ts']);
+    expect(files).toEqual(['file1.ts', 'file2.ts', 'file3.ts', 'file4.ts']);
   });
 
   it('deduplicates files appearing in both outputs', () => {
     mockExecSync
       .mockReturnValueOnce('shared.ts\nonly-diff.ts')
+      .mockReturnValueOnce('shared.ts\nonly-staged.ts')
       .mockReturnValueOnce('shared.ts\nonly-untracked.ts');
 
     const files = getChangedFiles('/repo');
 
-    expect(files).toEqual(['shared.ts', 'only-diff.ts', 'only-untracked.ts']);
+    expect(files).toEqual(['shared.ts', 'only-diff.ts', 'only-staged.ts', 'only-untracked.ts']);
   });
 
   it('returns empty array when no changes', () => {
@@ -49,6 +51,7 @@ describe('getChangedFiles', () => {
   it('handles only changed files', () => {
     mockExecSync
       .mockReturnValueOnce('modified.ts')
+      .mockReturnValueOnce('')
       .mockReturnValueOnce('');
 
     const files = getChangedFiles('/repo');
@@ -58,6 +61,7 @@ describe('getChangedFiles', () => {
 
   it('handles only untracked files', () => {
     mockExecSync
+      .mockReturnValueOnce('')
       .mockReturnValueOnce('')
       .mockReturnValueOnce('new-file.ts');
 
@@ -73,6 +77,10 @@ describe('getChangedFiles', () => {
 
     expect(mockExecSync).toHaveBeenCalledWith(
       'git diff --name-only',
+      { cwd: '/my/repo', silent: true }
+    );
+    expect(mockExecSync).toHaveBeenCalledWith(
+      'git diff --cached --name-only',
       { cwd: '/my/repo', silent: true }
     );
     expect(mockExecSync).toHaveBeenCalledWith(

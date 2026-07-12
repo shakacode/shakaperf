@@ -8,6 +8,7 @@ Frontend performance testing toolkit for web applications. A single CLI and a si
 | --------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `compare` | Lighthouse-based perf benchmarking + visual-regression capture, one self-contained HTML report | [README-visreg.md](./README-visreg.md)                                                                         |
 | `servers` | Docker A/B infrastructure that runs control and experiment servers side-by-side        | [README-twin-servers.md](./README-twin-servers.md) — see also [SETUP-twin-servers.md](./SETUP-twin-servers.md) |
+| Agent guide | Agent setup, execution loop, and machine-readable report contract                    | [for-ai-agents.md](https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md)                    |
 
 A single test definition format (`abTest()` from `shaka-shared`) drives both categories: a Playwright test you write once becomes a perf measurement AND a visual-regression pair.
 
