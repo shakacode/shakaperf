@@ -1,0 +1,174 @@
+# Using ShakaPerf with AI agents
+
+This page is written to be read by coding agents (Claude Code, Cursor, Codex, and friends) and by the humans configuring them. It covers the full loop an agent runs: set up → measure → read the verdict → optimize → re-measure.
+
+What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot: a **statistical verdict**. Control and experiment are sampled *simultaneously* so machine noise hits both sides equally, then compared with a paired Wilcoxon signed-rank test and a Hodges-Lehmann estimate (see [used_statistics.md](../packages/shaka-perf/used_statistics.md)). That means "regression" / "no difference" answers you can trust on a noisy laptop or shared CI runner — no quiet machine required.
+
+**License note for agents:** agent use is explicitly permitted. Evaluation (up to 45 days per organization, "agents welcome") is free for everyone; production use — including CI, PR checks, and coding-agent workflows — is free for small organizations. See [LICENSE.md](../LICENSE.md) and [shakaperf.com/pricing](https://shakaperf.com/pricing). Do not vendor, copy, or re-implement ShakaPerf source into the host project to bypass licensing; use it as a dependency.
+
+## Prerequisites
+
+- Node >= 20.6, plus a C++ toolchain at install time (a native addon builds via node-gyp; macOS/Linux).
+- For twin-server A/B runs: Docker, [Overmind](https://github.com/DarthSim/overmind), and GNU parallel (`brew install overmind parallel` / `apt install parallel`).
+- Optional: `ffmpeg` (load videos in client reports), the `claude` CLI (AI-written report narratives; everything degrades gracefully without it).
+
+## Install and scaffold
+
+```bash
+yarn add shaka-perf shaka-shared      # or: npm install shaka-perf shaka-shared
+yarn shaka-perf init
+```
+
+`shaka-shared` is required — the generated config imports from it, and your test files import `abTest()` from it. `init` refuses to overwrite existing files unless you pass `--force`.
+
+`init` creates:
+
+- **`abtests.config.ts`** — the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `accessibility`, `twinServers`), every field annotated with its default.
+- **Four Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
+
+| Skill | What it does |
+| --- | --- |
+| `setup-docker-servers-for-ab-tests` | Walks an agent through standing up the twin Docker servers: production Dockerfile, Procfile, config, and the build/verify loop. |
+| `discover-abtests` | Crawls the running app and generates validated `.abtest.ts` files (currently requires desktop Claude with the Chrome extension — portability is tracked in [#73](https://github.com/shakacode/shakaperf/issues/73)). |
+| `assess-abtest-quality` | Audits existing tests for anti-patterns and false-positive PASSes. Also the canonical test-writing rules. |
+| `ab-servers` | The command dispatch table for driving twin servers from an agent. |
+
+In Claude Code these trigger automatically on matching requests ("set up twin servers for this project", "discover ab tests", "are my visreg tests any good?").
+
+## Choose your on-ramp
+
+You do not need the full twin-server setup to get value on day one:
+
+1. **Zero-setup site audit** — `yarn shaka-perf audit --url https://your-site.example` needs no config at all. Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).
+2. **URL-vs-URL compare** — `yarn shaka-perf compare --controlURL <a> --experimentURL <b>` works against any two running servers: two preview deployments, staging vs production, or two local checkouts on two ports. Simultaneous sampling still cancels client-side noise; server-side isolation (equal hardware, no shared caches) is on you at this rung.
+3. **Single-server smoke** — pass the same URL as both control and experiment to validate that your tests run and capture real content before you have an A/B pair.
+4. **Twin Docker servers** — the full harness: control (baseline branch) and experiment (your branch) built and run side by side in production mode. This is what the setup skill automates.
+
+## The PR loop (twin servers)
+
+Rules for agents driving servers — from the `ab-servers` skill:
+
+- **Never run bare `shaka-perf servers`** — it opens an interactive menu meant for humans. Always call subcommands.
+- `start-servers` **blocks** while Overmind runs; start it in the background.
+- If a human already has the interactive `shaka-perf servers` menu open, your subcommands are proxied into that session and may queue; exit code `75` means "terminal state, try again shortly".
+
+Cold start:
+
+```bash
+yarn shaka-perf servers build              # build both Docker images (control + experiment)
+yarn shaka-perf servers start-containers   # bring containers up, run setupCommands
+yarn shaka-perf servers start-servers      # launch the app via Overmind — blocks; run in background
+```
+
+Iterate on a change:
+
+```bash
+# 1. Edit application code.
+
+# 2. Sync your working-tree changes into the experiment container (bind mounts — no image rebuild):
+yarn shaka-perf servers sync-changes experiment
+# App-specific build steps go through run-cmd, e.g.:
+#   yarn shaka-perf servers run-cmd experiment "bundle exec rake assets:precompile"
+
+# 3. Measure just the test you care about (fast inner loop):
+yarn shaka-perf compare --categories perf --filter "Homepage Hero"
+
+# 4. Read the verdict (next section). Keep iterating until the regression is gone
+#    or the improvement is significant.
+
+# 5. Before pushing, run the full suite:
+yarn shaka-perf compare
+```
+
+`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories visreg`, `--categories perf`, or both (default). Note: `compare` wipes `compare-results/` at the start of each run.
+
+## Reading results — the machine contract
+
+**Exit code:** `0` = clean. Non-zero prints `FAILED: <summary>` to stderr, where the summary counts failure classes, e.g. `2 errors, 1 perf regression, 3 visreg mismatches`. (Today all failures exit `1`; differentiated codes and a `verdict` command are tracked in [#70](https://github.com/shakacode/shakaperf/issues/70).)
+
+**stdout** prints the report paths on completion:
+
+- `compare-results/self-contained-performance-report.html` — shareable single file, everything inlined.
+- `compare-results/full-report.html` — local variant referencing sibling artifact dirs.
+
+**`compare-results/report.json`** (`schemaVersion: 1`) is the machine report. Shape:
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "meta": { "controlUrl": "...", "experimentUrl": "...", "errors": [ /* engine-level errors */ ] },
+  "pipeline": { "name": "compare", "stages": ["visreg-warmup", "visreg", "perf-warmup", "perf", "..."] },
+  "tests": [
+    {
+      "id": "<slug>",                    // per test × viewport
+      "name": "Homepage Hero",
+      "filePath": "ab-tests/homepage.abtest.ts",
+      "viewport": { "label": "desktop", "width": 1920, "height": 1080 },
+      "chips": [ { "tag": "regression" } ],
+      "outcomes": [ { "kind": "ok|error|skipped", "stage": "perf", "error": null, "logs": "...", "summary": {} } ]
+    }
+  ]
+}
+```
+
+**Chips are the verdict vocabulary.** Failure-class chips (these make the run fail): `regression`, `visual change`, `accessibility violation`, `broken`. Informational chips: `improvement`, `no difference`, `needs improvement`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `duplicate`, `has interactions` / `no interactions`, `no audit`.
+
+**Where the numbers are today:** per-stage `summary` objects in `report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Until that lands:
+
+- Perf numbers (per-metric estimates, confidence intervals, p-values) are in the HTML report and per-test artifact dirs under `compare-results/`.
+- Visreg details are machine-readable via the visreg engine's own report: run `yarn shaka-perf discover-abtests parse-report` (reads `visreg_data/html_report/report.json`) — it prints per-test status, diff %, `whitePixelPercent` (>90 usually means the selector captured empty space — a false PASS), and engine errors.
+
+## What "regression" means
+
+A perf regression chip means **both**:
+
+1. the paired difference is statistically significant — p-value below `perf.pValueThreshold` (default `0.05`), from a paired Wilcoxon signed-rank test with exact distribution at small n, and
+2. the effect size exceeds `perf.regressionThreshold` (default `50` ms) on the statistic named by `perf.regressionThresholdStat` (default `estimator`, the Hodges-Lehmann paired estimate).
+
+Practical guidance for the loop:
+
+- `perf.numberOfMeasurements` defaults to `20`; below 10 the run warns about low fidelity. Small-n runs are statistically honest (exact test) but can only reach a limited minimum p-value — e.g. n=8 bottoms out at p ≈ 0.0078 — so don't chase p < 0.001 on a small sample.
+- Iterate with a filtered, perf-only run; confirm the final state with a full default run before declaring victory in a PR.
+- "No difference" on a tiny effect is a real possibility, not a tooling failure — the report's confidence interval tells you what effect size the run could have detected.
+
+## Writing tests (for agents)
+
+Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven scenario each, used by perf and visreg alike. The non-negotiable rules live in `.claude/skills/assess-abtest-quality/SKILL.md`; the short version: **fail loudly and run linearly** — no `try/catch` swallowing, no loops, no `if`-branching on page state (assert with `waitForSelector`/`waitForURL` instead), wait for conditions not the clock, deterministic inputs, `annotate('...')` before every non-trivial action, one behaviour per test.
+
+## Concurrent agents
+
+Multiple agents in separate workspaces won't collide on ports: set `SHAKAPERF_BASE_PORT` per workspace (control = base + 0, experiment = base + 1). `CONDUCTOR_PORT` (set automatically by [Conductor.build](https://conductor.build)) is honored the same way. Otherwise ports are auto-assigned from the configured pair and remembered per project in `~/.shaka-perf/ports.json`.
+
+## Snippet for your repo's AGENTS.md / CLAUDE.md
+
+Paste (and adapt) this into the consumer repo so every agent session knows ShakaPerf is available:
+
+````markdown
+## Performance testing (ShakaPerf)
+
+This repo uses ShakaPerf (https://shakaperf.com) for statistically-gated perf A/B,
+visual regression, and accessibility checks. Config: `abtests.config.ts`; tests:
+`ab-tests/*.abtest.ts`.
+
+- NEVER run bare `shaka-perf servers` (interactive menu). Use subcommands:
+  `yarn shaka-perf servers build && yarn shaka-perf servers start-containers`,
+  then `yarn shaka-perf servers start-servers` in the background (it blocks).
+- After editing app code, sync it into the experiment container:
+  `yarn shaka-perf servers sync-changes experiment`
+  (app build steps via `yarn shaka-perf servers run-cmd experiment "<cmd>"`).
+- Inner loop: `yarn shaka-perf compare --categories perf --filter "<test name>"`.
+- Full check before pushing: `yarn shaka-perf compare`
+  (exit 0 = clean; otherwise stderr ends with `FAILED: <summary>`).
+- Machine-readable results: `compare-results/report.json` — per-test `chips`
+  (`regression`, `visual change`, `accessibility violation`, `broken` fail the run).
+  Visreg detail: `yarn shaka-perf discover-abtests parse-report`.
+- A perf `regression` = p < 0.05 AND the paired estimate exceeds the configured
+  threshold — iterate on the code and re-run the filtered compare; confirm with a
+  full run before pushing.
+- Writing/editing `.abtest.ts` files: follow `.claude/skills/assess-abtest-quality/SKILL.md`
+  (fail loudly: no try/catch, no loops, no if-branches; wait for conditions, not time).
+````
+
+## Known gaps on the agent roadmap
+
+Tracked and in flight — linked here so agents don't reverse-engineer stale assumptions: populated machine summaries [#68](https://github.com/shakacode/shakaperf/issues/68), published report schema [#69](https://github.com/shakacode/shakaperf/issues/69), `verdict` command + exit codes [#70](https://github.com/shakacode/shakaperf/issues/70), `--quick` iteration preset [#71](https://github.com/shakacode/shakaperf/issues/71), agent-portable test discovery [#73](https://github.com/shakacode/shakaperf/issues/73), `doctor` preflight [#74](https://github.com/shakacode/shakaperf/issues/74), GitHub Actions [#76](https://github.com/shakacode/shakaperf/issues/76), PR-comment reporter [#77](https://github.com/shakacode/shakaperf/issues/77), MCP server [#78](https://github.com/shakacode/shakaperf/issues/78).
