@@ -405,7 +405,7 @@ function createDefaultDependencies(options: {
       });
       if (previousSha === null || previousSha === originalSha) return;
       await syncCommitDelta({
-        sourceDir: options.twinServers.experimentDir,
+        sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
         manifest: options.manifest,
         previousSha,
@@ -416,7 +416,7 @@ function createDefaultDependencies(options: {
     materialize: async ({ previousSha, candidateSha }) => {
       if (previousSha === null) {
         await reconcileExperimentVolume({
-          sourceDir: options.twinServers.experimentDir,
+          sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
           manifest: options.manifest,
           candidateSha,
@@ -424,7 +424,7 @@ function createDefaultDependencies(options: {
         return;
       }
       await syncCommitDelta({
-        sourceDir: options.twinServers.experimentDir,
+        sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
         manifest: options.manifest,
         previousSha,
