@@ -30,6 +30,14 @@ const runMerchandisingWarmup = () => {
   }
 };
 
+const BisectAccessibilityProbe: React.FC = () => (
+  <button
+    type="button"
+    data-cy="bisect-a11y-probe"
+    style={{ position: 'absolute', left: -10000, top: 0, width: 1, height: 1 }}
+  />
+);
+
 const HomePage: React.FC = () => {
   const { products, loading, error } = useProducts();
   const featuredProducts = products.filter((p) => p.featured).slice(0, 4);
@@ -84,6 +92,7 @@ const HomePage: React.FC = () => {
       </Box>
 
       <Container maxWidth="lg">
+        <BisectAccessibilityProbe />
         <ExperimentA11yRegressions />
 
         {/* Features Section */}
