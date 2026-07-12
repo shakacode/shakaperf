@@ -24,7 +24,7 @@ export type ProxyTarget = 'control' | 'experiment';
  * `PROTOCOL_VERSION` and fall back to direct execution — preferable to a
  * mysterious failure deep inside a request the server can't parse.
  */
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 2 as const;
 
 /**
  * Frames are line-delimited JSON over a Unix domain socket. Each frame is a
@@ -60,15 +60,15 @@ export type ProxyRequestPayload =
   | { cmd: 'run-cmd'; target: ProxyTarget; shellCommand: string }
   | { cmd: 'run-cmd-parallel'; shellCommand: string }
   | { cmd: 'sync-changes'; target: ProxyTarget }
-  | { cmd: 'bisect-begin'; token: string; ownerPid: number }
+  | { cmd: 'bisect-begin'; sessionId: string; ownerPid: number }
   | {
     cmd: 'bisect-refresh';
-    token: string;
+    sessionId: string;
     mode: 'commands' | 'container';
-    commands: string[];
+    rebuildCommands: string[];
     noCache: boolean;
   }
-  | { cmd: 'bisect-end'; token: string };
+  | { cmd: 'bisect-end'; sessionId: string };
 
 export type ProxyRequest = BaseRequestEnvelope & ProxyRequestPayload;
 
@@ -105,6 +105,7 @@ export interface ProxyResponse {
   event: 'exit';
   code: number;
   error?: string;
+  data?: unknown;
 }
 
 /**

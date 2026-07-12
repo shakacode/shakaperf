@@ -96,18 +96,17 @@ export function createDispatcher(
             'Just edit your files; the watcher mirrors them into the volume.',
         );
       case 'bisect-begin':
-        await requireController().beginBisectSession(req.token, req.ownerPid);
+        await requireController().beginBisectSession(req.sessionId, req.ownerPid);
         return;
       case 'bisect-refresh':
-        await requireController().refreshBisectExperiment({
-          token: req.token,
+        return requireController().refreshBisectExperiment({
+          sessionId: req.sessionId,
           mode: req.mode,
-          commands: req.commands,
+          rebuildCommands: req.rebuildCommands,
           noCache: req.noCache,
         });
-        return;
       case 'bisect-end':
-        await requireController().endBisectSession(req.token);
+        await requireController().endBisectSession(req.sessionId);
         return;
       default: {
         // Exhaustive check: a newer client at the same PROTOCOL_VERSION

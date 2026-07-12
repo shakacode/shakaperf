@@ -30,7 +30,7 @@ import { endpointPaths } from './paths';
 import { MenuBusyError } from '../commands/servers-menu';
 
 /** Dispatcher resolves a request into a runnable action. */
-export type ProxyDispatcher = (req: ProxyRequest) => Promise<void>;
+export type ProxyDispatcher = (req: ProxyRequest) => Promise<unknown>;
 
 export interface ProxyServer {
   /** Tear down the listener and remove the manifest + socket. */
@@ -129,9 +129,9 @@ async function handleConnection(socket: net.Socket, ctx: ConnectionContext): Pro
   // server. Read until the first newline, dispatch, send one `exit` frame,
   // close. The client controls which condition counts as success via the
   // exit code (0 OK, 1 action error, 2 protocol error, 75 menu temp-fail).
-  const exit = (code: number, error?: string): void => {
+  const exit = (code: number, error?: string, data?: unknown): void => {
     if (socket.writable) {
-      socket.write(JSON.stringify({ event: 'exit', code, error } satisfies ProxyResponse) + FRAME_DELIMITER);
+      socket.write(JSON.stringify({ event: 'exit', code, error, data } satisfies ProxyResponse) + FRAME_DELIMITER);
     }
     socket.end();
   };
@@ -168,8 +168,8 @@ async function handleConnection(socket: net.Socket, ctx: ConnectionContext): Pro
   }
 
   try {
-    await ctx.dispatch(request);
-    exit(EXIT_OK);
+    const data = await ctx.dispatch(request);
+    exit(EXIT_OK, undefined, data);
   } catch (err) {
     // Typed errors get their own exit code so the client can react:
     //  • MenuBusyError       → EX_TEMPFAIL (75); caller decides whether to retry.
