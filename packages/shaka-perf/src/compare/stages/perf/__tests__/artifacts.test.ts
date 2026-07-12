@@ -22,7 +22,7 @@ function metric(
     pValue: 0.01,
     controlSevenFigureSummary: { '50': controlValue },
     experimentSevenFigureSummary: { '50': experimentValue },
-    asPercent: { percentMedian: 1 },
+    asPercent: { percentMedian: 20 },
   };
 }
 
@@ -47,6 +47,19 @@ async function readMetrics(
 }
 
 describe('readPerfArtifact', () => {
+  it('preserves numeric metric values beside their display values', async () => {
+    const artifact = await readMetrics([
+      metric('TBT', '20ms', true, 100, 120),
+    ]);
+
+    expect(artifact.metrics?.[0]).toMatchObject({
+      controlValue: 100,
+      experimentValue: 120,
+      deltaValue: 20,
+      deltaPercent: 20,
+    });
+  });
+
   it('does not promote sub-threshold timing noise to a perf regression', async () => {
     const artifact = await readMetrics([
       metric('TTFB', '4ms'),

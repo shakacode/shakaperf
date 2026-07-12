@@ -157,6 +157,9 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
       metrics.push({
         label: entry.phaseName,
         group: classifyGroup(entry.heading),
+        controlValue,
+        experimentValue,
+        deltaValue,
         controlDisplay: formatWithUnit(controlValue, unit),
         experimentDisplay: formatWithUnit(experimentValue, unit),
         deltaDisplay: formatDeltaWithUnit(deltaValue, unit),
