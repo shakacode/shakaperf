@@ -372,6 +372,32 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
+  it('validates the good endpoint when good and bad are adjacent', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+    const adjacentInput: ExecuteBisectInput = {
+      ...input(rootDir),
+      gitRange: {
+        ...input(rootDir).gitRange,
+        orderedCommits: ['good', 'bad'],
+      },
+    };
+
+    const session = await executeBisect(adjacentInput, harness.deps);
+
+    expect(session.targets).toMatchObject([{
+      status: 'invalid',
+      invalidReason: 'target is already present at the good ref',
+      observations: {
+        bad: expect.objectContaining({ present: true }),
+        good: expect.objectContaining({ present: true }),
+      },
+    }]);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
+  });
+
   it('persists failed state and restores after candidate infrastructure errors', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],

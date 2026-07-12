@@ -94,5 +94,6 @@ After restoring the documented expectation to `aa1b86ae9ab48392844741b2cd90249ea
 - A failed materialization now marks volume state uncertain and forces full reconciliation during restoration instead of deriving a delta from an incompletely copied candidate.
 - Checkout, volume synchronization, and experiment refresh restoration are best-effort cleanup steps: refresh is still attempted after checkout or sync failure, and all cleanup errors are retained.
 - Experiment process cleanup now polls after `SIGKILL` and refuses to restart Overmind while a tracked session remains alive.
+- Follow-up review caught an adjacent good/bad range edge case: bad-ref evidence is now recorded without finalizing the target before the good endpoint is validated.
 - RED/GREEN coverage was added for each case. The focused bisect and lifecycle suite passed with 9 suites and 86 tests, followed by a successful package typecheck.
 - A final live accessibility bisect completed at `a0c0569b5e93bda020be24671e7161d9e42970cb`, again found `button-name` at `fcb0e2b107a99c6e4edab01da114d4d83b3d7a94`, restored the feature branch, kept control fixed, and left both URLs at HTTP 200. Its summary includes the bad-ref `button-name` values and all three accessibility artifact paths.
