@@ -28,7 +28,7 @@ export interface SyncCommitDeltaOptions extends VolumeSyncOptions {
 }
 
 function normalizeRelativePath(relativePath: string): string {
-  const normalized = path.posix.normalize(relativePath.replace(/\\/g, '/'));
+  const normalized = path.posix.normalize(relativePath);
   if (
     !relativePath
     || path.isAbsolute(relativePath)
@@ -57,7 +57,7 @@ function manifestPaths(options: VolumeSyncOptions): Set<string> {
     const normalized = normalizeRelativePath(manifestPath);
     const sourcePath = resolveWithin(options.sourceDir, normalized);
     const volumePath = resolveWithin(options.volumeDir, normalized);
-    if (pathExists(sourcePath)) assertExistingPathWithin(options.sourceDir, sourcePath);
+    validateSourcePath(options.sourceDir, options.volumeDir, sourcePath, volumePath);
     assertParentWithin(options.volumeDir, volumePath);
     owned.add(normalized);
   }
@@ -70,21 +70,51 @@ function removeOwnedPath(volumeDir: string, relativePath: string): void {
   fs.rmSync(destinationPath, { recursive: true, force: true });
 }
 
-function validateSymlinkTarget(sourceDir: string, sourcePath: string, target: string): void {
+function validateSymlinkTarget(
+  sourceDir: string,
+  volumeDir: string,
+  sourcePath: string,
+  destinationPath: string,
+  target: string,
+): void {
   if (path.isAbsolute(target)) {
     throw new Error(`Symlink resolves outside source root: ${sourcePath}`);
   }
-  const root = path.resolve(sourceDir);
-  const resolvedTarget = path.resolve(path.dirname(sourcePath), target);
-  if (resolvedTarget !== root && !resolvedTarget.startsWith(`${root}${path.sep}`)) {
-    throw new Error(`Symlink resolves outside source root: ${sourcePath}`);
+  const sourceTarget = path.resolve(path.dirname(sourcePath), target);
+  const destinationTarget = path.resolve(path.dirname(destinationPath), target);
+  assertLexicallyWithin(sourceDir, sourceTarget);
+  assertLexicallyWithin(volumeDir, destinationTarget);
+  assertExistingParentWithin(sourceDir, sourceTarget);
+  if (pathExists(sourceTarget)) assertExistingPathWithin(sourceDir, sourceTarget);
+  assertDestinationChain(volumeDir, destinationTarget, true);
+}
+
+function validateSourcePath(
+  sourceDir: string,
+  volumeDir: string,
+  sourcePath: string,
+  destinationPath: string,
+): void {
+  assertExistingParentWithin(sourceDir, sourcePath);
+  if (!pathExists(sourcePath)) return;
+  const sourceStat = fs.lstatSync(sourcePath);
+  if (sourceStat.isSymbolicLink()) {
+    validateSymlinkTarget(
+      sourceDir,
+      volumeDir,
+      sourcePath,
+      destinationPath,
+      fs.readlinkSync(sourcePath),
+    );
+  } else {
+    assertExistingPathWithin(sourceDir, sourcePath);
   }
 }
 
 function copyOwnedPath(sourceDir: string, volumeDir: string, relativePath: string): void {
   const sourcePath = resolveWithin(sourceDir, relativePath);
   const destinationPath = resolveWithin(volumeDir, relativePath);
-  assertExistingPathWithin(sourceDir, sourcePath);
+  validateSourcePath(sourceDir, volumeDir, sourcePath, destinationPath);
   assertParentWithin(volumeDir, destinationPath);
   const sourceStat = fs.lstatSync(sourcePath);
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
@@ -92,7 +122,7 @@ function copyOwnedPath(sourceDir: string, volumeDir: string, relativePath: strin
 
   if (sourceStat.isSymbolicLink()) {
     const target = fs.readlinkSync(sourcePath);
-    validateSymlinkTarget(sourceDir, sourcePath, target);
+    validateSymlinkTarget(sourceDir, volumeDir, sourcePath, destinationPath, target);
     fs.symlinkSync(target, destinationPath);
     return;
   }
@@ -125,16 +155,48 @@ function assertExistingPathWithin(rootDir: string, candidatePath: string): void 
   assertRealPathWithin(rootDir, fs.realpathSync(candidatePath));
 }
 
-function assertParentWithin(rootDir: string, candidatePath: string): void {
-  let existingParent = path.dirname(candidatePath);
-  while (!pathExists(existingParent)) {
-    const parent = path.dirname(existingParent);
-    if (parent === existingParent) {
-      throw new Error(`Path resolves outside synchronization root: ${candidatePath}`);
-    }
-    existingParent = parent;
+function assertLexicallyWithin(rootDir: string, candidatePath: string): void {
+  const root = path.resolve(rootDir);
+  const relativePath = path.relative(root, candidatePath);
+  if (relativePath === '..' || relativePath.startsWith(`..${path.sep}`)) {
+    throw new Error(`Path resolves outside synchronization root: ${candidatePath}`);
   }
+}
+
+function assertExistingParentWithin(rootDir: string, candidatePath: string): void {
+  assertLexicallyWithin(rootDir, candidatePath);
+  let existingParent = path.dirname(candidatePath);
+  while (!pathExists(existingParent)) existingParent = path.dirname(existingParent);
   assertExistingPathWithin(rootDir, existingParent);
+}
+
+function assertDestinationChain(
+  rootDir: string,
+  candidatePath: string,
+  includeCandidate: boolean,
+): void {
+  assertLexicallyWithin(rootDir, candidatePath);
+  const root = path.resolve(rootDir);
+  const boundary = includeCandidate ? candidatePath : path.dirname(candidatePath);
+  const relativeBoundary = path.relative(root, boundary);
+  let current = root;
+  const components = relativeBoundary.split(path.sep).filter(Boolean);
+  for (const [index, component] of components.entries()) {
+    current = path.join(current, component);
+    if (!pathExists(current)) break;
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`Destination parent chain could resolve outside synchronization root via symlink: ${current}`);
+    }
+    const isFinalCandidate = includeCandidate && index === components.length - 1;
+    if (!isFinalCandidate && !stat.isDirectory()) {
+      throw new Error(`Destination parent is not a directory: ${current}`);
+    }
+  }
+}
+
+function assertParentWithin(rootDir: string, candidatePath: string): void {
+  assertDestinationChain(rootDir, candidatePath, false);
 }
 
 function writeMaterializedMarker(volumeDir: string, sha: string): void {
@@ -176,6 +238,8 @@ export async function syncCommitDelta(options: SyncCommitDeltaOptions): Promise<
     'diff',
     '--name-status',
     '-z',
+    '--find-renames',
+    '--find-copies-harder',
     options.previousSha,
     options.candidateSha,
   ], { cwd: options.sourceDir, silent: true });

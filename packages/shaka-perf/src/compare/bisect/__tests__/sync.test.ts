@@ -12,6 +12,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
 import type { BuildManifest } from '../../../twin-servers/helpers/rebuild-check';
+import * as shell from '../../../twin-servers/helpers/shell';
 import { reconcileExperimentVolume, syncCommitDelta } from '../sync';
 
 function git(cwd: string, args: string[]): string {
@@ -42,6 +43,7 @@ describe('bisect experiment volume synchronization', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     fs.rmSync(rootDir, { recursive: true, force: true });
   });
 
@@ -208,5 +210,145 @@ describe('bisect experiment volume synchronization', () => {
       candidateSha: 'candidate-sha',
     })).rejects.toThrow(/outside/i);
     expect(fs.existsSync(path.join(outsideDir, 'owned.txt'))).toBe(false);
+  });
+
+  it('rejects an internal destination alias before deleting generated content', async () => {
+    write(volumeDir, 'generated/cache.json', 'preserve me');
+    fs.symlinkSync('generated', path.join(volumeDir, 'owned'));
+
+    await expect(reconcileExperimentVolume({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['owned/cache.json']),
+      candidateSha: 'candidate-sha',
+    })).rejects.toThrow(/symlink/i);
+    expect(fs.readFileSync(path.join(volumeDir, 'generated/cache.json'), 'utf8'))
+      .toBe('preserve me');
+  });
+
+  it('preserves a valid dangling tracked symlink', async () => {
+    fs.mkdirSync(path.join(sourceDir, 'links'));
+    fs.symlinkSync('../missing/file.txt', path.join(sourceDir, 'links/dangling'));
+
+    await reconcileExperimentVolume({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['links/dangling']),
+      candidateSha: 'candidate-sha',
+    });
+
+    const copiedLink = path.join(volumeDir, 'links/dangling');
+    expect(fs.lstatSync(copiedLink).isSymbolicLink()).toBe(true);
+    expect(fs.readlinkSync(copiedLink)).toBe('../missing/file.txt');
+  });
+
+  it('rejects a copied symlink whose destination target ancestor is a symlink', async () => {
+    const outsideDir = path.join(rootDir, 'outside-target');
+    fs.mkdirSync(outsideDir);
+    write(sourceDir, 'generated/cache.json', 'source');
+    fs.mkdirSync(path.join(sourceDir, 'links'));
+    fs.symlinkSync('../generated/cache.json', path.join(sourceDir, 'links/owned-link'));
+    fs.symlinkSync(outsideDir, path.join(volumeDir, 'generated'));
+
+    await expect(reconcileExperimentVolume({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['links/owned-link']),
+      candidateSha: 'candidate-sha',
+    })).rejects.toThrow(/symlink/i);
+    expect(fs.existsSync(path.join(volumeDir, 'links/owned-link'))).toBe(false);
+  });
+
+  const itPosix = process.platform === 'win32' ? it.skip : it;
+
+  itPosix('keeps backslashes distinct and parses NUL-delimited unusual filenames', async () => {
+    const backslashPath = 'owned\\file.txt';
+    const slashPath = 'owned/file.txt';
+    const controlCharacterPath = 'line\nand\tfile.txt';
+    git(sourceDir, ['init', '--initial-branch=main']);
+    git(sourceDir, ['config', 'user.email', 'bisect@example.com']);
+    git(sourceDir, ['config', 'user.name', 'Bisect Test']);
+    write(sourceDir, backslashPath, 'backslash before');
+    write(sourceDir, slashPath, 'slash before');
+    write(sourceDir, controlCharacterPath, 'control before');
+    git(sourceDir, ['add', '-A']);
+    git(sourceDir, ['commit', '-m', 'previous']);
+    const previousSha = git(sourceDir, ['rev-parse', 'HEAD']);
+    write(volumeDir, backslashPath, 'backslash before');
+    write(volumeDir, slashPath, 'generated slash value');
+    write(volumeDir, controlCharacterPath, 'control before');
+
+    write(sourceDir, backslashPath, 'backslash after');
+    write(sourceDir, slashPath, 'slash after');
+    write(sourceDir, controlCharacterPath, 'control after');
+    git(sourceDir, ['add', '-A']);
+    git(sourceDir, ['commit', '-m', 'candidate']);
+    const candidateSha = git(sourceDir, ['rev-parse', 'HEAD']);
+
+    await syncCommitDelta({
+      sourceDir,
+      volumeDir,
+      manifest: manifest([backslashPath, controlCharacterPath]),
+      previousSha,
+      candidateSha,
+    });
+
+    expect(fs.readFileSync(path.join(volumeDir, backslashPath), 'utf8'))
+      .toBe('backslash after');
+    expect(fs.readFileSync(path.join(volumeDir, slashPath), 'utf8'))
+      .toBe('generated slash value');
+    expect(fs.readFileSync(path.join(volumeDir, controlCharacterPath), 'utf8'))
+      .toBe('control after');
+  });
+
+  it('detects a real copy status and copies the destination without removing its source', async () => {
+    git(sourceDir, ['init', '--initial-branch=main']);
+    git(sourceDir, ['config', 'user.email', 'bisect@example.com']);
+    git(sourceDir, ['config', 'user.name', 'Bisect Test']);
+    write(sourceDir, 'original.txt', 'shared contents');
+    git(sourceDir, ['add', '-A']);
+    git(sourceDir, ['commit', '-m', 'previous']);
+    const previousSha = git(sourceDir, ['rev-parse', 'HEAD']);
+    write(volumeDir, 'original.txt', 'shared contents');
+
+    fs.copyFileSync(path.join(sourceDir, 'original.txt'), path.join(sourceDir, 'copied.txt'));
+    git(sourceDir, ['add', '-A']);
+    git(sourceDir, ['commit', '-m', 'candidate']);
+    const candidateSha = git(sourceDir, ['rev-parse', 'HEAD']);
+    const copyStatus = execFileSync('git', [
+      'diff',
+      '--name-status',
+      '-z',
+      '--find-renames',
+      '--find-copies-harder',
+      previousSha,
+      candidateSha,
+    ], { cwd: sourceDir, encoding: 'utf8' });
+    expect(copyStatus.split('\0')).toEqual(['C100', 'original.txt', 'copied.txt', '']);
+    const execSpy = jest.spyOn(shell, 'exec');
+
+    await syncCommitDelta({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['original.txt', 'copied.txt']),
+      previousSha,
+      candidateSha,
+    });
+
+    const diffCall = execSpy.mock.calls.find(([command, args]) =>
+      command === 'git' && args[0] === 'diff');
+    expect(diffCall?.[1]).toEqual([
+      'diff',
+      '--name-status',
+      '-z',
+      '--find-renames',
+      '--find-copies-harder',
+      previousSha,
+      candidateSha,
+    ]);
+    expect(fs.readFileSync(path.join(volumeDir, 'original.txt'), 'utf8'))
+      .toBe('shared contents');
+    expect(fs.readFileSync(path.join(volumeDir, 'copied.txt'), 'utf8'))
+      .toBe('shared contents');
   });
 });
