@@ -86,3 +86,13 @@ After restoring the documented expectation to `aa1b86ae9ab48392844741b2cd90249ea
 - RED: the focused twin-server lifecycle test required `overmind stop` before in-container PID cleanup and failed against the prior cleanup-first order.
 - GREEN: the lifecycle now stops only experiment-owned Overmind processes, cleans tracked in-container sessions, and restarts those processes. The focused suite passed with 12 tests.
 - A clean accessibility-only live rerun completed successfully, found homepage `button-name` first bad at `fcb0e2b107a99c6e4edab01da114d4d83b3d7a94`, restored `codex/compare-bisect-v0` at `cef027131cc0f74348e64dac083ded6cd955a020`, kept control at `38dae6871b8b443dd1880269dacde951700e77cc`, and left both server URLs returning HTTP 200.
+
+## 2026-07-13 Post-Review Hardening
+
+- Independent review identified missing bad-ref observations, uncertain volume state after partial materialization, skipped refresh after restoration failures, and missing post-`SIGKILL` exit verification.
+- Added bad-ref observations to every discovered target so summaries retain the requested category values and artifact paths at the regression endpoint.
+- A failed materialization now marks volume state uncertain and forces full reconciliation during restoration instead of deriving a delta from an incompletely copied candidate.
+- Checkout, volume synchronization, and experiment refresh restoration are best-effort cleanup steps: refresh is still attempted after checkout or sync failure, and all cleanup errors are retained.
+- Experiment process cleanup now polls after `SIGKILL` and refuses to restart Overmind while a tracked session remains alive.
+- RED/GREEN coverage was added for each case. The focused bisect and lifecycle suite passed with 9 suites and 86 tests, followed by a successful package typecheck.
+- A final live accessibility bisect completed at `a0c0569b5e93bda020be24671e7161d9e42970cb`, again found `button-name` at `fcb0e2b107a99c6e4edab01da114d4d83b3d7a94`, restored the feature branch, kept control fixed, and left both URLs at HTTP 200. Its summary includes the bad-ref `button-name` values and all three accessibility artifact paths.
