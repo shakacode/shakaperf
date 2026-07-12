@@ -25,3 +25,6 @@ to be accessibility-only.
 
 Clean commits should be safe to classify as good for every category that has
 not yet received its first dedicated regression fixture.
+
+Combined regression commits are useful for checking that category-specific
+bisect still reports the earliest bad commit for each individual category.
