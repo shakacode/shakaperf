@@ -28,3 +28,6 @@ not yet received its first dedicated regression fixture.
 
 Combined regression commits are useful for checking that category-specific
 bisect still reports the earliest bad commit for each individual category.
+
+Product detail fixtures should avoid changing product data or cart behavior, so
+they remain independent of Rails seeds and API responses.
