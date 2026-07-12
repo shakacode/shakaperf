@@ -247,6 +247,133 @@ If only part of a commit is known, the next run requests only missing categories
 and AB-test files. This is the mechanism that narrows work as search branches
 diverge.
 
+## Algorithm and Design Decisions
+
+### Mental model
+
+Compare bisect treats the bad ref comparison as a set of independent regression
+targets, not as one binary pass/fail state. A target is the smallest unit that
+can answer "is this exact regression present at this commit?" The scheduler
+then runs a monotonic binary search for every target while sharing candidate
+runs whenever several targets still need evidence from the same commit.
+
+This is deliberately different from `git bisect run`, which asks one command to
+classify a commit as globally good or bad. A single commit can be bad for a
+visual selector, good for a performance metric, and unmeasured for an
+accessibility rule. Keeping target intervals independent lets one compare run
+move different targets in opposite directions.
+
+### Target identity
+
+Target identity must be stable across checkouts and precise enough to avoid
+merging unrelated regressions:
+
+- Visual targets are keyed by test file, test name, viewport, and screenshot
+  selector because that is the artifact unit that produces a visual diff.
+- Performance targets are keyed by test file, test name, viewport, and metric
+  label because each metric can regress at a different commit.
+- Accessibility targets are keyed by test file, test name, viewport, and axe
+  rule ID because DOM nodes can move or duplicate while the user-facing rule
+  regression remains the same.
+
+DOM node selectors are intentionally not part of accessibility identity. They
+are preserved as observation details and artifacts, but using them as identity
+would fragment one rule regression into many unstable targets as markup changes.
+
+### Endpoint normalization
+
+The bad endpoint discovers the target set. The good endpoint validates that each
+target is absent before search begins. A target present at both endpoints is
+marked invalid instead of searched, because V0 assumes monotonic regressions
+between a known-good and known-bad ref. That avoids producing a first-bad SHA
+for noisy, pre-existing, or non-monotonic signals.
+
+Every candidate session is normalized before scheduling. Cached observations
+are replayed into target intervals first, and only then can the scheduler select
+new work. This prevents stale interval fields from disagreeing with persisted
+observations after a resumed diagnostic read, a test refactor, or a partial
+state write.
+
+### Candidate selection
+
+The scheduler chooses the midpoint of the highest-priority active target:
+
+```text
+visreg -> perf -> accessibility
+```
+
+The priority order is a scheduling choice, not a correctness rule. Visual
+targets usually produce the fastest and most deterministic signal, so they get
+the first chance to drive candidate selection. Perf and accessibility targets
+still receive observations whenever their intervals contain that candidate, so
+their boundaries can progress during visual-led rounds.
+
+After choosing the commit, the scheduler requests every active target whose
+interval contains that commit and lacks an observation there. The compare run is
+then narrowed to the union of those targets' categories and AB-test files. This
+keeps one candidate run useful for multiple targets without rerunning unrelated
+tests.
+
+### Observation semantics
+
+An observation has exactly one classification for a target at a commit:
+
+- `present: true` means the target's regression exists at that commit, so the
+  target's bad boundary moves down to the commit.
+- `present: false` means the target's regression is absent at that commit, so
+  the target's good boundary moves up to the commit.
+- Missing or failed measurement is not an observation. It leaves the interval
+  unchanged and records an infrastructure error on the candidate run.
+
+When the good and bad boundaries become adjacent, the bad boundary is the first
+bad commit for that target. The algorithm never infers across a failed or
+missing run.
+
+### Why freeze config and tests
+
+The command loads config and AB-test definitions from the invocation checkout
+before candidate checkout starts. Candidate commits can add, remove, or edit
+test files, but the bisect question is about app behavior under one stable test
+suite. Freezing tests keeps target identity stable and prevents a candidate
+from looking good merely because the test that observes the regression no
+longer exists at that commit.
+
+The candidate checkout still controls the experiment application code and built
+assets. Only the measurement harness stays fixed.
+
+### Why explicit volume synchronization
+
+The experiment container may serve files from a Docker volume rather than
+directly from the Git working tree. Relying on the interactive server menu's
+async watcher would make candidate readiness timing-sensitive and difficult to
+debug. V0 therefore materializes each candidate explicitly:
+
+1. Checkout the candidate detached in the experiment repo.
+2. Compute the Git delta from the previously materialized SHA.
+3. Copy, delete, or rename only paths owned by the image build manifest.
+4. Write an atomic marker recording the materialized candidate SHA.
+
+Manifest ownership matters because generated files, dependency directories, and
+runtime state can live in the same volume. The sync step should update app
+source files without deleting non-source state that the image did not own.
+
+### Failure policy
+
+The design is intentionally conservative. Infrastructure errors, compare stage
+errors, and incomplete artifacts do not classify a commit. V0 prefers stopping
+with diagnostic state over inventing a boundary from weak evidence. Container
+fallback is allowed only for refresh/startup failures, because those are
+operational problems; a real regression in a measured category is normal data
+and should stay in the search model.
+
+### Complexity
+
+For one target, the search takes `O(log n)` candidate comparisons over `n`
+commits after endpoint measurements. With many targets, the worst case is
+`O(t log n)`, but shared candidate runs reduce practical work when target
+intervals overlap. Observation reuse also means revisiting a commit does not
+force a rebuild or compare run if the needed target evidence is already known.
+
 ## Checkout and Volume Synchronization
 
 The experiment checkout is the candidate workspace.
