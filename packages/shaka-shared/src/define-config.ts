@@ -112,6 +112,11 @@ export interface SetupCommandInput {
   description: string;
 }
 
+export interface BisectConfigInput {
+  rebuildCommands?: SetupCommandInput[];
+  rebuildContainer?: boolean;
+}
+
 export interface TwinServersConfigInput {
   experimentDir: string;
   controlDir: string;
@@ -137,6 +142,7 @@ export interface AbTestsConfigInput {
   audit?: AuditConfigInput;
   accessibility?: AccessibilityConfigInput;
   twinServers?: TwinServersConfigInput;
+  bisect?: BisectConfigInput;
 }
 
 /**

@@ -14,6 +14,7 @@ import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import { createComparePipeline, comparePipelineMetadata } from '../compare-pipeline';
+import { createBisectCommand } from '../bisect/cli';
 import { pairedBenchmarkParallelism } from '../stages/shared/runtime';
 import { getCLIDefaultsFromConfig } from '../../cli-defaults';
 
@@ -24,7 +25,7 @@ export async function createCompareCommand(): Promise<Command> {
     controlURL: c.shared.controlURL,
     experimentURL: c.shared.experimentURL,
   }));
-  return new Command('compare')
+  const compare = new Command('compare')
     .description(comparePipelineMetadata.description)
     .option(
       '--categories <list>',
@@ -104,4 +105,6 @@ export async function createCompareCommand(): Promise<Command> {
         reportPipelineFailure(result);
       });
     });
+  compare.addCommand(createBisectCommand());
+  return compare;
 }
