@@ -351,4 +351,38 @@ describe('bisect experiment volume synchronization', () => {
     expect(fs.readFileSync(path.join(volumeDir, 'copied.txt'), 'utf8'))
       .toBe('shared contents');
   });
+
+  it('rejects deleting a non-empty directory at an owned file path without writing marker', async () => {
+    const markerPath = path.join(volumeDir, '.shaka-bisect-materialized.json');
+    write(volumeDir, 'owned.txt/generated/cache.json', 'preserve me');
+
+    await expect(reconcileExperimentVolume({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['owned.txt']),
+      candidateSha: 'candidate-sha',
+    })).rejects.toThrow(/non-empty directory/i);
+
+    expect(fs.readFileSync(path.join(volumeDir, 'owned.txt/generated/cache.json'), 'utf8'))
+      .toBe('preserve me');
+    expect(fs.existsSync(markerPath)).toBe(false);
+  });
+
+  it('rejects replacing a non-empty directory at an owned file path without advancing marker', async () => {
+    const markerPath = path.join(volumeDir, '.shaka-bisect-materialized.json');
+    write(sourceDir, 'owned.txt', 'candidate contents');
+    write(volumeDir, 'owned.txt/generated/cache.json', 'preserve me');
+    fs.writeFileSync(markerPath, JSON.stringify({ sha: 'previous-sha' }), 'utf8');
+
+    await expect(reconcileExperimentVolume({
+      sourceDir,
+      volumeDir,
+      manifest: manifest(['owned.txt']),
+      candidateSha: 'candidate-sha',
+    })).rejects.toThrow(/non-empty directory/i);
+
+    expect(fs.readFileSync(path.join(volumeDir, 'owned.txt/generated/cache.json'), 'utf8'))
+      .toBe('preserve me');
+    expect(JSON.parse(fs.readFileSync(markerPath, 'utf8'))).toEqual({ sha: 'previous-sha' });
+  });
 });
