@@ -25,7 +25,7 @@ const HomePage: React.FC = () => {
       <Box
         data-cy="hero-section"
         sx={{
-          background: 'linear-gradient(135deg, #4f46b5 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
           color: 'white',
           py: { xs: 6, md: 10 },
           mb: 6,
