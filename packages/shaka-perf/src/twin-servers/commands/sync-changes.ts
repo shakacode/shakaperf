@@ -13,6 +13,7 @@ import type { ResolvedConfig } from '../types';
 import { getChangedFiles, getGitRootDirectory } from '../helpers/git';
 import { printBanner, printSuccess, printError, printWarning, printInfo } from '../helpers/ui';
 import { dockerBuildDirForSide } from '../helpers/project-paths';
+import { readBuildManifest } from '../helpers/rebuild-check';
 
 export interface SyncChangesOptions {
   verbose?: boolean;
@@ -69,19 +70,36 @@ export async function syncChanges(
   console.log('');
 
   let copiedCount = 0;
-  let skippedCount = 0;
+  let deletedCount = 0;
+  let skippedDeletionCount = 0;
   let errorCount = 0;
+  const buildManifest = readBuildManifest(targetDir);
+  const imageFiles = buildManifest ? new Set(buildManifest.files) : null;
 
   for (const relativeFilePath of changedFiles) {
     const sourcePath = path.join(sourceDir, relativeFilePath);
     const destPath = path.join(targetDir, relativeFilePath);
 
-    // Skip if source file doesn't exist (deleted file)
+    // Apply deletions to the bind mount so the container matches the source.
     if (!fs.existsSync(sourcePath)) {
-      if (verbose) {
-        console.log(`  Skipped (deleted): ${relativeFilePath}`);
+      const posixPath = relativeFilePath.split(path.sep).join('/');
+      if (!imageFiles || !imageFiles.has(posixPath)) {
+        if (verbose) {
+          console.log(`  Skipped (not in build manifest): ${relativeFilePath}`);
+        }
+        skippedDeletionCount++;
+        continue;
       }
-      skippedCount++;
+      try {
+        fs.rmSync(destPath, { force: true });
+        if (verbose) {
+          console.log(`  Deleted: ${relativeFilePath}`);
+        }
+        deletedCount++;
+      } catch (error) {
+        printError(`Failed to delete ${relativeFilePath}: ${(error as Error).message}`);
+        errorCount++;
+      }
       continue;
     }
 
@@ -108,16 +126,21 @@ export async function syncChanges(
   console.log('');
   console.log(`Summary:`);
   console.log(`  Copied: ${copiedCount} files`);
-  if (skippedCount > 0) {
-    console.log(`  Skipped (deleted): ${skippedCount} files`);
+  if (deletedCount > 0) {
+    console.log(`  Deleted: ${deletedCount} files`);
+  }
+  if (skippedDeletionCount > 0) {
+    console.log(`  Skipped (not in build manifest): ${skippedDeletionCount} files`);
   }
   if (errorCount > 0) {
     printWarning(`Errors: ${errorCount} files`);
   }
   console.log('');
 
-  if (errorCount === 0) {
+  if (errorCount === 0 && skippedDeletionCount === 0) {
     printSuccess(`Successfully synced changes to ${target}`);
+  } else if (errorCount === 0) {
+    printWarning(`Synced with ${skippedDeletionCount} skipped deletion${skippedDeletionCount === 1 ? '' : 's'}`);
   } else {
     printWarning(`Synced with ${errorCount} errors`);
   }

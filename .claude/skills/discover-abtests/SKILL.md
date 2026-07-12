@@ -19,7 +19,7 @@ The browser-side scripts and report parser ship inside the `shaka-perf` CLI — 
 | `shaka-perf discover-abtests extract-links`   | Prints JS source — capture stdout and pass to `javascript_tool` to collect internal links from any page |
 | `shaka-perf discover-abtests probe-lazy-load` | Prints JS source — capture stdout and pass to `javascript_tool` to test whether scrolling triggers new content |
 | `shaka-perf discover-abtests probe-sections`  | Prints JS source — capture stdout and pass to `javascript_tool` on tall pages (>2000px) to score candidate CSS selectors |
-| `shaka-perf discover-abtests parse-report [path]` | Run after `compare` to summarize pass/fail, diff %, whitespace metrics, and engine errors (defaults to `visreg_data/html_report/report.json`) |
+| `shaka-perf discover-abtests parse-report [path]` | Run after `compare` to summarize pass/fail, diff %, whitespace metrics, and engine errors (without a path, discovers per-unit reports under `compare-results/`) |
 | `references/patterns.md`                   | Read when writing `.abtest.ts` files — contains code patterns and selector strategy |
 | `references/api.md`                        | Read when you need the full `abTest()` config API or helpers reference     |
 

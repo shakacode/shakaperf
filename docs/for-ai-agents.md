@@ -90,6 +90,8 @@ yarn shaka-perf compare --categories perf --filter "Homepage Hero"
 yarn shaka-perf compare
 ```
 
+Commit an experiment change only after measuring it. `sync-changes` sees uncommitted changes; after committing, rebuild the experiment image with `yarn shaka-perf servers build --target experiment` and rerun `start-containers` before measuring.
+
 `--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
 
 ## Reading results — the machine contract
@@ -126,7 +128,7 @@ yarn shaka-perf compare
 **Where the numbers are today:** per-stage `summary` objects in `compare-results/report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Audit reports already include machine-readable summaries for accessibility, agent-readiness, and AI summary stages. Until compare summaries are populated:
 
 - Perf numbers (per-metric estimates, confidence intervals, p-values) are in the HTML report and per-test artifact dirs under `compare-results/`.
-- Visreg details are machine-readable via the visreg engine's own report: run `yarn shaka-perf discover-abtests parse-report` (reads `visreg_data/html_report/report.json`) - it prints per-test status, diff %, the available `testWhitePixelPercent` or `refWhitePixelPercent` (>90 usually means the selector captured empty space - a false PASS), and engine errors.
+- Visreg details are machine-readable via the visreg engine's own per-unit reports: run `yarn shaka-perf discover-abtests parse-report` after `compare`. Without a path, it finds reports under `compare-results/<test-and-viewport>/artifacts/report.json` and prints per-test status, diff %, the available `testWhitePixelPercent` or `refWhitePixelPercent` (>90 usually means the selector captured empty space - a false PASS), and engine errors.
 
 ## What "regression" means
 
@@ -167,6 +169,8 @@ https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md. Config: 
 - After editing app code, sync it into the experiment container:
   `yarn shaka-perf servers sync-changes experiment`
   (app build steps via `yarn shaka-perf servers run-cmd experiment "<cmd>"`).
+  Commit experiment changes only after measuring; a committed change needs
+  `yarn shaka-perf servers build --target experiment` and `start-containers`.
 - Inner loop: `yarn shaka-perf compare --categories perf --filter "<test name>"`.
 - Full check before pushing: `yarn shaka-perf compare`
   (exit 0 = clean; a completed failed run prints `FAILED: <summary>`; other

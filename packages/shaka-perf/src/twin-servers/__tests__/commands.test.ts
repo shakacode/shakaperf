@@ -74,6 +74,7 @@ describe('sync-changes command', () => {
   const tmpDir = path.join(__dirname, 'tmp-sync-changes');
 
   beforeEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
     fs.mkdirSync(tmpDir, { recursive: true });
     jest.clearAllMocks();
   });
@@ -102,6 +103,60 @@ describe('sync-changes command', () => {
 
     // The experiment volume dir should be created
     expect(fs.existsSync(config.volumes.experiment)).toBe(true);
+  });
+
+  it('removes a staged deletion from the target volume', async () => {
+    const { execSync } = require('child_process');
+    const { syncChanges } = require('../commands/sync-changes');
+    const config = createMockConfig(tmpDir);
+    const deletedPath = path.join(config.volumes.experiment, 'deleted.ts');
+    fs.mkdirSync(config.volumes.experiment, { recursive: true });
+    fs.writeFileSync(deletedPath, 'stale image content');
+    fs.writeFileSync(`${config.volumes.experiment}.manifest.json`, JSON.stringify({
+      version: 1,
+      dockerignore: '',
+      copySources: null,
+      files: ['deleted.ts'],
+    }));
+
+    (execSync as jest.Mock).mockImplementation((cmd: string) => {
+      if (cmd.includes('rev-parse --show-toplevel')) return config.dockerBuildDir;
+      if (cmd.includes('diff --cached --name-only')) return 'deleted.ts';
+      if (cmd.includes('diff --name-only')) return '';
+      if (cmd.includes('ls-files --others')) return '';
+      return '';
+    });
+
+    await syncChanges(config, 'experiment', { verbose: false });
+
+    expect(fs.existsSync(deletedPath)).toBe(false);
+  });
+
+  it('preserves a deletion that was not present in the build image', async () => {
+    const { execSync } = require('child_process');
+    const { syncChanges } = require('../commands/sync-changes');
+    const config = createMockConfig(tmpDir);
+    const runtimePath = path.join(config.volumes.experiment, 'runtime.ts');
+    fs.mkdirSync(config.volumes.experiment, { recursive: true });
+    fs.writeFileSync(runtimePath, 'runtime-generated content');
+    fs.writeFileSync(`${config.volumes.experiment}.manifest.json`, JSON.stringify({
+      version: 1,
+      dockerignore: '',
+      copySources: null,
+      files: [],
+    }));
+
+    (execSync as jest.Mock).mockImplementation((cmd: string) => {
+      if (cmd.includes('rev-parse --show-toplevel')) return config.dockerBuildDir;
+      if (cmd.includes('diff --cached --name-only')) return 'runtime.ts';
+      if (cmd.includes('diff --name-only')) return '';
+      if (cmd.includes('ls-files --others')) return '';
+      return '';
+    });
+
+    await syncChanges(config, 'experiment', { verbose: false });
+
+    expect(fs.existsSync(runtimePath)).toBe(true);
   });
 });
 
