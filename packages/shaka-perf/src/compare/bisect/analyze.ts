@@ -127,7 +127,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
     return stageMeasurements(input.testResults, 'accessibility', isAccessibilityCompareResult)
       .flatMap(({ test, viewport, measurement }) => unique(
         measurement.findings
-          .filter((finding) => finding.status === 'new' || finding.status === 'changed')
+          .filter((finding) => finding.status === 'new')
           .map((finding) => finding.ruleId),
       ).map((ruleId) => targetKey('accessibility', test, viewport, ruleId)));
   },
@@ -137,9 +137,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
         .filter((entry) => matchesTarget(entry, target));
       const findings = results.flatMap(({ measurement }) => measurement.findings
         .filter((finding) => finding.ruleId === target.subject));
-      return observation(target, input.commitSha!, findings.some((finding) => (
-        finding.status === 'new' || finding.status === 'changed'
-      )), {
+      return observation(target, input.commitSha!, findings.some((finding) => finding.status === 'new'), {
         controlViolationCount: findings.filter((finding) => finding.control).length,
         controlNodeCount: findings.reduce((count, finding) => count + (finding.control?.nodes.length ?? 0), 0),
         experimentViolationCount: findings.filter((finding) => finding.experiment).length,
