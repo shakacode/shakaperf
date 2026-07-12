@@ -22,7 +22,15 @@ Use compare bisect when:
 
 ## Basic Flow
 
-Start the twin-server menu first:
+Compare bisect requires clean control and experiment worktrees, an experiment
+build manifest, and an active twin-server menu. Generate the manifest before a
+first run or after removing the experiment volume:
+
+```bash
+yarn shaka-perf servers build --target experiment
+```
+
+Then start the twin-server menu:
 
 ```bash
 yarn shaka-perf servers
@@ -31,10 +39,15 @@ yarn shaka-perf servers
 Then run bisect from the invocation checkout:
 
 ```bash
-yarn shaka-perf compare bisect <good-ref> <bad-ref>
+yarn shaka-perf compare bisect
 ```
 
-Optional category narrowing works the same way as `compare`:
+With no refs, `good-ref` defaults to the configured control checkout's `HEAD`
+and `bad-ref` defaults to the configured experiment checkout's `HEAD`. If only
+`good-ref` is supplied, only `bad-ref` uses its default. The control checkout
+must remain at the resolved good SHA for the whole run.
+
+Explicit refs and optional category narrowing work the same way as `compare`:
 
 ```bash
 yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
@@ -42,8 +55,8 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
 
 Results are written under `compare-bisect-results/`:
 
-- `session.json` records the full resumable model: range, targets, observations,
-  candidate runs, and infrastructure errors.
+- `session.json` is diagnostic state recording the range, targets, observations,
+  candidate runs, and infrastructure errors. V0 cannot resume a run from it.
 - `summary.json` records the final user-facing answer grouped by target status.
 - `decision-log.md` is the human-readable trail of the route taken: range setup,
   target discovery, midpoint choices, interval movements, fallback decisions,
@@ -228,10 +241,10 @@ an aborted bisect does not permanently block normal server actions.
 
 ### Restoration
 
-The command restores the experiment checkout to its original branch or detached
-SHA at the end of the run. If a different candidate was materialized into the
-experiment volume, V0 syncs the original SHA back into the volume and refreshes
-the experiment side again.
+The command leaves control fixed and restores the experiment checkout to its
+original branch or detached SHA after success, failure, or interruption. If a
+different candidate was materialized into the experiment volume, V0 syncs the
+original SHA back into the volume and refreshes the experiment side again.
 
 Cleanup is best-effort but conservative: the primary bisect error is preserved,
 and cleanup failures are reported separately so users can restore the checkout
