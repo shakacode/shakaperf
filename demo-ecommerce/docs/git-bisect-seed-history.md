@@ -22,3 +22,6 @@ network delays so results remain easy to reproduce in local containers.
 
 Accessibility fixtures should avoid layout-visible changes when they are meant
 to be accessibility-only.
+
+Clean commits should be safe to classify as good for every category that has
+not yet received its first dedicated regression fixture.
