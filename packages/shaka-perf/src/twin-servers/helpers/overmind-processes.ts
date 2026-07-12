@@ -60,6 +60,13 @@ export async function restartExperimentProcesses(config: ResolvedConfig): Promis
       'done; ' +
       'pids=$(ps -s "$session_id" -o pid=); ' +
       '[ -z "$pids" ] || kill -KILL $pids 2>/dev/null || true; ' +
+      'for attempt in $(seq 1 100); do ' +
+        'pids=$(ps -s "$session_id" -o pid=); ' +
+        '[ -z "$pids" ] && break; ' +
+        'sleep 0.1; ' +
+      'done; ' +
+      'pids=$(ps -s "$session_id" -o pid=); ' +
+      '[ -z "$pids" ] || exit 1; ' +
       'rm -f "$pid_file"; ' +
     'done',
   );

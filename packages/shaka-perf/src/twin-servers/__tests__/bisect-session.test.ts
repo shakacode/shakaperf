@@ -121,6 +121,9 @@ describe('experiment Overmind process targeting', () => {
       ]),
       expect.objectContaining({ cwd: config.projectDir }),
     );
+    const cleanupCommand = mockExec.mock.calls[1]?.[1].at(-1);
+    expect(cleanupCommand?.match(/for attempt in \$\(seq 1 100\)/g)).toHaveLength(2);
+    expect(cleanupCommand).toContain('[ -z "$pids" ] || exit 1');
     expect(mockExec).toHaveBeenNthCalledWith(
       3,
       'overmind',
