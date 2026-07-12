@@ -313,9 +313,13 @@ function createDefaultDependencies(options: {
       cmd: 'bisect-end',
       token: bisectToken,
     }),
-    checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha),
+    checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
+      allowedPaths: [options.resultsDirectory],
+    }),
     restore: async ({ previousSha, originalSha }) => {
-      await restoreCheckout(options.twinServers.experimentDir, options.gitRange.originalExperiment);
+      await restoreCheckout(options.twinServers.experimentDir, options.gitRange.originalExperiment, {
+        allowedPaths: [options.resultsDirectory],
+      });
       if (previousSha === null || previousSha === originalSha) return;
       await syncCommitDelta({
         sourceDir: options.twinServers.experimentDir,
