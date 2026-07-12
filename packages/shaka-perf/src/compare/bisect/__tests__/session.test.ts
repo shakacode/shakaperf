@@ -102,10 +102,13 @@ function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
 
 interface HarnessOptions {
   signalOnCompare?: string;
+  signalOnDecisionEvent?: string;
   signal?: NodeJS.Signals;
+  checkoutErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
+  writeSessionErrorStatus?: BisectSession['status'];
 }
 
 function deps(
@@ -130,6 +133,7 @@ function deps(
     signalHandlers: Set<(signal: NodeJS.Signals) => void>;
   };
 } {
+  let writeSessionErrorThrown = false;
   const calls = {
     checkouts: [] as string[],
     materialized: [] as Array<[string | null, string]>,
@@ -164,6 +168,8 @@ function deps(
       async checkout(sha) {
         calls.checkouts.push(sha);
         calls.events.push(`checkout:${sha}`);
+        const checkoutError = options.checkoutErrorBySha?.[sha];
+        if (checkoutError) throw checkoutError;
       },
       async restore(request) {
         calls.restored.push([request.previousSha, request.originalSha]);
@@ -203,6 +209,10 @@ function deps(
         const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
         calls.sessions.push(snapshot);
         calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
+        if (!writeSessionErrorThrown && session.status === options.writeSessionErrorStatus) {
+          writeSessionErrorThrown = true;
+          throw new Error(`persist ${session.status} exploded`);
+        }
       },
       writeSummary(session) {
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
@@ -210,6 +220,9 @@ function deps(
       },
       recordDecision(entry) {
         calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
+        if (entry.event === options.signalOnDecisionEvent) {
+          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+        }
       },
       logProgress(message) {
         calls.progress.push(message);
@@ -347,6 +360,48 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
+  it('still restores, releases the lease, and disposes handlers when failure persistence throws', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      compareErrorBySha: {
+        bad: new Error('compare exploded'),
+      },
+      writeSessionErrorStatus: 'failed',
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(
+      /compare exploded.*session persistence failed: persist failed exploded/i,
+    );
+
+    expect(harness.calls.restored).toEqual([['bad', 'bad']]);
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
+    expect(harness.calls.signalHandlers.size).toBe(0);
+  });
+
+  it('restores after the first checkout mutates the worktree and then rejects', async () => {
+    const harness = deps({}, {
+      checkoutErrorBySha: {
+        bad: new Error('checkout mutated then exploded'),
+      },
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/checkout mutated then exploded/i);
+
+    expect(harness.calls.restored).toEqual([[null, 'bad']]);
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
+  });
+
   it('rejects mixed valid and error outcomes without advancing boundaries', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
@@ -474,6 +529,22 @@ describe('compare bisect session orchestration', () => {
       'refresh:original',
       'lease:end',
     ]);
+  });
+
+  it('keeps signal handlers through final durable-state persistence', async () => {
+    const harness = deps({ bad: [] }, {
+      signalOnDecisionEvent: 'session-complete',
+      signal: 'SIGTERM',
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/SIGTERM/i);
+
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'interrupted',
+      failure: expect.stringMatching(/SIGTERM/i),
+    });
+    expect(harness.calls.sessions.at(-1)?.status).not.toBe('running');
+    expect(harness.calls.signalHandlers.size).toBe(0);
   });
 
   it('runs a shared midpoint once for multiple cached targets', async () => {

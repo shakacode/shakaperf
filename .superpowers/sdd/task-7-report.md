@@ -57,3 +57,35 @@
 ### Concerns
 
 - A full run of the existing compare-pipeline test file was attempted but its measurement test timed out waiting for the controller's live `compare bisect` measurement lock (`pid 16774`). The new shared-construction test passes when selected directly; the required focused and all-bisect suites are green. The live process and main checkout were left untouched.
+
+## 2026-07-12 Rejected cleanup edge-case follow-up
+
+### Implementation
+
+- Moved checkout/work, restoration, lease release, terminal persistence, and signal-handler disposal into one guarded lifecycle whose cleanup and disposal paths cannot be bypassed by persistence failures.
+- Marked restoration necessary before invoking checkout, so a checkout that mutates and then rejects still restores the original checkout, volume, and server state.
+- Kept signal handlers installed through terminal summary/session persistence and re-evaluated cancellation until the terminal artifacts stabilize.
+- Preserved the primary work error while appending decision-log, summary, session-persistence, restoration, lease-release, and handler-disposal failures to the surfaced cleanup error.
+
+### RED command and output
+
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - FAIL: 1 suite; 3 failed, 12 passed.
+  - Failure persistence threw `persist failed exploded` before restoration, lease release, or handler disposal.
+  - A first checkout that recorded mutation and rejected left `restored` empty.
+  - A `SIGTERM` emitted during `session-complete` decision persistence was missed and the promise resolved with durable `complete` state.
+
+### GREEN commands and output
+
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - PASS: 1 suite, 15 tests.
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__ --runInBand`
+  - PASS: 8 suites, 66 tests.
+- `yarn workspace shaka-perf run typecheck`
+  - PASS.
+- `git diff --check`
+  - PASS.
+
+### Concerns
+
+- None.
