@@ -143,7 +143,9 @@ test file + test identity + viewport + axe rule ID
 Stored values include control and experiment violation counts, affected-node
 counts, impact, and matching artifact paths. DOM target fingerprints do not
 participate in target identity. A target is present when the rule has at least
-one `new` or `changed` finding for that test and viewport.
+one `new` finding for that test and viewport. `changed` findings remain
+informational because the existing comparison does not classify their direction
+as regressed or improved.
 
 ## Persistent Session Model
 
