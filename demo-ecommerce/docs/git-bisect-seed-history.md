@@ -53,3 +53,36 @@ Category map:
 - `db65ccd` - no regression, docs only.
 - `5c3dbad` - no regression, docs only.
 - `993637a` - visual plus performance regression on product detail.
+
+Expected affected AB tests and metrics:
+
+- `Homepage` / `visreg` - screenshot mismatch and diff pixels for
+  `[data-cy="hero-section"]` and `document` after the hero gradient changes.
+- `Homepage` / `perf` - primarily worse `TBT` and lower `LH Score` from the
+  450ms homepage CPU warmup. `speed-index`, `FCP`, and `LCP` can also move
+  depending on timing.
+- `Homepage` / `accessibility` - a new axe finding, expected to be
+  `button-name`, from `button[data-cy="bisect-a11y-probe"]`.
+- `Click Shop Now on the homepage` / `perf` - primarily worse `TBT` and lower
+  `LH Score` in the phone viewport because the test starts on `/` and runs the
+  homepage CPU warmup.
+- `Product Detail` / `visreg` - screenshot mismatch and diff pixels from the
+  product image `boxShadow`.
+- `Product Detail` / `perf` - primarily worse `TBT` and lower `LH Score` from
+  the 350ms product-detail CPU warmup.
+- `Product Detail - Show Product Journey Toggle` / `visreg` - likely full-page
+  screenshot mismatch from the product image `boxShadow` in the phone viewport.
+
+Expected unaffected AB tests:
+
+- `Product Detail - Desktop Actions` captures only
+  `[data-cy="product-actions-desktop"]`, so the product image `boxShadow` should
+  not appear in its screenshot.
+- `Click Reviews on Product Detail` and
+  `Product Details => Click on Reviews => Click on Deals` end on reviews or
+  deals pages and run as visual-only tests, so the product-detail image change
+  should not be captured.
+- `Products List`, `Cart`, `Carousel`, and `Admin` do not visit touched routes
+  or changed fixtures.
+- Product-detail accessibility should stay unchanged because no semantic
+  accessibility regression was added there.
