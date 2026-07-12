@@ -11,7 +11,12 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { executeBisect, type ExecuteBisectDependencies, type ExecuteBisectInput } from '../session';
+import {
+  executeBisect,
+  type BisectDecisionLogEntry,
+  type ExecuteBisectDependencies,
+  type ExecuteBisectInput,
+} from '../session';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
@@ -91,6 +96,8 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
     summaries: BisectSession[];
     restored: Array<[string | null, string]>;
     events: string[];
+    progress: string[];
+    decisions: BisectDecisionLogEntry[];
   };
 } {
   const calls = {
@@ -102,6 +109,8 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
     summaries: [] as BisectSession[],
     restored: [] as Array<[string | null, string]>,
     events: [] as string[],
+    progress: [] as string[],
+    decisions: [] as BisectDecisionLogEntry[],
   };
   return {
     calls,
@@ -146,6 +155,12 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
       },
       writeSummary(session) {
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+      },
+      recordDecision(entry) {
+        calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
+      },
+      logProgress(message) {
+        calls.progress.push(message);
       },
       now() {
         return '2026-07-12T00:00:00.000Z';
@@ -199,6 +214,33 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.restored).toEqual([['b', 'bad']]);
     expect(harness.calls.events.at(0)).toBe('lease:begin');
     expect(harness.calls.events.slice(-2)).toEqual(['restore:original', 'lease:end']);
+    expect(harness.calls.progress).toEqual(expect.arrayContaining([
+      'Starting compare bisect session',
+      'Measuring bad ref bad to discover regression targets',
+      'Selected midpoint a for 1 active target(s)',
+      'Selected midpoint b for 1 active target(s)',
+      'Compare bisect session completed',
+    ]));
+    expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
+      'session-start',
+      'bad-ref-targets',
+      'candidate-selected',
+      'candidate-observed',
+      'session-complete',
+    ]));
+    expect(harness.calls.decisions.find((entry) => (
+      entry.event === 'candidate-selected' && entry.data?.sha === 'b'
+    ))?.data).toMatchObject({
+      sha: 'b',
+      targets: [expect.objectContaining({
+        interval: {
+          goodIndex: 1,
+          goodSha: 'a',
+          badIndex: 3,
+          badSha: 'bad',
+        },
+      })],
+    });
   });
 
   it('marks targets invalid when they are already present at the good ref', async () => {

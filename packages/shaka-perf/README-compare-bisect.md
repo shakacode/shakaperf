@@ -45,11 +45,19 @@ Results are written under `compare-bisect-results/`:
 - `session.json` records the full resumable model: range, targets, observations,
   candidate runs, and infrastructure errors.
 - `summary.json` records the final user-facing answer grouped by target status.
+- `decision-log.md` is the human-readable trail of the route taken: range setup,
+  target discovery, midpoint choices, interval movements, fallback decisions,
+  and final first-bad conclusions.
+- `decision-log.jsonl` contains the same decision trail as structured JSON
+  events for tooling or later report rendering.
 - `commits/<sha>/` contains the normal compare artifacts for each measured
   candidate commit.
 
 The terminal also prints a compact summary with the status, summary path, target
-counts, and first-bad SHA for each found target.
+counts, decision-log path, and first-bad SHA for each found target. During the
+run it prints progress messages before checkout, volume sync, server refresh,
+compare execution, candidate selection, and interval updates so long-running
+perf measurements do not look idle.
 
 ## Configuration
 
@@ -131,6 +139,8 @@ The implementation keeps a few invariants simple on purpose:
 
 These invariants make the result auditable: for any target in `summary.json`,
 you can walk the observations in `session.json` and see why the interval moved.
+For a narrative view, read `decision-log.md`; for exact event payloads, read
+`decision-log.jsonl`.
 
 ### Scheduler Details
 
