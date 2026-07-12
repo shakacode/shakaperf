@@ -31,6 +31,20 @@ interface CategoryAnalyzer {
   observe(input: AnalyzeInput, targets: readonly BisectTarget[]): TargetObservation[];
 }
 
+export function assertNoPipelineErrors(
+  testResults: readonly TestResult[],
+  commitSha: string,
+): void {
+  for (const test of testResults) {
+    const outcome = test.outcomes.find((candidate) => candidate.kind === 'error');
+    if (!outcome) continue;
+    throw new Error(
+      `Candidate ${commitSha} has an error outcome for ${outcome.stage} in ${test.name}: ` +
+      `${outcome.error?.message ?? 'unknown pipeline error'}`,
+    );
+  }
+}
+
 export function discoverTargets(
   testResults: readonly TestResult[],
   orderedCommits: readonly string[],

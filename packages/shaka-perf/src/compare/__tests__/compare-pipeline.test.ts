@@ -11,11 +11,51 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
-import { comparePipelineMetadata, createComparePipeline } from '../compare-pipeline';
+import {
+  comparePipelineConfigFromAbTests,
+  comparePipelineMetadata,
+  createComparePipeline,
+} from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
 import { runPipeline } from '../../pipeline/runner';
+import type { AbTestsConfig } from '../../config';
 
 describe('compare accessibility pipeline integration', () => {
+  it('derives reusable pipeline construction options from parsed config', () => {
+    const parsed = {
+      shared: { parallelism: 6, testPathPattern: 'checkout' },
+      visreg: {
+        defaultMisMatchThreshold: 0.2,
+        maxNumDiffPixels: 12,
+        comparePixelmatchThreshold: 0.3,
+        engineOptions: { browser: 'chromium' },
+        resembleOutputOptions: { transparency: 0.4 },
+        compareRetries: 4,
+        compareRetryDelay: 50,
+      },
+      perf: {
+        numberOfMeasurements: 7,
+        regressionThreshold: 8,
+        pValueThreshold: 0.04,
+        regressionThresholdStat: 'ci-lower',
+        samplingMode: 'simultaneous',
+        lighthouseConfig: { maxWaitForLoad: 1000 },
+        plotTitle: 'Shared config',
+      },
+      accessibility: { tags: ['wcag2a'] },
+    } as AbTestsConfig;
+
+    expect(comparePipelineConfigFromAbTests(parsed, { artifactRoot: 'commits/abc' }))
+      .toMatchObject({
+        artifactRoot: 'commits/abc',
+        parallelism: 3,
+        testPathPattern: 'checkout',
+        visregDefaultMisMatchThreshold: 0.2,
+        perfNumberOfMeasurements: 7,
+        accessibility: { tags: ['wcag2a'] },
+      });
+  });
+
   it('registers accessibility as a first-class compare category and stage', () => {
     expect(comparePipelineMetadata.categories).toEqual(['visreg', 'perf', 'accessibility']);
     expect(comparePipelineMetadata.stages).toEqual([
