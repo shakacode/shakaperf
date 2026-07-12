@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { applyObservations, nextCandidate } from '../search';
+import { applyCachedObservations, applyObservations, nextCandidate } from '../search';
 import type {
   BisectCategory,
   BisectSession,
@@ -121,6 +121,54 @@ describe('bisect scheduler', () => {
     expect(work?.categories).toEqual(['perf', 'accessibility']);
   });
 
+  it('applies cached observations before scheduling partially cached candidate work', () => {
+    const initial = session([
+      bisectTarget('visual', 'visreg', {
+        observations: {
+          g: observation('visual', false, 'g'),
+          a: observation('visual', false, 'a'),
+          b: observation('visual', true, 'b'),
+          bad: observation('visual', true, 'bad'),
+        },
+      }),
+      bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
+    ]);
+
+    const normalized = applyCachedObservations(initial);
+
+    expect(target(initial, 'visual')).toMatchObject({ status: 'active', goodIndex: 0, badIndex: 4 });
+    expect(target(normalized, 'visual')).toMatchObject({
+      status: 'found',
+      goodIndex: 1,
+      badIndex: 2,
+      firstBadSha: 'b',
+    });
+    expect(nextCandidate(normalized)).toMatchObject({
+      sha: 'b',
+      targetIds: ['tbt'],
+      categories: ['perf'],
+    });
+  });
+
+  it('requires no rerun when every candidate observation is cached', () => {
+    const normalized = applyCachedObservations(session([
+      bisectTarget('visual', 'visreg', {
+        goodIndex: 1,
+        badIndex: 3,
+        observations: { b: observation('visual', true, 'b') },
+      }),
+      bisectTarget('tbt', 'perf', {
+        goodIndex: 1,
+        badIndex: 3,
+        observations: { b: observation('tbt', false, 'b') },
+      }),
+    ]));
+
+    expect(target(normalized, 'visual')).toMatchObject({ status: 'found', firstBadSha: 'b' });
+    expect(target(normalized, 'tbt')).toMatchObject({ status: 'found', firstBadSha: 'c' });
+    expect(nextCandidate(normalized)).toBeNull();
+  });
+
   it('finds the first bad commit when boundaries become adjacent', () => {
     const updated = applyObservations(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 2 }),
@@ -133,6 +181,27 @@ describe('bisect scheduler', () => {
       status: 'found',
       firstBadSha: 'a',
     });
+  });
+
+  it('rejects observations after an infrastructure error without mutating boundaries', () => {
+    const initial = session([bisectTarget('visual', 'visreg')]);
+    initial.commitRuns.b = {
+      sha: 'b',
+      requestedCategories: ['visreg'],
+      requestedTestFiles: ['visual.abtest.ts'],
+      refreshMode: 'commands',
+      usedFallback: false,
+      startedAt: '2026-07-12T00:01:00.000Z',
+      finishedAt: '2026-07-12T00:02:00.000Z',
+      infrastructureError: 'compare timed out',
+    };
+    const originalTarget = target(initial, 'visual');
+
+    expect(() => applyObservations(initial, 'b', new Map([
+      ['visual', observation('visual', true)],
+    ]))).toThrow('Cannot apply observations for b: compare timed out');
+    expect(target(initial, 'visual')).toBe(originalTarget);
+    expect(originalTarget).toMatchObject({ goodIndex: 0, badIndex: 4, observations: {} });
   });
 
   it('skips invalid targets', () => {
