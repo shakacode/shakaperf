@@ -782,9 +782,9 @@ Build observations matching the documented history and assert first bad SHAs for
 
 ```ts
 expect(summary.targets).toEqual(expect.arrayContaining([
-  expect.objectContaining({ category: 'visreg', firstBadSha: 'aa1b86a' }),
-  expect.objectContaining({ category: 'perf', firstBadSha: '5d38dcf' }),
-  expect.objectContaining({ category: 'accessibility', firstBadSha: '38e7882' }),
+  expect.objectContaining({ category: 'visreg', firstBadSha: '58cc828' }),
+  expect.objectContaining({ category: 'perf', firstBadSha: '9c7cfff' }),
+  expect.objectContaining({ category: 'accessibility', firstBadSha: 'fcb0e2b' }),
 ]));
 ```
 
@@ -826,10 +826,10 @@ yarn shaka-perf compare bisect 38dae68 codex/git-bisect-demo-history
 
 Verify `compare-bisect-results/summary.json` contains:
 
-- Homepage visual targets first bad at `aa1b86a`.
-- Homepage perf targets first bad at `5d38dcf`.
-- Homepage `button-name` accessibility target first bad at `38e7882`.
-- Product-detail visual and perf targets first bad at `993637a`.
+- Homepage visual targets first bad at `58cc828`.
+- Homepage perf targets first bad at `9c7cfff`.
+- Homepage `button-name` accessibility target first bad at `fcb0e2b`.
+- Product-detail visual and perf targets first bad at `5345dff`.
 - AB-test file, test, viewport, and category-specific values for every target.
 - Original experiment branch/SHA restored.
 - Control SHA unchanged.
