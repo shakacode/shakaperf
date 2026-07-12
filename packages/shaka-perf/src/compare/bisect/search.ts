@@ -11,6 +11,7 @@ import type {
   BisectCategory,
   BisectSession,
   BisectTarget,
+  NormalizedBisectSession,
   TargetObservation,
 } from './types';
 
@@ -27,7 +28,7 @@ export interface CandidateWork {
   testFiles: string[];
 }
 
-export function nextCandidate(session: BisectSession): CandidateWork | null {
+export function nextCandidate(session: NormalizedBisectSession): CandidateWork | null {
   const selectedTarget = session.targets
     .filter((target) => target.status === 'active')
     .sort((left, right) => categoryPriority[left.category] - categoryPriority[right.category]
@@ -54,7 +55,7 @@ export function nextCandidate(session: BisectSession): CandidateWork | null {
   };
 }
 
-export function applyCachedObservations(session: BisectSession): BisectSession {
+export function applyCachedObservations(session: BisectSession): NormalizedBisectSession {
   const commitIndexes = new Map(session.orderedCommits.map((sha, index) => [sha, index]));
 
   return {
@@ -77,7 +78,7 @@ export function applyCachedObservations(session: BisectSession): BisectSession {
 
       return finalizeTarget(session, { ...target, goodIndex, badIndex });
     }),
-  };
+  } as NormalizedBisectSession;
 }
 
 export function applyObservations(
