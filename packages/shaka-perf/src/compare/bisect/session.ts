@@ -101,7 +101,16 @@ export interface ExecuteBisectDependencies {
   compare(request: CompareRunRequest): Promise<CompareRunResult>;
   writeSession(session: BisectSession): void;
   writeSummary(session: BisectSession): void;
+  recordDecision(entry: BisectDecisionLogEntry): void;
+  logProgress(message: string): void;
   now(): string;
+}
+
+export interface BisectDecisionLogEntry {
+  timestamp: string;
+  event: string;
+  message: string;
+  data?: Record<string, unknown>;
 }
 
 export async function runCompareBisectFromCli(
@@ -174,12 +183,38 @@ export async function executeBisect(
   const persist = (): void => {
     deps.writeSession(session);
   };
+  const logDecision = (
+    event: string,
+    message: string,
+    data?: Record<string, unknown>,
+  ): void => {
+    deps.logProgress(message);
+    deps.recordDecision({
+      timestamp: deps.now(),
+      event,
+      message,
+      data,
+    });
+  };
 
   try {
+    logDecision('session-start', 'Starting compare bisect session', {
+      goodSha: input.gitRange.goodSha,
+      badSha: input.gitRange.badSha,
+      commits: input.gitRange.orderedCommits.length,
+      categories: input.selectedCategories,
+      resultsDirectory: input.resultsDirectory,
+      decisionLog: path.join(input.resultsDirectory, 'decision-log.md'),
+    });
     await deps.beginSession();
     leaseAcquired = true;
+    logDecision('lease-acquired', 'Acquired twin-server bisect lease; experiment auto-sync is paused');
     persist();
 
+    logDecision('bad-ref-start', `Measuring bad ref ${shortSha(input.gitRange.badSha)} to discover regression targets`, {
+      sha: input.gitRange.badSha,
+      categories: input.selectedCategories,
+    });
     const badRun = await runMeasuredCommit({
       input,
       deps,
@@ -199,9 +234,15 @@ export async function executeBisect(
         input.gitRange.badSha,
       ),
     };
+    logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
+      sha: input.gitRange.badSha,
+      targetCount: session.targets.length,
+      targets: session.targets.map((target) => targetLogData(target)),
+    });
     persist();
 
     if (session.targets.length === 0) {
+      logDecision('session-complete', 'No regression targets were present at the bad ref');
       session = completeSession(session, deps.now());
       deps.writeSummary(session);
       persist();
@@ -209,6 +250,12 @@ export async function executeBisect(
     }
 
     const goodTargets = activeTargets(session);
+    logDecision('good-ref-start', `Measuring good ref ${shortSha(input.gitRange.goodSha)} to validate the bracket`, {
+      sha: input.gitRange.goodSha,
+      targetCount: goodTargets.length,
+      categories: categoriesForTargets(goodTargets),
+      testFiles: testFilesForTargets(goodTargets),
+    });
     const goodRun = await runMeasuredCommit({
       input,
       deps,
@@ -231,6 +278,12 @@ export async function executeBisect(
       session,
       goodObservations,
     );
+    const invalidTargets = session.targets.filter((target) => target.status === 'invalid');
+    logDecision('good-ref-validated', `Good ref validated: ${invalidTargets.length} target(s) already present at good`, {
+      sha: input.gitRange.goodSha,
+      invalidTargets: invalidTargets.map((target) => targetLogData(target)),
+      activeTargets: activeTargets(session).map((target) => targetLogData(target)),
+    });
     persist();
 
     while (true) {
@@ -239,6 +292,12 @@ export async function executeBisect(
       if (!work) break;
 
       const targets = session.targets.filter((target) => work.targetIds.includes(target.id));
+      logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
+        sha: work.sha,
+        categories: work.categories,
+        testFiles: work.testFiles,
+        targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
+      });
       const candidateRun = await runMeasuredCommit({
         input,
         deps,
@@ -261,16 +320,39 @@ export async function executeBisect(
         targetObservations
           .map((observation) => [observation.targetId, observation]),
       );
+      const beforeTargets = new Map(session.targets.map((target) => [target.id, target]));
       session = applyObservations(session, work.sha, observations);
+      logDecision('candidate-observed', `Applied ${targetObservations.length} observation(s) from ${shortSha(work.sha)}`, {
+        sha: work.sha,
+        observations: targetObservations.map((observation) => {
+          const before = beforeTargets.get(observation.targetId);
+          const after = session.targets.find((target) => target.id === observation.targetId);
+          return {
+            targetId: observation.targetId,
+            present: observation.present,
+            previousInterval: before ? intervalLogData(before, input.gitRange.orderedCommits) : null,
+            nextInterval: after ? intervalLogData(after, input.gitRange.orderedCommits) : null,
+            status: after?.status,
+            firstBadSha: after?.firstBadSha,
+          };
+        }),
+      });
       persist();
     }
 
     session = completeSession(session, deps.now());
+    logDecision('session-complete', 'Compare bisect session completed', {
+      foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
+      invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
+      unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
+      summaryPath: path.join(input.resultsDirectory, 'summary.json'),
+    });
     deps.writeSummary(session);
     persist();
     return session;
   } catch (error) {
     primaryError = error;
+    logDecision('session-failed', `Compare bisect failed: ${(error as Error).message}`);
     session = {
       ...session,
       status: 'failed',
@@ -367,6 +449,8 @@ function createDefaultDependencies(options: {
     }),
     writeSession: (session) => writeSessionAtomic(path.join(options.resultsDirectory, 'session.json'), session),
     writeSummary: (session) => writeSummary(path.join(options.resultsDirectory, 'summary.json'), session),
+    recordDecision: createDecisionLogWriter(options.resultsDirectory),
+    logProgress: (message) => console.log(`[compare bisect] ${message}`),
     now: () => new Date().toISOString(),
   };
 }
@@ -391,17 +475,28 @@ async function runMeasuredCommit(options: {
   };
 
   try {
+    options.deps.logProgress(`Checking out ${shortSha(options.sha)}`);
     await options.deps.checkout(options.sha);
+    options.deps.logProgress(`Syncing experiment volume for ${shortSha(options.sha)}`);
     await options.deps.materialize({
       previousSha: options.previousSha,
       candidateSha: options.sha,
     });
+    options.deps.logProgress(`Refreshing experiment server for ${shortSha(options.sha)} using ${preferredMode} mode`);
     const refresh = await options.deps.refresh({ sha: options.sha, preferredMode });
+    options.deps.logProgress(
+      `Running compare for ${shortSha(options.sha)} ` +
+      `(${options.categories.join(', ') || 'no categories'}, ${formatTestScope(options.testFiles)})`,
+    );
     const compare = await options.deps.compare({
       sha: options.sha,
       categories: options.categories,
       testFiles: options.testFiles,
     });
+    options.deps.logProgress(
+      `Finished ${shortSha(options.sha)} ` +
+      `(refresh=${refresh.mode}${refresh.usedFallback ? ', fallback=true' : ''})`,
+    );
     return {
       compare,
       commitRun: {
@@ -413,6 +508,7 @@ async function runMeasuredCommit(options: {
       },
     };
   } catch (error) {
+    options.deps.logProgress(`Candidate ${shortSha(options.sha)} failed: ${(error as Error).message}`);
     return {
       compare: { testResults: [] },
       commitRun: {
@@ -715,6 +811,7 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
   console.log('');
   console.log(`Compare bisect ${session.status}.`);
   console.log(`Summary: ${path.join(resultsDirectory, 'summary.json')}`);
+  console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
   console.log(`Targets: ${found.length} found, ${invalid.length} invalid, ${unresolved.length} unresolved`);
   if (found.length === 0) {
     if (session.targets.length === 0) console.log('No regression targets were present at the bad ref.');
@@ -730,4 +827,68 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
 
 function shortSha(sha: string): string {
   return sha.slice(0, 7);
+}
+
+function createDecisionLogWriter(resultsDirectory: string): (entry: BisectDecisionLogEntry) => void {
+  const jsonlPath = path.join(resultsDirectory, 'decision-log.jsonl');
+  const markdownPath = path.join(resultsDirectory, 'decision-log.md');
+  let initialized = false;
+
+  return (entry) => {
+    fs.mkdirSync(resultsDirectory, { recursive: true });
+    if (!initialized) {
+      fs.writeFileSync(markdownPath, '# Compare Bisect Decision Log\n\n', 'utf8');
+      fs.writeFileSync(jsonlPath, '', 'utf8');
+      initialized = true;
+    }
+    fs.appendFileSync(jsonlPath, `${JSON.stringify(entry)}\n`, 'utf8');
+    fs.appendFileSync(markdownPath, formatDecisionMarkdown(entry), 'utf8');
+  };
+}
+
+function formatDecisionMarkdown(entry: BisectDecisionLogEntry): string {
+  const lines = [
+    `- \`${entry.timestamp}\` **${entry.event}** — ${entry.message}`,
+  ];
+  if (entry.data && Object.keys(entry.data).length > 0) {
+    lines.push('');
+    lines.push('  ```json');
+    lines.push(JSON.stringify(entry.data, null, 2).split('\n').map((line) => `  ${line}`).join('\n'));
+    lines.push('  ```');
+  }
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
+function formatTestScope(testFiles: readonly string[]): string {
+  if (testFiles.length === 0) return 'all tests';
+  if (testFiles.length === 1) return testFiles[0];
+  return `${testFiles.length} test files`;
+}
+
+function targetLogData(target: BisectTarget, orderedCommits?: readonly string[]): Record<string, unknown> {
+  return {
+    id: target.id,
+    category: target.category,
+    testFile: target.testFile,
+    testName: target.testName,
+    viewport: target.viewport,
+    subject: target.subject,
+    status: target.status,
+    firstBadSha: target.firstBadSha,
+    invalidReason: target.invalidReason,
+    interval: orderedCommits ? intervalLogData(target, orderedCommits) : {
+      goodIndex: target.goodIndex,
+      badIndex: target.badIndex,
+    },
+  };
+}
+
+function intervalLogData(target: BisectTarget, orderedCommits: readonly string[]): Record<string, unknown> {
+  return {
+    goodIndex: target.goodIndex,
+    goodSha: orderedCommits[target.goodIndex],
+    badIndex: target.badIndex,
+    badSha: orderedCommits[target.badIndex],
+  };
 }
