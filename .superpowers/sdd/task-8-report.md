@@ -57,3 +57,15 @@ After restoring the documented expectation to `aa1b86ae9ab48392844741b2cd90249ea
 - `yarn workspace shaka-perf typecheck` — PASS after dependency builds.
 - `git diff --check` — PASS.
 - Live seeded-history acceptance — PENDING; deliberately not run or claimed.
+
+## 2026-07-12 Demo-Only Seed History Rewrite
+
+- Supersedes the prior seed-history SHA references after the shared `codex/git-bisect-demo-history` branch was rewritten to the demo-only tip `f7b872f2a6d5817be15261b4d9f21a4f6814126f`.
+- The deterministic fixture now starts at `38dae6871b8b443dd1880269dacde951700e77cc` and includes every one of the 17 commits from `git rev-list --reverse 38dae687..codex/git-bisect-demo-history`, including the clean documentation checkpoints.
+- Documented first-bad results are homepage visual `58cc828b7272cd69408fa4dc5cd36206dcd8846a`, homepage perf `9c7cfff6c0ca9bd561f5bb9905a1b09ee3132d1e`, homepage accessibility `fcb0e2b107a99c6e4edab01da114d4d83b3d7a94`, and product-detail visual/perf `5345dffb62b761b9cb0e1516a6bbd4389a6cf642`.
+
+### Rewrite TDD Evidence
+
+- RED: after replacing only the ordered commit and event metadata while retaining the prior expected SHAs, `yarn workspace shaka-perf test --runInBand packages/shaka-perf/src/compare/bisect/__tests__/seed-history.test.ts` failed with all five received first-bad SHAs equal to the rewritten values above.
+- GREEN: after updating the expected first-bad SHAs, the same focused test passed: 1 suite and 1 test.
+- Broader verification: all bisect tests passed (8 suites, 70 tests); `yarn workspace shaka-perf typecheck` and `git diff --check` passed.
