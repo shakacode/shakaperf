@@ -14,7 +14,8 @@ import { startProxyServer, type ProxyDispatcher } from '../server';
 import { tryProxy } from '../client';
 import { endpointPaths } from '../paths';
 import { PROTOCOL_VERSION } from '../protocol';
-import { MenuBusyError } from '../../commands/servers-menu';
+import { createDispatcher } from '../dispatch';
+import { MenuBusyError, type MenuController } from '../../commands/servers-menu';
 import type { ResolvedConfig } from '../../types';
 
 /**
@@ -233,5 +234,56 @@ describe('ipc proxy', () => {
         await proxy.close();
       }
     });
+  });
+});
+
+describe('ipc dispatcher', () => {
+  it('routes compare bisect lease and refresh requests through the menu controller', async () => {
+    const calls: string[] = [];
+    const controller: MenuController = {
+      async rebuildAndRestart() {
+        calls.push('rebuild');
+      },
+      async restartContainersAndServers() {
+        calls.push('restart-containers');
+      },
+      async restartServers() {
+        calls.push('restart-servers');
+      },
+      async stopContainersAndExit() {
+        calls.push('stop-containers');
+      },
+      async runOneOff<T>(_verb: string, runner: () => Promise<T>): Promise<T> {
+        calls.push('run-one-off');
+        return runner();
+      },
+      async beginBisectSession(token) {
+        calls.push(`begin:${token}`);
+      },
+      async refreshBisectExperiment(request) {
+        calls.push(`refresh:${request.token}:${request.mode}:${request.commands.join('|')}`);
+      },
+      async endBisectSession(token) {
+        calls.push(`end:${token}`);
+      },
+    };
+    const dispatch = createDispatcher(fakeConfig('bisect-dispatch'), () => controller);
+
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-begin', token: 't1' });
+    await dispatch({
+      v: PROTOCOL_VERSION,
+      cmd: 'bisect-refresh',
+      token: 't1',
+      mode: 'commands',
+      commands: ['yarn build'],
+      noCache: false,
+    });
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', token: 't1' });
+
+    expect(calls).toEqual([
+      'begin:t1',
+      'refresh:t1:commands:yarn build',
+      'end:t1',
+    ]);
   });
 });
