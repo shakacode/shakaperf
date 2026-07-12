@@ -587,10 +587,9 @@ Build only experiment with the existing `build(config, { target: 'experiment' })
 
 - [ ] **Step 3: Implement targeted Overmind control**
 
-Discover process names from Procfile command bodies containing `run-overmind-command experiment` or `notify-server-started experiment`. Run:
+Discover process names from Procfile command bodies containing `run-overmind-command experiment` or `notify-server-started experiment`. Use Overmind's atomic restart command so the supervisor never observes a separate stopped-process interval:
 
 ```ts
-await exec('overmind', ['stop', '--socket', socketPath, ...processNames], { cwd: config.projectDir });
 await exec('overmind', ['restart', '--socket', socketPath, ...processNames], { cwd: config.projectDir });
 ```
 
