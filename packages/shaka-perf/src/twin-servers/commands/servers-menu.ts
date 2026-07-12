@@ -47,6 +47,7 @@ import {
   type ServerLogStatus,
 } from '../helpers/server-log';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from '../helpers/project-paths';
+import { BisectSessionController, type BisectRefreshResult } from './bisect-session';
 
 export interface ServersMenuOptions {
   verbose?: boolean;
@@ -93,66 +94,22 @@ export interface MenuController {
    */
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
   /** Pause auto-sync and reject unrelated lifecycle actions while compare bisect owns the session. */
-  beginBisectSession(token: string, ownerPid: number): Promise<void>;
+  beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
   /** Refresh the experiment side for the currently active compare bisect session. */
   refreshBisectExperiment(request: {
-    token: string;
+    sessionId: string;
     mode: 'commands' | 'container';
-    commands: string[];
+    rebuildCommands: string[];
     noCache: boolean;
-  }): Promise<void>;
+  }): Promise<BisectRefreshResult>;
   /** End the compare bisect session and allow normal menu auto-sync/actions again. */
-  endBisectSession(token: string): Promise<void>;
+  endBisectSession(sessionId: string): Promise<void>;
 }
 
 export class MenuBusyError extends Error {
   constructor(reason: string) {
     super(reason);
     this.name = 'MenuBusyError';
-  }
-}
-
-interface ActiveBisectLease {
-  token: string;
-  ownerPid: number;
-}
-
-export class BisectLease {
-  private current: ActiveBisectLease | null = null;
-
-  get active(): boolean {
-    this.reapAbandonedOwner();
-    return this.current !== null;
-  }
-
-  begin(token: string, ownerPid: number): void {
-    this.reapAbandonedOwner();
-    if (this.current && this.current.token !== token) {
-      throw new Error('another compare bisect session is already active');
-    }
-    this.current = { token, ownerPid };
-  }
-
-  require(token: string): void {
-    this.reapAbandonedOwner();
-    if (this.current?.token !== token) {
-      throw new Error('compare bisect session token does not match the active lease');
-    }
-  }
-
-  end(token: string): void {
-    this.require(token);
-    this.current = null;
-  }
-
-  private reapAbandonedOwner(): void {
-    if (!this.current) return;
-    try {
-      process.kill(this.current.ownerPid, 0);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EPERM') return;
-      this.current = null;
-    }
   }
 }
 
@@ -191,7 +148,7 @@ interface MenuState {
   picker: BranchPickerState | null;
   autoSyncCount: number;
   lastMessage: string | null;
-  bisectLease: BisectLease;
+  bisectSession: BisectSessionController;
 }
 
 interface BranchPickerItem {
@@ -274,7 +231,7 @@ export async function runServersMenu(
     picker: null,
     autoSyncCount: 0,
     lastMessage: null,
-    bisectLease: new BisectLease(),
+    bisectSession: new BisectSessionController(config),
   };
 
   let stopping = false;
@@ -697,7 +654,7 @@ export async function runServersMenu(
   ): Promise<T> => {
     if (!state.menuReady) throw new MenuBusyError('menu is still starting up');
     if (stopping) throw new MenuBusyError('menu is shutting down');
-    if (state.bisectLease.active && !actionOptions.allowDuringBisect) {
+    if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
       throw new MenuBusyError('compare bisect session is active');
     }
     const release = await acquireLock();
@@ -708,7 +665,7 @@ export async function runServersMenu(
       release();
       throw new MenuBusyError('menu is shutting down');
     }
-    if (state.bisectLease.active && !actionOptions.allowDuringBisect) {
+    if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
       release();
       throw new MenuBusyError('compare bisect session is active');
     }
@@ -729,14 +686,10 @@ export async function runServersMenu(
       } else if (state.activity.verb === verb) {
         state.activity = previousActivity;
       }
-      if (!state.bisectLease.active) performAutoSync();
+      if (state.bisectSession.activeSessionId === null) performAutoSync();
       repaint();
       release();
     }
-  };
-
-  const requireBisectLease = (token: string): void => {
-    state.bisectLease.require(token);
   };
 
   const controller: MenuController = {
@@ -751,10 +704,10 @@ export async function runServersMenu(
     restartServers: () => runProxiedAction('restarting servers', runRestartServers),
     stopContainersAndExit: () => runProxiedAction('stopping containers', runStopContainersAndExit),
     runOneOff: (verb, runner) => runProxiedAction(verb, runner),
-    beginBisectSession: (token, ownerPid) => runProxiedAction(
+    beginBisectSession: (sessionId, ownerPid) => runProxiedAction(
       'beginning compare bisect session',
       async () => {
-        state.bisectLease.begin(token, ownerPid);
+        state.bisectSession.beginSession(sessionId, ownerPid);
         state.lastMessage = 'Compare bisect owns experiment refresh; auto-sync is paused.';
       },
       { allowDuringBisect: true },
@@ -762,25 +715,18 @@ export async function runServersMenu(
     refreshBisectExperiment: (request) => runProxiedAction(
       `refreshing compare bisect experiment (${request.mode})`,
       async () => {
-        requireBisectLease(request.token);
-        if (request.mode === 'container') {
-          await runRebuild('experiment', { noCache: request.noCache });
-          state.lastMessage = 'Compare bisect rebuilt experiment image.';
-          return;
-        }
-        for (const command of request.commands) {
-          await runCmd(config, 'experiment', command);
-        }
-        await runRestartServers();
-        state.lastMessage = 'Compare bisect refreshed experiment commands.';
+        const result = await state.bisectSession.refreshExperiment(request.sessionId, request);
+        state.lastMessage = result.usedFallback
+          ? 'Compare bisect command refresh failed; rebuilt experiment container.'
+          : `Compare bisect refreshed experiment using ${result.mode} mode.`;
+        return result;
       },
       { allowDuringBisect: true },
     ),
-    endBisectSession: (token) => runProxiedAction(
+    endBisectSession: (sessionId) => runProxiedAction(
       'ending compare bisect session',
       async () => {
-        requireBisectLease(token);
-        state.bisectLease.end(token);
+        state.bisectSession.endSession(sessionId);
         state.lastMessage = 'Compare bisect finished; auto-sync resumed.';
       },
       { allowDuringBisect: true },
@@ -802,7 +748,7 @@ export async function runServersMenu(
     // Fast-fail menu keypresses while the slot is taken — the user is
     // expected to look at the menu and try again. (Contrast with proxied
     // requests in `runProxiedAction`, which deliberately queue.)
-    if (state.busy || stopping || !state.menuReady || state.bisectLease.active) return;
+    if (state.busy || stopping || !state.menuReady || state.bisectSession.activeSessionId !== null) return;
     const release = await acquireLock();
     // Recheck: the user could have pressed Ctrl+C while we were waiting
     // (in practice the lock is uncontended here because the menu
@@ -860,7 +806,7 @@ export async function runServersMenu(
       dispatchPickerKey(key);
       return;
     }
-    if (state.busy || stopping || !state.menuReady || state.bisectLease.active) return;
+    if (state.busy || stopping || !state.menuReady || state.bisectSession.activeSessionId !== null) return;
     const visible = visibleItems(items, state);
     if (key === 'up') {
       state.selectedIndex = Math.max(0, state.selectedIndex - 1);
@@ -964,7 +910,7 @@ export async function runServersMenu(
   const pendingSync = new Set<string>();
   let syncTimer: NodeJS.Timeout | null = null;
   const performAutoSync = (): void => {
-    if (state.busy || stopping || state.bisectLease.active || pendingSync.size === 0) return;
+    if (state.busy || stopping || state.bisectSession.activeSessionId !== null || pendingSync.size === 0) return;
     // Re-read per batch so a fresh rebuild's manifest is picked up immediately.
     // Without a manifest (never built, or older shaka-perf), fall back to the
     // live dockerignore and skip deletion handling — we can't safely unlink
