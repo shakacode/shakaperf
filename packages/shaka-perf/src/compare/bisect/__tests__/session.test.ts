@@ -18,7 +18,7 @@ import {
   type ExecuteBisectDependencies,
   type ExecuteBisectInput,
 } from '../session';
-import { runCandidate } from '../run-candidate';
+import { BisectInterruptedError, runCandidate } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
@@ -102,13 +102,16 @@ function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
 
 interface HarnessOptions {
   signalOnCompare?: string;
-  signalOnDecisionEvent?: string;
+  signalOnTerminalWriteStatus?: BisectSession['status'];
+  signalOnSummary?: boolean;
   signal?: NodeJS.Signals;
+  beginSessionError?: Error;
   checkoutErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
-  writeSessionErrorStatus?: BisectSession['status'];
+  disposeError?: Error;
+  terminalWriteSessionErrors?: Error[];
 }
 
 function deps(
@@ -128,12 +131,15 @@ function deps(
     events: string[];
     progress: string[];
     decisions: BisectDecisionLogEntry[];
+    disposeAttempts: number;
+    sessionAttempts: BisectSession[];
+    summaryWriteHandlerCounts: number[];
+    terminalWriteHandlerCounts: number[];
     checkpoints: Array<{ afterEvent: string | undefined; session: BisectSession }>;
     summaryAfterEvents: string[][];
     signalHandlers: Set<(signal: NodeJS.Signals) => void>;
   };
 } {
-  let writeSessionErrorThrown = false;
   const calls = {
     checkouts: [] as string[],
     materialized: [] as Array<[string | null, string]>,
@@ -145,6 +151,10 @@ function deps(
     events: [] as string[],
     progress: [] as string[],
     decisions: [] as BisectDecisionLogEntry[],
+    disposeAttempts: 0,
+    sessionAttempts: [] as BisectSession[],
+    summaryWriteHandlerCounts: [] as number[],
+    terminalWriteHandlerCounts: [] as number[],
     checkpoints: [] as Array<{ afterEvent: string | undefined; session: BisectSession }>,
     summaryAfterEvents: [] as string[][],
     signalHandlers: new Set<(signal: NodeJS.Signals) => void>(),
@@ -157,10 +167,15 @@ function deps(
     deps: {
       installSignalHandlers(handler) {
         calls.signalHandlers.add(handler);
-        return () => calls.signalHandlers.delete(handler);
+        return () => {
+          calls.disposeAttempts += 1;
+          calls.signalHandlers.delete(handler);
+          if (options.disposeError) throw options.disposeError;
+        };
       },
       async beginSession() {
         calls.events.push('lease:begin');
+        if (options.beginSessionError) throw options.beginSessionError;
       },
       async endSession() {
         calls.events.push('lease:end');
@@ -207,22 +222,30 @@ function deps(
       },
       writeSession(session) {
         const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
+        calls.sessionAttempts.push(snapshot);
+        if (session.status !== 'running') {
+          calls.terminalWriteHandlerCounts.push(calls.signalHandlers.size);
+        }
+        if (session.status === options.signalOnTerminalWriteStatus) {
+          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+        }
+        if (session.status !== 'running') {
+          const writeError = options.terminalWriteSessionErrors?.shift();
+          if (writeError) throw writeError;
+        }
         calls.sessions.push(snapshot);
         calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
-        if (!writeSessionErrorThrown && session.status === options.writeSessionErrorStatus) {
-          writeSessionErrorThrown = true;
-          throw new Error(`persist ${session.status} exploded`);
-        }
       },
       writeSummary(session) {
+        calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
+        if (options.signalOnSummary) {
+          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+        }
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
         calls.summaryAfterEvents.push([...calls.events]);
       },
       recordDecision(entry) {
         calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
-        if (entry.event === options.signalOnDecisionEvent) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
       },
       logProgress(message) {
         calls.progress.push(message);
@@ -360,28 +383,79 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
-  it('still restores, releases the lease, and disposes handlers when failure persistence throws', async () => {
-    const harness = deps({
-      bad: [resultWithVisualDiff('diff.png')],
-    }, {
-      compareErrorBySha: {
-        bad: new Error('compare exploded'),
-      },
-      writeSessionErrorStatus: 'failed',
+  it('retries a transient terminal persistence failure with durable failed state', async () => {
+    const harness = deps({ bad: [] }, {
+      terminalWriteSessionErrors: [new Error('transient persistence failure')],
     });
 
     await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(
-      /compare exploded.*session persistence failed: persist failed exploded/i,
+      /transient persistence failure/i,
     );
 
-    expect(harness.calls.restored).toEqual([['bad', 'bad']]);
-    expect(harness.calls.events.slice(-4)).toEqual([
-      'checkout:original',
-      'sync:original',
-      'refresh:original',
-      'lease:end',
-    ]);
-    expect(harness.calls.signalHandlers.size).toBe(0);
+    expect(harness.calls.sessionAttempts.filter((session) => session.status !== 'running')
+      .map((session) => session.status)).toEqual(['complete', 'failed']);
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'failed',
+      failure: expect.stringMatching(/transient persistence failure/i),
+    });
+    expect(harness.calls.sessions.some((session) => session.status === 'complete')).toBe(false);
+    expect(harness.calls.summaries).toEqual([]);
+  });
+
+  it('bounds permanent terminal persistence failure without complete artifacts', async () => {
+    const harness = deps({ bad: [] }, {
+      terminalWriteSessionErrors: [
+        new Error('persistence failed once'),
+        new Error('persistence failed twice'),
+      ],
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/persistence failed/i);
+
+    expect(harness.calls.sessionAttempts.filter((session) => session.status !== 'running'))
+      .toHaveLength(2);
+    expect(harness.calls.sessions.some((session) => session.status === 'complete')).toBe(false);
+    expect(harness.calls.summaries).toEqual([]);
+  });
+
+  it('rethrows the primary error object with cleanup failure context', async () => {
+    const primaryError = new TypeError('lease acquisition exploded');
+    const originalStack = primaryError.stack;
+    const harness = deps({}, {
+      beginSessionError: primaryError,
+      disposeError: new Error('dispose exploded'),
+    });
+
+    let rejection: unknown;
+    try {
+      await executeBisect(input(rootDir), harness.deps);
+    } catch (error) {
+      rejection = error;
+    }
+
+    expect(rejection).toBe(primaryError);
+    expect(rejection).toBeInstanceOf(TypeError);
+    expect((rejection as Error).stack).toBe(originalStack);
+    expect((rejection as Error).cause).toEqual(expect.objectContaining({
+      message: expect.stringMatching(/dispose exploded/i),
+    }));
+  });
+
+  it('persists handler disposal failure before writing terminal artifacts', async () => {
+    const harness = deps({ bad: [] }, {
+      disposeError: new Error('dispose exploded'),
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/dispose exploded/i);
+
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'failed',
+      failure: expect.stringMatching(/dispose exploded/i),
+    });
+    expect(harness.calls.sessions.some((session) => session.status === 'complete')).toBe(false);
+    expect(harness.calls.summaries).toEqual([]);
+    expect(harness.calls.disposeAttempts).toBe(1);
+    expect(harness.calls.terminalWriteHandlerCounts).toEqual([0]);
   });
 
   it('restores after the first checkout mutates the worktree and then rejects', async () => {
@@ -478,8 +552,15 @@ describe('compare bisect session orchestration', () => {
       signal,
     });
 
-    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(new RegExp(signal, 'i'));
+    let rejection: unknown;
+    try {
+      await executeBisect(input(rootDir), harness.deps);
+    } catch (error) {
+      rejection = error;
+    }
 
+    expect(rejection).toBeInstanceOf(BisectInterruptedError);
+    expect((rejection as Error).message).toMatch(new RegExp(signal, 'i'));
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'interrupted',
     });
@@ -531,20 +612,24 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
-  it('keeps signal handlers through final durable-state persistence', async () => {
+  it('disposes signal handlers before summary and session terminal writes', async () => {
     const harness = deps({ bad: [] }, {
-      signalOnDecisionEvent: 'session-complete',
+      signalOnTerminalWriteStatus: 'complete',
+      signalOnSummary: true,
       signal: 'SIGTERM',
     });
 
-    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/SIGTERM/i);
+    await expect(executeBisect(input(rootDir), harness.deps)).resolves.toMatchObject({
+      status: 'complete',
+    });
 
     expect(harness.calls.sessions.at(-1)).toMatchObject({
-      status: 'interrupted',
-      failure: expect.stringMatching(/SIGTERM/i),
+      status: 'complete',
     });
-    expect(harness.calls.sessions.at(-1)?.status).not.toBe('running');
+    expect(harness.calls.summaries.at(-1)).toMatchObject({ status: 'complete' });
     expect(harness.calls.signalHandlers.size).toBe(0);
+    expect(harness.calls.summaryWriteHandlerCounts).toEqual([0]);
+    expect(harness.calls.terminalWriteHandlerCounts).toEqual([0]);
   });
 
   it('runs a shared midpoint once for multiple cached targets', async () => {

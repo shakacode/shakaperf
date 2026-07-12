@@ -89,3 +89,36 @@
 ### Concerns
 
 - None.
+
+## 2026-07-12 Final focused lifecycle follow-up
+
+### Implementation
+
+- Disposed signal handlers after checkout/server cleanup but before terminal decision, session, or summary persistence; disposer failures now produce durable failed state and suppress complete summaries.
+- Replaced the open-ended terminal stabilization loop with at most two best-effort session writes. A failed would-be-complete write changes the retry payload to failed, and permanent persistence failure never writes a summary.
+- Preserved the original primary `Error` object, subtype, and stack while attaching cleanup failures through `cause`; generated `BisectInterruptedError` instances remain the surfaced interruption type.
+- Moved the terminal signal timing probe from decision logging to the actual `writeSession` and `writeSummary` boundaries and modeled only successful writes as durable artifacts.
+- Retained true-`finally` restoration, lease release, and restoration after a first checkout mutates then rejects.
+
+### RED command and output
+
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - FAIL: 1 suite; 11 failed, 6 passed before harness-only ordering refinement.
+  - Terminal persistence replaced the primary error and stopped after the first failed write instead of durably retrying failed state.
+  - Handler disposal failure occurred after a durable complete session had already been written.
+  - A signal emitted at the actual terminal session write was still observed because handlers remained installed through persistence.
+
+### GREEN commands and output
+
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - PASS: 1 suite, 18 tests.
+- `yarn workspace shaka-perf test packages/shaka-perf/src/compare/bisect/__tests__ --runInBand`
+  - PASS: 8 suites, 69 tests.
+- `yarn workspace shaka-perf run typecheck`
+  - PASS.
+- `git diff --check`
+  - PASS.
+
+### Concerns
+
+- None.
