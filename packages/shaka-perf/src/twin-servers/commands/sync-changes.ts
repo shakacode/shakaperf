@@ -42,7 +42,8 @@ export async function syncChanges(
     ? config.volumes.control
     : config.volumes.experiment;
 
-  // Get git root to ensure file paths are correct
+  // Git reports paths from the repository root, while the bind mount and
+  // build manifest are relative to the Docker build context.
   const sideBuildDir = dockerBuildDirForSide(config, target);
   const gitRoot = getGitRootDirectory(sideBuildDir);
   const sourceDir = gitRoot || sideBuildDir;
@@ -77,12 +78,20 @@ export async function syncChanges(
   const imageFiles = buildManifest ? new Set(buildManifest.files) : null;
 
   for (const relativeFilePath of changedFiles) {
-    const sourcePath = path.join(sourceDir, relativeFilePath);
-    const destPath = path.join(targetDir, relativeFilePath);
+    const sourcePath = path.resolve(sourceDir, relativeFilePath);
+    const relativeBuildPath = path.relative(sideBuildDir, sourcePath);
+    if (
+      relativeBuildPath === '..' ||
+      relativeBuildPath.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relativeBuildPath)
+    ) {
+      continue;
+    }
+    const destPath = path.join(targetDir, relativeBuildPath);
 
     // Apply deletions to the bind mount so the container matches the source.
     if (!fs.existsSync(sourcePath)) {
-      const posixPath = relativeFilePath.split(path.sep).join('/');
+      const posixPath = relativeBuildPath.split(path.sep).join('/');
       if (!imageFiles || !imageFiles.has(posixPath)) {
         if (verbose) {
           console.log(`  Skipped (not in build manifest): ${relativeFilePath}`);

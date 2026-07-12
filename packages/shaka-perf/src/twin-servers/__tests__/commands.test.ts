@@ -158,6 +158,44 @@ describe('sync-changes command', () => {
 
     expect(fs.existsSync(runtimePath)).toBe(true);
   });
+
+  it('maps git-root paths into a nested build context', async () => {
+    const { execSync } = require('child_process');
+    const { syncChanges } = require('../commands/sync-changes');
+    const config = createMockConfig(tmpDir);
+    const repoRoot = config.dockerBuildDir;
+    const buildDir = path.join(repoRoot, 'packages', 'web');
+    config.projectDir = repoRoot;
+    config.experimentDir = repoRoot;
+    config.dockerBuildDir = buildDir;
+
+    const sourcePath = path.join(buildDir, 'app.ts');
+    const liveImagePath = path.join(config.volumes.experiment, 'README.md');
+    fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+    fs.writeFileSync(sourcePath, 'new source content');
+    fs.mkdirSync(config.volumes.experiment, { recursive: true });
+    fs.writeFileSync(liveImagePath, 'live image content');
+    fs.writeFileSync(`${config.volumes.experiment}.manifest.json`, JSON.stringify({
+      version: 1,
+      dockerignore: '',
+      copySources: null,
+      files: ['README.md', 'app.ts'],
+    }));
+
+    (execSync as jest.Mock).mockImplementation((cmd: string) => {
+      if (cmd.includes('rev-parse --show-toplevel')) return repoRoot;
+      if (cmd.includes('diff --cached --name-only')) return 'README.md\npackages/web/app.ts';
+      if (cmd.includes('diff --name-only')) return '';
+      if (cmd.includes('ls-files --others')) return '';
+      return '';
+    });
+
+    await syncChanges(config, 'experiment', { verbose: false });
+
+    expect(fs.readFileSync(liveImagePath, 'utf8')).toBe('live image content');
+    expect(fs.readFileSync(path.join(config.volumes.experiment, 'app.ts'), 'utf8')).toBe('new source content');
+    expect(fs.existsSync(path.join(config.volumes.experiment, 'packages', 'web', 'app.ts'))).toBe(false);
+  });
 });
 
 describe('say command', () => {

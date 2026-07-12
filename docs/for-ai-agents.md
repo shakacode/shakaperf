@@ -90,7 +90,7 @@ yarn shaka-perf compare --categories perf --filter "Homepage Hero"
 yarn shaka-perf compare
 ```
 
-Commit an experiment change only after measuring it. `sync-changes` sees uncommitted changes; after committing, rebuild the experiment image with `yarn shaka-perf servers build --target experiment` and rerun `start-containers` before measuring.
+Commit an experiment change only after measuring it. `sync-changes` sees uncommitted changes; after committing, rebuild the experiment image with `yarn shaka-perf servers build --target experiment`, then rerun `start-containers` and start the apps with `start-servers` in the background before measuring.
 
 `--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
 
@@ -170,7 +170,8 @@ https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md. Config: 
   `yarn shaka-perf servers sync-changes experiment`
   (app build steps via `yarn shaka-perf servers run-cmd experiment "<cmd>"`).
   Commit experiment changes only after measuring; a committed change needs
-  `yarn shaka-perf servers build --target experiment` and `start-containers`.
+  `yarn shaka-perf servers build --target experiment`, `start-containers`, and
+  `start-servers` in the background before measuring.
 - Inner loop: `yarn shaka-perf compare --categories perf --filter "<test name>"`.
 - Full check before pushing: `yarn shaka-perf compare`
   (exit 0 = clean; a completed failed run prints `FAILED: <summary>`; other
