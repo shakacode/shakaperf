@@ -31,6 +31,8 @@ import { createVisregStage, type VisregResult } from './stages/visreg';
 import type { AccessibilityStageConfig } from '../audit/stages/accessibility';
 import { hasSavedByRetries, hasVisualChange, visualChangeCount } from './stages/visreg/selectors';
 import { comparePipelineReport } from './pipeline-report';
+import type { AbTestsConfig } from '../config';
+import { pairedBenchmarkParallelism } from './stages/shared/runtime';
 
 export const comparePipelineMetadata = {
   description: 'Run visreg + perf + accessibility stages side-by-side and produce a unified A/B report.',
@@ -72,6 +74,32 @@ export interface ComparePipelineConfig {
   readonly perfLighthouseConfig?: PerfLighthouseConfig;
   readonly perfPlotTitle?: string;
   readonly accessibility?: AccessibilityStageConfig;
+}
+
+export function comparePipelineConfigFromAbTests(
+  config: AbTestsConfig,
+  overrides: Pick<ComparePipelineConfig, 'artifactRoot' | 'testPathPattern'> = {},
+): ComparePipelineConfig {
+  return {
+    artifactRoot: overrides.artifactRoot,
+    parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
+    testPathPattern: overrides.testPathPattern ?? config.shared.testPathPattern,
+    visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
+    visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
+    visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
+    visregEngineOptions: config.visreg.engineOptions,
+    visregResembleOutputOptions: config.visreg.resembleOutputOptions,
+    visregCompareRetries: config.visreg.compareRetries,
+    visregCompareRetryDelay: config.visreg.compareRetryDelay,
+    perfNumberOfMeasurements: config.perf.numberOfMeasurements,
+    perfRegressionThreshold: config.perf.regressionThreshold,
+    perfPValueThreshold: config.perf.pValueThreshold,
+    perfRegressionThresholdStat: config.perf.regressionThresholdStat,
+    perfSamplingMode: config.perf.samplingMode,
+    perfLighthouseConfig: config.perf.lighthouseConfig,
+    perfPlotTitle: config.perf.plotTitle,
+    accessibility: config.accessibility,
+  };
 }
 
 export function createComparePipeline(input: ComparePipelineConfig) {

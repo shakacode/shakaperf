@@ -13,9 +13,12 @@ import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
-import { createComparePipeline, comparePipelineMetadata } from '../compare-pipeline';
+import {
+  comparePipelineConfigFromAbTests,
+  createComparePipeline,
+  comparePipelineMetadata,
+} from '../compare-pipeline';
 import { createBisectCommand } from '../bisect/cli';
-import { pairedBenchmarkParallelism } from '../stages/shared/runtime';
 import { getCLIDefaultsFromConfig } from '../../cli-defaults';
 
 export async function createCompareCommand(): Promise<Command> {
@@ -63,25 +66,9 @@ export async function createCompareCommand(): Promise<Command> {
       await withAbTestsConfigPath(configPath, async () => {
         const raw = configPath ? await loadAbTestsConfig(configPath) : {};
         const config = parseAbTestsConfig(raw);
-        const pipeline = createComparePipeline({
-          parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
+        const pipeline = createComparePipeline(comparePipelineConfigFromAbTests(config, {
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-          visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
-          visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
-          visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
-          visregEngineOptions: config.visreg.engineOptions,
-          visregResembleOutputOptions: config.visreg.resembleOutputOptions,
-          visregCompareRetries: config.visreg.compareRetries,
-          visregCompareRetryDelay: config.visreg.compareRetryDelay,
-          perfNumberOfMeasurements: config.perf.numberOfMeasurements,
-          perfRegressionThreshold: config.perf.regressionThreshold,
-          perfPValueThreshold: config.perf.pValueThreshold,
-          perfRegressionThresholdStat: config.perf.regressionThresholdStat,
-          perfSamplingMode: config.perf.samplingMode,
-          perfLighthouseConfig: config.perf.lighthouseConfig,
-          perfPlotTitle: config.perf.plotTitle,
-          accessibility: config.accessibility,
-        });
+        }));
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
         const result = await runPipeline(pipeline, {
           controlURL: opts.controlURL ?? config.shared.controlURL,

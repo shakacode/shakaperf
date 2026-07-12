@@ -13,10 +13,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   executeBisect,
+  runBisect,
   type BisectDecisionLogEntry,
   type ExecuteBisectDependencies,
   type ExecuteBisectInput,
 } from '../session';
+import { runCandidate } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
@@ -48,6 +50,8 @@ function input(rootDir: string): ExecuteBisectInput {
       },
     },
     headed: false,
+    controlURL: 'http://control.test',
+    experimentURL: 'http://experiment.test',
   };
 }
 
@@ -85,8 +89,31 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
   };
 }
 
-function deps(resultsBySha: Record<string, readonly TestResult[]>): {
+function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
+  const result = resultWithVisualDiff(diffImage);
+  result.outcomes.push({
+    kind: 'error',
+    stage: 'visreg',
+    viewport: DESKTOP_VIEWPORT,
+    error: { message: 'capture failed after one selector succeeded' },
+  });
+  return result;
+}
+
+interface HarnessOptions {
+  signalOnCompare?: string;
+  signal?: NodeJS.Signals;
+  compareErrorBySha?: Record<string, Error>;
+  refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
+  restoreError?: Error;
+}
+
+function deps(
+  resultsBySha: Record<string, readonly TestResult[]>,
+  options: HarnessOptions = {},
+): {
   deps: ExecuteBisectDependencies;
+  emitSignal(signal: NodeJS.Signals): void;
   calls: {
     checkouts: string[];
     materialized: Array<[string | null, string]>;
@@ -98,6 +125,9 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
     events: string[];
     progress: string[];
     decisions: BisectDecisionLogEntry[];
+    checkpoints: Array<{ afterEvent: string | undefined; session: BisectSession }>;
+    summaryAfterEvents: string[][];
+    signalHandlers: Set<(signal: NodeJS.Signals) => void>;
   };
 } {
   const calls = {
@@ -111,10 +141,20 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
     events: [] as string[],
     progress: [] as string[],
     decisions: [] as BisectDecisionLogEntry[],
+    checkpoints: [] as Array<{ afterEvent: string | undefined; session: BisectSession }>,
+    summaryAfterEvents: [] as string[][],
+    signalHandlers: new Set<(signal: NodeJS.Signals) => void>(),
   };
   return {
     calls,
+    emitSignal(signal) {
+      for (const handler of calls.signalHandlers) handler(signal);
+    },
     deps: {
+      installSignalHandlers(handler) {
+        calls.signalHandlers.add(handler);
+        return () => calls.signalHandlers.delete(handler);
+      },
       async beginSession() {
         calls.events.push('lease:begin');
       },
@@ -127,7 +167,10 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
       },
       async restore(request) {
         calls.restored.push([request.previousSha, request.originalSha]);
-        calls.events.push('restore:original');
+        calls.events.push('checkout:original');
+        calls.events.push('sync:original');
+        calls.events.push('refresh:original');
+        if (options.restoreError) throw options.restoreError;
       },
       async materialize(request) {
         calls.materialized.push([request.previousSha, request.candidateSha]);
@@ -136,7 +179,8 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
       async refresh(request) {
         calls.refreshes.push(request.sha);
         calls.events.push(`refresh:${request.sha}`);
-        return { mode: request.preferredMode, usedFallback: false };
+        return options.refreshBySha?.[request.sha]
+          ?? { mode: request.preferredMode, usedFallback: false };
       },
       async compare(request) {
         calls.events.push(`compare:${request.sha}`);
@@ -145,16 +189,24 @@ function deps(resultsBySha: Record<string, readonly TestResult[]>): {
           categories: [...request.categories],
           testFiles: [...request.testFiles],
         });
+        if (options.signalOnCompare === request.sha) {
+          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+        }
+        const compareError = options.compareErrorBySha?.[request.sha];
+        if (compareError) throw compareError;
         return {
           testResults: resultsBySha[request.sha] ?? [],
           compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
         };
       },
       writeSession(session) {
-        calls.sessions.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+        const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
+        calls.sessions.push(snapshot);
+        calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
       },
       writeSummary(session) {
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+        calls.summaryAfterEvents.push([...calls.events]);
       },
       recordDecision(entry) {
         calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
@@ -213,7 +265,12 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.summaries.at(-1)?.status).toBe('complete');
     expect(harness.calls.restored).toEqual([['b', 'bad']]);
     expect(harness.calls.events.at(0)).toBe('lease:begin');
-    expect(harness.calls.events.slice(-2)).toEqual(['restore:original', 'lease:end']);
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
       'Starting compare bisect session',
       'Measuring bad ref bad to discover regression targets',
@@ -258,7 +315,12 @@ describe('compare bisect session orchestration', () => {
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
     expect(harness.calls.restored).toEqual([['good', 'bad']]);
-    expect(harness.calls.events.slice(-2)).toEqual(['restore:original', 'lease:end']);
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
   });
 
   it('persists failed state and restores after candidate infrastructure errors', async () => {
@@ -277,6 +339,180 @@ describe('compare bisect session orchestration', () => {
       infrastructureError: expect.stringMatching(/missing visreg measurement/i),
     });
     expect(harness.calls.restored).toEqual([['a', 'bad']]);
-    expect(harness.calls.events.slice(-2)).toEqual(['restore:original', 'lease:end']);
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
+  });
+
+  it('rejects mixed valid and error outcomes without advancing boundaries', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiffAndError(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps))
+      .rejects.toThrow(/a.*visreg.*capture failed/i);
+
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'failed',
+      targets: [{ goodIndex: 0, badIndex: 3 }],
+    });
+    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good', 'a']);
+  });
+
+  it('persists checkout, materialize, refresh, compare, and boundary checkpoints', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+
+    await executeBisect(input(rootDir), harness.deps);
+
+    for (const event of ['checkout:bad', 'materialize:bad', 'refresh:bad', 'compare:bad']) {
+      expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
+    }
+    expect(harness.calls.checkpoints.some((checkpoint) => (
+      checkpoint.afterEvent === 'compare:a'
+      && checkpoint.session.targets[0]?.observations.a?.present === false
+    ))).toBe(true);
+  });
+
+  it('persists actual fallback metadata before a compare failure', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      refreshBySha: {
+        a: { mode: 'container', usedFallback: true },
+      },
+      compareErrorBySha: {
+        a: new Error('compare exploded'),
+      },
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/compare exploded/i);
+
+    expect(harness.calls.sessions.at(-1)?.commitRuns.a).toMatchObject({
+      refreshMode: 'container',
+      usedFallback: true,
+      infrastructureError: 'compare exploded',
+    });
+    const beforeCompare = harness.calls.checkpoints.find((checkpoint) => (
+      checkpoint.afterEvent === 'refresh:a'
+      && checkpoint.session.commitRuns.a?.usedFallback === true
+    ));
+    expect(beforeCompare?.session.commitRuns.a?.compareResultsPath).toBeUndefined();
+  });
+
+  it.each(['SIGINT', 'SIGTERM'] as const)(
+    'handles %s by interrupting before boundary updates and cleaning up',
+    async (signal) => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      signalOnCompare: 'a',
+      signal,
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(new RegExp(signal, 'i'));
+
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'interrupted',
+    });
+    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.events.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
+    expect(harness.calls.signalHandlers.size).toBe(0);
+    },
+  );
+
+  it('leaves failed durable state and no summary when restoration fails', async () => {
+    const harness = deps({
+      bad: [],
+    }, {
+      restoreError: new Error('restore exploded'),
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/restore exploded/i);
+
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'failed',
+      failure: expect.stringMatching(/restore exploded/i),
+    });
+    expect(harness.calls.sessions.some((session) => session.status === 'complete')).toBe(false);
+    expect(harness.calls.summaries).toEqual([]);
+    expect(harness.calls.events.at(-1)).toBe('lease:end');
+  });
+
+  it('writes complete state and summary only after restoration and lease release', async () => {
+    const harness = deps({
+      bad: [],
+    });
+
+    await executeBisect(input(rootDir), harness.deps);
+
+    const completeCheckpoint = harness.calls.checkpoints.find((checkpoint) => (
+      checkpoint.session.status === 'complete'
+    ));
+    expect(completeCheckpoint?.afterEvent).toBe('lease:end');
+    expect(harness.calls.summaryAfterEvents[0]?.slice(-4)).toEqual([
+      'checkout:original',
+      'sync:original',
+      'refresh:original',
+      'lease:end',
+    ]);
+  });
+
+  it('runs a shared midpoint once for multiple cached targets', async () => {
+    const withTwoSelectors = (diffImage: string | null): TestResult => {
+      const result = resultWithVisualDiff(diffImage);
+      const visreg = result.outcomes[0]!.measurement as Array<Record<string, unknown>>;
+      visreg.push({ ...visreg[0], selector: '[data-cy="hero"]' });
+      return result;
+    };
+    const harness = deps({
+      good: [withTwoSelectors(null)],
+      a: [withTwoSelectors(null)],
+      b: [withTwoSelectors('diff.png')],
+      bad: [withTwoSelectors('diff.png')],
+    });
+
+    const session = await executeBisect(input(rootDir), harness.deps);
+
+    expect(session.targets).toHaveLength(2);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good', 'a', 'b']);
+  });
+
+  it('exposes one-object runBisect and runCandidate contracts', async () => {
+    const harness = deps({ bad: [] });
+    const bisectInput = input(rootDir);
+
+    await expect(runBisect({
+      cwd: bisectInput.cwd,
+      resultsDirectory: bisectInput.resultsDirectory,
+      config: bisectInput.config,
+      twinServers: bisectInput.twinServers,
+      selectedCategories: bisectInput.selectedCategories,
+      frozenTests: bisectInput.frozenTests,
+      headed: bisectInput.headed,
+      controlURL: bisectInput.controlURL,
+      experimentURL: bisectInput.experimentURL,
+      gitRange: bisectInput.gitRange,
+      dependencies: harness.deps,
+    })).resolves.toMatchObject({ status: 'complete' });
+    expect(runCandidate).toEqual(expect.any(Function));
   });
 });
