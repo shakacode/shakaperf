@@ -17,29 +17,30 @@ import type {
 
 const seedCommits = [
   '38dae6871b8b443dd1880269dacde951700e77cc',
-  'f2cd5c9016e5e758c335e4d5c90eb7bb1a01e4bf',
-  '267da307e57d0aa217dd0b8dad2ff58be9d8c2b2',
-  'aa1b86ae9ab48392844741b2cd90249eab11a9de',
-  'c9b2c71c10fb28f0d6ee4b7d48c5736795144878',
-  'a24c926d4a195a58ea04b49c780bec86a2ea6b95',
-  '5d38dcfb0002cb28d9465e7e8fbab4839c1230f7',
-  '4dbb382fdd67dd18108e33b0995dcca2ad44999a',
-  'af79cafd66b1ee097ecdbecbc014f43b28ffb5cd',
-  'c0adc35333c3760d4411d8d951696132fe9a2024',
-  '38e78824044e63179d86d558b614b41c9cd710e1',
-  '5956eb6b2ad8b5e939a2b53633739a2232a21670',
-  'db65ccdf074819d43152b061a7960d06c55eb297',
-  '5c3dbad44b5aba5d8eb7222d75f1deb9efa050d4',
-  '993637a214f92955fc2b7f076be6ac890be5453b',
-  '5e4c3203c340e950550044838d812555cfa920a5',
-  '780f5a55d4605cf501b1adb8e338b69ac81b06ff',
+  '623a1ae6f39cb6cbddd550ecd33d83c670877d14',
+  'fe8900e2568f11d05e41d43ad62e0aa863017264',
+  '58cc828b7272cd69408fa4dc5cd36206dcd8846a',
+  'a55e7f44dea86afa94775cf448dc3e696c71ed33',
+  '754fcd9b72b5623118a9bc1fb84b87ec98e002e1',
+  '9c7cfff6c0ca9bd561f5bb9905a1b09ee3132d1e',
+  '744fe902ab6b087f761f2df7e1f52bcc2e88d1c1',
+  'ac38e5320e6c33b67474f445c15e3012e22fb491',
+  '463c4296e003fafe5dc4e23f5f43e805e555938d',
+  'fcb0e2b107a99c6e4edab01da114d4d83b3d7a94',
+  'c1e2a62486870b02354c0c5b8727f8944e4913a3',
+  'ce1f6015bfd01e05228d94affb788fe5f0d896a0',
+  '3846371172486d851b836883c54520cc1b844199',
+  '5345dffb62b761b9cb0e1516a6bbd4389a6cf642',
+  '088afb9342d8c4337361df177e3731550b096fc9',
+  '4406a7800cfec9af52e9f7e731a1ad59915ac227',
+  'f7b872f2a6d5817be15261b4d9f21a4f6814126f',
 ];
 
 const seedRegressionsByCommit = {
-  aa1b86ae9ab48392844741b2cd90249eab11a9de: ['homepage-hero-visual'],
-  '5d38dcfb0002cb28d9465e7e8fbab4839c1230f7': ['homepage-tbt'],
-  '38e78824044e63179d86d558b614b41c9cd710e1': ['homepage-button-name'],
-  '993637a214f92955fc2b7f076be6ac890be5453b': [
+  '58cc828b7272cd69408fa4dc5cd36206dcd8846a': ['homepage-hero-visual'],
+  '9c7cfff6c0ca9bd561f5bb9905a1b09ee3132d1e': ['homepage-tbt'],
+  'fcb0e2b107a99c6e4edab01da114d4d83b3d7a94': ['homepage-button-name'],
+  '5345dffb62b761b9cb0e1516a6bbd4389a6cf642': [
     'product-detail-visual',
     'product-detail-tbt',
   ],
@@ -49,11 +50,11 @@ type SeedTargetId =
   (typeof seedRegressionsByCommit)[keyof typeof seedRegressionsByCommit][number];
 
 const expectedFirstBad = {
-  'homepage-hero-visual': 'aa1b86ae9ab48392844741b2cd90249eab11a9de',
-  'homepage-tbt': '5d38dcfb0002cb28d9465e7e8fbab4839c1230f7',
-  'homepage-button-name': '38e78824044e63179d86d558b614b41c9cd710e1',
-  'product-detail-visual': '993637a214f92955fc2b7f076be6ac890be5453b',
-  'product-detail-tbt': '993637a214f92955fc2b7f076be6ac890be5453b',
+  'homepage-hero-visual': '58cc828b7272cd69408fa4dc5cd36206dcd8846a',
+  'homepage-tbt': '9c7cfff6c0ca9bd561f5bb9905a1b09ee3132d1e',
+  'homepage-button-name': 'fcb0e2b107a99c6e4edab01da114d4d83b3d7a94',
+  'product-detail-visual': '5345dffb62b761b9cb0e1516a6bbd4389a6cf642',
+  'product-detail-tbt': '5345dffb62b761b9cb0e1516a6bbd4389a6cf642',
 } as const;
 
 function target(
