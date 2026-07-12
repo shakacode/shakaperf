@@ -9,3 +9,6 @@ demo app and kept easy to inspect.
 
 Clean commits in this branch should stay runtime-neutral. They can update this
 note or other demo-only documentation without changing measured pages.
+
+Runtime fixtures should prefer existing measured routes so future bisect tests
+do not need a special-case demo configuration.
