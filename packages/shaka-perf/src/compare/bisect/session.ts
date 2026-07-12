@@ -96,6 +96,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   beginSession(): Promise<void>;
   endSession(): Promise<void>;
   restore(request: RestoreRequest): Promise<void>;
+  clearSummary(): void;
   writeSession(session: BisectSession): void;
   writeSummary(session: BisectSession): void;
   recordDecision(entry: BisectDecisionLogEntry): void;
@@ -216,6 +217,7 @@ export async function executeBisect(
   deps: ExecuteBisectDependencies,
 ): Promise<BisectSession> {
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
+  deps.clearSummary();
   let session = initialSession(input, deps.now());
   let materializedSha: string | null = null;
   let checkoutAttempted = false;
@@ -530,6 +532,9 @@ function createDefaultDependencies(options: {
         preferredRefreshMode(options.config),
         bisectSessionId,
       );
+    },
+    clearSummary: () => {
+      fs.rmSync(path.join(options.resultsDirectory, 'summary.json'), { force: true });
     },
     materialize: async ({ previousSha, candidateSha }) => {
       if (previousSha === null) {
