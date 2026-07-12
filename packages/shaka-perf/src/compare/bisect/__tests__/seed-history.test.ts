@@ -7,6 +7,8 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { applyCachedObservations, applyObservations, nextCandidate } from '../search';
 import type {
   BisectCategory,
@@ -138,6 +140,17 @@ function seedSession(): BisectSession {
 }
 
 describe('demo ecommerce bisect seed history fixture', () => {
+  it('clears persistent build output before precompiling each candidate', () => {
+    const configPath = path.resolve(
+      __dirname,
+      '../../../../../../demo-ecommerce/abtests.config.ts',
+    );
+
+    expect(fs.readFileSync(configPath, 'utf8')).toContain(
+      "command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile'",
+    );
+  });
+
   it('finds the documented first bad commit for every seeded regression target', () => {
     let session = seedSession();
 

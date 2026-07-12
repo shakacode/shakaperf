@@ -96,17 +96,31 @@ describe('experiment Overmind process targeting', () => {
     ]);
   });
 
-  it('atomically restarts only experiment processes through the live Overmind socket', async () => {
+  it('terminates tracked experiment commands before restarting only experiment processes', async () => {
     const config = fakeConfig();
 
     await restartExperimentProcesses(config);
 
     const socketPath = path.join(config.projectDir, '.overmind.sock');
-    expect(mockExec.mock.calls).toEqual([
-      ['overmind', ['restart', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'], {
-        cwd: config.projectDir,
-      }],
-    ]);
+    expect(mockExec).toHaveBeenNthCalledWith(
+      1,
+      'docker',
+      expect.arrayContaining([
+        'exec',
+        '-T',
+        'experiment-server',
+        'bash',
+        '-c',
+        expect.stringContaining('/tmp/overmind-pid.*'),
+      ]),
+      expect.objectContaining({ cwd: config.projectDir }),
+    );
+    expect(mockExec).toHaveBeenNthCalledWith(
+      2,
+      'overmind',
+      ['restart', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'],
+      { cwd: config.projectDir },
+    );
   });
 
   it('polls and settles only the experiment port', async () => {

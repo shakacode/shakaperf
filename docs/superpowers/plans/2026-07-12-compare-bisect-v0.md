@@ -769,7 +769,7 @@ bisect: {
     },
     {
       description: 'Precompile application assets',
-      command: 'SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
+      command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
     },
   ],
 },
