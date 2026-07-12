@@ -13,6 +13,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   executeBisect,
+  restoreExperimentState,
   runBisect,
   type BisectDecisionLogEntry,
   type ExecuteBisectDependencies,
@@ -107,6 +108,7 @@ interface HarnessOptions {
   signal?: NodeJS.Signals;
   beginSessionError?: Error;
   checkoutErrorBySha?: Record<string, Error>;
+  materializeErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
@@ -197,6 +199,8 @@ function deps(
       async materialize(request) {
         calls.materialized.push([request.previousSha, request.candidateSha]);
         calls.events.push(`materialize:${request.candidateSha}`);
+        const materializeError = options.materializeErrorBySha?.[request.candidateSha];
+        if (materializeError) throw materializeError;
       },
       async refresh(request) {
         calls.refreshes.push(request.sha);
@@ -285,6 +289,14 @@ describe('compare bisect session orchestration', () => {
       subject: 'document',
       status: 'found',
       firstBadSha: 'b',
+      observations: {
+        bad: expect.objectContaining({
+          commitSha: 'bad',
+          present: true,
+          values: expect.objectContaining({ diffPixels: 42 }),
+          artifacts: expect.arrayContaining(['control.png', 'experiment.png', 'diff.png']),
+        }),
+      },
     }]);
     expect(harness.calls.checkouts).toEqual(['bad', 'good', 'a', 'b']);
     expect(harness.calls.materialized).toEqual([
@@ -498,6 +510,22 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
+  it('forces a full restore reconcile after materialization partially fails', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      materializeErrorBySha: {
+        a: new Error('materialize partially copied then exploded'),
+      },
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps))
+      .rejects.toThrow(/materialize partially copied then exploded/i);
+
+    expect(harness.calls.restored).toEqual([[null, 'bad']]);
+  });
+
   it('rejects mixed valid and error outcomes without advancing boundaries', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
@@ -692,5 +720,30 @@ describe('compare bisect session orchestration', () => {
       dependencies: harness.deps,
     })).resolves.toMatchObject({ status: 'complete' });
     expect(runCandidate).toEqual(expect.any(Function));
+  });
+});
+
+describe('experiment restoration', () => {
+  it.each([
+    ['checkout', ['checkout', 'refresh']],
+    ['sync', ['checkout', 'sync', 'refresh']],
+  ] as const)('attempts refresh after %s restoration fails', async (failure, expectedEvents) => {
+    const events: string[] = [];
+
+    await expect(restoreExperimentState({
+      async restoreCheckout() {
+        events.push('checkout');
+        if (failure === 'checkout') throw new Error('checkout restore failed');
+      },
+      async syncVolume() {
+        events.push('sync');
+        if (failure === 'sync') throw new Error('volume restore failed');
+      },
+      async refreshExperiment() {
+        events.push('refresh');
+      },
+    })).rejects.toThrow(new RegExp(failure === 'checkout' ? 'checkout restore' : 'volume restore'));
+
+    expect(events).toEqual(expectedEvents);
   });
 });
