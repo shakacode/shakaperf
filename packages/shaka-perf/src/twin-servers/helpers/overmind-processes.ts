@@ -38,6 +38,13 @@ export async function restartExperimentProcesses(config: ResolvedConfig): Promis
   if (names.length === 0) {
     throw new Error(`No experiment Overmind processes found in ${config.procfile}`);
   }
+  const socketPath = path.join(config.projectDir, '.overmind.sock');
+  const stopProcesses = await exec('overmind', ['stop', '--socket', socketPath, ...names], {
+    cwd: config.projectDir,
+  });
+  if (stopProcesses.code !== 0) {
+    throw new Error('Failed to stop experiment Overmind processes');
+  }
   const stop = await dockerComposeExec(
     config,
     'experiment-server',
@@ -57,7 +64,6 @@ export async function restartExperimentProcesses(config: ResolvedConfig): Promis
     'done',
   );
   if (stop.code !== 0) throw new Error('Failed to stop tracked experiment commands');
-  const socketPath = path.join(config.projectDir, '.overmind.sock');
   const restart = await exec('overmind', ['restart', '--socket', socketPath, ...names], {
     cwd: config.projectDir,
   });

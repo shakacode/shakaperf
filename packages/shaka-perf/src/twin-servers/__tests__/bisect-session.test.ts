@@ -96,7 +96,7 @@ describe('experiment Overmind process targeting', () => {
     ]);
   });
 
-  it('terminates tracked experiment commands before restarting only experiment processes', async () => {
+  it('stops experiment processes before terminating tracked commands and restarting them', async () => {
     const config = fakeConfig();
 
     await restartExperimentProcesses(config);
@@ -104,6 +104,12 @@ describe('experiment Overmind process targeting', () => {
     const socketPath = path.join(config.projectDir, '.overmind.sock');
     expect(mockExec).toHaveBeenNthCalledWith(
       1,
+      'overmind',
+      ['stop', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'],
+      { cwd: config.projectDir },
+    );
+    expect(mockExec).toHaveBeenNthCalledWith(
+      2,
       'docker',
       expect.arrayContaining([
         'exec',
@@ -116,7 +122,7 @@ describe('experiment Overmind process targeting', () => {
       expect.objectContaining({ cwd: config.projectDir }),
     );
     expect(mockExec).toHaveBeenNthCalledWith(
-      2,
+      3,
       'overmind',
       ['restart', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'],
       { cwd: config.projectDir },
