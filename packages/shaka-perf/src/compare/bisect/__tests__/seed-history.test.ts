@@ -33,15 +33,27 @@ const seedCommits = [
   '993637a214f92955fc2b7f076be6ac890be5453b',
   '5e4c3203c340e950550044838d812555cfa920a5',
   '780f5a55d4605cf501b1adb8e338b69ac81b06ff',
-  '9520d2e448339c7e2149e539209ec56764890b97',
 ];
+
+const seedRegressionsByCommit = {
+  aa1b86ae9ab48392844741b2cd90249eab11a9de: ['homepage-hero-visual'],
+  '5d38dcfb0002cb28d9465e7e8fbab4839c1230f7': ['homepage-tbt'],
+  '38e78824044e63179d86d558b614b41c9cd710e1': ['homepage-button-name'],
+  '993637a214f92955fc2b7f076be6ac890be5453b': [
+    'product-detail-visual',
+    'product-detail-tbt',
+  ],
+} as const;
+
+type SeedTargetId =
+  (typeof seedRegressionsByCommit)[keyof typeof seedRegressionsByCommit][number];
 
 const expectedFirstBad = {
   'homepage-hero-visual': 'aa1b86ae9ab48392844741b2cd90249eab11a9de',
   'homepage-tbt': '5d38dcfb0002cb28d9465e7e8fbab4839c1230f7',
   'homepage-button-name': '38e78824044e63179d86d558b614b41c9cd710e1',
   'product-detail-visual': '993637a214f92955fc2b7f076be6ac890be5453b',
-  'product-detail-lcp': '993637a214f92955fc2b7f076be6ac890be5453b',
+  'product-detail-tbt': '993637a214f92955fc2b7f076be6ac890be5453b',
 } as const;
 
 function target(
@@ -89,7 +101,13 @@ function seedSession(): BisectSession {
     selectedCategories: ['visreg', 'perf', 'accessibility'],
     orderedCommits: seedCommits,
     targets: [
-      target('homepage-hero-visual', 'visreg', 'demo-ecommerce/ab-tests/homepage.abtest.ts', 'Homepage', 'document'),
+      target(
+        'homepage-hero-visual',
+        'visreg',
+        'demo-ecommerce/ab-tests/homepage.abtest.ts',
+        'Homepage',
+        '[data-cy="hero-section"]',
+      ),
       target('homepage-tbt', 'perf', 'demo-ecommerce/ab-tests/homepage.abtest.ts', 'Homepage', 'TBT'),
       target(
         'homepage-button-name',
@@ -102,15 +120,15 @@ function seedSession(): BisectSession {
         'product-detail-visual',
         'visreg',
         'demo-ecommerce/ab-tests/product-detail.abtest.ts',
-        'Product detail',
+        'Product Detail',
         'document',
       ),
       target(
-        'product-detail-lcp',
+        'product-detail-tbt',
         'perf',
         'demo-ecommerce/ab-tests/product-detail.abtest.ts',
-        'Product detail',
-        'LCP',
+        'Product Detail',
+        'TBT',
       ),
     ],
     commitRuns: {},
@@ -130,15 +148,20 @@ describe('demo ecommerce bisect seed history fixture', () => {
         break;
       }
       const candidateIndex = seedCommits.indexOf(work.sha);
+      const regressionsPresent = new Set(
+        seedCommits
+          .slice(0, candidateIndex + 1)
+          .flatMap(
+            (sha) => seedRegressionsByCommit[sha as keyof typeof seedRegressionsByCommit] ?? [],
+          ),
+      );
       session = applyObservations(normalized, work.sha, new Map(
         work.targetIds.map((targetId) => [
           targetId,
           observation(
             targetId,
             work.sha,
-            candidateIndex >= seedCommits.indexOf(
-              expectedFirstBad[targetId as keyof typeof expectedFirstBad],
-            ),
+            regressionsPresent.has(targetId as SeedTargetId),
           ),
         ]),
       ));

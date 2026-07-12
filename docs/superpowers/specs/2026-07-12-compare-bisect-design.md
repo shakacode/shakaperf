@@ -184,6 +184,9 @@ interface BisectSession {
 }
 ```
 
+This file is diagnostic state only. V0 does not expose a resume command and
+does not continue a new invocation from a previous `session.json`.
+
 Each target stores its good and bad boundary indexes into `orderedCommits`, its
 status, optional first bad SHA, and observations keyed by commit SHA.
 
@@ -291,8 +294,8 @@ for noisy, pre-existing, or non-monotonic signals.
 Every candidate session is normalized before scheduling. Cached observations
 are replayed into target intervals first, and only then can the scheduler select
 new work. This prevents stale interval fields from disagreeing with persisted
-observations after a resumed diagnostic read, a test refactor, or a partial
-state write.
+observations after diagnostic state is reloaded in tests, a test refactor, or a
+partial state write.
 
 ### Candidate selection
 
@@ -377,6 +380,11 @@ force a rebuild or compare run if the needed target evidence is already known.
 ## Checkout and Volume Synchronization
 
 The experiment checkout is the candidate workspace.
+
+Before the session starts, the experiment volume must have the build manifest
+created by `shaka-perf servers build --target experiment`. Bisect fails closed
+when that manifest is absent because it cannot safely identify image-owned
+paths to synchronize.
 
 At session start, the synchronizer establishes a trustworthy volume baseline.
 If a volume marker already matches the original experiment SHA, it can continue
