@@ -6,3 +6,6 @@ fixtures so category-specific bisect flows have clear first-bad targets.
 
 The regression fixtures are artificial by design, but each one is scoped to the
 demo app and kept easy to inspect.
+
+Clean commits in this branch should stay runtime-neutral. They can update this
+note or other demo-only documentation without changing measured pages.
