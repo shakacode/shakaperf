@@ -15,6 +15,9 @@ export type PerfMetricGroup = 'vitals' | 'diagnostics';
 export interface PerfMetric {
   label: string;
   group: PerfMetricGroup;
+  controlValue: number;
+  experimentValue: number;
+  deltaValue: number;
   controlDisplay: string;
   experimentDisplay: string;
   deltaDisplay: string;
