@@ -218,12 +218,12 @@ export async function executeBisect(
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
   let session = initialSession(input, deps.now());
   let materializedSha: string | null = null;
+  let checkoutAttempted = false;
   let leaseAcquired = false;
   let primaryError: unknown = null;
+  const cleanupErrors: Error[] = [];
   let cancellationSignal: NodeJS.Signals | null = null;
-  const disposeSignalHandlers = deps.installSignalHandlers((signal) => {
-    cancellationSignal ??= signal;
-  });
+  let disposeSignalHandlers: (() => void) | null = null;
 
   const persist = (): void => {
     deps.writeSession(session);
@@ -253,7 +253,13 @@ export async function executeBisect(
     ...options,
     previousSha: materializedSha,
     preferredMode: preferredRefreshMode(input.config),
-    dependencies: deps,
+    dependencies: {
+      ...deps,
+      async checkout(sha) {
+        checkoutAttempted = true;
+        await deps.checkout(sha);
+      },
+    },
     checkCancellation,
     onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun) {
       if (checkpoint === 'checkout') materializedSha = options.sha;
@@ -262,9 +268,11 @@ export async function executeBisect(
     },
   });
 
-  persist();
-
   try {
+    disposeSignalHandlers = deps.installSignalHandlers((signal) => {
+      cancellationSignal ??= signal;
+    });
+    persist();
     logDecision('session-start', 'Starting compare bisect session', {
       goodSha: input.gitRange.goodSha,
       badSha: input.gitRange.badSha,
@@ -375,81 +383,109 @@ export async function executeBisect(
     checkCancellation();
   } catch (error) {
     primaryError = error;
-    const interrupted = error instanceof BisectInterruptedError;
-    logDecision('session-failed', `Compare bisect ${interrupted ? 'interrupted' : 'failed'}: ${(error as Error).message}`);
-    session = {
-      ...session,
-      status: interrupted ? 'interrupted' : 'failed',
-      failure: (error as Error).message,
-      finishedAt: deps.now(),
-    };
-    persist();
-  }
-
-  let cleanupError: unknown = null;
-  try {
-    if (materializedSha !== null) {
-      await deps.restore({
-        previousSha: materializedSha,
-        originalSha: input.gitRange.originalExperiment.sha,
-      });
+  } finally {
+    if (checkoutAttempted) {
+      try {
+        await deps.restore({
+          previousSha: materializedSha,
+          originalSha: input.gitRange.originalExperiment.sha,
+        });
+      } catch (error) {
+        cleanupErrors.push(asError(error));
+      }
     }
-  } catch (error) {
-    cleanupError = error;
-  }
-  if (leaseAcquired) {
+    if (leaseAcquired) {
+      try {
+        await deps.endSession();
+      } catch (error) {
+        cleanupErrors.push(new Error(`lease release failed: ${errorMessage(error)}`, { cause: error }));
+      }
+    }
+
     try {
-      await deps.endSession();
-    } catch (error) {
-      cleanupError = cleanupError
-        ? new Error(`${(cleanupError as Error).message}; lease release failed: ${(error as Error).message}`)
-        : error;
+      if (!primaryError && cancellationSignal) {
+        primaryError = new BisectInterruptedError(cancellationSignal);
+      }
+      session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+      const loggedStatus = session.status;
+
+      try {
+        if (loggedStatus === 'complete') {
+          logDecision('session-complete', session.targets.length === 0
+            ? 'No regression targets were present at the bad ref'
+            : 'Compare bisect session completed', {
+            foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
+            invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
+            unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
+            summaryPath: path.join(input.resultsDirectory, 'summary.json'),
+          });
+        } else {
+          logDecision('session-failed', `Compare bisect ${loggedStatus}: ${session.failure}`);
+        }
+      } catch (error) {
+        cleanupErrors.push(new Error(`decision log persistence failed: ${errorMessage(error)}`, { cause: error }));
+      }
+
+      if (!primaryError && cancellationSignal) {
+        primaryError = new BisectInterruptedError(cancellationSignal);
+      }
+      session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+      if (session.status !== loggedStatus) {
+        try {
+          logDecision('session-failed', `Compare bisect ${session.status}: ${session.failure}`);
+        } catch (error) {
+          cleanupErrors.push(new Error(`decision log persistence failed: ${errorMessage(error)}`, { cause: error }));
+          session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+        }
+      }
+
+      while (true) {
+        const beforeSummary = terminalFingerprint(session);
+        if (cleanupErrors.length === 0) {
+          try {
+            deps.writeSummary(session);
+          } catch (error) {
+            cleanupErrors.push(new Error(`summary persistence failed: ${errorMessage(error)}`, { cause: error }));
+          }
+        }
+        if (!primaryError && cancellationSignal) {
+          primaryError = new BisectInterruptedError(cancellationSignal);
+        }
+        session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+        if (terminalFingerprint(session) !== beforeSummary) continue;
+
+        const beforePersist = terminalFingerprint(session);
+        try {
+          persist();
+        } catch (error) {
+          cleanupErrors.push(new Error(`session persistence failed: ${errorMessage(error)}`, { cause: error }));
+          session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+          break;
+        }
+        if (!primaryError && cancellationSignal) {
+          primaryError = new BisectInterruptedError(cancellationSignal);
+        }
+        session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+        if (terminalFingerprint(session) === beforePersist) break;
+      }
+    } finally {
+      if (disposeSignalHandlers) {
+        try {
+          disposeSignalHandlers();
+        } catch (error) {
+          cleanupErrors.push(new Error(`signal handler disposal failed: ${errorMessage(error)}`, { cause: error }));
+          session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+        }
+      }
     }
   }
-  disposeSignalHandlers();
 
-  if (!primaryError && cancellationSignal) {
-    const interruption = new BisectInterruptedError(cancellationSignal);
-    primaryError = interruption;
-    session = {
-      ...session,
-      status: 'interrupted',
-      failure: interruption.message,
-      finishedAt: deps.now(),
-    };
-    persist();
+  if (cleanupErrors.length > 0) {
+    throw new Error(session.failure, {
+      cause: cleanupErrors.length === 1 ? cleanupErrors[0] : new AggregateError(cleanupErrors),
+    });
   }
-
-  if (cleanupError) {
-    const failure = primaryError
-      ? `${(primaryError as Error).message}; cleanup failed: ${(cleanupError as Error).message}`
-      : (cleanupError as Error).message;
-    session = {
-      ...session,
-      status: 'failed',
-      failure,
-      finishedAt: deps.now(),
-    };
-    persist();
-    throw new Error(failure, { cause: cleanupError });
-  }
-
-  if (primaryError) {
-    deps.writeSummary(session);
-    throw primaryError;
-  }
-
-  session = completeSession(session, deps.now());
-  logDecision('session-complete', session.targets.length === 0
-    ? 'No regression targets were present at the bad ref'
-    : 'Compare bisect session completed', {
-    foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
-    invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
-    unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
-    summaryPath: path.join(input.resultsDirectory, 'summary.json'),
-  });
-  deps.writeSummary(session);
-  persist();
+  if (primaryError) throw primaryError;
   return session;
 }
 
@@ -667,8 +703,49 @@ function validateGoodEndpoint(
   };
 }
 
-function completeSession(session: BisectSession, finishedAt: string): BisectSession {
-  return { ...session, status: 'complete', finishedAt };
+function terminalSession(
+  session: BisectSession,
+  primaryError: unknown,
+  cleanupErrors: readonly Error[],
+  finishedAt: string,
+): BisectSession {
+  if (cleanupErrors.length > 0) {
+    const cleanupFailure = cleanupErrors.map((error) => error.message).join('; ');
+    return {
+      ...session,
+      status: 'failed',
+      failure: primaryError
+        ? `${errorMessage(primaryError)}; cleanup failed: ${cleanupFailure}`
+        : cleanupFailure,
+      finishedAt,
+    };
+  }
+  if (primaryError) {
+    return {
+      ...session,
+      status: primaryError instanceof BisectInterruptedError ? 'interrupted' : 'failed',
+      failure: errorMessage(primaryError),
+      finishedAt,
+    };
+  }
+  return {
+    ...session,
+    status: 'complete',
+    failure: undefined,
+    finishedAt,
+  };
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function errorMessage(error: unknown): string {
+  return asError(error).message;
+}
+
+function terminalFingerprint(session: BisectSession): string {
+  return `${session.status}\0${session.failure ?? ''}`;
 }
 
 function recordCommitRun(session: BisectSession, commitRun: CommitRun): BisectSession {
