@@ -54,6 +54,7 @@ interface VisregResembleOutputOptions {
 }
 
 export interface ComparePipelineConfig {
+  readonly artifactRoot?: string | undefined;
   readonly parallelism: number;
   readonly testPathPattern?: string | undefined;
   readonly visregDefaultMisMatchThreshold: number;
@@ -77,6 +78,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
   return createPipeline({
     name: 'compare',
     description: comparePipelineMetadata.description,
+    artifactRoot: input.artifactRoot,
     pipelineConfig: input,
     report: comparePipelineReport,
   }, (pipeline) => {
