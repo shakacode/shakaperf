@@ -1,6 +1,6 @@
 # Compare Bisect V0 Design
 
-Status: Draft for user review
+Status: Implemented
 
 ## Summary
 
