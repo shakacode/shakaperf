@@ -402,90 +402,71 @@ export async function executeBisect(
       }
     }
 
-    try {
-      if (!primaryError && cancellationSignal) {
-        primaryError = new BisectInterruptedError(cancellationSignal);
-      }
-      session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-      const loggedStatus = session.status;
-
+    if (!primaryError && cancellationSignal) {
+      primaryError = new BisectInterruptedError(cancellationSignal);
+    }
+    if (disposeSignalHandlers) {
       try {
-        if (loggedStatus === 'complete') {
-          logDecision('session-complete', session.targets.length === 0
-            ? 'No regression targets were present at the bad ref'
-            : 'Compare bisect session completed', {
-            foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
-            invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
-            unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
-            summaryPath: path.join(input.resultsDirectory, 'summary.json'),
-          });
-        } else {
-          logDecision('session-failed', `Compare bisect ${loggedStatus}: ${session.failure}`);
-        }
+        disposeSignalHandlers();
       } catch (error) {
-        cleanupErrors.push(new Error(`decision log persistence failed: ${errorMessage(error)}`, { cause: error }));
+        cleanupErrors.push(new Error(`signal handler disposal failed: ${errorMessage(error)}`, { cause: error }));
       }
+    }
 
-      if (!primaryError && cancellationSignal) {
-        primaryError = new BisectInterruptedError(cancellationSignal);
+    session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+    const loggedStatus = session.status;
+    try {
+      if (loggedStatus === 'complete') {
+        logDecision('session-complete', session.targets.length === 0
+          ? 'No regression targets were present at the bad ref'
+          : 'Compare bisect session completed', {
+          foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
+          invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
+          unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
+          summaryPath: path.join(input.resultsDirectory, 'summary.json'),
+        });
+      } else {
+        logDecision('session-failed', `Compare bisect ${loggedStatus}: ${session.failure}`);
       }
+    } catch (error) {
+      cleanupErrors.push(new Error(`decision log persistence failed: ${errorMessage(error)}`, { cause: error }));
       session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-      if (session.status !== loggedStatus) {
-        try {
-          logDecision('session-failed', `Compare bisect ${session.status}: ${session.failure}`);
-        } catch (error) {
-          cleanupErrors.push(new Error(`decision log persistence failed: ${errorMessage(error)}`, { cause: error }));
-          session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-        }
-      }
+    }
 
-      while (true) {
-        const beforeSummary = terminalFingerprint(session);
-        if (cleanupErrors.length === 0) {
-          try {
-            deps.writeSummary(session);
-          } catch (error) {
-            cleanupErrors.push(new Error(`summary persistence failed: ${errorMessage(error)}`, { cause: error }));
-          }
-        }
-        if (!primaryError && cancellationSignal) {
-          primaryError = new BisectInterruptedError(cancellationSignal);
-        }
-        session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-        if (terminalFingerprint(session) !== beforeSummary) continue;
-
-        const beforePersist = terminalFingerprint(session);
+    const persistTerminal = (): boolean => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
           persist();
+          return true;
         } catch (error) {
           cleanupErrors.push(new Error(`session persistence failed: ${errorMessage(error)}`, { cause: error }));
           session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-          break;
         }
-        if (!primaryError && cancellationSignal) {
-          primaryError = new BisectInterruptedError(cancellationSignal);
-        }
-        session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-        if (terminalFingerprint(session) === beforePersist) break;
       }
-    } finally {
-      if (disposeSignalHandlers) {
-        try {
-          disposeSignalHandlers();
-        } catch (error) {
-          cleanupErrors.push(new Error(`signal handler disposal failed: ${errorMessage(error)}`, { cause: error }));
-          session = terminalSession(session, primaryError, cleanupErrors, deps.now());
-        }
+      return false;
+    };
+
+    const terminalPersisted = persistTerminal();
+    if (terminalPersisted && cleanupErrors.length === 0) {
+      try {
+        deps.writeSummary(session);
+      } catch (error) {
+        cleanupErrors.push(new Error(`summary persistence failed: ${errorMessage(error)}`, { cause: error }));
+        session = terminalSession(session, primaryError, cleanupErrors, deps.now());
+        persistTerminal();
       }
     }
   }
 
-  if (cleanupErrors.length > 0) {
-    throw new Error(session.failure, {
-      cause: cleanupErrors.length === 1 ? cleanupErrors[0] : new AggregateError(cleanupErrors),
-    });
+  if (primaryError instanceof Error && cleanupErrors.length > 0) {
+    attachCleanupContext(primaryError, cleanupErrors);
   }
   if (primaryError) throw primaryError;
+  if (cleanupErrors.length > 0) {
+    throw cleanupErrors.length === 1
+      ? cleanupErrors[0]
+      : new AggregateError(cleanupErrors, session.failure);
+  }
   return session;
 }
 
@@ -744,8 +725,20 @@ function errorMessage(error: unknown): string {
   return asError(error).message;
 }
 
-function terminalFingerprint(session: BisectSession): string {
-  return `${session.status}\0${session.failure ?? ''}`;
+function attachCleanupContext(primaryError: Error, cleanupErrors: readonly Error[]): void {
+  const existingCause = primaryError.cause;
+  const causes = existingCause === undefined
+    ? [...cleanupErrors]
+    : [existingCause, ...cleanupErrors];
+  const cause = causes.length === 1
+    ? causes[0]
+    : new AggregateError(causes, cleanupErrors.map((error) => error.message).join('; '));
+  Object.defineProperty(primaryError, 'cause', {
+    configurable: true,
+    enumerable: false,
+    value: cause,
+    writable: true,
+  });
 }
 
 function recordCommitRun(session: BisectSession, commitRun: CommitRun): BisectSession {
