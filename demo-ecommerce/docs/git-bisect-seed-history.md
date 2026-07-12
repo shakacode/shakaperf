@@ -34,3 +34,22 @@ they remain independent of Rails seeds and API responses.
 
 Fixture commits should stay small enough that `git show` explains the category
 signal without requiring a full app run.
+
+Seed base: `38dae68` (`main` when this branch was created).
+
+Category map:
+
+- `f2cd5c9` - no regression, seed docs only.
+- `267da30` - no regression, docs only.
+- `aa1b86a` - first `visreg` bad commit, homepage hero color change.
+- `c9b2c71` - no regression, docs only.
+- `a24c926` - no regression, docs only.
+- `5d38dcf` - first `perf` bad commit, homepage CPU warmup.
+- `4dbb382` - no regression, docs only.
+- `af79caf` - no regression, docs only.
+- `c0adc35` - no regression, docs only.
+- `38e7882` - first `accessibility` bad commit, offscreen unnamed button.
+- `5956eb6` - no regression, docs only.
+- `db65ccd` - no regression, docs only.
+- `5c3dbad` - no regression, docs only.
+- `993637a` - visual plus performance regression on product detail.
