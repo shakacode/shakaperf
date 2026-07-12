@@ -96,7 +96,7 @@ export function createDispatcher(
             'Just edit your files; the watcher mirrors them into the volume.',
         );
       case 'bisect-begin':
-        await requireController().beginBisectSession(req.token);
+        await requireController().beginBisectSession(req.token, req.ownerPid);
         return;
       case 'bisect-refresh':
         await requireController().refreshBisectExperiment({
