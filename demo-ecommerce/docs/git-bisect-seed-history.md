@@ -16,3 +16,6 @@ do not need a special-case demo configuration.
 The homepage fixtures are intended for the existing homepage and shop-now
 coverage. The product detail fixture is intended for the existing product detail
 coverage.
+
+Performance fixtures should use deterministic client-side work instead of
+network delays so results remain easy to reproduce in local containers.
