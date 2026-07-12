@@ -66,3 +66,9 @@ export interface BisectSession {
   finishedAt?: string;
   failure?: string;
 }
+
+declare const normalizedBisectSessionBrand: unique symbol;
+
+export type NormalizedBisectSession = BisectSession & {
+  readonly [normalizedBisectSessionBrand]: true;
+};
