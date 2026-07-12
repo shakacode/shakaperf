@@ -190,7 +190,14 @@ describe('sync-changes command', () => {
       return '';
     });
 
-    await syncChanges(config, 'experiment', { verbose: false });
+    const logSpy = jest.spyOn(console, 'log').mockImplementation();
+    try {
+      await syncChanges(config, 'experiment', { verbose: false });
+      expect(logSpy).toHaveBeenCalledWith('  Skipped (outside build context): 1 files');
+      expect(logSpy).toHaveBeenCalledWith('Warning: Synced with 1 skipped change');
+    } finally {
+      logSpy.mockRestore();
+    }
 
     expect(fs.readFileSync(liveImagePath, 'utf8')).toBe('live image content');
     expect(fs.readFileSync(path.join(config.volumes.experiment, 'app.ts'), 'utf8')).toBe('new source content');

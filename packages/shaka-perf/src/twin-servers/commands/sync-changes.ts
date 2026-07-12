@@ -73,6 +73,7 @@ export async function syncChanges(
   let copiedCount = 0;
   let deletedCount = 0;
   let skippedDeletionCount = 0;
+  let skippedOutsideBuildContextCount = 0;
   let errorCount = 0;
   const buildManifest = readBuildManifest(targetDir);
   const imageFiles = buildManifest ? new Set(buildManifest.files) : null;
@@ -85,6 +86,10 @@ export async function syncChanges(
       relativeBuildPath.startsWith(`..${path.sep}`) ||
       path.isAbsolute(relativeBuildPath)
     ) {
+      if (verbose) {
+        console.log(`  Skipped (outside build context): ${relativeFilePath}`);
+      }
+      skippedOutsideBuildContextCount++;
       continue;
     }
     const destPath = path.join(targetDir, relativeBuildPath);
@@ -141,15 +146,19 @@ export async function syncChanges(
   if (skippedDeletionCount > 0) {
     console.log(`  Skipped (not in build manifest): ${skippedDeletionCount} files`);
   }
+  if (skippedOutsideBuildContextCount > 0) {
+    console.log(`  Skipped (outside build context): ${skippedOutsideBuildContextCount} files`);
+  }
   if (errorCount > 0) {
     printWarning(`Errors: ${errorCount} files`);
   }
   console.log('');
 
-  if (errorCount === 0 && skippedDeletionCount === 0) {
+  const skippedCount = skippedDeletionCount + skippedOutsideBuildContextCount;
+  if (errorCount === 0 && skippedCount === 0) {
     printSuccess(`Successfully synced changes to ${target}`);
   } else if (errorCount === 0) {
-    printWarning(`Synced with ${skippedDeletionCount} skipped deletion${skippedDeletionCount === 1 ? '' : 's'}`);
+    printWarning(`Synced with ${skippedCount} skipped change${skippedCount === 1 ? '' : 's'}`);
   } else {
     printWarning(`Synced with ${errorCount} errors`);
   }

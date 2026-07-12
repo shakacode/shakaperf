@@ -41,7 +41,14 @@ export function parseReport(reportPath: string): void {
     return;
   }
 
-  const data = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as Report;
+  let data: Report;
+  try {
+    data = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as Report;
+  } catch (error) {
+    console.error(`Failed to read or parse report ${reportPath}: ${(error as Error).message}`);
+    process.exitCode = 1;
+    return;
+  }
   const tests = data.tests ?? [];
   if (tests.length === 0) {
     console.log('No tests found in report.');
