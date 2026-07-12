@@ -38,10 +38,6 @@ export async function restartExperimentProcesses(config: ResolvedConfig): Promis
     throw new Error(`No experiment Overmind processes found in ${config.procfile}`);
   }
   const socketPath = path.join(config.projectDir, '.overmind.sock');
-  const stop = await exec('overmind', ['stop', '--socket', socketPath, ...names], {
-    cwd: config.projectDir,
-  });
-  if (stop.code !== 0) throw new Error('Failed to stop experiment Overmind processes');
   const restart = await exec('overmind', ['restart', '--socket', socketPath, ...names], {
     cwd: config.projectDir,
   });
