@@ -21,7 +21,7 @@ import {
   createComparePipeline,
   comparePipelineMetadata,
 } from '../compare-pipeline';
-import { discoverTargets } from './analyze';
+import { discoverTargets, observeTargets } from './analyze';
 import { checkoutDetached, prepareGitRange, restoreCheckout, type PreparedGitRange } from './git';
 import { applyCachedObservations, applyObservations, nextCandidate } from './search';
 import { writeSessionAtomic, writeSummary } from './persistence';
@@ -74,6 +74,39 @@ export type {
 export interface RestoreRequest {
   previousSha: string | null;
   originalSha: string;
+}
+
+export interface RestoreExperimentStateDependencies {
+  restoreCheckout(): Promise<void>;
+  syncVolume(): Promise<void>;
+  refreshExperiment(): Promise<void>;
+}
+
+export async function restoreExperimentState(
+  dependencies: RestoreExperimentStateDependencies,
+): Promise<void> {
+  const errors: Error[] = [];
+  let checkoutRestored = false;
+  try {
+    await dependencies.restoreCheckout();
+    checkoutRestored = true;
+  } catch (error) {
+    errors.push(asError(error));
+  }
+  if (checkoutRestored) {
+    try {
+      await dependencies.syncVolume();
+    } catch (error) {
+      errors.push(asError(error));
+    }
+  }
+  try {
+    await dependencies.refreshExperiment();
+  } catch (error) {
+    errors.push(asError(error));
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'Failed to restore experiment state');
 }
 
 export interface ExecuteBisectInput {
@@ -220,6 +253,7 @@ export async function executeBisect(
   deps.clearSummary();
   let session = initialSession(input, deps.now());
   let materializedSha: string | null = null;
+  let volumeStateUncertain = false;
   let checkoutAttempted = false;
   let leaseAcquired = false;
   let primaryError: unknown = null;
@@ -261,10 +295,15 @@ export async function executeBisect(
         checkoutAttempted = true;
         await deps.checkout(sha);
       },
+      async materialize(request) {
+        volumeStateUncertain = true;
+        await deps.materialize(request);
+        volumeStateUncertain = false;
+      },
     },
     checkCancellation,
     onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun) {
-      if (checkpoint === 'checkout') materializedSha = options.sha;
+      if (checkpoint === 'materialize') materializedSha = options.sha;
       session = recordCommitRun(session, commitRun);
       persist();
     },
@@ -307,6 +346,14 @@ export async function executeBisect(
         input.gitRange.badSha,
       ),
     };
+    const badObservations = observeTargets(
+      badRun.testResults,
+      session.targets,
+      input.gitRange.badSha,
+    );
+    session = applyObservations(session, input.gitRange.badSha, new Map(
+      badObservations.map((observation) => [observation.targetId, observation]),
+    ));
     logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
       sha: input.gitRange.badSha,
       targetCount: session.targets.length,
@@ -389,7 +436,7 @@ export async function executeBisect(
     if (checkoutAttempted) {
       try {
         await deps.restore({
-          previousSha: materializedSha,
+          previousSha: volumeStateUncertain ? null : materializedSha,
           originalSha: input.gitRange.originalExperiment.sha,
         });
       } catch (error) {
@@ -506,18 +553,22 @@ function createDefaultDependencies(options: {
     checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
       allowedPaths: [options.resultsDirectory],
     }),
-    restore: async ({ previousSha, originalSha }) => {
-      await restoreCheckout(options.twinServers.experimentDir, options.gitRange.originalExperiment, {
-        allowedPaths: [options.resultsDirectory],
-      });
-      if (previousSha === null) {
-        await reconcileExperimentVolume({
-          sourceDir: options.twinServers.dockerBuildDir,
-          volumeDir: options.twinServers.volumes.experiment,
-          manifest: options.manifest,
-          candidateSha: originalSha,
-        });
-      } else {
+    restore: ({ previousSha, originalSha }) => restoreExperimentState({
+      restoreCheckout: () => restoreCheckout(
+        options.twinServers.experimentDir,
+        options.gitRange.originalExperiment,
+        { allowedPaths: [options.resultsDirectory] },
+      ),
+      syncVolume: async () => {
+        if (previousSha === null) {
+          await reconcileExperimentVolume({
+            sourceDir: options.twinServers.dockerBuildDir,
+            volumeDir: options.twinServers.volumes.experiment,
+            manifest: options.manifest,
+            candidateSha: originalSha,
+          });
+          return;
+        }
         await syncCommitDelta({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
@@ -525,14 +576,16 @@ function createDefaultDependencies(options: {
           previousSha,
           candidateSha: originalSha,
         });
-      }
-      await refreshExperimentViaMenu(
-        options.twinServers,
-        options.config,
-        preferredRefreshMode(options.config),
-        bisectSessionId,
-      );
-    },
+      },
+      refreshExperiment: async () => {
+        await refreshExperimentViaMenu(
+          options.twinServers,
+          options.config,
+          preferredRefreshMode(options.config),
+          bisectSessionId,
+        );
+      },
+    }),
     clearSummary: () => {
       fs.rmSync(path.join(options.resultsDirectory, 'summary.json'), { force: true });
     },
