@@ -3,8 +3,8 @@
 ## Status
 
 - Repair complete for the owned Task 8 files.
-- The design specification remains `Draft for user review` because controller live acceptance is still pending.
-- Live acceptance was not run during this repair. The active twin-server menu was left untouched.
+- The design specification is `Implemented` after seeded-history live acceptance.
+- The feature restores the experiment branch and SHA while leaving the control checkout fixed.
 
 ## Investigation
 
@@ -76,3 +76,13 @@ After restoring the documented expectation to `aa1b86ae9ab48392844741b2cd90249ea
 - The demo rebuild command now removes those persistent build outputs before precompiling so every checked-out candidate serves a self-consistent manifest and runtime.
 - RED: the seed-history fixture test required the cache-clearing command and failed against the prior incremental command.
 - GREEN: the focused seed-history fixture passed after updating the demo configuration.
+
+## 2026-07-13 Live Seeded-History Acceptance
+
+- The all-category run discovered 12 independent targets and narrowed them by category and AB-test file across the 17-commit demo-only history.
+- It found homepage visual targets at `58cc828b7272cd69408fa4dc5cd36206dcd8846a`, homepage LCP, Lighthouse score, and TBT targets at `9c7cfff6c0ca9bd561f5bb9905a1b09ee3132d1e`, and product-detail visual plus all discovered perf targets at `5345dffb62b761b9cb0e1516a6bbd4389a6cf642`.
+- The homepage speed-index observation resolved later at the combined product regression commit, demonstrating that non-deterministic Lighthouse metrics can classify differently from the fixture's deterministic CPU target. The deterministic homepage TBT target resolved at the intended performance commit.
+- The run exposed a race in experiment restart cleanup at the final accessibility midpoint: killing the in-container command before stopping its Overmind process could terminate the entire Overmind session.
+- RED: the focused twin-server lifecycle test required `overmind stop` before in-container PID cleanup and failed against the prior cleanup-first order.
+- GREEN: the lifecycle now stops only experiment-owned Overmind processes, cleans tracked in-container sessions, and restarts those processes. The focused suite passed with 12 tests.
+- A clean accessibility-only live rerun completed successfully, found homepage `button-name` first bad at `fcb0e2b107a99c6e4edab01da114d4d83b3d7a94`, restored `codex/compare-bisect-v0` at `cef027131cc0f74348e64dac083ded6cd955a020`, kept control at `38dae6871b8b443dd1880269dacde951700e77cc`, and left both server URLs returning HTTP 200.
