@@ -193,6 +193,7 @@ function deps(
         calls.events.push('refresh:original');
         if (options.restoreError) throw options.restoreError;
       },
+      clearSummary() {},
       async materialize(request) {
         calls.materialized.push([request.previousSha, request.candidateSha]);
         calls.events.push(`materialize:${request.candidateSha}`);
@@ -415,6 +416,27 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessionAttempts.filter((session) => session.status !== 'running'))
       .toHaveLength(2);
     expect(harness.calls.sessions.some((session) => session.status === 'complete')).toBe(false);
+    expect(harness.calls.summaries).toEqual([]);
+  });
+
+  it('invalidates a stale complete summary before checkout when terminal persistence fails permanently', async () => {
+    const harness = deps({ bad: [] }, {
+      terminalWriteSessionErrors: [
+        new Error('persistence failed once'),
+        new Error('persistence failed twice'),
+      ],
+    });
+    let visibleSummary: BisectSession | null = { status: 'complete' } as BisectSession;
+    harness.deps.clearSummary = () => {
+      visibleSummary = null;
+      harness.calls.events.push('summary:cleared');
+    };
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/persistence failed/i);
+
+    expect(harness.calls.events.indexOf('summary:cleared'))
+      .toBeLessThan(harness.calls.events.indexOf('checkout:bad'));
+    expect(visibleSummary).toBeNull();
     expect(harness.calls.summaries).toEqual([]);
   });
 
