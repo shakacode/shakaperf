@@ -15,7 +15,7 @@ import { tryProxy } from '../client';
 import { endpointPaths } from '../paths';
 import { PROTOCOL_VERSION } from '../protocol';
 import { createDispatcher } from '../dispatch';
-import { MenuBusyError, type MenuController } from '../../commands/servers-menu';
+import { BisectLease, MenuBusyError, type MenuController } from '../../commands/servers-menu';
 import type { ResolvedConfig } from '../../types';
 
 /**
@@ -257,8 +257,8 @@ describe('ipc dispatcher', () => {
         calls.push('run-one-off');
         return runner();
       },
-      async beginBisectSession(token) {
-        calls.push(`begin:${token}`);
+      async beginBisectSession(token, ownerPid?: number) {
+        calls.push(`begin:${token}:${ownerPid}`);
       },
       async refreshBisectExperiment(request) {
         calls.push(`refresh:${request.token}:${request.mode}:${request.commands.join('|')}`);
@@ -269,7 +269,12 @@ describe('ipc dispatcher', () => {
     };
     const dispatch = createDispatcher(fakeConfig('bisect-dispatch'), () => controller);
 
-    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-begin', token: 't1' });
+    await dispatch({
+      v: PROTOCOL_VERSION,
+      cmd: 'bisect-begin',
+      token: 't1',
+      ownerPid: process.pid,
+    });
     await dispatch({
       v: PROTOCOL_VERSION,
       cmd: 'bisect-refresh',
@@ -281,9 +286,18 @@ describe('ipc dispatcher', () => {
     await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', token: 't1' });
 
     expect(calls).toEqual([
-      'begin:t1',
+      `begin:t1:${process.pid}`,
       'refresh:t1:commands:yarn build',
       'end:t1',
     ]);
+  });
+});
+
+describe('BisectLease', () => {
+  it('becomes inactive when its owner process no longer exists', () => {
+    const lease = new BisectLease();
+    lease.begin('abandoned', 2_147_483_647);
+
+    expect(lease.active).toBe(false);
   });
 });
