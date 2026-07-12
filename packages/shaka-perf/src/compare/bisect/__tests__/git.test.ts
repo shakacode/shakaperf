@@ -190,6 +190,33 @@ describe('bisect Git helpers', () => {
     expect(fs.readFileSync(path.join(fixture.experimentDir, 'untracked.txt'), 'utf8')).toBe('dirty');
   });
 
+  it('allows the configured results directory before detached checkout', async () => {
+    const resultsDirectory = path.join(fixture.experimentDir, 'compare-bisect-results');
+    fs.mkdirSync(resultsDirectory);
+    fs.writeFileSync(path.join(resultsDirectory, 'session.json'), '{}', 'utf8');
+
+    await checkoutDetached(fixture.experimentDir, fixture.commits[2], {
+      allowedPaths: [resultsDirectory],
+    });
+
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
+    expect(fs.readFileSync(path.join(resultsDirectory, 'session.json'), 'utf8')).toBe('{}');
+  });
+
+  it('allows the configured results directory when invoked from a repo subdirectory', async () => {
+    const projectDir = path.join(fixture.experimentDir, 'demo-ecommerce');
+    const resultsDirectory = path.join(projectDir, 'compare-bisect-results');
+    fs.mkdirSync(resultsDirectory, { recursive: true });
+    fs.writeFileSync(path.join(resultsDirectory, 'session.json'), '{}', 'utf8');
+
+    await checkoutDetached(projectDir, fixture.commits[2], {
+      allowedPaths: [resultsDirectory],
+    });
+
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
+    expect(fs.readFileSync(path.join(resultsDirectory, 'session.json'), 'utf8')).toBe('{}');
+  });
+
   it('rejects a tracked modification immediately before restoring checkout', async () => {
     const original = {
       branch: fixture.experimentBranch,
@@ -201,6 +228,26 @@ describe('bisect Git helpers', () => {
     await expect(restoreCheckout(fixture.experimentDir, original)).rejects.toThrow(/clean/i);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
     expect(fs.readFileSync(path.join(fixture.experimentDir, 'history.txt'), 'utf8')).toBe('dirty');
+  });
+
+  it('allows the configured results directory before restoring checkout', async () => {
+    const original = {
+      branch: fixture.experimentBranch,
+      sha: fixture.commits[4],
+    };
+    const resultsDirectory = path.join(fixture.experimentDir, 'compare-bisect-results');
+
+    await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
+    fs.mkdirSync(resultsDirectory);
+    fs.writeFileSync(path.join(resultsDirectory, 'summary.json'), '{}', 'utf8');
+
+    await restoreCheckout(fixture.experimentDir, original, {
+      allowedPaths: [resultsDirectory],
+    });
+
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+    expect(fs.readFileSync(path.join(resultsDirectory, 'summary.json'), 'utf8')).toBe('{}');
   });
 
   it('restores an originally detached checkout', async () => {

@@ -7,6 +7,9 @@
  * License in LICENSE.md.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { exec } from '../../twin-servers/helpers/shell';
 
 export interface CheckoutState {
@@ -28,6 +31,10 @@ export interface PreparedGitRange {
   originalExperiment: CheckoutState;
 }
 
+export interface CleanCheckoutOptions {
+  allowedPaths?: readonly string[];
+}
+
 async function git(repoDir: string, args: string[]): Promise<string> {
   const result = await exec('git', args, { cwd: repoDir, silent: true });
   if (result.code !== 0) {
@@ -37,9 +44,56 @@ async function git(repoDir: string, args: string[]): Promise<string> {
   return result.stdout.trim();
 }
 
-async function requireClean(repoDir: string, label: string): Promise<void> {
-  const status = await git(repoDir, ['status', '--porcelain', '--untracked-files=all']);
-  if (status) throw new Error(`${label} checkout must be clean before bisecting`);
+function normalizeRelativePath(relativePath: string): string {
+  return relativePath.split(path.sep).join('/');
+}
+
+function realpathIfExists(inputPath: string): string {
+  try {
+    return fs.realpathSync.native(inputPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return path.resolve(inputPath);
+    throw error;
+  }
+}
+
+function allowedStatusPrefixes(repoDir: string, allowedPaths: readonly string[] = []): string[] {
+  return allowedPaths
+    .map((allowedPath) => path.relative(repoDir, realpathIfExists(allowedPath)))
+    .filter((relativePath) => relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+    .map(normalizeRelativePath)
+    .map((relativePath) => relativePath.endsWith('/') ? relativePath.slice(0, -1) : relativePath);
+}
+
+function statusPath(statusLine: string): string {
+  return normalizeRelativePath(statusLine.slice(3));
+}
+
+function isAllowedStatusLine(statusLine: string, allowedPrefixes: readonly string[]): boolean {
+  const relativePath = statusPath(statusLine);
+  return allowedPrefixes.some((allowedPrefix) => (
+    relativePath === allowedPrefix || relativePath.startsWith(`${allowedPrefix}/`)
+  ));
+}
+
+async function requireClean(
+  repoDir: string,
+  label: string,
+  options: CleanCheckoutOptions = {},
+): Promise<void> {
+  const repoRoot = realpathIfExists(await git(repoDir, ['rev-parse', '--show-toplevel']));
+  const status = await git(repoDir, [
+    '-c',
+    'status.relativePaths=false',
+    'status',
+    '--porcelain',
+    '--untracked-files=all',
+  ]);
+  const dirtyLines = status
+    .split('\n')
+    .filter(Boolean)
+    .filter((line) => !isAllowedStatusLine(line, allowedStatusPrefixes(repoRoot, options.allowedPaths)));
+  if (dirtyLines.length > 0) throw new Error(`${label} checkout must be clean before bisecting`);
 }
 
 async function resolveCommit(repoDir: string, ref: string): Promise<string> {
@@ -62,6 +116,7 @@ async function verifyCheckout(
   repoDir: string,
   expected: CheckoutState,
   operation: string,
+  options: CleanCheckoutOptions = {},
 ): Promise<void> {
   const actual = await checkoutState(repoDir);
   if (actual.sha !== expected.sha || actual.branch !== expected.branch) {
@@ -70,7 +125,7 @@ async function verifyCheckout(
       + `expected ${expected.branch ?? 'detached'} at ${expected.sha}`,
     );
   }
-  await requireClean(repoDir, `${operation} result`);
+  await requireClean(repoDir, `${operation} result`, options);
 }
 
 export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<PreparedGitRange> {
@@ -124,19 +179,27 @@ export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<
   };
 }
 
-export async function checkoutDetached(repoDir: string, sha: string): Promise<void> {
-  await requireClean(repoDir, 'Experiment');
+export async function checkoutDetached(
+  repoDir: string,
+  sha: string,
+  options: CleanCheckoutOptions = {},
+): Promise<void> {
+  await requireClean(repoDir, 'Experiment', options);
   await git(repoDir, ['checkout', '--detach', sha]);
-  await verifyCheckout(repoDir, { branch: null, sha }, 'Detached checkout');
+  await verifyCheckout(repoDir, { branch: null, sha }, 'Detached checkout', options);
 }
 
-export async function restoreCheckout(repoDir: string, original: CheckoutState): Promise<void> {
-  await requireClean(repoDir, 'Experiment');
+export async function restoreCheckout(
+  repoDir: string,
+  original: CheckoutState,
+  options: CleanCheckoutOptions = {},
+): Promise<void> {
+  await requireClean(repoDir, 'Experiment', options);
   if (original.branch) {
     await git(repoDir, ['checkout', original.branch]);
-    await verifyCheckout(repoDir, original, 'Restored checkout');
+    await verifyCheckout(repoDir, original, 'Restored checkout', options);
     return;
   }
   await git(repoDir, ['checkout', '--detach', original.sha]);
-  await verifyCheckout(repoDir, original, 'Restored checkout');
+  await verifyCheckout(repoDir, original, 'Restored checkout', options);
 }
