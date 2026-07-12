@@ -39,7 +39,15 @@ In Claude Code these trigger automatically on matching requests ("set up twin se
 
 You do not need the full twin-server setup to get value on day one:
 
-1. **Zero-setup site audit** — `yarn shaka-perf audit --url https://your-site.example` needs no config at all. Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).
+1. **Single-URL site audit (no Docker, no A/B pair)** — `yarn shaka-perf audit --url https://your-site.example`. Audit visits the paths your `.abtest.ts` files declare, so it needs at least one — a stub is enough:
+
+   ```ts
+   // ab-tests/homepage.abtest.ts
+   import { abTest } from 'shaka-shared';
+   abTest('Homepage', { startingPath: '/', options: { visreg: {} } }, async () => {});
+   ```
+
+   Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).
 2. **URL-vs-URL compare** — `yarn shaka-perf compare --controlURL <a> --experimentURL <b>` works against any two running servers: two preview deployments, staging vs production, or two local checkouts on two ports. Simultaneous sampling still cancels client-side noise; server-side isolation (equal hardware, no shared caches) is on you at this rung.
 3. **Single-server smoke** — pass the same URL as both control and experiment to validate that your tests run and capture real content before you have an A/B pair.
 4. **Twin Docker servers** — the full harness: control (baseline branch) and experiment (your branch) built and run side by side in production mode. This is what the setup skill automates.
@@ -80,7 +88,7 @@ yarn shaka-perf compare --categories perf --filter "Homepage Hero"
 yarn shaka-perf compare
 ```
 
-`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories visreg`, `--categories perf`, or both (default). Note: `compare` wipes `compare-results/` at the start of each run.
+`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). Note: `compare` wipes `compare-results/` at the start of each run.
 
 ## Reading results — the machine contract
 
@@ -97,7 +105,7 @@ yarn shaka-perf compare
 {
   "schemaVersion": 1,
   "meta": { "controlUrl": "...", "experimentUrl": "...", "errors": [ /* engine-level errors */ ] },
-  "pipeline": { "name": "compare", "stages": ["visreg-warmup", "visreg", "perf-warmup", "perf", "..."] },
+  "pipeline": { "name": "compare", "stages": ["visreg", "perf-warmup", "perf", "perf-low-noise", "accessibility"] },
   "tests": [
     {
       "id": "<slug>",                    // per test × viewport
@@ -111,7 +119,7 @@ yarn shaka-perf compare
 }
 ```
 
-**Chips are the verdict vocabulary.** Failure-class chips (these make the run fail): `regression`, `visual change`, `accessibility violation`, `broken`. Informational chips: `improvement`, `no difference`, `needs improvement`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `duplicate`, `has interactions` / `no interactions`, `no audit`.
+**Chips are the verdict vocabulary.** Failure-class chips (these make a `compare` run fail): `regression`, `visual change`, `broken`, `accessibility regression` (new a11y findings while `accessibility.failOnViolation` is on), `accessibility error` (a scan failed, so no comparison exists), and `accessibility blocked` (bot protection). The `audit` pipeline uses `accessibility violation` for the same failure role. Informational chips: `improvement`, `no difference`, `needs improvement`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `duplicate`, `accessibility finding` (new findings with `failOnViolation` off), `accessibility changed`, `accessibility fixed` (plus `a11y-*` sub-chips), `has interactions` / `no interactions`, `no audit`.
 
 **Where the numbers are today:** per-stage `summary` objects in `report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Until that lands:
 
@@ -137,7 +145,7 @@ Tests are `abTest()` calls in `ab-tests/*.abtest.ts` — one Playwright-driven s
 
 ## Concurrent agents
 
-Multiple agents in separate workspaces won't collide on ports: set `SHAKAPERF_BASE_PORT` per workspace (control = base + 0, experiment = base + 1). `CONDUCTOR_PORT` (set automatically by [Conductor.build](https://conductor.build)) is honored the same way. Otherwise ports are auto-assigned from the configured pair and remembered per project in `~/.shaka-perf/ports.json`.
+Multiple agents in separate workspaces won't collide on ports. The scaffolded config resolves the control/experiment pair in this order: `SHAKAPERF_CONTROL_PORT` + `SHAKAPERF_EXPERIMENT_PORT` (an explicit pin — both must be set together or they're ignored); else `CONDUCTOR_PORT` (exported automatically by [Conductor.build](https://conductor.build) as the first of 10 ports each workspace owns — control = base, experiment = base + 1); else auto-assignment from the configured preferred pair, remembered per project in `~/.shaka-perf/ports.json`. The config is plain TypeScript, so other per-machine schemes are a few lines away.
 
 ## Snippet for your repo's AGENTS.md / CLAUDE.md
 
@@ -160,7 +168,8 @@ visual regression, and accessibility checks. Config: `abtests.config.ts`; tests:
 - Full check before pushing: `yarn shaka-perf compare`
   (exit 0 = clean; otherwise stderr ends with `FAILED: <summary>`).
 - Machine-readable results: `compare-results/report.json` — per-test `chips`
-  (`regression`, `visual change`, `accessibility violation`, `broken` fail the run).
+  (`regression`, `visual change`, `broken`, and the `accessibility regression` /
+  `accessibility error` / `accessibility blocked` chips fail the run).
   Visreg detail: `yarn shaka-perf discover-abtests parse-report`.
 - A perf `regression` = p < 0.05 AND the paired estimate exceeds the configured
   threshold — iterate on the code and re-run the filtered compare; confirm with a
