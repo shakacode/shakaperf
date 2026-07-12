@@ -10,9 +10,16 @@
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 import { discoverTargets, observeTargets } from '../analyze';
 import type { BisectTarget, TargetObservation } from '../types';
+import type { AccessibilityFindingStatus } from '../../stages/accessibility';
+import type { PerfArtifact } from '../../stages/perf';
+import type { VisregResult } from '../../stages/visreg';
 import type { TestResult } from '../../../pipeline/report';
 
-function testResult(viewport = DESKTOP_VIEWPORT, includeVisualAndPerf = true): TestResult {
+function testResult(
+  viewport = DESKTOP_VIEWPORT,
+  includeVisualAndPerf = true,
+  accessibilityStatus: AccessibilityFindingStatus = 'new',
+): TestResult {
   return {
     id: 'homepage',
     name: 'Homepage',
@@ -71,13 +78,13 @@ function testResult(viewport = DESKTOP_VIEWPORT, includeVisualAndPerf = true): T
         kind: 'ok' as const,
         stage: 'accessibility',
         viewport,
-        measurement: accessibilityResult(),
+        measurement: accessibilityResult(accessibilityStatus),
       },
     ],
   };
 }
 
-function accessibilityResult() {
+function accessibilityResult(status: AccessibilityFindingStatus = 'new') {
   return {
     control: {
       side: 'control' as const,
@@ -94,13 +101,13 @@ function accessibilityResult() {
     effectiveConfig: { tags: [], disableRules: [], includeRules: null },
     failOnViolation: true,
     findings: [
-      finding('button-name', '[data-cy="primary-button"]'),
-      finding('button-name', '[data-cy="secondary-button"]'),
+      finding('button-name', '[data-cy="primary-button"]', status),
+      finding('button-name', '[data-cy="secondary-button"]', status),
     ],
     summary: {
-      new: 2,
+      new: status === 'new' ? 2 : 0,
       fixed: 0,
-      changed: 0,
+      changed: status === 'changed' ? 2 : 0,
       unchanged: 0,
       errors: 0,
       blocked: 0,
@@ -112,20 +119,22 @@ function accessibilityResult() {
   };
 }
 
-function finding(ruleId: string, target: string) {
+function finding(ruleId: string, target: string, status: AccessibilityFindingStatus) {
+  const side = {
+    impact: 'critical' as const,
+    help: 'Buttons must have discernible text',
+    helpUrl: 'https://dequeuniversity.com/rules/axe/button-name',
+    tags: ['wcag2a'],
+    nodes: [{ target: [target], html: '<button></button>', failureSummary: 'Fix this button' }],
+  };
   return {
-    status: 'new' as const,
+    status,
     signature: `${ruleId}|${target}`,
     ruleId,
     impact: 'critical' as const,
     tags: ['wcag2a'],
-    experiment: {
-      impact: 'critical' as const,
-      help: 'Buttons must have discernible text',
-      helpUrl: 'https://dequeuniversity.com/rules/axe/button-name',
-      tags: ['wcag2a'],
-      nodes: [{ target: [target], html: '<button></button>', failureSummary: 'Fix this button' }],
-    },
+    ...(status === 'changed' ? { control: side } : {}),
+    experiment: side,
   };
 }
 
@@ -206,5 +215,46 @@ describe('bisect regression analysis', () => {
       { subject: 'button-name', viewport: 'desktop' },
       { subject: 'button-name', viewport: 'phone' },
     ]);
+  });
+
+  it('does not discover changed-only accessibility findings', () => {
+    const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
+
+    expect(discoverTargets(changedOnlyResults, ['good', 'bad'], 'bad')).toEqual([]);
+  });
+
+  it('observes an existing accessibility target absent for changed-only findings', () => {
+    const existingTarget = discoverTargets([
+      testResult(DESKTOP_VIEWPORT, false),
+    ], ['good', 'bad'], 'bad')[0]!;
+    const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
+
+    expect(observeTargets(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
+      { targetId: existingTarget.id, commitSha: 'candidate', present: false },
+    ]);
+  });
+
+  it('does not discover visreg artifacts without a diff image', () => {
+    const result = testResult();
+    const visreg = result.outcomes.find((outcome) => outcome.stage === 'visreg')
+      ?.measurement as VisregResult;
+    visreg[0]!.diffImage = null;
+
+    expect(discoverTargets([result], ['good', 'bad'], 'bad')
+      .some((target) => target.category === 'visreg')).toBe(false);
+  });
+
+  it('does not discover perf metrics classified as none or improvement', () => {
+    const result = testResult();
+    const perf = result.outcomes.find((outcome) => outcome.stage === 'perf')
+      ?.measurement as PerfArtifact;
+    const metric = perf.metrics![0]!;
+    perf.metrics = [
+      { ...metric, direction: 'none' },
+      { ...metric, label: 'LCP', direction: 'improvement' },
+    ];
+
+    expect(discoverTargets([result], ['good', 'bad'], 'bad')
+      .some((target) => target.category === 'perf')).toBe(false);
   });
 });
