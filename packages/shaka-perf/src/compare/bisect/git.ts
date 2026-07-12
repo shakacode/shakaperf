@@ -58,6 +58,21 @@ async function checkoutState(repoDir: string): Promise<CheckoutState> {
   return { branch: branchResult.code === 0 ? branchResult.stdout.trim() : null, sha };
 }
 
+async function verifyCheckout(
+  repoDir: string,
+  expected: CheckoutState,
+  operation: string,
+): Promise<void> {
+  const actual = await checkoutState(repoDir);
+  if (actual.sha !== expected.sha || actual.branch !== expected.branch) {
+    throw new Error(
+      `${operation} produced ${actual.branch ?? 'detached'} at ${actual.sha}, `
+      + `expected ${expected.branch ?? 'detached'} at ${expected.sha}`,
+    );
+  }
+  await requireClean(repoDir, `${operation} result`);
+}
+
 export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<PreparedGitRange> {
   await requireClean(options.experimentDir, 'Experiment');
   await requireClean(options.controlDir, 'Control');
@@ -110,17 +125,18 @@ export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<
 }
 
 export async function checkoutDetached(repoDir: string, sha: string): Promise<void> {
+  await requireClean(repoDir, 'Experiment');
   await git(repoDir, ['checkout', '--detach', sha]);
+  await verifyCheckout(repoDir, { branch: null, sha }, 'Detached checkout');
 }
 
 export async function restoreCheckout(repoDir: string, original: CheckoutState): Promise<void> {
+  await requireClean(repoDir, 'Experiment');
   if (original.branch) {
     await git(repoDir, ['checkout', original.branch]);
-    const restoredSha = await resolveCommit(repoDir, 'HEAD');
-    if (restoredSha !== original.sha) {
-      throw new Error(`Restored branch ${original.branch} at ${restoredSha}, expected ${original.sha}`);
-    }
+    await verifyCheckout(repoDir, original, 'Restored checkout');
     return;
   }
-  await checkoutDetached(repoDir, original.sha);
+  await git(repoDir, ['checkout', '--detach', original.sha]);
+  await verifyCheckout(repoDir, original, 'Restored checkout');
 }
