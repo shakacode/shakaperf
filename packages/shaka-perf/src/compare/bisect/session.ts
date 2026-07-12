@@ -351,9 +351,7 @@ export async function executeBisect(
       session.targets,
       input.gitRange.badSha,
     );
-    session = applyObservations(session, input.gitRange.badSha, new Map(
-      badObservations.map((observation) => [observation.targetId, observation]),
-    ));
+    session = recordEndpointObservations(session, badObservations);
     logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
       sha: input.gitRange.badSha,
       targetCount: session.targets.length,
@@ -731,6 +729,27 @@ function validateGoodEndpoint(
           },
         };
       }
+      return {
+        ...target,
+        observations: {
+          ...target.observations,
+          [observation.commitSha]: observation,
+        },
+      };
+    }),
+  };
+}
+
+function recordEndpointObservations(
+  session: BisectSession,
+  observations: readonly TargetObservation[],
+): BisectSession {
+  const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
+  return {
+    ...session,
+    targets: session.targets.map((target) => {
+      const observation = byTarget.get(target.id);
+      if (!observation) return target;
       return {
         ...target,
         observations: {
