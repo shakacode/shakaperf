@@ -69,3 +69,10 @@ After restoring the documented expectation to `aa1b86ae9ab48392844741b2cd90249ea
 - RED: after replacing only the ordered commit and event metadata while retaining the prior expected SHAs, `yarn workspace shaka-perf test --runInBand packages/shaka-perf/src/compare/bisect/__tests__/seed-history.test.ts` failed with all five received first-bad SHAs equal to the rewritten values above.
 - GREEN: after updating the expected first-bad SHAs, the same focused test passed: 1 suite and 1 test.
 - Broader verification: all bisect tests passed (8 suites, 70 tests); `yarn workspace shaka-perf typecheck` and `git diff --check` passed.
+
+## 2026-07-13 Live Asset Refresh Correction
+
+- Live acceptance proved that incremental `assets:precompile` retained old Rspack runtime mappings in `public/packs` and `tmp/cache`: the bad-ref source and new lazy chunks were present, but experiment Lighthouse artifacts still requested the control-era homepage and product-detail chunk hashes.
+- The demo rebuild command now removes those persistent build outputs before precompiling so every checked-out candidate serves a self-consistent manifest and runtime.
+- RED: the seed-history fixture test required the cache-clearing command and failed against the prior incremental command.
+- GREEN: the focused seed-history fixture passed after updating the demo configuration.
