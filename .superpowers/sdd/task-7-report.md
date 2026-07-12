@@ -90,6 +90,32 @@
 
 - None.
 
+## 2026-07-12 Run-boundary follow-up
+
+### Implementation
+
+- Added mandatory `clearSummary()` startup work before the running session write, lease acquisition, and first checkout.
+- Default startup invalidation removes `compare-bisect-results/summary.json` with `fs.rmSync(..., { force: true })`; any removal error aborts the run before it can expose stale complete output.
+- Kept new summary creation at the existing post-restoration and post-lease-release terminal boundary.
+
+### RED command and output
+
+- `yarn workspace shaka-perf jest src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - FAIL: 1 suite; 1 failed, 18 passed. The pre-seeded complete summary remained visible after permanent terminal session persistence failure.
+
+### GREEN commands and output
+
+- `yarn workspace shaka-perf jest src/compare/bisect/__tests__/session.test.ts --runInBand`
+  - PASS: 1 suite, 19 tests.
+- `yarn workspace shaka-perf jest src/compare/bisect/__tests__ --runInBand`
+  - PASS: 8 suites, 70 tests.
+- `yarn typecheck`
+  - PASS.
+
+### Concerns
+
+- Jest emits its existing forced-exit open-handle suggestion after the focused and bisect suites; both commands still exit successfully.
+
 ## 2026-07-12 Final focused lifecycle follow-up
 
 ### Implementation
