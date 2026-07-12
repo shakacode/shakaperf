@@ -171,10 +171,36 @@ describe('bisect Git helpers', () => {
     await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe('');
+    expect(git(fixture.experimentDir, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
 
     await restoreCheckout(fixture.experimentDir, original);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
     expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+    expect(git(fixture.experimentDir, ['status', '--porcelain', '--untracked-files=all'])).toBe('');
+  });
+
+  it('rejects an untracked file immediately before detached checkout', async () => {
+    fs.writeFileSync(path.join(fixture.experimentDir, 'untracked.txt'), 'dirty', 'utf8');
+
+    await expect(checkoutDetached(
+      fixture.experimentDir,
+      fixture.commits[2],
+    )).rejects.toThrow(/clean/i);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+    expect(fs.readFileSync(path.join(fixture.experimentDir, 'untracked.txt'), 'utf8')).toBe('dirty');
+  });
+
+  it('rejects a tracked modification immediately before restoring checkout', async () => {
+    const original = {
+      branch: fixture.experimentBranch,
+      sha: fixture.commits[4],
+    };
+    await checkoutDetached(fixture.experimentDir, fixture.commits[2]);
+    fs.writeFileSync(path.join(fixture.experimentDir, 'history.txt'), 'dirty', 'utf8');
+
+    await expect(restoreCheckout(fixture.experimentDir, original)).rejects.toThrow(/clean/i);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[2]);
+    expect(fs.readFileSync(path.join(fixture.experimentDir, 'history.txt'), 'utf8')).toBe('dirty');
   });
 
   it('restores an originally detached checkout', async () => {
