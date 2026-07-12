@@ -7,7 +7,12 @@
  * License in LICENSE.md.
  */
 
-import type { BisectCategory, BisectSession, TargetObservation } from './types';
+import type {
+  BisectCategory,
+  BisectSession,
+  BisectTarget,
+  TargetObservation,
+} from './types';
 
 const categoryPriority: Record<BisectCategory, number> = {
   visreg: 0,
@@ -49,11 +54,42 @@ export function nextCandidate(session: BisectSession): CandidateWork | null {
   };
 }
 
+export function applyCachedObservations(session: BisectSession): BisectSession {
+  const commitIndexes = new Map(session.orderedCommits.map((sha, index) => [sha, index]));
+
+  return {
+    ...session,
+    targets: session.targets.map((target) => {
+      if (target.status !== 'active') return target;
+
+      let goodIndex = target.goodIndex;
+      let badIndex = target.badIndex;
+
+      for (const observation of Object.values(target.observations)) {
+        const commitIndex = commitIndexes.get(observation.commitSha);
+        if (commitIndex === undefined
+          || commitIndex < target.goodIndex
+          || commitIndex > target.badIndex) continue;
+
+        if (observation.present) badIndex = Math.min(badIndex, commitIndex);
+        else goodIndex = Math.max(goodIndex, commitIndex);
+      }
+
+      return finalizeTarget(session, { ...target, goodIndex, badIndex });
+    }),
+  };
+}
+
 export function applyObservations(
   session: BisectSession,
   sha: string,
   observations: Map<string, TargetObservation>,
 ): BisectSession {
+  const infrastructureError = session.commitRuns[sha]?.infrastructureError;
+  if (infrastructureError) {
+    throw new Error(`Cannot apply observations for ${sha}: ${infrastructureError}`);
+  }
+
   const commitIndex = session.orderedCommits.indexOf(sha);
   if (commitIndex === -1) throw new Error(`Unknown bisect commit: ${sha}`);
 
@@ -72,14 +108,18 @@ export function applyObservations(
         ...(observation.present ? { badIndex: commitIndex } : { goodIndex: commitIndex }),
       };
 
-      if (updatedTarget.badIndex - updatedTarget.goodIndex !== 1) return updatedTarget;
-
-      return {
-        ...updatedTarget,
-        status: 'found' as const,
-        firstBadSha: session.orderedCommits[updatedTarget.badIndex],
-      };
+      return finalizeTarget(session, updatedTarget);
     }),
+  };
+}
+
+function finalizeTarget(session: BisectSession, target: BisectTarget): BisectTarget {
+  if (target.badIndex - target.goodIndex !== 1) return target;
+
+  return {
+    ...target,
+    status: 'found',
+    firstBadSha: session.orderedCommits[target.badIndex],
   };
 }
 
