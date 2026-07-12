@@ -19,3 +19,6 @@ coverage.
 
 Performance fixtures should use deterministic client-side work instead of
 network delays so results remain easy to reproduce in local containers.
+
+Accessibility fixtures should avoid layout-visible changes when they are meant
+to be accessibility-only.
