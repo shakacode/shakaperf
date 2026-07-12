@@ -707,10 +707,15 @@ The main loop is:
 
 ```ts
 while (true) {
-  const work = nextCandidate(session);
-  if (!work) break;
+  const normalized = applyCachedObservations(session);
+  writeSessionAtomic(sessionPath, normalized);
+  const work = nextCandidate(normalized);
+  if (!work) {
+    session = normalized;
+    break;
+  }
   const result = await runCandidate({ ...context, work });
-  session = applyObservations(session, work.sha, result.observations);
+  session = applyObservations(normalized, work.sha, result.observations);
   writeSessionAtomic(sessionPath, session);
 }
 ```
