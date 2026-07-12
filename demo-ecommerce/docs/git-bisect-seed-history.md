@@ -39,20 +39,22 @@ Seed base: `38dae68` (`main` when this branch was created).
 
 Category map:
 
-- `f2cd5c9` - no regression, seed docs only.
-- `267da30` - no regression, docs only.
-- `aa1b86a` - first `visreg` bad commit, homepage hero color change.
-- `c9b2c71` - no regression, docs only.
-- `a24c926` - no regression, docs only.
-- `5d38dcf` - first `perf` bad commit, homepage CPU warmup.
-- `4dbb382` - no regression, docs only.
-- `af79caf` - no regression, docs only.
-- `c0adc35` - no regression, docs only.
-- `38e7882` - first `accessibility` bad commit, offscreen unnamed button.
-- `5956eb6` - no regression, docs only.
-- `db65ccd` - no regression, docs only.
-- `5c3dbad` - no regression, docs only.
-- `993637a` - visual plus performance regression on product detail.
+- `623a1ae` - no regression, seed docs only.
+- `fe8900e` - no regression, docs only.
+- `58cc828` - first `visreg` bad commit, homepage hero color change.
+- `a55e7f4` - no regression, docs only.
+- `754fcd9` - no regression, docs only.
+- `9c7cfff` - first `perf` bad commit, homepage CPU warmup.
+- `744fe90` - no regression, docs only.
+- `ac38e53` - no regression, docs only.
+- `463c429` - no regression, docs only.
+- `fcb0e2b` - first `accessibility` bad commit, offscreen unnamed button.
+- `c1e2a62` - no regression, docs only.
+- `ce1f601` - no regression, docs only.
+- `3846371` - no regression, docs only.
+- `5345dff` - visual plus performance regression on product detail.
+- `088afb9` - no regression, docs only.
+- `4406a78` - no regression, fixture-impact docs only.
 
 Expected affected AB tests and metrics:
 
