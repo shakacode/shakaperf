@@ -21,6 +21,9 @@ function metric(label: string, group: 'vitals' | 'diagnostics'): NonNullable<Per
   return {
     label,
     group,
+    controlValue: 100,
+    experimentValue: 120,
+    deltaValue: 20,
     controlDisplay: '100ms',
     experimentDisplay: '120ms',
     deltaDisplay: '+20ms',
