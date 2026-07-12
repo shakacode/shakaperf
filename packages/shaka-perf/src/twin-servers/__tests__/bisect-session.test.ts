@@ -96,16 +96,13 @@ describe('experiment Overmind process targeting', () => {
     ]);
   });
 
-  it('stops and restarts only experiment processes through the live Overmind socket', async () => {
+  it('atomically restarts only experiment processes through the live Overmind socket', async () => {
     const config = fakeConfig();
 
     await restartExperimentProcesses(config);
 
     const socketPath = path.join(config.projectDir, '.overmind.sock');
     expect(mockExec.mock.calls).toEqual([
-      ['overmind', ['stop', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'], {
-        cwd: config.projectDir,
-      }],
       ['overmind', ['restart', '--socket', socketPath, 'experiment-rails', 'notify-experiment-server-started'], {
         cwd: config.projectDir,
       }],
