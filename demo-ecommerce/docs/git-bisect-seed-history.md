@@ -12,3 +12,7 @@ note or other demo-only documentation without changing measured pages.
 
 Runtime fixtures should prefer existing measured routes so future bisect tests
 do not need a special-case demo configuration.
+
+The homepage fixtures are intended for the existing homepage and shop-now
+coverage. The product detail fixture is intended for the existing product detail
+coverage.
