@@ -31,3 +31,6 @@ bisect still reports the earliest bad commit for each individual category.
 
 Product detail fixtures should avoid changing product data or cart behavior, so
 they remain independent of Rails seeds and API responses.
+
+Fixture commits should stay small enough that `git show` explains the category
+signal without requiring a full app run.
