@@ -113,6 +113,42 @@ and deterministic within each category. Cached observations are reapplied before
 each scheduling decision, so repeated measurements of the same target/SHA are
 avoided.
 
+### Core Invariants
+
+The implementation keeps a few invariants simple on purpose:
+
+- **One fixed control.** Control represents the baseline behavior for the whole
+  run. Only the experiment checkout moves.
+- **One frozen test set.** The config and `.abtest.ts` definitions come from the
+  invocation checkout and do not change as candidate commits are checked out.
+- **One interval per target.** Every unresolved target owns a `goodIndex` and
+  `badIndex`; the first-bad answer is valid only when those indexes become
+  adjacent.
+- **Evidence is explicit.** A candidate only changes an interval when the
+  requested target is actually observed in that candidate's compare output.
+- **Artifacts are durable.** Each measured SHA writes normal compare artifacts
+  plus JSON session state so a failed run can be inspected after the fact.
+
+These invariants make the result auditable: for any target in `summary.json`,
+you can walk the observations in `session.json` and see why the interval moved.
+
+### Scheduler Details
+
+V0 uses binary search for each target, but it batches work across targets when
+possible:
+
+1. Reapply cached observations to every active target.
+2. Pick the next unresolved target in deterministic category/test order.
+3. Choose the midpoint of that target's current interval.
+4. Find other active targets that can also use that same candidate SHA.
+5. Run one narrowed compare for the union of those targets' categories and test
+   files.
+6. Apply the resulting observations back to each target independently.
+
+This is a compromise between a pure per-target bisect, which would repeat a lot
+of browser work, and a pure commit-level bisect, which cannot explain multiple
+regressions introduced by different commits.
+
 ## Design Decisions
 
 ### Target-Level Bisect, Not Commit-Level Bisect
@@ -143,6 +179,10 @@ do not classify a candidate as good or bad. The session is marked `failed`, the
 candidate run records the error, and the user can inspect the normal compare
 artifacts. This avoids false first-bad answers from partial data.
 
+This also means V0 does not infer that a target is absent just because a broader
+compare run failed before producing that target's result. The absence must be
+measured, not guessed.
+
 ### Explicit Experiment Materialization
 
 The experiment checkout is moved to each candidate commit and the build-owned
@@ -150,6 +190,12 @@ files are synchronized into the experiment volume using the existing twin-server
 build manifest. V0 prefers syncing only changed manifest-owned paths after the
 first candidate, while guarding against paths and symlinks that could escape the
 source or volume root.
+
+The manifest boundary matters because the Docker volume contains generated
+runtime state as well as app files. Bisect is allowed to replace files that the
+image build declared as owned by the app checkout; it refuses unsafe replacements
+such as deleting a non-empty generated directory that happens to sit at a former
+manifest file path.
 
 ### Refresh Strategy
 
@@ -166,12 +212,20 @@ bisect cleanup releases it. For each candidate, the leased session either:
 This deliberately reuses the existing local server workflow instead of adding a
 second process supervisor for bisect.
 
+The lease includes the owning bisect process ID. If that process is interrupted,
+the menu reaps the abandoned lease the next time a proxied action checks it, so
+an aborted bisect does not permanently block normal server actions.
+
 ### Restoration
 
 The command restores the experiment checkout to its original branch or detached
 SHA at the end of the run. If a different candidate was materialized into the
 experiment volume, V0 syncs the original SHA back into the volume and refreshes
 the experiment side again.
+
+Cleanup is best-effort but conservative: the primary bisect error is preserved,
+and cleanup failures are reported separately so users can restore the checkout
+or server state manually if needed.
 
 ## Limitations
 
