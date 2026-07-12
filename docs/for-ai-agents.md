@@ -4,13 +4,13 @@ This page is written to be read by coding agents (Claude Code, Cursor, Codex, an
 
 What ShakaPerf gives an agent that a raw Lighthouse run or DevTools trace cannot: a **statistical verdict**. Control and experiment are sampled *simultaneously* so machine noise hits both sides equally, then compared with a paired Wilcoxon signed-rank test and a Hodges-Lehmann estimate (see [used_statistics.md](../packages/shaka-perf/used_statistics.md)). That means "regression" / "no difference" answers you can trust on a noisy laptop or shared CI runner — no quiet machine required.
 
-**License note for agents:** agent use is explicitly permitted. Evaluation (up to 45 days per organization, "agents welcome") is free for everyone; production use — including CI, PR checks, and coding-agent workflows — is free for small organizations. See [LICENSE.md](../LICENSE.md) and [shakaperf.com/pricing](https://shakaperf.com/pricing). Do not vendor, copy, or re-implement ShakaPerf source into the host project to bypass licensing; use it as a dependency.
+**License note for agents:** Evaluation, including agent-assisted evaluation, is free for up to 45 days per organization. Production use, including CI, PR checks, and coding-agent workflows, is free only for a Small Organization: fewer than 10 FTEs, less than US $1M in revenue over the last twelve months, and less than US $1M in outside capital over its lifetime, including affiliates. Government entities other than public educational institutions do not qualify. See [LICENSE.md section 2](../LICENSE.md#2-definitions) and [shakaperf.com/pricing](https://shakaperf.com/pricing). Do not vendor, copy, or re-implement ShakaPerf source into the host project to bypass licensing; use it as a dependency.
 
 ## Prerequisites
 
 - Node >= 20.6, plus a C++ toolchain at install time (a native addon builds via node-gyp; macOS/Linux).
-- For twin-server A/B runs: Docker, [Overmind](https://github.com/DarthSim/overmind), and GNU parallel (`brew install overmind parallel` / `apt install parallel`).
-- Optional: `ffmpeg` (load videos in client reports), the `claude` CLI (AI-written report narratives; everything degrades gracefully without it).
+- For twin-server A/B runs: Docker, `dockerize`, [Overmind](https://github.com/DarthSim/overmind), and GNU parallel (`brew install overmind parallel` / `apt install parallel`).
+- Optional: `ffmpeg` (load videos in client reports). When `claude` is on `PATH`, the default audit pipeline invokes it to write a best-effort AI summary from metric labels, values, and accessibility counts; this does not affect audit success.
 
 ## Install and scaffold
 
@@ -23,7 +23,7 @@ yarn shaka-perf init
 
 `init` creates:
 
-- **`abtests.config.ts`** — the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `accessibility`, `twinServers`), every field annotated with its default.
+- **`abtests.config.ts`** - the single project config (sections: `shared`, `visreg`, `perf`, `audit`, `twinServers`), every field annotated with its default. `accessibility` is supported but not scaffolded; its `failOnViolation` default is `true`.
 - **Four Claude Code skills** under `.claude/skills/` (they ship inside the npm package):
 
 | Skill | What it does |
@@ -58,22 +58,24 @@ Rules for agents driving servers — from the `ab-servers` skill:
 
 - **Never run bare `shaka-perf servers`** — it opens an interactive menu meant for humans. Always call subcommands.
 - `start-servers` **blocks** while Overmind runs; start it in the background.
-- If a human already has the interactive `shaka-perf servers` menu open, your subcommands are proxied into that session and may queue; exit code `75` means "terminal state, try again shortly".
+- If a human already has the interactive `shaka-perf servers` menu open, your subcommands are proxied into that session and may queue. Queued commands wait, then return their actual exit code. Exit code `75` (`EX_TEMPFAIL`) means the menu is starting or shutting down; retry shortly.
 
 Cold start:
 
 ```bash
 yarn shaka-perf servers build              # build both Docker images (control + experiment)
-yarn shaka-perf servers start-containers   # bring containers up, run setupCommands
+yarn shaka-perf servers start-containers   # clears both bind-mount volumes, recreates containers, runs setupCommands
 yarn shaka-perf servers start-servers      # launch the app via Overmind — blocks; run in background
 ```
+
+If you rerun `start-containers` after syncing code, rerun `sync-changes` and any app-specific build command before measuring.
 
 Iterate on a change:
 
 ```bash
 # 1. Edit application code.
 
-# 2. Sync your working-tree changes into the experiment container (bind mounts — no image rebuild):
+# 2. Sync changed worktree files into the experiment container (staged, unstaged, and untracked; bind mounts, no image rebuild):
 yarn shaka-perf servers sync-changes experiment
 # App-specific build steps go through run-cmd, e.g.:
 #   yarn shaka-perf servers run-cmd experiment "bundle exec rake assets:precompile"
@@ -88,11 +90,11 @@ yarn shaka-perf compare --categories perf --filter "Homepage Hero"
 yarn shaka-perf compare
 ```
 
-`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). Note: `compare` wipes `compare-results/` at the start of each run.
+`--filter` accepts a test-name regex, a comma-separated list, or a path to a single `.abtest.ts` file. `--categories` takes any subset of `visreg,perf,accessibility` (default: all three). `compare` clears the artifact directory for each test and viewport it will run, not `compare-results/` as a whole. Artifacts for tests excluded by `--filter` remain. `--keep-old-results` also preserves the per-test artifact directories.
 
 ## Reading results — the machine contract
 
-**Exit code:** `0` = clean. Non-zero prints `FAILED: <summary>` to stderr, where the summary counts failure classes, e.g. `2 errors, 1 perf regression, 3 visreg mismatches`. (Today all failures exit `1`; differentiated codes and a `verdict` command are tracked in [#70](https://github.com/shakacode/shakaperf/issues/70).)
+**Exit code:** `0` = clean. A completed pipeline run with failures prints `FAILED: <summary>` to stderr and exits `1`, where the summary counts failure classes, e.g. `2 errors, 1 perf regression, 3 visreg mismatches`. A non-zero exit without `FAILED:` is a harness or configuration error, not a test verdict. Differentiated codes and a `verdict` command are tracked in [#70](https://github.com/shakacode/shakaperf/issues/70).
 
 **stdout** prints the report paths on completion:
 
@@ -110,28 +112,28 @@ yarn shaka-perf compare
     {
       "id": "<slug>",                    // per test × viewport
       "name": "Homepage Hero",
-      "filePath": "ab-tests/homepage.abtest.ts",
-      "viewport": { "label": "desktop", "width": 1920, "height": 1080 },
+      "filePath": "/abs/path/to/repo/ab-tests/homepage.abtest.ts", // absolute in report.json; HTML shows it repo-relative
+      "viewport": { "label": "desktop", "width": 1280, "height": 800 },
       "chips": [ { "tag": "regression" } ],
-      "outcomes": [ { "kind": "ok|error|skipped", "stage": "perf", "error": null, "logs": "...", "summary": {} } ]
+      "outcomes": [ { "kind": "ok|error|skipped", "stage": "perf", "error": { "message": "...", "stack": "..." }, "logs": "...", "summary": {} } ] // error is absent unless kind is "error"
     }
   ]
 }
 ```
 
-**Chips are the verdict vocabulary.** Failure-class chips (these make a `compare` run fail): `regression`, `visual change`, `broken`, `accessibility regression` (new a11y findings while `accessibility.failOnViolation` is on), `accessibility error` (a scan failed, so no comparison exists), and `accessibility blocked` (bot protection). The `audit` pipeline uses `accessibility violation` for the same failure role. Informational chips: `improvement`, `no difference`, `needs improvement`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `duplicate`, `accessibility finding` (new findings with `failOnViolation` off), `accessibility changed`, `accessibility fixed` (plus `a11y-*` sub-chips), `has interactions` / `no interactions`, `no audit`.
+**Chips are the verdict vocabulary.** In `compare-results/report.json`, failure-class chips that make a `compare` run fail are `regression`, `visual change`, `broken`, `accessibility regression` (new a11y findings while `accessibility.failOnViolation` is on), `accessibility error` (a scan failed, so no comparison exists), and `accessibility blocked` (bot protection). Its informational chips are `improvement`, `no difference`, `flaky` (a stage crashed but recovered on retry), `visreg unstable`, `accessibility finding` (new findings with `failOnViolation` off), `accessibility changed`, and `accessibility fixed`. `a11y-*` values are HTML-report sorting dimensions, not chips, and are absent from `report.json`. The separate `audit` pipeline uses `accessibility violation` for the failure role and can emit `needs improvement`, `duplicate`, `has interactions` / `no interactions`, and `no audit` informational chips.
 
-**Where the numbers are today:** per-stage `summary` objects in `report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Until that lands:
+**Where the numbers are today:** per-stage `summary` objects in `compare-results/report.json` are still empty placeholders ([#68](https://github.com/shakacode/shakaperf/issues/68) tracks populating p-values / estimates / diff percentages there; the schema doc is [#69](https://github.com/shakacode/shakaperf/issues/69)). Audit reports already include machine-readable summaries for accessibility, agent-readiness, and AI summary stages. Until compare summaries are populated:
 
 - Perf numbers (per-metric estimates, confidence intervals, p-values) are in the HTML report and per-test artifact dirs under `compare-results/`.
-- Visreg details are machine-readable via the visreg engine's own report: run `yarn shaka-perf discover-abtests parse-report` (reads `visreg_data/html_report/report.json`) — it prints per-test status, diff %, `whitePixelPercent` (>90 usually means the selector captured empty space — a false PASS), and engine errors.
+- Visreg details are machine-readable via the visreg engine's own report: run `yarn shaka-perf discover-abtests parse-report` (reads `visreg_data/html_report/report.json`) - it prints per-test status, diff %, the available `testWhitePixelPercent` or `refWhitePixelPercent` (>90 usually means the selector captured empty space - a false PASS), and engine errors.
 
 ## What "regression" means
 
 A perf regression chip means **both**:
 
 1. the paired difference is statistically significant — p-value below `perf.pValueThreshold` (default `0.05`), from a paired Wilcoxon signed-rank test with exact distribution at small n, and
-2. the effect size exceeds `perf.regressionThreshold` (default `50` ms) on the statistic named by `perf.regressionThresholdStat` (default `estimator`, the Hodges-Lehmann paired estimate).
+2. the effect size exceeds the practical threshold on the statistic named by `perf.regressionThresholdStat` (default `estimator`, the Hodges-Lehmann paired estimate). `perf.regressionThreshold` (default `50` ms) applies only to millisecond metrics. KB and non-CLS `/100` metrics use `1`; CLS uses its own rule: delta greater than `5` or crossing a quality boundary at `10` or `25`; other units use `0.5`.
 
 Practical guidance for the loop:
 
@@ -155,7 +157,8 @@ Paste (and adapt) this into the consumer repo so every agent session knows Shaka
 ## Performance testing (ShakaPerf)
 
 This repo uses ShakaPerf (https://shakaperf.com) for statistically-gated perf A/B,
-visual regression, and accessibility checks. Config: `abtests.config.ts`; tests:
+visual regression, and accessibility checks. Agent guide:
+https://github.com/shakacode/shakaperf/blob/main/docs/for-ai-agents.md. Config: `abtests.config.ts`; tests:
 `ab-tests/*.abtest.ts`.
 
 - NEVER run bare `shaka-perf servers` (interactive menu). Use subcommands:
@@ -166,7 +169,8 @@ visual regression, and accessibility checks. Config: `abtests.config.ts`; tests:
   (app build steps via `yarn shaka-perf servers run-cmd experiment "<cmd>"`).
 - Inner loop: `yarn shaka-perf compare --categories perf --filter "<test name>"`.
 - Full check before pushing: `yarn shaka-perf compare`
-  (exit 0 = clean; otherwise stderr ends with `FAILED: <summary>`).
+  (exit 0 = clean; a completed failed run prints `FAILED: <summary>`; other
+  non-zero exits are harness/configuration errors).
 - Machine-readable results: `compare-results/report.json` — per-test `chips`
   (`regression`, `visual change`, `broken`, and the `accessibility regression` /
   `accessibility error` / `accessibility blocked` chips fail the run).
