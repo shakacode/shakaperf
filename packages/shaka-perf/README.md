@@ -6,7 +6,7 @@ Frontend performance testing toolkit for web applications. A single CLI and a si
 
 | Domain    | What it does                                                                           | Docs                                                                                                           |
 | --------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `compare` | Lighthouse-based perf benchmarking + visual-regression capture, one self-contained HTML report | [README-visreg.md](./README-visreg.md)                                                                         |
+| `compare` | Lighthouse-based perf benchmarking + visual-regression capture, one self-contained HTML report | [README-visreg.md](./README-visreg.md), [README-compare-bisect.md](./README-compare-bisect.md)                 |
 | `servers` | Docker A/B infrastructure that runs control and experiment servers side-by-side        | [README-twin-servers.md](./README-twin-servers.md) — see also [SETUP-twin-servers.md](./SETUP-twin-servers.md) |
 
 A single test definition format (`abTest()` from `shaka-shared`) drives both categories: a Playwright test you write once becomes a perf measurement AND a visual-regression pair.
@@ -34,6 +34,9 @@ yarn shaka-perf compare
 # Narrow to one category
 yarn shaka-perf compare --categories visreg
 yarn shaka-perf compare --categories perf
+
+# Locate the first commit that introduced compare regressions
+yarn shaka-perf compare bisect <good-ref> <bad-ref>
 
 # Twin Docker servers (A/B infrastructure) — one command does it all:
 # detects changes, rebuilds if needed, starts containers, starts servers.

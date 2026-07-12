@@ -59,7 +59,16 @@ export type ProxyRequestPayload =
   | { cmd: 'start-servers' }
   | { cmd: 'run-cmd'; target: ProxyTarget; shellCommand: string }
   | { cmd: 'run-cmd-parallel'; shellCommand: string }
-  | { cmd: 'sync-changes'; target: ProxyTarget };
+  | { cmd: 'sync-changes'; target: ProxyTarget }
+  | { cmd: 'bisect-begin'; token: string }
+  | {
+    cmd: 'bisect-refresh';
+    token: string;
+    mode: 'commands' | 'container';
+    commands: string[];
+    noCache: boolean;
+  }
+  | { cmd: 'bisect-end'; token: string };
 
 export type ProxyRequest = BaseRequestEnvelope & ProxyRequestPayload;
 

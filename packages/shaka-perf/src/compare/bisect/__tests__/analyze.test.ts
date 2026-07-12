@@ -234,6 +234,16 @@ describe('bisect regression analysis', () => {
     ]);
   });
 
+  it('throws when a requested target has no matching measurement', () => {
+    const existingTarget = discoverTargets([
+      testResult(),
+    ], ['good', 'bad'], 'bad')
+      .find((target) => target.category === 'visreg')!;
+
+    expect(() => observeTargets([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
+      .toThrow(/missing visreg measurement/i);
+  });
+
   it('does not discover visreg artifacts without a diff image', () => {
     const result = testResult();
     const visreg = result.outcomes.find((outcome) => outcome.stage === 'visreg')
