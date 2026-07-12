@@ -35,8 +35,10 @@ yarn shaka-perf compare
 yarn shaka-perf compare --categories visreg
 yarn shaka-perf compare --categories perf
 
-# Locate the first commit that introduced compare regressions
-yarn shaka-perf compare bisect <good-ref> <bad-ref>
+# Locate the first commit that introduced compare regressions. With no refs,
+# control HEAD is good and experiment HEAD is bad.
+yarn shaka-perf compare bisect
+yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
 
 # Twin Docker servers (A/B infrastructure) — one command does it all:
 # detects changes, rebuilds if needed, starts containers, starts servers.
