@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { exec } from '../../twin-servers/helpers/shell';
+import type { BisectRepositoryIdentity } from './types';
 
 export interface CheckoutState {
   branch: string | null;
@@ -49,6 +50,12 @@ export interface PreparedChildGitRange {
 
 export interface CleanCheckoutOptions {
   allowedPaths?: readonly string[];
+}
+
+export interface BisectRepositorySnapshot {
+  identity: BisectRepositoryIdentity;
+  control: CheckoutState;
+  experiment: CheckoutState;
 }
 
 async function git(repoDir: string, args: string[]): Promise<string> {
@@ -126,6 +133,54 @@ async function checkoutState(repoDir: string): Promise<CheckoutState> {
     throw new Error(`Unable to determine checkout state in ${repoDir}: ${branchResult.stderr.trim()}`);
   }
   return { branch: branchResult.code === 0 ? branchResult.stdout.trim() : null, sha };
+}
+
+async function repositoryIdentity(repoDir: string): Promise<{
+  root: string;
+  gitCommonDir: string;
+  origin: string | null;
+}> {
+  const root = realpathIfExists(await git(repoDir, ['rev-parse', '--show-toplevel']));
+  const commonDir = await git(repoDir, ['rev-parse', '--git-common-dir']);
+  const originResult = await exec('git', ['config', '--get', 'remote.origin.url'], {
+    cwd: repoDir,
+    silent: true,
+  });
+  if (originResult.code !== 0 && originResult.code !== 1) {
+    throw new Error(`Unable to read Git origin in ${repoDir}: ${originResult.stderr.trim()}`);
+  }
+  return {
+    root,
+    gitCommonDir: realpathIfExists(path.resolve(repoDir, commonDir)),
+    origin: originResult.code === 0 ? originResult.stdout.trim() : null,
+  };
+}
+
+export async function inspectBisectRepositories(options: {
+  controlDir: string;
+  experimentDir: string;
+  allowedPaths?: readonly string[];
+}): Promise<BisectRepositorySnapshot> {
+  await requireClean(options.controlDir, 'Control', { allowedPaths: options.allowedPaths });
+  await requireClean(options.experimentDir, 'Experiment', { allowedPaths: options.allowedPaths });
+  const [controlRepository, experimentRepository, control, experiment] = await Promise.all([
+    repositoryIdentity(options.controlDir),
+    repositoryIdentity(options.experimentDir),
+    checkoutState(options.controlDir),
+    checkoutState(options.experimentDir),
+  ]);
+  return {
+    identity: {
+      controlRoot: controlRepository.root,
+      experimentRoot: experimentRepository.root,
+      controlGitCommonDir: controlRepository.gitCommonDir,
+      experimentGitCommonDir: experimentRepository.gitCommonDir,
+      controlOrigin: controlRepository.origin,
+      experimentOrigin: experimentRepository.origin,
+    },
+    control,
+    experiment,
+  };
 }
 
 async function verifyCheckout(

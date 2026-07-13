@@ -71,7 +71,7 @@ export type BisectNextAction = BisectNextActionBase & (
 );
 
 export interface BisectSession {
-  version: 1;
+  version: 1 | 2;
   status: 'running' | 'complete' | 'interrupted' | 'failed';
   goodSha: string;
   badSha: string;
@@ -84,6 +84,14 @@ export interface BisectSession {
   orderedCommits: string[];
   targets: BisectTarget[];
   primary?: BisectSearchPhase;
+  mode?: 'primary' | 'merge-investigation' | 'complete';
+  identity?: BisectRepositoryIdentity;
+  compatibility?: BisectCompatibility;
+  control?: { sha: string; branch: string | null };
+  rebuildStrategy?: PersistedRebuildStrategy;
+  reportInput?: { filename: string; sha256: string };
+  mergeQueue?: string[];
+  mergeInvestigations?: Record<string, MergeInvestigation>;
   commitRuns: Record<string, CommitRun>;
   dryRun?: boolean;
   validateGoodRef?: boolean;
@@ -190,4 +198,14 @@ export interface BisectSessionV2 {
   startedAt: string;
   finishedAt?: string;
   failure?: string;
+  goodSha?: string;
+  badSha?: string;
+  commitSubjects?: Record<string, string>;
+  selectedCategories?: BisectCategory[];
+  orderedCommits?: string[];
+  targets?: BisectTarget[];
+  commitRuns?: Record<string, CommitRun>;
+  dryRun?: boolean;
+  validateGoodRef?: boolean;
+  nextAction?: BisectNextAction;
 }
