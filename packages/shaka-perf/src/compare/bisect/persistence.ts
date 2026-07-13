@@ -31,6 +31,10 @@ export function writeSummary(filePath: string, session: BisectSession): void {
     dryRun: session.dryRun,
     validateGoodRef: session.validateGoodRef,
     nextAction: session.nextAction,
+    mode: session.mode,
+    primary: session.primary,
+    mergeQueue: session.mergeQueue,
+    mergeInvestigations: session.mergeInvestigations,
     targets: [...session.targets].sort(compareTargets),
   });
 }

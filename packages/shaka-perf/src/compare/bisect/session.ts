@@ -214,6 +214,7 @@ export interface RunBisectOptions {
   validateGoodRef?: boolean;
   resume?: boolean;
   investigateMerges?: boolean;
+  compatibilityConfig?: unknown;
   gitRange?: PreparedGitRange;
   dependencies?: ExecuteBisectDependencies;
 }
@@ -274,7 +275,9 @@ export async function runCompareBisectFromCli(
       cwd,
       config,
       twinServers,
-      selectedCategories: parseCategories(cliOptions.categories),
+      selectedCategories: cliOptions.resume && cliOptions.categories === undefined
+        ? []
+        : parseCategories(cliOptions.categories),
       frozenTests,
       headed: cliOptions.headed === true,
       controlURL: cliOptions.controlURL,
@@ -282,6 +285,18 @@ export async function runCompareBisectFromCli(
       reuseCurrentResults: cliOptions.reuseCurrentResults === true,
       dryRun: cliOptions.dryRun === true,
       validateGoodRef: cliOptions.validateGoodRef === true,
+      resume: cliOptions.resume === true,
+      investigateMerges: cliOptions.investigateMerges === true,
+      compatibilityConfig: {
+        source: fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : raw,
+        overrides: {
+          filter: cliOptions.filter ?? config.shared.filter,
+          testPathPattern: cliOptions.testPathPattern ?? config.shared.testPathPattern,
+          headed: cliOptions.headed === true,
+          controlURL: cliOptions.controlURL ?? config.shared.controlURL,
+          experimentURL: cliOptions.experimentURL ?? config.shared.experimentURL,
+        },
+      },
     });
     printBisectSummary(session, path.resolve(cwd, 'compare-bisect-results'));
     return session;
@@ -294,6 +309,9 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
   const preliminaryResume = options.resume
     ? readBisectSession(path.join(resultsDirectory, 'session.json'))
     : null;
+  const selectedCategories = preliminaryResume && options.selectedCategories.length === 0
+    ? preliminaryResume.compatibility.effective.categories
+    : options.selectedCategories;
   const gitRange = options.gitRange ?? (preliminaryResume ? {
     goodSha: preliminaryResume.primary.goodSha,
     badSha: preliminaryResume.primary.badSha,
@@ -318,8 +336,9 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
   const controlURL = options.controlURL ?? options.config.shared.controlURL;
   const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
   const compatibility = buildCompatibility({
-    config: { config: options.config, headed: options.headed, controlURL, experimentURL },
-    categories: options.selectedCategories,
+    config: options.compatibilityConfig
+      ?? { config: options.config, headed: options.headed, controlURL, experimentURL },
+    categories: selectedCategories,
     tests: frozenTestSelections(options.frozenTests, options.cwd),
     rebuildStrategy,
     range: { goodSha: gitRange.goodSha, badSha: gitRange.badSha },
@@ -342,7 +361,7 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     resultsDirectory,
     config: options.config,
     twinServers: options.twinServers,
-    selectedCategories: options.selectedCategories,
+    selectedCategories,
     frozenTests: options.frozenTests,
     gitRange,
     headed: options.headed,
@@ -364,7 +383,9 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     twinServers: options.twinServers,
     frozenTests: options.frozenTests,
     resultsDirectory,
-    manifest: readRequiredBuildManifest(options.twinServers),
+    manifest: resumed && !resumeRequiresWork(resumed.session, options.investigateMerges === true)
+      ? undefined
+      : readRequiredBuildManifest(options.twinServers),
     gitRange,
     headed: options.headed,
     controlURL: input.controlURL,
@@ -809,7 +830,7 @@ function createDefaultDependencies(options: {
   twinServers: ResolvedConfig;
   frozenTests: readonly AbTestDefinition[];
   resultsDirectory: string;
-  manifest: BuildManifest;
+  manifest?: BuildManifest;
   gitRange: PreparedGitRange;
   headed: boolean;
   controlURL: string;
@@ -849,7 +870,7 @@ function createDefaultDependencies(options: {
           await reconcileExperimentVolume({
             sourceDir: options.twinServers.dockerBuildDir,
             volumeDir: options.twinServers.volumes.experiment,
-            manifest: options.manifest,
+            manifest: requireManifest(options.manifest),
             candidateSha: originalSha,
           });
           return;
@@ -857,7 +878,7 @@ function createDefaultDependencies(options: {
         await syncCommitDelta({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
-          manifest: options.manifest,
+          manifest: requireManifest(options.manifest),
           previousSha,
           candidateSha: originalSha,
         });
@@ -882,7 +903,7 @@ function createDefaultDependencies(options: {
         await reconcileExperimentVolume({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
-          manifest: options.manifest,
+          manifest: requireManifest(options.manifest),
           candidateSha,
         });
         return;
@@ -890,7 +911,7 @@ function createDefaultDependencies(options: {
       await syncCommitDelta({
         sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
-        manifest: options.manifest,
+        manifest: requireManifest(options.manifest),
         previousSha,
         candidateSha,
       });
@@ -1302,6 +1323,20 @@ function readRequiredBuildManifest(twinServers: ResolvedConfig): BuildManifest {
   return manifest;
 }
 
+function requireManifest(manifest: BuildManifest | undefined): BuildManifest {
+  if (!manifest) throw new Error('compare bisect work requires an experiment build manifest');
+  return manifest;
+}
+
+function resumeRequiresWork(session: BisectSessionV2, investigateMerges: boolean): boolean {
+  if (session.primary.status !== 'complete') return true;
+  if (!investigateMerges) return false;
+  return session.mergeQueue.some((sha) => {
+    const status = session.mergeInvestigations[sha]?.status;
+    return status !== 'complete' && status !== 'octopus-unsupported';
+  });
+}
+
 function printBisectSummary(session: BisectSession, resultsDirectory: string): void {
   const found = session.targets.filter((target) => target.status === 'found');
   const invalid = session.targets.filter((target) => target.status === 'invalid');
@@ -1348,10 +1383,22 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
     return;
   }
   for (const target of found) {
+    const investigation = target.firstBadSha
+      ? session.mergeInvestigations?.[target.firstBadSha]
+      : undefined;
+    const mergeResult = investigation?.targetResults[target.id];
+    const source = mergeResult && 'sourceSha' in mergeResult
+      ? `; source ${shortSha(mergeResult.sourceSha)} (${mergeResult.kind})`
+      : mergeResult ? `; ${mergeResult.kind}` : '';
     console.log(
       `  ${target.category} ${target.testName} ${target.viewport} ${target.subject}: ` +
-      `${shortSha(target.firstBadSha!)}`,
+      `${shortSha(target.firstBadSha!)}${source}`,
     );
+  }
+  const hasUninvestigatedMerge = Object.values(session.mergeInvestigations ?? {})
+    .some((investigation) => investigation.status === 'merge-uninvestigated');
+  if (hasUninvestigatedMerge) {
+    console.log('shaka-perf compare bisect --resume --investigate-merges');
   }
 }
 

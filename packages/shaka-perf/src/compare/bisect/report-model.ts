@@ -13,6 +13,8 @@ import type {
   BisectCategory,
   BisectSession,
   CommitRun,
+  MergeInvestigation,
+  MergeTargetResult,
   TargetObservation,
   TargetStatus,
 } from './types';
@@ -30,6 +32,8 @@ export interface BisectReportCommit {
   measured: boolean;
   counts: BisectReportCounts;
   targetIds: string[];
+  isMerge?: boolean;
+  mergeInvestigationStatus?: MergeInvestigation['status'];
 }
 
 export interface BisectReportTarget {
@@ -44,6 +48,11 @@ export interface BisectReportTarget {
   firstBadSha?: string;
   invalidReason?: string;
   badRefObservation?: TargetObservation;
+  mainlineFirstBadSha?: string;
+  mainlineIsMerge?: boolean;
+  mergeInvestigationStatus?: MergeInvestigation['status'];
+  mergeSourceSha?: string;
+  mergeResult?: MergeTargetResult['kind'];
 }
 
 export interface BisectReportView {
@@ -72,24 +81,41 @@ export function buildBisectReportModel(
   generatedAt: string,
 ): BisectReportModel {
   const testIdsByKey = new Map(badRefTests.map((test) => [testKey(test.filePath, test.name), test.id]));
-  const targets = session.targets.map((target) => ({
-    id: target.id,
-    category: target.category,
-    testId: testIdsByKey.get(testKey(target.testFile, target.testName)) ?? null,
-    testFile: target.testFile,
-    testName: target.testName,
-    viewport: target.viewport,
-    subject: target.subject,
-    status: target.status,
-    firstBadSha: target.firstBadSha,
-    invalidReason: target.invalidReason,
-    badRefObservation: target.observations[session.badSha],
-  }));
+  const targets = session.targets.map((target) => {
+    const parents = target.firstBadSha
+      ? session.primary?.commitParents[target.firstBadSha] ?? []
+      : [];
+    const investigation = target.firstBadSha
+      ? session.mergeInvestigations?.[target.firstBadSha]
+      : undefined;
+    const mergeResult = investigation?.targetResults[target.id];
+    return {
+      id: target.id,
+      category: target.category,
+      testId: testIdsByKey.get(testKey(target.testFile, target.testName)) ?? null,
+      testFile: target.testFile,
+      testName: target.testName,
+      viewport: target.viewport,
+      subject: target.subject,
+      status: target.status,
+      firstBadSha: target.firstBadSha,
+      invalidReason: target.invalidReason,
+      badRefObservation: target.observations[session.badSha],
+      mainlineFirstBadSha: target.firstBadSha,
+      mainlineIsMerge: parents.length > 1,
+      mergeInvestigationStatus: investigation?.status,
+      mergeResult: mergeResult?.kind,
+      mergeSourceSha: mergeResult && 'sourceSha' in mergeResult
+        ? mergeResult.sourceSha
+        : undefined,
+    };
+  });
   const targetsById = Object.fromEntries(targets.map((target) => [target.id, target]));
   const commits = session.orderedCommits.map((sha, position) => {
     const targetIds = targets
       .filter((target) => target.status === 'found' && target.firstBadSha === sha)
       .map((target) => target.id);
+    const investigation = session.mergeInvestigations?.[sha];
     return {
       sha,
       subject: session.commitSubjects?.[sha] || sha.slice(0, 7),
@@ -97,6 +123,8 @@ export function buildBisectReportModel(
       measured: commitWasMeasured(session.commitRuns[sha]),
       counts: countsFor(targetIds, targetsById),
       targetIds,
+      isMerge: (session.primary?.commitParents[sha] ?? []).length > 1,
+      mergeInvestigationStatus: investigation?.status,
     };
   });
 
