@@ -98,7 +98,7 @@ describe('bisect persistence', () => {
       kind: 'validate-good-ref',
       sha: 'good',
       categories: ['perf'],
-      testFiles: ['tests/checkout.abtest.ts'],
+      tests: [{ testFile: 'tests/checkout.abtest.ts', testName: 'Checkout' }],
       targetIds: ['target-1'],
     };
 
