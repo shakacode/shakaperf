@@ -540,6 +540,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(bisectInput, harness.deps);
 
+    expect(parseBisectSession(session).mergeInvestigations.b.status).toBe('complete');
     expect(order.indexOf('primary-report')).toBeLessThan(order.indexOf('prepare-child'));
     expect(session.mergeQueue).toEqual(['b']);
     expect(session.mergeInvestigations?.b.targetResults).toMatchObject({

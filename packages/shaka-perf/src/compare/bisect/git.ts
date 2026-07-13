@@ -152,8 +152,12 @@ async function repositoryIdentity(repoDir: string): Promise<{
   return {
     root,
     gitCommonDir: realpathIfExists(path.resolve(repoDir, commonDir)),
-    origin: originResult.code === 0 ? originResult.stdout.trim() : null,
+    origin: originResult.code === 0 ? normalizeOrigin(originResult.stdout) : null,
   };
+}
+
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '');
 }
 
 export async function inspectBisectRepositories(options: {

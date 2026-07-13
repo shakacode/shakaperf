@@ -53,6 +53,21 @@ Explicit refs and optional category narrowing work the same way as `compare`:
 yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
 ```
 
+The primary range follows Git first-parent history. A merge commit is one atomic
+mainline candidate, so a first-bad merge initially means "introduced to the
+mainline here." Complete the primary search first, then optionally investigate
+the source side of eligible two-parent merges:
+
+```bash
+yarn shaka-perf compare bisect --resume --investigate-merges
+```
+
+You can also pass `--investigate-merges` on the initial command. The primary
+result and report are persisted before any child-branch comparisons begin.
+Octopus merges remain atomic and are reported as unsupported for source
+investigation. Child searches are one level deep; a merge found on the source
+branch is reported as `nested-merge`, not recursively investigated.
+
 To iterate without repeating the initial bad-ref comparison, reuse the current
 `compare-results/` tree:
 
@@ -140,6 +155,7 @@ compare-bisect-results/
   bisect-report.json
   bisect-report.html
   session.json
+  bad-ref-tests.json
   summary.json
   decision-log.md
   decision-log.jsonl
@@ -153,8 +169,11 @@ compare-bisect-results/
   sections in the saved HTML; it does not rerun compare.
 - `bisect-report.json` is the validated portable payload used to regenerate the
   HTML report. Its renderable artifacts are already stored as data URIs.
-- `session.json` is diagnostic state recording the range, targets, observations,
-  candidate runs, and infrastructure errors. V0 cannot resume a run from it.
+- `session.json` is version-2 resumable state recording repository identity,
+  compatibility fingerprints, primary and child phases, target observations,
+  complete/incomplete attempts, merge queues, rebuild strategy, and failures.
+- `bad-ref-tests.json` is the digest-checked report input used to regenerate the
+  HTML report on resume without repeating bad-ref discovery.
 - `summary.json` records the final user-facing answer grouped by target status.
 - `decision-log.md` is the human-readable trail of the route taken: range setup,
   target discovery, midpoint choices, interval movements, fallback decisions,
@@ -206,8 +225,8 @@ Compare bisect treats the bad-ref comparison as a collection of independent
 regression targets.
 
 1. **Prepare the range.** The command validates clean control and experiment
-   checkouts, resolves good and bad refs, and builds the ordered commit list from
-   good to bad.
+   checkouts, resolves good and bad refs, and builds the ordered first-parent
+   commit list from good to bad. Merge commits stay atomic.
 2. **Freeze tests and config.** Test definitions are loaded once from the
    invocation checkout. Candidate commits change the app code, not the test
    definitions. This keeps the search question stable.
@@ -236,6 +255,32 @@ regression targets.
    remain distinct.
 8. **Finish on adjacency.** When a target's good and bad boundaries are adjacent,
    the bad boundary commit is recorded as `firstBadSha`.
+9. **Optionally investigate merges.** After every primary category and target is
+   complete and reported, validate the second parent of each two-parent
+   first-bad merge. Targets absent there are `merge-introduced`; reproducing
+   targets are narrowed from merge-base to second parent with the same scheduler.
+
+## Resuming Safely
+
+Resume always uses the latest `compare-bisect-results/session.json`:
+
+```bash
+yarn shaka-perf compare bisect --resume
+```
+
+`--resume` rejects positional refs and fresh-only flags such as
+`--reuse-current-results`, `--dry-run`, and `--validate-good-ref`. Before taking
+the twin-server lease or changing a checkout, it validates the version-2 schema,
+canonical repository roots and Git common directories, origins, clean checkout
+states, immutable range SHAs, config and URL overrides, selected categories,
+frozen `(test file, test name)` pairs, and rebuild strategy. Moved, dirty, or
+incompatible sessions fail with a fresh-run instruction.
+
+Completed observations are never compared again. A crashed `running` attempt is
+loaded as `incomplete` and retried without advancing target bounds. The first
+resumed candidate performs a full manifest reconciliation before refresh;
+subsequent candidates return to normal commit-delta synchronization. A fully
+complete session prints its saved results without acquiring a lease.
 
 The scheduler is category-prioritized (`visreg`, `perf`, then `accessibility`)
 and deterministic within each category. Cached observations are reapplied before
@@ -272,8 +317,8 @@ possible:
 2. Pick the next unresolved target in deterministic category/test order.
 3. Choose the midpoint of that target's current interval.
 4. Find other active targets that can also use that same candidate SHA.
-5. Run one narrowed compare for the union of those targets' categories and test
-   files.
+5. Run one narrowed compare for the union of those targets' categories and exact
+   `(test file, test name)` selections.
 6. Apply the resulting observations back to each target independently.
 
 This is a compromise between a pure per-target bisect, which would repeat a lot
