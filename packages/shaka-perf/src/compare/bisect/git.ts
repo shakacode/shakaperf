@@ -28,8 +28,23 @@ export interface PreparedGitRange {
   goodSha: string;
   badSha: string;
   commitSubjects: Record<string, string>;
+  commitParents: Record<string, string[]>;
   orderedCommits: string[];
   originalExperiment: CheckoutState;
+}
+
+export interface PrepareChildGitRangeOptions {
+  experimentDir: string;
+  firstParent: string;
+  secondParent: string;
+}
+
+export interface PreparedChildGitRange {
+  mergeBase: string;
+  secondParent: string;
+  commitSubjects: Record<string, string>;
+  commitParents: Record<string, string[]>;
+  orderedCommits: string[];
 }
 
 export interface CleanCheckoutOptions {
@@ -129,6 +144,34 @@ async function verifyCheckout(
   await requireClean(repoDir, `${operation} result`, options);
 }
 
+async function loadFirstParentRange(
+  repoDir: string,
+  goodSha: string,
+  badSha: string,
+): Promise<Pick<PreparedGitRange, 'commitParents' | 'commitSubjects' | 'orderedCommits'>> {
+  const orderedOutput = await git(repoDir, [
+    'rev-list',
+    '--first-parent',
+    '--reverse',
+    `${goodSha}..${badSha}`,
+  ]);
+  const orderedCommits = [goodSha, ...orderedOutput.split('\n').filter(Boolean)];
+  const metadataOutput = await git(repoDir, [
+    'show',
+    '--no-patch',
+    '--format=%H%x00%P%x00%s',
+    ...orderedCommits,
+  ]);
+  const commitSubjects: Record<string, string> = {};
+  const commitParents: Record<string, string[]> = {};
+  for (const line of metadataOutput.split('\n').filter(Boolean)) {
+    const [sha, parents = '', subject = ''] = line.split('\0');
+    commitSubjects[sha] = subject;
+    commitParents[sha] = parents.split(' ').filter(Boolean);
+  }
+  return { commitParents, commitSubjects, orderedCommits };
+}
+
 export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<PreparedGitRange> {
   await requireClean(options.experimentDir, 'Experiment');
   await requireClean(options.controlDir, 'Control');
@@ -156,40 +199,27 @@ export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<
     throw new Error(`Unable to validate Git ancestry: ${ancestor.stderr.trim()}`);
   }
 
-  const orderedOutput = await git(options.experimentDir, [
-    'rev-list',
-    '--reverse',
-    '--ancestry-path',
-    `${goodSha}..${badSha}`,
-  ]);
-  const parentOutput = await git(options.experimentDir, [
-    'rev-list',
-    '--parents',
-    `${goodSha}..${badSha}`,
-  ]);
-  const mergeLine = parentOutput.split('\n').find((line) => line.trim().split(/\s+/).length > 2);
-  if (mergeLine) {
-    throw new Error(`Bisect range must be linear; merge commit found at ${mergeLine.split(/\s+/)[0]}`);
-  }
-
-  const orderedCommits = [goodSha, ...orderedOutput.split('\n').filter(Boolean)];
-  const subjectOutput = await git(options.experimentDir, [
-    'show',
-    '--no-patch',
-    '--format=%H%x00%s',
-    ...orderedCommits,
-  ]);
-  const commitSubjects = Object.fromEntries(subjectOutput.split('\n').filter(Boolean).map((line) => {
-    const [sha, subject] = line.split('\0');
-    return [sha, subject];
-  }));
+  const range = await loadFirstParentRange(options.experimentDir, goodSha, badSha);
 
   return {
     goodSha,
     badSha,
-    commitSubjects,
-    orderedCommits,
+    ...range,
     originalExperiment,
+  };
+}
+
+export async function prepareChildGitRange(
+  options: PrepareChildGitRangeOptions,
+): Promise<PreparedChildGitRange> {
+  const firstParent = await resolveCommit(options.experimentDir, options.firstParent);
+  const secondParent = await resolveCommit(options.experimentDir, options.secondParent);
+  const mergeBase = await git(options.experimentDir, ['merge-base', firstParent, secondParent]);
+  const range = await loadFirstParentRange(options.experimentDir, mergeBase, secondParent);
+  return {
+    mergeBase,
+    secondParent,
+    ...range,
   };
 }
 
