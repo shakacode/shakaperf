@@ -230,6 +230,10 @@ function outcomeRendersSection(outcome: ReportOutcome): boolean {
     (outcome.kind === 'ok' && outcome.measurement != null);
 }
 
+function hasReportableOutcomes(test: TestResult): boolean {
+  return test.measuredAt != null || test.outcomes.length > 0;
+}
+
 export function buildStageFilterOptions(meta: ReportMeta, tests: readonly TestResult[]): StageFilterOption[] {
   const counts = new Map<string, number>();
   for (const test of tests) {
@@ -292,10 +296,10 @@ export function App({
   const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
-  const measuredTests = useMemo(() => data.tests.filter((test) => test.measuredAt != null), [data.tests]);
-  const chipFilters = useMemo(() => buildChipFilters(measuredTests), [measuredTests]);
-  const chipTestSets = useMemo(() => buildChipTestSets(measuredTests), [measuredTests]);
-  const accessibilityResults = useMemo(() => accessibilityResultsForTests(measuredTests), [measuredTests]);
+  const cardTests = useMemo(() => data.tests.filter(hasReportableOutcomes), [data.tests]);
+  const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
+  const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
+  const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
   const accessibilityFilterOptions = useMemo(
     () => collectConfiguredFilterOptions(accessibilityResults),
     [accessibilityResults],
@@ -324,8 +328,8 @@ export function App({
     };
   }, [accessibilityFilterOptions, accessibilityFilterSelection, setAccessibilityFilterSelection]);
   const stageFilterOptions = useMemo(
-    () => buildStageFilterOptions(data.meta, measuredTests),
-    [data.meta, measuredTests],
+    () => buildStageFilterOptions(data.meta, cardTests),
+    [cardTests, data.meta],
   );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
@@ -354,8 +358,8 @@ export function App({
       return normalizeStageSelection(next, stageFilterOptions);
     });
   }, [stageFilterOptions]);
-  const sortOptions = useMemo(() => buildSortOptions(measuredTests), [measuredTests]);
-  const sortValues = useMemo(() => buildSortValues(measuredTests), [measuredTests]);
+  const sortOptions = useMemo(() => buildSortOptions(cardTests), [cardTests]);
+  const sortValues = useMemo(() => buildSortValues(cardTests), [cardTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
     [chipTestSets],
@@ -379,10 +383,10 @@ export function App({
     }
     return out;
   }, [chipTestSets, visibleTestIds]);
-  const latestRunKey = useMemo(() => newestRunKey(measuredTests), [measuredTests]);
-  const showRunChips = latestRunKey != null && measuredTests.some((test) => runKey(test) !== latestRunKey);
+  const latestRunKey = useMemo(() => newestRunKey(cardTests), [cardTests]);
+  const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
-    () => data.tests.filter((test) => test.measuredAt == null && matchesQuery(test, query)),
+    () => data.tests.filter((test) => !hasReportableOutcomes(test) && matchesQuery(test, query)),
     [data.tests, query],
   );
 
@@ -392,7 +396,7 @@ export function App({
   // tool, not a hard hide.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
-    for (const t of measuredTests) {
+    for (const t of cardTests) {
       if (!matchesQuery(t, query)) continue;
       const excludedByBisect = data.bisect != null &&
         bisectSelection.kind !== 'all' &&
@@ -412,7 +416,7 @@ export function App({
       );
     });
     return out;
-  }, [bisectSelection.kind, bisectTestIds, data.bisect, measuredTests, visibleTestIds, query, sort, sortValues]);
+  }, [bisectSelection.kind, bisectTestIds, cardTests, data.bisect, visibleTestIds, query, sort, sortValues]);
 
   const selectChip = (key: string, additive: boolean) => {
     const chipTests = chipTestSets.get(key) ?? new Set<string>();
