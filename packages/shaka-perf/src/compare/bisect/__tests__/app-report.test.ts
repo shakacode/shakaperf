@@ -61,6 +61,18 @@ describe('bisect report App rendering', () => {
     expect(cardMarkup(html, 'Product page')).toContain('data-dimmed="true"');
     expect(cardMarkup(html, 'Unrelated page')).toContain('data-dimmed="true"');
   });
+
+  it('renders persisted outcomes as cards when their measurement time is unknown', () => {
+    const data = bisectReport();
+    data.tests = data.tests.map((test) => ({ ...test, measuredAt: null }));
+
+    const html = renderApp(data);
+
+    expect(html).toContain('<h3 class="card__title">Homepage</h3>');
+    expect(html).toContain('<h3 class="card__title">Product page</h3>');
+    expect(html).toContain('<h3 class="card__title">Unrelated page</h3>');
+    expect(html).not.toContain('card--missing-artifacts');
+  });
 });
 
 function renderApp(data: AppReportData, initialBisectSelection?: InitialBisectSelection): string {
