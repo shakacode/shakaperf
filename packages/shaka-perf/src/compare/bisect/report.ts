@@ -23,12 +23,19 @@ export interface WriteBisectReportOptions {
 
 export function writeBisectReport(options: WriteBisectReportOptions): string {
   const outputPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
+  const temporaryPath = `${outputPath}.tmp`;
   const portable = reportDataForMode(
     { ...options.data, meta: { ...options.data.meta, reportMode: 'lightweight' } },
     'lightweight',
     options.stages,
   );
-  fs.mkdirSync(options.resultsDirectory, { recursive: true });
-  fs.writeFileSync(outputPath, renderReportHtml(portable), 'utf8');
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  try {
+    fs.writeFileSync(temporaryPath, renderReportHtml(portable), 'utf8');
+    fs.renameSync(temporaryPath, outputPath);
+  } catch (error) {
+    fs.rmSync(temporaryPath, { force: true });
+    throw error;
+  }
   return outputPath;
 }
