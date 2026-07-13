@@ -15,8 +15,27 @@ interface Props {
   selection: BisectSelection;
 }
 
+interface TestGroup {
+  id: string;
+  testName: string;
+  testFile: string;
+  targets: BisectReportTarget[];
+}
+
+interface ComparisonValue {
+  control: string;
+  experiment: string;
+  change: string;
+}
+
+const categoryOrder: BisectReportTarget['category'][] = [
+  'visreg',
+  'perf',
+  'accessibility',
+];
+
 function selectionTitle(selection: BisectSelection): string {
-  if (selection.kind === 'all') return 'All regressions';
+  if (selection.kind === 'all') return 'Regression tests';
   if (selection.kind === 'commit') return `Commit ${selection.sha.slice(0, 7)}`;
   if (selection.kind === 'unresolved') return 'Unresolved targets';
   return 'Invalid targets';
@@ -29,61 +48,187 @@ function emptyMessage(selection: BisectSelection): string {
   return 'No regression targets were discovered.';
 }
 
-function categoryLabel(target: BisectReportTarget): string {
+function categoryLabel(target: Pick<BisectReportTarget, 'category'>): string {
   if (target.category === 'visreg') return 'visual';
   if (target.category === 'perf') return 'performance';
   return 'accessibility';
 }
 
-function formatValue(value: string | number | boolean | null): string {
-  return value == null ? 'null' : String(value);
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function groupTargets(targets: readonly BisectReportTarget[]): TestGroup[] {
+  const groups = new Map<string, TestGroup>();
+  for (const target of targets) {
+    const fallbackId = `${target.testFile.replaceAll('\\', '/')}::${target.testName}`;
+    const id = target.testId ?? fallbackId;
+    const group = groups.get(id);
+    if (group) {
+      group.targets.push(target);
+    } else {
+      groups.set(id, {
+        id,
+        testName: target.testName,
+        testFile: target.testFile,
+        targets: [target],
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+function value(
+  values: Record<string, string | number | boolean | null>,
+  key: string,
+): string | number | boolean | null | undefined {
+  return values[key];
+}
+
+function display(valueToFormat: string | number | boolean | null | undefined): string {
+  if (valueToFormat == null) return 'not recorded';
+  return typeof valueToFormat === 'number'
+    ? valueToFormat.toLocaleString('en-US', { maximumFractionDigits: 2 })
+    : String(valueToFormat);
+}
+
+function signedDifference(experiment: unknown, control: unknown, label: string): string {
+  if (typeof experiment !== 'number' || typeof control !== 'number') return 'not recorded';
+  const difference = experiment - control;
+  const prefix = difference > 0 ? '+' : '';
+  return `${prefix}${difference.toLocaleString('en-US')} ${label}`;
+}
+
+function accessibilityCount(
+  values: Record<string, string | number | boolean | null>,
+  side: 'control' | 'experiment',
+): string {
+  const violations = value(values, `${side}ViolationCount`);
+  const nodes = value(values, `${side}NodeCount`);
+  const violationText = typeof violations === 'number'
+    ? pluralize(violations, 'violation')
+    : 'violations not recorded';
+  const nodeText = typeof nodes === 'number' ? pluralize(nodes, 'node') : 'nodes not recorded';
+  return `${violationText} · ${nodeText}`;
+}
+
+function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
+  const values = target.badRefObservation?.values;
+  if (!values) return null;
+
+  if (value(values, 'controlDisplay') != null || value(values, 'experimentDisplay') != null) {
+    const delta = display(value(values, 'deltaDisplay'));
+    const percent = value(values, 'percentDisplay');
+    return {
+      control: display(value(values, 'controlDisplay')),
+      experiment: display(value(values, 'experimentDisplay')),
+      change: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
+    };
+  }
+
+  if (value(values, 'controlViolationCount') != null) {
+    const violationChange = signedDifference(
+      value(values, 'experimentViolationCount'),
+      value(values, 'controlViolationCount'),
+      'violations',
+    );
+    const nodeChange = signedDifference(
+      value(values, 'experimentNodeCount'),
+      value(values, 'controlNodeCount'),
+      'nodes',
+    );
+    return {
+      control: accessibilityCount(values, 'control'),
+      experiment: accessibilityCount(values, 'experiment'),
+      change: `${violationChange} · ${nodeChange}`,
+    };
+  }
+
+  if (value(values, 'misMatchPercentage') != null) {
+    const mismatch = display(value(values, 'misMatchPercentage'));
+    const pixels = display(value(values, 'diffPixels'));
+    return {
+      control: 'baseline image',
+      experiment: 'candidate image',
+      change: `${mismatch}% mismatch · ${pixels} pixels`,
+    };
+  }
+
+  if (value(values, 'controlValue') != null || value(values, 'experimentValue') != null) {
+    return {
+      control: display(value(values, 'controlValue')),
+      experiment: display(value(values, 'experimentValue')),
+      change: display(value(values, 'deltaValue')),
+    };
+  }
+
+  return null;
 }
 
 function TargetRow({ target }: { target: BisectReportTarget }) {
-  const values = Object.entries(target.badRefObservation?.values ?? {});
+  const comparison = comparisonValue(target);
 
   return (
     <li className="bisect-target" data-category={target.category} data-target-id={target.id}>
-      <article>
-        <header className="bisect-target__header">
-          <span className={`bisect-target__category bisect-target__category--${target.category}`}>
-            {categoryLabel(target)}
-          </span>
-          <h3 className="bisect-target__subject">{target.subject}</h3>
-        </header>
-        <dl className="bisect-target__details">
+      <header className="bisect-target__header">
+        <h4 className="bisect-target__subject">{target.subject}</h4>
+        <span className="bisect-target__viewport">{target.viewport}</span>
+      </header>
+      {comparison ? (
+        <dl className="bisect-target__comparison">
           <div>
-            <dt>test</dt>
-            <dd>
-              <span>{target.testName}</span>
-              <code>{target.testFile}</code>
-            </dd>
+            <dt>Control</dt>
+            <dd>{comparison.control}</dd>
           </div>
           <div>
-            <dt>viewport</dt>
-            <dd>{target.viewport}</dd>
+            <dt>Experiment</dt>
+            <dd>{comparison.experiment}</dd>
           </div>
           <div>
-            <dt>card</dt>
-            <dd>{target.testId ?? 'not mapped'}</dd>
+            <dt>Change</dt>
+            <dd>{comparison.change}</dd>
           </div>
-          {target.invalidReason ? (
-            <div className="bisect-target__invalid-reason">
-              <dt>invalid reason</dt>
-              <dd>{target.invalidReason}</dd>
-            </div>
-          ) : null}
         </dl>
-        {values.length > 0 ? (
-          <dl className="bisect-target__values" aria-label="Bad reference values">
-            {values.map(([name, value]) => (
-              <div key={name}>
-                <dt>{name}</dt>
-                <dd>{formatValue(value)}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+      ) : null}
+      {target.invalidReason ? (
+        <p className="bisect-target__invalid-reason">
+          <strong>Invalid:</strong> {target.invalidReason}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+function TestGroupCard({ group }: { group: TestGroup }) {
+  return (
+    <li className="bisect-test-group" data-bisect-test-group={group.id}>
+      <article>
+        <header className="bisect-test-group__header">
+          <div>
+            <h3>{group.testName}</h3>
+            <code>{group.testFile}</code>
+          </div>
+          <span>{pluralize(group.targets.length, 'regression target')}</span>
+        </header>
+        <div className="bisect-test-group__categories">
+          {categoryOrder.map((category) => {
+            const targets = group.targets.filter((target) => target.category === category);
+            if (targets.length === 0) return null;
+            return (
+              <section key={category} className="bisect-target-category" data-category={category}>
+                <header className="bisect-target-category__header">
+                  <span className={`bisect-target__category bisect-target__category--${category}`}>
+                    {categoryLabel({ category })}
+                  </span>
+                  <span>{pluralize(targets.length, 'target')}</span>
+                </header>
+                <ul className="bisect-target-category__list">
+                  {targets.map((target) => <TargetRow key={target.id} target={target} />)}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       </article>
     </li>
   );
@@ -94,6 +239,7 @@ export function BisectSelectionSummary({ model, selection }: Props) {
   const targets = [...targetIds]
     .map((targetId) => model.targetsById[targetId])
     .filter((target): target is BisectReportTarget => target != null);
+  const groups = groupTargets(targets);
 
   return (
     <section
@@ -108,14 +254,15 @@ export function BisectSelectionSummary({ model, selection }: Props) {
           aria-live="polite"
           aria-atomic="true"
         >
-          {targets.length} selected {targets.length === 1 ? 'target' : 'targets'}
+          {pluralize(targets.length, 'selected target')}
+          {groups.length > 0 ? ` across ${pluralize(groups.length, 'test')}` : ''}
         </span>
       </header>
       {targets.length === 0 ? (
         <p className="bisect-selection-summary__empty">{emptyMessage(selection)}</p>
       ) : (
-        <ul className="bisect-target-list">
-          {targets.map((target) => <TargetRow key={target.id} target={target} />)}
+        <ul className="bisect-test-group-list">
+          {groups.map((group) => <TestGroupCard key={group.id} group={group} />)}
         </ul>
       )}
     </section>
