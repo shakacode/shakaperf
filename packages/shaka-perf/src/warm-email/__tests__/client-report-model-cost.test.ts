@@ -9,13 +9,20 @@
 
 import {
   BENCHMARK_LINES,
+  FCP_HERO_METRIC,
   MATERIALITY_FLOOR_USD_PER_MONTH,
   RECOVERY_BANDS,
+  benchmarkMultipleFromDisplayedSeconds,
+  benchmarkScaleGeometry,
   benchmarkMultiple,
   benchmarkZone,
   computeRecoveryRange,
   dimSeverityRank,
+  heroMetricCountedZeroLine,
+  heroMetricGapSubLines,
 } from '../client-report-model/cost';
+import { summarizeA11yRuleFamilies, type A11yStrongPageGroup } from '../client-report-model/a11y';
+import { scoreBadgeStatus } from '../client-report-model/perf';
 
 describe('benchmarkMultiple', () => {
   it.each([
@@ -42,6 +49,16 @@ describe('benchmarkMultiple', () => {
   });
 });
 
+describe('benchmarkMultipleFromDisplayedSeconds', () => {
+  it('floors from the displayed Platform operands instead of raw milliseconds', () => {
+    expect(benchmarkMultipleFromDisplayedSeconds(3421.7, 1800)).toBe('1.8x');
+  });
+
+  it('floors the displayed hero operands', () => {
+    expect(benchmarkMultipleFromDisplayedSeconds(3030, 1800)).toBe('1.6x');
+  });
+});
+
 describe('benchmarkZone', () => {
   const line = BENCHMARK_LINES.lcpMs;
 
@@ -60,6 +77,106 @@ describe('benchmarkZone', () => {
   it('keeps published decimal boundaries in the middle zone', () => {
     expect(benchmarkZone(0.25, BENCHMARK_LINES.cls)).toBe('mid');
     expect(benchmarkZone(0.26, BENCHMARK_LINES.cls)).toBe('poor');
+  });
+});
+
+describe('benchmarkScaleGeometry', () => {
+  it('uses the data-driven axis and zone widths that sum to 100%', () => {
+    const geometry = benchmarkScaleGeometry(3421.7, BENCHMARK_LINES.fcpMs);
+
+    expect(geometry).toMatchObject({ axisMaxMs: 4500, axisMaxSeconds: 4.5, goodLinePercent: 40 });
+    expect(geometry?.zones.amber).toBeCloseTo(26.666666666666668);
+    expect(geometry?.zones.red).toBeCloseTo(33.333333333333336);
+    expect(Object.values(geometry?.zones ?? {}).reduce((sum, width) => sum + width, 0)).toBeCloseTo(100);
+    expect(geometry?.markerPercent).toBeCloseTo(76.03777777777778);
+  });
+
+  it('keeps the minimum four-second axis for a three-second first-content result', () => {
+    expect(benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs)?.axisMaxSeconds).toBe(4);
+  });
+});
+
+describe('hero metric panel helpers', () => {
+  const pages = [
+    { name: 'Homepage', lcpMs: 8900, fcpMs: 3030, downloadsBeforeLcpKb: 900, downloadsKb: 1100 },
+    { name: 'Platform', lcpMs: 1200, fcpMs: 3421.7 },
+    { name: 'Audience landing', lcpMs: 7000, fcpMs: 2000 },
+    { name: 'Pricing', lcpMs: 6800, fcpMs: 2200 },
+    { name: 'About', lcpMs: 6400, fcpMs: 1700 },
+    { name: 'Contact', lcpMs: 6100, fcpMs: 1400 },
+    { name: 'Careers', lcpMs: 5900, fcpMs: 1300 },
+  ];
+
+  it('keeps the slowest, next-slowest, average, and bytes lines on the FCP hero metric', () => {
+    expect(heroMetricGapSubLines(pages, pages[0], FCP_HERO_METRIC)).toEqual([
+      'slowest page: Platform, 3.4s - 1.8x the line',
+      'next slowest: Homepage, 3.0s - 1.6x the line',
+      'site average: 2.2s - 1.2x the line',
+      'the phone pulls 0.9 MB before the main content shows, 1.1 MB in total',
+    ]);
+  });
+
+  it('keeps near-line pages on the FCP good line instead of LCP', () => {
+    expect(heroMetricCountedZeroLine(pages, FCP_HERO_METRIC)).toBe(
+      'Counted as zero above: About (1.7s) sits close to the line. It is included in the site average, but not counted as a slow page above.',
+    );
+  });
+});
+
+describe('accessibility finding families', () => {
+  const scans = [
+    ['target-size', 'image-alt'],
+    ['target-size', 'image-alt'],
+    ['target-size', 'link-name'],
+    ['target-size', 'list'],
+    ['target-size', 'nested-interactive'],
+    ['target-size'],
+    ['target-size'],
+  ].map((ruleIds) => ({
+    violations: ruleIds.map((ruleId) => ({ ruleId, impact: 'serious' })),
+  }));
+
+  it('reconciles every counted family to the high-impact headline', () => {
+    const summary = summarizeA11yRuleFamilies(scans);
+
+    expect(summary.headlineCount).toBe(12);
+    expect(summary.countedFamilies).toEqual([
+      { id: 'target-size', label: 'touch targets too small', pageCount: 7 },
+      { id: 'image-alt', label: 'images with no text description', pageCount: 2 },
+      { id: 'link-name', label: 'unlabeled controls', pageCount: 1 },
+      { id: 'list', label: 'broken list markup', pageCount: 1 },
+      { id: 'nested-interactive', label: 'controls nested inside controls', pageCount: 1 },
+    ]);
+    expect(summary.countedFamilies.reduce((total, family) => total + family.pageCount, 0)).toBe(summary.headlineCount);
+  });
+
+  it('keeps same-page axe rules separate so family totals match the headline', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [
+        { ruleId: 'image-alt', impact: 'serious' },
+        { ruleId: 'svg-img-alt', impact: 'serious' },
+        { ruleId: 'button-name', impact: 'serious' },
+        { ruleId: 'link-name', impact: 'serious' },
+      ],
+    }]);
+
+    expect(summary.headlineCount).toBe(4);
+    expect(summary.countedFamilies).toEqual([
+      { id: 'image-alt', label: 'images with no text description', pageCount: 1 },
+      { id: 'svg-img-alt', label: 'images with no text description', pageCount: 1 },
+      { id: 'button-name', label: 'unlabeled controls', pageCount: 1 },
+      { id: 'link-name', label: 'unlabeled controls', pageCount: 1 },
+    ]);
+  });
+
+  it('keeps type-only strong-page grouping and score badge policy ready for later waves', () => {
+    const group: A11yStrongPageGroup = {
+      label: 'Strong pages',
+      pages: [{ name: 'Pricing', score: 97 }],
+    };
+
+    expect(group.pages).toHaveLength(1);
+    expect(scoreBadgeStatus(87)).toBe('fair');
   });
 });
 

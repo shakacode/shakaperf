@@ -8,7 +8,7 @@
  */
 
 import type { ClientReportStatus } from '../client-report-renderer';
-import type { PerfProblemKind } from './perf';
+import type { PerfProblemKind, ScoreBadgePolicy } from './perf';
 
 /**
  * Published performance and accessibility lines.
@@ -44,6 +44,10 @@ function decimalFraction(value: number): DecimalFraction {
   return { numerator, denominator: 10n ** BigInt(-exponent) };
 }
 
+/**
+ * Floors a multiple from raw operands. Use this when no formatted value is
+ * printed alongside the result.
+ */
 export function benchmarkMultiple(measured: number, good: number): string | undefined {
   if (!Number.isFinite(measured) || !Number.isFinite(good) || measured <= 0 || good <= 0 || measured <= good) {
     return undefined;
@@ -64,6 +68,18 @@ export function benchmarkMultiple(measured: number, good: number): string | unde
   return decimal === 0n ? `${whole}x` : `${whole}.${decimal}x`;
 }
 
+/**
+ * Floors a multiple from the one-decimal seconds a reader sees, never from
+ * higher-precision milliseconds. This keeps every printed derivation
+ * reproducible from its printed operands.
+ */
+export function benchmarkMultipleFromDisplayedSeconds(measuredMs: number, goodMs: number): string | undefined {
+  if (!Number.isFinite(measuredMs) || !Number.isFinite(goodMs)) return undefined;
+  const displayedMeasuredSeconds = Number((measuredMs / 1000).toFixed(1));
+  const displayedGoodSeconds = Number((goodMs / 1000).toFixed(1));
+  return benchmarkMultiple(displayedMeasuredSeconds, displayedGoodSeconds);
+}
+
 export type CostZone = 'good' | 'mid' | 'poor';
 
 export function benchmarkZone(measured: number, line: { good: number; poor: number }): CostZone {
@@ -81,6 +97,53 @@ export interface CostGap {
   zone: CostZone;
   lineOwner: string;
   lineUrl: string;
+}
+
+export interface BenchmarkScaleGeometry {
+  axisMaxMs: number;
+  axisMaxSeconds: number;
+  zones: {
+    green: number;
+    amber: number;
+    red: number;
+  };
+  goodLinePercent: number;
+  poorLinePercent: number;
+  markerPercent: number;
+}
+
+/** Returns data-derived geometry for the C benchmark scale. */
+export function benchmarkScaleGeometry(
+  valueMs: number,
+  line: { good: number; poor: number },
+): BenchmarkScaleGeometry | undefined {
+  if (
+    !Number.isFinite(valueMs)
+    || valueMs < 0
+    || !Number.isFinite(line.good)
+    || !Number.isFinite(line.poor)
+    || line.good <= 0
+    || line.poor <= line.good
+  ) {
+    return undefined;
+  }
+
+  const axisMaxMs = Math.max(4000, Math.ceil((valueMs * 1.25) / 500) * 500);
+  const percent = (value: number): number => (value / axisMaxMs) * 100;
+  const goodLinePercent = percent(line.good);
+  const poorLinePercent = percent(line.poor);
+  return {
+    axisMaxMs,
+    axisMaxSeconds: axisMaxMs / 1000,
+    zones: {
+      green: goodLinePercent,
+      amber: poorLinePercent - goodLinePercent,
+      red: 100 - poorLinePercent,
+    },
+    goodLinePercent,
+    poorLinePercent,
+    markerPercent: percent(valueMs),
+  };
 }
 
 export interface CostStudy {
@@ -202,6 +265,25 @@ export interface CostBlockExtras {
   fix?: CostFix;
   calculator?: CostCalculatorConfig;
   countedZeroLine?: string;
+  // Filled only by later builder waves for the C renderer.
+  sitePrompts?: CostSitePromptSlots;
+  strongPageGroup?: StrongPageGroup;
+  scoreBadgePolicy?: ScoreBadgePolicy;
+}
+
+/** Optional C design handoff slots. They remain absent until a builder fills them. */
+export interface CostSitePromptSlots {
+  perf?: string;
+  a11y?: string;
+}
+
+/** A quiet one-line group used instead of full cards for strong pages. */
+export interface StrongPageGroup {
+  label: string;
+  pages: readonly {
+    name: string;
+    score: number;
+  }[];
 }
 
 export function dimSeverityRank(status: ClientReportStatus, couldNotMeasure: boolean): number {
@@ -297,10 +379,28 @@ export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | u
 export interface PerfFactPage {
   name: string;
   lcpMs?: number;
+  fcpMs?: number;
+  tbtMs?: number;
   jsKb?: number;
   downloadsBeforeLcpKb?: number;
   downloadsKb?: number;
 }
+
+export interface PerfHeroMetric {
+  valueKey: 'lcpMs' | 'fcpMs' | 'tbtMs';
+  goodMs: number;
+  poorMs: number;
+  beforeContentKbKey?: 'downloadsBeforeLcpKb';
+  contentLabel: string;
+}
+
+export const FCP_HERO_METRIC: PerfHeroMetric = {
+  valueKey: 'fcpMs',
+  goodMs: BENCHMARK_LINES.fcpMs.good,
+  poorMs: BENCHMARK_LINES.fcpMs.poor,
+  beforeContentKbKey: 'downloadsBeforeLcpKb',
+  contentLabel: 'main content',
+};
 
 function mb(kb: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
@@ -327,6 +427,54 @@ export function perfGapSubLines(pages: readonly PerfFactPage[], anchor: PerfFact
   const total = finiteMetric(anchor.downloadsKb);
   if (before !== undefined && total !== undefined) {
     lines.push(`the phone pulls ${mb(before)} before the main content shows, ${mb(total)} in total`);
+  }
+  return lines;
+}
+
+function heroMetricValue(page: PerfFactPage, hero: PerfHeroMetric): number | undefined {
+  return finiteMetric(page[hero.valueKey]);
+}
+
+function heroMetricLabel(valueMs: number): string {
+  return `${(valueMs / 1000).toFixed(1)}s`;
+}
+
+function heroMetricMultiple(valueMs: number, hero: PerfHeroMetric): string | undefined {
+  return benchmarkMultipleFromDisplayedSeconds(valueMs, hero.goodMs);
+}
+
+/**
+ * Produces the performance detail lines from the same metric and good line as
+ * the C block hero. The legacy LCP helper above remains for existing callers.
+ */
+export function heroMetricGapSubLines(
+  pages: readonly PerfFactPage[],
+  anchor: PerfFactPage,
+  hero: PerfHeroMetric,
+): string[] {
+  const lines: string[] = [];
+  const metricPages = pages
+    .map((page) => ({ page, valueMs: heroMetricValue(page, hero) }))
+    .filter((entry): entry is { page: PerfFactPage; valueMs: number } => entry.valueMs !== undefined)
+    .sort((a, b) => b.valueMs - a.valueMs);
+  const addPageLine = (prefix: string, entry: { page: PerfFactPage; valueMs: number }): void => {
+    const multiple = heroMetricMultiple(entry.valueMs, hero);
+    const suffix = multiple ? ` - ${multiple} the line` : '';
+    lines.push(`${prefix}${entry.page.name}, ${heroMetricLabel(entry.valueMs)}${suffix}`);
+  };
+
+  if (metricPages[0]) addPageLine('slowest page: ', metricPages[0]);
+  if (metricPages[1]) addPageLine('next slowest: ', metricPages[1]);
+  if (metricPages.length > 1) {
+    const averageMs = metricPages.reduce((sum, entry) => sum + entry.valueMs, 0) / metricPages.length;
+    const multiple = heroMetricMultiple(averageMs, hero);
+    const suffix = multiple ? ` - ${multiple} the line` : '';
+    lines.push(`site average: ${heroMetricLabel(averageMs)}${suffix}`);
+  }
+  const before = hero.beforeContentKbKey ? finiteMetric(anchor[hero.beforeContentKbKey]) : undefined;
+  const total = finiteMetric(anchor.downloadsKb);
+  if (before !== undefined && total !== undefined) {
+    lines.push(`the phone pulls ${mb(before)} before the ${hero.contentLabel} shows, ${mb(total)} in total`);
   }
   return lines;
 }
@@ -371,6 +519,26 @@ export function countedZeroLine(pages: readonly PerfFactPage[]): string | undefi
       return value !== undefined && value >= BENCHMARK_LINES.lcpMs.good * 0.8 && value <= BENCHMARK_LINES.lcpMs.good;
     })
     .map((page) => `${page.name} (${(page.lcpMs / 1000).toFixed(1)}s)`);
+  if (nearLine.length === 0) return undefined;
+  const verb = nearLine.length === 1 ? 'sits' : 'sit';
+  const pronoun = nearLine.length === 1 ? 'It is' : 'They are';
+  const slowPage = nearLine.length === 1 ? 'a slow page' : 'slow pages';
+  return `Counted as zero above: ${nearLine.join(', ')} ${verb} close to the line. ${pronoun} included in the site average, but not counted as ${slowPage} above.`;
+}
+
+/**
+ * Lists near-line pages using the C block hero metric and its good line. The
+ * legacy LCP helper above remains for established callers.
+ */
+export function heroMetricCountedZeroLine(pages: readonly PerfFactPage[], hero: PerfHeroMetric): string | undefined {
+  const nearLine = pages
+    .map((page) => ({ page, valueMs: heroMetricValue(page, hero) }))
+    .filter((entry): entry is { page: PerfFactPage; valueMs: number } => (
+      entry.valueMs !== undefined
+      && entry.valueMs >= hero.goodMs * 0.8
+      && entry.valueMs <= hero.goodMs
+    ))
+    .map((entry) => `${entry.page.name} (${heroMetricLabel(entry.valueMs)})`);
   if (nearLine.length === 0) return undefined;
   const verb = nearLine.length === 1 ? 'sits' : 'sit';
   const pronoun = nearLine.length === 1 ? 'It is' : 'They are';

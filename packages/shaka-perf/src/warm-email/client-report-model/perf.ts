@@ -30,6 +30,10 @@ export const VISIBLE_SHIFT = 0.02;
 
 export type Status = 'good' | 'fair' | 'poor';
 
+/** C score badges always use a score's own Lighthouse band, never tab status. */
+export type ScoreBadgePolicy = 'score-status';
+export const SCORE_BADGE_POLICY: ScoreBadgePolicy = 'score-status';
+
 export const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 export const secs = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
 
@@ -75,6 +79,11 @@ export function scoreStatus(score: number | undefined): Status {
   if (score >= SCORE_GOOD) return 'good';
   if (score >= SCORE_POOR) return 'fair';
   return 'poor';
+}
+
+/** Kept as a named renderer seam so the badge policy cannot drift to tab status. */
+export function scoreBadgeStatus(score: number | undefined): Status {
+  return scoreStatus(score);
 }
 
 export function clsStatus(v: number | undefined): Status {
