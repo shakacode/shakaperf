@@ -83,6 +83,10 @@ describe('compare bisect report browser acceptance', () => {
     const focusedCard = page.locator('.card:not(.card--missing-artifacts):not([data-dimmed="true"])');
     await expectText(focusedCard.locator('.card__title'), 'Homepage');
     await expectCount(focusedCard.locator('.outcome-slot[data-stage="visreg"]'), 1);
+    await expectCount(focusedCard.locator('.artifact-card--compare'), 1);
+    await expectCount(focusedCard.locator('.artifact-card__image img'), 3);
+    expect(await focusedCard.locator('.artifact-card__image img').first().getAttribute('src'))
+      .toMatch(/^data:image\/svg\+xml;base64,/);
     await expectCount(page.locator('.outcome-slot[data-stage="perf"]'), 0);
     await expectCount(page.locator('.outcome-slot[data-stage="accessibility"]'), 0);
 
@@ -96,6 +100,24 @@ describe('compare bisect report browser acceptance', () => {
     await page.locator('[data-bisect-selection="unresolved"]').click();
     await expectText(page.locator('#bisect-selection-title'), 'Unresolved targets');
     await expectCount(page.locator('[data-target-id="unresolved-target"]'), 1);
+    await expectText(
+      page.locator('[data-target-id="unresolved-target"] .bisect-target__subject'),
+      'CLS',
+    );
+    await expectText(
+      page.locator('[data-target-id="unresolved-target"] .bisect-target__details dd span'),
+      'Product',
+    );
+    await expectCount(page.locator('.card:not([data-dimmed="true"])'), 1);
+    await expectText(page.locator('.card:not([data-dimmed="true"]) .card__title'), 'Product');
+    await expectCount(
+      page.locator('.card:not([data-dimmed="true"]) .outcome-slot[data-stage="perf"]'),
+      1,
+    );
+    await expectCount(
+      page.locator('.card:not([data-dimmed="true"]) .outcome-slot[data-stage="accessibility"]'),
+      0,
+    );
 
     await page.locator('[data-bisect-selection="invalid"]').click();
     await expectText(page.locator('#bisect-selection-title'), 'Invalid targets');
@@ -114,9 +136,23 @@ describe('compare bisect report browser acceptance', () => {
     expect(Math.abs(desktopBoxes[1].y - desktopBoxes[0].y)).toBeLessThan(8);
 
     const visualNode = page.locator(`[data-bisect-sha="${VISUAL_SHA}"]`);
-    await visualNode.focus();
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (await visualNode.evaluate((element) => element === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    expect(await visualNode.evaluate((element) => element === document.activeElement)).toBe(true);
     expect(await visualNode.evaluate((element) => getComputedStyle(element).outlineStyle)).not.toBe('none');
     expect(await visualNode.evaluate((element) => parseFloat(getComputedStyle(element).outlineWidth))).toBeGreaterThanOrEqual(2);
+    expect(await contrastAgainstWhite(page.locator('.bisect-navigator__stats dt').first()))
+      .toBeGreaterThanOrEqual(4.5);
+    expect(await contrastAgainstWhite(
+      visualNode.locator('.bisect-counter[data-category="visreg"]'),
+    )).toBeGreaterThanOrEqual(4.5);
+    expect(await page.locator(`[data-bisect-sha="${CLEAN_SHA}"]`).evaluate(
+      (element) => getComputedStyle(element).opacity,
+    )).toBe('1');
+    await page.keyboard.press('Enter');
+    expect(await visualNode.getAttribute('aria-pressed')).toBe('true');
 
     await page.setViewportSize({ width: 430, height: 900 });
     expect(await tree.evaluate((element) => getComputedStyle(element).flexDirection)).toBe('column');
@@ -141,6 +177,20 @@ async function nodeBoxes(page: Page): Promise<Array<{ x: number; y: number }>> {
     const box = node.getBoundingClientRect();
     return { x: box.x, y: box.y };
   }));
+}
+
+async function contrastAgainstWhite(locator: ReturnType<Page['locator']>): Promise<number> {
+  return locator.evaluate((element) => {
+    const components = getComputedStyle(element).color.match(/[\d.]+/g)?.slice(0, 3).map(Number);
+    if (!components || components.length !== 3) return 0;
+    const luminance = components
+      .map((component) => component / 255)
+      .map((component) => component <= 0.04045
+        ? component / 12.92
+        : ((component + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, component, index) => sum + component * [0.2126, 0.7152, 0.0722][index], 0);
+    return 1.05 / (luminance + 0.05);
+  });
 }
 
 function reportData(): BisectReportData {
@@ -264,14 +314,36 @@ function reportTest(
     durationMs: 1_000,
     measuredAt: null,
     runId: null,
-    outcomes: stages.map((stage) => ({
-      kind: 'error' as const,
-      stage,
-      error: { message: `${stage} fixture outcome` },
-      viewport: DESKTOP_VIEWPORT,
-    })),
+    outcomes: stages.map((stage) => stage === 'visreg' && id === 'homepage-card'
+      ? ({
+        kind: 'ok' as const,
+        stage,
+        measurement: [{
+          selector: '#hero',
+          controlImage: inlineImage('#111111'),
+          experimentImage: inlineImage('#eeeeee'),
+          diffImage: inlineImage('#ff0000'),
+          misMatchPercentage: 12.5,
+          diffPixels: 8,
+          threshold: 0.1,
+          diffBbox: null,
+          savedByRetries: false,
+        }],
+        viewport: DESKTOP_VIEWPORT,
+      })
+      : ({
+        kind: 'error' as const,
+        stage,
+        error: { message: `${stage} fixture outcome` },
+        viewport: DESKTOP_VIEWPORT,
+      })),
     viewportArtifactPaths: [],
   };
+}
+
+function inlineImage(color: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2" fill="${color}"/></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
 function target(input: Omit<BisectReportTarget, 'viewport'>): BisectReportTarget {
