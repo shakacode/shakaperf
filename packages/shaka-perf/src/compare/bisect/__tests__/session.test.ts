@@ -496,6 +496,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.refreshes).toEqual(['a', 'b']);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['a', 'b']);
     expect(session.commitRuns.bad).toMatchObject({
+      compareCompleted: true,
       reusedResults: true,
       compareResultsPath: '/repo/compare-results',
     });
@@ -874,6 +875,7 @@ describe('compare bisect session orchestration', () => {
     await expect(executeBisect(input(rootDir), harness.deps)).rejects.toThrow(/compare exploded/i);
 
     expect(harness.calls.sessions.at(-1)?.commitRuns.a).toMatchObject({
+      compareCompleted: false,
       refreshMode: 'container',
       usedFallback: true,
       infrastructureError: 'compare exploded',
