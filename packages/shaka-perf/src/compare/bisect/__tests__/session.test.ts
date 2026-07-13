@@ -24,6 +24,7 @@ import { BisectInterruptedError, runCandidate } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
+import { BISECT_REPORT_FILENAME } from '../report';
 
 function config(): AbTestsConfig {
   return {
@@ -149,6 +150,7 @@ interface HarnessOptions {
   restoreError?: Error;
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
+  clearPriorReportOutput?: () => void;
 }
 
 function deps(
@@ -243,6 +245,9 @@ function deps(
         if (options.restoreError) throw options.restoreError;
       },
       clearSummary() {},
+      clearPriorReportOutput() {
+        options.clearPriorReportOutput?.();
+      },
       async materialize(request) {
         calls.materialized.push([request.previousSha, request.candidateSha]);
         calls.events.push(`materialize:${request.candidateSha}`);
@@ -443,6 +448,26 @@ describe('compare bisect session orchestration', () => {
     );
 
     expect(harness.calls.reports).toEqual([]);
+  });
+
+  it('clears prior report output when bad-ref discovery fails', async () => {
+    const bisectInput = input(rootDir);
+    const priorReportPath = path.join(bisectInput.resultsDirectory, BISECT_REPORT_FILENAME);
+    fs.mkdirSync(bisectInput.resultsDirectory, { recursive: true });
+    fs.writeFileSync(priorReportPath, '<html>stale report</html>');
+    const clearPriorReportOutput = jest.fn(() => {
+      fs.rmSync(priorReportPath, { force: true });
+    });
+    const harness = deps({
+      bad: [resultWithVisualDiffAndError('diff.png')],
+    }, { clearPriorReportOutput });
+
+    await expect(executeBisect(bisectInput, harness.deps)).rejects.toThrow(
+      /bad.*visreg.*capture failed/i,
+    );
+
+    expect(clearPriorReportOutput).toHaveBeenCalledTimes(1);
+    expect(fs.existsSync(priorReportPath)).toBe(false);
   });
 
   it('reuses current results for bad-ref discovery without rebuilding the bad ref', async () => {
