@@ -83,6 +83,7 @@ export interface BisectSession {
   selectedCategories: BisectCategory[];
   orderedCommits: string[];
   targets: BisectTarget[];
+  primary?: BisectSearchPhase;
   commitRuns: Record<string, CommitRun>;
   dryRun?: boolean;
   validateGoodRef?: boolean;

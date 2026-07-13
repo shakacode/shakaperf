@@ -400,6 +400,16 @@ describe('compare bisect session orchestration', () => {
     expect(session.commitRuns.a).toMatchObject({
       requestedTests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
     });
+    expect((session as unknown as { primary: {
+      status: string;
+      attempts: Array<{ sha: string; status: string }>;
+    } }).primary).toMatchObject({
+      status: 'complete',
+      attempts: [
+        { sha: 'a', status: 'complete' },
+        { sha: 'b', status: 'complete' },
+      ],
+    });
     expect(harness.calls.summaries.at(-1)?.status).toBe('complete');
     expect(harness.calls.reports.at(0)).toEqual({
       session: expect.objectContaining({ status: 'running' }),
