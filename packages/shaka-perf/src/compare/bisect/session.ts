@@ -33,6 +33,7 @@ import {
 import { writeSessionAtomic, writeSummary } from './persistence';
 import { BISECT_REPORT_FILENAME, writeBisectReport } from './report';
 import { buildBisectReportModel } from './report-model';
+import { regenerateBisectReport } from './report-only';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
@@ -75,6 +76,7 @@ export interface BisectCliOptions {
   reuseCurrentResults?: boolean;
   dryRun?: boolean;
   validateGoodRef?: boolean;
+  reportOnly?: boolean;
 }
 
 export type {
@@ -187,6 +189,7 @@ export interface BisectCliRuntimeDependencies {
   resolveTwinServers?: typeof resolveConfig;
   loadFrozenTests?: typeof loadTests;
   run?: typeof runBisect;
+  regenerateReport?: typeof regenerateBisectReport;
 }
 
 export interface BisectDecisionLogEntry {
@@ -209,6 +212,18 @@ export async function runCompareBisectFromCli(
   return withAbTestsConfigPath(configPath, async () => {
     const raw = await (runtime.loadConfig ?? loadAbTestsConfig)(configPath);
     const config = (runtime.parseConfig ?? parseAbTestsConfig)(raw);
+    if (cliOptions.reportOnly) {
+      if (goodRef || badRef) {
+        throw new Error('compare bisect --report-only does not accept good-ref or bad-ref');
+      }
+      const pipeline = createComparePipeline(comparePipelineConfigFromAbTests(config));
+      const result = (runtime.regenerateReport ?? regenerateBisectReport)({
+        resultsDirectory: path.resolve(cwd, 'compare-bisect-results'),
+        stages: pipeline.stages,
+      });
+      console.log(`Bisect report: ${result.htmlPath}`);
+      return result.session;
+    }
     if (!config.twinServers) {
       throw new Error('compare bisect requires a twinServers section in abtests.config.ts');
     }
