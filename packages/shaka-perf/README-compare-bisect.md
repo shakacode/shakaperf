@@ -53,6 +53,50 @@ Explicit refs and optional category narrowing work the same way as `compare`:
 yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
 ```
 
+To iterate without repeating the initial bad-ref comparison, reuse the current
+`compare-results/` tree:
+
+```bash
+yarn shaka-perf compare bisect <good-ref> <bad-ref> \
+  --categories accessibility \
+  --reuse-current-results
+```
+
+`--reuse-current-results` applies only to bad-ref target discovery. Good-ref
+validation and every midpoint still rebuild and run compare normally. The
+selected categories must already have persisted outcomes in
+`compare-results/`; otherwise the command fails with the compare command to run
+first.
+
+The command cannot infer which experiment commit produced a saved
+`compare-results/` tree. When reusing results, pass the matching `bad-ref`
+explicitly if it differs from the configured experiment checkout's current
+`HEAD`. The default refs are resolved from the control and experiment Git
+checkouts, not from stale container contents or saved artifacts.
+
+To preview discovery and the next action without starting the search, add
+`--dry-run`:
+
+```bash
+yarn shaka-perf compare bisect <good-ref> <bad-ref> \
+  --categories accessibility \
+  --reuse-current-results \
+  --dry-run
+```
+
+A dry run stops immediately after bad-ref target discovery. It prints every
+discovered category, test, viewport, and metric/rule/selector, then shows the
+good-ref validation that a normal run would execute next, including its narrowed
+categories and test files. `summary.json` and `session.json` record
+`dryRun: true` and the structured `nextAction`.
+
+`--dry-run` does not measure the good ref or any midpoint commit. Without
+`--reuse-current-results`, it still checks out, rebuilds, and compares the bad
+ref so it can discover targets, then restores the original experiment checkout.
+Combining both flags is the fast artifact-preview path: it loads the selected
+outcomes from `compare-results/` and performs no candidate checkout, rebuild, or
+compare run.
+
 Results are written under `compare-bisect-results/`:
 
 - `session.json` is diagnostic state recording the range, targets, observations,
@@ -113,20 +157,25 @@ regression targets.
 2. **Freeze tests and config.** Test definitions are loaded once from the
    invocation checkout. Candidate commits change the app code, not the test
    definitions. This keeps the search question stable.
-3. **Measure the bad ref.** The bad ref is compared first. Every failing visual,
-   performance, or accessibility outcome becomes a target with a stable key:
-   category, test file, test name, viewport, and subject.
-4. **Measure the good ref.** Any target that is already present at the good ref
+3. **Measure or reuse the bad ref.** By default the bad ref is compared first.
+   With `--reuse-current-results`, its selected category outcomes are loaded
+   from `compare-results/` instead. Every failing visual, performance, or
+   accessibility outcome becomes a target with a stable key: category, test
+   file, test name, viewport, and subject.
+4. **Stop when dry-running.** With `--dry-run`, persist and print the discovered
+   targets plus the exact good-ref validation that would run next. No good-ref
+   or midpoint measurement is performed.
+5. **Measure the good ref.** Any target that is already present at the good ref
    is marked `invalid`, because the supplied good ref does not actually bracket
    that regression.
-5. **Search active targets.** For each active target, the scheduler keeps a
+6. **Search active targets.** For each active target, the scheduler keeps a
    `[goodIndex, badIndex]` interval. A candidate in the middle of the interval
    is measured; if the target is present, the bad boundary moves down. If absent,
    the good boundary moves up.
-6. **Share candidate work.** When one candidate SHA is useful for multiple
+7. **Share candidate work.** When one candidate SHA is useful for multiple
    targets, the command measures all relevant categories and test files in one
    compare run, then applies each target's observation independently.
-7. **Finish on adjacency.** When a target's good and bad boundaries are adjacent,
+8. **Finish on adjacency.** When a target's good and bad boundaries are adjacent,
    the bad boundary commit is recorded as `firstBadSha`.
 
 The scheduler is category-prioritized (`visreg`, `perf`, then `accessibility`)
