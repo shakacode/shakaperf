@@ -39,6 +39,10 @@ function session(targets: BisectTarget[] = []): BisectSession {
     status: 'running',
     goodSha: 'good',
     badSha: 'bad',
+    commitSubjects: {
+      good: 'Initial baseline',
+      bad: 'Introduce regression',
+    },
     originalExperiment: { sha: 'bad', branch: 'feature' },
     selectedCategories: ['visreg', 'perf', 'accessibility'],
     orderedCommits: ['good', 'bad'],
@@ -81,7 +85,16 @@ describe('bisect persistence', () => {
     ]));
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-    expect(summary).toMatchObject({ version: 1, status: 'running', goodSha: 'good', badSha: 'bad' });
+    expect(summary).toMatchObject({
+      version: 1,
+      status: 'running',
+      goodSha: 'good',
+      badSha: 'bad',
+      commitSubjects: {
+        good: 'Initial baseline',
+        bad: 'Introduce regression',
+      },
+    });
     expect(summary.targets.map((item: BisectTarget) => [item.category, item.firstBadSha])).toEqual([
       ['visreg', 'a'],
       ['perf', 'c'],

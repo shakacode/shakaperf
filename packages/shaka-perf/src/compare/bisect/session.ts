@@ -15,6 +15,7 @@ import { loadTests } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory, type AbTestsConfig } from '../../config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { runPipeline } from '../../pipeline/runner';
+import type { TestResult } from '../../pipeline/report';
 import { withAbTestsConfigPath } from '../../before-navigate';
 import {
   comparePipelineConfigFromAbTests,
@@ -30,6 +31,8 @@ import {
   testsForTargets,
 } from './search';
 import { writeSessionAtomic, writeSummary } from './persistence';
+import { BISECT_REPORT_FILENAME, writeBisectReport } from './report';
+import { buildBisectReportModel } from './report-model';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
@@ -150,6 +153,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   restore(request: RestoreRequest): Promise<void>;
   clearSummary(): void;
   writeSession(session: BisectSession): void;
+  writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession): void;
   recordDecision(entry: BisectDecisionLogEntry): void;
   logProgress(message: string): void;
@@ -281,6 +285,7 @@ export async function executeBisect(
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
   deps.clearSummary();
   let session = initialSession(input, deps.now());
+  let badRefTests: readonly TestResult[] | null = null;
   let materializedSha: string | null = null;
   let volumeStateUncertain = false;
   let checkoutAttempted = false;
@@ -292,6 +297,7 @@ export async function executeBisect(
 
   const persist = (): void => {
     deps.writeSession(session);
+    if (badRefTests) deps.writeReport(session, badRefTests);
   };
   const checkCancellation = (): void => {
     if (cancellationSignal) throw new BisectInterruptedError(cancellationSignal);
@@ -413,6 +419,7 @@ export async function executeBisect(
       input.gitRange.badSha,
     );
     session = recordEndpointObservations(session, badObservations);
+    badRefTests = badRun.testResults;
     logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
       sha: input.gitRange.badSha,
       targetCount: session.targets.length,
@@ -644,6 +651,7 @@ function createDefaultDependencies(options: {
   experimentURL: string;
 }): ExecuteBisectDependencies {
   const bisectSessionId = randomUUID();
+  const reportPipeline = createComparePipeline(comparePipelineConfigFromAbTests(options.config));
   return {
     installSignalHandlers(handler) {
       process.on('SIGINT', handler);
@@ -746,6 +754,30 @@ function createDefaultDependencies(options: {
       viewports: viewportsByStageCategory(options.config),
     }),
     writeSession: (session) => writeSessionAtomic(path.join(options.resultsDirectory, 'session.json'), session),
+    writeReport: (session, badRefTests) => {
+      const generatedAt = new Date().toISOString();
+      writeBisectReport({
+        resultsDirectory: options.resultsDirectory,
+        data: {
+          meta: {
+            title: `${path.basename(options.cwd)} · compare bisect`,
+            pipelineName: reportPipeline.name,
+            generatedAt,
+            controlUrl: options.controlURL,
+            experimentUrl: options.experimentURL,
+            durationMs: 0,
+            cwd: options.cwd,
+            errors: [],
+            reportOnly: false,
+            pipelineConfig: reportPipeline.pipelineConfig,
+            reportMode: 'full',
+          },
+          tests: [...badRefTests],
+          bisect: buildBisectReportModel(session, badRefTests, generatedAt),
+        },
+        stages: reportPipeline.stages,
+      });
+    },
     writeSummary: (session) => writeSummary(path.join(options.resultsDirectory, 'summary.json'), session),
     recordDecision: createDecisionLogWriter(options.resultsDirectory),
     logProgress: (message) => console.log(`[compare bisect] ${message}`),
@@ -1030,6 +1062,8 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
   const invalid = session.targets.filter((target) => target.status === 'invalid');
   const unresolved = session.targets.filter((target) => target.status === 'active');
   console.log('');
+  const reportPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
+  if (fs.existsSync(reportPath)) console.log(`Report: ${reportPath}`);
   if (session.dryRun) {
     console.log('Compare bisect dry run complete.');
     console.log(`Range: ${session.goodSha}..${session.badSha}`);
