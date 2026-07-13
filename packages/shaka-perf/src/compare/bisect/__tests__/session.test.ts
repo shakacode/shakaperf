@@ -510,6 +510,46 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
+  it('checkpoints the complete primary report before investigating a merge source', async () => {
+    const bisectInput = input(rootDir);
+    bisectInput.investigateMerges = true;
+    bisectInput.gitRange.commitParents.b = ['a', 'topic'];
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      topic: [resultWithVisualDiff('diff.png')],
+      source: [resultWithVisualDiff('diff.png')],
+    });
+    const order: string[] = [];
+    const writeReport = harness.deps.writeReport;
+    harness.deps.writeReport = (session, tests) => {
+      if (session.primary?.status === 'complete') order.push('primary-report');
+      writeReport(session, tests);
+    };
+    harness.deps.prepareChildRange = async () => {
+      order.push('prepare-child');
+      return {
+        mergeBase: 'base',
+        secondParent: 'topic',
+        orderedCommits: ['base', 'source', 'topic'],
+        commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+        commitParents: { base: [], source: ['base'], topic: ['source'] },
+      };
+    };
+
+    const session = await executeBisect(bisectInput, harness.deps);
+
+    expect(order.indexOf('primary-report')).toBeLessThan(order.indexOf('prepare-child'));
+    expect(session.mergeQueue).toEqual(['b']);
+    expect(session.mergeInvestigations?.b.targetResults).toMatchObject({
+      [session.targets[0].id]: { kind: 'source-found', sourceSha: 'source' },
+    });
+    expect(harness.calls.compares.map((run) => run.sha)).toEqual([
+      'bad', 'a', 'b', 'topic', 'source',
+    ]);
+  });
+
   it('does not write a report when bad-ref validation fails before target discovery', async () => {
     const harness = deps({
       bad: [resultWithVisualDiffAndError('diff.png')],
