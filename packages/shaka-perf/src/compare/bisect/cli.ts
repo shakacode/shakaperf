@@ -43,6 +43,11 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
       'Measure the good ref on the experiment side before midpoint search',
       false,
     )
+    .option(
+      '--report-only',
+      'Re-render compare-bisect-results/bisect-report.html from saved bisect report data',
+      false,
+    )
     .action(async function (goodRef?: string, badRef?: string) {
       const local = this.opts();
       const inherited = this.optsWithGlobals();
@@ -57,6 +62,7 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         reuseCurrentResults: local.reuseCurrentResults === true,
         dryRun: local.dryRun === true,
         validateGoodRef: local.validateGoodRef === true,
+        reportOnly: local.reportOnly === true || inherited.reportOnly === true,
       });
     });
 }

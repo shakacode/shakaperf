@@ -11,7 +11,7 @@ import { Command } from 'commander';
 import { createCompareCommand } from '../../cli/program';
 import { createBisectCommand } from '../cli';
 import { runCompareBisectFromCli } from '../session';
-import type { AbTestsConfig } from '../../../config';
+import { parseAbTestsConfig, type AbTestsConfig } from '../../../config';
 import type { BisectSession } from '../types';
 
 describe('compare bisect command', () => {
@@ -70,7 +70,36 @@ describe('compare bisect command', () => {
       reuseCurrentResults: false,
       dryRun: false,
       validateGoodRef: false,
+      reportOnly: false,
     });
+  });
+
+  it('passes report-only from the bisect subcommand', async () => {
+    const run = jest.fn(async () => undefined);
+    const program = new Command().exitOverride().name('shaka-perf');
+    const compare = new Command('compare');
+    compare.addCommand(createBisectCommand({ run }));
+    program.addCommand(compare);
+
+    await program.parseAsync(['compare', 'bisect', '--report-only'], { from: 'user' });
+
+    expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
+      reportOnly: true,
+    }));
+  });
+
+  it('keeps report-only enabled when the compare parent defines the same option', async () => {
+    const run = jest.fn(async () => undefined);
+    const program = new Command().exitOverride().name('shaka-perf');
+    const compare = new Command('compare').option('--report-only', 'parent report mode', false);
+    compare.addCommand(createBisectCommand({ run }));
+    program.addCommand(compare);
+
+    await program.parseAsync(['compare', 'bisect', '--report-only'], { from: 'user' });
+
+    expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
+      reportOnly: true,
+    }));
   });
 
   it('accepts bisect categories and current-result reuse after the subcommand', async () => {
@@ -164,6 +193,51 @@ describe('compare bisect command', () => {
     }));
   });
 
+  it('regenerates a report without resolving servers, loading tests, or running bisect', async () => {
+    const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const session = completedSession();
+    const resolveTwinServers = jest.fn(() => { throw new Error('must not resolve servers'); });
+    const loadFrozenTests = jest.fn(async () => { throw new Error('must not load tests'); });
+    const run = jest.fn(async () => { throw new Error('must not run bisect'); });
+    const regenerateReport = jest.fn(() => ({
+      session,
+      htmlPath: '/tmp/compare-bisect-results/bisect-report.html',
+      dataPath: '/tmp/compare-bisect-results/bisect-report.json',
+    }));
+
+    try {
+      const result = await runCompareBisectFromCli(undefined, undefined, {
+        configPath: '/tmp/abtests.config.ts',
+        reportOnly: true,
+      }, {
+        loadConfig: async () => ({}),
+        parseConfig: () => reportOnlyConfig(),
+        resolveTwinServers,
+        loadFrozenTests,
+        run,
+        regenerateReport,
+      });
+
+      expect(result).toBe(session);
+      expect(regenerateReport).toHaveBeenCalledTimes(1);
+      expect(resolveTwinServers).not.toHaveBeenCalled();
+      expect(loadFrozenTests).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    } finally {
+      consoleLog.mockRestore();
+    }
+  });
+
+  it('rejects positional refs in report-only mode', async () => {
+    await expect(runCompareBisectFromCli('good', undefined, {
+      configPath: '/tmp/abtests.config.ts',
+      reportOnly: true,
+    }, {
+      loadConfig: async () => ({}),
+      parseConfig: () => reportOnlyConfig(),
+    })).rejects.toThrow('compare bisect --report-only does not accept good-ref or bad-ref');
+  });
+
   it('prints discovered targets and the next action for a dry run', async () => {
     const output: string[] = [];
     const consoleLog = jest.spyOn(console, 'log').mockImplementation((message = '') => {
@@ -237,3 +311,29 @@ describe('compare bisect command', () => {
     ]));
   });
 });
+
+function completedSession(): BisectSession {
+  return {
+    version: 1,
+    status: 'complete',
+    goodSha: 'good',
+    badSha: 'bad',
+    originalExperiment: { sha: 'bad', branch: 'feature' },
+    selectedCategories: ['visreg'],
+    orderedCommits: ['good', 'bad'],
+    targets: [],
+    commitRuns: {},
+    startedAt: '2026-07-13T00:00:00.000Z',
+    finishedAt: '2026-07-13T00:01:00.000Z',
+  };
+}
+
+function reportOnlyConfig(): AbTestsConfig {
+  return parseAbTestsConfig({
+    shared: {
+      controlURL: 'http://control.test',
+      experimentURL: 'http://experiment.test',
+      parallelism: 2,
+    },
+  });
+}
