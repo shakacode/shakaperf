@@ -9,6 +9,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { clearRegistry, getRegisteredTests, restoreRegistry, testRunsForType, TestType } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 import { loadTestFile } from './load-test-file';
@@ -37,9 +38,15 @@ const ABTEST_FILE_REGEX = /\.abtest\.(ts|js)$/;
 // compare pipeline's per-unit pattern) keep working.
 const registrationsByFile = new Map<string, AbTestDefinition[]>();
 
+function normalizeTestFile(test: AbTestDefinition): AbTestDefinition {
+  if (!test.file?.startsWith('file:')) return test;
+  return { ...test, file: fileURLToPath(test.file) };
+}
+
 function rememberRegistrations(tests: AbTestDefinition[]): void {
   const byFile = new Map<string, AbTestDefinition[]>();
-  for (const test of tests) {
+  for (const candidate of tests) {
+    const test = normalizeTestFile(candidate);
     if (test.file == null) continue;
     const key = path.resolve(test.file);
     const list = byFile.get(key);
@@ -77,7 +84,7 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
   // Remember what's already registered (a prior loadTests() call, or direct
   // abTest() calls outside any test file) before clearing — if re-import is
   // a no-op, the remembered registrations are all we have.
-  const priorRegistry = getRegisteredTests();
+  const priorRegistry = getRegisteredTests().map(normalizeTestFile);
   rememberRegistrations(priorRegistry);
   clearRegistry();
 
@@ -111,7 +118,7 @@ export async function loadTests(options: LoadTestsOptions = {}): Promise<AbTestD
   // returned — restoring tests from other files would turn an accurate
   // "No tests registered" error into a baffling downstream one ("No tests
   // matched filter"), or worse, silently run the wrong tests.
-  const fresh = getRegisteredTests();
+  const fresh = getRegisteredTests().map(normalizeTestFile);
   rememberRegistrations(fresh);
   const loadedFileSet = new Set(loadedFiles.map((file) => path.resolve(file)));
   let tests = [
