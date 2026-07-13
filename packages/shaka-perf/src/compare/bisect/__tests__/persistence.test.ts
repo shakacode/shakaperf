@@ -93,6 +93,7 @@ describe('bisect persistence', () => {
     const summaryPath = path.join(resultsDirectory, 'summary.json');
     const value = session();
     value.dryRun = true;
+    value.validateGoodRef = true;
     value.nextAction = {
       kind: 'validate-good-ref',
       sha: 'good',
@@ -105,6 +106,7 @@ describe('bisect persistence', () => {
 
     expect(JSON.parse(fs.readFileSync(summaryPath, 'utf8'))).toMatchObject({
       dryRun: true,
+      validateGoodRef: true,
       nextAction: value.nextAction,
     });
   });

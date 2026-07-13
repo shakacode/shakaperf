@@ -28,6 +28,7 @@ export function writeSummary(filePath: string, session: BisectSession): void {
     goodSha: session.goodSha,
     badSha: session.badSha,
     dryRun: session.dryRun,
+    validateGoodRef: session.validateGoodRef,
     nextAction: session.nextAction,
     targets: [...session.targets].sort(compareTargets),
   });
