@@ -9,6 +9,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type {
+  BisectCategory,
   ChipDescriptor,
   ReportData,
   ReportMeta,
@@ -16,7 +17,14 @@ import type {
   SortDescriptor,
   TestResult,
 } from './types';
+import {
+  selectionCategories,
+  selectionTestIds,
+  type BisectSelection,
+} from './bisect-selection';
 import { Header } from './components/Header';
+import { BisectNavigator } from './components/BisectNavigator';
+import { BisectSelectionSummary } from './components/BisectSelectionSummary';
 import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
@@ -262,6 +270,7 @@ function normalizeStageSelection(
 
 export function App({ data }: { data: ReportData }) {
   const [query, setQuery] = useState('');
+  const [bisectSelection, setBisectSelection] = useState<BisectSelection>({ kind: 'all' });
   // Visible-test-id set drives everything; null means "no override → use the
   // default of all measured tests". A chip's "selected" display state is
   // derived: it's active iff every test that carries the chip is visible.
@@ -313,6 +322,24 @@ export function App({ data }: { data: ReportData }) {
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
     [stageFilterOptions, visibleStageOverride],
   );
+  const bisectTestIds = useMemo(
+    () => data.bisect == null
+      ? new Set<string>()
+      : selectionTestIds(data.bisect, bisectSelection),
+    [bisectSelection, data.bisect],
+  );
+  const bisectCategories = useMemo(
+    () => data.bisect == null
+      ? new Set<BisectCategory>()
+      : selectionCategories(data.bisect, bisectSelection),
+    [bisectSelection, data.bisect],
+  );
+  const effectiveVisibleStages = useMemo(() => {
+    if (data.bisect == null || bisectSelection.kind === 'all') return visibleStages;
+    return new Set(
+      [...visibleStages].filter((stage) => bisectCategories.has(stage as BisectCategory)),
+    );
+  }, [bisectCategories, bisectSelection.kind, data.bisect, visibleStages]);
   const setVisibleStageSelection = useCallback((update: StageFilterSelectionUpdate) => {
     setVisibleStageOverride((previous) => {
       const current = normalizeStageSelection(previous, stageFilterOptions);
@@ -360,7 +387,10 @@ export function App({ data }: { data: ReportData }) {
     const out: { test: TestResult; dimmed: boolean }[] = [];
     for (const t of measuredTests) {
       if (!matchesQuery(t, query)) continue;
-      out.push({ test: t, dimmed: !visibleTestIds.has(t.id) });
+      const excludedByBisect = data.bisect != null &&
+        bisectSelection.kind !== 'all' &&
+        !bisectTestIds.has(t.id);
+      out.push({ test: t, dimmed: !visibleTestIds.has(t.id) || excludedByBisect });
     }
     out.sort((a, b) => {
       const byDim = Number(a.dimmed) - Number(b.dimmed);
@@ -375,7 +405,7 @@ export function App({ data }: { data: ReportData }) {
       );
     });
     return out;
-  }, [measuredTests, visibleTestIds, query, sort, sortValues]);
+  }, [bisectSelection.kind, bisectTestIds, data.bisect, measuredTests, visibleTestIds, query, sort, sortValues]);
 
   const selectChip = (key: string, additive: boolean) => {
     const chipTests = chipTestSets.get(key) ?? new Set<string>();
@@ -415,6 +445,14 @@ export function App({ data }: { data: ReportData }) {
 
         <ErrorBanner errors={data.meta.errors ?? []} />
 
+        {data.bisect ? (
+          <BisectNavigator
+            model={data.bisect}
+            selection={bisectSelection}
+            onSelect={setBisectSelection}
+          />
+        ) : null}
+
         <div className="header__controls">
           <SearchBar value={query} onChange={setQuery} />
           <div className="header__filter-stack">
@@ -435,6 +473,10 @@ export function App({ data }: { data: ReportData }) {
             to match them. */}
         <SortChips options={sortOptions} active={sort} onSelect={selectSort} />
 
+        {data.bisect ? (
+          <BisectSelectionSummary model={data.bisect} selection={bisectSelection} />
+        ) : null}
+
         {visibleTests.length === 0 && missingTests.length === 0 ? (
           <div className="empty">no tests match current filter</div>
         ) : (
@@ -448,7 +490,7 @@ export function App({ data }: { data: ReportData }) {
                 runLabel={showRunChips ? (runKey(test) === latestRunKey ? 'latest' : 'old') : null}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
-                visibleStages={visibleStages}
+                visibleStages={effectiveVisibleStages}
               />
             ))}
           </div>
