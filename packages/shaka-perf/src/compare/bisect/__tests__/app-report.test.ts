@@ -23,6 +23,19 @@ describe('bisect report App rendering', () => {
     expect(html).toMatch(/data-bisect-selection="commit"[^>]+aria-pressed="false"/);
   });
 
+  it('collapses every clean commit and renders cards only for regression commits', () => {
+    const html = renderApp(bisectReport());
+
+    expect(html).toContain('data-bisect-clean-history="true"');
+    expect(html).toContain('2 commits with no first-bad regressions');
+    expect(html).toContain('good baseline');
+    expect(html).toContain('refactor styles');
+    expect(html).not.toContain('data-bisect-sha="good-commit"');
+    expect(html).not.toContain('data-bisect-sha="clean-commit"');
+    expect(html).toContain('data-bisect-sha="mixed-commit"');
+    expect(html.match(/data-bisect-selection="commit"/g)).toHaveLength(1);
+  });
+
   it('omits the bisect navigator from an ordinary report', () => {
     const html = renderApp(ordinaryReport());
 

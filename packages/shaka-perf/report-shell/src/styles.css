@@ -644,6 +644,10 @@ input {
   flex: 0 0 clamp(190px, 18vw, 260px);
 }
 
+.bisect-tree__item--clean-history {
+  flex-basis: clamp(260px, 28vw, 420px);
+}
+
 .bisect-tree__item:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -669,6 +673,90 @@ input {
   font-weight: 800;
   line-height: 12px;
   transform: translateY(-6px);
+}
+
+.bisect-clean-history {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  border: 2px dashed var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: 3px 3px 0 var(--border);
+}
+
+.bisect-clean-history > summary {
+  min-height: 100%;
+  padding: 13px 14px;
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.bisect-clean-history > summary::marker {
+  color: var(--improvement);
+}
+
+.bisect-clean-history__summary {
+  display: grid;
+  gap: 7px;
+}
+
+.bisect-clean-history__summary strong {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.bisect-clean-history__summary span {
+  color: var(--fg-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bisect-clean-history__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border-strong);
+  list-style: none;
+}
+
+.bisect-clean-history__commit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+
+.bisect-clean-history__commit:last-child {
+  border-bottom: 0;
+}
+
+.bisect-clean-history__commit code {
+  grid-row: 1 / span 2;
+  align-self: start;
+  padding: 1px 4px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.bisect-clean-history__commit > span:not(.bisect-clean-history__meta) {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bisect-clean-history__meta {
+  color: var(--fg-muted);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .bisect-node {
