@@ -12,6 +12,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   assertCompatible,
+  assertRepositoryCompatible,
   buildCompatibility,
   fingerprint,
   parseBisectSession,
@@ -132,6 +133,25 @@ describe('resumable bisect state', () => {
     const current = { ...saved, [field]: 'changed' };
 
     expect(() => assertCompatible(saved, current)).toThrow(new RegExp(message, 'i'));
+  });
+
+  it('rejects moved repositories and changed checkout state with actionable errors', () => {
+    const saved = session();
+    expect(() => assertRepositoryCompatible(saved, {
+      identity: { ...saved.identity, experimentRoot: '/moved/experiment' },
+      control: saved.control,
+      experiment: saved.originalExperiment,
+    })).toThrow(/experiment repository moved/i);
+    expect(() => assertRepositoryCompatible(saved, {
+      identity: saved.identity,
+      control: { ...saved.control, sha: 'changed' },
+      experiment: saved.originalExperiment,
+    })).toThrow(/control checkout changed/i);
+    expect(() => assertRepositoryCompatible(saved, {
+      identity: saved.identity,
+      control: saved.control,
+      experiment: { ...saved.originalExperiment, branch: 'other' },
+    })).toThrow(/experiment checkout changed/i);
   });
 });
 
