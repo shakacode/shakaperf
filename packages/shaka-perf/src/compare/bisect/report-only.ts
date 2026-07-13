@@ -14,7 +14,7 @@ import type { Stage } from '../../stage/stage';
 import { buildBisectReportModel, type BisectReportData } from './report-model';
 import {
   BISECT_REPORT_DATA_FILENAME,
-  writeBisectReport,
+  writeBisectReportArtifacts,
 } from './report';
 import type { BisectSession } from './types';
 
@@ -115,7 +115,7 @@ export function regenerateBisectReport(
     },
     bisect: buildBisectReportModel(session, savedReport.tests, generatedAt),
   };
-  const written = writeBisectReport({
+  const written = writeBisectReportArtifacts({
     resultsDirectory: options.resultsDirectory,
     data,
     stages: options.stages,

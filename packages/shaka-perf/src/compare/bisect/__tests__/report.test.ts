@@ -11,7 +11,11 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
-import { BISECT_REPORT_FILENAME, writeBisectReport } from '../report';
+import {
+  BISECT_REPORT_FILENAME,
+  writeBisectReport,
+  writeBisectReportArtifacts,
+} from '../report';
 import type { BisectReportData } from '../report-model';
 import type { Stage } from '../../../stage/stage';
 
@@ -27,7 +31,7 @@ describe('writeBisectReport', () => {
   });
 
   it('writes a self-contained report with bisect data and inlined artifacts', () => {
-    const written = writeBisectReport({
+    const written = writeBisectReportArtifacts({
       resultsDirectory,
       data: reportData(),
       stages: [
@@ -61,13 +65,11 @@ describe('writeBisectReport', () => {
   });
 
   it('returns an absolute path when resultsDirectory is relative', () => {
-    const written = writeBisectReport({
+    const outputPath = writeBisectReport({
       resultsDirectory: path.relative(process.cwd(), resultsDirectory),
       data: reportData(),
       stages: [],
     });
-    const outputPath = written.htmlPath;
-
     expect(path.isAbsolute(outputPath)).toBe(true);
   });
 
