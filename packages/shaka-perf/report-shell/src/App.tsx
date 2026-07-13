@@ -269,9 +269,17 @@ function normalizeStageSelection(
   return new Set([...selected].filter((stage) => valid.has(stage)));
 }
 
-export function App({ data }: { data: ReportData }) {
+export function App({
+  data,
+  initialBisectSelection,
+}: {
+  data: ReportData;
+  initialBisectSelection?: BisectSelection;
+}) {
   const [query, setQuery] = useState('');
-  const [bisectSelection, setBisectSelection] = useState<BisectSelection>({ kind: 'all' });
+  const [bisectSelection, setBisectSelection] = useState<BisectSelection>(
+    initialBisectSelection ?? { kind: 'all' },
+  );
   // Visible-test-id set drives everything; null means "no override → use the
   // default of all measured tests". A chip's "selected" display state is
   // derived: it's active iff every test that carries the chip is visible.
