@@ -47,6 +47,11 @@ describe('writeBisectReport', () => {
     expect(outputPath).toBe(path.join(resultsDirectory, BISECT_REPORT_FILENAME));
     expect(fs.existsSync(outputPath)).toBe(true);
     expect(html).toContain('"bisect":{"status":"complete"');
+    const serializedPayload = html.match(
+      /<script id="__shaka_report_data__" type="application\/json">([\s\S]*?)<\/script>/,
+    )?.[1];
+    expect(serializedPayload).toBeDefined();
+    expect(JSON.parse(serializedPayload!).meta.reportMode).toBe('lightweight');
     expect(html).toContain('data:image/png;base64,fixture');
     expect(html).not.toContain('/tmp/control.png');
   });
