@@ -28,7 +28,11 @@ export interface WrittenBisectReport {
   data: BisectReportData;
 }
 
-export function writeBisectReport(options: WriteBisectReportOptions): WrittenBisectReport {
+export function writeBisectReport(options: WriteBisectReportOptions): string {
+  return writeBisectReportArtifacts(options).htmlPath;
+}
+
+export function writeBisectReportArtifacts(options: WriteBisectReportOptions): WrittenBisectReport {
   const htmlPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
   const dataPath = path.resolve(options.resultsDirectory, BISECT_REPORT_DATA_FILENAME);
   const portable = reportDataForMode(
