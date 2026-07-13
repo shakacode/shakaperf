@@ -205,6 +205,19 @@ describe('bisect regression analysis', () => {
     });
   });
 
+  it('discovers targets only for selected bisect categories', () => {
+    const targets = discoverTargets(
+      [testResult()],
+      ['good', 'bad'],
+      'bad',
+      ['accessibility'],
+    );
+
+    expect(targets.map((target) => [target.category, target.subject])).toEqual([
+      ['accessibility', 'button-name'],
+    ]);
+  });
+
   it('collapses accessibility findings by rule per test and viewport', () => {
     const targets = discoverTargets([
       testResult(),
