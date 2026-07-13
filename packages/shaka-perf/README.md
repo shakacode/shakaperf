@@ -41,6 +41,9 @@ yarn shaka-perf compare --categories perf
 yarn shaka-perf compare bisect
 yarn shaka-perf compare bisect <good-ref> <bad-ref> --categories visreg,perf
 
+# Re-render the latest saved bisect report without running measurements
+yarn shaka-perf compare bisect --report-only
+
 # Twin Docker servers (A/B infrastructure) — one command does it all:
 # detects changes, rebuilds if needed, starts containers, starts servers.
 yarn shaka-perf servers
