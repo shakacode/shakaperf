@@ -23,17 +23,28 @@ describe('bisect report App rendering', () => {
     expect(html).toMatch(/data-bisect-selection="commit"[^>]+aria-pressed="false"/);
   });
 
-  it('collapses every clean commit and renders cards only for regression commits', () => {
+  it('keeps consecutive clean commit bundles between regression cards', () => {
     const html = renderApp(bisectReport());
+    const firstBundle = html.indexOf('data-bisect-clean-run="0"');
+    const firstRegression = html.indexOf('data-bisect-sha="mixed-commit"');
+    const secondBundle = html.indexOf('data-bisect-clean-run="1"');
+    const secondRegression = html.indexOf('data-bisect-sha="later-commit"');
 
-    expect(html).toContain('data-bisect-clean-history="true"');
-    expect(html).toContain('2 commits with no first-bad regressions');
+    expect(html.match(/aria-label="2 commits with no first-bad regressions"/g)).toHaveLength(2);
+    expect(html.match(/\[2 commits\]/g)).toHaveLength(2);
     expect(html).toContain('good baseline');
     expect(html).toContain('refactor styles');
+    expect(html).toContain('update copy');
+    expect(html).toContain('tune spacing');
     expect(html).not.toContain('data-bisect-sha="good-commit"');
     expect(html).not.toContain('data-bisect-sha="clean-commit"');
-    expect(html).toContain('data-bisect-sha="mixed-commit"');
-    expect(html.match(/data-bisect-selection="commit"/g)).toHaveLength(1);
+    expect(firstBundle).toBeGreaterThan(-1);
+    expect(firstRegression).toBeGreaterThan(firstBundle);
+    expect(secondBundle).toBeGreaterThan(firstRegression);
+    expect(secondRegression).toBeGreaterThan(secondBundle);
+    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(2);
+    expect(html.match(/data-bisect-clean-run-dialog=/g)).toHaveLength(2);
+    expect(html.match(/data-bisect-selection="commit"/g)).toHaveLength(2);
   });
 
   it('groups regression targets into test cards with readable comparisons', () => {
@@ -274,6 +285,13 @@ function bisectReport(): AppReportData {
     testName: 'Product page',
     subject: 'LCP regression',
   });
+  const accessibilityTarget = bisectTarget({
+    id: 'accessibility-target',
+    category: 'accessibility',
+    testId: 'product-card',
+    testName: 'Product page',
+    subject: 'button-name',
+  });
   return {
     ...ordinaryReport(),
     tests: [
@@ -316,12 +334,37 @@ function bisectReport(): AppReportData {
           counts: { visreg: 1, perf: 2, accessibility: 0 },
           targetIds: [visualTarget.id, homepagePerfTarget.id, perfTarget.id],
         },
+        {
+          sha: 'copy-commit',
+          subject: 'update copy',
+          position: 3,
+          measured: true,
+          counts: { visreg: 0, perf: 0, accessibility: 0 },
+          targetIds: [],
+        },
+        {
+          sha: 'spacing-commit',
+          subject: 'tune spacing',
+          position: 4,
+          measured: false,
+          counts: { visreg: 0, perf: 0, accessibility: 0 },
+          targetIds: [],
+        },
+        {
+          sha: 'later-commit',
+          subject: 'break button labels',
+          position: 5,
+          measured: true,
+          counts: { visreg: 0, perf: 0, accessibility: 1 },
+          targetIds: [accessibilityTarget.id],
+        },
       ],
-      targets: [visualTarget, homepagePerfTarget, perfTarget],
+      targets: [visualTarget, homepagePerfTarget, perfTarget, accessibilityTarget],
       targetsById: {
         [visualTarget.id]: visualTarget,
         [homepagePerfTarget.id]: homepagePerfTarget,
         [perfTarget.id]: perfTarget,
+        [accessibilityTarget.id]: accessibilityTarget,
       },
       views: {
         unresolved: { targetIds: [] },
