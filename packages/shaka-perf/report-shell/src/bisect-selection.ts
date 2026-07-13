@@ -8,6 +8,7 @@
  */
 
 import type { BisectCategory, BisectReportModel } from './types';
+import type { ReportStage } from '../../src/pipeline/pipeline-artifacts';
 
 export type BisectSelection =
   | { kind: 'all' }
@@ -54,4 +55,17 @@ export function selectionCategories(
     if (category != null) categories.add(category);
   }
   return categories;
+}
+
+export function stageNamesForCategories(
+  stages: readonly ReportStage[],
+  visibleStageNames: ReadonlySet<string>,
+  categories: ReadonlySet<BisectCategory>,
+): Set<string> {
+  const reportCategories = new Set<ReportStage['category']>(categories);
+  return new Set(
+    stages
+      .filter((stage) => visibleStageNames.has(stage.name) && reportCategories.has(stage.category))
+      .map((stage) => stage.name),
+  );
 }

@@ -8,6 +8,7 @@
  */
 
 import type { BisectReportModel, BisectReportTarget } from '../report-model';
+import { pipelineStagesForReport, type ReportStage } from '../../../pipeline/pipeline-artifacts';
 
 type BisectSelection =
   | { kind: 'all' }
@@ -22,12 +23,18 @@ interface SelectionHelpers {
     model: BisectReportModel,
     selection: BisectSelection,
   ) => Set<BisectReportTarget['category']>;
+  stageNamesForCategories: (
+    stages: readonly ReportStage[],
+    visibleStageNames: ReadonlySet<string>,
+    categories: ReadonlySet<BisectReportTarget['category']>,
+  ) => Set<string>;
 }
 
 const {
   selectionCategories,
   selectionTargetIds,
   selectionTestIds,
+  stageNamesForCategories,
 } = require('../../../../report-shell/src/bisect-selection') as SelectionHelpers;
 
 function target(
@@ -79,9 +86,17 @@ const model: BisectReportModel = {
       targetIds: [],
     },
     {
+      sha: 'perf-only',
+      subject: 'slow product page',
+      position: 2,
+      measured: true,
+      counts: { visreg: 0, perf: 1, accessibility: 0 },
+      targetIds: ['perf-target'],
+    },
+    {
       sha: 'bad',
       subject: 'ship regressions',
-      position: 2,
+      position: 3,
       measured: true,
       counts: { visreg: 0, perf: 1, accessibility: 1 },
       targetIds: ['perf-target', 'unmapped-target'],
@@ -109,6 +124,16 @@ function expectSelection(
 }
 
 describe('bisect report selection', () => {
+  it('keeps both report stages owned by a perf commit category', () => {
+    const reportStages = pipelineStagesForReport('compare', comparePipelineConfig())
+      .filter((stage) => stage.name === 'perf' || stage.name === 'perf-low-noise');
+    const visibleStageNames = new Set(reportStages.map((stage) => stage.name));
+    const categories = selectionCategories(model, { kind: 'commit', sha: 'perf-only' });
+
+    expect([...stageNamesForCategories(reportStages, visibleStageNames, categories)])
+      .toEqual(['perf', 'perf-low-noise']);
+  });
+
   it('derives every found target, mapped card, and category for all regressions', () => {
     expectSelection(
       { kind: 'all' },
@@ -155,3 +180,20 @@ describe('bisect report selection', () => {
     expectSelection(selection, { targetIds, testIds, categories });
   });
 });
+
+function comparePipelineConfig() {
+  return {
+    parallelism: 1,
+    visregDefaultMisMatchThreshold: 0.1,
+    visregMaxNumDiffPixels: 50,
+    visregComparePixelmatchThreshold: 0.1,
+    visregEngineOptions: {},
+    visregCompareRetries: 0,
+    visregCompareRetryDelay: 0,
+    perfNumberOfMeasurements: 1,
+    perfRegressionThreshold: 0.1,
+    perfPValueThreshold: 0.05,
+    perfRegressionThresholdStat: 'estimator' as const,
+    perfSamplingMode: 'simultaneous' as const,
+  };
+}
