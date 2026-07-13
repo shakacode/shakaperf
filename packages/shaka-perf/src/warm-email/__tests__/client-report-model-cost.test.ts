@@ -187,6 +187,20 @@ describe('accessibility finding families', () => {
     });
   });
 
+  it('does not report a counted family as a site-wide extra on another page', () => {
+    const summary = summarizeA11yRuleFamilies([
+      { violations: [{ ruleId: 'html-has-lang', impact: 'serious' }] },
+      { violations: [{ ruleId: 'region', impact: 'moderate' }] },
+    ]);
+
+    expect(summary).toMatchObject({
+      headlineCount: 1,
+      countedFamilies: [{ id: 'structure', label: 'page structure that is hard to navigate', pageCount: 1 }],
+      notCountedExtras: [],
+      smallerNotesCount: 0,
+    });
+  });
+
   it('groups unmatched rules into one plain-language fallback family', () => {
     const summary = summarizeA11yRuleFamilies([{
       violations: [

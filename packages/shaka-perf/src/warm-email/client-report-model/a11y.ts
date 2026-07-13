@@ -99,6 +99,7 @@ export function summarizeA11yRuleFamilies(
       extras.set(definition.id, current);
     }
   }
+  for (const familyId of counted.keys()) extras.delete(familyId);
   const familyOrder = (familyId: string): number => {
     const index = A11Y_RULE_FAMILY_DEFINITIONS.findIndex((definition) => definition.id === familyId);
     return index === -1 ? Number.MAX_SAFE_INTEGER : index;
