@@ -67,7 +67,36 @@ describe('compare bisect command', () => {
       headed: true,
       controlURL: 'http://control.override',
       experimentURL: 'http://experiment.override',
+      reuseCurrentResults: false,
+      dryRun: false,
     });
+  });
+
+  it('accepts bisect categories and current-result reuse after the subcommand', async () => {
+    const run = jest.fn(async () => undefined);
+    const program = new Command()
+      .exitOverride()
+      .name('shaka-perf');
+    const compare = new Command('compare')
+      .option('--categories <list>', 'parent category option', 'visreg,perf,accessibility');
+    compare.addCommand(createBisectCommand({ run }));
+    program.addCommand(compare);
+
+    await program.parseAsync([
+      'compare',
+      'bisect',
+      'good-ref',
+      'bad-ref',
+      '--categories', 'accessibility',
+      '--reuse-current-results',
+      '--dry-run',
+    ], { from: 'user' });
+
+    expect(run).toHaveBeenCalledWith('good-ref', 'bad-ref', expect.objectContaining({
+      categories: 'accessibility',
+      reuseCurrentResults: true,
+      dryRun: true,
+    }));
   });
 
   it('loads config and frozen tests once before calling runBisect', async () => {
@@ -102,6 +131,8 @@ describe('compare bisect command', () => {
         categories: 'visreg',
         controlURL: 'http://control.override',
         experimentURL: 'http://experiment.override',
+        reuseCurrentResults: true,
+        dryRun: true,
       }, {
         loadConfig,
         parseConfig: () => parsedConfig,
@@ -123,6 +154,81 @@ describe('compare bisect command', () => {
       frozenTests: [],
       controlURL: 'http://control.override',
       experimentURL: 'http://experiment.override',
+      reuseCurrentResults: true,
+      dryRun: true,
     }));
+  });
+
+  it('prints discovered targets and the next action for a dry run', async () => {
+    const output: string[] = [];
+    const consoleLog = jest.spyOn(console, 'log').mockImplementation((message = '') => {
+      output.push(String(message));
+    });
+    const parsedConfig = {
+      shared: {
+        controlURL: 'http://control.config',
+        experimentURL: 'http://experiment.config',
+      },
+      twinServers: { experimentDir: 'experiment' },
+    } as AbTestsConfig;
+    const targetId = '["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]';
+    const run = jest.fn(async () => ({
+      version: 1,
+      status: 'complete',
+      goodSha: 'good-sha',
+      badSha: 'bad-sha',
+      originalExperiment: { sha: 'bad-sha', branch: 'feature' },
+      selectedCategories: ['visreg'],
+      orderedCommits: ['good-sha', 'middle-sha', 'bad-sha'],
+      targets: [{
+        id: targetId,
+        category: 'visreg',
+        testFile: 'tests/homepage.abtest.ts',
+        testName: 'Homepage',
+        viewport: 'desktop',
+        subject: 'document',
+        status: 'active',
+        goodIndex: 0,
+        badIndex: 2,
+        observations: {},
+      }],
+      commitRuns: {},
+      dryRun: true,
+      nextAction: {
+        kind: 'validate-good-ref',
+        sha: 'good-sha',
+        categories: ['visreg'],
+        testFiles: ['tests/homepage.abtest.ts'],
+        targetIds: [targetId],
+      },
+      startedAt: '2026-07-12T00:00:00.000Z',
+      finishedAt: '2026-07-12T00:01:00.000Z',
+    }) as BisectSession);
+
+    try {
+      await runCompareBisectFromCli('good-sha', 'bad-sha', {
+        configPath: '/tmp/abtests.config.ts',
+        categories: 'visreg',
+        dryRun: true,
+      }, {
+        loadConfig: async () => ({ raw: true }),
+        parseConfig: () => parsedConfig,
+        resolveTwinServers: () => ({ projectSlug: 'fixture' }) as never,
+        loadFrozenTests: async () => [],
+        run,
+      });
+    } finally {
+      consoleLog.mockRestore();
+    }
+
+    expect(output).toEqual(expect.arrayContaining([
+      'Compare bisect dry run complete.',
+      'Range: good-sha..bad-sha',
+      'Targets discovered: 1',
+      '  visreg Homepage desktop document',
+      'Next: validate good ref good-sh for 1 target(s)',
+      'Categories: visreg',
+      'Test files: tests/homepage.abtest.ts',
+    ]));
   });
 });
