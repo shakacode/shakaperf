@@ -114,6 +114,21 @@ compare run.
 
 Results are written under `compare-bisect-results/`:
 
+```text
+compare-bisect-results/
+  bisect-report.html
+  session.json
+  summary.json
+  decision-log.md
+  decision-log.jsonl
+  commits/<sha>/compare-results/...
+```
+
+- `bisect-report.html` is a portable interactive report built from the bad-ref
+  compare cards. Commit-node counters are the visual, performance, and
+  accessibility targets whose first-bad SHA is that commit. Selecting a commit,
+  unresolved view, or invalid view focuses the matching cards and stage
+  sections in the saved HTML; it does not rerun compare.
 - `session.json` is diagnostic state recording the range, targets, observations,
   candidate runs, and infrastructure errors. V0 cannot resume a run from it.
 - `summary.json` records the final user-facing answer grouped by target status.
@@ -329,8 +344,6 @@ or server state manually if needed.
 - V0's container fallback rebuilds the experiment image, but the existing
   twin-server menu recreates the running container pair as part of that
   lifecycle.
-- V0 writes JSON and per-commit artifacts, but does not yet render a dedicated
-  HTML bisect dashboard.
 
 ## Output Interpretation
 
