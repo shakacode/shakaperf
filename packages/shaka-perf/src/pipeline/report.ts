@@ -264,12 +264,12 @@ export function writeReport(
   stages: readonly Stage[] = [],
 ): WriteReportResult {
   fs.mkdirSync(outDir, { recursive: true });
-  const fullData = stripDiagnosticsForMode(
+  const fullData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'full' } },
     'full',
     stages,
   );
-  const lightData = stripDiagnosticsForMode(
+  const lightData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'lightweight' } },
     'lightweight',
     stages,
@@ -287,7 +287,11 @@ export function writeReport(
  * needs in that mode (inlined data URIs for lightweight, relative-path
  * refs for full).
  */
-function stripDiagnosticsForMode(data: ReportData, mode: ReportMode, stages: readonly Stage[]): ReportData {
+export function reportDataForMode<T extends ReportData>(
+  data: T,
+  mode: ReportMode,
+  stages: readonly Stage[],
+): T {
   const strippers = new Map<StageName, (m: unknown) => unknown>();
   for (const stage of stages) {
     const fn = mode === 'lightweight' ? stage.stripMeasurementForLightweight : stage.stripMeasurementForFull;
@@ -305,7 +309,7 @@ function stripDiagnosticsForMode(data: ReportData, mode: ReportMode, stages: rea
         return { ...outcome, measurement: strip(outcome.measurement) };
       }),
     })),
-  };
+  } as T;
 }
 
 class ReportSummaryLogger implements StageLogger {
