@@ -133,6 +133,11 @@ input {
   padding: 32px 40px 80px;
 }
 
+.app--bisect {
+  --fg-faint: #626b76;
+  --bisect-visual: #925800;
+}
+
 .header {
   position: sticky;
   top: 0;
@@ -467,7 +472,7 @@ input {
 /* ───────── bisect navigator ───────── */
 
 .bisect-navigator {
-  --bisect-visual: var(--visual_change);
+  --bisect-visual: #925800;
   --bisect-perf: var(--regression);
   --bisect-accessibility: var(--error);
   position: relative;
@@ -701,7 +706,7 @@ input {
 
 .bisect-tree__item[data-empty="true"] .bisect-node:not([aria-pressed="true"]) {
   border-style: dashed;
-  opacity: 0.56;
+  background: var(--bg-elevated);
 }
 
 .bisect-node:focus,
@@ -1761,21 +1766,21 @@ input {
 }
 
 @media (max-width: 760px) {
-  .app {
+  .app.app--bisect {
     padding: 20px 14px 60px;
   }
 
-  .header {
+  .app--bisect .header {
     margin: -20px -14px 24px;
     padding: 18px 14px 16px;
   }
 
-  .header__controls {
+  .app--bisect .header__controls {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .header__filter-stack,
-  .header__secondary-filters {
+  .app--bisect .header__filter-stack,
+  .app--bisect .header__secondary-filters {
     align-items: stretch;
     justify-content: flex-start;
   }
@@ -1865,15 +1870,15 @@ input {
     border-right: 0;
   }
 
-  .grid {
+  .app--bisect .grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card__head {
+  .app--bisect .card__head {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card__pills {
+  .app--bisect .card__pills {
     align-items: flex-start;
   }
 }
