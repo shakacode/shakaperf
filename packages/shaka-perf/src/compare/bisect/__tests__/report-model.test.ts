@@ -105,7 +105,13 @@ describe('buildBisectReportModel', () => {
           invalidReason: 'target is already present at the good ref',
         }),
       ],
-      commitRuns: { visual: {} },
+      commitRuns: {
+        visual: { compareCompleted: true },
+        clean: {
+          compareCompleted: false,
+          infrastructureError: 'refresh failed',
+        },
+      },
       startedAt: '2026-07-13T00:00:00.000Z',
     } as unknown as BisectSession;
 

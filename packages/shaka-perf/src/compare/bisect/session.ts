@@ -384,6 +384,7 @@ export async function executeBisect(
       assertNoPipelineErrors(badRun.testResults, input.gitRange.badSha);
       session = recordCommitRun(session, {
         sha: input.gitRange.badSha,
+        compareCompleted: true,
         requestedCategories: [...input.selectedCategories],
         requestedTests: [],
         refreshMode: preferredRefreshMode(input.config),
