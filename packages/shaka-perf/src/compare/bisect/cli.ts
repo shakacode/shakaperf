@@ -38,6 +38,11 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
       'Discover bad-ref targets and show the next bisect action without continuing',
       false,
     )
+    .option(
+      '--validate-good-ref',
+      'Measure the good ref on the experiment side before midpoint search',
+      false,
+    )
     .action(async function (goodRef?: string, badRef?: string) {
       const local = this.opts();
       const inherited = this.optsWithGlobals();
@@ -51,6 +56,7 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         experimentURL: inherited.experimentURL,
         reuseCurrentResults: local.reuseCurrentResults === true,
         dryRun: local.dryRun === true,
+        validateGoodRef: local.validateGoodRef === true,
       });
     });
 }

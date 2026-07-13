@@ -55,6 +55,7 @@ function input(rootDir: string): ExecuteBisectInput {
     experimentURL: 'http://experiment.test',
     reuseCurrentResults: false,
     dryRun: false,
+    validateGoodRef: false,
   };
 }
 
@@ -313,16 +314,14 @@ describe('compare bisect session orchestration', () => {
         }),
       },
     }]);
-    expect(harness.calls.checkouts).toEqual(['bad', 'good', 'a', 'b']);
+    expect(harness.calls.checkouts).toEqual(['bad', 'a', 'b']);
     expect(harness.calls.materialized).toEqual([
       [null, 'bad'],
-      ['bad', 'good'],
-      ['good', 'a'],
+      ['bad', 'a'],
       ['a', 'b'],
     ]);
     expect(harness.calls.compares).toEqual([
       { sha: 'bad', categories: ['visreg'], testFiles: [] },
-      { sha: 'good', categories: ['visreg'], testFiles: ['tests/homepage.abtest.ts'] },
       { sha: 'a', categories: ['visreg'], testFiles: ['tests/homepage.abtest.ts'] },
       { sha: 'b', categories: ['visreg'], testFiles: ['tests/homepage.abtest.ts'] },
     ]);
@@ -386,9 +385,9 @@ describe('compare bisect session orchestration', () => {
       sha: 'bad',
       categories: ['visreg'],
     }]);
-    expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
-    expect(harness.calls.refreshes).toEqual(['good', 'a', 'b']);
-    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
+    expect(harness.calls.checkouts).toEqual(['a', 'b']);
+    expect(harness.calls.refreshes).toEqual(['a', 'b']);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['a', 'b']);
     expect(session.commitRuns.bad).toMatchObject({
       reusedResults: true,
       compareResultsPath: '/repo/compare-results',
@@ -396,7 +395,27 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.decisions.map((entry) => entry.event)).toContain('bad-ref-reuse-start');
   });
 
-  it('dry runs through target discovery and records the next good-ref validation', async () => {
+  it('validates the good ref before midpoint search only when requested', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+
+    const session = await executeBisect({
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      validateGoodRef: true,
+    }, harness.deps);
+
+    expect(session.targets).toMatchObject([{ status: 'found', firstBadSha: 'b' }]);
+    expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
+    expect(harness.calls.decisions.map((entry) => entry.event)).toContain('good-ref-validated');
+  });
+
+  it('dry runs through target discovery and records the first midpoint by default', async () => {
     const harness = deps({
       bad: [resultWithVisualDiff('diff.png')],
     });
@@ -412,8 +431,8 @@ describe('compare bisect session orchestration', () => {
       status: 'complete',
       dryRun: true,
       nextAction: {
-        kind: 'validate-good-ref',
-        sha: 'good',
+        kind: 'measure-candidate',
+        sha: 'a',
         categories: ['visreg'],
         testFiles: ['tests/homepage.abtest.ts'],
         targetIds: ['["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]'],
@@ -451,8 +470,8 @@ describe('compare bisect session orchestration', () => {
       status: 'complete',
       dryRun: true,
       nextAction: {
-        kind: 'validate-good-ref',
-        sha: 'good',
+        kind: 'measure-candidate',
+        sha: 'a',
       },
     });
     expect(harness.calls.checkouts).toEqual(['bad']);
@@ -463,13 +482,36 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
   });
 
+  it('plans good-ref validation in dry-run mode only when requested', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+
+    const session = await executeBisect({
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      dryRun: true,
+      validateGoodRef: true,
+    }, harness.deps);
+
+    expect(session).toMatchObject({
+      nextAction: {
+        kind: 'validate-good-ref',
+        sha: 'good',
+      },
+    });
+  });
+
   it('marks targets invalid when they are already present at the good ref', async () => {
     const harness = deps({
       good: [resultWithVisualDiff('diff.png')],
       bad: [resultWithVisualDiff('diff.png')],
     });
 
-    const session = await executeBisect(input(rootDir), harness.deps);
+    const session = await executeBisect({
+      ...input(rootDir),
+      validateGoodRef: true,
+    }, harness.deps);
 
     expect(session.status).toBe('complete');
     expect(session.targets).toMatchObject([{
@@ -493,6 +535,7 @@ describe('compare bisect session orchestration', () => {
     });
     const adjacentInput: ExecuteBisectInput = {
       ...input(rootDir),
+      validateGoodRef: true,
       gitRange: {
         ...input(rootDir).gitRange,
         orderedCommits: ['good', 'bad'],
@@ -681,7 +724,7 @@ describe('compare bisect session orchestration', () => {
       targets: [{ goodIndex: 0, badIndex: 3 }],
     });
     expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
-    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good', 'a']);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
   it('persists checkout, materialize, refresh, compare, and boundary checkpoints', async () => {
@@ -839,7 +882,7 @@ describe('compare bisect session orchestration', () => {
     const session = await executeBisect(input(rootDir), harness.deps);
 
     expect(session.targets).toHaveLength(2);
-    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good', 'a', 'b']);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a', 'b']);
   });
 
   it('exposes one-object runBisect and runCandidate contracts', async () => {
