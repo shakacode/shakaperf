@@ -95,6 +95,35 @@ describe('bisect report App rendering', () => {
     expect(html).not.toContain('card--missing-artifacts');
   });
 
+  it('preserves skipped-only persisted cards in bisect reports', () => {
+    const data = bisectReport();
+    data.tests = [{
+      ...reportTest(),
+      measuredAt: null,
+      outcomes: [{
+        kind: 'skipped',
+        stage: 'visreg',
+        reason: 'fixture skip',
+        viewport: DESKTOP_VIEWPORT,
+      }],
+    }];
+
+    const html = renderApp(data);
+
+    expect(html).toContain('<h3 class="card__title">Product page</h3>');
+    expect(html).not.toContain('card--missing-artifacts');
+    expect(html).toContain('1 skipped: fixture skip');
+  });
+
+  it('announces only the concise selection status', () => {
+    const html = renderApp(bisectReport());
+
+    expect(html).not.toMatch(/class="bisect-selection-summary"[^>]+aria-live/);
+    expect(html).toContain(
+      'class="bisect-selection-summary__status" aria-live="polite" aria-atomic="true"',
+    );
+  });
+
   it('marks bisect reports for isolated responsive styling', () => {
     const html = renderApp(bisectReport());
 
