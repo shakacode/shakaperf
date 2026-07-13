@@ -19,6 +19,7 @@ import type {
   BisectTestSelection,
   PersistedRebuildStrategy,
 } from './types';
+import type { BisectRepositorySnapshot } from './git';
 
 const testSelectionSchema = z.object({
   testFile: z.string(),
@@ -119,6 +120,30 @@ const mergeInvestigationSchema = z.object({
   targetResults: z.record(z.string(), mergeTargetResultSchema),
 }).strict();
 
+const commitRunSchema = z.object({
+  sha: z.string(),
+  compareCompleted: z.boolean().optional(),
+  requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
+  requestedTests: z.array(testSelectionSchema).optional(),
+  requestedTestFiles: z.array(z.string()).optional(),
+  refreshMode: z.enum(['commands', 'container']),
+  usedFallback: z.boolean(),
+  compareResultsPath: z.string().optional(),
+  startedAt: z.string(),
+  finishedAt: z.string().optional(),
+  infrastructureError: z.string().optional(),
+  reusedResults: z.boolean().optional(),
+}).strict();
+
+const nextActionSchema = z.object({
+  kind: z.enum(['validate-good-ref', 'measure-candidate']),
+  sha: z.string(),
+  categories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
+  tests: z.array(testSelectionSchema).optional(),
+  testFiles: z.array(z.string()).optional(),
+  targetIds: z.array(z.string()),
+}).strict();
+
 const sessionSchema = z.object({
   version: z.literal(2),
   status: z.enum(['running', 'complete', 'interrupted', 'failed']),
@@ -142,6 +167,16 @@ const sessionSchema = z.object({
   startedAt: z.string(),
   finishedAt: z.string().optional(),
   failure: z.string().optional(),
+  goodSha: z.string().optional(),
+  badSha: z.string().optional(),
+  commitSubjects: z.record(z.string(), z.string()).optional(),
+  selectedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])).optional(),
+  orderedCommits: z.array(z.string()).optional(),
+  targets: z.array(targetSchema).optional(),
+  commitRuns: z.record(z.string(), commitRunSchema).optional(),
+  dryRun: z.boolean().optional(),
+  validateGoodRef: z.boolean().optional(),
+  nextAction: nextActionSchema.optional(),
 }).strict();
 
 const reportTestSchema = z.object({
@@ -216,6 +251,35 @@ export function assertCompatible(
   }
 }
 
+export function assertRepositoryCompatible(
+  saved: BisectSessionV2,
+  current: BisectRepositorySnapshot,
+): void {
+  const identityFields: Array<{
+    key: keyof BisectSessionV2['identity'];
+    message: string;
+  }> = [
+    { key: 'controlRoot', message: 'control repository moved' },
+    { key: 'experimentRoot', message: 'experiment repository moved' },
+    { key: 'controlGitCommonDir', message: 'control Git repository changed' },
+    { key: 'experimentGitCommonDir', message: 'experiment Git repository changed' },
+    { key: 'controlOrigin', message: 'control origin changed' },
+    { key: 'experimentOrigin', message: 'experiment origin changed' },
+  ];
+  for (const field of identityFields) {
+    if (saved.identity[field.key] !== current.identity[field.key]) {
+      throw new Error(`Cannot resume compare bisect: ${field.message}. Start a fresh run.`);
+    }
+  }
+  if (saved.control.sha !== current.control.sha || saved.control.branch !== current.control.branch) {
+    throw new Error('Cannot resume compare bisect: control checkout changed. Restore it and retry.');
+  }
+  if (saved.originalExperiment.sha !== current.experiment.sha
+    || saved.originalExperiment.branch !== current.experiment.branch) {
+    throw new Error('Cannot resume compare bisect: experiment checkout changed. Restore it and retry.');
+  }
+}
+
 function normalizeCrashedAttempts(session: BisectSessionV2): BisectSessionV2 {
   const normalizePhase = (phase: BisectSessionV2['primary']): BisectSessionV2['primary'] => ({
     ...phase,
@@ -279,4 +343,20 @@ export function readBadRefTests(filePath: string, expectedSha256: string): TestR
     throw new Error('Cannot resume compare bisect: persisted bad-ref report input changed');
   }
   return z.array(reportTestSchema).parse(JSON.parse(contents)) as unknown as TestResult[];
+}
+
+export function prepareResume(options: {
+  sessionPath: string;
+  resultsDirectory: string;
+  compatibility: BisectCompatibility;
+  repositories: BisectRepositorySnapshot;
+}): { session: BisectSessionV2; badRefTests: TestResult[] } {
+  const session = readBisectSession(options.sessionPath);
+  assertCompatible(session.compatibility, options.compatibility);
+  assertRepositoryCompatible(session, options.repositories);
+  const badRefTests = readBadRefTests(
+    path.join(options.resultsDirectory, session.reportInput.filename),
+    session.reportInput.sha256,
+  );
+  return { session, badRefTests };
 }

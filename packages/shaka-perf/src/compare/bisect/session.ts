@@ -23,7 +23,14 @@ import {
   comparePipelineMetadata,
 } from '../compare-pipeline';
 import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analyze';
-import { checkoutDetached, prepareGitRange, restoreCheckout, type PreparedGitRange } from './git';
+import {
+  checkoutDetached,
+  inspectBisectRepositories,
+  prepareGitRange,
+  restoreCheckout,
+  type BisectRepositorySnapshot,
+  type PreparedGitRange,
+} from './git';
 import {
   applyCachedObservations,
   nextCandidate,
@@ -41,12 +48,15 @@ import { regenerateBisectReport } from './report-only';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
+  BisectCompatibility,
   BisectNextAction,
   BisectSearchPhase,
   BisectSession,
+  BisectSessionV2,
   BisectTestSelection,
   BisectTarget,
   CommitRun,
+  PersistedRebuildStrategy,
   TargetObservation,
 } from './types';
 import { resolveConfig } from '../../twin-servers/config';
@@ -67,6 +77,12 @@ import {
   type RefreshResult,
 } from './run-candidate';
 import { loadReusableCompareResults } from './reuse-results';
+import {
+  buildCompatibility,
+  prepareResume,
+  readBisectSession,
+  writeBadRefTestsAtomic,
+} from './state';
 
 type RefreshMode = CommitRun['refreshMode'];
 
@@ -82,6 +98,8 @@ export interface BisectCliOptions {
   dryRun?: boolean;
   validateGoodRef?: boolean;
   reportOnly?: boolean;
+  resume?: boolean;
+  investigateMerges?: boolean;
 }
 
 export type {
@@ -146,6 +164,11 @@ export interface ExecuteBisectInput {
   reuseCurrentResults: boolean;
   dryRun: boolean;
   validateGoodRef: boolean;
+  repositorySnapshot?: BisectRepositorySnapshot;
+  compatibility?: BisectCompatibility;
+  rebuildStrategy?: PersistedRebuildStrategy;
+  resumeSession?: BisectSessionV2;
+  resumeBadRefTests?: readonly TestResult[];
 }
 
 export interface ReuseCurrentResultsRequest {
@@ -163,6 +186,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   writeSession(session: BisectSession): void;
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession): void;
+  writeBadRefTests?(tests: readonly TestResult[]): string;
   recordDecision(entry: BisectDecisionLogEntry): void;
   logProgress(message: string): void;
   now(): string;
@@ -184,6 +208,8 @@ export interface RunBisectOptions {
   reuseCurrentResults?: boolean;
   dryRun?: boolean;
   validateGoodRef?: boolean;
+  resume?: boolean;
+  investigateMerges?: boolean;
   gitRange?: PreparedGitRange;
   dependencies?: ExecuteBisectDependencies;
 }
@@ -261,12 +287,50 @@ export async function runCompareBisectFromCli(
 export async function runBisect(options: RunBisectOptions): Promise<BisectSession> {
   const resultsDirectory = options.resultsDirectory
     ?? path.resolve(options.cwd, 'compare-bisect-results');
-  const gitRange = options.gitRange ?? await prepareGitRange({
+  const preliminaryResume = options.resume
+    ? readBisectSession(path.join(resultsDirectory, 'session.json'))
+    : null;
+  const gitRange = options.gitRange ?? (preliminaryResume ? {
+    goodSha: preliminaryResume.primary.goodSha,
+    badSha: preliminaryResume.primary.badSha,
+    commitSubjects: preliminaryResume.primary.commitSubjects,
+    commitParents: preliminaryResume.primary.commitParents,
+    orderedCommits: preliminaryResume.primary.orderedCommits,
+    originalExperiment: preliminaryResume.originalExperiment,
+  } : await prepareGitRange({
     experimentDir: options.twinServers.experimentDir,
     controlDir: options.twinServers.controlDir,
     goodRef: options.goodRef,
     badRef: options.badRef,
+  }));
+  const repositorySnapshot = options.twinServers.controlDir && options.twinServers.experimentDir
+    ? await inspectBisectRepositories({
+      experimentDir: options.twinServers.experimentDir,
+      controlDir: options.twinServers.controlDir,
+      allowedPaths: [resultsDirectory],
+    })
+    : undefined;
+  const rebuildStrategy = persistedRebuildStrategy(options.config);
+  const controlURL = options.controlURL ?? options.config.shared.controlURL;
+  const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
+  const compatibility = buildCompatibility({
+    config: { config: options.config, headed: options.headed, controlURL, experimentURL },
+    categories: options.selectedCategories,
+    tests: frozenTestSelections(options.frozenTests, options.cwd),
+    rebuildStrategy,
+    range: { goodSha: gitRange.goodSha, badSha: gitRange.badSha },
   });
+  const resumed = preliminaryResume && repositorySnapshot
+    ? prepareResume({
+      sessionPath: path.join(resultsDirectory, 'session.json'),
+      resultsDirectory,
+      compatibility,
+      repositories: repositorySnapshot,
+    })
+    : null;
+  if (preliminaryResume && !resumed) {
+    throw new Error('Cannot resume compare bisect without configured control and experiment repositories');
+  }
   const input: ExecuteBisectInput = {
     goodRef: options.goodRef,
     badRef: options.badRef,
@@ -278,11 +342,16 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     frozenTests: options.frozenTests,
     gitRange,
     headed: options.headed,
-    controlURL: options.controlURL ?? options.config.shared.controlURL,
-    experimentURL: options.experimentURL ?? options.config.shared.experimentURL,
+    controlURL,
+    experimentURL,
     reuseCurrentResults: options.reuseCurrentResults === true,
     dryRun: options.dryRun === true,
     validateGoodRef: options.validateGoodRef === true,
+    repositorySnapshot,
+    compatibility,
+    rebuildStrategy,
+    resumeSession: resumed?.session,
+    resumeBadRefTests: resumed?.badRefTests,
   };
   const dependencies = options.dependencies ?? createDefaultDependencies({
     cwd: options.cwd,
@@ -304,10 +373,14 @@ export async function executeBisect(
   deps: ExecuteBisectDependencies,
 ): Promise<BisectSession> {
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
-  deps.clearSummary();
-  deps.clearPriorReportOutput();
-  let session = initialSession(input, deps.now());
-  let badRefTests: readonly TestResult[] | null = null;
+  if (!input.resumeSession) {
+    deps.clearSummary();
+    deps.clearPriorReportOutput();
+  }
+  let session = input.resumeSession
+    ? sessionViewFromPersisted(input.resumeSession)
+    : initialSession(input, deps.now());
+  let badRefTests: readonly TestResult[] | null = input.resumeBadRefTests ?? null;
   let materializedSha: string | null = null;
   let volumeStateUncertain = false;
   let checkoutAttempted = false;
@@ -379,12 +452,20 @@ export async function executeBisect(
       resultsDirectory: input.resultsDirectory,
       decisionLog: path.join(input.resultsDirectory, 'decision-log.md'),
     });
-    await deps.beginSession();
-    leaseAcquired = true;
-    logDecision('lease-acquired', 'Acquired twin-server bisect lease; experiment auto-sync is paused');
-    persist();
-    checkCancellation();
+    const resumeHasPrimaryWork = input.resumeSession
+      ? input.resumeSession.primary.status !== 'complete'
+      : true;
+    if (resumeHasPrimaryWork) {
+      await deps.beginSession();
+      leaseAcquired = true;
+      logDecision('lease-acquired', 'Acquired twin-server bisect lease; experiment auto-sync is paused');
+      persist();
+      checkCancellation();
+    } else {
+      logDecision('resume-no-work', 'Saved primary bisect is already complete; no comparisons are required');
+    }
 
+    if (!input.resumeSession) {
     let badRun: CompareRunResult;
     if (input.reuseCurrentResults) {
       logDecision(
@@ -443,12 +524,27 @@ export async function executeBisect(
     );
     session = recordEndpointObservations(session, badObservations);
     badRefTests = badRun.testResults;
+    if (deps.writeBadRefTests && session.version === 2) {
+      session = {
+        ...session,
+        reportInput: {
+          filename: 'bad-ref-tests.json',
+          sha256: deps.writeBadRefTests(badRefTests),
+        },
+      };
+    }
     logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
       sha: input.gitRange.badSha,
       targetCount: session.targets.length,
       targets: session.targets.map((target) => targetLogData(target)),
     });
     persist();
+    } else {
+      logDecision('session-resume', 'Resuming compatible compare bisect state', {
+        phaseStatus: session.primary?.status,
+        attempts: session.primary?.attempts.length ?? 0,
+      });
+    }
 
     if (input.dryRun) {
       let targets = activeTargets(session);
@@ -522,7 +618,7 @@ export async function executeBisect(
         });
       }
 
-      const primary: BisectSearchPhase = {
+      const primary: BisectSearchPhase = input.resumeSession ? session.primary! : {
         id: 'primary',
         status: 'pending',
         goodSha: input.gitRange.goodSha,
@@ -534,7 +630,7 @@ export async function executeBisect(
         attempts: [],
       };
       session = { ...session, primary };
-      let attemptNumber = 0;
+      let attemptNumber = primary.attempts.length;
       const completedPrimary = await runSearchPhase({
         phase: primary,
         preferredRefreshMode: preferredRefreshMode(input.config),
@@ -810,6 +906,10 @@ function createDefaultDependencies(options: {
       });
     },
     writeSummary: (session) => writeSummary(path.join(options.resultsDirectory, 'summary.json'), session),
+    writeBadRefTests: (tests) => writeBadRefTestsAtomic(
+      path.join(options.resultsDirectory, 'bad-ref-tests.json'),
+      tests,
+    ),
     recordDecision: createDecisionLogWriter(options.resultsDirectory),
     logProgress: (message) => console.log(`[compare bisect] ${message}`),
     now: () => new Date().toISOString(),
@@ -879,9 +979,44 @@ async function proxyBisect<T>(
 }
 
 function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSession {
+  const rebuildStrategy = input.rebuildStrategy ?? persistedRebuildStrategy(input.config);
+  const identity = input.repositorySnapshot?.identity ?? {
+    controlRoot: input.twinServers.controlDir ?? input.cwd,
+    experimentRoot: input.twinServers.experimentDir ?? input.cwd,
+    controlGitCommonDir: input.twinServers.controlDir ?? input.cwd,
+    experimentGitCommonDir: input.twinServers.experimentDir ?? input.cwd,
+    controlOrigin: null,
+    experimentOrigin: null,
+  };
+  const compatibility = input.compatibility ?? buildCompatibility({
+    config: input.config,
+    categories: input.selectedCategories,
+    tests: frozenTestSelections(input.frozenTests, input.cwd),
+    rebuildStrategy,
+    range: { goodSha: input.gitRange.goodSha, badSha: input.gitRange.badSha },
+  });
   return {
-    version: 1,
+    version: 2,
     status: 'running',
+    mode: 'primary',
+    identity,
+    compatibility,
+    control: input.repositorySnapshot?.control ?? { branch: null, sha: input.gitRange.goodSha },
+    rebuildStrategy,
+    reportInput: { filename: 'bad-ref-tests.json', sha256: '' },
+    primary: {
+      id: 'primary',
+      status: 'pending',
+      goodSha: input.gitRange.goodSha,
+      badSha: input.gitRange.badSha,
+      orderedCommits: input.gitRange.orderedCommits,
+      commitSubjects: input.gitRange.commitSubjects,
+      commitParents: input.gitRange.commitParents,
+      targets: [],
+      attempts: [],
+    },
+    mergeQueue: [],
+    mergeInvestigations: {},
     goodSha: input.gitRange.goodSha,
     badSha: input.gitRange.badSha,
     originalExperiment: input.gitRange.originalExperiment,
@@ -894,6 +1029,43 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     validateGoodRef: input.validateGoodRef,
     startedAt,
   };
+}
+
+function sessionViewFromPersisted(saved: BisectSessionV2): BisectSession {
+  return {
+    ...saved,
+    status: 'running',
+    mode: saved.primary.status === 'complete' ? 'complete' : 'primary',
+    goodSha: saved.goodSha ?? saved.primary.goodSha,
+    badSha: saved.badSha ?? saved.primary.badSha,
+    commitSubjects: saved.commitSubjects ?? saved.primary.commitSubjects,
+    selectedCategories: saved.selectedCategories
+      ?? unique(saved.primary.targets.map((target) => target.category)),
+    orderedCommits: saved.orderedCommits ?? saved.primary.orderedCommits,
+    targets: saved.primary.targets,
+    commitRuns: saved.commitRuns ?? {},
+    dryRun: false,
+    validateGoodRef: false,
+    failure: undefined,
+    finishedAt: undefined,
+  };
+}
+
+function persistedRebuildStrategy(config: AbTestsConfig): PersistedRebuildStrategy {
+  return {
+    mode: preferredRefreshMode(config),
+    commands: config.bisect.rebuildCommands.map((command) => command.command),
+  };
+}
+
+function frozenTestSelections(
+  tests: readonly AbTestDefinition[],
+  cwd: string,
+): BisectTestSelection[] {
+  return tests.flatMap((test) => test.file ? [{
+    testFile: normalizeRelativeTestFile(cwd, test.file),
+    testName: test.name,
+  }] : []);
 }
 
 function validateGoodEndpoint(
@@ -977,6 +1149,7 @@ function terminalSession(
   return {
     ...session,
     status: 'complete',
+    mode: 'complete',
     failure: undefined,
     finishedAt,
   };

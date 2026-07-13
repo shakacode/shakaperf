@@ -13,6 +13,7 @@ import * as path from 'path';
 import { execFileSync } from 'child_process';
 import {
   checkoutDetached,
+  inspectBisectRepositories,
   prepareChildGitRange,
   prepareGitRange,
   restoreCheckout,
@@ -98,6 +99,25 @@ describe('bisect Git helpers', () => {
         branch: fixture.experimentBranch,
         sha: fixture.commits[4],
       },
+    });
+  });
+
+  it('captures canonical repository identity and checkout state for resume', async () => {
+    const snapshot = await inspectBisectRepositories({
+      controlDir: fixture.controlDir,
+      experimentDir: fixture.experimentDir,
+    });
+
+    expect(snapshot.identity).toMatchObject({
+      controlRoot: fs.realpathSync(fixture.controlDir),
+      experimentRoot: fs.realpathSync(fixture.experimentDir),
+      controlOrigin: fixture.sourceDir,
+      experimentOrigin: fixture.sourceDir,
+    });
+    expect(snapshot.control).toEqual({ branch: null, sha: fixture.commits[0] });
+    expect(snapshot.experiment).toEqual({
+      branch: fixture.experimentBranch,
+      sha: fixture.commits[4],
     });
   });
 

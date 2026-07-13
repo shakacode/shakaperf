@@ -25,6 +25,7 @@ import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
 import { BISECT_REPORT_FILENAME } from '../report';
+import { parseBisectSession } from '../state';
 
 function config(): AbTestsConfig {
   return {
@@ -360,6 +361,7 @@ describe('compare bisect session orchestration', () => {
     const session = await executeBisect(bisectInput, harness.deps);
 
     expect(session.status).toBe('complete');
+    expect(parseBisectSession(session).version).toBe(2);
     expect(session.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
     expect(harness.calls.sessions).toContainEqual(expect.objectContaining({
       commitSubjects: bisectInput.gitRange.commitSubjects,
@@ -452,6 +454,60 @@ describe('compare bisect session orchestration', () => {
         },
       })],
     });
+  });
+
+  it('resumes a complete primary session without acquiring a lease or comparing again', async () => {
+    const bisectInput = input(rootDir);
+    const initialHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+    const completed = await executeBisect(bisectInput, initialHarness.deps);
+    const resumeHarness = deps({});
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: parseBisectSession(completed),
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.events).not.toContain('lease:begin');
+    expect(resumeHarness.calls.checkouts).toEqual([]);
+    expect(resumeHarness.calls.compares).toEqual([]);
+  });
+
+  it('retries incomplete work with a full first reconciliation', async () => {
+    const bisectInput = input(rootDir);
+    const failedHarness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
+      compareErrorBySha: { a: new Error('compare stopped') },
+    });
+    await expect(executeBisect(bisectInput, failedHarness.deps)).rejects.toThrow('compare stopped');
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.events[0]).toBe('lease:begin');
+    expect(resumeHarness.calls.materialized).toEqual([
+      [null, 'a'],
+      ['a', 'b'],
+    ]);
+    expect(resumeHarness.calls.compares.map((run) => run.sha)).toEqual(['a', 'b']);
+    expect(resumed.primary?.attempts.map(({ sha, status }) => ({ sha, status }))).toEqual([
+      { sha: 'a', status: 'incomplete' },
+      { sha: 'a', status: 'complete' },
+      { sha: 'b', status: 'complete' },
+    ]);
   });
 
   it('does not write a report when bad-ref validation fails before target discovery', async () => {
