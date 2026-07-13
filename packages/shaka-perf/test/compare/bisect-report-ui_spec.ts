@@ -24,6 +24,7 @@ import type { TestResult } from '../../src/pipeline/report';
 jest.setTimeout(30_000);
 
 const GOOD_SHA = '1111111111111111111111111111111111111111';
+const PRE_VISUAL_SHA = '1212121212121212121212121212121212121212';
 const VISUAL_SHA = '2222222222222222222222222222222222222222';
 const CLEAN_SHA = '3333333333333333333333333333333333333333';
 const BAD_SHA = '4444444444444444444444444444444444444444';
@@ -63,11 +64,33 @@ describe('compare bisect report browser acceptance', () => {
   it('filters saved bad-ref cards and renders every selection state', async () => {
     const nodes = page.locator('.bisect-node');
     await expectCount(nodes, 2);
-    await expectCount(page.locator('[data-bisect-clean-history="true"]'), 1);
+    await expectCount(page.locator('[data-bisect-clean-run]'), 2);
     await expectText(
-      page.locator('[data-bisect-clean-history="true"] summary'),
-      '2 commits with no first-bad regressions',
+      page.locator('[data-bisect-clean-run="0"]'),
+      '[2 commits]',
     );
+    await expectText(page.locator('[data-bisect-clean-run="1"]'), '[1 commit]');
+    expect(await page.locator('.bisect-tree__list').evaluate((element) => (
+      Array.from(element.children).map((child) => {
+        const cleanRun = child.querySelector('[data-bisect-clean-run]');
+        const commit = child.querySelector('[data-bisect-sha]');
+        return cleanRun
+          ? `clean:${cleanRun.getAttribute('data-bisect-clean-run')}`
+          : commit?.getAttribute('data-bisect-sha');
+      })
+    ))).toEqual(['clean:0', VISUAL_SHA, 'clean:1', BAD_SHA]);
+
+    await page.locator('[data-bisect-clean-run="0"]').click();
+    const cleanRunDialog = page.locator('.ui-dialog--compact[open]');
+    await expectCount(cleanRunDialog, 1);
+    await expectCount(cleanRunDialog.locator('.bisect-clean-run-dialog__commit'), 2);
+    await expectText(cleanRunDialog, 'baseline');
+    await expectText(cleanRunDialog, 'prepare hero');
+    expect(await cleanRunDialog.evaluate((element) => element.getBoundingClientRect().width))
+      .toBeLessThanOrEqual(720);
+    await cleanRunDialog.locator('.ui-dialog__close').click();
+    await expectCount(page.locator('.ui-dialog--compact[open]'), 0);
+
     await expectCount(page.locator('.card:not(.card--missing-artifacts)'), 3);
     await expectCount(page.locator('.card--missing-artifacts'), 0);
 
@@ -146,7 +169,7 @@ describe('compare bisect report browser acceptance', () => {
     expect(await contrastAgainstWhite(
       visualNode.locator('.bisect-counter[data-category="visreg"]'),
     )).toBeGreaterThanOrEqual(4.5);
-    expect(await page.locator('[data-bisect-clean-history="true"]').evaluate(
+    expect(await page.locator('[data-bisect-clean-run="0"]').evaluate(
       (element) => getComputedStyle(element).opacity,
     )).toBe('1');
     await page.keyboard.press('Enter');
@@ -275,6 +298,7 @@ function reportData(): BisectReportData {
       generatedAt: '2026-07-13T00:00:00.000Z',
       commits: [
         commit(GOOD_SHA, 'baseline', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
+        commit(PRE_VISUAL_SHA, 'prepare hero', true, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(VISUAL_SHA, 'change hero', true, [visualTarget.id], { visreg: 1, perf: 0, accessibility: 0 }),
         commit(CLEAN_SHA, 'refactor copy', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(BAD_SHA, 'ship regressions', true, [perfTarget.id, accessibilityTarget.id], {
