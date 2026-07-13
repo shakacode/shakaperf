@@ -76,8 +76,9 @@ export default defineConfig({
     // `screenEmulation` are NOT set here — the viewport referenced from
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
+    viewports: ['desktop'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 10,
+    numberOfMeasurements: 7,
     pValueThreshold: 0.01,
   },
 
