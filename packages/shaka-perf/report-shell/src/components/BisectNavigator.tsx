@@ -210,6 +210,7 @@ function CommitNode({
       >
         <span className="bisect-node__meta">
           {endpoint ? <span className="bisect-node__endpoint">{endpoint}</span> : null}
+          {commit.isMerge ? <span className="bisect-node__merge">merge</span> : null}
           <span className="bisect-node__measurement">
             {commit.measured ? 'measured' : 'not measured'}
           </span>

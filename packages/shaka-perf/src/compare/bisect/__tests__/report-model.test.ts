@@ -114,6 +114,31 @@ describe('buildBisectReportModel', () => {
       },
       startedAt: '2026-07-13T00:00:00.000Z',
     } as unknown as BisectSession;
+    session.primary = {
+      id: 'primary',
+      status: 'complete',
+      goodSha: 'good',
+      badSha: 'bad',
+      orderedCommits: commits,
+      commitSubjects: session.commitSubjects!,
+      commitParents: {
+        good: [], visual: ['good', 'topic'], clean: ['visual'], bad: ['clean'],
+      },
+      targets: session.targets,
+      attempts: [],
+    };
+    session.mergeQueue = ['visual'];
+    session.mergeInvestigations = {
+      visual: {
+        mergeSha: 'visual',
+        parents: ['good', 'topic'],
+        status: 'complete',
+        targetIds: ['visual-found'],
+        targetResults: {
+          'visual-found': { kind: 'source-found', sourceSha: 'topic-source' },
+        },
+      },
+    };
 
     const model = buildBisectReportModel(session, [
       testResult('homepage-card', 'tests/homepage.abtest.ts', 'Homepage'),
@@ -168,5 +193,16 @@ describe('buildBisectReportModel', () => {
     expect(model.targetsById['missing-card'].testId).toBeNull();
     expect(model.targetsById['visual-found'].testId).toBe('homepage-card');
     expect(model.targetsById['visual-found'].badRefObservation).toBe(visualObservation);
+    expect(model.commits[1]).toMatchObject({
+      isMerge: true,
+      mergeInvestigationStatus: 'complete',
+    });
+    expect(model.targetsById['visual-found']).toMatchObject({
+      mainlineFirstBadSha: 'visual',
+      mainlineIsMerge: true,
+      mergeInvestigationStatus: 'complete',
+      mergeResult: 'source-found',
+      mergeSourceSha: 'topic-source',
+    });
   });
 });
