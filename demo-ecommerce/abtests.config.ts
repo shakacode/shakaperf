@@ -63,7 +63,7 @@ export default defineConfig({
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
-    viewports: ['desktop'],
+    viewports: ['phone'],
     maxNumDiffPixels: 50,
     defaultMisMatchThreshold: 0.1,
   },
@@ -77,9 +77,9 @@ export default defineConfig({
     // `screenEmulation` are NOT set here — the viewport referenced from
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
-    viewports: ['desktop'],
+    viewports: ['phone'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 7,
+    numberOfMeasurements: 8,
     pValueThreshold: 0.01,
   },
 
