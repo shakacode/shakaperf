@@ -26,6 +26,7 @@ import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analy
 import {
   checkoutDetached,
   inspectBisectRepositories,
+  prepareChildGitRange,
   prepareGitRange,
   restoreCheckout,
   type BisectRepositorySnapshot,
@@ -37,6 +38,7 @@ import {
   testsForTargets,
 } from './search';
 import { runSearchPhase } from './phase';
+import { buildMergeQueue, runMergeInvestigations } from './merge-investigation';
 import { writeSessionAtomic, writeSummary } from './persistence';
 import {
   BISECT_REPORT_FILENAME,
@@ -169,6 +171,7 @@ export interface ExecuteBisectInput {
   rebuildStrategy?: PersistedRebuildStrategy;
   resumeSession?: BisectSessionV2;
   resumeBadRefTests?: readonly TestResult[];
+  investigateMerges?: boolean;
 }
 
 export interface ReuseCurrentResultsRequest {
@@ -187,6 +190,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession): void;
   writeBadRefTests?(tests: readonly TestResult[]): string;
+  prepareChildRange?(investigation: import('./types').MergeInvestigation): ReturnType<typeof prepareChildGitRange>;
   recordDecision(entry: BisectDecisionLogEntry): void;
   logProgress(message: string): void;
   now(): string;
@@ -352,6 +356,7 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     rebuildStrategy,
     resumeSession: resumed?.session,
     resumeBadRefTests: resumed?.badRefTests,
+    investigateMerges: options.investigateMerges === true,
   };
   const dependencies = options.dependencies ?? createDefaultDependencies({
     cwd: options.cwd,
@@ -454,6 +459,10 @@ export async function executeBisect(
     });
     const resumeHasPrimaryWork = input.resumeSession
       ? input.resumeSession.primary.status !== 'complete'
+        || (input.investigateMerges === true && input.resumeSession.mergeQueue.some((sha) => {
+          const status = input.resumeSession!.mergeInvestigations[sha]?.status;
+          return status !== 'complete' && status !== 'octopus-unsupported';
+        }))
       : true;
     if (resumeHasPrimaryWork) {
       await deps.beginSession();
@@ -665,6 +674,38 @@ export async function executeBisect(
         },
       });
       session = { ...session, primary: completedPrimary, targets: completedPrimary.targets };
+    }
+    session = buildMergeQueue(session);
+    persist();
+    if (input.investigateMerges && (session.mergeQueue?.length ?? 0) > 0) {
+      if (badRefTests) deps.writeSummary(session);
+      session = { ...session, mode: 'merge-investigation' };
+      let mergeAttemptNumber = Object.values(session.mergeInvestigations ?? {})
+        .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
+      session = await runMergeInvestigations({
+        session,
+        preferredRefreshMode: preferredRefreshMode(input.config),
+        nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
+        now: deps.now,
+        checkpoint(updated) {
+          session = updated;
+          persist();
+        },
+        prepareRange(investigation) {
+          if (deps.prepareChildRange) return deps.prepareChildRange(investigation);
+          return prepareChildGitRange({
+            experimentDir: input.twinServers.experimentDir,
+            firstParent: investigation.parents[0],
+            secondParent: investigation.parents[1],
+          });
+        },
+        measure: (work, targets) => measure({
+          sha: work.sha,
+          categories: work.categories,
+          tests: work.tests,
+          targets,
+        }),
+      });
     }
     checkCancellation();
   } catch (error) {
