@@ -190,6 +190,29 @@ function TargetRow({ target }: { target: BisectReportTarget }) {
           </div>
         </dl>
       ) : null}
+      {target.mainlineIsMerge || target.mergeResult ? (
+        <dl className="bisect-target__comparison bisect-target__merge-details">
+          {target.mainlineIsMerge && target.mainlineFirstBadSha ? (
+            <div>
+              <dt>mainline first bad</dt>
+              <dd>
+                <code>{target.mainlineFirstBadSha.slice(0, 7)}</code>
+                {' · merge'}
+              </dd>
+            </div>
+          ) : null}
+          {target.mergeResult ? (
+            <div>
+              <dt>merge source</dt>
+              <dd>
+                {target.mergeSourceSha ? <code>{target.mergeSourceSha.slice(0, 7)}</code> : null}
+                {target.mergeSourceSha ? ' · ' : ''}
+                {target.mergeResult.replaceAll('-', ' ')}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
       {target.invalidReason ? (
         <p className="bisect-target__invalid-reason">
           <strong>Invalid:</strong> {target.invalidReason}

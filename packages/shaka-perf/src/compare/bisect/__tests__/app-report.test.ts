@@ -173,6 +173,36 @@ describe('bisect report App rendering', () => {
 
     expect(html).toContain('<div class="app app--bisect">');
   });
+
+  it('renders mainline merge and investigated source outcomes together', () => {
+    const data = bisectReport();
+    const model = data.bisect!;
+    model.commits[2] = {
+      ...model.commits[2],
+      isMerge: true,
+      mergeInvestigationStatus: 'complete',
+    };
+    const target = model.targets[0];
+    const mergedTarget = {
+      ...target,
+      mainlineFirstBadSha: 'mixed-commit',
+      mainlineIsMerge: true,
+      mergeInvestigationStatus: 'complete' as const,
+      mergeResult: 'source-found' as const,
+      mergeSourceSha: 'topic-source-commit',
+    };
+    model.targets[0] = mergedTarget;
+    model.targetsById[target.id] = mergedTarget;
+
+    const html = renderApp(data, { kind: 'commit', sha: 'mixed-commit' });
+
+    expect(html).toContain('class="bisect-node__merge">merge</span>');
+    expect(html).toContain('<dt>mainline first bad</dt>');
+    expect(html).toContain('mixed-c');
+    expect(html).toContain('<dt>merge source</dt>');
+    expect(html).toContain('topic-s');
+    expect(html).toContain('source found');
+  });
 });
 
 function renderApp(data: AppReportData, initialBisectSelection?: InitialBisectSelection): string {

@@ -71,6 +71,8 @@ describe('compare bisect command', () => {
       dryRun: false,
       validateGoodRef: false,
       reportOnly: false,
+      resume: false,
+      investigateMerges: false,
     });
   });
 
@@ -100,6 +102,27 @@ describe('compare bisect command', () => {
     expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
       reportOnly: true,
     }));
+  });
+
+  it('passes resume and merge-investigation flags and rejects unsafe resume combinations', async () => {
+    const run = jest.fn(async () => undefined);
+    const command = createBisectCommand({ run }).exitOverride();
+
+    await command.parseAsync(['--resume', '--investigate-merges'], { from: 'user' });
+    expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
+      resume: true,
+      investigateMerges: true,
+    }));
+
+    await expect(createBisectCommand({ run: jest.fn() }).exitOverride()
+      .parseAsync(['good', '--resume'], { from: 'user' }))
+      .rejects.toThrow(/resume.*positional/i);
+    await expect(createBisectCommand({ run: jest.fn() }).exitOverride()
+      .parseAsync(['--resume', '--dry-run'], { from: 'user' }))
+      .rejects.toThrow(/resume.*dry-run/i);
+    await expect(createBisectCommand({ run: jest.fn() }).exitOverride()
+      .parseAsync(['--report-only', '--resume'], { from: 'user' }))
+      .rejects.toThrow(/report-only.*resume/i);
   });
 
   it('accepts bisect categories and current-result reuse after the subcommand', async () => {
@@ -309,6 +332,49 @@ describe('compare bisect command', () => {
       'Categories: visreg',
       'Tests: tests/homepage.abtest.ts :: Homepage',
     ]));
+  });
+
+  it('prints the exact merge investigation follow-up for uninvestigated results', async () => {
+    const output: string[] = [];
+    const consoleLog = jest.spyOn(console, 'log').mockImplementation((message = '') => {
+      output.push(String(message));
+    });
+    const target = {
+      id: 'target', category: 'visreg' as const, testFile: 'home.abtest.ts', testName: 'Home',
+      viewport: 'desktop', subject: 'document', status: 'found' as const,
+      goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', observations: {},
+    };
+    try {
+      await runCompareBisectFromCli('good', 'merge-sha', {
+        configPath: '/tmp/abtests.config.ts', categories: 'visreg',
+      }, {
+        loadConfig: async () => ({}),
+        parseConfig: () => ({
+          shared: { controlURL: 'control', experimentURL: 'experiment' },
+          twinServers: {},
+        }) as AbTestsConfig,
+        resolveTwinServers: () => ({}) as never,
+        loadFrozenTests: async () => [],
+        run: async () => ({
+          version: 2, status: 'complete', goodSha: 'good', badSha: 'merge-sha',
+          originalExperiment: { sha: 'merge-sha', branch: 'main' },
+          selectedCategories: ['visreg'], orderedCommits: ['good', 'merge-sha'],
+          targets: [target], commitRuns: {}, startedAt: 'now',
+          mergeQueue: ['merge-sha'],
+          mergeInvestigations: {
+            'merge-sha': {
+              mergeSha: 'merge-sha', parents: ['main', 'topic'],
+              status: 'merge-uninvestigated', targetIds: ['target'],
+              targetResults: { target: { kind: 'merge-uninvestigated' } },
+            },
+          },
+        } as BisectSession),
+      });
+    } finally {
+      consoleLog.mockRestore();
+    }
+
+    expect(output).toContain('shaka-perf compare bisect --resume --investigate-merges');
   });
 });
 
