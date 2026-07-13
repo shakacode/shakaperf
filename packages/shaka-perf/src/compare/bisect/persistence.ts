@@ -27,6 +27,7 @@ export function writeSummary(filePath: string, session: BisectSession): void {
     status: session.status,
     goodSha: session.goodSha,
     badSha: session.badSha,
+    commitSubjects: session.commitSubjects,
     dryRun: session.dryRun,
     validateGoodRef: session.validateGoodRef,
     nextAction: session.nextAction,
