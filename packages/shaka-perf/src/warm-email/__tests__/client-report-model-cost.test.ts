@@ -94,6 +94,10 @@ describe('benchmarkScaleGeometry', () => {
   it('keeps the minimum four-second axis for a three-second first-content result', () => {
     expect(benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs)?.axisMaxSeconds).toBe(4);
   });
+
+  it('rejects thresholds that do not fit within the calculated axis', () => {
+    expect(benchmarkScaleGeometry(3030, { good: 1800, poor: 4500 })).toBeUndefined();
+  });
 });
 
 describe('hero metric panel helpers', () => {
@@ -143,14 +147,14 @@ describe('accessibility finding families', () => {
     expect(summary.countedFamilies).toEqual([
       { id: 'target-size', label: 'touch targets too small', pageCount: 7 },
       { id: 'image-alt', label: 'images with no text description', pageCount: 2 },
-      { id: 'link-name', label: 'unlabeled controls', pageCount: 1 },
+      { id: 'unlabeled-controls', label: 'unlabeled controls', pageCount: 1 },
       { id: 'list', label: 'broken list markup', pageCount: 1 },
       { id: 'nested-interactive', label: 'controls nested inside controls', pageCount: 1 },
     ]);
     expect(summary.countedFamilies.reduce((total, family) => total + family.pageCount, 0)).toBe(summary.headlineCount);
   });
 
-  it('keeps same-page axe rules separate so family totals match the headline', () => {
+  it('merges same-page axe rules that belong to the same visible family', () => {
     const summary = summarizeA11yRuleFamilies([{
       violations: [
         { ruleId: 'image-alt', impact: 'serious' },
@@ -160,12 +164,10 @@ describe('accessibility finding families', () => {
       ],
     }]);
 
-    expect(summary.headlineCount).toBe(4);
+    expect(summary.headlineCount).toBe(2);
     expect(summary.countedFamilies).toEqual([
       { id: 'image-alt', label: 'images with no text description', pageCount: 1 },
-      { id: 'svg-img-alt', label: 'images with no text description', pageCount: 1 },
-      { id: 'button-name', label: 'unlabeled controls', pageCount: 1 },
-      { id: 'link-name', label: 'unlabeled controls', pageCount: 1 },
+      { id: 'unlabeled-controls', label: 'unlabeled controls', pageCount: 1 },
     ]);
   });
 

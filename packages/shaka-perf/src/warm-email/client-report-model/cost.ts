@@ -129,6 +129,7 @@ export function benchmarkScaleGeometry(
   }
 
   const axisMaxMs = Math.max(4000, Math.ceil((valueMs * 1.25) / 500) * 500);
+  if (line.poor > axisMaxMs) return undefined;
   const percent = (value: number): number => (value / axisMaxMs) * 100;
   const goodLinePercent = percent(line.good);
   const poorLinePercent = percent(line.poor);

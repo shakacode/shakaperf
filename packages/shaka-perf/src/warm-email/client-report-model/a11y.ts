@@ -57,10 +57,9 @@ const A11Y_RULE_FAMILY_DEFINITIONS: readonly A11yRuleFamilyDefinition[] = [
 ];
 
 function a11yRuleFamilyDefinition(ruleId: string): A11yRuleFamilyDefinition {
-  const definition = A11Y_RULE_FAMILY_DEFINITIONS.find((candidate) => candidate.matches(ruleId));
-  return {
+  return A11Y_RULE_FAMILY_DEFINITIONS.find((candidate) => candidate.matches(ruleId)) ?? {
     id: ruleId,
-    label: definition?.label ?? 'other accessibility barrier',
+    label: 'other accessibility barrier',
     matches: (candidate) => candidate === ruleId,
   };
 }
@@ -97,8 +96,8 @@ export function summarizeA11yRuleFamilies(
       extras.set(definition.id, current);
     }
   }
-  const familyOrder = (ruleId: string): number => {
-    const index = A11Y_RULE_FAMILY_DEFINITIONS.findIndex((definition) => definition.matches(ruleId));
+  const familyOrder = (familyId: string): number => {
+    const index = A11Y_RULE_FAMILY_DEFINITIONS.findIndex((definition) => definition.id === familyId);
     return index === -1 ? Number.MAX_SAFE_INTEGER : index;
   };
   const sortFamilies = (a: A11yRuleFamily, b: A11yRuleFamily): number => (
