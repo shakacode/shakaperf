@@ -822,6 +822,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     goodSha: input.gitRange.goodSha,
     badSha: input.gitRange.badSha,
     originalExperiment: input.gitRange.originalExperiment,
+    commitSubjects: input.gitRange.commitSubjects,
     selectedCategories: [...input.selectedCategories],
     orderedCommits: input.gitRange.orderedCommits,
     targets: [],
