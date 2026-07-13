@@ -12,6 +12,7 @@ import type { ReportData, TestResult } from '../../pipeline/report';
 import type {
   BisectCategory,
   BisectSession,
+  CommitRun,
   TargetObservation,
   TargetStatus,
 } from './types';
@@ -93,7 +94,7 @@ export function buildBisectReportModel(
       sha,
       subject: session.commitSubjects?.[sha] || sha.slice(0, 7),
       position,
-      measured: session.commitRuns[sha] !== undefined,
+      measured: commitWasMeasured(session.commitRuns[sha]),
       counts: countsFor(targetIds, targetsById),
       targetIds,
     };
@@ -112,6 +113,12 @@ export function buildBisectReportModel(
       invalid: { targetIds: targets.filter((target) => target.status === 'invalid').map((target) => target.id) },
     },
   };
+}
+
+function commitWasMeasured(commitRun: CommitRun | undefined): boolean {
+  if (!commitRun) return false;
+  if (commitRun.compareCompleted !== undefined) return commitRun.compareCompleted;
+  return commitRun.compareResultsPath !== undefined || commitRun.reusedResults === true;
 }
 
 function countsFor(
