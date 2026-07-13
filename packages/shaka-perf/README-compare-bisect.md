@@ -63,10 +63,22 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> \
 ```
 
 `--reuse-current-results` applies only to bad-ref target discovery. Good-ref
-validation and every midpoint still rebuild and run compare normally. The
-selected categories must already have persisted outcomes in
+validation, when explicitly enabled, and every midpoint still rebuild and run
+compare normally. The selected categories must already have persisted outcomes in
 `compare-results/`; otherwise the command fails with the compare command to run
 first.
+
+By default, bisect trusts the control checkout as the good endpoint and starts
+with the first midpoint. To additionally rebuild the experiment at `good-ref`
+and compare both sides before midpoint search, opt in with:
+
+```bash
+yarn shaka-perf compare bisect <good-ref> <bad-ref> --validate-good-ref
+```
+
+This extra validation can detect control/experiment environment asymmetry, but
+it adds another full compare run and is not required for the normal fixed-control
+workflow.
 
 The command cannot infer which experiment commit produced a saved
 `compare-results/` tree. When reusing results, pass the matching `bad-ref`
@@ -86,9 +98,11 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> \
 
 A dry run stops immediately after bad-ref target discovery. It prints every
 discovered category, test, viewport, and metric/rule/selector, then shows the
-good-ref validation that a normal run would execute next, including its narrowed
-categories and test files. `summary.json` and `session.json` record
-`dryRun: true` and the structured `nextAction`.
+first midpoint that a normal run would measure next, including its narrowed
+categories and test files. When `--validate-good-ref` is also passed, the preview
+shows that validation as the next action instead. `summary.json` and
+`session.json` record `dryRun: true`, `validateGoodRef`, and the structured
+`nextAction`.
 
 `--dry-run` does not measure the good ref or any midpoint commit. Without
 `--reuse-current-results`, it still checks out, rebuilds, and compares the bad
@@ -163,11 +177,13 @@ regression targets.
    accessibility outcome becomes a target with a stable key: category, test
    file, test name, viewport, and subject.
 4. **Stop when dry-running.** With `--dry-run`, persist and print the discovered
-   targets plus the exact good-ref validation that would run next. No good-ref
-   or midpoint measurement is performed.
-5. **Measure the good ref.** Any target that is already present at the good ref
-   is marked `invalid`, because the supplied good ref does not actually bracket
-   that regression.
+   targets plus the exact next action: the first midpoint by default, or good-ref
+   validation when `--validate-good-ref` is enabled. No further measurement is
+   performed.
+5. **Optionally measure the good ref.** With `--validate-good-ref`, any target
+   already present when the experiment also runs `good-ref` is marked `invalid`.
+   By default this step is skipped because range setup already requires control
+   to represent `good-ref`.
 6. **Search active targets.** For each active target, the scheduler keeps a
    `[goodIndex, badIndex]` interval. A candidate in the middle of the interval
    is measured; if the target is present, the bad boundary moves down. If absent,
