@@ -52,6 +52,12 @@ function input(rootDir: string): ExecuteBisectInput {
         b: 'b',
         bad: 'bad',
       },
+      commitParents: {
+        good: [],
+        a: ['good'],
+        b: ['a'],
+        bad: ['b'],
+      },
       orderedCommits: ['good', 'a', 'b', 'bad'],
       originalExperiment: {
         branch: 'feature',
