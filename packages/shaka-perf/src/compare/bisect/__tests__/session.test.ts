@@ -45,6 +45,12 @@ function input(rootDir: string): ExecuteBisectInput {
     gitRange: {
       goodSha: 'good',
       badSha: 'bad',
+      commitSubjects: {
+        good: 'good',
+        a: 'a',
+        b: 'b',
+        bad: 'bad',
+      },
       orderedCommits: ['good', 'a', 'b', 'bad'],
       originalExperiment: {
         branch: 'feature',
