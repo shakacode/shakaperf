@@ -13,6 +13,7 @@ import path from 'path';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import {
   BISECT_REPORT_FILENAME,
+  clearPriorBisectReportOutput,
   writeBisectReport,
   writeBisectReportArtifacts,
 } from '../report';
@@ -93,6 +94,18 @@ describe('writeBisectReport', () => {
     } finally {
       rename.mockRestore();
     }
+  });
+
+  it('clears both persisted report outputs before a new bisect run', () => {
+    const htmlPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
+    const dataPath = path.join(resultsDirectory, 'bisect-report.json');
+    fs.writeFileSync(htmlPath, 'prior report', 'utf8');
+    fs.writeFileSync(dataPath, 'prior data', 'utf8');
+
+    clearPriorBisectReportOutput(resultsDirectory);
+
+    expect(fs.existsSync(htmlPath)).toBe(false);
+    expect(fs.existsSync(dataPath)).toBe(false);
   });
 });
 
