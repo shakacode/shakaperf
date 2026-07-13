@@ -49,13 +49,15 @@ export function discoverTargets(
   testResults: readonly TestResult[],
   orderedCommits: readonly string[],
   badSha: string,
+  selectedCategories: readonly BisectCategory[] = categoryAnalyzers.map((analyzer) => analyzer.category),
 ): BisectTarget[] {
   const badIndex = orderedCommits.indexOf(badSha);
   if (badIndex === -1) throw new Error(`Unknown bad bisect commit: ${badSha}`);
 
   const input = { testResults };
   const targets = new Map<string, BisectTarget>();
-  for (const analyzer of categoryAnalyzers) {
+  const selected = new Set(selectedCategories);
+  for (const analyzer of categoryAnalyzers.filter((candidate) => selected.has(candidate.category))) {
     for (const target of analyzer.discover(input)) {
       targets.set(target.id, {
         ...target,

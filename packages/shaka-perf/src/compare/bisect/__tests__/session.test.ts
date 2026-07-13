@@ -53,6 +53,8 @@ function input(rootDir: string): ExecuteBisectInput {
     headed: false,
     controlURL: 'http://control.test',
     experimentURL: 'http://experiment.test',
+    reuseCurrentResults: false,
+    dryRun: false,
   };
 }
 
@@ -127,6 +129,7 @@ function deps(
     materialized: Array<[string | null, string]>;
     refreshes: string[];
     compares: Array<{ sha: string; categories: string[]; testFiles: string[] }>;
+    reusedResults: Array<{ sha: string; categories: string[] }>;
     sessions: BisectSession[];
     summaries: BisectSession[];
     restored: Array<[string | null, string]>;
@@ -147,6 +150,7 @@ function deps(
     materialized: [] as Array<[string | null, string]>,
     refreshes: [] as string[],
     compares: [] as Array<{ sha: string; categories: string[]; testFiles: string[] }>,
+    reusedResults: [] as Array<{ sha: string; categories: string[] }>,
     sessions: [] as BisectSession[],
     summaries: [] as BisectSession[],
     restored: [] as Array<[string | null, string]>,
@@ -223,6 +227,17 @@ function deps(
         return {
           testResults: resultsBySha[request.sha] ?? [],
           compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
+        };
+      },
+      async reuseCurrentResults(request) {
+        calls.events.push(`reuse:${request.sha}`);
+        calls.reusedResults.push({
+          sha: request.sha,
+          categories: [...request.categories],
+        });
+        return {
+          testResults: resultsBySha[request.sha] ?? [],
+          compareResultsPath: '/repo/compare-results',
         };
       },
       writeSession(session) {
@@ -347,6 +362,105 @@ describe('compare bisect session orchestration', () => {
         },
       })],
     });
+  });
+
+  it('reuses current results for bad-ref discovery without rebuilding the bad ref', async () => {
+    const harness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+    const reuseInput = {
+      ...input(rootDir),
+      reuseCurrentResults: true,
+    };
+
+    const session = await executeBisect(reuseInput, harness.deps);
+
+    expect(session.targets).toMatchObject([{
+      status: 'found',
+      firstBadSha: 'b',
+    }]);
+    expect(harness.calls.reusedResults).toEqual([{
+      sha: 'bad',
+      categories: ['visreg'],
+    }]);
+    expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
+    expect(harness.calls.refreshes).toEqual(['good', 'a', 'b']);
+    expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
+    expect(session.commitRuns.bad).toMatchObject({
+      reusedResults: true,
+      compareResultsPath: '/repo/compare-results',
+    });
+    expect(harness.calls.decisions.map((entry) => entry.event)).toContain('bad-ref-reuse-start');
+  });
+
+  it('dry runs through target discovery and records the next good-ref validation', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+    const dryRunInput = {
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      dryRun: true,
+    };
+
+    const session = await executeBisect(dryRunInput, harness.deps);
+
+    expect(session).toMatchObject({
+      status: 'complete',
+      dryRun: true,
+      nextAction: {
+        kind: 'validate-good-ref',
+        sha: 'good',
+        categories: ['visreg'],
+        testFiles: ['tests/homepage.abtest.ts'],
+        targetIds: ['["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]'],
+      },
+      targets: [expect.objectContaining({
+        status: 'active',
+        category: 'visreg',
+        subject: 'document',
+      })],
+    });
+    expect(harness.calls.reusedResults).toEqual([{ sha: 'bad', categories: ['visreg'] }]);
+    expect(harness.calls.checkouts).toEqual([]);
+    expect(harness.calls.compares).toEqual([]);
+    expect(harness.calls.restored).toEqual([]);
+    expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
+      'bad-ref-targets',
+      'dry-run-plan',
+      'session-dry-run-complete',
+    ]));
+    expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
+    expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('candidate-selected');
+  });
+
+  it('dry runs by measuring only the bad ref when current results are not reused', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+
+    const session = await executeBisect({
+      ...input(rootDir),
+      dryRun: true,
+    }, harness.deps);
+
+    expect(session).toMatchObject({
+      status: 'complete',
+      dryRun: true,
+      nextAction: {
+        kind: 'validate-good-ref',
+        sha: 'good',
+      },
+    });
+    expect(harness.calls.checkouts).toEqual(['bad']);
+    expect(harness.calls.compares).toEqual([
+      { sha: 'bad', categories: ['visreg'], testFiles: [] },
+    ]);
+    expect(harness.calls.restored).toEqual([['bad', 'bad']]);
+    expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
   });
 
   it('marks targets invalid when they are already present at the good ref', async () => {

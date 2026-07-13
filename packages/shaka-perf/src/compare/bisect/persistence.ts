@@ -27,6 +27,8 @@ export function writeSummary(filePath: string, session: BisectSession): void {
     status: session.status,
     goodSha: session.goodSha,
     badSha: session.badSha,
+    dryRun: session.dryRun,
+    nextAction: session.nextAction,
     targets: [...session.targets].sort(compareTargets),
   });
 }
