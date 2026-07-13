@@ -69,6 +69,7 @@ describe('compare bisect command', () => {
       experimentURL: 'http://experiment.override',
       reuseCurrentResults: false,
       dryRun: false,
+      validateGoodRef: false,
     });
   });
 
@@ -90,12 +91,14 @@ describe('compare bisect command', () => {
       '--categories', 'accessibility',
       '--reuse-current-results',
       '--dry-run',
+      '--validate-good-ref',
     ], { from: 'user' });
 
     expect(run).toHaveBeenCalledWith('good-ref', 'bad-ref', expect.objectContaining({
       categories: 'accessibility',
       reuseCurrentResults: true,
       dryRun: true,
+      validateGoodRef: true,
     }));
   });
 
@@ -133,6 +136,7 @@ describe('compare bisect command', () => {
         experimentURL: 'http://experiment.override',
         reuseCurrentResults: true,
         dryRun: true,
+        validateGoodRef: true,
       }, {
         loadConfig,
         parseConfig: () => parsedConfig,
@@ -156,6 +160,7 @@ describe('compare bisect command', () => {
       experimentURL: 'http://experiment.override',
       reuseCurrentResults: true,
       dryRun: true,
+      validateGoodRef: true,
     }));
   });
 
@@ -195,15 +200,15 @@ describe('compare bisect command', () => {
       commitRuns: {},
       dryRun: true,
       nextAction: {
-        kind: 'validate-good-ref',
-        sha: 'good-sha',
+        kind: 'measure-candidate',
+        sha: 'middle-sha',
         categories: ['visreg'],
         testFiles: ['tests/homepage.abtest.ts'],
         targetIds: [targetId],
       },
       startedAt: '2026-07-12T00:00:00.000Z',
       finishedAt: '2026-07-12T00:01:00.000Z',
-    }) as BisectSession);
+    }) as unknown as BisectSession);
 
     try {
       await runCompareBisectFromCli('good-sha', 'bad-sha', {
@@ -226,7 +231,7 @@ describe('compare bisect command', () => {
       'Range: good-sha..bad-sha',
       'Targets discovered: 1',
       '  visreg Homepage desktop document',
-      'Next: validate good ref good-sh for 1 target(s)',
+      'Next: measure midpoint middle- for 1 target(s)',
       'Categories: visreg',
       'Test files: tests/homepage.abtest.ts',
     ]));

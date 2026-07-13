@@ -28,6 +28,7 @@ import { writeSessionAtomic, writeSummary } from './persistence';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
+  BisectNextAction,
   BisectSession,
   BisectTarget,
   CommitRun,
@@ -64,6 +65,7 @@ export interface BisectCliOptions {
   experimentURL?: string;
   reuseCurrentResults?: boolean;
   dryRun?: boolean;
+  validateGoodRef?: boolean;
 }
 
 export type {
@@ -127,6 +129,7 @@ export interface ExecuteBisectInput {
   experimentURL: string;
   reuseCurrentResults: boolean;
   dryRun: boolean;
+  validateGoodRef: boolean;
 }
 
 export interface ReuseCurrentResultsRequest {
@@ -162,6 +165,7 @@ export interface RunBisectOptions {
   experimentURL?: string;
   reuseCurrentResults?: boolean;
   dryRun?: boolean;
+  validateGoodRef?: boolean;
   gitRange?: PreparedGitRange;
   dependencies?: ExecuteBisectDependencies;
 }
@@ -216,6 +220,7 @@ export async function runCompareBisectFromCli(
       experimentURL: cliOptions.experimentURL,
       reuseCurrentResults: cliOptions.reuseCurrentResults === true,
       dryRun: cliOptions.dryRun === true,
+      validateGoodRef: cliOptions.validateGoodRef === true,
     });
     printBisectSummary(session, path.resolve(cwd, 'compare-bisect-results'));
     return session;
@@ -246,6 +251,7 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     experimentURL: options.experimentURL ?? options.config.shared.experimentURL,
     reuseCurrentResults: options.reuseCurrentResults === true,
     dryRun: options.dryRun === true,
+    validateGoodRef: options.validateGoodRef === true,
   };
   const dependencies = options.dependencies ?? createDefaultDependencies({
     cwd: options.cwd,
@@ -409,16 +415,31 @@ export async function executeBisect(
     persist();
 
     if (input.dryRun) {
-      const targets = activeTargets(session);
-      const nextAction = targets.length === 0
-        ? undefined
-        : {
+      let targets = activeTargets(session);
+      let nextAction: BisectNextAction | undefined;
+      if (targets.length > 0 && input.validateGoodRef) {
+        nextAction = {
           kind: 'validate-good-ref' as const,
           sha: input.gitRange.goodSha,
           categories: categoriesForTargets(targets),
           testFiles: testFilesForTargets(targets),
           targetIds: targets.map((target) => target.id),
         };
+      } else if (targets.length > 0) {
+        const normalized = applyCachedObservations(session);
+        session = normalized;
+        targets = activeTargets(session);
+        const work = nextCandidate(normalized);
+        if (work) {
+          nextAction = {
+            kind: 'measure-candidate' as const,
+            sha: work.sha,
+            categories: work.categories,
+            testFiles: work.testFiles,
+            targetIds: work.targetIds,
+          };
+        }
+      }
       session = {
         ...session,
         dryRun: true,
@@ -427,7 +448,9 @@ export async function executeBisect(
       logDecision(
         'dry-run-plan',
         nextAction
-          ? `Dry run stopped before validating good ref ${shortSha(nextAction.sha)}`
+          ? `Dry run stopped before ${nextAction.kind === 'validate-good-ref'
+            ? 'validating good ref'
+            : 'measuring midpoint'} ${shortSha(nextAction.sha)}`
           : 'Dry run found no regression targets and has no next action',
         nextAction ? { nextAction } : { targetCount: 0 },
       );
@@ -435,27 +458,33 @@ export async function executeBisect(
     } else if (session.targets.length === 0) {
       deps.logProgress('No regression targets were present at the bad ref');
     } else {
-      const goodTargets = activeTargets(session);
-      logDecision('good-ref-start', `Measuring good ref ${shortSha(input.gitRange.goodSha)} to validate the bracket`, {
-        sha: input.gitRange.goodSha,
-        targetCount: goodTargets.length,
-        categories: categoriesForTargets(goodTargets),
-        testFiles: testFilesForTargets(goodTargets),
-      });
-      const goodRun = await measure({
-        sha: input.gitRange.goodSha,
-        categories: categoriesForTargets(goodTargets),
-        testFiles: testFilesForTargets(goodTargets),
-        targets: goodTargets,
-      });
-      session = validateGoodEndpoint(session, goodRun.observations);
-      const invalidTargets = session.targets.filter((target) => target.status === 'invalid');
-      logDecision('good-ref-validated', `Good ref validated: ${invalidTargets.length} target(s) already present at good`, {
-        sha: input.gitRange.goodSha,
-        invalidTargets: invalidTargets.map((target) => targetLogData(target)),
-        activeTargets: activeTargets(session).map((target) => targetLogData(target)),
-      });
-      persist();
+      if (input.validateGoodRef) {
+        const goodTargets = activeTargets(session);
+        logDecision('good-ref-start', `Measuring good ref ${shortSha(input.gitRange.goodSha)} to validate the bracket`, {
+          sha: input.gitRange.goodSha,
+          targetCount: goodTargets.length,
+          categories: categoriesForTargets(goodTargets),
+          testFiles: testFilesForTargets(goodTargets),
+        });
+        const goodRun = await measure({
+          sha: input.gitRange.goodSha,
+          categories: categoriesForTargets(goodTargets),
+          testFiles: testFilesForTargets(goodTargets),
+          targets: goodTargets,
+        });
+        session = validateGoodEndpoint(session, goodRun.observations);
+        const invalidTargets = session.targets.filter((target) => target.status === 'invalid');
+        logDecision('good-ref-validated', `Good ref validated: ${invalidTargets.length} target(s) already present at good`, {
+          sha: input.gitRange.goodSha,
+          invalidTargets: invalidTargets.map((target) => targetLogData(target)),
+          activeTargets: activeTargets(session).map((target) => targetLogData(target)),
+        });
+        persist();
+      } else {
+        logDecision('good-ref-validation-skipped', 'Skipping experiment-side good-ref validation', {
+          sha: input.gitRange.goodSha,
+        });
+      }
 
       while (true) {
         const normalized = applyCachedObservations(session);
@@ -792,6 +821,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     targets: [],
     commitRuns: {},
     dryRun: input.dryRun,
+    validateGoodRef: input.validateGoodRef,
     startedAt,
   };
 }
@@ -992,8 +1022,11 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
       console.log(`  ${target.category} ${target.testName} ${target.viewport} ${target.subject}`);
     }
     if (session.nextAction) {
+      const action = session.nextAction.kind === 'validate-good-ref'
+        ? 'validate good ref'
+        : 'measure midpoint';
       console.log(
-        `Next: validate good ref ${shortSha(session.nextAction.sha)} ` +
+        `Next: ${action} ${shortSha(session.nextAction.sha)} ` +
         `for ${session.nextAction.targetIds.length} target(s)`,
       );
       console.log(`Categories: ${session.nextAction.categories.join(', ')}`);
