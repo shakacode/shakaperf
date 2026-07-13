@@ -100,11 +100,16 @@ export function BisectSelectionSummary({ model, selection }: Props) {
       className="bisect-selection-summary"
       data-selection-kind={selection.kind}
       aria-labelledby="bisect-selection-title"
-      aria-live="polite"
     >
       <header className="bisect-selection-summary__header">
         <h2 id="bisect-selection-title">{selectionTitle(selection)}</h2>
-        <span>{targets.length} selected {targets.length === 1 ? 'target' : 'targets'}</span>
+        <span
+          className="bisect-selection-summary__status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {targets.length} selected {targets.length === 1 ? 'target' : 'targets'}
+        </span>
       </header>
       {targets.length === 0 ? (
         <p className="bisect-selection-summary__empty">{emptyMessage(selection)}</p>

@@ -232,7 +232,7 @@ function outcomeRendersSection(outcome: ReportOutcome): boolean {
 
 function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boolean): boolean {
   return test.measuredAt != null || (
-    includePersistedOutcomes && test.outcomes.some(outcomeRendersSection)
+    includePersistedOutcomes && test.outcomes.length > 0
   );
 }
 
