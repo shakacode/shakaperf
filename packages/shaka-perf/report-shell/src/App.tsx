@@ -19,6 +19,7 @@ import type {
 } from './types';
 import {
   selectionCategories,
+  stageNamesForCategories,
   selectionTestIds,
   type BisectSelection,
 } from './bisect-selection';
@@ -336,10 +337,8 @@ export function App({ data }: { data: ReportData }) {
   );
   const effectiveVisibleStages = useMemo(() => {
     if (data.bisect == null || bisectSelection.kind === 'all') return visibleStages;
-    return new Set(
-      [...visibleStages].filter((stage) => bisectCategories.has(stage as BisectCategory)),
-    );
-  }, [bisectCategories, bisectSelection.kind, data.bisect, visibleStages]);
+    return stageNamesForCategories(reportStages(data.meta), visibleStages, bisectCategories);
+  }, [bisectCategories, bisectSelection.kind, data.bisect, data.meta, visibleStages]);
   const setVisibleStageSelection = useCallback((update: StageFilterSelectionUpdate) => {
     setVisibleStageOverride((previous) => {
       const current = normalizeStageSelection(previous, stageFilterOptions);
