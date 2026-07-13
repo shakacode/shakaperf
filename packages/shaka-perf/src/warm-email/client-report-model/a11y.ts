@@ -56,12 +56,14 @@ const A11Y_RULE_FAMILY_DEFINITIONS: readonly A11yRuleFamilyDefinition[] = [
   { id: 'structure', label: 'page structure that is hard to navigate', matches: (ruleId) => /^(region|landmark|heading|page-has-heading-one|empty-heading|html-has-lang|document-title)/.test(ruleId) },
 ];
 
+const OTHER_A11Y_RULE_FAMILY: A11yRuleFamilyDefinition = {
+  id: 'other',
+  label: 'other accessibility barrier',
+  matches: () => false,
+};
+
 function a11yRuleFamilyDefinition(ruleId: string): A11yRuleFamilyDefinition {
-  return A11Y_RULE_FAMILY_DEFINITIONS.find((candidate) => candidate.matches(ruleId)) ?? {
-    id: ruleId,
-    label: 'other accessibility barrier',
-    matches: (candidate) => candidate === ruleId,
-  };
+  return A11Y_RULE_FAMILY_DEFINITIONS.find((candidate) => candidate.matches(ruleId)) ?? OTHER_A11Y_RULE_FAMILY;
 }
 
 function isCountedA11yViolation(violation: A11yRuleFamilyViolation): boolean {
@@ -91,6 +93,7 @@ export function summarizeA11yRuleFamilies(
       counted.set(definition.id, current);
     }
     for (const definition of extrasOnPage.values()) {
+      if (countedOnPage.has(definition.id)) continue;
       const current = extras.get(definition.id) ?? { id: definition.id, label: definition.label, pageCount: 0 };
       current.pageCount += 1;
       extras.set(definition.id, current);

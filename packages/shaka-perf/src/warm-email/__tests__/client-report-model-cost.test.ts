@@ -171,6 +171,37 @@ describe('accessibility finding families', () => {
     ]);
   });
 
+  it('does not report a family as both counted and not counted on one page', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [
+        { ruleId: 'html-has-lang', impact: 'serious' },
+        { ruleId: 'region', impact: 'moderate' },
+      ],
+    }]);
+
+    expect(summary).toMatchObject({
+      headlineCount: 1,
+      countedFamilies: [{ id: 'structure', label: 'page structure that is hard to navigate', pageCount: 1 }],
+      notCountedExtras: [],
+      smallerNotesCount: 0,
+    });
+  });
+
+  it('groups unmatched rules into one plain-language fallback family', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [
+        { ruleId: 'frame-title', impact: 'serious' },
+        { ruleId: 'listitem', impact: 'serious' },
+        { ruleId: 'meta-viewport', impact: 'serious' },
+      ],
+    }]);
+
+    expect(summary.headlineCount).toBe(1);
+    expect(summary.countedFamilies).toEqual([
+      { id: 'other', label: 'other accessibility barrier', pageCount: 1 },
+    ]);
+  });
+
   it('keeps type-only strong-page grouping and score badge policy ready for later waves', () => {
     const group: A11yStrongPageGroup = {
       label: 'Strong pages',
