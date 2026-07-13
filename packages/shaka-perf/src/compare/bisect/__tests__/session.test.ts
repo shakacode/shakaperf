@@ -7,12 +7,13 @@
  * License in LICENSE.md.
  */
 
-import { DESKTOP_VIEWPORT } from 'shaka-shared';
+import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import {
   executeBisect,
+  filterFrozenTests,
   restoreExperimentState,
   runBisect,
   type BisectDecisionLogEntry,
@@ -93,6 +94,19 @@ function resultWithVisualDiff(diffImage: string | null): TestResult {
   };
 }
 
+function resultForTest(
+  testFile: string,
+  testName: string,
+  diffImage: string | null,
+): TestResult {
+  return {
+    ...resultWithVisualDiff(diffImage),
+    id: JSON.stringify([testFile, testName]),
+    name: testName,
+    filePath: testFile,
+  };
+}
+
 function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
   const result = resultWithVisualDiff(diffImage);
   result.outcomes.push({
@@ -102,6 +116,18 @@ function resultWithVisualDiffAndError(diffImage: string | null): TestResult {
     error: { message: 'capture failed after one selector succeeded' },
   });
   return result;
+}
+
+function frozenTest(rootDir: string, testFile: string, testName: string): AbTestDefinition {
+  return {
+    name: testName,
+    startingPath: '/',
+    file: path.join(rootDir, testFile),
+    line: 1,
+    options: {},
+    testTypes: null,
+    testFn: async () => undefined,
+  };
 }
 
 interface HarnessOptions {
@@ -129,7 +155,11 @@ function deps(
     checkouts: string[];
     materialized: Array<[string | null, string]>;
     refreshes: string[];
-    compares: Array<{ sha: string; categories: string[]; testFiles: string[] }>;
+    compares: Array<{
+      sha: string;
+      categories: string[];
+      tests: Array<{ testFile: string; testName: string }>;
+    }>;
     reusedResults: Array<{ sha: string; categories: string[] }>;
     sessions: BisectSession[];
     summaries: BisectSession[];
@@ -150,7 +180,11 @@ function deps(
     checkouts: [] as string[],
     materialized: [] as Array<[string | null, string]>,
     refreshes: [] as string[],
-    compares: [] as Array<{ sha: string; categories: string[]; testFiles: string[] }>,
+    compares: [] as Array<{
+      sha: string;
+      categories: string[];
+      tests: Array<{ testFile: string; testName: string }>;
+    }>,
     reusedResults: [] as Array<{ sha: string; categories: string[] }>,
     sessions: [] as BisectSession[],
     summaries: [] as BisectSession[],
@@ -218,7 +252,7 @@ function deps(
         calls.compares.push({
           sha: request.sha,
           categories: [...request.categories],
-          testFiles: [...request.testFiles],
+          tests: [...request.tests],
         });
         if (options.signalOnCompare === request.sha) {
           for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
@@ -321,10 +355,21 @@ describe('compare bisect session orchestration', () => {
       ['a', 'b'],
     ]);
     expect(harness.calls.compares).toEqual([
-      { sha: 'bad', categories: ['visreg'], testFiles: [] },
-      { sha: 'a', categories: ['visreg'], testFiles: ['tests/homepage.abtest.ts'] },
-      { sha: 'b', categories: ['visreg'], testFiles: ['tests/homepage.abtest.ts'] },
+      { sha: 'bad', categories: ['visreg'], tests: [] },
+      {
+        sha: 'a',
+        categories: ['visreg'],
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+      },
+      {
+        sha: 'b',
+        categories: ['visreg'],
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+      },
     ]);
+    expect(session.commitRuns.a).toMatchObject({
+      requestedTests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+    });
     expect(harness.calls.summaries.at(-1)?.status).toBe('complete');
     expect(harness.calls.restored).toEqual([['b', 'bad']]);
     expect(harness.calls.events.at(0)).toBe('lease:begin');
@@ -352,6 +397,7 @@ describe('compare bisect session orchestration', () => {
       entry.event === 'candidate-selected' && entry.data?.sha === 'b'
     ))?.data).toMatchObject({
       sha: 'b',
+      tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
       targets: [expect.objectContaining({
         interval: {
           goodIndex: 1,
@@ -413,6 +459,10 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
     expect(harness.calls.decisions.map((entry) => entry.event)).toContain('good-ref-validated');
+    expect(harness.calls.decisions.find((entry) => entry.event === 'good-ref-start')?.data)
+      .toMatchObject({
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+      });
   });
 
   it('dry runs through target discovery and records the first midpoint by default', async () => {
@@ -434,7 +484,7 @@ describe('compare bisect session orchestration', () => {
         kind: 'measure-candidate',
         sha: 'a',
         categories: ['visreg'],
-        testFiles: ['tests/homepage.abtest.ts'],
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
         targetIds: ['["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]'],
       },
       targets: [expect.objectContaining({
@@ -476,7 +526,7 @@ describe('compare bisect session orchestration', () => {
     });
     expect(harness.calls.checkouts).toEqual(['bad']);
     expect(harness.calls.compares).toEqual([
-      { sha: 'bad', categories: ['visreg'], testFiles: [] },
+      { sha: 'bad', categories: ['visreg'], tests: [] },
     ]);
     expect(harness.calls.restored).toEqual([['bad', 'bad']]);
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
@@ -498,6 +548,7 @@ describe('compare bisect session orchestration', () => {
       nextAction: {
         kind: 'validate-good-ref',
         sha: 'good',
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
       },
     });
   });
@@ -885,6 +936,55 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a', 'b']);
   });
 
+  it('narrows later candidates to smaller test subsets as target intervals diverge', async () => {
+    const account = (diffImage: string | null) => resultForTest(
+      'tests/account.abtest.ts',
+      'Account overview',
+      diffImage,
+    );
+    const admin = (diffImage: string | null) => resultForTest(
+      'tests/admin.abtest.ts',
+      'Admin overview',
+      diffImage,
+    );
+    const harness = deps({
+      a: [account(null)],
+      b: [account('account-diff.png'), admin(null)],
+      c: [admin('admin-diff.png')],
+      bad: [account('account-diff.png'), admin('admin-diff.png')],
+    });
+
+    const divergingInput = input(rootDir);
+    divergingInput.gitRange = {
+      ...divergingInput.gitRange,
+      orderedCommits: ['good', 'a', 'b', 'c', 'bad'],
+    };
+
+    await executeBisect(divergingInput, harness.deps);
+
+    expect(harness.calls.compares).toEqual([
+      { sha: 'bad', categories: ['visreg'], tests: [] },
+      {
+        sha: 'b',
+        categories: ['visreg'],
+        tests: [
+          { testFile: 'tests/account.abtest.ts', testName: 'Account overview' },
+          { testFile: 'tests/admin.abtest.ts', testName: 'Admin overview' },
+        ],
+      },
+      {
+        sha: 'a',
+        categories: ['visreg'],
+        tests: [{ testFile: 'tests/account.abtest.ts', testName: 'Account overview' }],
+      },
+      {
+        sha: 'c',
+        categories: ['visreg'],
+        tests: [{ testFile: 'tests/admin.abtest.ts', testName: 'Admin overview' }],
+      },
+    ]);
+  });
+
   it('exposes one-object runBisect and runCandidate contracts', async () => {
     const harness = deps({ bad: [] });
     const bisectInput = input(rootDir);
@@ -903,6 +1003,40 @@ describe('compare bisect session orchestration', () => {
       dependencies: harness.deps,
     })).resolves.toMatchObject({ status: 'complete' });
     expect(runCandidate).toEqual(expect.any(Function));
+  });
+});
+
+describe('frozen bisect test selection', () => {
+  let rootDir: string;
+
+  beforeEach(() => {
+    rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-tests-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  it('matches normalized relative file path plus exact test name', () => {
+    const tests = [
+      frozenTest(rootDir, 'tests/account.abtest.ts', 'Overview'),
+      frozenTest(rootDir, 'tests/account.abtest.ts', 'Settings'),
+      frozenTest(rootDir, 'tests/admin.abtest.ts', 'Overview'),
+    ];
+
+    expect(filterFrozenTests(tests, rootDir, [
+      { testFile: './tests/account.abtest.ts', testName: 'Settings' },
+      { testFile: 'tests\\admin.abtest.ts', testName: 'Overview' },
+    ])).toEqual([tests[1], tests[2]]);
+  });
+
+  it('returns all frozen tests for the empty bad-ref discovery selection', () => {
+    const tests = [
+      frozenTest(rootDir, 'tests/account.abtest.ts', 'Overview'),
+      frozenTest(rootDir, 'tests/account.abtest.ts', 'Settings'),
+    ];
+
+    expect(filterFrozenTests(tests, rootDir, [])).toEqual(tests);
   });
 });
 

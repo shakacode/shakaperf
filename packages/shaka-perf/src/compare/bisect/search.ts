@@ -10,6 +10,7 @@
 import type {
   BisectCategory,
   BisectSession,
+  BisectTestSelection,
   BisectTarget,
   NormalizedBisectSession,
   TargetObservation,
@@ -25,7 +26,7 @@ export interface CandidateWork {
   sha: string;
   targetIds: string[];
   categories: BisectCategory[];
-  testFiles: string[];
+  tests: BisectTestSelection[];
 }
 
 export function nextCandidate(session: NormalizedBisectSession): CandidateWork | null {
@@ -51,8 +52,20 @@ export function nextCandidate(session: NormalizedBisectSession): CandidateWork |
     sha,
     targetIds: targets.map((target) => target.id),
     categories: unique(targets.map((target) => target.category)),
-    testFiles: unique(targets.map((target) => target.testFile)),
+    tests: testsForTargets(targets),
   };
+}
+
+export function testsForTargets(targets: readonly BisectTarget[]): BisectTestSelection[] {
+  const selections = new Map<string, BisectTestSelection>();
+  for (const target of targets) {
+    const selection = {
+      testFile: target.testFile,
+      testName: target.testName,
+    };
+    selections.set(JSON.stringify([selection.testFile, selection.testName]), selection);
+  }
+  return [...selections.values()];
 }
 
 export function applyCachedObservations(session: BisectSession): NormalizedBisectSession {

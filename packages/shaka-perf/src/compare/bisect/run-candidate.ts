@@ -2,6 +2,7 @@ import type { TestResult } from '../../pipeline/report';
 import { assertNoPipelineErrors, observeTargets } from './analyze';
 import type {
   BisectCategory,
+  BisectTestSelection,
   BisectTarget,
   CommitRun,
   TargetObservation,
@@ -12,7 +13,7 @@ export type RefreshMode = CommitRun['refreshMode'];
 export interface CompareRunRequest {
   sha: string;
   categories: readonly BisectCategory[];
-  testFiles: readonly string[];
+  tests: readonly BisectTestSelection[];
 }
 
 export interface CompareRunResult {
@@ -49,7 +50,7 @@ export interface RunCandidateOptions {
   sha: string;
   previousSha: string | null;
   categories: readonly BisectCategory[];
-  testFiles: readonly string[];
+  tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
   preferredMode: RefreshMode;
   dependencies: CandidateDependencies;
@@ -75,7 +76,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
   const baseRun: CommitRun = {
     sha: options.sha,
     requestedCategories: [...options.categories],
-    requestedTestFiles: [...options.testFiles],
+    requestedTests: [...options.tests],
     refreshMode: options.preferredMode,
     usedFallback: false,
     startedAt: options.dependencies.now(),
@@ -109,7 +110,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
     const compare = await options.dependencies.compare({
       sha: options.sha,
       categories: options.categories,
-      testFiles: options.testFiles,
+      tests: options.tests,
     });
     commitRun = {
       ...commitRun,

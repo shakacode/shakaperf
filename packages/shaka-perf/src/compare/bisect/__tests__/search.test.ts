@@ -92,11 +92,72 @@ describe('bisect scheduler', () => {
     expect(work?.sha).toBe('a');
     expect(work?.targetIds).toEqual(['zebra', 'alpha', 'tbt', 'button-name']);
     expect(work?.categories).toEqual(['visreg', 'perf', 'accessibility']);
-    expect(work?.testFiles).toEqual([
-      'zebra.abtest.ts',
-      'alpha.abtest.ts',
-      'tbt.abtest.ts',
-      'button-name.abtest.ts',
+    expect(work?.tests).toEqual([
+      { testFile: 'zebra.abtest.ts', testName: 'zebra' },
+      { testFile: 'alpha.abtest.ts', testName: 'alpha' },
+      { testFile: 'tbt.abtest.ts', testName: 'tbt' },
+      { testFile: 'button-name.abtest.ts', testName: 'button-name' },
+    ]);
+  });
+
+  it('selects only the active test from a file containing multiple tests', () => {
+    const work = nextCandidate(applyCachedObservations(session([
+      bisectTarget('account-overview', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Account overview',
+      }),
+      bisectTarget('account-settings', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Account settings',
+        status: 'invalid',
+        invalidReason: 'Present at known-good commit',
+      }),
+    ])));
+
+    expect(work?.tests).toEqual([
+      { testFile: 'tests/account.abtest.ts', testName: 'Account overview' },
+    ]);
+  });
+
+  it('selects multiple active tests from the same file once each', () => {
+    const work = nextCandidate(applyCachedObservations(session([
+      bisectTarget('account-overview-document', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Account overview',
+        subject: 'document',
+      }),
+      bisectTarget('account-overview-header', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Account overview',
+        subject: 'header',
+      }),
+      bisectTarget('account-settings', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Account settings',
+      }),
+    ])));
+
+    expect(work?.tests).toEqual([
+      { testFile: 'tests/account.abtest.ts', testName: 'Account overview' },
+      { testFile: 'tests/account.abtest.ts', testName: 'Account settings' },
+    ]);
+  });
+
+  it('keeps identical test names in different files distinct', () => {
+    const work = nextCandidate(applyCachedObservations(session([
+      bisectTarget('account-overview', 'visreg', {
+        testFile: 'tests/account.abtest.ts',
+        testName: 'Overview',
+      }),
+      bisectTarget('admin-overview', 'visreg', {
+        testFile: 'tests/admin.abtest.ts',
+        testName: 'Overview',
+      }),
+    ])));
+
+    expect(work?.tests).toEqual([
+      { testFile: 'tests/account.abtest.ts', testName: 'Overview' },
+      { testFile: 'tests/admin.abtest.ts', testName: 'Overview' },
     ]);
   });
 
@@ -151,6 +212,7 @@ describe('bisect scheduler', () => {
       sha: 'b',
       targetIds: ['tbt'],
       categories: ['perf'],
+      tests: [{ testFile: 'tbt.abtest.ts', testName: 'tbt' }],
     });
   });
 

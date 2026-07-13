@@ -11,6 +11,11 @@ export type BisectCategory = 'visreg' | 'perf' | 'accessibility';
 
 export type TargetStatus = 'active' | 'found' | 'invalid';
 
+export interface BisectTestSelection {
+  testFile: string;
+  testName: string;
+}
+
 export interface TargetKey {
   id: string;
   category: BisectCategory;
@@ -40,7 +45,8 @@ export interface BisectTarget extends TargetKey {
 export interface CommitRun {
   sha: string;
   requestedCategories: BisectCategory[];
-  requestedTestFiles: string[];
+  requestedTests?: BisectTestSelection[];
+  requestedTestFiles?: string[];
   refreshMode: 'commands' | 'container';
   usedFallback: boolean;
   compareResultsPath?: string;
@@ -53,7 +59,8 @@ export interface CommitRun {
 interface BisectNextActionBase {
   sha: string;
   categories: BisectCategory[];
-  testFiles: string[];
+  tests?: BisectTestSelection[];
+  testFiles?: string[];
   targetIds: string[];
 }
 

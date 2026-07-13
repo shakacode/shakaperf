@@ -203,7 +203,7 @@ describe('compare bisect command', () => {
         kind: 'measure-candidate',
         sha: 'middle-sha',
         categories: ['visreg'],
-        testFiles: ['tests/homepage.abtest.ts'],
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
         targetIds: [targetId],
       },
       startedAt: '2026-07-12T00:00:00.000Z',
@@ -233,7 +233,7 @@ describe('compare bisect command', () => {
       '  visreg Homepage desktop document',
       'Next: measure midpoint middle- for 1 target(s)',
       'Categories: visreg',
-      'Test files: tests/homepage.abtest.ts',
+      'Tests: tests/homepage.abtest.ts :: Homepage',
     ]));
   });
 });
