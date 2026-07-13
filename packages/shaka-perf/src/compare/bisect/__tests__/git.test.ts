@@ -95,9 +95,6 @@ describe('bisect Git helpers', () => {
         sha: fixture.commits[4],
       },
     });
-    expect(prepared.commitSubjects).toEqual(Object.fromEntries(
-      fixture.commits.map((sha, index) => [sha, `commit-${index}`]),
-    ));
   });
 
   it('resolves explicit refs to commits', async () => {

@@ -69,6 +69,10 @@ function target(
 describe('buildBisectReportModel', () => {
   it('maps found targets to commits and keeps unresolved target details', () => {
     const visualObservation = observation('visual-found', { diffPixels: 42 });
+    const midpointObservation = {
+      ...observation('visual-found', { diffPixels: 5 }),
+      commitSha: 'visual',
+    };
     const session = {
       version: 1,
       status: 'complete',
@@ -86,7 +90,7 @@ describe('buildBisectReportModel', () => {
       targets: [
         target('visual-found', 'visreg', 'tests/../tests/homepage.abtest.ts', 'Homepage', {
           firstBadSha: 'visual',
-          observations: { bad: visualObservation },
+          observations: { visual: midpointObservation, bad: visualObservation },
         }),
         target('perf-found', 'perf', 'tests/product.abtest.ts', 'Product'),
         target('accessibility-found', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage'),
@@ -156,9 +160,7 @@ describe('buildBisectReportModel', () => {
     expect(model.views.unresolved.targetIds).toEqual(['unresolved-target']);
     expect(model.views.invalid.targetIds).toEqual(['invalid-target']);
     expect(model.targetsById['missing-card'].testId).toBeNull();
-    expect(model.targetsById['visual-found']).toMatchObject({
-      testId: 'homepage-card',
-      badRefObservation: visualObservation,
-    });
+    expect(model.targetsById['visual-found'].testId).toBe('homepage-card');
+    expect(model.targetsById['visual-found'].badRefObservation).toBe(visualObservation);
   });
 });

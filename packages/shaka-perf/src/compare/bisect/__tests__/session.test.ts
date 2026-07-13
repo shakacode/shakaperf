@@ -330,6 +330,7 @@ describe('compare bisect session orchestration', () => {
   });
 
   it('finds the first bad commit and narrows candidate compare work', async () => {
+    const bisectInput = input(rootDir);
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -337,9 +338,13 @@ describe('compare bisect session orchestration', () => {
       bad: [resultWithVisualDiff('diff.png')],
     });
 
-    const session = await executeBisect(input(rootDir), harness.deps);
+    const session = await executeBisect(bisectInput, harness.deps);
 
     expect(session.status).toBe('complete');
+    expect(session.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
+    expect(harness.calls.sessions).toContainEqual(expect.objectContaining({
+      commitSubjects: bisectInput.gitRange.commitSubjects,
+    }));
     expect(session.targets).toMatchObject([{
       category: 'visreg',
       subject: 'document',
