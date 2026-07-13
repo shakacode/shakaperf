@@ -221,7 +221,7 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
       <nav className="bisect-view-buttons" aria-label="Bisect report views">
         <SelectionButton
           kind="all"
-          label="All regressions"
+          label="Regression tests"
           count={foundCount}
           selected={selection.kind === 'all'}
           onSelect={onSelect}

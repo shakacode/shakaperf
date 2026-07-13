@@ -62,7 +62,12 @@ describe('compare bisect report browser acceptance', () => {
 
   it('filters saved bad-ref cards and renders every selection state', async () => {
     const nodes = page.locator('.bisect-node');
-    await expectCount(nodes, 4);
+    await expectCount(nodes, 2);
+    await expectCount(page.locator('[data-bisect-clean-history="true"]'), 1);
+    await expectText(
+      page.locator('[data-bisect-clean-history="true"] summary'),
+      '2 commits with no first-bad regressions',
+    );
     await expectCount(page.locator('.card:not(.card--missing-artifacts)'), 3);
     await expectCount(page.locator('.card--missing-artifacts'), 0);
 
@@ -90,13 +95,6 @@ describe('compare bisect report browser acceptance', () => {
     await expectCount(page.locator('.outcome-slot[data-stage="perf"]'), 0);
     await expectCount(page.locator('.outcome-slot[data-stage="accessibility"]'), 0);
 
-    await page.locator(`[data-bisect-sha="${CLEAN_SHA}"]`).click();
-    await expectText(
-      page.locator('.bisect-selection-summary__empty'),
-      'No regressions begin at this commit.',
-    );
-    await expectCount(page.locator('.card:not(.card--missing-artifacts)[data-dimmed="true"]'), 3);
-
     await page.locator('[data-bisect-selection="unresolved"]').click();
     await expectText(page.locator('#bisect-selection-title'), 'Unresolved targets');
     await expectCount(page.locator('[data-target-id="unresolved-target"]'), 1);
@@ -105,7 +103,7 @@ describe('compare bisect report browser acceptance', () => {
       'CLS',
     );
     await expectText(
-      page.locator('[data-target-id="unresolved-target"] .bisect-target__details dd span'),
+      page.locator('[data-bisect-test-group="product-card"] .bisect-test-group__header h3'),
       'Product',
     );
     await expectCount(page.locator('.card:not([data-dimmed="true"])'), 1);
@@ -148,7 +146,7 @@ describe('compare bisect report browser acceptance', () => {
     expect(await contrastAgainstWhite(
       visualNode.locator('.bisect-counter[data-category="visreg"]'),
     )).toBeGreaterThanOrEqual(4.5);
-    expect(await page.locator(`[data-bisect-sha="${CLEAN_SHA}"]`).evaluate(
+    expect(await page.locator('[data-bisect-clean-history="true"]').evaluate(
       (element) => getComputedStyle(element).opacity,
     )).toBe('1');
     await page.keyboard.press('Enter');
