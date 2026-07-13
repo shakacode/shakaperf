@@ -28,6 +28,11 @@ export interface WrittenBisectReport {
   data: BisectReportData;
 }
 
+export function clearPriorBisectReportOutput(resultsDirectory: string): void {
+  fs.rmSync(path.join(resultsDirectory, BISECT_REPORT_FILENAME), { force: true });
+  fs.rmSync(path.join(resultsDirectory, BISECT_REPORT_DATA_FILENAME), { force: true });
+}
+
 export function writeBisectReport(options: WriteBisectReportOptions): string {
   return writeBisectReportArtifacts(options).htmlPath;
 }

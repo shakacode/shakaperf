@@ -31,7 +31,11 @@ import {
   testsForTargets,
 } from './search';
 import { writeSessionAtomic, writeSummary } from './persistence';
-import { BISECT_REPORT_FILENAME, writeBisectReport } from './report';
+import {
+  BISECT_REPORT_FILENAME,
+  clearPriorBisectReportOutput,
+  writeBisectReport,
+} from './report';
 import { buildBisectReportModel } from './report-model';
 import { regenerateBisectReport } from './report-only';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
@@ -728,7 +732,7 @@ function createDefaultDependencies(options: {
       fs.rmSync(path.join(options.resultsDirectory, 'summary.json'), { force: true });
     },
     clearPriorReportOutput: () => {
-      fs.rmSync(path.join(options.resultsDirectory, BISECT_REPORT_FILENAME), { force: true });
+      clearPriorBisectReportOutput(options.resultsDirectory);
     },
     materialize: async ({ previousSha, candidateSha }) => {
       if (previousSha === null) {
