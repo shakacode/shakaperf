@@ -55,6 +55,16 @@ describe('writeBisectReport', () => {
     expect(html).toContain('data:image/png;base64,fixture');
     expect(html).not.toContain('/tmp/control.png');
   });
+
+  it('returns an absolute path when resultsDirectory is relative', () => {
+    const outputPath = writeBisectReport({
+      resultsDirectory: path.relative(process.cwd(), resultsDirectory),
+      data: reportData(),
+      stages: [],
+    });
+
+    expect(path.isAbsolute(outputPath)).toBe(true);
+  });
 });
 
 function reportData(): BisectReportData {

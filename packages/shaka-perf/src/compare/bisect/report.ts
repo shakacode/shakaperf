@@ -22,7 +22,7 @@ export interface WriteBisectReportOptions {
 }
 
 export function writeBisectReport(options: WriteBisectReportOptions): string {
-  const outputPath = path.join(options.resultsDirectory, BISECT_REPORT_FILENAME);
+  const outputPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
   const portable = reportDataForMode(
     { ...options.data, meta: { ...options.data.meta, reportMode: 'lightweight' } },
     'lightweight',
