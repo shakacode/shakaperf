@@ -63,6 +63,7 @@ export default defineConfig({
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
+    viewports: ['desktop'],
     maxNumDiffPixels: 50,
     defaultMisMatchThreshold: 0.1,
   },
