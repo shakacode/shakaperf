@@ -152,6 +152,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   endSession(): Promise<void>;
   restore(request: RestoreRequest): Promise<void>;
   clearSummary(): void;
+  clearPriorReportOutput(): void;
   writeSession(session: BisectSession): void;
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession): void;
@@ -284,6 +285,7 @@ export async function executeBisect(
 ): Promise<BisectSession> {
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
   deps.clearSummary();
+  deps.clearPriorReportOutput();
   let session = initialSession(input, deps.now());
   let badRefTests: readonly TestResult[] | null = null;
   let materializedSha: string | null = null;
@@ -708,6 +710,9 @@ function createDefaultDependencies(options: {
     }),
     clearSummary: () => {
       fs.rmSync(path.join(options.resultsDirectory, 'summary.json'), { force: true });
+    },
+    clearPriorReportOutput: () => {
+      fs.rmSync(path.join(options.resultsDirectory, BISECT_REPORT_FILENAME), { force: true });
     },
     materialize: async ({ previousSha, candidateSha }) => {
       if (previousSha === null) {
