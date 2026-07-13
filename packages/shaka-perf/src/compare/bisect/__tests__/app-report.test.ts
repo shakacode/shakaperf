@@ -26,8 +26,29 @@ describe('bisect report App rendering', () => {
   it('omits the bisect navigator from an ordinary report', () => {
     const html = renderApp(ordinaryReport());
 
+    expect(html).toContain('<div class="app">');
+    expect(html).not.toContain('app--bisect');
     expect(html).not.toContain('class="bisect-navigator"');
     expect(html).not.toContain('aria-label="Bisect report views"');
+  });
+
+  it('keeps skipped-only ordinary tests in the missing-artifacts summary', () => {
+    const data = ordinaryReport();
+    data.tests = [{
+      ...reportTest(),
+      measuredAt: null,
+      outcomes: [{
+        kind: 'skipped',
+        stage: 'visreg',
+        reason: 'fixture skip',
+        viewport: DESKTOP_VIEWPORT,
+      }],
+    }];
+
+    const html = renderApp(data);
+
+    expect(html).toContain('card--missing-artifacts');
+    expect(html).not.toContain('<h3 class="card__title">Product page</h3>');
   });
 
   it('composes the initial card with both performance report stages', () => {
@@ -72,6 +93,12 @@ describe('bisect report App rendering', () => {
     expect(html).toContain('<h3 class="card__title">Product page</h3>');
     expect(html).toContain('<h3 class="card__title">Unrelated page</h3>');
     expect(html).not.toContain('card--missing-artifacts');
+  });
+
+  it('marks bisect reports for isolated responsive styling', () => {
+    const html = renderApp(bisectReport());
+
+    expect(html).toContain('<div class="app app--bisect">');
   });
 });
 

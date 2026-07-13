@@ -230,8 +230,10 @@ function outcomeRendersSection(outcome: ReportOutcome): boolean {
     (outcome.kind === 'ok' && outcome.measurement != null);
 }
 
-function hasReportableOutcomes(test: TestResult): boolean {
-  return test.measuredAt != null || test.outcomes.length > 0;
+function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boolean): boolean {
+  return test.measuredAt != null || (
+    includePersistedOutcomes && test.outcomes.some(outcomeRendersSection)
+  );
 }
 
 export function buildStageFilterOptions(meta: ReportMeta, tests: readonly TestResult[]): StageFilterOption[] {
@@ -296,7 +298,11 @@ export function App({
   const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
-  const cardTests = useMemo(() => data.tests.filter(hasReportableOutcomes), [data.tests]);
+  const isBisectReport = data.bisect != null;
+  const cardTests = useMemo(
+    () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
+    [data.tests, isBisectReport],
+  );
   const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
   const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
   const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
@@ -386,8 +392,10 @@ export function App({
   const latestRunKey = useMemo(() => newestRunKey(cardTests), [cardTests]);
   const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
-    () => data.tests.filter((test) => !hasReportableOutcomes(test) && matchesQuery(test, query)),
-    [data.tests, query],
+    () => data.tests.filter((test) => (
+      !hasReportableOutcomes(test, isBisectReport) && matchesQuery(test, query)
+    )),
+    [data.tests, isBisectReport, query],
   );
 
   // Newer run ids sort first so a filtered run can update a subset without
@@ -451,7 +459,7 @@ export function App({
 
   return (
     <AccessibilityReportFilterProvider value={accessibilityFilterState}>
-      <div className="app">
+      <div className={isBisectReport ? 'app app--bisect' : 'app'}>
         <Header meta={data.meta} total={data.tests.length} />
 
         <ErrorBanner errors={data.meta.errors ?? []} />
