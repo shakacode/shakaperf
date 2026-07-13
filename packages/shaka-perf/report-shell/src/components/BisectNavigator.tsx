@@ -85,6 +85,51 @@ function endpointLabel(commit: BisectReportCommit, model: BisectReportModel): st
   return null;
 }
 
+function hasRegressions(commit: BisectReportCommit): boolean {
+  return Object.values(commit.counts).some((count) => count > 0);
+}
+
+function CleanCommitGroup({
+  commits,
+  model,
+}: {
+  commits: readonly BisectReportCommit[];
+  model: BisectReportModel;
+}) {
+  const measuredCount = commits.filter((commit) => commit.measured).length;
+  const commitLabel = `${commits.length} commit${commits.length === 1 ? '' : 's'}`;
+
+  return (
+    <li className="bisect-tree__item bisect-tree__item--clean-history">
+      <details className="bisect-clean-history" data-bisect-clean-history="true">
+        <summary>
+          <span className="bisect-clean-history__summary">
+            <strong>{commitLabel} with no first-bad regressions</strong>
+            <span>
+              {measuredCount} measured · {commits.length - measuredCount} not measured
+            </span>
+          </span>
+        </summary>
+        <ol className="bisect-clean-history__list">
+          {commits.map((commit) => {
+            const endpoint = endpointLabel(commit, model);
+            return (
+              <li key={commit.sha} className="bisect-clean-history__commit">
+                <code>{commit.sha.slice(0, 7)}</code>
+                <span>{commit.subject}</span>
+                <span className="bisect-clean-history__meta">
+                  {endpoint ? `${endpoint} · ` : ''}
+                  {commit.measured ? 'measured' : 'not measured'}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    </li>
+  );
+}
+
 function CommitNode({
   commit,
   model,
@@ -143,6 +188,8 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
   const foundCount = model.targets.filter((target) => target.status === 'found').length;
   const unresolvedCount = model.views.unresolved.targetIds.length;
   const invalidCount = model.views.invalid.targetIds.length;
+  const cleanCommits = model.commits.filter((commit) => !hasRegressions(commit));
+  const regressionCommits = model.commits.filter(hasRegressions);
 
   return (
     <section className="bisect-navigator" aria-labelledby="bisect-navigator-title">
@@ -197,7 +244,10 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
 
       <nav className="bisect-tree" aria-label="Bisect commit range">
         <ol className="bisect-tree__list">
-          {model.commits.map((commit) => (
+          {cleanCommits.length > 0 ? (
+            <CleanCommitGroup commits={cleanCommits} model={model} />
+          ) : null}
+          {regressionCommits.map((commit) => (
             <CommitNode
               key={commit.sha}
               commit={commit}
