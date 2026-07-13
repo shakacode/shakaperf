@@ -26,10 +26,10 @@ import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analy
 import { checkoutDetached, prepareGitRange, restoreCheckout, type PreparedGitRange } from './git';
 import {
   applyCachedObservations,
-  applyObservations,
   nextCandidate,
   testsForTargets,
 } from './search';
+import { runSearchPhase } from './phase';
 import { writeSessionAtomic, writeSummary } from './persistence';
 import {
   BISECT_REPORT_FILENAME,
@@ -42,6 +42,7 @@ import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
   BisectNextAction,
+  BisectSearchPhase,
   BisectSession,
   BisectTestSelection,
   BisectTarget,
@@ -521,48 +522,53 @@ export async function executeBisect(
         });
       }
 
-      while (true) {
-        const normalized = applyCachedObservations(session);
-        session = normalized;
-        persist();
-        const work = nextCandidate(normalized);
-        if (!work) break;
-
-        const targets = session.targets.filter((target) => work.targetIds.includes(target.id));
-        logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
-          sha: work.sha,
-          categories: work.categories,
-          tests: work.tests,
-          targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
-        });
-        const candidateRun = await measure({
-          sha: work.sha,
-          categories: work.categories,
-          tests: work.tests,
-          targets,
-        });
-        const observations = new Map(
-          candidateRun.observations.map((observation) => [observation.targetId, observation]),
-        );
-        const beforeTargets = new Map(session.targets.map((target) => [target.id, target]));
-        session = applyObservations(session, work.sha, observations);
-        logDecision('candidate-observed', `Applied ${candidateRun.observations.length} observation(s) from ${shortSha(work.sha)}`, {
-          sha: work.sha,
-          observations: candidateRun.observations.map((observation) => {
-            const before = beforeTargets.get(observation.targetId);
-            const after = session.targets.find((target) => target.id === observation.targetId);
-            return {
+      const primary: BisectSearchPhase = {
+        id: 'primary',
+        status: 'pending',
+        goodSha: input.gitRange.goodSha,
+        badSha: input.gitRange.badSha,
+        orderedCommits: input.gitRange.orderedCommits,
+        commitSubjects: input.gitRange.commitSubjects,
+        commitParents: input.gitRange.commitParents,
+        targets: session.targets,
+        attempts: [],
+      };
+      session = { ...session, primary };
+      let attemptNumber = 0;
+      const completedPrimary = await runSearchPhase({
+        phase: primary,
+        preferredRefreshMode: preferredRefreshMode(input.config),
+        nextAttemptId: () => `primary-${++attemptNumber}`,
+        now: deps.now,
+        checkpoint(phase) {
+          session = { ...session, primary: phase, targets: phase.targets };
+          persist();
+        },
+        async measure(work) {
+          const targets = session.targets.filter((target) => work.targetIds.includes(target.id));
+          logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
+            sha: work.sha,
+            categories: work.categories,
+            tests: work.tests,
+            targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
+          });
+          const candidateRun = await measure({
+            sha: work.sha,
+            categories: work.categories,
+            tests: work.tests,
+            targets,
+          });
+          logDecision('candidate-observed', `Measured ${candidateRun.observations.length} observation(s) at ${shortSha(work.sha)}`, {
+            sha: work.sha,
+            observations: candidateRun.observations.map((observation) => ({
               targetId: observation.targetId,
               present: observation.present,
-              previousInterval: before ? intervalLogData(before, input.gitRange.orderedCommits) : null,
-              nextInterval: after ? intervalLogData(after, input.gitRange.orderedCommits) : null,
-              status: after?.status,
-              firstBadSha: after?.firstBadSha,
-            };
-          }),
-        });
-        persist();
-      }
+            })),
+          });
+          return candidateRun;
+        },
+      });
+      session = { ...session, primary: completedPrimary, targets: completedPrimary.targets };
     }
     checkCancellation();
   } catch (error) {
