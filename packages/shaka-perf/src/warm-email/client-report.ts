@@ -2366,8 +2366,12 @@ async function buildClientReportModel(
       'WCAG - passes at zero critical barriers',
     ]
     : [];
-  const a11ySitePrompt = a11yWorst && a11yWorstFamilyCount > 0
-    ? buildA11ySitePrompt({
+  const a11yPromptFindings = a11yFamilyPromptFindings(a11yMeasurable, a11yCountedFamilies, sc.url, true);
+  const a11yLowerImpactPromptFindings = a11yFamilySummary.notCountedExtras.length > 0
+    ? a11yFamilyPromptFindings(a11yMeasurable, a11yFamilySummary.notCountedExtras, sc.url, false)
+    : undefined;
+  const a11ySitePromptData = a11yWorst && a11yWorstFamilyCount > 0
+    ? {
       url: sc.url,
       host: a11yPromptCtx.host,
       date: a11yPromptCtx.date,
@@ -2375,12 +2379,22 @@ async function buildClientReportModel(
       highImpactCount: highImpactTotal,
       worstPage: { url: a11yPageUrl(sc.url, a11yWorst), highImpactCount: a11yWorstFamilyCount },
       pageUrls: a11yMeasurable.map((view) => a11yPageUrl(sc.url, view)),
-      findings: a11yFamilyPromptFindings(a11yMeasurable, a11yCountedFamilies, sc.url, true),
-      ...(a11yFamilySummary.notCountedExtras.length > 0
-        ? { lowerImpactFindings: a11yFamilyPromptFindings(a11yMeasurable, a11yFamilySummary.notCountedExtras, sc.url, false) }
+      findings: a11yPromptFindings,
+      ...(a11yLowerImpactPromptFindings
+        ? { lowerImpactFindings: a11yLowerImpactPromptFindings }
         : {}),
       ...(a11yFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yFamilySummary.smallerNotesCount } : {}),
-    })
+    }
+    : undefined;
+  const a11ySitePrompt = a11ySitePromptData
+    ? buildA11ySitePrompt(a11ySitePromptData)
+      ?? buildA11ySitePrompt({
+        ...a11ySitePromptData,
+        findings: a11ySitePromptData.findings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding),
+        ...(a11ySitePromptData.lowerImpactFindings
+          ? { lowerImpactFindings: a11ySitePromptData.lowerImpactFindings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding) }
+          : {}),
+      })
     : undefined;
   const a11yAffects = (scan: AccessibilityScan): string =>
     [a11yAffectsProse(scan), a11yNoNumberLine()].filter(Boolean).join(' ');

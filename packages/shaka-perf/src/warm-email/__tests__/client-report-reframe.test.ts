@@ -404,6 +404,16 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('largely a shared component');
   });
 
+  it('keeps the a11y prompt when shared evidence fails downstream sanitization', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.reveal-token' }] } }),
+      basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.reveal-token' }] } }),
+    ]));
+
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+    expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
+  });
+
   it('uses the score-badge threshold for AI tiles and page cards', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ agent: { rawWords: 300, renderedWords: 300, withoutStructuredData: true } }),
