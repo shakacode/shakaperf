@@ -53,6 +53,7 @@ import {
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
+  aiSiteWideContextLine,
   a11yNoNumberLine,
   botWallFooterSentence,
   perfCheckLine,
@@ -63,14 +64,19 @@ import {
 import { DEFAULT_MOBILE_TRAFFIC_SHARE } from './cost-model';
 import {
   BENCHMARK_LINES,
+  FCP_HERO_METRIC,
   MATERIALITY_FLOOR_USD_PER_MONTH,
   MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO,
   RECOVERY_BANDS,
   a11yContrastGap,
   a11yFixText,
+  benchmarkScaleGeometry,
+  benchmarkMultiple,
   bookingLine,
   countedZeroLine,
   dimSeverityRank,
+  heroMetricCountedZeroLine,
+  heroMetricGapSubLines,
   moneyPage,
   perfFixText,
   perfGap,
@@ -78,7 +84,7 @@ import {
   perfStakesProse,
   worstContrastRatio,
 } from './client-report-model/cost';
-import { buildCopyPrompt } from './copy-prompt';
+import { buildA11ySitePrompt, buildCopyPrompt, buildPerfSitePrompt } from './copy-prompt';
 import {
   renderClientReportHtml,
   type ClientReportModel,
@@ -126,6 +132,7 @@ import {
   reportPagePerfStatus,
   reportPerfStatus,
   selectPerfCostAnchor,
+  SCORE_BADGE_POLICY,
   type Problem,
   type ProblemKind,
   type Status,
@@ -133,8 +140,8 @@ import {
 } from './client-report-model/perf';
 import {
   a11yAffectsProse,
-  a11yFixClause,
   a11yPromptRules,
+  summarizeA11yRuleFamilies,
 } from './client-report-model/a11y';
 
 export {
@@ -518,6 +525,47 @@ const stripTags = (s: string): string => s.replace(/<[^>]+>/g, '');
 
 function mb(kb: number): string {
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
+}
+
+function displayTimingMs(value: number | undefined): number | undefined {
+  return value === undefined || !Number.isFinite(value) ? undefined : Number((value / 1000).toFixed(1)) * 1000;
+}
+
+function displayFcpGapSubLines(
+  pages: Parameters<typeof heroMetricGapSubLines>[0],
+  anchor: Parameters<typeof heroMetricGapSubLines>[1],
+): string[] {
+  const lines = heroMetricGapSubLines(pages, anchor, FCP_HERO_METRIC);
+  const fcpValues = pages.map((page) => page.fcpMs).filter((value): value is number => value !== undefined);
+  if (fcpValues.length < 2) return lines;
+  const displayedAverageMs = displayTimingMs(fcpValues.reduce((sum, value) => sum + value, 0) / fcpValues.length);
+  if (displayedAverageMs === undefined) return lines;
+  const multiple = benchmarkMultiple(displayedAverageMs, FCP_HERO_METRIC.goodMs);
+  const suffix = multiple ? ` - ${multiple} the line` : '';
+  const averageLine = `site average: ${(displayedAverageMs / 1000).toFixed(1)}s${suffix}`;
+  return lines.map((line) => line.startsWith('site average: ') ? averageLine : line);
+}
+
+type CompletePerfPromptFacts = {
+  name: string;
+  lcpMs: number | undefined;
+  fcpMs: number;
+  jsKb: number;
+  downloadsBeforeLcpKb: number | undefined;
+  downloadsKb: number;
+};
+
+function hasCompletePerfPromptFacts(page: {
+  name: string;
+  lcpMs: number | undefined;
+  fcpMs?: number;
+  jsKb?: number;
+  downloadsBeforeLcpKb: number | undefined;
+  downloadsKb?: number;
+}): page is CompletePerfPromptFacts {
+  return page.fcpMs !== undefined
+    && page.jsKb !== undefined
+    && page.downloadsKb !== undefined;
 }
 
 // Per-problem video caption. `slow-lcp` is intentionally absent: its caption
@@ -1608,22 +1656,6 @@ async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Pro
   }
 }
 
-// "Start here" as one plain sentence (not the "Page (label)" list the other tabs
-// use). `allSameFix` gates the "same fix" rollup so it is only claimed when the
-// other pages share the worst page's top fix.
-function a11yStartHereLead(worst: A11yPageView, otherPages: number, allSameFix: boolean): string {
-  const top = sortViolations(worst.scan.violations)[0];
-  const clause = a11yFixClause(top ? top.ruleId : '');
-  const name = worst.page.name.replace(/[\s:.,;-]+$/, ''); // page names are <title>s; trim trailing punctuation
-  let rest = '';
-  if (otherPages > 0) {
-    rest = allSameFix
-      ? ` The other ${otherPages} ${otherPages === 1 ? 'page needs' : 'pages need'} the same fix.`
-      : ` The other ${otherPages} ${otherPages === 1 ? 'page has' : 'pages have'} their own barriers; see the cards below.`;
-  }
-  return `Start with your worst-affected page (${name}): ${clause}.${rest}`;
-}
-
 interface A11yPromptContext {
   host: string;
   date: string;
@@ -1643,11 +1675,102 @@ function a11yCopyPromptForView(view: A11yPageView, siteUrl: string, ctx: A11yPro
   });
 }
 
+function a11yFamilyId(violation: AccessibilityViolation): string | undefined {
+  const summary = summarizeA11yRuleFamilies([{ violations: [violation] }], 1);
+  return summary.countedFamilies[0]?.id ?? summary.notCountedExtras[0]?.id;
+}
+
+function isHighImpactA11yViolation(violation: AccessibilityViolation): boolean {
+  return violation.impact === 'critical' || violation.impact === 'serious';
+}
+
+function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
+  const selectors = new Set<string>();
+  for (const node of violation.nodes) {
+    for (const target of node.target) {
+      const selector = (Array.isArray(target) ? target.join(' ') : target).trim();
+      if (selector) selectors.add(selector);
+    }
+  }
+  return [...selectors];
+}
+
+// The prompt builder intentionally rejects untrusted or incomplete selectors.
+// Keep this optional shared-component evidence to a conservative subset it accepts.
+function safeA11ySharedSelector(selector: string): string | undefined {
+  const normalized = selector.replace(/\s+/g, ' ').trim();
+  const simpleSelector = /^(?:[a-z][a-z0-9-]*|[.#][A-Za-z_-][\w-]*)(?:[.#][A-Za-z_-][\w-]*)*(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
+  return normalized.length > 0 && normalized.length <= 240 && simpleSelector.test(normalized)
+    ? normalized
+    : undefined;
+}
+
+function a11yFamilyPromptFindings(
+  views: readonly A11yPageView[],
+  families: readonly { id: string; label: string; pageCount: number }[],
+  siteUrl: string,
+  highImpact: boolean,
+): Array<{
+  familyId: string;
+  label: string;
+  impact: string;
+  pageCount: number;
+  pageUrls: string[];
+  verificationRuleIds: string[];
+  sharedComponent?: { selector: string };
+}> {
+  return families.map((family) => {
+    const pageUrls = new Set<string>();
+    const ruleIds = new Set<string>();
+    const selectorPages = new Map<string, Set<string>>();
+    let critical = false;
+    let serious = false;
+    for (const view of views) {
+      for (const violation of view.scan.violations) {
+        if (a11yFamilyId(violation) !== family.id || isHighImpactA11yViolation(violation) !== highImpact) continue;
+        const pageUrl = a11yPageUrl(siteUrl, view);
+        pageUrls.add(pageUrl);
+        ruleIds.add(violation.ruleId);
+        critical ||= violation.impact === 'critical';
+        serious ||= violation.impact === 'serious';
+        for (const selector of a11yViolationSelectors(violation)) {
+          const pages = selectorPages.get(selector) ?? new Set<string>();
+          pages.add(pageUrl);
+          selectorPages.set(selector, pages);
+        }
+      }
+    }
+    const sharedSelector = [...selectorPages]
+      .filter(([, pages]) => pages.size > 1)
+      .map(([selector]) => safeA11ySharedSelector(selector))
+      .find((selector): selector is string => selector !== undefined);
+    return {
+      familyId: family.id,
+      label: family.label,
+      impact: critical ? 'critical' : serious ? 'serious' : 'moderate',
+      pageCount: family.pageCount,
+      pageUrls: [...pageUrls],
+      verificationRuleIds: [...ruleIds],
+      ...(sharedSelector ? { sharedComponent: { selector: sharedSelector } } : {}),
+    };
+  });
+}
+
+function a11yFamilyReach(pageCount: number, pageTotal: number): string {
+  return pageCount === pageTotal
+    ? `all ${pageTotal} ${pageTotal === 1 ? 'page' : 'pages'}`
+    : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
+}
+
+function a11yFamilyLine(family: { label: string; pageCount: number }, pageTotal: number): string {
+  return `${family.label} - ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+}
+
 async function a11yCardModel(view: A11yPageView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
   const { page, scan, counts, client } = view;
   const crops = await a11yCropFrames(scan, true);
   const score = client?.score;
-  const status: ClientReportStatus = typeof score === 'number' ? scoreBucket(score) : 'poor';
+  const status: ClientReportStatus = typeof score === 'number' ? scoreStatus(score) : 'poor';
   const topLabel = sortViolations(scan.violations)[0] ? a11yIssueLabel(sortViolations(scan.violations)[0].ruleId) : '';
   const hi = counts.critical + counts.serious;
   const summary = client?.summary
@@ -1845,7 +1968,7 @@ function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): Cl
     name: page.name,
     path: page.startingPath || '/',
     score: struct.score,
-    status: struct.bucket,
+    status: scoreStatus(struct.score),
     capped: struct.shellCapped,
     headlineHtml: lead.headline,
     factors: struct.categories.map(agentFactor),
@@ -1949,18 +2072,6 @@ async function buildClientReportModel(
     if (liveUrl) row.liveUrl = liveUrl;
     return row;
   });
-  // "Start here": the DISTINCT slow patterns (deduped by problem kind), each on one
-  // page with its own short problem (the lead chip, e.g. "biggest piece at 4.2s").
-  const perfStartHere = buildStartHere(
-    rankedCarded.map((rp) => {
-      const problem = dominantPerfProblem(rp)?.problem ?? rp.lead;
-      return { page: rp.page.name, issue: problem.chip || stripTags(problem.headline), key: problem.kind };
-    }),
-    fineRows.length,
-    'a similar slowdown',
-    'a different problem',
-    (n) => `${n} ${n === 1 ? 'page loads' : 'pages load'} fine`,
-  );
   // Show Performance whenever there's any page to list (failed pages land in perfFine).
   const hasPerf = perfCards.length > 0 || perfFine.length > 0;
   const perfScore = sc.score !== null ? Math.round(sc.score.avg) : undefined;
@@ -1978,12 +2089,106 @@ async function buildClientReportModel(
   // line. Otherwise retain the established dominant-problem ranking.
   const perfCostProblem = rankedPerfCostCandidates[0];
   const perfCostAnchor = selectPerfCostAnchor(rankedPerfCostCandidates, BENCHMARK_LINES.lcpMs.good);
+  const fcpCostCandidates = ctx.measured
+    .map(({ page }) => ({ page, fcpMs: displayTimingMs(metricVal(page, 'FCP')) }))
+    .filter((candidate): candidate is { page: PagePerf; fcpMs: number } => candidate.fcpMs !== undefined && candidate.fcpMs > FCP_HERO_METRIC.goodMs)
+    .sort((a, b) => b.fcpMs - a.fcpMs);
+  // Prefer a slow homepage, otherwise the slowest measured first-content page.
+  const fcpCostAnchor = fcpCostCandidates.find((candidate) => candidate.page.startingPath === '/') ?? fcpCostCandidates[0];
   const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
   const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   let perfCost: ClientReportCostBlock | undefined;
   if (hasPerf) {
-    if (perfStatus === 'good') {
+    if (!perfCouldNotMeasure && fcpCostAnchor) {
+      // The anchor drives the headline and metric-specific reframe copy so the
+      // measured block tells one story. Supporting prompt and verification
+      // details stay on the established dominant page.
+      const anchorPage = fcpCostAnchor.page;
+      const anchorUrl = perfPageUrl(sc.url, anchorPage);
+      const pageSpeedUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(anchorUrl)}`;
+      const checkProfile = sc.throttleProfile || 'a profile not recorded in this audit';
+      const perfFactPages = ctx.measured.map(({ page }) => ({
+        name: page.name,
+        lcpMs: metricVal(page, 'LCP'),
+        fcpMs: displayTimingMs(metricVal(page, 'FCP')),
+        jsKb: metricVal(page, 'js'),
+        downloadsBeforeLcpKb: metricVal(page, 'downloads-before-LCP'),
+        downloadsKb: metricVal(page, 'downloads'),
+      }));
+      const anchorFacts = {
+        name: anchorPage.name,
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        fcpMs: displayTimingMs(metricVal(anchorPage, 'FCP')),
+        jsKb: metricVal(anchorPage, 'js'),
+        downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
+        downloadsKb: metricVal(anchorPage, 'downloads'),
+      };
+      const heroFcpMs = fcpCostAnchor.fcpMs;
+      const rawGap = perfGap('blank', { fcpMs: heroFcpMs });
+      const gap = rawGap && {
+        ...rawGap,
+        lineOwner: "Google's Lighthouse benchmark - first contentful paint",
+      };
+      const pageUrls = ctx.measured.map(({ page }) => perfPageUrl(sc.url, page));
+      const completePromptPages = perfFactPages
+        .map((facts, index) => ({ facts, page: ctx.measured[index].page, url: pageUrls[index] }))
+        .filter((candidate): candidate is { facts: CompletePerfPromptFacts; page: PagePerf; url: string } => hasCompletePerfPromptFacts(candidate.facts));
+      const promptHomepage = completePromptPages.find((candidate) => candidate.page.startingPath === '/');
+      const perfSitePrompt = promptHomepage?.facts.downloadsBeforeLcpKb === undefined
+        ? undefined
+        : buildPerfSitePrompt({
+          url: sc.url,
+          host: perfPromptCtx.host,
+          date: perfPromptCtx.date,
+          viewportLabel: perfPromptCtx.viewportLabel,
+          throttleProfile: perfPromptCtx.throttleProfile,
+          pageCount: completePromptPages.length,
+          homepage: promptHomepage.facts,
+          pages: completePromptPages.map((candidate) => candidate.facts),
+          pageUrls: completePromptPages.map((candidate) => candidate.url),
+        });
+      // Incomplete audits cannot form the measured site-wide brief. Preserve an
+      // actionable handoff for that page without inventing the missing facts.
+      const perfHandoff = perfSitePrompt ?? perfCopyPromptForPage(anchorPage, sc.url, perfPromptCtx);
+      const zeroLine = heroMetricCountedZeroLine(perfFactPages, FCP_HERO_METRIC);
+      const beforeContentKb = metricVal(anchorPage, 'downloads-before-LCP');
+      const fixText = [
+        beforeContentKb === undefined
+          ? undefined
+          : `Start where the wait is: ${anchorPage.name} pulls ${mb(beforeContentKb)} before its main content shows.`,
+        'The target: something visible under 1.8 seconds on the same phone profile.',
+      ].filter((line): line is string => !!line).join(' ');
+      perfCost = {
+        tab: 'perf',
+        state: 'measured',
+        headline: gap ? `nothing for the first ${gap.measuredLabel}` : 'first content is slow on this page',
+        chip: 'measured',
+        checkLine: perfCheckLine(anchorUrl, sameAsPsiDefaultProfile(sc.throttleProfile), checkProfile),
+        pageSpeedUrl,
+        affectsProse: perfAffectsProse({ kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }),
+        ...(perfHandoff ? { sitePrompts: { perf: perfHandoff } } : {}),
+        ...(gap ? { gap } : {}),
+        ...(gap && heroFcpMs !== undefined ? { scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs) } : {}),
+        gapSubLines: displayFcpGapSubLines(perfFactPages, anchorFacts),
+        stakes: {
+          kind: 'at-risk',
+          prose: perfStakesProse('late-paint'),
+          studies: PERF_INDUSTRY_DATA_STATS,
+          expanderIntro: perfStudiesIntro(),
+          expanderFooter: perfStudiesFooter(),
+        },
+        fix: { tone: 'primary', text: fixText },
+        calculator: {
+          mobileSharePrefill: DEFAULT_MOBILE_TRAFFIC_SHARE,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: MATERIALITY_FLOOR_USD_PER_MONTH,
+          inquiryNoun: 'inquiry',
+        },
+        ...(zeroLine ? { countedZeroLine: zeroLine } : {}),
+        scoreBadgePolicy: SCORE_BADGE_POLICY,
+      };
+    } else if (perfStatus === 'good') {
       const everyMeasuredLcpUnderGoodLine = ctx.measured.every((rp) => {
         const lcpMs = metricVal(rp.page, 'LCP');
         return lcpMs !== undefined && lcpMs <= BENCHMARK_LINES.lcpMs.good;
@@ -1994,9 +2199,9 @@ async function buildClientReportModel(
         ...(everyMeasuredLcpUnderGoodLine ? {} : { headline: NO_MATERIAL_LOSS }),
       };
     } else if (!perfCouldNotMeasure && perfCostAnchor && isPerfCostProblem(perfCostAnchor.problem)) {
-      // The anchor drives the headline and metric-specific reframe copy so the
-      // measured block tells one story. Supporting prompt and verification
-      // details stay on the established dominant page.
+      // Keep the established treatment for an otherwise healthy FCP that has a
+      // separate LCP, interaction, or layout-shift problem. The C treatment
+      // above is intentionally reserved for an FCP delay so it stays one metric.
       const supportingProblem = perfCostProblem ?? perfCostAnchor;
       const supportingPerfProblem = isPerfCostProblem(supportingProblem.problem)
         ? supportingProblem.problem
@@ -2061,6 +2266,7 @@ async function buildClientReportModel(
           inquiryNoun: 'inquiry',
         },
         ...(zeroLine ? { countedZeroLine: zeroLine } : {}),
+        scoreBadgePolicy: SCORE_BADGE_POLICY,
       };
     }
   }
@@ -2080,6 +2286,8 @@ async function buildClientReportModel(
   const a11yCouldNotMeasure = a11yMeasurable.length === 0 && a11yBlockedViews.length > 0;
   const cardedA11y = a11yMeasurable.filter((v) => hasMajorA11yBarrier(v.counts));
   const fineA11y = a11yMeasurable.filter((v) => !hasMajorA11yBarrier(v.counts));
+  const a11yFindingScans = a11yMeasurable.map((view) => view.scan);
+  const a11yFamilySummary = summarizeA11yRuleFamilies(a11yFindingScans);
   const a11yPromptCtx: A11yPromptContext = {
     host: agentPromptHost(sc.url, domain),
     date: agentPromptDate(dateStr, sc.generatedAt),
@@ -2090,7 +2298,7 @@ async function buildClientReportModel(
     const row: ClientReportModel['a11yFine'][number] = {
       name: v.page.name,
       path: v.page.startingPath || '/',
-      status: typeof score === 'number' ? scoreBucket(score) : 'good',
+      status: typeof score === 'number' ? scoreStatus(score) : 'good',
       summary: v.client?.summary ? dashSafe(v.client.summary) : 'Only minor issues here.',
     };
     if (typeof score === 'number') row.score = score;
@@ -2100,7 +2308,7 @@ async function buildClientReportModel(
   const a11yScore = !a11yCouldNotMeasure && a11yScores.length > 0
     ? Math.round(a11yScores.reduce((sum, score) => sum + score, 0) / a11yScores.length)
     : undefined;
-  const highImpactTotal = cardedA11y.reduce((n, v) => n + v.counts.critical + v.counts.serious, 0);
+  const highImpactTotal = a11yFamilySummary.headlineCount;
   const criticalTotal = cardedA11y.reduce((n, v) => n + v.counts.critical, 0);
   const a11yStatus: ClientReportStatus = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
   // top issue labels across carded pages, impact-weighted, worst first
@@ -2112,21 +2320,49 @@ async function buildClientReportModel(
     }
   }
   const a11yTopIssues = [...a11yIssueWeight.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l).slice(0, 2);
-  // "Start here": one plain instruction sentence on the worst page (the first
-  // card, so the named page matches what the reader sees first), with a "same
-  // fix" line only when the other pages share that fix.
   const a11yWorst = cardedA11y[0];
-  let a11yStartHere: ClientReportStartHere | undefined;
-  if (a11yWorst) {
-    const worstClause = a11yFixClause(sortViolations(a11yWorst.scan.violations)[0]?.ruleId ?? '');
-    const others = cardedA11y.slice(1);
-    const allSameFix = others.length > 0 && others.every((v) => a11yFixClause(sortViolations(v.scan.violations)[0]?.ruleId ?? '') === worstClause);
-    a11yStartHere = { items: [], lead: a11yStartHereLead(a11yWorst, others.length, allSameFix) };
-  }
   let a11yCost: ClientReportCostBlock | undefined;
-  const a11yFindingScans = a11yMeasurable.map((view) => view.scan);
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
+  // The model already sorts widest reach first, then its fixed family priority.
+  const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
+  const widestA11yFamily = a11yCountedFamilies[0];
+  const a11yFixTextWithLead = widestA11yFamily
+    ? `Start with ${widestA11yFamily.label} - it reaches ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
+    : a11yFix;
+  const a11yWorstFamilyCount = a11yWorst
+    ? summarizeA11yRuleFamilies([a11yWorst.scan]).headlineCount
+    : 0;
+  const a11yFindingLines = a11yWorst
+    ? [
+      `worst page: ${a11yWorst.page.name} - ${a11yWorstFamilyCount} high-impact`,
+      ...(criticalTotal > 0 ? ['Critical accessibility barriers found'] : []),
+      ...a11yCountedFamilies.map((family) => a11yFamilyLine(family, a11yMeasurable.length)),
+      ...(a11yFamilySummary.notCountedExtras.length > 0
+        ? [`also seen, not counted in the ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
+        : []),
+      ...(a11yFamilySummary.smallerNotesCount > 0
+        ? [`plus ${a11yFamilySummary.smallerNotesCount} smaller ${a11yFamilySummary.smallerNotesCount === 1 ? 'note' : 'notes'}`]
+        : []),
+      'WCAG - passes at zero critical barriers',
+    ]
+    : [];
+  const a11ySitePrompt = a11yWorst && a11yWorstFamilyCount > 0
+    ? buildA11ySitePrompt({
+      url: sc.url,
+      host: a11yPromptCtx.host,
+      date: a11yPromptCtx.date,
+      pageCount: a11yMeasurable.length,
+      highImpactCount: highImpactTotal,
+      worstPage: { url: a11yPageUrl(sc.url, a11yWorst), highImpactCount: a11yWorstFamilyCount },
+      pageUrls: a11yMeasurable.map((view) => a11yPageUrl(sc.url, view)),
+      findings: a11yFamilyPromptFindings(a11yMeasurable, a11yCountedFamilies, sc.url, true),
+      ...(a11yFamilySummary.notCountedExtras.length > 0
+        ? { lowerImpactFindings: a11yFamilyPromptFindings(a11yMeasurable, a11yFamilySummary.notCountedExtras, sc.url, false) }
+        : {}),
+      ...(a11yFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yFamilySummary.smallerNotesCount } : {}),
+    })
+    : undefined;
   const a11yAffects = (scan: AccessibilityScan): string =>
     [a11yAffectsProse(scan), a11yNoNumberLine()].filter(Boolean).join(' ');
   if (a11yCouldNotMeasure) {
@@ -2136,11 +2372,14 @@ async function buildClientReportModel(
     a11yCost = {
       tab: 'a11y',
       state: 'measured',
-      headline: criticalTotal > 0 ? 'Critical accessibility barriers found' : 'Serious accessibility barriers found',
+      headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}.`,
       affectsProse: a11yAffects(a11yWorst.scan),
-      sitePrompt: a11yCopyPromptForView(a11yWorst, sc.url, a11yPromptCtx),
+      ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
+      gapSubLines: a11yFindingLines,
       ...(a11yGap ? { gap: a11yGap } : {}),
-      ...(a11yFix ? { fix: { tone: 'secondary' as const, text: a11yFix } } : {}),
+      ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
+      scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
   } else if (fineA11y.some((view) => view.scan.violations.length > 0)) {
     const strongestMinorScan = fineA11y.find((view) => view.scan.violations.length > 0)!.scan;
@@ -2154,8 +2393,16 @@ async function buildClientReportModel(
         prose: `${NO_MATERIAL_LOSS} Nothing we measured is turning visitors away today - that is rarer than it sounds, and worth protecting.`,
       },
       ...(a11yGap ? { gap: a11yGap } : {}),
-      ...(a11yFix ? { fix: { tone: 'secondary' as const, text: a11yFix } } : {}),
+      ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
+      scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
+  }
+  // The model's Lighthouse score policy defines a strong page as 90+ with no serious finding.
+  const a11yStrongPages = fineA11y
+    .filter((view) => typeof view.client?.score === 'number' && scoreStatus(view.client.score) === 'good')
+    .map((view) => ({ name: view.page.name, score: view.client!.score! }));
+  if (a11yCost && a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
+    a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
   }
 
   // ---- AI VISIBILITY (Agent Ready) ----
@@ -2168,7 +2415,6 @@ async function buildClientReportModel(
   let agentAccessBlocked = false;
   let agentCoveragePct: number | undefined;
   let agentTopGap: string | undefined;
-  let agentStartHere: ClientReportStartHere | undefined;
   let agentBlocked: ClientReportBlockedPage[] = [];
   let agentCouldNotMeasure = false;
   let agentCost: ClientReportCostBlock | undefined;
@@ -2206,15 +2452,22 @@ async function buildClientReportModel(
         agentAccessBlocked = overall.accessBlocked;
         agentSite = {
           score: overall.access.score,
-          status: overall.access.bucket,
+          status: scoreStatus(overall.access.score),
           checks: overall.access.category.items.map((it) => ({
             ok: it.state === 'pass' ? 'ok' : it.state === 'na' ? 'na' : 'bad',
             tx: dashSafe(it.detail),
           })),
         };
-        const cardViews = agentMeasurable.filter((v) => v.struct.bucket !== 'good');
-        const fineViews = agentMeasurable.filter((v) => v.struct.bucket === 'good');
+        const fineViews = agentMeasurable.filter((v) => scoreStatus(v.struct.score) === 'good' && v.struct.bucket === 'good');
+        const cardViews = agentMeasurable.filter((v) => !fineViews.includes(v));
         const reachableForCost = agentMeasurable.filter((v) => v.struct.rawReachable);
+        const siteWideReadable = reachableForCost.length > 0 && reachableForCost.length === agentMeasurable.length
+          ? boundedCoveragePct(
+            reachableForCost.reduce((sum, view) => sum + agentRawWords(view), 0),
+            reachableForCost.reduce((sum, view) => sum + agentRenderedWords(view), 0),
+          )
+          : undefined;
+        if (siteWideReadable !== undefined) agentCoveragePct = siteWideReadable;
         const claimableForCost = reachableForCost.filter((v) => agentRenderedWords(v) >= MIN_AGENT_COST_WORDS);
         const renderedWords = reachableForCost.reduce((sum, v) => sum + agentRenderedWords(v), 0);
         const allRenderedWords = agentMeasurable.reduce((sum, v) => sum + agentRenderedWords(v), 0);
@@ -2225,6 +2478,14 @@ async function buildClientReportModel(
         const worstMissingShare = 1 - boundedCoverageRatio(worstRawWords, worstRenderedWords);
         const worstMissingPct = 100 - worstCoveragePct;
         const worstPresentWords = boundedPresentWords(worstRawWords, worstRenderedWords);
+        const homepageCostPage = reachableForCost.find((view) => view.page.startingPath === '/');
+        const homepageRawWords = homepageCostPage ? agentRawWords(homepageCostPage) : 0;
+        const homepageRenderedWords = homepageCostPage ? agentRenderedWords(homepageCostPage) : 0;
+        const homepagePresentWords = boundedPresentWords(homepageRawWords, homepageRenderedWords);
+        const homepageInvisiblePct = 100 - boundedCoveragePct(homepageRawWords, homepageRenderedWords);
+        const costPageLabel = worstCostPage?.page.startingPath === '/'
+          ? 'homepage'
+          : worstCostPage?.page.name.toLowerCase() ?? 'page';
         const aiAffects = `${AI_AFFECTS_PROSE} ${aiSingleCountLine()}`;
         const aiFix = siteSignals?.llmsTxtConfirmedAbsent === true
           ? {
@@ -2256,7 +2517,12 @@ async function buildClientReportModel(
             tab: 'ai',
             state: 'measured',
             headline: aiHeadline(worstMissingPct, worstPresentWords, worstRenderedWords),
-            headlineSub: aiHeadlineSub(worstPresentWords, worstRenderedWords),
+            headlineSub: [
+              aiHeadlineSub(worstPresentWords, worstRenderedWords),
+              ...(siteWideReadable === undefined || worstCoveragePct >= siteWideReadable
+                ? []
+                : [aiSiteWideContextLine(siteWideReadable, costPageLabel)]),
+            ].join(' '),
             chip: 'measured',
             checkLine: aiCheckLine(worstUrl),
             affectsProse: aiAffects,
@@ -2274,12 +2540,20 @@ async function buildClientReportModel(
               rawState: agentRawStateForPrompt(worstCostPage),
             }),
             stats: [...AI_INDUSTRY_DATA_STATS],
+            ...(homepageCostPage ? {
+              aiTiles: {
+                invisiblePercent: homepageInvisiblePct,
+                readableWords: homepagePresentWords,
+                totalWords: homepageRenderedWords,
+              },
+            } : {}),
             stakes: {
               kind: 'at-risk',
               prose: AI_AFFECTS_PROSE,
               studies: AI_INDUSTRY_DATA_STATS,
             },
             ...(aiFix ? { fix: aiFix } : {}),
+            scoreBadgePolicy: SCORE_BADGE_POLICY,
           };
         } else if (agentCostState === 'zero' && worstCostPage) {
           agentCost = {
@@ -2294,6 +2568,7 @@ async function buildClientReportModel(
               expanderIntro: 'These are the studies behind this check - they describe a risk your site is not exposed to.',
             },
             ...(aiFix ? { fix: aiFix } : {}),
+            scoreBadgePolicy: SCORE_BADGE_POLICY,
           };
         }
         agentCards = cardViews.map((v) => agentCardModel(v, agentPromptCtx));
@@ -2303,22 +2578,14 @@ async function buildClientReportModel(
           name: v.page.name,
           path: v.page.startingPath || '/',
           score: v.struct.score,
-          status: v.struct.bucket,
+          status: scoreStatus(v.struct.score),
         }));
-        const reachable = agentMeasurable.filter((v) => v.struct.rawReachable);
-        if (reachable.length > 0) agentCoveragePct = Math.round((reachable.reduce((s, v) => s + v.struct.coverage, 0) / reachable.length) * 100);
-        // "Start here": the DISTINCT gaps (deduped), each on one page (in parens) + rest.
-        agentStartHere = buildStartHere(
-          cardViews.map((v) => {
-            const gap = agentPageFindings(v.struct)[0];
-            const label = gap?.label || 'content needs JavaScript to read';
-            return { page: v.page.name, issue: label.toLowerCase(), key: label };
-          }),
-          fineViews.length,
-          'similar gaps',
-          'different gaps',
-          (n) => `${n} ${n === 1 ? 'page reads' : 'pages read'} well for AI`,
-        );
+        if (agentCost && agentFine.length > 0) {
+          agentCost.strongPageGroup = {
+            label: 'Strong pages',
+            pages: agentFine.map(({ name, score }) => ({ name, score })),
+          };
+        }
       }
     } catch (err) {
       console.warn(chalk.yellow(`shaka-perf: the AI visibility section failed to render, omitting it: ${(err as Error).message}`));
@@ -2540,9 +2807,6 @@ async function buildClientReportModel(
     footnote,
   };
   if (agentSite) model.agentSite = agentSite;
-  if (perfStartHere) model.perfStartHere = perfStartHere;
-  if (a11yStartHere) model.a11yStartHere = a11yStartHere;
-  if (agentStartHere) model.agentStartHere = agentStartHere;
   return model;
 }
 
