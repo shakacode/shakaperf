@@ -2018,7 +2018,7 @@ describe('renderClientReportHtml', () => {
           mobileSharePrefill: 0.57,
           bands: RECOVERY_BANDS,
           materialityFloorUsdPerMonth: 75,
-          inquiryNoun: 'inquiries',
+          inquiryNoun: 'inquiry',
         },
         countedZeroLine: 'Visitor loss is counted once in this report.',
         scale: {
@@ -2165,7 +2165,9 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('data-disclose="cr-perf-calc-math"');
     expect(html).toContain("Math.floor(n).toLocaleString('en-US')");
     expect(html).toContain("put(headline, 'about ' + dollars(usdYearLo) + ' to ' + dollars(usdYearHi) + ' a year')");
-    expect(html).toContain("var valueDisplay = '$' + valueText");
+    expect(html).toContain("function countRange(lo, hi){ return hi < 1 ? 'under 1'");
+    expect(html).toContain("function valueDollars(n){ return '$' + n.toLocaleString('en-US'");
+    expect(html).toContain('var valueDisplay = valueDollars(valuePerInquiryUsd)');
     expect(html).toContain("put(subline, dollars(usdMonthLo) + ' to ' + dollars(usdMonthHi) + ' a month - at ' + valueDisplay");
     expect(html).toContain("put(subline, card.getAttribute('data-calc-tiny') || '')");
     expect(html).toContain("var msg = card.getAttribute('data-calc-partial') || ''");
@@ -2228,7 +2230,7 @@ describe('renderClientReportHtml', () => {
       ['data-calc-floor', '50'],
       ['data-calc-recovery-cap', String(RECOVERY_CAP)],
       ['data-calc-prefill', '52'],
-      ['data-calc-noun', 'inquiries'],
+      ['data-calc-noun', 'inquiry'],
       ['data-calc-bands', JSON.stringify(RECOVERY_BANDS)],
       ['data-calc-partial', 'Add valid monthly inquiries and phone share to see the estimate.'],
       ['data-calc-tiny', 'Under $50 a month at your numbers.'],
@@ -2254,6 +2256,11 @@ describe('renderClientReportHtml', () => {
     const input = (target: Field) => target.listeners.get('input')?.();
 
     expect(output.hidden).toBe(true);
+    inquiries.value = '10';
+    input(inquiries);
+    expect(headline.textContent).toBe('under 1 inquiry a month');
+    expect(subline.textContent).toBe('add what one inquiry is worth to see the money');
+
     inquiries.value = '100';
     input(inquiries);
     expect(headline.textContent).toBe('2 to 5 more inquiries a month');
@@ -2273,7 +2280,7 @@ describe('renderClientReportHtml', () => {
     value.value = '1.5';
     input(inquiries);
     input(value);
-    expect(subline.textContent).toContain('$390 to $780 a month - at $1.5 per inquiry');
+    expect(subline.textContent).toContain('$390 to $780 a month - at $1.50 per inquiry');
 
     inquiries.value = '';
     input(inquiries);
@@ -2290,18 +2297,20 @@ describe('renderClientReportHtml', () => {
       a11yCost: {
         tab: 'a11y',
         state: 'measured',
-        strongPageGroup: { label: 'Reading well', pages: [{ name: 'Strong a11y page', score: 98 }] },
+        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong a11y page', score: 98 }] },
       },
       agentFine: [{ name: 'Should not render as a full card', path: '/strong', score: 99, status: 'good' }],
       agentCost: {
         tab: 'ai',
         state: 'measured',
-        strongPageGroup: { label: 'Reading well', pages: [{ name: 'Strong AI page', score: 99 }] },
+        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong AI page', score: 99 }] },
       },
     }));
 
     expect(html).toContain('Strong a11y page');
     expect(html).toContain('Strong AI page');
+    expect(html).toContain('Reading &lt;img src=x onerror=alert(1)&gt;');
+    expect(html).not.toContain('<img src=x onerror=alert(1)>');
     expect(html).not.toContain('Should not render as a full card');
   });
 

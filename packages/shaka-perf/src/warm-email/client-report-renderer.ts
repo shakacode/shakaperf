@@ -732,13 +732,15 @@ function fixRow(cost: ClientReportCostBlock): string {
   return costGrammarRow('The fix', `${text ? `<div style="font-size:${cost.tab === 'ai' ? '14.5px' : '15px'}; line-height:1.5; color:#26221d">${esc(text)}</div>` : ''}${costFixControls(prompt, costId('cr', cost.tab, 'site-prompt'))}`, 'fix', cost.tab === 'ai');
 }
 
+const MEASURED_ROW: Record<CostTab, (cost: ClientReportCostBlock) => string> = {
+  perf: performanceMeasuredRow,
+  a11y: a11yMeasuredRow,
+  ai: aiMeasuredRow,
+};
+
 function costGrammarBlock(cost: ClientReportCostBlock): string {
   const blocked = cost.state === 'blocked';
-  const measured = cost.tab === 'perf'
-    ? performanceMeasuredRow(cost)
-    : cost.tab === 'a11y'
-      ? a11yMeasuredRow(cost)
-      : aiMeasuredRow(cost);
+  const measured = MEASURED_ROW[cost.tab](cost);
   const calculator = !blocked && cost.tab === 'perf' && COST_STATE_MATRIX.perf[cost.state].rendersCalculator && cost.calculator
     ? calculatorCard(cost.calculator, cost.tab)
     : '';
@@ -1051,7 +1053,7 @@ function strongPageGroupList(group: StrongPageGroup): string {
   const pages = group.pages
     .map((page) => `<span style="font-size:14px; color:#4a443c"><strong style="font-weight:700; color:#26221d">${esc(page.name)}</strong> <span style="font-family:'JetBrains Mono',monospace; color:${PAL[scoreStatus(page.score)].fg}">${esc(String(page.score))}</span></span>`)
     .join('<span style="color:#d8d0c3"> &middot; </span>');
-  return `${sectionKicker(`${group.label} &middot; ${group.pages.length} ${group.pages.length === 1 ? 'page' : 'pages'}`)}
+  return `${sectionKicker(`${esc(group.label)} &middot; ${group.pages.length} ${group.pages.length === 1 ? 'page' : 'pages'}`)}
     <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:13px 18px; line-height:1.6">${pages}</div>`;
 }
 
@@ -1409,7 +1411,9 @@ const SCRIPTS = `<script>
     var touched = false;
     function numberLabel(n){ return n.toLocaleString('en-US', { maximumFractionDigits: 1 }); }
     function countLabel(n){ return Math.floor(n).toLocaleString('en-US'); }
+    function countRange(lo, hi){ return hi < 1 ? 'under 1' : countLabel(lo) + ' to ' + countLabel(hi); }
     function dollars(n){ return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+    function valueDollars(n){ return '$' + n.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }); }
     function hide(){ output.hidden = true; lines.textContent = ''; put(headline, ''); put(headlineLabel, ''); put(subline, ''); card.classList.remove('cr-calculator-has-output'); }
     function partial(){
       output.hidden = false;
@@ -1451,20 +1455,22 @@ const SCRIPTS = `<script>
       var usdYearHi = hasValue ? usdMonthHi * 12 : null;
       var breakEvenUsdYear = hasValue ? valuePerInquiryUsd * 12 : null;
       if(!Number.isFinite(mobileInquiries) || !Number.isFinite(recoveredLo) || !Number.isFinite(recoveredHi) || (hasValue && (!Number.isFinite(usdMonthLo) || !Number.isFinite(usdMonthHi) || !Number.isFinite(usdYearLo) || !Number.isFinite(usdYearHi) || !Number.isFinite(breakEvenUsdYear)))){ partial(); return; }
-      var noun = card.getAttribute('data-calc-noun') || 'inquiries';
+      var sourceNoun = card.getAttribute('data-calc-noun') || 'inquiries';
+      var noun = /[^aeiou]y$/i.test(sourceNoun) ? sourceNoun.slice(0, -1) + 'ies' : sourceNoun.endsWith('s') ? sourceNoun : sourceNoun + 's';
       var one = noun.replace(/ies$/, 'y').replace(/s$/, '');
       var bandPct = numberLabel(band.lo * 100) + '-' + numberLabel(band.hi * 100) + '%';
-      var valueDisplay = '$' + valueText;
+      var recoveredRange = countRange(recoveredLo, recoveredHi);
+      var valueDisplay = valueDollars(valuePerInquiryUsd);
       var math = [];
       if(hasValue && usdMonthHi >= floor){
         var breakEven = (card.getAttribute('data-calc-break-even-template') || '').replace('__VALUE__', dollars(breakEvenUsdYear));
         if(breakEven) math.push(breakEven);
       }
       math.push(countLabel(monthlyInquiries) + ' ' + noun + ' x ' + numberLabel(mobileShare * 100) + '% on phones = ' + countLabel(mobileInquiries) + ' mobile ' + noun);
-      math.push(countLabel(mobileInquiries) + ' x ' + bandPct + ' won back = ' + countLabel(recoveredLo) + ' to ' + countLabel(recoveredHi) + ' more ' + noun + ' a month');
+      math.push(countLabel(mobileInquiries) + ' x ' + bandPct + ' won back = ' + (recoveredHi < 1 ? 'under 1 ' + one : recoveredRange + ' more ' + noun) + ' a month');
       if(!hasValue){
         put(headlineLabel, 'what a faster site could bring back');
-        put(headline, countLabel(recoveredLo) + ' to ' + countLabel(recoveredHi) + ' more ' + noun + ' a month');
+        put(headline, recoveredHi < 1 ? 'under 1 ' + one + ' a month' : recoveredRange + ' more ' + noun + ' a month');
         put(subline, 'add what one ' + one + ' is worth to see the money');
       } else if(usdMonthHi < floor){
         put(headlineLabel, ''); put(headline, '');
