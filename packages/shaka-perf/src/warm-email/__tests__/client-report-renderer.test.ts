@@ -10,6 +10,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import * as vm from 'node:vm';
 
 import {
   buildNarrativePrompt,
@@ -30,6 +31,7 @@ import {
   FOOTER_GUARDRAIL,
   NO_MATERIAL_LOSS,
   NOTHING_TO_FIX,
+  PERF_INDUSTRY_DATA_STATS,
   PERF_ZERO_COPY,
   WHAT_THIS_COSTS_YOU,
   botWallFooterSentence,
@@ -54,7 +56,12 @@ import {
   perfCostCopyPromptEnabled,
   perfCostHeadline,
 } from '../client-report-model/perf';
-import { RECOVERY_BANDS, RECOVERY_CAP } from '../client-report-model/cost';
+import {
+  BENCHMARK_LINES,
+  benchmarkScaleGeometry,
+  RECOVERY_BANDS,
+  RECOVERY_CAP,
+} from '../client-report-model/cost';
 import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type {
@@ -1035,7 +1042,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain('slow to react to taps');
     expect(perfTile).not.toContain('Main content is late');
     expect(perfTile).not.toContain('biggest piece takes 3.5s to load');
-    expect(html).toContain('laggy to tap');
+    expect(html).not.toContain('laggy to tap'); // narrative paragraphs are no longer rendered
     expect(html).not.toContain('biggest piece at 3.5s');
   });
 
@@ -1066,7 +1073,7 @@ describe('renderClientReport perf tile assembly', () => {
 
   it('keeps a zero performance score in the tab header', async () => {
     const { html } = await renderClientReport(writePerfResults({ 'LH Score': 0 }));
-    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">0</div>');
+    expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">0</div>');
   });
 
   it('uses the worst page metric on the tile and labels the site average separately', async () => {
@@ -1091,18 +1098,14 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain('>15.4s</div>');
     expect(perfTile).toContain('biggest piece takes 15.4s to load');
     expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
-    expect(perfPanelHtml).toContain('>measured</span>');
-    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fproducts');
-    expect(perfPanelHtml).toContain('same phone and network profile we used');
+    expect(perfPanelHtml).toContain('>Measured</div>');
     expect(perfPanelHtml).toContain('What this costs you');
     expect(perfPanelHtml).toContain('At stake');
     expect(perfPanelHtml).toContain('industry data');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
     expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
     expect(perfPanelHtml).not.toContain('how we estimated this');
-    expect(perfPanelHtml).toContain('Main content time: 15.4s.');
-    expect(perfPanelHtml).toContain('JavaScript: 640 KB across 9 files.');
-    expect(perfPanelHtml).toContain('Total transferred before LCP: 4096 KB.');
+    expect(perfPanelHtml).toContain('The fix');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-products"');
     expect(findBannedWords(perfPanelHtml)).toEqual([]);
   });
@@ -1111,8 +1114,7 @@ describe('renderClientReport perf tile assembly', () => {
     const { html } = await renderClientReport(writePerfResults({ LCP: 15400, FCP: 1200, 'LH Score': 35 }));
     const perfPanelHtml = renderedPanel(html, 'perf');
 
-    expect(perfPanelHtml).toContain('Google&#39;s standard phone profile');
-    expect(perfPanelHtml).toContain('we used a profile not recorded in this audit, so numbers may differ');
+    expect(perfPanelHtml).toContain('What this costs you');
     expect(perfPanelHtml).not.toContain('same phone and network profile we used');
   });
 
@@ -1130,7 +1132,7 @@ describe('renderClientReport perf tile assembly', () => {
     const perfPanelHtml = renderedPanel(html, 'perf');
 
     expect(perfPanelHtml).toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
-    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).toContain('>Measured</div>');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
     expect(perfPanelHtml).not.toContain('cr-perf-card');
     expect(perfPanelHtml).not.toContain('how we estimated this');
@@ -1197,10 +1199,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).not.toContain('Layout jumps');
     expect(perfTile).not.toContain('the layout jumps around');
     expect(perfPanelHtml).toContain('TBT 1');
-    expect(perfPanelHtml).toContain('slow to react to taps on a mid-range phone');
-    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Ftbt-1');
-    expect(perfPanelHtml).not.toContain('https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%2Fhidden-cls');
-    expect(perfPanelHtml).not.toContain('the layout jumps around on a mid-range phone');
+    expect(perfPanelHtml).toContain('What this costs you');
   });
 
   it('keeps the tile worst issue separate from the homepage-anchored cost story', async () => {
@@ -1241,7 +1240,8 @@ describe('renderClientReport perf tile assembly', () => {
     expect(agentPanelHtml).toContain('100% of your page&#39;s text is missing');
     expect(agentPanelHtml).toContain('only 0 of 100 words present');
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
-    expect(agentPanelHtml).toContain('check it yourself: open view-source:http://localhost/shell');
+    expect(agentPanelHtml).toContain('copy: view-source:http://localhost/shell');
+    expect(agentPanelHtml).not.toContain('check it yourself: open view-source:http://localhost/shell');
     expect(agentPanelHtml).toContain('0% content coverage: 0 raw HTML words vs 100 rendered words');
   });
 
@@ -1259,7 +1259,7 @@ describe('renderClientReport perf tile assembly', () => {
 
     expect(agentPanelHtml).toContain('20% of your page&#39;s text is missing');
     expect(agentPanelHtml).toContain('only 80 of 100 words present');
-    expect(agentPanelHtml).toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).not.toContain(NOTHING_TO_FIX);
   });
 
@@ -1276,10 +1276,8 @@ describe('renderClientReport perf tile assembly', () => {
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain(AI_ZERO_COPY);
-    expect(agentPanelHtml).toContain('>measured</span>');
-    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
-    expect(agentPanelHtml).toContain('industry data');
-    expect(agentPanelHtml).toContain('These are the studies behind this check');
+    expect(agentPanelHtml).toContain('>Measured</div>');
+    expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
   });
 
   it('derives no-claim AI cost through the client report model when reachable rendered text is too small', async () => {
@@ -1295,8 +1293,8 @@ describe('renderClientReport perf tile assembly', () => {
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('almost no text to compare');
-    expect(agentPanelHtml).toContain('>measured</span>');
-    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).toContain('>Measured</div>');
+    expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).not.toContain('industry data');
   });
 
@@ -1424,9 +1422,8 @@ describe('renderClientReport perf tile assembly', () => {
 
     expect(a11yPanelHtml).toContain('Critical accessibility barriers found');
     expect(a11yPanelHtml).toContain('What this costs you');
-    expect(a11yPanelHtml).toContain('Worth doing anyway');
-    expect(a11yPanelHtml).toContain('People with disabilities');
-    expect(a11yPanelHtml).toContain('screen reader');
+    expect(a11yPanelHtml).toContain('The fix');
+    expect(a11yPanelHtml).toContain('Screen-reader');
     expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-site-prompt"');
     expect(a11yPanelHtml).toContain('data-copy-prompt="cr-a11y-card-0-products"');
     expect(a11yPanelHtml).toContain('Top rule data: [button-name] (critical); selectors data: [button.checkout; button.icon-only].');
@@ -1602,19 +1599,19 @@ describe('renderClientReportHtml', () => {
     expect(duplicateOrder.match(/id="cr-panel-agent"/g)).toHaveLength(1);
   });
 
-  it('renders one score badge in each tab header when all three tab scores are present', () => {
+  it('colors header score badges from each score, not the tab verdict', () => {
     const html = renderClientReportHtml(threeTabHeaderModel({
       perfScore: 42,
-      a11yStatus: 'fair',
-      a11yScore: 88,
+      a11yStatus: 'poor',
+      a11yScore: 95,
       agentScore: 85,
     }));
     expect(html.match(/>score<\/div>/g)).toHaveLength(3);
 
     expect(renderedPanel(html, 'perf')).toContain('display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px');
     expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">42</div>');
-    expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">88</div>');
-    expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#2f7d4f; line-height:1">85</div>');
+    expect(renderedPanel(html, 'a11y')).toContain('<div style="font-size:24px; font-weight:800; color:#2f7d4f; line-height:1">95</div>');
+    expect(renderedPanel(html, 'agent')).toContain('<div style="font-size:24px; font-weight:800; color:#a85f00; line-height:1">85</div>');
   });
 
   it('omits tab header score badges when the score is unavailable or the tab is blocked', () => {
@@ -1652,6 +1649,14 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('target.hidden = !willOpen;');
     expect(html).toContain("control.setAttribute('aria-controls', target.id);");
     expect(html).toContain("control.setAttribute('aria-expanded', target.hidden ? 'false' : 'true');");
+    expect(html).toContain("document.querySelectorAll('[data-disclose=\"' + target.id + '\"]').forEach(function(c){ syncDisclosure(c, target); });");
+    expect(html).toContain("if(willOpen && window.getComputedStyle(control).display === 'none'){");
+    expect(html).toContain("target.querySelector('input, select, textarea, button, a[href]')");
+    expect(html).toContain('requestAnimationFrame(function(){');
+    expect(html).toContain('.cr-calc-teaser{display:none!important}');
+    expect(html).toContain('.cr-calculator-card:has([data-calc-output][hidden]){display:none!important}');
+    expect(html).toContain('.cr-calculator-card [data-disclose]{display:none!important}');
+    expect(html).toContain('.cr-cost-tiles{grid-template-columns:1fr 1fr!important}');
     expect(html).toContain("document.querySelectorAll('[data-copy-prompt]').forEach(function(btn){");
     expect(html).toContain('navigator.clipboard.writeText(text)');
     expect(html).toContain("document.execCommand('copy')");
@@ -1660,6 +1665,78 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain("label.textContent = 'Copy failed'");
     expect(html).toContain('}).catch(function(){');
     expect(html).toContain('window.setTimeout(function(){ label.textContent = original; }, 2000)');
+  });
+
+  it('synchronizes disclosure controls and retains keyboard focus in the rendered script', () => {
+    type Control = {
+      attributes: Map<string, string>;
+      focused: boolean;
+      visibleWhenOpen: boolean;
+      closest: (selector: string) => Control | null;
+      getAttribute: (name: string) => string | null;
+      setAttribute: (name: string, value: string) => void;
+      focus: () => void;
+    };
+    const makeControl = (visibleWhenOpen: boolean): Control => {
+      const attributes = new Map<string, string>([['data-disclose', 'example-disclosure']]);
+      const control: Control = {
+        attributes,
+        focused: false,
+        visibleWhenOpen,
+        closest: (selector) => selector === '[data-disclose]' ? control : null,
+        getAttribute: (name) => attributes.get(name) ?? null,
+        setAttribute: (name, value) => { attributes.set(name, value); },
+        focus: () => { control.focused = true; },
+      };
+      return control;
+    };
+    const opener = makeControl(false);
+    const closer = makeControl(true);
+    const firstFocusable = { focused: false, focus: () => { firstFocusable.focused = true; } };
+    const target = {
+      hidden: true,
+      id: 'example-disclosure',
+      contains: (control: Control) => control === closer,
+      hasAttribute: (name: string) => name === 'data-disclosure',
+      querySelector: (selector: string) => selector === 'input, select, textarea, button, a[href]' ? firstFocusable : null,
+    };
+    let click: ((event: { target: Control }) => void) | undefined;
+    const controls = [opener, closer];
+    const document = {
+      addEventListener: (event: string, listener: (event: { target: Control }) => void) => {
+        if (event === 'click') click = listener;
+      },
+      getElementById: (id: string) => id === target.id ? target : null,
+      querySelectorAll: (selector: string) => selector === '[data-disclose]' || selector === '[data-disclose="example-disclosure"]' ? controls : [],
+    };
+    const html = renderClientReportHtml(model());
+    const start = html.indexOf('  function disclosureTarget(control){');
+    const end = html.indexOf('\n\n  function fallbackCopyPrompt', start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    vm.runInNewContext(html.slice(start, end), {
+      document,
+      requestAnimationFrame: (callback: () => void) => callback(),
+      window: {
+        getComputedStyle: (control: Control) => ({
+          display: control.visibleWhenOpen === !target.hidden ? 'inline-flex' : 'none',
+        }),
+      },
+    });
+
+    expect(opener.getAttribute('aria-controls')).toBe(target.id);
+    expect(opener.getAttribute('aria-expanded')).toBe('false');
+    expect(closer.getAttribute('aria-expanded')).toBe('false');
+    click?.({ target: opener });
+    expect(target.hidden).toBe(false);
+    expect(opener.getAttribute('aria-expanded')).toBe('true');
+    expect(closer.getAttribute('aria-expanded')).toBe('true');
+    expect(firstFocusable.focused).toBe(true);
+    click?.({ target: closer });
+    expect(target.hidden).toBe(true);
+    expect(opener.getAttribute('aria-expanded')).toBe('false');
+    expect(closer.getAttribute('aria-expanded')).toBe('false');
+    expect(opener.focused).toBe(true);
   });
 
   it('keeps rendered static copy free of banned cost wording', () => {
@@ -1857,12 +1934,12 @@ describe('renderClientReportHtml', () => {
 
     expect(agentPanelHtml).toContain('72% of your page&#39;s text is missing');
     expect(agentPanelHtml).toContain('only 180 of 642 words present');
-    expect(agentPanelHtml).toContain('>measured</span>');
-    expect(agentPanelHtml).toContain('check it yourself: open view-source:https://www.example.com/cards');
-    expect(agentPanelHtml).toContain('What this affects');
-    expect(agentPanelHtml).toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).toContain('>Measured</div>');
+    expect(agentPanelHtml).toContain('copy: view-source:https://www.example.com/cards');
+    expect(agentPanelHtml).not.toContain('check it yourself: open view-source:https://www.example.com/cards');
+    expect(agentPanelHtml).toContain('At stake');
+    expect(agentPanelHtml).toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).toContain('data-copy-prompt="cr-ai-site-prompt"');
-    expect(agentPanelHtml).toContain('width:190px');
     expect(agentPanelHtml).toContain('<pre id="cr-ai-site-prompt" data-disclosure hidden');
     expect(agentPanelHtml).toContain('industry data');
     expect(agentPanelHtml).toContain('Ahrefs, Dec 2025');
@@ -1888,12 +1965,10 @@ describe('renderClientReportHtml', () => {
     const perfPanelHtml = renderedPanel(html, 'perf');
 
     expect(perfPanelHtml).toContain('15.4s before your main content appears on a mid-range phone');
-    expect(perfPanelHtml).toContain('>measured</span>');
-    expect(perfPanelHtml).toContain('https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights');
-    expect(perfPanelHtml).toContain('What this affects');
-    expect(perfPanelHtml).toContain('Copy prompt for your agent');
+    expect(perfPanelHtml).toContain('>Measured</div>');
+    expect(perfPanelHtml).toContain('At stake');
+    expect(perfPanelHtml).toContain('Copy fix instructions - for your developer or AI agent');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-site-prompt"');
-    expect(perfPanelHtml).toContain('width:190px');
     expect(perfPanelHtml).not.toContain('cr-perf-data-cost-estimate');
     expect(perfPanelHtml).not.toContain('how we estimated this');
     expect(perfPanelHtml).toContain('data-copy-prompt="cr-perf-card-0-insights"');
@@ -1908,7 +1983,8 @@ describe('renderClientReportHtml', () => {
         state: 'measured',
         headline: '8.4s before your main content appears on a mid-range phone',
         headlineSub: 'Home is the slowest page we measured.',
-        checkLine: 'check this on the same profile',
+        checkLine: 'check it yourself: run PageSpeed Insights on this page - same phone and network profile we used: https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights',
+        pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Fhome',
         gap: {
           metricLabel: 'Main content time',
           measuredLabel: '8.4s',
@@ -1942,9 +2018,16 @@ describe('renderClientReportHtml', () => {
           mobileSharePrefill: 0.57,
           bands: RECOVERY_BANDS,
           materialityFloorUsdPerMonth: 75,
-          inquiryNoun: 'inquiries',
+          inquiryNoun: 'inquiry',
         },
         countedZeroLine: 'Visitor loss is counted once in this report.',
+        scale: {
+          axisMaxSeconds: 10.5,
+          zones: { green: 23.8, amber: 14.3, red: 61.9 },
+          goodLinePercent: 23.8,
+          poorLinePercent: 38.1,
+          markerPercent: 80,
+        },
       },
     }));
     const perfPanelHtml = renderedPanel(html, 'perf');
@@ -1956,22 +2039,18 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-measured" data-cost-tier="measured"');
     expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-stakes" data-cost-tier="stakes"');
     expect(perfPanelHtml).toContain('class="cr-cost-tier cr-cost-tier-fix" data-cost-tier="fix"');
-    expect(perfPanelHtml).toContain('check this on the same profile');
     expect(perfPanelHtml).toContain('Main content is 5.9s past the good line.');
     expect(perfPanelHtml).toContain('Calls from phone visitors are waiting on this page.');
     expect(perfPanelHtml).toContain('data-benchmark-zone="poor"');
-    expect(perfPanelHtml).toContain('class="cr-benchmark-hero"');
     expect(perfPanelHtml).toContain('data-benchmark-scale');
     expect(perfPanelHtml).toContain('data-benchmark-marker');
-    expect(perfPanelHtml).toContain('>You are here</span>');
-    expect(perfPanelHtml).toContain('data-benchmark-multiple');
-    expect(perfPanelHtml).toContain('>3.4x</strong>');
-    expect(perfPanelHtml).toContain('you: 8.4s -');
+    expect(perfPanelHtml).toContain('you &middot; 8.4s');
+    expect(perfPanelHtml).toContain('more than <strong style="font-weight:800; color:#c0271f">3.4x</strong>');
     expect(perfPanelHtml).toContain('good: 2.5s or less');
-    expect(perfPanelHtml).toContain('poor: over 4.0s');
     expect(perfPanelHtml).toContain('>Google</a>');
+    expect(perfPanelHtml).toContain('href="https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Fhome"');
+    expect(perfPanelHtml).not.toContain('href="https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2Finsights"');
     expect(perfPanelHtml).toContain('These studies are direction, not your visitor count.');
-    expect(perfPanelHtml).toContain('controlled test</span>');
     expect(perfPanelHtml.indexOf('>Measured</div>')).toBeLessThan(perfPanelHtml.indexOf('>At stake</div>'));
     expect(perfPanelHtml.indexOf('>At stake</div>')).toBeLessThan(perfPanelHtml.indexOf(CALC_TITLE));
     expect(perfPanelHtml.indexOf(CALC_TITLE)).toBeLessThan(perfPanelHtml.indexOf('>The fix</div>'));
@@ -1989,10 +2068,277 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('data-calc-bands="[{&quot;id&quot;:&quot;cautious&quot;,&quot;lo&quot;:0.02,&quot;hi&quot;:0.05}');
     expect(perfPanelHtml).toContain('data-calc-output aria-live="polite" hidden');
     expect(perfPanelHtml).toContain('role="radiogroup"');
-    expect(perfPanelHtml).toContain('value="cautious" data-calc-band checked');
-    expect(perfPanelHtml.match(/>your estimate<\/span>/g)).toHaveLength(1);
+    expect(perfPanelHtml).toContain('value="middle" data-calc-band checked');
+    expect(perfPanelHtml).toContain('data-calc-headline');
     expect(html).toContain('band.hi > recoveryCap');
     expect(html).toContain('breakEvenUsdYear');
+  });
+
+  it('ports the C cost blocks with closed disclosures, honest geometry, and the middle calculator band', () => {
+    const canvasScale = benchmarkScaleGeometry(3000, BENCHMARK_LINES.fcpMs);
+    if (!canvasScale) throw new Error('the canvas performance scale must be computable');
+    const html = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCards: [],
+      a11yFine: [],
+      agentSite: undefined,
+      agentCards: [],
+      agentFine: [],
+      perfScore: 87,
+      a11yScore: 95,
+      agentScore: 76,
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        headline: 'nothing for the first 3.0 seconds',
+        gap: {
+          metricLabel: 'First content',
+          measuredLabel: '3.0s',
+          goodLabel: '1.8s',
+          poorLabel: '3.0s',
+          multipleLabel: '1.6x',
+          zone: 'poor',
+          lineOwner: "Google's Lighthouse benchmark - first contentful paint",
+          lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+        },
+        gapSubLines: ['slowest page: Platform, 3.4s - 1.8x the line'],
+        stakes: { kind: 'at-risk', prose: 'Slow starts are where phone visitors give up.' },
+        stats: [...PERF_INDUSTRY_DATA_STATS],
+        fix: { tone: 'primary', text: 'Target: something visible under 1.8 seconds on the same phone.' },
+        sitePrompt: 'Fix the first-content path.',
+        calculator: {
+          mobileSharePrefill: 0.52,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 50,
+          inquiryNoun: 'inquiries',
+        },
+        scale: canvasScale,
+        pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Fwww.example.com%2F',
+      } as unknown as ClientReportModel['perfCost'],
+      a11yCost: {
+        tab: 'a11y',
+        state: 'measured',
+        headline: '12 high-impact barriers keep some visitors from using the site.',
+        headlineSub: 'The bar for any website is zero barriers that block someone. We found 12 across your 7 pages.',
+        gapSubLines: ['worst page: Homepage - 4 high-impact', 'touch targets too small to tap reliably - all 7 pages'],
+        stakes: { kind: 'at-risk', prose: 'One blocking barrier can quietly turn a customer away.' },
+        fix: { tone: 'primary', text: 'Make tap targets big enough to hit reliably.' },
+        sitePrompt: 'Fix the barriers.',
+      },
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        headline: 'The missing text only appears after the page runs its code.',
+        headlineSub: 'Site-wide, about 77% of your text is readable today.',
+        checkLine: 'view-source:https://www.example.com/',
+        stakes: { kind: 'at-risk', prose: 'AI may miss what you sell, answer without your site, or cite a competitor.' },
+        stats: [...AI_INDUSTRY_DATA_STATS],
+        fix: { tone: 'primary', text: 'Main: put your page text into the page the server sends.' },
+        sitePrompt: 'Render primary text on the server.',
+        aiTiles: { invisiblePercent: 34, readableWords: 615, totalWords: 937 },
+      } as unknown as ClientReportModel['agentCost'],
+    }));
+
+    if (process.env.SHAKAPERF_WRITE_RENDER_SAMPLE === '1') {
+      fs.writeFileSync(path.resolve(__dirname, '../../../../../_render-sample.html'), html);
+    }
+
+    expect(html).toContain('class="cr-cost-tier cr-cost-tier-measured" data-cost-tier="measured" style="display:grid; grid-template-columns:minmax(88px, 104px) minmax(0, 1fr); gap:16px; padding:18px 0 20px"');
+    expect(html).toContain('data-benchmark-axis-max="4"');
+    expect(html).toContain('width:45%; background:#e9f4ec');
+    expect(html).toContain('width:30%; background:#fbeecf');
+    expect(html).toContain('width:25%; background:#fbe6e3');
+    expect(html).toContain('left:75%');
+    expect(html).toContain('padding-top:17px');
+    expect(html).toContain('more than <strong style="font-weight:800; color:#c0271f">1.6x</strong> past it');
+    expect(html).toContain('multiples are floored, never rounded up');
+    expect(html).toContain('data-disclosure hidden style="margin-top:10px');
+    expect(html).not.toContain('data-disclosure hidden style="display:');
+    expect(html).toContain('class="cr-cost-tiles"');
+    expect(html).toContain('615<span style="font-size:14px">/937</span>');
+    expect(html).toContain('Copy fix instructions - for your developer or AI agent');
+    expect(html).toContain('view the instructions');
+    expect(html).toContain('value="middle" data-calc-band checked');
+    expect(html).toContain('data-calc-headline-label');
+    expect(html).toContain('data-calc-headline');
+    expect(html).toContain('data-calc-subline');
+    expect(html).toContain('data-disclose="cr-perf-calc-math"');
+    expect(html).toContain("Math.floor(n).toLocaleString('en-US')");
+    expect(html).toContain("put(headline, 'about ' + dollars(usdYearLo) + ' to ' + dollars(usdYearHi) + ' a year')");
+    expect(html).toContain("function recoveredText(lo, hi, noun, one){");
+    expect(html).toContain("function valueDollars(n){ return '$' + n.toLocaleString('en-US'");
+    expect(html).toContain('var valueDisplay = valueDollars(valuePerInquiryUsd)');
+    expect(html).toContain("put(subline, dollars(usdMonthLo) + ' to ' + dollars(usdMonthHi) + ' a month - at ' + valueDisplay");
+    expect(html).toContain("put(subline, card.getAttribute('data-calc-tiny') || '')");
+    expect(html).toContain("var msg = card.getAttribute('data-calc-partial') || ''");
+    expect(html).not.toContain(model().narrative.perf.verdictPara);
+    expect(html).not.toContain('Start here');
+  });
+
+  it('calculates no-value, partial, tiny, and normal Cost C output in the rendered script', () => {
+    type Field = {
+      checked?: boolean;
+      hidden: boolean;
+      listeners: Map<string, () => void>;
+      textContent: string;
+      value: string;
+      addEventListener: (event: string, listener: () => void) => void;
+    };
+    const field = (value = ''): Field => {
+      const listeners = new Map<string, () => void>();
+      return {
+        hidden: false,
+        listeners,
+        textContent: '',
+        value,
+        addEventListener(event, listener) { listeners.set(event, listener); },
+      };
+    };
+    const html = renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        calculator: {
+          mobileSharePrefill: 0.52,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: 50,
+          inquiryNoun: 'inquiries',
+        },
+      },
+    }));
+    const inquiries = field();
+    const value = field();
+    const share = field('52');
+    const output = field();
+    const lines = field();
+    const headline = field();
+    const headlineLabel = field();
+    const subline = field();
+    const middle = field('middle');
+    middle.checked = true;
+    const fields = new Map<string, Field>([
+      ['[data-calc-inquiries]', inquiries],
+      ['[data-calc-value]', value],
+      ['[data-calc-share]', share],
+      ['[data-calc-output]', output],
+      ['[data-calc-lines]', lines],
+      ['[data-calc-headline]', headline],
+      ['[data-calc-headline-label]', headlineLabel],
+      ['[data-calc-subline]', subline],
+    ]);
+    const attributes = new Map<string, string>([
+      ['data-calc-floor', '50'],
+      ['data-calc-recovery-cap', String(RECOVERY_CAP)],
+      ['data-calc-prefill', '52'],
+      ['data-calc-noun', 'inquiry'],
+      ['data-calc-bands', JSON.stringify(RECOVERY_BANDS)],
+      ['data-calc-partial', 'Add valid monthly inquiries and phone share to see the estimate.'],
+      ['data-calc-tiny', 'Under $50 a month at your numbers.'],
+      ['data-calc-break-even-template', 'One recovered inquiry is worth __VALUE__ a year.'],
+    ]);
+    const classes = new Set<string>();
+    const card = {
+      classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) },
+      getAttribute: (name: string) => attributes.get(name) ?? null,
+      querySelector: (selector: string) => {
+        if (selector === '[data-calc-band]:checked') return middle.checked ? middle : null;
+        return fields.get(selector) ?? null;
+      },
+      querySelectorAll: (selector: string) => selector === '[data-calc-band]' ? [middle] : [],
+    };
+    const start = html.indexOf("  document.querySelectorAll('[data-calculator]').forEach(function(card){");
+    const end = html.indexOf('\n})();\n</script>', start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    vm.runInNewContext(html.slice(start, end), {
+      document: { querySelectorAll: (selector: string) => selector === '[data-calculator]' ? [card] : [] },
+    });
+    const input = (target: Field) => target.listeners.get('input')?.();
+
+    expect(output.hidden).toBe(true);
+    inquiries.value = '10';
+    input(inquiries);
+    expect(headline.textContent).toBe('under 1 inquiry a month');
+    expect(subline.textContent).toBe('add what one inquiry is worth to see the money');
+
+    middle.value = 'ceiling';
+    inquiries.value = '20';
+    input(inquiries);
+    expect(headline.textContent).toBe('about 1 inquiry a month');
+
+    middle.value = 'middle';
+    inquiries.value = '100';
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more inquiries a month');
+    expect(subline.textContent).toBe('add what one inquiry is worth to see the money');
+
+    attributes.set('data-calc-noun', 'box');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more boxes a month');
+    expect(subline.textContent).toBe('add what one box is worth to see the money');
+
+    attributes.set('data-calc-noun', 'class');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more classes a month');
+    expect(subline.textContent).toBe('add what one class is worth to see the money');
+
+    attributes.set('data-calc-noun', 'bus');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more buses a month');
+    expect(subline.textContent).toBe('add what one bus is worth to see the money');
+
+    attributes.set('data-calc-noun', 'inquiry');
+    const recoveredTextStart = html.indexOf('function recoveredText(lo, hi, noun, one){');
+    const recoveredTextEnd = html.indexOf('\n    function dollars', recoveredTextStart);
+    const recoveredText = vm.runInNewContext(`function countLabel(n){ return Math.floor(n).toLocaleString('en-US'); }\n${html.slice(recoveredTextStart, recoveredTextEnd)}\nrecoveredText`);
+    expect(recoveredText(2.08, 2.6, 'inquiries', 'inquiry')).toBe('about 2 inquiries');
+
+    value.value = '1';
+    input(value);
+    expect(headline.textContent).toBe('');
+    expect(subline.textContent).toBe('Under $50 a month at your numbers.');
+
+    value.value = '100';
+    input(value);
+    expect(headline.textContent).toBe('about $3,120 to $6,240 a year');
+    expect(subline.textContent).toContain('$260 to $520 a month - at $100 per inquiry');
+
+    inquiries.value = '10000';
+    value.value = '1.5';
+    input(inquiries);
+    input(value);
+    expect(subline.textContent).toContain('$390 to $780 a month - at $1.50 per inquiry');
+
+    inquiries.value = '';
+    input(inquiries);
+    expect(headline.textContent).toBe('');
+    expect(subline.textContent).toBe(attributes.get('data-calc-partial'));
+    expect(classes.has('cr-calculator-has-output')).toBe(true);
+  });
+
+  it('groups strong a11y and AI pages when the optional C grouping slots are present', () => {
+    const html = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCards: [],
+      a11yFine: [{ name: 'Should not render as a full card', path: '/strong', score: 98, status: 'good', summary: 'Fine.' }],
+      a11yCost: {
+        tab: 'a11y',
+        state: 'measured',
+        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong a11y page', score: 98 }] },
+      },
+      agentFine: [{ name: 'Should not render as a full card', path: '/strong', score: 99, status: 'good' }],
+      agentCost: {
+        tab: 'ai',
+        state: 'measured',
+        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong AI page', score: 99 }] },
+      },
+    }));
+
+    expect(html).toContain('Strong a11y page');
+    expect(html).toContain('Strong AI page');
+    expect(html).toContain('Reading &lt;img src=x onerror=alert(1)&gt;');
+    expect(html).not.toContain('<img src=x onerror=alert(1)>');
+    expect(html).not.toContain('Should not render as a full card');
   });
 
   it('uses matrix flags to keep zero check lines and omit absent scales and calculators', () => {
@@ -2012,10 +2358,22 @@ describe('renderClientReportHtml', () => {
     }));
     const perfPanelHtml = renderedPanel(html, 'perf');
 
-    expect(perfPanelHtml).toContain('check the clean result yourself');
-    expect(perfPanelHtml).toContain('No extra wait remains.');
+    expect(perfPanelHtml).toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
     expect(perfPanelHtml).not.toContain('data-benchmark-zone');
     expect(perfPanelHtml).not.toContain('data-calculator');
+  });
+
+  it('uses green headlines for zero-cost proof across every Cost C tab', () => {
+    const html = renderClientReportHtml(model({
+      hasA11y: true,
+      perfCost: { tab: 'perf', state: 'zero', headline: PERF_ZERO_COPY },
+      a11yCost: { tab: 'a11y', state: 'zero', headline: 'No high-impact barriers were found.' },
+      agentCost: { tab: 'ai', state: 'zero', headline: AI_ZERO_COPY },
+    }));
+
+    expect(renderedPanel(html, 'perf')).toContain('<span style="color:#2f7d4f">');
+    expect(renderedPanel(html, 'a11y')).toContain('<span style="color:#2f7d4f">');
+    expect(renderedPanel(html, 'agent')).toContain('line-height:1.5; color:#2f7d4f');
   });
 
   it('keeps no-material-loss proof green and restricts the calculator to measured performance', () => {
@@ -2052,7 +2410,6 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('No material loss is visible in the pages we measured.');
     expect(perfPanelHtml).toContain('background:#e9f4ec');
     expect(perfPanelHtml).toContain('data-disclose="cr-perf-stakes-data"');
-    expect(perfPanelHtml).toContain('controlled test</span>');
     expect(agentPanelHtml).not.toContain('data-calculator');
   });
 
@@ -2107,10 +2464,10 @@ describe('renderClientReportHtml', () => {
 
     expect(primary).toContain('>The fix</div>');
     expect(primary).toContain('data-copy-prompt="cr-perf-site-prompt"');
-    expect(primary).not.toContain('data-copy-tone="secondary"');
-    expect(secondary).toContain('>Worth doing anyway</div>');
+    expect(primary).toContain('data-copy-tone="secondary"');
+    expect(secondary).toContain('>The fix</div>');
     expect(secondary).toContain('data-copy-tone="secondary"');
-    expect(secondary).toContain('background:#ffffff; color:#26221d');
+    expect(secondary).toContain('background:#e9f4ec');
   });
 
   it('renders the new zero-state perf cost copy without prompt controls', () => {
@@ -2124,7 +2481,7 @@ describe('renderClientReportHtml', () => {
     const perfPanelHtml = renderedPanel(html, 'perf');
 
     expect(perfPanelHtml).toContain(PERF_ZERO_COPY.replace("'", '&#39;'));
-    expect(perfPanelHtml).toContain('>measured</span>');
+    expect(perfPanelHtml).toContain('>Measured</div>');
     expect(perfPanelHtml).not.toContain('Do not show this prompt.');
     expect(perfPanelHtml).not.toContain('cr-perf-site-prompt');
     expect(perfPanelHtml).not.toContain('how we estimated this');
@@ -2216,9 +2573,9 @@ describe('renderClientReportHtml', () => {
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain(AI_ZERO_COPY);
-    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Do not show this prompt.');
-    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).not.toContain('industry data');
   });
 
@@ -2251,9 +2608,9 @@ describe('renderClientReportHtml', () => {
     const agentPanelHtml = renderedPanel(html, 'agent');
 
     expect(agentPanelHtml).toContain('almost no text to compare');
-    expect(agentPanelHtml).toContain('>measured</span>');
+    expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Do not show this prompt.');
-    expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
+    expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
     expect(agentPanelHtml).not.toContain('industry data');
   });
 
