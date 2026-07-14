@@ -1411,7 +1411,11 @@ const SCRIPTS = `<script>
     var touched = false;
     function numberLabel(n){ return n.toLocaleString('en-US', { maximumFractionDigits: 1 }); }
     function countLabel(n){ return Math.floor(n).toLocaleString('en-US'); }
-    function countRange(lo, hi){ return hi < 1 ? 'under 1' : countLabel(lo) + ' to ' + countLabel(hi); }
+    function recoveredText(lo, hi, noun, one){
+      if(hi < 1) return 'under 1 ' + one;
+      var loLabel = countLabel(lo), hiLabel = countLabel(hi);
+      return loLabel === hiLabel ? 'about ' + hiLabel + ' ' + one : loLabel + ' to ' + hiLabel + ' more ' + noun;
+    }
     function dollars(n){ return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
     function valueDollars(n){ return '$' + n.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }); }
     function hide(){ output.hidden = true; lines.textContent = ''; put(headline, ''); put(headlineLabel, ''); put(subline, ''); card.classList.remove('cr-calculator-has-output'); }
@@ -1456,10 +1460,13 @@ const SCRIPTS = `<script>
       var breakEvenUsdYear = hasValue ? valuePerInquiryUsd * 12 : null;
       if(!Number.isFinite(mobileInquiries) || !Number.isFinite(recoveredLo) || !Number.isFinite(recoveredHi) || (hasValue && (!Number.isFinite(usdMonthLo) || !Number.isFinite(usdMonthHi) || !Number.isFinite(usdYearLo) || !Number.isFinite(usdYearHi) || !Number.isFinite(breakEvenUsdYear)))){ partial(); return; }
       var sourceNoun = card.getAttribute('data-calc-noun') || 'inquiries';
-      var noun = /[^aeiou]y$/i.test(sourceNoun) ? sourceNoun.slice(0, -1) + 'ies' : sourceNoun.endsWith('s') ? sourceNoun : sourceNoun + 's';
-      var one = noun.replace(/ies$/, 'y').replace(/s$/, '');
+      var one = /ies$/i.test(sourceNoun) ? sourceNoun.slice(0, -3) + 'y'
+        : /(ches|shes|sses|xes|zes)$/i.test(sourceNoun) ? sourceNoun.slice(0, -2)
+          : sourceNoun.endsWith('s') ? sourceNoun.slice(0, -1) : sourceNoun;
+      var noun = /[^aeiou]y$/i.test(one) ? one.slice(0, -1) + 'ies'
+        : /(s|x|z|ch|sh)$/i.test(one) ? one + 'es' : one + 's';
       var bandPct = numberLabel(band.lo * 100) + '-' + numberLabel(band.hi * 100) + '%';
-      var recoveredRange = countRange(recoveredLo, recoveredHi);
+      var recovered = recoveredText(recoveredLo, recoveredHi, noun, one);
       var valueDisplay = valueDollars(valuePerInquiryUsd);
       var math = [];
       if(hasValue && usdMonthHi >= floor){
@@ -1467,10 +1474,10 @@ const SCRIPTS = `<script>
         if(breakEven) math.push(breakEven);
       }
       math.push(countLabel(monthlyInquiries) + ' ' + noun + ' x ' + numberLabel(mobileShare * 100) + '% on phones = ' + countLabel(mobileInquiries) + ' mobile ' + noun);
-      math.push(countLabel(mobileInquiries) + ' x ' + bandPct + ' won back = ' + (recoveredHi < 1 ? 'under 1 ' + one : recoveredRange + ' more ' + noun) + ' a month');
+      math.push(countLabel(mobileInquiries) + ' x ' + bandPct + ' won back = ' + recovered + ' a month');
       if(!hasValue){
         put(headlineLabel, 'what a faster site could bring back');
-        put(headline, recoveredHi < 1 ? 'under 1 ' + one + ' a month' : recoveredRange + ' more ' + noun + ' a month');
+        put(headline, recovered + ' a month');
         put(subline, 'add what one ' + one + ' is worth to see the money');
       } else if(usdMonthHi < floor){
         put(headlineLabel, ''); put(headline, '');

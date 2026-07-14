@@ -2165,7 +2165,7 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('data-disclose="cr-perf-calc-math"');
     expect(html).toContain("Math.floor(n).toLocaleString('en-US')");
     expect(html).toContain("put(headline, 'about ' + dollars(usdYearLo) + ' to ' + dollars(usdYearHi) + ' a year')");
-    expect(html).toContain("function countRange(lo, hi){ return hi < 1 ? 'under 1'");
+    expect(html).toContain("function recoveredText(lo, hi, noun, one){");
     expect(html).toContain("function valueDollars(n){ return '$' + n.toLocaleString('en-US'");
     expect(html).toContain('var valueDisplay = valueDollars(valuePerInquiryUsd)');
     expect(html).toContain("put(subline, dollars(usdMonthLo) + ' to ' + dollars(usdMonthHi) + ' a month - at ' + valueDisplay");
@@ -2261,10 +2261,22 @@ describe('renderClientReportHtml', () => {
     expect(headline.textContent).toBe('under 1 inquiry a month');
     expect(subline.textContent).toBe('add what one inquiry is worth to see the money');
 
+    middle.value = 'ceiling';
+    inquiries.value = '20';
+    input(inquiries);
+    expect(headline.textContent).toBe('about 1 inquiry a month');
+
+    middle.value = 'middle';
     inquiries.value = '100';
     input(inquiries);
     expect(headline.textContent).toBe('2 to 5 more inquiries a month');
     expect(subline.textContent).toBe('add what one inquiry is worth to see the money');
+
+    attributes.set('data-calc-noun', 'box');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more boxes a month');
+    expect(subline.textContent).toBe('add what one box is worth to see the money');
+    attributes.set('data-calc-noun', 'inquiry');
 
     value.value = '1';
     input(value);
