@@ -82,6 +82,14 @@ export const NO_MATERIAL_LOSS = 'No material loss here.';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
 export const FOOTER_GUARDRAIL = 'Measured on your site - every number links to its source';
+export const MULTIPLES_FLOORED_NOTE = 'multiples are floored, never rounded up';
+export const PAGESPEED_FIELD_VS_LAB_PREEMPT = 'opens on a 28-day real-user summary first - a different check; the lab test below it runs the same Slow-4G phone profile we measured on';
+export const AI_STUDIES_OTHER_SITES_CAVEAT = 'The click studies ran on other sites - direction and rough size only, not your number.';
+export const AI_HOMEPAGE_INVISIBLE_LABEL = 'of your homepage text invisible to AI';
+export const AI_HOMEPAGE_WORDS_LABEL = 'homepage words AI can read today';
+export const COPY_SITE_FIX_INSTRUCTIONS = 'Copy fix instructions - for your developer or AI agent';
+export const COPY_FIX_INSTRUCTIONS = 'Copy fix instructions';
+export const VIEW_INSTRUCTIONS = 'view the instructions';
 
 const noTreatment = (copy?: string, chip?: CostChip): CostStateCell => ({
   rendersFullTreatment: false,
@@ -172,6 +180,10 @@ export function aiCheckLine(url: string): string {
   return `check it yourself: open view-source:${url} and search for a sentence from your page`;
 }
 
+export function aiSiteWideContextLine(readablePct: number, pageName: string): string {
+  return `Site-wide, about ${readablePct}% of your text is readable today - the ${pageName} sits below that, which is why we graded it.`;
+}
+
 export function perfHeadline(label: string, page: string): string {
   void page;
   return `${label} before your main content appears on a mid-range phone`;
@@ -197,6 +209,10 @@ export function perfGapHeadline(measuredLabel: string, multipleLabel: string | u
     return `${pageName} shows its main content after ${measuredLabel} on a mid-range phone - ${multipleLabel} past Google's 2.5-second good line`;
   }
   return `${pageName} shows its main content after ${measuredLabel} on a mid-range phone`;
+}
+
+export function perfMoreThanMultipleLine(goodLineLabel: string, multipleLabel: string): string {
+  return `Google's good line is ${goodLineLabel} - you are more than ${multipleLabel} past it.`;
 }
 
 export function perfStudiesIntro(): string {
@@ -294,6 +310,13 @@ export const CALC_INQUIRIES_LABEL = 'About how many inquiries does the website b
 export const CALC_VALUE_LABEL = 'Roughly what is one new inquiry worth to you, in dollars?';
 export const CALC_SHARE_LABEL = 'Share of visits from phones';
 export const CALC_DIAL_LABEL = 'If the site got fast, how much of the lost response comes back?';
+export const CALC_HEADLINE_LABEL = 'what a faster site could bring back';
+export const CALC_HOW_WE_GOT_THIS_LABEL = 'how we got this';
+export const CALC_SHARE_PREFILL_LABEL = '(typical share - change it to yours)';
+
+export function calcAddValueLine(noun: string): string {
+  return `add what one ${noun} is worth to see the money`;
+}
 
 export function calcCapNote(): string {
   return 'The 15% top of this dial is not ours: Vodafone measured a 15% improvement in the lead-to-visit rate in a controlled test after improving LCP 31%. We cap the dial there anyway, because bigger gaps do not pay out in a straight line.';

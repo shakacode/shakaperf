@@ -13,11 +13,14 @@ import {
   A11Y_INDUSTRY_DATA_STATS,
   BOT_WALL_COPY,
   CALC_DIAL_LABEL,
+  CALC_HEADLINE_LABEL,
+  CALC_HOW_WE_GOT_THIS_LABEL,
   CALC_HONESTY_FOOTER,
   CALC_INQUIRIES_LABEL,
   CALC_PARTIAL_LINE,
   CALC_PRIVACY_LINE,
   CALC_SHARE_LABEL,
+  CALC_SHARE_PREFILL_LABEL,
   CALC_TITLE,
   CALC_VALUE_LABEL,
   COST_CHIPS,
@@ -30,18 +33,29 @@ import {
   PERF_ZERO_COPY,
   WHAT_THIS_AFFECTS,
   WHAT_THIS_COSTS_YOU,
+  AI_HOMEPAGE_INVISIBLE_LABEL,
+  AI_HOMEPAGE_WORDS_LABEL,
+  AI_STUDIES_OTHER_SITES_CAVEAT,
+  COPY_FIX_INSTRUCTIONS,
+  COPY_SITE_FIX_INSTRUCTIONS,
+  MULTIPLES_FLOORED_NOTE,
+  PAGESPEED_FIELD_VS_LAB_PREEMPT,
+  VIEW_INSTRUCTIONS,
   a11yNoNumberLine,
   aiCheckLine,
   aiHeadline,
   aiHeadlineSub,
   aiSingleCountLine,
+  aiSiteWideContextLine,
   botWallFooterSentence,
   calcBreakEvenLine,
   calcCapNote,
+  calcAddValueLine,
   calcTinyResultLine,
   findBannedWords,
   perfCheckLine,
   perfGapHeadline,
+  perfMoreThanMultipleLine,
   perfHeadline,
   perfStudiesFooter,
   perfStudiesIntro,
@@ -191,6 +205,31 @@ describe('canonical cost copy', () => {
     expect(calcTinyResultLine()).toContain('Under $50 a month at your numbers');
   });
 
+  it('exports the cost-C copy invariants and builders', () => {
+    expect(perfMoreThanMultipleLine('1.8 seconds', '1.6x')).toBe(
+      "Google's good line is 1.8 seconds - you are more than 1.6x past it.",
+    );
+    expect(MULTIPLES_FLOORED_NOTE).toBe('multiples are floored, never rounded up');
+    expect(PAGESPEED_FIELD_VS_LAB_PREEMPT).toBe(
+      'opens on a 28-day real-user summary first - a different check; the lab test below it runs the same Slow-4G phone profile we measured on',
+    );
+    expect(AI_STUDIES_OTHER_SITES_CAVEAT).toBe(
+      'The click studies ran on other sites - direction and rough size only, not your number.',
+    );
+    expect(aiSiteWideContextLine(77, 'homepage')).toBe(
+      'Site-wide, about 77% of your text is readable today - the homepage sits below that, which is why we graded it.',
+    );
+    expect(AI_HOMEPAGE_INVISIBLE_LABEL).toBe('of your homepage text invisible to AI');
+    expect(AI_HOMEPAGE_WORDS_LABEL).toBe('homepage words AI can read today');
+    expect(CALC_HEADLINE_LABEL).toBe('what a faster site could bring back');
+    expect(CALC_HOW_WE_GOT_THIS_LABEL).toBe('how we got this');
+    expect(calcAddValueLine('inquiry')).toBe('add what one inquiry is worth to see the money');
+    expect(CALC_SHARE_PREFILL_LABEL).toBe('(typical share - change it to yours)');
+    expect(COPY_SITE_FIX_INSTRUCTIONS).toBe('Copy fix instructions - for your developer or AI agent');
+    expect(COPY_FIX_INSTRUCTIONS).toBe('Copy fix instructions');
+    expect(VIEW_INSTRUCTIONS).toBe('view the instructions');
+  });
+
   it('keeps every new exported copy string free of banned vocabulary', () => {
     const strings = [
       WHAT_THIS_COSTS_YOU,
@@ -214,6 +253,20 @@ describe('canonical cost copy', () => {
       calcBreakEvenLine('$6,000'),
       calcTinyResultLine(),
       CALC_HONESTY_FOOTER,
+      perfMoreThanMultipleLine('1.8 seconds', '1.6x'),
+      MULTIPLES_FLOORED_NOTE,
+      PAGESPEED_FIELD_VS_LAB_PREEMPT,
+      AI_STUDIES_OTHER_SITES_CAVEAT,
+      aiSiteWideContextLine(77, 'homepage'),
+      AI_HOMEPAGE_INVISIBLE_LABEL,
+      AI_HOMEPAGE_WORDS_LABEL,
+      CALC_HEADLINE_LABEL,
+      CALC_HOW_WE_GOT_THIS_LABEL,
+      calcAddValueLine('inquiry'),
+      CALC_SHARE_PREFILL_LABEL,
+      COPY_SITE_FIX_INSTRUCTIONS,
+      COPY_FIX_INSTRUCTIONS,
+      VIEW_INSTRUCTIONS,
       FOOTER_GUARDRAIL,
       COST_CHIPS['your estimate'].label,
       COST_CHIPS['your estimate'].intent,
