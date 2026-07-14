@@ -33,6 +33,7 @@ export interface A11yRuleFamily {
 }
 
 export interface A11yRuleFamilySummary {
+  /** Use with countedFamilies for the reconciled C-panel headline. */
   headlineCount: number;
   countedFamilies: readonly A11yRuleFamily[];
   notCountedExtras: readonly A11yRuleFamily[];

@@ -45,8 +45,7 @@ function decimalFraction(value: number): DecimalFraction {
 }
 
 /**
- * Floors a multiple from raw operands. Use this when no formatted value is
- * printed alongside the result.
+ * Floors a multiple directly from raw measured operands.
  */
 export function benchmarkMultiple(measured: number, good: number): string | undefined {
   if (!Number.isFinite(measured) || !Number.isFinite(good) || measured <= 0 || good <= 0 || measured <= good) {
@@ -66,18 +65,6 @@ export function benchmarkMultiple(measured: number, good: number): string | unde
   const whole = tenths / 10n;
   const decimal = tenths % 10n;
   return decimal === 0n ? `${whole}x` : `${whole}.${decimal}x`;
-}
-
-/**
- * Floors a multiple from the one-decimal seconds a reader sees, never from
- * higher-precision milliseconds. This keeps every printed derivation
- * reproducible from its printed operands.
- */
-export function benchmarkMultipleFromDisplayedSeconds(measuredMs: number, goodMs: number): string | undefined {
-  if (!Number.isFinite(measuredMs) || !Number.isFinite(goodMs)) return undefined;
-  const displayedMeasuredSeconds = Number((measuredMs / 1000).toFixed(1));
-  const displayedGoodSeconds = Number((goodMs / 1000).toFixed(1));
-  return benchmarkMultiple(displayedMeasuredSeconds, displayedGoodSeconds);
 }
 
 export type CostZone = 'good' | 'mid' | 'poor';
@@ -391,16 +378,17 @@ export interface PerfHeroMetric {
   valueKey: 'lcpMs' | 'fcpMs' | 'tbtMs';
   goodMs: number;
   poorMs: number;
-  beforeContentKbKey?: 'downloadsBeforeLcpKb';
-  contentLabel: string;
+  /** An intentional LCP-bound resource lever alongside the hero timing metric. */
+  beforeMainContentKbKey?: 'downloadsBeforeLcpKb';
+  mainContentLabel: string;
 }
 
 export const FCP_HERO_METRIC: PerfHeroMetric = {
   valueKey: 'fcpMs',
   goodMs: BENCHMARK_LINES.fcpMs.good,
   poorMs: BENCHMARK_LINES.fcpMs.poor,
-  beforeContentKbKey: 'downloadsBeforeLcpKb',
-  contentLabel: 'main content',
+  beforeMainContentKbKey: 'downloadsBeforeLcpKb',
+  mainContentLabel: 'main content',
 };
 
 function mb(kb: number): string {
@@ -441,12 +429,12 @@ function heroMetricLabel(valueMs: number): string {
 }
 
 function heroMetricMultiple(valueMs: number, hero: PerfHeroMetric): string | undefined {
-  return benchmarkMultipleFromDisplayedSeconds(valueMs, hero.goodMs);
+  return benchmarkMultiple(valueMs, hero.goodMs);
 }
 
 /**
- * Produces the performance detail lines from the same metric and good line as
- * the C block hero. The legacy LCP helper above remains for existing callers.
+ * Produces timing detail lines from the C block hero metric and good line. Its
+ * optional main-content byte line is an intentional LCP-bound resource lever.
  */
 export function heroMetricGapSubLines(
   pages: readonly PerfFactPage[],
@@ -472,10 +460,10 @@ export function heroMetricGapSubLines(
     const suffix = multiple ? ` - ${multiple} the line` : '';
     lines.push(`site average: ${heroMetricLabel(averageMs)}${suffix}`);
   }
-  const before = hero.beforeContentKbKey ? finiteMetric(anchor[hero.beforeContentKbKey]) : undefined;
+  const before = hero.beforeMainContentKbKey ? finiteMetric(anchor[hero.beforeMainContentKbKey]) : undefined;
   const total = finiteMetric(anchor.downloadsKb);
   if (before !== undefined && total !== undefined) {
-    lines.push(`the phone pulls ${mb(before)} before the ${hero.contentLabel} shows, ${mb(total)} in total`);
+    lines.push(`the phone pulls ${mb(before)} before the ${hero.mainContentLabel} shows, ${mb(total)} in total`);
   }
   return lines;
 }

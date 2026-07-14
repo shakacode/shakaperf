@@ -12,7 +12,6 @@ import {
   FCP_HERO_METRIC,
   MATERIALITY_FLOOR_USD_PER_MONTH,
   RECOVERY_BANDS,
-  benchmarkMultipleFromDisplayedSeconds,
   benchmarkScaleGeometry,
   benchmarkMultiple,
   benchmarkZone,
@@ -33,6 +32,8 @@ describe('benchmarkMultiple', () => {
     [0.3, 0.1, '3x'],
     [0.29, 0.1, '2.9x'],
     [1.09, 0.1, '10.9x'],
+    [3421.7, 1800, '1.9x'],
+    [3560, 1800, '1.9x'],
   ])('floors %s / %s to %s', (measured, good, expected) => {
     expect(benchmarkMultiple(measured, good)).toBe(expected);
   });
@@ -46,16 +47,6 @@ describe('benchmarkMultiple', () => {
     [2501, 0],
   ])('returns undefined for invalid or under-line inputs', (measured, good) => {
     expect(benchmarkMultiple(measured, good)).toBeUndefined();
-  });
-});
-
-describe('benchmarkMultipleFromDisplayedSeconds', () => {
-  it('floors from the displayed Platform operands instead of raw milliseconds', () => {
-    expect(benchmarkMultipleFromDisplayedSeconds(3421.7, 1800)).toBe('1.8x');
-  });
-
-  it('floors the displayed hero operands', () => {
-    expect(benchmarkMultipleFromDisplayedSeconds(3030, 1800)).toBe('1.6x');
   });
 });
 
@@ -111,11 +102,11 @@ describe('hero metric panel helpers', () => {
     { name: 'Careers', lcpMs: 5900, fcpMs: 1300 },
   ];
 
-  it('keeps the slowest, next-slowest, average, and bytes lines on the FCP hero metric', () => {
+  it('floors hero multiples from raw measurements and keeps main-content bytes as an explicit exception', () => {
     expect(heroMetricGapSubLines(pages, pages[0], FCP_HERO_METRIC)).toEqual([
-      'slowest page: Platform, 3.4s - 1.8x the line',
+      'slowest page: Platform, 3.4s - 1.9x the line',
       'next slowest: Homepage, 3.0s - 1.6x the line',
-      'site average: 2.2s - 1.2x the line',
+      'site average: 2.2s - 1.1x the line',
       'the phone pulls 0.9 MB before the main content shows, 1.1 MB in total',
     ]);
   });
