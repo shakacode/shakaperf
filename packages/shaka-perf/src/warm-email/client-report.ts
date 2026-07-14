@@ -527,6 +527,10 @@ function mb(kb: number): string {
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
 }
 
+function mbOneDecimal(kb: number): string {
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 function displayTimingMs(value: number | undefined): number | undefined {
   return value === undefined || !Number.isFinite(value) ? undefined : Number((value / 1000).toFixed(1)) * 1000;
 }
@@ -1699,8 +1703,13 @@ function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
 // Keep this optional shared-component evidence to a conservative subset it accepts.
 function safeA11ySharedSelector(selector: string): string | undefined {
   const normalized = selector.replace(/\s+/g, ' ').trim();
-  const simpleSelector = /^(?:[a-z][a-z0-9-]*|[.#][A-Za-z_-][\w-]*)(?:[.#][A-Za-z_-][\w-]*)*(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
-  return normalized.length > 0 && normalized.length <= 240 && simpleSelector.test(normalized)
+  const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
+  const blockedTerms = /\b(?:ignore|instructions?|prompt|system|developer|assistant|user|tool|secret|token)\b/i;
+  return normalized.length > 0
+    && normalized.length <= 240
+    && !/(?:https?:)?\/\//i.test(normalized)
+    && !blockedTerms.test(normalized)
+    && simpleSelector.test(normalized)
     ? normalized
     : undefined;
 }
@@ -1961,6 +1970,7 @@ function compareAgentCostPage(a: AgentPageView, b: AgentPageView): number {
 function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): ClientReportAgentCard {
   const { page, struct } = view;
   const lead = agentPageLead(view);
+  const needsScoreAttention = scoreStatus(struct.score) !== 'good' && lead.status === 'good';
   const fixes = view.client?.fixes?.length
     ? view.client.fixes.map(dashSafe)
     : Array.from(new Set(agentPageFindings(struct).map((f) => f.action).filter((a): a is string => !!a))).slice(0, 3).map(dashSafe);
@@ -1970,11 +1980,14 @@ function agentCardModel(view: AgentPageView, promptCtx?: AgentPromptContext): Cl
     score: struct.score,
     status: scoreStatus(struct.score),
     capped: struct.shellCapped,
-    headlineHtml: lead.headline,
+    headlineHtml: needsScoreAttention
+      ? 'Readable for AI tools, with details still to improve'
+      : lead.headline,
     factors: struct.categories.map(agentFactor),
     fixes,
   };
-  if (lead.note) card.sub = lead.note;
+  if (needsScoreAttention) card.sub = 'The page is readable, but its remaining structure details still need attention.';
+  else if (lead.note) card.sub = lead.note;
   if (promptCtx) {
     const copyPrompt = agentPromptForView(view, promptCtx, boundedCoveragePct(agentRawWords(view), agentRenderedWords(view)));
     if (copyPrompt) card.copyPrompt = copyPrompt;
@@ -2095,12 +2108,14 @@ async function buildClientReportModel(
     .sort((a, b) => b.fcpMs - a.fcpMs);
   // Prefer a slow homepage, otherwise the slowest measured first-content page.
   const fcpCostAnchor = fcpCostCandidates.find((candidate) => candidate.page.startingPath === '/') ?? fcpCostCandidates[0];
+  const fcpCostIsDominant = siteDominantPerfProblem?.problem.kind === 'blank'
+    || siteDominantPerfProblem?.problem.kind === 'late-paint';
   const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
   const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   let perfCost: ClientReportCostBlock | undefined;
   if (hasPerf) {
-    if (!perfCouldNotMeasure && fcpCostAnchor) {
+    if (!perfCouldNotMeasure && perfStatus !== 'good' && fcpCostAnchor && fcpCostIsDominant) {
       // The anchor drives the headline and metric-specific reframe copy so the
       // measured block tells one story. Supporting prompt and verification
       // details stay on the established dominant page.
@@ -2156,7 +2171,7 @@ async function buildClientReportModel(
       const fixText = [
         beforeContentKb === undefined
           ? undefined
-          : `Start where the wait is: ${anchorPage.name} pulls ${mb(beforeContentKb)} before its main content shows.`,
+          : `Start where the wait is: ${anchorPage.name} pulls ${mbOneDecimal(beforeContentKb)} before its main content shows.`,
         'The target: something visible under 1.8 seconds on the same phone profile.',
       ].filter((line): line is string => !!line).join(' ');
       perfCost = {
@@ -2321,6 +2336,9 @@ async function buildClientReportModel(
   }
   const a11yTopIssues = [...a11yIssueWeight.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([l]) => l).slice(0, 2);
   const a11yWorst = cardedA11y[0];
+  const a11yHeadlineScope = cardedA11y.length === a11yMeasurable.length
+    ? `across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}`
+    : `on ${cardedA11y.length} of ${a11yMeasurable.length} pages checked`;
   let a11yCost: ClientReportCostBlock | undefined;
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
@@ -2373,7 +2391,7 @@ async function buildClientReportModel(
       tab: 'a11y',
       state: 'measured',
       headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
-      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}.`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.`,
       affectsProse: a11yAffects(a11yWorst.scan),
       ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
       gapSubLines: a11yFindingLines,
@@ -2447,7 +2465,7 @@ async function buildClientReportModel(
       }
       if (agentMeasurable.length > 0) {
         const overall = scoreSite(agentMeasurable.map((v) => v.result), siteSignals);
-        agentStatus = overall.bucket;
+        agentStatus = scoreStatus(overall.overall);
         agentOverall = overall.overall;
         agentAccessBlocked = overall.accessBlocked;
         agentSite = {
@@ -2540,7 +2558,7 @@ async function buildClientReportModel(
               rawState: agentRawStateForPrompt(worstCostPage),
             }),
             stats: [...AI_INDUSTRY_DATA_STATS],
-            ...(homepageCostPage ? {
+            ...(homepageCostPage && homepageRenderedWords >= MIN_AGENT_COST_WORDS ? {
               aiTiles: {
                 invisiblePercent: homepageInvisiblePct,
                 readableWords: homepagePresentWords,

@@ -36,13 +36,14 @@ import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent
 interface A11yFixture {
   blocked?: boolean;
   score?: number;
-  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string }>;
+  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string; selector?: string }>;
 }
 
 interface AgentFixture {
   rawWords: number;
   renderedWords: number;
   blocked?: boolean;
+  withoutStructuredData?: boolean;
 }
 
 interface PageFixture {
@@ -66,7 +67,7 @@ function display(label: string, value: number): string {
   return String(value);
 }
 
-function signals(words: number): PageSignals {
+function signals(words: number, fixture: Pick<AgentFixture, 'withoutStructuredData'> = {}): PageSignals {
   return {
     title: 'Example page',
     titlePresent: true,
@@ -77,7 +78,9 @@ function signals(words: number): PageSignals {
     robotsMeta: '',
     og: { title: true, description: true, image: true, type: true, siteName: true },
     twitterCard: true,
-    structuredData: { blocks: 1, valid: 1, invalid: 0, types: ['Organization'], microdataItems: 0 },
+    structuredData: fixture.withoutStructuredData
+      ? { blocks: 0, valid: 0, invalid: 0, types: [], microdataItems: 0 }
+      : { blocks: 1, valid: 1, invalid: 0, types: ['Organization'], microdataItems: 0 },
     headings: { h1Count: 1, total: 3, orderOk: true },
     landmarks: { main: true, nav: true, header: true, footer: true, article: false },
     links: { total: 4, nondescriptive: 0 },
@@ -88,7 +91,7 @@ function signals(words: number): PageSignals {
 }
 
 function agent(url: string, fixture: AgentFixture): AgentReadinessResult {
-  const raw = fixture.blocked ? null : signals(fixture.rawWords);
+  const raw = fixture.blocked ? null : signals(fixture.rawWords, fixture);
   return {
     url,
     viewportLabel: 'phone',
@@ -102,7 +105,7 @@ function agent(url: string, fixture: AgentFixture): AgentReadinessResult {
       likelyBlocked: !!fixture.blocked,
       signals: raw,
     },
-    rendered: signals(fixture.renderedWords),
+    rendered: signals(fixture.renderedWords, fixture),
     rawHtmlBytes: fixture.blocked ? 0 : 1000,
     renderedHtmlBytes: 5000,
     ...(fixture.blocked ? { blocked: true } : {}),
@@ -116,7 +119,7 @@ function a11y(url: string, fixture: A11yFixture): AccessibilityResult {
     help: violation.ruleId,
     helpUrl: '',
     tags: [],
-    nodes: [{ target: ['.fixture'], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '' }],
+    nodes: [{ target: [violation.selector ?? '.fixture'], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '' }],
   }));
   const scan: AccessibilityScan = {
     viewportLabel: 'phone',
@@ -230,13 +233,13 @@ describe('cost-of-pain reframe model', () => {
     ]);
     expect(perf?.countedZeroLine).toContain('About (1.7s)');
     expect(perf?.sitePrompts?.perf).toContain("The site's first content is slow on phones");
-    expect(perf?.fix?.text).toMatch(/^Start where the wait is: Home pulls 900 KB before its main content shows\./);
+    expect(perf?.fix?.text).toMatch(/^Start where the wait is: Home pulls 0\.9 MB before its main content shows\./);
 
     const a11y = result.model.a11yCost;
     expect(a11y).toMatchObject({
       state: 'measured',
       headline: '3 high-impact barriers keep some visitors from using the site.',
-      headlineSub: 'The bar for any website is zero barriers that block someone. We found 3 across your 3 pages.',
+      headlineSub: 'The bar for any website is zero barriers that block someone. We found 3 on 2 of 3 pages checked.',
       scoreBadgePolicy: 'score-status',
       strongPageGroup: { label: 'Strong pages', pages: [{ name: 'About', score: 96 }] },
     });
@@ -294,10 +297,10 @@ describe('cost-of-pain reframe model', () => {
 
   it('uses the slowest first-content page when the legacy cost anchor is FCP-healthy', async () => {
     const result = await renderClientReport(writeResults([
-      basePage({ metrics: { LCP: 1900, FCP: 1200, CLS: 60, TBT: 80 } }),
+      basePage({ metrics: { LCP: 1900, FCP: 1200, CLS: 2, TBT: 80 } }),
       basePage({
         id: 'pricing', name: 'Pricing', startingPath: '/pricing',
-        metrics: { LCP: 2200, FCP: 3000, CLS: 2, TBT: 80, downloads: 1200, 'downloads-before-LCP': 600 },
+        metrics: { LCP: 2800, FCP: 3000, CLS: 2, TBT: 80, downloads: 1200, 'downloads-before-LCP': 600 },
       }),
     ]));
 
@@ -307,6 +310,41 @@ describe('cost-of-pain reframe model', () => {
       pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%3A1%2Fpricing',
     });
     expect(result.model.perfCost?.sitePrompts?.perf).toBeDefined();
+  });
+
+  it('does not add an at-risk FCP cost when the performance verdict is good', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { LCP: 2000, FCP: 2000, CLS: 2, TBT: 80 } }),
+    ]));
+
+    expect(result.model.tiles.find((tile) => tile.target === 'perf')?.status).toBe('good');
+    expect(result.model.perfCost).toMatchObject({ state: 'zero' });
+  });
+
+  it('keeps a worse LCP cost story ahead of a mild first-content delay', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { LCP: 2000, FCP: 2000, CLS: 2, TBT: 80 } }),
+      basePage({
+        id: 'book', name: 'Book now', startingPath: '/book',
+        metrics: { LCP: 12000, FCP: 1500, CLS: 2, TBT: 80, js: 600, downloads: 20480, 'downloads-before-LCP': 4096 },
+      }),
+    ]));
+
+    expect(result.model.perfCost).toMatchObject({
+      headline: '12.0s before your main content appears on a mid-range phone',
+      bookingLine: expect.stringContaining('Book now is the page where booking starts'),
+      gap: { metricLabel: 'Main content', measuredLabel: '12.0s' },
+    });
+  });
+
+  it('floors the FCP average multiple from the displayed average', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { LCP: 3000, FCP: 3400, CLS: 2, TBT: 80, js: 100, downloads: 1000, 'downloads-before-LCP': 500 } }),
+      basePage({ id: 'pricing', name: 'Pricing', startingPath: '/pricing', metrics: { LCP: 3000, FCP: 3400, CLS: 2, TBT: 80, js: 100, downloads: 1000, 'downloads-before-LCP': 500 } }),
+      basePage({ id: 'about', name: 'About', startingPath: '/about', metrics: { LCP: 3000, FCP: 3500, CLS: 2, TBT: 80, js: 100, downloads: 1000, 'downloads-before-LCP': 500 } }),
+    ]));
+
+    expect(result.model.perfCost?.gapSubLines).toContain('site average: 3.4s - 1.8x the line');
   });
 
   it('keeps a11y family counts and mixed-impact prompt evidence reconciled', async () => {
@@ -335,6 +373,26 @@ describe('cost-of-pain reframe model', () => {
     expect(cost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
   });
 
+  it('keeps the a11y site prompt when a repeated selector is not safe prompt evidence', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: 'a[href="https://example.com/contact"]' }] } }),
+      basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: 'a[href="https://example.com/contact"]' }] } }),
+    ]));
+
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+  });
+
+  it('uses the score-badge threshold for AI tiles and page cards', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ agent: { rawWords: 300, renderedWords: 300, withoutStructuredData: true } }),
+    ]));
+
+    expect(result.model.tiles.find((tile) => tile.target === 'agent')).toMatchObject({ status: 'fair' });
+    expect(result.model.agentCards).toHaveLength(1);
+    expect(result.model.agentCards[0]).toMatchObject({ status: 'fair' });
+    expect(result.model.agentCards[0].headlineHtml).not.toContain('well structured');
+  });
+
   it('preserves the established cost treatment when FCP is healthy but LCP is slow', async () => {
     const result = await renderClientReport(writeResults([
       basePage(),
@@ -350,7 +408,25 @@ describe('cost-of-pain reframe model', () => {
         lineOwner: "Google's Core Web Vitals", lineUrl: 'https://web.dev/articles/lcp',
       },
       bookingLine: 'Book now is the page where booking starts. It shows its main content after 12.0s - a visitor who gives up here is an inquiry that never begins.',
+      stakes: { kind: 'at-risk' },
+      fix: { tone: 'primary', text: 'The target: main content under 2.5 seconds on the same phone profile. The dominant cause we measured: every page carries 0.1-0.6 MB of JavaScript, and the heaviest page moves 20.0 MB in total.' },
+      calculator: {
+        mobileSharePrefill: DEFAULT_MOBILE_TRAFFIC_SHARE,
+        bands: RECOVERY_BANDS,
+        materialityFloorUsdPerMonth: MATERIALITY_FLOOR_USD_PER_MONTH,
+        inquiryNoun: 'inquiry',
+      },
     });
+    expect(cost?.headline).toContain('4.2s before your main content appears');
+    expect(cost?.checkLine).toContain('url=http%3A%2F%2Flocalhost%3A1%2Fbook');
+    expect(cost?.gapSubLines).toEqual([
+      'slowest page: Book now, 12.0s - 4.8x the line',
+      'site average: 6.2s - 2.4x the line',
+      'the phone pulls 1.0 MB before the main content shows, 4.0 MB in total',
+    ]);
+    expect(cost?.countedZeroLine).toBe('Counted as zero above: About (2.4s) sits close to the line. It is included in the site average, but not counted as a slow page above.');
+    expect(result.model.narrative.bottomLineHtml).toContain('Home shows its main content after');
+    expect(result.model.narrative.bottomLineHtml).toContain('1.6x past Google&#39;s 2.5-second good line.');
     expect(findBannedWords(JSON.stringify(cost))).toEqual([]);
   });
 
@@ -371,6 +447,8 @@ describe('cost-of-pain reframe model', () => {
       state: 'measured',
       headline: '4.5s before your main content appears on a mid-range phone',
       gap: { metricLabel: 'Main content', measuredLabel: '4.5s' },
+      stakes: { prose: expect.stringContaining('Waits like this') },
+      fix: { text: expect.stringContaining('The target: main content under 2.5 seconds') },
     });
   });
 
@@ -384,6 +462,8 @@ describe('cost-of-pain reframe model', () => {
       state: 'measured',
       headline: 'the layout jumps around on a mid-range phone',
       gap: { metricLabel: 'Layout shift', measuredLabel: '0.60' },
+      stakes: { prose: expect.stringContaining('Layout shifts like this') },
+      fix: { text: expect.stringContaining('The target: layout shift under 0.10 on the same phone profile') },
     });
   });
 
