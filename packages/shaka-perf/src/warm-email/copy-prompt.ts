@@ -160,6 +160,11 @@ export function hasFrameworkWord(s: string): boolean {
   return frameworkPattern.test(stripStructuralTokens(s.normalize('NFKC').replace(DANGEROUS_CHARS, '')));
 }
 
+function redactFrameworkWords(value: string): string {
+  frameworkPattern.lastIndex = 0;
+  return value.replace(frameworkPattern, (_match, prefix: string) => `${prefix}[stack]`);
+}
+
 export function fenceValue(raw: string, maxChars = DEFAULT_FENCE_CHARS, maxWords = DEFAULT_FENCE_WORDS): string {
   return fenceValueInternal(raw, maxChars, maxWords, true);
 }
@@ -172,7 +177,7 @@ function fenceValueInternal(raw: string, maxChars: number, maxWords: number, red
     .filter(Boolean);
   const collapsed = lines.join(' ').replace(/\s+/g, ' ').trim();
   const instructionSafe = looksLikeInstruction(collapsed) ? '[redacted site-derived instruction]' : collapsed;
-  const frameworkSafe = redactFramework ? instructionSafe.replace(frameworkPattern, (_match, prefix: string) => `${prefix}[stack]`) : instructionSafe;
+  const frameworkSafe = redactFramework ? redactFrameworkWords(instructionSafe) : instructionSafe;
   const linkSafe = redactFramework ? defangLinks(frameworkSafe) : frameworkSafe;
   return capWords(capChars(linkSafe.replace(/"{3,}/g, "''"), maxChars), maxWords);
 }
@@ -434,6 +439,9 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   ) return undefined;
   const completePages = pages as MeasuredPerfFactPage[];
   const completePageUrls = pageUrls as string[];
+  if (completePages.some((page) => page.downloadsBeforeLcpKb !== undefined && (
+    page.downloadsBeforeLcpKb < 0 || page.downloadsBeforeLcpKb > page.downloadsKb
+  ))) return undefined;
 
   const date = slot(input.date, 48, 5);
   const host = structuralSlot(input.host, 120, 3);
@@ -456,20 +464,29 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   const minJs = Math.min(...completePages.map((page) => page.jsKb));
   const maxJs = Math.max(...completePages.map((page) => page.jsKb));
   const heaviest = [...pagesWithUrls].sort((a, b) => b.page.downloadsKb - a.page.downloadsKb)[0];
+  const slowestRoute = pageFocusLabel(slowest.url, url);
+  const slowestBeforeContentKb = canonicalUrl(slowest.url) === canonicalUrl(url)
+    ? homepageBeforeContentKb
+    : slowest.page.downloadsBeforeLcpKb;
+  const beforeContentLine = typeof slowestBeforeContentKb === 'number'
+    ? `- ${slowestRoute} downloads ${megabytes(slowestBeforeContentKb)} before its main content shows (${megabytes(slowest.page.downloadsKb)} in total).`
+    : `- The homepage downloads ${megabytes(homepageBeforeContentKb)} before its main content shows (${megabytes(homepage.downloadsKb)} in total). That does not measure what loads before first paint on ${slowestRoute}.`;
+  const goal = typeof slowestBeforeContentKb === 'number'
+    ? `Goal: something visible under 1.8 seconds on the same phone profile, starting with ${slowestRoute} - reduce what loads before first paint (render-blocking resources and bytes ahead of the main content).`
+    : `Goal: something visible under 1.8 seconds on the same phone profile, starting with ${slowestRoute} - identify what delays its first paint before treating bytes as a route-specific lever.`;
   const jsNote = canonicalUrl(slowest.url) !== canonicalUrl(heaviest.url)
     ? ' The slowest page is not the heaviest - treat weight as separate cleanup, not the paint bottleneck.'
     : ' Note: JavaScript weight is separate cleanup; this audit does not establish it as the paint bottleneck.';
-  const slowestRoute = pageFocusLabel(slowest.url, url);
 
   return finalizePrompt([
     `The site's first content is slow on phones: ${slowestRoute} shows nothing for the first ${secondsWord(slowest.page.fcpMs)} on a ${throttle} mid-range phone profile (Google's Lighthouse good line is 1.8 seconds).`,
     '',
     `Measured on ${url} (${date}, ${viewport}, ${throttle}, Lighthouse lab profile):`,
     `- First content: homepage ${seconds(homepage.fcpMs)}; slowest page ${pageRouteLabel(slowest.url)} ${seconds(slowest.page.fcpMs)}; site average ${seconds(averageFcp)} across ${pageCount} pages.`,
-    `- The homepage downloads ${megabytes(homepageBeforeContentKb)} before its main content shows (${megabytes(homepage.downloadsKb)} in total).`,
+    beforeContentLine,
     `- JavaScript weight is ${megabyteRange(minJs, maxJs)} per page; the heaviest measured page moves ${megabytes(heaviest.page.downloadsKb)} in total.${jsNote}`,
     '',
-    `Goal: something visible under 1.8 seconds on the same phone profile, starting with ${slowestRoute} - reduce what loads before first paint (render-blocking resources and bytes ahead of the main content).`,
+    goal,
     '',
     'Constraints:',
     '- Do not assume a framework or language - inspect this codebase and work within its existing setup.',
@@ -634,7 +651,7 @@ function cleanSelector(raw: unknown): string | undefined {
     || /(?:[>+~|]|&&?)\s*$/.test(normalized)
     || /https?:\/\//i.test(normalized)
   ) return undefined;
-  return normalized.replace(frameworkPattern, (_match, prefix: string) => `${prefix}[stack]`);
+  return redactFrameworkWords(normalized);
 }
 
 function cleanMarkupExample(raw: unknown): string | undefined {
@@ -654,7 +671,7 @@ function cleanMarkupExample(raw: unknown): string | undefined {
   const voidTag = firstTag !== undefined && new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']).has(firstTag);
   if (!voidTag && !new RegExp(`</${firstTag}>$`, 'i').test(normalized)) return undefined;
   if (normalized.replace(/<[^>]+>/g, '').trim() || !hasSafeMarkupAttributeValues(normalized)) return undefined;
-  return normalized;
+  return redactFrameworkWords(normalized);
 }
 
 const HTML_TAG_NAMES = new Set([
@@ -916,7 +933,7 @@ function canonicalUrl(url: string): string {
 
 function pageRouteLabel(url: string): string {
   const path = new URL(url).pathname;
-  return path === '/' ? 'homepage' : path;
+  return redactFrameworkWords(path === '/' ? 'homepage' : path);
 }
 
 function pageFocusLabel(pageUrl: string, auditedUrl: string): string {

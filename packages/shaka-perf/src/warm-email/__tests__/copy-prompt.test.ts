@@ -277,6 +277,22 @@ describe('buildCopyPrompt', () => {
     expect(prompt).not.toContain('svelte-1a2b3c');
   });
 
+  it('redacts framework-like markup tokens without suppressing the a11y prompt', () => {
+    const prompt = buildCopyPrompt('a11y', {
+      ...a11yData,
+      topRules: [{
+        ruleId: 'button-name',
+        impact: 'serious',
+        selectors: ['button.checkout'],
+        htmlExample: '<button class="slick-next"></button>',
+      }],
+    });
+
+    expect(prompt).toBeDefined();
+    expect(prompt).toContain('<button class="slick-[stack]"></button>');
+    expect(prompt).not.toContain('slick-next');
+  });
+
   it('keeps three complete rule records even when their evidence reaches the allowed size', () => {
     const selector = `main [data-audit-key="${'a'.repeat(120)}"]`;
     const markup = `<button aria-label="${'Clear choice '.repeat(10).trim()}"></button>`;
@@ -557,6 +573,26 @@ describe('site-wide copy prompts', () => {
     expect(prompt).toContain('Source: ShakaPerf audit of example.com, 2026-07-06.');
   });
 
+  it('keeps homepage pre-paint bytes separate from a slower interior route', () => {
+    const prompt = buildPerfSitePrompt(perfSiteData);
+
+    expect(prompt).toContain('The homepage downloads 0.9 MB before its main content shows (1.1 MB in total). That does not measure what loads before first paint on the /platform route.');
+    expect(prompt).toContain('identify what delays its first paint before treating bytes as a route-specific lever.');
+  });
+
+  it('uses a slow interior route\'s own measured pre-paint bytes when available', () => {
+    const prompt = buildPerfSitePrompt({
+      ...perfSiteData,
+      pages: perfSiteData.pages.map((page, index) => index === 1
+        ? { ...page, downloadsBeforeLcpKb: 2500 }
+        : page),
+    });
+
+    expect(prompt).toContain('the /platform route downloads 2.4 MB before its main content shows (3.9 MB in total).');
+    expect(prompt).toContain('reduce what loads before first paint');
+    expect(prompt).not.toContain('That does not measure what loads before first paint');
+  });
+
   it('matches homepage facts to the audited root URL when page titles repeat', () => {
     const rootPage = { ...perfSiteData.pages[0], name: 'Acme', fcpMs: 3000 };
     const prompt = buildPerfSitePrompt({
@@ -585,6 +621,21 @@ describe('site-wide copy prompts', () => {
     expect(prompt).toContain("the /platform route shows nothing for the first 3.4 seconds");
     expect(prompt).toContain('starting with the /platform route');
     expect(prompt).toContain('The slowest page is not the heaviest - treat weight as separate cleanup, not the paint bottleneck.');
+  });
+
+  it('redacts framework-like route labels without suppressing site prompts', () => {
+    const prompt = buildPerfSitePrompt({
+      ...perfSiteData,
+      pageUrls: [
+        perfSiteData.url,
+        'https://example.com/express-checkout',
+        ...perfSiteData.pageUrls.slice(2),
+      ],
+    });
+
+    expect(prompt).toBeDefined();
+    expect(prompt).toContain('the /[stack]-checkout route');
+    expect(hasFrameworkWord(prompt || '')).toBe(false);
   });
 
   it('keeps all new prompt output free of banned vocabulary and non-ASCII dashes', () => {
@@ -711,6 +762,12 @@ describe('site-wide copy prompts', () => {
     expect(buildPerfSitePrompt({
       ...perfSiteData,
       homepage: { ...perfSiteData.homepage, downloadsBeforeLcpKb: 1200 },
+    })).toBeUndefined();
+    expect(buildPerfSitePrompt({
+      ...perfSiteData,
+      pages: perfSiteData.pages.map((page, index) => index === 1
+        ? { ...page, downloadsBeforeLcpKb: 4001 }
+        : page),
     })).toBeUndefined();
   });
 });
