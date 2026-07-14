@@ -321,6 +321,19 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.perfCost).toMatchObject({ state: 'zero' });
   });
 
+  it('builds an FCP cost when first content is the only fair performance signal', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ metrics: { FCP: 2000, CLS: 2, TBT: 80, js: 100, downloads: 1000, 'downloads-before-LCP': 500 } }),
+    ]));
+
+    expect(result.model.tiles.find((tile) => tile.target === 'perf')?.status).toBe('fair');
+    expect(result.model.perfCost).toMatchObject({
+      state: 'measured',
+      headline: 'nothing for the first 2.0s',
+      gap: { metricLabel: 'First content', measuredLabel: '2.0s' },
+    });
+  });
+
   it('keeps a worse LCP cost story ahead of a mild first-content delay', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ metrics: { LCP: 2000, FCP: 2000, CLS: 2, TBT: 80 } }),
@@ -380,6 +393,15 @@ describe('cost-of-pain reframe model', () => {
     ]));
 
     expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+  });
+
+  it('keeps a shared user-card selector as a11y prompt evidence', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.user-card' }] } }),
+      basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.user-card' }] } }),
+    ]));
+
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('largely a shared component');
   });
 
   it('uses the score-badge threshold for AI tiles and page cards', async () => {

@@ -1703,12 +1703,12 @@ function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
 // Keep this optional shared-component evidence to a conservative subset it accepts.
 function safeA11ySharedSelector(selector: string): string | undefined {
   const normalized = selector.replace(/\s+/g, ' ').trim();
-  const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
-  const blockedTerms = /\b(?:ignore|instructions?|prompt|system|developer|assistant|user|tool|secret|token)\b/i;
+  const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
+  const instructionLikeClass = /(?:^|\.)(?:ignore|disregard|forget|override|bypass)(?:[-_][A-Za-z0-9_]+)*[-_](?:instructions?|prompt|system|developer|assistant|user|tool)(?:$|\.|\[)/i;
   return normalized.length > 0
     && normalized.length <= 240
     && !/(?:https?:)?\/\//i.test(normalized)
-    && !blockedTerms.test(normalized)
+    && !instructionLikeClass.test(normalized)
     && simpleSelector.test(normalized)
     ? normalized
     : undefined;
@@ -2109,7 +2109,8 @@ async function buildClientReportModel(
   // Prefer a slow homepage, otherwise the slowest measured first-content page.
   const fcpCostAnchor = fcpCostCandidates.find((candidate) => candidate.page.startingPath === '/') ?? fcpCostCandidates[0];
   const fcpCostIsDominant = siteDominantPerfProblem?.problem.kind === 'blank'
-    || siteDominantPerfProblem?.problem.kind === 'late-paint';
+    || siteDominantPerfProblem?.problem.kind === 'late-paint'
+    || (siteDominantPerfProblem === undefined && perfStatus !== 'good');
   const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
   const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
   const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
