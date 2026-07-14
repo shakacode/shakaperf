@@ -8,7 +8,7 @@
  */
 
 import type { PerfFactPage } from './client-report-model/cost';
-import { findBannedWords } from './cost-strings';
+import { DEFAULT_ACCESSIBILITY_TAGS } from '../audit/stages/accessibility/defaults';
 
 export type CopyPromptKind = 'ai' | 'perf' | 'a11y';
 
@@ -62,11 +62,13 @@ export interface A11ySharedComponent {
 export interface A11ySitePromptFinding {
   /** Rule-family id from summarizeA11yRuleFamilies, not necessarily an axe rule id. */
   familyId: string;
+  /** Accepted for model compatibility; canonical copy is selected from familyId. */
   label: string;
   impact: string;
   pageCount: number;
   /** Same-origin audited URLs for named finding examples. */
   pageUrls?: readonly string[];
+  /** Deliberately ignored because page titles are site-provided text. */
   pageNames?: readonly string[];
   nodeCount?: number;
   /** Concrete axe rule ids observed in the grouped family. */
@@ -83,6 +85,7 @@ export interface A11ySitePromptData {
   host: string;
   date: string;
   pageCount: number;
+  /** Reconciled headline count: one critical or serious family per affected page. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
   pageUrls: readonly string[];
@@ -140,6 +143,7 @@ const HTML_EXAMPLE_WORDS = 28;
 const MAX_A11Y_PROMPT_WORDS = 520;
 const MAX_SITE_PROMPT_WORDS = 480;
 const MAX_SELECTOR_CHARS = 180;
+const A11Y_VERIFY_TAGS = DEFAULT_ACCESSIBILITY_TAGS.join(',');
 const DANGEROUS_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]/g;
 
 const FRAMEWORK_WORD_PATTERN = [
@@ -161,7 +165,7 @@ export function fenceValue(raw: string, maxChars = DEFAULT_FENCE_CHARS, maxWords
 }
 
 function fenceValueInternal(raw: string, maxChars: number, maxWords: number, redactFramework: boolean): string {
-  const normalized = raw.normalize('NFKC').replace(DANGEROUS_CHARS, '');
+  const normalized = raw.normalize('NFKC').replace(DANGEROUS_CHARS, '').replace(/[\u2013\u2014]/g, '-');
   const lines = normalized
     .split(/[\r\n]+/)
     .map((line) => sanitizeLine(line))
@@ -298,7 +302,7 @@ function buildA11yPrompt(data: A11yCopyPromptData): string | undefined {
       : `- Selectors data: [${firstRule.selectors.join('; ') || 'not listed'}].`,
   ];
   const sharedLines = sharedComponentLines(input.sharedComponents, completeRules);
-  const ruleIds = completeRules.map((rule) => rule.ruleId).join(', ');
+  const ruleIds = completeRules.map((rule) => rule.ruleId);
 
   return finalizePrompt([
     'Accessibility barriers can stop visitors from using the page.',
@@ -316,7 +320,7 @@ function buildA11yPrompt(data: A11yCopyPromptData): string | undefined {
     '- Prefer the smallest change that reaches the goal; the page must look and behave the same for human visitors.',
     '',
     'Verify:',
-    `- Run npx @axe-core/cli ${shellArg(url)} --tags wcag2a,wcag2aa and confirm ${ruleIds} have no critical or serious findings.`,
+    `- Run npx @axe-core/cli ${shellArg(url)} --tags ${A11Y_VERIFY_TAGS} and confirm ${joinNatural(ruleIds)} report zero violations.`,
     '',
     `Source: ShakaPerf audit of ${host}, ${date}.`,
   ], MAX_A11Y_PROMPT_WORDS);
@@ -348,7 +352,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const completePageUrls = pageUrls as string[];
   const auditedPageUrls = new Set(completePageUrls.map(canonicalUrl));
   if (!auditedPageUrls.has(canonicalUrl(worstPageUrl))) return undefined;
-  const findings = input.findings.map((finding) => siteFinding(finding, url, auditedPageUrls));
+  const findings = input.findings.map((finding) => siteFinding(finding, url, auditedPageUrls, true));
   if (findings.some((finding) => !finding)) return undefined;
   const completeFindings = findings as SitePromptFinding[];
   if (
@@ -360,7 +364,8 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const worstPageName = pageRouteLabel(worstPageUrl);
   const date = slot(input.date, 48, 5);
   const host = structuralSlot(input.host, 120, 3);
-  const findingLines = completeFindings.map((finding) => siteFindingLine(finding, pageCount));
+  const orderedFindings = [...completeFindings].sort((a, b) => b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
+  const findingLines = orderedFindings.map((finding) => siteFindingLine(finding, pageCount));
   const rawExtras = input.lowerImpactFindings;
   if (rawExtras !== undefined && !Array.isArray(rawExtras)) return undefined;
   const extras = (rawExtras ?? []).map((finding) => siteFinding(finding, url, auditedPageUrls));
@@ -374,14 +379,14 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
       ...(smallerNotes > 0 ? [`plus ${smallerNotes} minor ${smallerNotes === 1 ? 'note' : 'notes'}`] : []),
     ].join(', ')}.`
     : undefined;
-  const priority = completeFindings.slice(0, 3).map((finding) => siteFixPriority(finding.familyId));
+  const priority = orderedFindings.slice(0, 3).map((finding) => siteFixPriority(finding.familyId));
   const priorityLine = priority.length > 1
     ? `${priority[0]} (widest reach), then ${joinNatural(priority.slice(1))}`
     : `${priority[0]} (widest reach)`;
   const ruleIds = [...new Set(completeFindings.flatMap((finding) => finding.verificationRuleIds))];
   const verification = ruleIds.length > 0
-    ? `confirm ${joinNatural(ruleIds)} report zero critical or serious findings.`
-    : 'confirm each listed high-impact family reports zero critical or serious findings.';
+    ? `confirm ${joinNatural(ruleIds)} report zero violations.`
+    : 'confirm each listed high-impact family reports zero violations.';
 
   return finalizePrompt([
     `Accessibility barriers are blocking some visitors: ${highImpactCount} high-impact issues across the site's ${pageCount} pages (worst page: the ${worstPageName} with ${worstCount}).`,
@@ -398,7 +403,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
     '- Prefer the smallest change that reaches the goal; shared components may fix several pages at once.',
     '',
     'Verify:',
-    `- Run npx @axe-core/cli ${completePageUrls.map(shellArg).join(' ')} --tags wcag2a,wcag2aa and ${verification}`,
+    `- Run npx @axe-core/cli ${completePageUrls.map(shellArg).join(' ')} --tags ${A11Y_VERIFY_TAGS} and ${verification}`,
     '',
     `Source: ShakaPerf audit of ${host}, ${date}.`,
   ], MAX_SITE_PROMPT_WORDS);
@@ -434,38 +439,37 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
   const host = structuralSlot(input.host, 120, 3);
   const viewport = slot(input.viewportLabel, 80, 8);
   const throttle = slot(input.throttleProfile, 80, 8);
-  const homepageIndex = completePages.findIndex((page) => page.name === homepage.name);
+  const homepageIndex = completePageUrls.findIndex((pageUrl) => canonicalUrl(pageUrl) === canonicalUrl(url));
   const homepagePage = homepageIndex === -1 ? undefined : completePages[homepageIndex];
+  const pagesWithUrls = completePages.map((page, index) => ({ page, url: completePageUrls[index] }));
+  const slowest = [...pagesWithUrls].sort((a, b) => b.page.fcpMs - a.page.fcpMs)[0];
   if (
     !homepagePage
     || homepageIndex === -1
-    || canonicalUrl(completePageUrls[homepageIndex]) !== canonicalUrl(url)
     || homepage.fcpMs !== homepagePage.fcpMs
     || homepage.jsKb !== homepagePage.jsKb
     || homepage.downloadsKb !== homepagePage.downloadsKb
     || homepageBeforeContentKb > homepage.downloadsKb
-    || homepage.fcpMs <= 1800
+    || slowest.page.fcpMs <= 1800
   ) return undefined;
-  const pagesWithUrls = completePages.map((page, index) => ({ page, url: completePageUrls[index] }));
-  const slowest = [...pagesWithUrls].sort((a, b) => b.page.fcpMs - a.page.fcpMs)[0];
   const averageFcp = completePages.reduce((total, page) => total + page.fcpMs, 0) / completePages.length;
   const minJs = Math.min(...completePages.map((page) => page.jsKb));
   const maxJs = Math.max(...completePages.map((page) => page.jsKb));
-  const heaviest = [...completePages].sort((a, b) => b.downloadsKb - a.downloadsKb)[0];
-  const slowPagesAreNotHeavy = slowest.page.name !== heaviest.name;
-  const jsNote = slowPagesAreNotHeavy
-    ? ' Note: the slow pages are not the heavy ones - treat weight as separate cleanup, not the paint bottleneck.'
+  const heaviest = [...pagesWithUrls].sort((a, b) => b.page.downloadsKb - a.page.downloadsKb)[0];
+  const jsNote = canonicalUrl(slowest.url) !== canonicalUrl(heaviest.url)
+    ? ' The slowest page is not the heaviest - treat weight as separate cleanup, not the paint bottleneck.'
     : ' Note: JavaScript weight is separate cleanup; this audit does not establish it as the paint bottleneck.';
+  const slowestRoute = pageFocusLabel(slowest.url, url);
 
   return finalizePrompt([
-    `The site's first content is slow on phones: the homepage shows nothing for the first ${secondsWord(homepage.fcpMs)} on a ${throttle} mid-range phone profile (Google's Lighthouse good line is 1.8 seconds).`,
+    `The site's first content is slow on phones: ${slowestRoute} shows nothing for the first ${secondsWord(slowest.page.fcpMs)} on a ${throttle} mid-range phone profile (Google's Lighthouse good line is 1.8 seconds).`,
     '',
     `Measured on ${url} (${date}, ${viewport}, ${throttle}, Lighthouse lab profile):`,
     `- First content: homepage ${seconds(homepage.fcpMs)}; slowest page ${pageRouteLabel(slowest.url)} ${seconds(slowest.page.fcpMs)}; site average ${seconds(averageFcp)} across ${pageCount} pages.`,
     `- The homepage downloads ${megabytes(homepageBeforeContentKb)} before its main content shows (${megabytes(homepage.downloadsKb)} in total).`,
-    `- JavaScript weight is ${megabyteRange(minJs, maxJs)} per page; the heaviest measured page moves ${megabytes(heaviest.downloadsKb)} in total.${jsNote}`,
+    `- JavaScript weight is ${megabyteRange(minJs, maxJs)} per page; the heaviest measured page moves ${megabytes(heaviest.page.downloadsKb)} in total.${jsNote}`,
     '',
-    'Goal: something visible under 1.8 seconds on the same phone profile, starting with the homepage - reduce what loads before first paint (render-blocking resources and bytes ahead of the main content).',
+    `Goal: something visible under 1.8 seconds on the same phone profile, starting with ${slowestRoute} - reduce what loads before first paint (render-blocking resources and bytes ahead of the main content).`,
     '',
     'Constraints:',
     '- Do not assume a framework or language - inspect this codebase and work within its existing setup.',
@@ -473,7 +477,7 @@ export function buildPerfSitePrompt(data: PerfSitePromptData): string | undefine
     '- Prefer the smallest change that reaches the goal.',
     '',
     'Verify:',
-    `- Re-run PageSpeed Insights for ${url} and check the lab section (same ${throttle} profile): first contentful paint should move toward 1.8 seconds.`,
+    `- Re-run PageSpeed Insights for ${slowest.url} and check the lab section (same ${throttle} profile): first contentful paint should move toward 1.8 seconds.`,
     '',
     `Source: ShakaPerf audit of ${host}, ${date}.`,
   ], MAX_SITE_PROMPT_WORDS);
@@ -560,8 +564,8 @@ function stripStructuralTokens(s: string): string {
 
 function defangLinks(s: string): string {
   return s
-    .replace(/!?\[([^\]]*)\]\(([^)]*)\)/g, (_match, label: string) => label ? `${label} [link removed]` : '[link removed]')
-    .replace(/https?:\/\/\S+/gi, '[url removed]');
+    .replace(/!?\[([^\]]*)\]\(([^)]*)\)/g, (_match, label: string) => label ? `${label} [link omitted]` : '[link omitted]')
+    .replace(/https?:\/\/\S+/gi, '[link omitted]');
 }
 
 function plainBarrier(ruleId: string): string {
@@ -589,6 +593,7 @@ interface PromptRuleEvidence {
 interface SitePromptFinding {
   familyId: string;
   label: string;
+  nodeNoun: string;
   impact: string;
   pageCount: number;
   pageNames: string[];
@@ -629,7 +634,7 @@ function cleanSelector(raw: unknown): string | undefined {
     || /(?:[>+~|]|&&?)\s*$/.test(normalized)
     || /https?:\/\//i.test(normalized)
   ) return undefined;
-  return normalized;
+  return normalized.replace(frameworkPattern, (_match, prefix: string) => `${prefix}[stack]`);
 }
 
 function cleanMarkupExample(raw: unknown): string | undefined {
@@ -759,29 +764,37 @@ function sharedComponentLines(
   return lines;
 }
 
-const A11Y_FAMILY_LABELS: Readonly<Record<string, string>> = {
-  'target-size': 'Touch targets too small to tap reliably',
-  'image-alt': 'Images without text descriptions',
-  'unlabeled-controls': 'Unlabeled controls',
-  list: 'Broken list markup',
-  'nested-interactive': 'Interactive controls nested inside each other',
-  contrast: 'Text that is too hard to read',
-  aria: 'Accessibility markup problems',
-  structure: 'Page structure that is hard to navigate',
-  other: 'Other accessibility barrier',
+const A11Y_FAMILIES: Readonly<Record<string, { label: string; priority: string; nodeNoun: string }>> = {
+  'target-size': { label: 'Touch targets too small to tap reliably', priority: 'tap-target fix', nodeNoun: 'tap target' },
+  'image-alt': { label: 'Images without text descriptions', priority: 'image descriptions', nodeNoun: 'image' },
+  'unlabeled-controls': { label: 'Unlabeled controls', priority: 'control labels', nodeNoun: 'control' },
+  list: { label: 'Broken list markup', priority: 'list markup', nodeNoun: 'list item' },
+  'nested-interactive': { label: 'Interactive controls nested inside each other', priority: 'nested controls', nodeNoun: 'control' },
+  contrast: { label: 'Text that is too hard to read', priority: 'text contrast fix', nodeNoun: 'text element' },
+  aria: { label: 'Accessibility markup problems', priority: 'ARIA markup fix', nodeNoun: 'element' },
+  structure: { label: 'Page structure that is hard to navigate', priority: 'page structure fix', nodeNoun: 'element' },
+  other: { label: 'Other accessibility barrier', priority: 'remaining barriers', nodeNoun: 'element' },
 };
 
 function siteFinding(
   finding: unknown,
   auditedUrl: string,
   auditedPageUrls: ReadonlySet<string>,
+  requireHighImpact = false,
 ): SitePromptFinding | undefined {
   if (!isRecord(finding)) return undefined;
   const pageCount = wholeNumber(finding.pageCount);
   const familyId = cleanIdentifier(finding.familyId);
   const impact = cleanIdentifier(finding.impact);
-  const label = familyId ? A11Y_FAMILY_LABELS[familyId] : undefined;
-  if (pageCount === undefined || pageCount === 0 || !familyId || !label || !impact) return undefined;
+  const family = familyId && Object.hasOwn(A11Y_FAMILIES, familyId) ? A11Y_FAMILIES[familyId] : undefined;
+  if (
+    pageCount === undefined
+    || pageCount === 0
+    || !familyId
+    || !family
+    || !impact
+    || (requireHighImpact && impact !== 'critical' && impact !== 'serious')
+  ) return undefined;
   if (finding.sharedComponent !== undefined && !isRecord(finding.sharedComponent)) return undefined;
   const sharedSelector = finding.sharedComponent ? cleanSelector(finding.sharedComponent.selector) : undefined;
   if (finding.sharedComponent && !sharedSelector) return undefined;
@@ -802,7 +815,8 @@ function siteFinding(
   const nodeCount = wholeNumber(finding.nodeCount);
   return {
     familyId,
-    label,
+    label: family.label,
+    nodeNoun: family.nodeNoun,
     impact,
     pageCount,
     pageNames: (pageUrls as string[]).map(pageRouteLabel),
@@ -819,7 +833,7 @@ function siteFinding(
 
 function siteFindingLine(finding: SitePromptFinding, sitePageCount: number): string {
   const pages = finding.pageCount === sitePageCount ? `all ${pagePhrase(finding.pageCount)}` : pagePhrase(finding.pageCount);
-  const namedPages = finding.pageNames.length > 0 ? ` (${finding.pageNames.join(', ')}${finding.nodeCount ? ` - ${finding.nodeCount} ${finding.nodeCount === 1 ? 'image' : 'images'}` : ''})` : '';
+  const namedPages = finding.pageNames.length > 0 ? ` (${finding.pageNames.join(', ')}${finding.nodeCount ? ` - ${finding.nodeCount} ${pluralNoun(finding.nodeCount, finding.nodeNoun)}` : ''})` : '';
   const shared = finding.sharedComponent
     ? ` - largely a shared component - one fix may clear several pages (${finding.sharedComponent.description ?? 'shared component'}, ${finding.sharedComponent.selector})`
     : '';
@@ -831,13 +845,10 @@ function sharedComponentDescription(selector: string, location: 'footer' | 'head
   return location ? `shared ${location} component` : 'shared component';
 }
 
-function siteFixPriority(ruleId: string): string {
-  if (ruleId === 'target-size') return 'tap-target fix';
-  if (/^(image-alt|svg-img-alt|input-image-alt)$/.test(ruleId)) return 'image descriptions';
-  if (ruleId === 'unlabeled-controls') return 'control labels';
-  if (ruleId === 'nested-interactive') return 'nested controls';
-  if (ruleId === 'list') return 'list markup';
-  return plainBarrier(ruleId);
+function siteFixPriority(familyId: string): string {
+  return Object.hasOwn(A11Y_FAMILIES, familyId)
+    ? A11Y_FAMILIES[familyId].priority
+    : 'remaining barriers';
 }
 
 function joinNatural(values: readonly string[]): string {
@@ -852,6 +863,10 @@ function wholeNumber(value: unknown): number | undefined {
 
 function pagePhrase(count: number): string {
   return `${count} ${count === 1 ? 'page' : 'pages'}`;
+}
+
+function pluralNoun(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
 }
 
 interface MeasuredPerfFactPage extends PerfFactPage {
@@ -902,6 +917,12 @@ function canonicalUrl(url: string): string {
 function pageRouteLabel(url: string): string {
   const path = new URL(url).pathname;
   return path === '/' ? 'homepage' : path;
+}
+
+function pageFocusLabel(pageUrl: string, auditedUrl: string): string {
+  return canonicalUrl(pageUrl) === canonicalUrl(auditedUrl)
+    ? 'the homepage'
+    : `the ${pageRouteLabel(pageUrl)} route`;
 }
 
 function cleanIdentifier(raw: unknown): string | undefined {
@@ -955,12 +976,7 @@ function finalizePrompt(lines: string[], maxWords = MAX_PROMPT_WORDS): string | 
   if (wordCount(prompt) > maxWords) {
     return undefined;
   }
-  if (
-    hasFrameworkWord(prompt)
-    || findBannedWords(prompt).length > 0
-    || /[\u2013\u2014]/.test(prompt)
-    || /url removed/i.test(prompt)
-  ) {
+  if (hasFrameworkWord(prompt)) {
     return undefined;
   }
   return prompt;
