@@ -1414,7 +1414,7 @@ const SCRIPTS = `<script>
     function recoveredText(lo, hi, noun, one){
       if(hi < 1) return 'under 1 ' + one;
       var loLabel = countLabel(lo), hiLabel = countLabel(hi);
-      return loLabel === hiLabel ? 'about ' + hiLabel + ' ' + one : loLabel + ' to ' + hiLabel + ' more ' + noun;
+      return loLabel === hiLabel ? 'about ' + hiLabel + ' ' + (Math.floor(hi) === 1 ? one : noun) : loLabel + ' to ' + hiLabel + ' more ' + noun;
     }
     function dollars(n){ return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
     function valueDollars(n){ return '$' + n.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }); }
@@ -1462,7 +1462,7 @@ const SCRIPTS = `<script>
       var sourceNoun = card.getAttribute('data-calc-noun') || 'inquiries';
       var one = /ies$/i.test(sourceNoun) ? sourceNoun.slice(0, -3) + 'y'
         : /(ches|shes|sses|xes|zes)$/i.test(sourceNoun) ? sourceNoun.slice(0, -2)
-          : sourceNoun.endsWith('s') ? sourceNoun.slice(0, -1) : sourceNoun;
+          : /s$/i.test(sourceNoun) && !/(ss|us)$/i.test(sourceNoun) ? sourceNoun.slice(0, -1) : sourceNoun;
       var noun = /[^aeiou]y$/i.test(one) ? one.slice(0, -1) + 'ies'
         : /(s|x|z|ch|sh)$/i.test(one) ? one + 'es' : one + 's';
       var bandPct = numberLabel(band.lo * 100) + '-' + numberLabel(band.hi * 100) + '%';

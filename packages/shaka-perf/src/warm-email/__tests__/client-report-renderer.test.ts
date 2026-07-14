@@ -2276,7 +2276,22 @@ describe('renderClientReportHtml', () => {
     input(inquiries);
     expect(headline.textContent).toBe('2 to 5 more boxes a month');
     expect(subline.textContent).toBe('add what one box is worth to see the money');
+
+    attributes.set('data-calc-noun', 'class');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more classes a month');
+    expect(subline.textContent).toBe('add what one class is worth to see the money');
+
+    attributes.set('data-calc-noun', 'bus');
+    input(inquiries);
+    expect(headline.textContent).toBe('2 to 5 more buses a month');
+    expect(subline.textContent).toBe('add what one bus is worth to see the money');
+
     attributes.set('data-calc-noun', 'inquiry');
+    const recoveredTextStart = html.indexOf('function recoveredText(lo, hi, noun, one){');
+    const recoveredTextEnd = html.indexOf('\n    function dollars', recoveredTextStart);
+    const recoveredText = vm.runInNewContext(`function countLabel(n){ return Math.floor(n).toLocaleString('en-US'); }\n${html.slice(recoveredTextStart, recoveredTextEnd)}\nrecoveredText`);
+    expect(recoveredText(2.08, 2.6, 'inquiries', 'inquiry')).toBe('about 2 inquiries');
 
     value.value = '1';
     input(value);
