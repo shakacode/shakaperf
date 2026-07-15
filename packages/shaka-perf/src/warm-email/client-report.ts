@@ -1055,8 +1055,8 @@ const FAVICON_MAX_BYTES = 512 * 1024;
 // anything with a quote, angle bracket, or space could otherwise break out of
 // the href attribute faviconLinkTag puts it in. Known byte signatures take
 // precedence over the header because the header may be wrong; a clean image
-// header is only a fallback for icon formats we do not sniff. Obvious markup
-// and JSON error bodies never use that fallback.
+// header is only a fallback for icon formats we do not sniff. Text error bodies
+// never use that fallback.
 export function faviconDataUri(bytes: Uint8Array, contentType: string | null): string | null {
   if (bytes.length === 0 || bytes.length > FAVICON_MAX_BYTES) return null;
   const type = (contentType ?? '').split(';')[0].trim().toLowerCase();
@@ -1071,18 +1071,59 @@ function faviconMimeFromBytes(bytes: Uint8Array): string | null {
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
-  if (/^\s*(?:<\?xml\b[^>]*>\s*)?(?:(?:<!--[\s\S]*?-->|<!DOCTYPE\s+svg\b[^>]*>)\s*)*<svg(?=[\s/>])/.test(faviconTextPrefix(bytes))) {
+  if (hasSvgRoot(faviconTextPrefix(bytes))) {
     return 'image/svg+xml';
   }
   return null;
 }
 
 function isClearlyNonIconText(bytes: Uint8Array): boolean {
-  return /^\s*(?:<|[\[{])/.test(faviconTextPrefix(bytes));
+  const text = faviconTextPrefix(bytes).trimStart();
+  return /^[<{[]/.test(text) || (!text.includes('\ufffd') && /^[\t\n\f\r -~]+$/.test(text));
 }
 
 function faviconTextPrefix(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes.subarray(0, 8192));
+}
+
+function hasSvgRoot(text: string): boolean {
+  let index = skipXmlWhitespace(text, 0);
+  if (text.startsWith('<?xml', index)) {
+    const end = text.indexOf('?>', index + 5);
+    if (end === -1) return false;
+    index = skipXmlWhitespace(text, end + 2);
+  }
+  for (let prefixes = 0; prefixes < 8; prefixes += 1) {
+    if (text.startsWith('<!--', index)) {
+      const end = text.indexOf('-->', index + 4);
+      if (end === -1) return false;
+      index = skipXmlWhitespace(text, end + 3);
+      continue;
+    }
+    if (text.startsWith('<!DOCTYPE', index)) {
+      const name = skipXmlWhitespace(text, index + '<!DOCTYPE'.length);
+      if (!text.startsWith('svg', name) || !isXmlDelimiter(text[name + 3])) return false;
+      const end = text.indexOf('>', name + 3);
+      if (end === -1) return false;
+      index = skipXmlWhitespace(text, end + 1);
+      continue;
+    }
+    break;
+  }
+  return text.startsWith('<svg', index) && isXmlDelimiter(text[index + 4]);
+}
+
+function skipXmlWhitespace(text: string, index: number): number {
+  while (isXmlWhitespace(text[index])) index += 1;
+  return index;
+}
+
+function isXmlWhitespace(character: string | undefined): boolean {
+  return character === ' ' || character === '\t' || character === '\n' || character === '\r' || character === '\f' || character === '\v' || character === '\ufeff';
+}
+
+function isXmlDelimiter(character: string | undefined): boolean {
+  return isXmlWhitespace(character) || character === '/' || character === '>';
 }
 
 // Pure: the report head's icon link. Omit it when no usable favicon was fetched.

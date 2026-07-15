@@ -496,6 +496,11 @@ describe('faviconDataUri', () => {
     expect(faviconDataUri(json, 'image/png')).toBeNull();
   });
 
+  it('rejects a plain-text error body even when the response claims to be an image', () => {
+    const text = new TextEncoder().encode('Not Found');
+    expect(faviconDataUri(text, 'image/png')).toBeNull();
+  });
+
   it('uses ICO and PNG signatures before an incorrect response content-type', () => {
     const ico = new Uint8Array([0x00, 0x00, 0x01, 0x00, 0x00, 0x00]);
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -522,6 +527,13 @@ describe('faviconDataUri', () => {
     expect(faviconDataUri(new TextEncoder().encode('<svg-not-an-icon/>'), 'image/png')).toBeNull();
   });
 
+  it('rejects a long sequence of SVG-like comments without expensive backtracking', () => {
+    const body = new TextEncoder().encode('<!-- -->'.repeat(24) + 'X');
+    const started = performance.now();
+    expect(faviconDataUri(body, 'image/svg+xml')).toBeNull();
+    expect(performance.now() - started).toBeLessThan(80);
+  });
+
   it('rejects empty bytes and files too large to inline (cap is inclusive)', () => {
     expect(faviconDataUri(new Uint8Array(0), 'image/x-icon')).toBeNull();
     expect(faviconDataUri(new Uint8Array(512 * 1024 + 1), 'image/x-icon')).toBeNull();
@@ -529,10 +541,10 @@ describe('faviconDataUri', () => {
   });
 
   it('rejects a content-type that could break out of the href attribute', () => {
-    const bytes = new Uint8Array([0, 0, 1, 0]);
+    const bytes = new Uint8Array([1, 2, 3, 4]);
     // Attacker-controlled header with a quote + tag: must NOT reach the data URI.
     const hostile = 'image/svg+xml"><script>alert(1)</script>';
-    expect(faviconDataUri(bytes, hostile)).toBe(`data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`);
+    expect(faviconDataUri(bytes, hostile)).toBeNull();
   });
 });
 
