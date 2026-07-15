@@ -116,6 +116,21 @@ function walkCauseChain<T>(err: unknown, pick: (node: object) => T | undefined):
 }
 
 /**
+ * Find the artifacts of a `StageFailureError` anywhere in the cause chain.
+ *
+ * Not `err instanceof StageFailureError`: a stage that throws from inside a
+ * `pool.submit` task has its error wrapped by the worker pool's poison error
+ * once the retry budget is spent (`wrapWithCause`), so the StageFailureError
+ * arrives as a `cause` and a bare instanceof check silently drops the media.
+ * Same reason `findLastAnnotation` walks the chain.
+ */
+export function findFailureArtifacts(err: unknown): StageFailureArtifacts | undefined {
+  return walkCauseChain(err, (node) => (
+    node instanceof StageFailureError ? node.failureArtifacts : undefined
+  ));
+}
+
+/**
  * Find a `failureMediaName` — the filename of a screenshot or screencast the
  * worker captured at the failure — anywhere in the cause chain. Out-of-process
  * workers (e.g. the Lighthouse IPC worker) attach it as a string property to

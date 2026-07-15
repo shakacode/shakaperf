@@ -67,7 +67,7 @@ import { testIdForTest, unitIdForTest } from './unit-id';
 import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore } from './artifact-store';
 import type { Outcome, ErrorInfo } from './outcome';
-import { StageFailureError, findLastAnnotation } from '../stage/stage-failure';
+import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
 import { announceStage } from './announce-stage';
@@ -1022,11 +1022,15 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
     };
   } catch (err) {
+    // Walk the cause chain, don't instanceof: a stage that throws from inside a
+    // pool task gets its StageFailureError wrapped in the pool's poison error,
+    // which would drop the failure media on the floor.
+    const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
       stage: stage.name,
       error: errorInfo(err),
-      ...(err instanceof StageFailureError ? { failure: err.failureArtifacts } : {}),
+      ...(failure ? { failure } : {}),
     };
   }
 
