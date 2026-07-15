@@ -17,7 +17,7 @@ import type { PagePerf } from '../synthesis';
 
 function view(
   impact: AccessibilityViolation['impact'],
-  options: { blocked?: boolean; ruleId?: string; score?: number; name?: string } = {},
+  options: { blocked?: boolean; ruleId?: string; score?: number; name?: string; noViolations?: boolean } = {},
 ): A11ySectionView {
   const page: PagePerf = {
     id: 'home', name: options.name ?? 'Home', startingPath: '/', chips: [], metrics: {},
@@ -26,7 +26,7 @@ function view(
     viewportLabel: 'phone',
     viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 } as AccessibilityScan['viewport'],
     url: 'https://example.com/',
-    violations: [{
+    violations: options.noViolations ? [] : [{
       ruleId: options.ruleId ?? 'target-size',
       impact,
       help: 'fixture',
@@ -97,6 +97,20 @@ describe('buildA11ySection', () => {
     expect(result.a11yCost?.strongPageGroup).toEqual({
       label: 'Strong pages',
       pages: [{ name: 'Looks fine', score: 98 }, { name: 'Also looks fine', score: 70 }],
+    });
+  });
+
+  it('groups clean score-bearing pages even when no a11y cost block was otherwise needed', () => {
+    const prepared = prepareA11ySection([
+      view('minor', { name: 'Homepage', score: 98, noViolations: true }),
+      view('minor', { name: 'Contact', score: 94, noViolations: true }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
+    expect(result.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Homepage', score: 98 }, { name: 'Contact', score: 94 }],
     });
   });
 
