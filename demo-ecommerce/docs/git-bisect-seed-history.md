@@ -35,26 +35,26 @@ they remain independent of Rails seeds and API responses.
 Fixture commits should stay small enough that `git show` explains the category
 signal without requiring a full app run.
 
-Seed base: `38dae68` (`main` when this branch was created).
+Seed base: `976ae3d` (`main` when this branch was created).
 
 Category map:
 
-- `623a1ae` - no regression, seed docs only.
-- `fe8900e` - no regression, docs only.
-- `58cc828` - first `visreg` bad commit, homepage hero color change.
-- `a55e7f4` - no regression, docs only.
-- `754fcd9` - no regression, docs only.
-- `9c7cfff` - first `perf` bad commit, homepage CPU warmup.
-- `744fe90` - no regression, docs only.
-- `ac38e53` - no regression, docs only.
-- `463c429` - no regression, docs only.
-- `fcb0e2b` - first `accessibility` bad commit, offscreen unnamed button.
-- `c1e2a62` - no regression, docs only.
-- `ce1f601` - no regression, docs only.
-- `3846371` - no regression, docs only.
-- `5345dff` - visual plus performance regression on product detail.
-- `088afb9` - no regression, docs only.
-- `4406a78` - no regression, fixture-impact docs only.
+- `3f2dc38` - no regression, seed docs only.
+- `07d1666` - no regression, docs only.
+- `429f40b` - first `visreg` bad commit, homepage hero color change.
+- `b2b07f8` - no regression, docs only.
+- `22cdde5` - no regression, docs only.
+- `dd9f91f` - first `perf` bad commit, homepage CPU warmup.
+- `2166ac5` - no regression, docs only.
+- `f6c8e30` - no regression, docs only.
+- `1d076f7` - no regression, docs only.
+- `7086fd0` - first `accessibility` bad commit, offscreen unnamed button.
+- `9e39106` - no regression, docs only.
+- `b29c5da` - no regression, docs only.
+- `a6286c2` - no regression, docs only.
+- `e31960f` - visual plus performance regression on product detail.
+- `b792e01` - no regression, docs only.
+- `bee8480` - no regression, fixture-impact docs only.
 
 Expected affected AB tests and metrics:
 
