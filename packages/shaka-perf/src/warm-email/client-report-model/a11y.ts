@@ -573,14 +573,13 @@ export function buildA11ySection(
       ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
       scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
-  } else if (fineA11y.length > 0) {
-    a11yCost = { tab: 'a11y', state: 'zero' };
   }
   const a11yStrongPages = fineA11y
     .flatMap((view) => typeof view.client?.score === 'number'
       ? [{ name: view.page.name, score: view.client.score }]
       : []);
-  if (a11yCost && a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
+  if (a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
+    a11yCost ??= { tab: 'a11y', state: 'zero' };
     a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
   }
   return {

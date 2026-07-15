@@ -734,15 +734,11 @@ const a11yLevel = (impact: AccessibilityViolation['impact']): A11yLevel =>
   impact === 'critical' || impact === 'serious' ? 'hi' : impact === 'moderate' ? 'mid' : 'lo';
 export const scoreBucket = (s: number): 'good' | 'fair' | 'poor' => (s >= 90 ? 'good' : s >= 50 ? 'fair' : 'poor');
 
-// The phone scan for a page that actually has violations. The accessibility
+// The phone scan for a page that completed accessibility measurement. The
 // stage writes exactly one scan per (page, viewport) file; synthesis already
 // resolved the phone row, so scans[0] is the phone scan.
 function a11yScan(page: PagePerf): AccessibilityScan | undefined {
-  const scan = page.a11y?.scans?.[0];
-  if (!scan) return undefined;
-  // Keep a bot-walled scan even with zero violations so the report can surface it
-  // as "could not measure" rather than dropping it (or mistaking it for clean).
-  return scan.violations.length > 0 || scan.blocked === true ? scan : undefined;
+  return page.a11y?.scans?.[0];
 }
 
 // A page is accessibility-clean ONLY if it produced a real scan with zero
@@ -811,7 +807,7 @@ export async function enrichA11ySummaries(
 ): Promise<void> {
   const targets = pages
     .map((page) => ({ page, scan: a11yScan(page) }))
-    .filter((t): t is { page: PagePerf; scan: AccessibilityScan } => !!t.scan);
+    .filter((t): t is { page: PagePerf; scan: AccessibilityScan } => !!t.scan && t.scan.violations.length > 0);
   if (targets.length === 0) return;
 
   const existing = targets.map((t) => readA11yClient(resultsDir, t.page.id));

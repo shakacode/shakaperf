@@ -77,12 +77,33 @@ describe('buildAgentSection', () => {
     const result = buildAgentSection([agentView(90, 100)], [], promptCtx, undefined);
 
     expect(result.agentCost).toMatchObject({ tab: 'ai', state: 'zero' });
+    expect(result.agentCards).toHaveLength(0);
+    expect(result.agentCost?.strongPageGroup?.pages).toEqual([{ name: 'Home', score: 90 }]);
   });
 
   it('uses the measured state immediately above the ten-percent missing-text floor', () => {
     const result = buildAgentSection([agentView(89, 100)], [], promptCtx, undefined);
 
     expect(result.agentCost).toMatchObject({ tab: 'ai', state: 'measured' });
+    expect(result.agentCards.map((card) => card.name)).toEqual(['Home']);
+    expect(result.agentFine).toHaveLength(0);
+    expect(result.agentCost?.strongPageGroup).toBeUndefined();
+  });
+
+  it('keeps too-little-text pages out of the verified fine-page group', () => {
+    const result = buildAgentSection([agentView(10, 10)], [], promptCtx, undefined);
+
+    expect(result.agentCost).toMatchObject({ tab: 'ai', state: 'noclaim' });
+    expect(result.agentCards.map((card) => card.name)).toEqual(['Home']);
+    expect(result.agentCost?.strongPageGroup).toBeUndefined();
+  });
+
+  it('keeps a non-blocked raw-fetch failure out of the verified fine-page group', () => {
+    const result = buildAgentSection([agentView(null, 10)], [], promptCtx, undefined);
+
+    expect(result.agentCost).toMatchObject({ tab: 'ai', state: 'noclaim' });
+    expect(result.agentCards.map((card) => card.name)).toEqual(['Home']);
+    expect(result.agentCost?.strongPageGroup).toBeUndefined();
   });
 
   it('uses the blocked state when no server-readable page facts exist', () => {

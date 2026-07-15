@@ -92,6 +92,12 @@ function missingRenderedWords(view: AgentPageView): number {
   return Math.max(0, agentRenderedWords(view) - boundedPresentWords(agentRawWords(view), agentRenderedWords(view)));
 }
 
+function requiresAgentCard(view: AgentPageView): boolean {
+  const renderedWords = agentRenderedWords(view);
+  if (!view.struct.rawReachable || renderedWords < MIN_AGENT_COST_WORDS) return true;
+  return 1 - boundedCoverageRatio(agentRawWords(view), renderedWords) > MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO;
+}
+
 function agentPromptForView(view: AgentPageView, ctx: AgentPromptContext, coveragePct: number): string | undefined {
   if (!view.struct.rawReachable) return undefined;
   const url = liveUrlFor(ctx.siteUrl, view.page.startingPath || '/') || view.result.url || ctx.siteUrl;
@@ -180,8 +186,8 @@ export function buildAgentSection(
 
   const overall = scoreSite(agentMeasurable.map((view) => view.result), siteSignals);
   const agentStatus = scoreStatus(overall.overall);
-  const fineViews = agentMeasurable.filter((view) => scoreStatus(view.struct.score) === 'good' && view.struct.bucket === 'good');
-  const cardViews = agentMeasurable.filter((view) => !fineViews.includes(view));
+  const cardViews = agentMeasurable.filter(requiresAgentCard);
+  const fineViews = agentMeasurable.filter((view) => !requiresAgentCard(view));
   const reachableForCost = agentMeasurable.filter((view) => view.struct.rawReachable);
   const siteWideReadable = reachableForCost.length > 0 && reachableForCost.length === agentMeasurable.length
     ? boundedCoveragePct(

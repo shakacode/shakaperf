@@ -758,7 +758,11 @@ ${!blocked ? fixRow(cost) : ''}
 }
 
 function costBlock(cost: ClientReportCostBlock | undefined): string {
-  return cost ? costGrammarBlock(cost) : '';
+  if (!cost) return '';
+  const groupingOnlyA11yZero = cost.tab === 'a11y'
+    && cost.state === 'zero'
+    && Object.keys(cost).every((key) => key === 'tab' || key === 'state' || key === 'strongPageGroup');
+  return groupingOnlyA11yZero ? '' : costGrammarBlock(cost);
 }
 
 function verdictHead(

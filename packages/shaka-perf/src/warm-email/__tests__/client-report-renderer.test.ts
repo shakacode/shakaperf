@@ -1480,6 +1480,78 @@ describe('renderClientReport perf tile assembly', () => {
     expect(a11yPanelHtml).not.toContain('Copy prompt');
   });
 
+  it('keeps clean accessibility pages in the mixed-page denominator and quiet group', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'products',
+        name: 'Products',
+        startingPath: '/products',
+        metrics: {},
+        a11y: {
+          score: 72,
+          violations: [{ ruleId: 'button-name', impact: 'serious' }],
+        },
+      },
+      {
+        id: 'contact',
+        name: 'Contact',
+        startingPath: '/contact',
+        metrics: {},
+        a11y: { score: 98, violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('on 1 of 2 pages checked');
+    expect(a11yPanelHtml).toContain('1 page looks fine:');
+    expect(a11yPanelHtml).toContain('<strong style="font-weight:700; color:#26221d">Contact</strong>');
+    expect(a11yPanelHtml.match(/class="cr-a11y-card"/g)).toHaveLength(1);
+  });
+
+  it('renders all-clean scored accessibility pages as one quiet line without an empty cost card', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'home',
+        name: 'Home',
+        startingPath: '/',
+        metrics: {},
+        a11y: { score: 98, violations: [] },
+      },
+      {
+        id: 'contact',
+        name: 'Contact',
+        startingPath: '/contact',
+        metrics: {},
+        a11y: { score: 94, violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('2 pages look fine:');
+    expect(a11yPanelHtml).toContain('Home');
+    expect(a11yPanelHtml).toContain('Contact');
+    expect(a11yPanelHtml).not.toContain('What this costs you');
+    expect(a11yPanelHtml).not.toContain('class="cr-a11y-card"');
+  });
+
+  it('keeps the existing accessibility list fallback for an unscored clean page', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'unscored',
+        name: 'Unscored clean page',
+        startingPath: '/unscored',
+        metrics: {},
+        a11y: { violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('Unscored clean page');
+    expect(a11yPanelHtml).toContain('Lighter issues &middot; 1 page');
+    expect(a11yPanelHtml).not.toContain('page looks fine:');
+    expect(a11yPanelHtml).not.toContain('What this costs you');
+  });
+
   it('writes footer guardrails only with measured cost blocks, uses honest throttle wording, and counts bot-walled pages', async () => {
     const withCost = await renderClientReport(writePerfResultsForPages([
       {

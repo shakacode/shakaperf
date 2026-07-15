@@ -414,15 +414,16 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
   });
 
-  it('uses the score-badge threshold for AI tiles and page cards', async () => {
+  it('collapses a fully readable AI page even when its structural score is fair', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ agent: { rawWords: 300, renderedWords: 300, withoutStructuredData: true } }),
     ]));
 
     expect(result.model.tiles.find((tile) => tile.target === 'agent')).toMatchObject({ status: 'fair' });
-    expect(result.model.agentCards).toHaveLength(1);
-    expect(result.model.agentCards[0]).toMatchObject({ status: 'fair' });
-    expect(result.model.agentCards[0].headlineHtml).not.toContain('well structured');
+    expect(result.model.agentCards).toHaveLength(0);
+    expect(result.model.agentCost?.strongPageGroup).toMatchObject({
+      pages: [{ name: 'Home', score: 83 }],
+    });
   });
 
   it('preserves the established cost treatment when FCP is healthy but LCP is slow', async () => {
