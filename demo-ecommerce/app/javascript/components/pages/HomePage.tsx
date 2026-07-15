@@ -17,6 +17,14 @@ import LoadingSpinner from '../shared/LoadingSpinner';
 import LazySection from '../shared/LazySection';
 import ExperimentA11yRegressions from '../shared/ExperimentA11yRegressions';
 
+const BisectAccessibilityProbe: React.FC = () => (
+  <button
+    type="button"
+    data-cy="bisect-a11y-probe"
+    style={{ position: 'absolute', left: -10000, top: 0, width: 1, height: 1 }}
+  />
+);
+
 const runMerchandisingWarmup = () => {
   const deadline = performance.now() + 450;
   let checksum = 0;
@@ -29,14 +37,6 @@ const runMerchandisingWarmup = () => {
     console.info(checksum);
   }
 };
-
-const BisectAccessibilityProbe: React.FC = () => (
-  <button
-    type="button"
-    data-cy="bisect-a11y-probe"
-    style={{ position: 'absolute', left: -10000, top: 0, width: 1, height: 1 }}
-  />
-);
 
 const HomePage: React.FC = () => {
   const { products, loading, error } = useProducts();
