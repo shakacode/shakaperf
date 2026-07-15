@@ -11,7 +11,12 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
-import { BISECT_REPORT_FILENAME, writeBisectReport } from '../report';
+import {
+  BISECT_REPORT_FILENAME,
+  clearPriorBisectReportOutput,
+  writeBisectReport,
+  writeBisectReportArtifacts,
+} from '../report';
 import type { BisectReportData } from '../report-model';
 import type { Stage } from '../../../stage/stage';
 
@@ -27,7 +32,7 @@ describe('writeBisectReport', () => {
   });
 
   it('writes a self-contained report with bisect data and inlined artifacts', () => {
-    const outputPath = writeBisectReport({
+    const written = writeBisectReportArtifacts({
       resultsDirectory,
       data: reportData(),
       stages: [
@@ -41,17 +46,21 @@ describe('writeBisectReport', () => {
         } as Stage<{ screenshot: string }>,
       ],
     });
+    const { htmlPath, dataPath } = written;
 
-    const html = fs.readFileSync(outputPath, 'utf8');
+    const html = fs.readFileSync(htmlPath, 'utf8');
+    const saved = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
 
-    expect(outputPath).toBe(path.join(resultsDirectory, BISECT_REPORT_FILENAME));
-    expect(fs.existsSync(outputPath)).toBe(true);
+    expect(htmlPath).toBe(path.join(resultsDirectory, BISECT_REPORT_FILENAME));
+    expect(dataPath).toBe(path.join(resultsDirectory, 'bisect-report.json'));
+    expect(fs.existsSync(htmlPath)).toBe(true);
     expect(html).toContain('"bisect":{"status":"complete"');
     const serializedPayload = html.match(
       /<script id="__shaka_report_data__" type="application\/json">([\s\S]*?)<\/script>/,
     )?.[1];
     expect(serializedPayload).toBeDefined();
-    expect(JSON.parse(serializedPayload!).meta.reportMode).toBe('lightweight');
+    expect(saved).toEqual(JSON.parse(serializedPayload!));
+    expect(saved.meta.reportMode).toBe('lightweight');
     expect(html).toContain('data:image/png;base64,fixture');
     expect(html).not.toContain('/tmp/control.png');
   });
@@ -62,13 +71,14 @@ describe('writeBisectReport', () => {
       data: reportData(),
       stages: [],
     });
-
     expect(path.isAbsolute(outputPath)).toBe(true);
   });
 
   it('preserves the prior report when the atomic replacement fails', () => {
     const outputPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
+    const dataPath = path.join(resultsDirectory, 'bisect-report.json');
     fs.writeFileSync(outputPath, 'prior report', 'utf8');
+    fs.writeFileSync(dataPath, 'prior data', 'utf8');
     const rename = jest.spyOn(fs, 'renameSync').mockImplementationOnce(() => {
       throw new Error('rename failed');
     });
@@ -80,9 +90,22 @@ describe('writeBisectReport', () => {
         stages: [],
       })).toThrow('rename failed');
       expect(fs.readFileSync(outputPath, 'utf8')).toBe('prior report');
+      expect(fs.readFileSync(dataPath, 'utf8')).toBe('prior data');
     } finally {
       rename.mockRestore();
     }
+  });
+
+  it('clears both persisted report outputs before a new bisect run', () => {
+    const htmlPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
+    const dataPath = path.join(resultsDirectory, 'bisect-report.json');
+    fs.writeFileSync(htmlPath, 'prior report', 'utf8');
+    fs.writeFileSync(dataPath, 'prior data', 'utf8');
+
+    clearPriorBisectReportOutput(resultsDirectory);
+
+    expect(fs.existsSync(htmlPath)).toBe(false);
+    expect(fs.existsSync(dataPath)).toBe(false);
   });
 });
 

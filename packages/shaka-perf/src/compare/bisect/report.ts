@@ -14,6 +14,7 @@ import type { Stage } from '../../stage/stage';
 import type { BisectReportData } from './report-model';
 
 export const BISECT_REPORT_FILENAME = 'bisect-report.html';
+export const BISECT_REPORT_DATA_FILENAME = 'bisect-report.json';
 
 export interface WriteBisectReportOptions {
   resultsDirectory: string;
@@ -21,21 +22,41 @@ export interface WriteBisectReportOptions {
   stages: readonly Stage[];
 }
 
+export interface WrittenBisectReport {
+  htmlPath: string;
+  dataPath: string;
+  data: BisectReportData;
+}
+
+export function clearPriorBisectReportOutput(resultsDirectory: string): void {
+  fs.rmSync(path.join(resultsDirectory, BISECT_REPORT_FILENAME), { force: true });
+  fs.rmSync(path.join(resultsDirectory, BISECT_REPORT_DATA_FILENAME), { force: true });
+}
+
 export function writeBisectReport(options: WriteBisectReportOptions): string {
-  const outputPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
-  const temporaryPath = `${outputPath}.tmp`;
+  return writeBisectReportArtifacts(options).htmlPath;
+}
+
+export function writeBisectReportArtifacts(options: WriteBisectReportOptions): WrittenBisectReport {
+  const htmlPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
+  const dataPath = path.resolve(options.resultsDirectory, BISECT_REPORT_DATA_FILENAME);
   const portable = reportDataForMode(
     { ...options.data, meta: { ...options.data.meta, reportMode: 'lightweight' } },
     'lightweight',
     options.stages,
-  );
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  ) as BisectReportData;
+  fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
+  writeFileAtomic(dataPath, `${JSON.stringify(portable, null, 2)}\n`);
+  writeFileAtomic(htmlPath, renderReportHtml(portable));
+  return { htmlPath, dataPath, data: portable };
+}
+
+function writeFileAtomic(filePath: string, contents: string): void {
+  const temporaryPath = `${filePath}.tmp`;
   try {
-    fs.writeFileSync(temporaryPath, renderReportHtml(portable), 'utf8');
-    fs.renameSync(temporaryPath, outputPath);
-  } catch (error) {
+    fs.writeFileSync(temporaryPath, contents, 'utf8');
+    fs.renameSync(temporaryPath, filePath);
+  } finally {
     fs.rmSync(temporaryPath, { force: true });
-    throw error;
   }
-  return outputPath;
 }
