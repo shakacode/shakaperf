@@ -4,7 +4,7 @@
 
 **Goal:** Display saved performance p-values in compare bisect regression cards.
 
-**Architecture:** Render performance targets through a dedicated table with aligned metric, control, experiment, delta, percent, and p-value columns. Reuse the existing performance report formatting rules, keep non-performance targets unchanged, and cap the test-card grid at two columns.
+**Architecture:** Render performance targets through a dedicated table with aligned metric, control, experiment, delta, percent, and p-value columns. Render visual targets as mismatch, changed-pixel, and threshold summaries, keep accessibility targets unchanged, and cap the test-card grid at two columns.
 
 **Tech Stack:** TypeScript, React 19, Jest, React DOM server rendering, Vite.
 

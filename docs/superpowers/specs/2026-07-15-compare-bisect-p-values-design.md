@@ -9,7 +9,8 @@ Display the saved performance p-value in bisect regression cards so threshold-ed
 - Read `pValue` from each performance target's saved `badRefObservation.values`.
 - Render performance targets as a six-column table: Metric, Control, Experiment, Delta, %Delta, and p.
 - Format p-values with the same compact rules used by the existing performance metrics table.
-- Leave visual and accessibility cards unchanged.
+- Summarize visual targets with mismatch percentage, changed-pixel count, and configured threshold instead of redundant baseline/candidate labels.
+- Leave accessibility cards unchanged.
 - Limit the desktop test-card grid to two columns and stack cards at narrower widths.
 - Match the existing performance report's restrained spacing, dividers, and tabular number alignment.
 
