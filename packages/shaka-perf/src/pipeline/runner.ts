@@ -64,6 +64,7 @@ import type {
 import { WorkerPool, type WorkerTaskProgressSink } from './worker-pool';
 import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
+import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore } from './artifact-store';
 import type { Outcome, ErrorInfo } from './outcome';
 import { StageFailureError, findLastAnnotation } from '../stage/stage-failure';
@@ -347,9 +348,18 @@ export interface RuntimeOptions {
    * Worker-pool crash retries — applied uniformly to every worker pool
    * the pipeline registers. Engine-level retries (e.g. visreg best-of-N
    * screenshot stability) are a stage knob and stay on pipeline config.
+   *
+   * Ignored under `burn`, which forces both to 0.
    */
   readonly retries: number;
   readonly retryDelay: number;
+  /**
+   * `--burn <n>`: run every test n times as independent instances, retries off
+   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 below;
+   * a stage's own retries are zeroed on the pipeline config by the CLI.
+   * Undefined = off.
+   */
+  readonly burn?: number | undefined;
   /**
    * Per-task wall-clock cap, applied uniformly to every worker pool.
    * Driven by `shared.timeoutMs`; stages never see this value — the pool
@@ -428,16 +438,27 @@ async function runConfiguredPipelineWithSelection(
   // disk can reappear in a fresh local report. `--report-only` is the explicit
   // full-suite assembly path: it runs no tests, deletes nothing, and rebuilds
   // from whatever per-test artifacts already exist on disk.
-  const runTests = runtime.reportOnly
+  let runTests = runtime.reportOnly
       ? []
       : await loadTests({
         testPathPattern: runtime.testPathPattern,
         filter: runtime.filter,
         log: (msg) => console.log(msg),
       });
-  const reportTests = runtime.reportOnly
+  let reportTests = runtime.reportOnly
     ? await loadTests({ log: (msg) => console.log(msg) })
     : runTests;
+
+  // Fan each test into its burn instances once, at the only place tests enter
+  // the runner; everything downstream keys off the test object, so this single
+  // expansion separates units, dirs, outcomes, chips and cards alike.
+  if (runtime.burn != null) {
+    runTests = expandTestsForBurn(runTests, runtime.burn);
+    // Outside --report-only the two are the same instances; keep it that way.
+    reportTests = runtime.reportOnly
+      ? expandTestsForBurn(reportTests, runtime.burn)
+      : runTests;
+  }
 
   // Ensure the results root exists without wiping prior artifacts. CI shards
   // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
@@ -546,7 +567,9 @@ async function runConfiguredPipelineWithSelection(
       if (runtimePool) return runtimePool;
       const pool = new WorkerPool(ref.parallelism, {
         currentTaskProgress: () => stageTaskProgressStorage.getStore(),
-        retries: runtime.retries,
+        // Burn replaces retries: 0 makes the pool terminal on the first
+        // throw, so an instance's raw outcome is the measurement.
+        retries: runtime.burn == null ? runtime.retries : 0,
         retryDelay: runtime.retryDelay,
         timeoutMs: runtime.timeoutMs,
       });
@@ -645,7 +668,7 @@ async function runConfiguredPipelineWithSelection(
       const idx = String(assembledCount).padStart(String(reportTests.length).length, ' ');
       const sizeMb = (resultBytes(partial.partialResult) / 1024 / 1024).toFixed(1);
       console.log(
-        `    [${idx}/${reportTests.length}] ${test.name} ` +
+        `    [${idx}/${reportTests.length}] ${burnDisplayName(test)} ` +
         `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
         `${sizeMb} MB)`,
       );
@@ -1338,7 +1361,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     hasError,
     partialResult: {
       id: testIdForTest(test),
-      name: test.name,
+      name: burnDisplayName(test),
       filePath: relFilePath,
       startingPath: test.startingPath,
       controlUrl: resolveUrl(test.startingPath, controlURL),

@@ -187,6 +187,12 @@ export interface AbTestDefinition {
   options: AbTestOptions;
   testTypes: TestType[] | null;
   testFn: (context: TestFnContext) => Promise<void>;
+  /**
+   * `--burn <n>` instance number (1-based); set by the runner.
+   * Dynamic data is deliberately mixed in the static config to not
+   * complicate the code.
+   */
+  burnIndex?: number;
 }
 
 // Store the registry on `globalThis` under a versioned Symbol.for key so that

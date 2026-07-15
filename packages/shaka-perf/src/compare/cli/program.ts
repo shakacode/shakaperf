@@ -12,6 +12,7 @@ import { withAbTestsConfigPath } from '../../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
+import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import { createComparePipeline, comparePipelineMetadata } from '../compare-pipeline';
 import { pairedBenchmarkParallelism } from '../stages/shared/runtime';
@@ -49,6 +50,7 @@ export async function createCompareCommand(): Promise<Command> {
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
+    .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
     .option(
       '--filter <value>',
@@ -62,6 +64,7 @@ export async function createCompareCommand(): Promise<Command> {
       await withAbTestsConfigPath(configPath, async () => {
         const raw = configPath ? await loadAbTestsConfig(configPath) : {};
         const config = parseAbTestsConfig(raw);
+        const burn = parseBurnOption(opts.burn);
         const pipeline = createComparePipeline({
           parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
@@ -70,7 +73,8 @@ export async function createCompareCommand(): Promise<Command> {
           visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
           visregEngineOptions: config.visreg.engineOptions,
           visregResembleOutputOptions: config.visreg.resembleOutputOptions,
-          visregCompareRetries: config.visreg.compareRetries,
+          // Burn replaces retries, visreg's best-of-N included.
+          visregCompareRetries: burn == null ? config.visreg.compareRetries : 0,
           visregCompareRetryDelay: config.visreg.compareRetryDelay,
           perfNumberOfMeasurements: config.perf.numberOfMeasurements,
           perfRegressionThreshold: config.perf.regressionThreshold,
@@ -95,6 +99,7 @@ export async function createCompareCommand(): Promise<Command> {
           keepOldResults: opts.keepOldResults === true,
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
+          burn,
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,
