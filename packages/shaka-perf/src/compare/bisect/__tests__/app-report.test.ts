@@ -63,6 +63,8 @@ describe('bisect report App rendering', () => {
     expect(homepageGroup).toContain('1.8s');
     expect(homepageGroup).toContain('2.1s');
     expect(homepageGroup).toContain('+300ms');
+    expect(homepageGroup).toContain('<dt>p</dt>');
+    expect(homepageGroup).toContain('<dd>0.007813</dd>');
     expect(homepageGroup).not.toContain('controlDisplay');
     expect(homepageGroup).not.toContain('misMatchPercentage');
   });
@@ -306,6 +308,7 @@ function bisectReport(): AppReportData {
       experimentDisplay: '2.1s',
       deltaDisplay: '+300ms',
       percentDisplay: '+16.7%',
+      pValue: 0.007813,
     },
   });
   const perfTarget = bisectTarget({

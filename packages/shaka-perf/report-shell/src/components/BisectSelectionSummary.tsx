@@ -26,6 +26,7 @@ interface ComparisonValue {
   control: string;
   experiment: string;
   change: string;
+  pValue?: string;
 }
 
 const categoryOrder: BisectReportTarget['category'][] = [
@@ -92,6 +93,13 @@ function display(valueToFormat: string | number | boolean | null | undefined): s
     : String(valueToFormat);
 }
 
+function formatPValue(pValue: number): string {
+  if (!Number.isFinite(pValue)) return String(pValue);
+  if (pValue === 0) return '0';
+  if (Math.abs(pValue) < 1e-6) return pValue.toExponential(1);
+  return pValue.toFixed(6).replace(/\.?0+$/, '');
+}
+
 function signedDifference(experiment: unknown, control: unknown, label: string): string {
   if (typeof experiment !== 'number' || typeof control !== 'number') return 'not recorded';
   const difference = experiment - control;
@@ -119,10 +127,12 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
   if (value(values, 'controlDisplay') != null || value(values, 'experimentDisplay') != null) {
     const delta = display(value(values, 'deltaDisplay'));
     const percent = value(values, 'percentDisplay');
+    const pValue = value(values, 'pValue');
     return {
       control: display(value(values, 'controlDisplay')),
       experiment: display(value(values, 'experimentDisplay')),
       change: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
+      ...(typeof pValue === 'number' ? { pValue: formatPValue(pValue) } : {}),
     };
   }
 
@@ -188,6 +198,12 @@ function TargetRow({ target }: { target: BisectReportTarget }) {
             <dt>Change</dt>
             <dd>{comparison.change}</dd>
           </div>
+          {comparison.pValue ? (
+            <div>
+              <dt>p</dt>
+              <dd>{comparison.pValue}</dd>
+            </div>
+          ) : null}
         </dl>
       ) : null}
       {target.mainlineIsMerge || target.mergeResult ? (
