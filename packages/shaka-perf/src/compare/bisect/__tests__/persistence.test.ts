@@ -88,4 +88,26 @@ describe('bisect persistence', () => {
       ['accessibility', 'b'],
     ]);
   });
+
+  it('writes the dry-run next action into the compact summary', () => {
+    const summaryPath = path.join(resultsDirectory, 'summary.json');
+    const value = session();
+    value.dryRun = true;
+    value.validateGoodRef = true;
+    value.nextAction = {
+      kind: 'validate-good-ref',
+      sha: 'good',
+      categories: ['perf'],
+      testFiles: ['tests/checkout.abtest.ts'],
+      targetIds: ['target-1'],
+    };
+
+    writeSummary(summaryPath, value);
+
+    expect(JSON.parse(fs.readFileSync(summaryPath, 'utf8'))).toMatchObject({
+      dryRun: true,
+      validateGoodRef: true,
+      nextAction: value.nextAction,
+    });
+  });
 });

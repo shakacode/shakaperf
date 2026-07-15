@@ -47,7 +47,20 @@ export interface CommitRun {
   startedAt: string;
   finishedAt?: string;
   infrastructureError?: string;
+  reusedResults?: boolean;
 }
+
+interface BisectNextActionBase {
+  sha: string;
+  categories: BisectCategory[];
+  testFiles: string[];
+  targetIds: string[];
+}
+
+export type BisectNextAction = BisectNextActionBase & (
+  | { kind: 'validate-good-ref' }
+  | { kind: 'measure-candidate' }
+);
 
 export interface BisectSession {
   version: 1;
@@ -62,6 +75,9 @@ export interface BisectSession {
   orderedCommits: string[];
   targets: BisectTarget[];
   commitRuns: Record<string, CommitRun>;
+  dryRun?: boolean;
+  validateGoodRef?: boolean;
+  nextAction?: BisectNextAction;
   startedAt: string;
   finishedAt?: string;
   failure?: string;
