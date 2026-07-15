@@ -1,0 +1,96 @@
+/*
+ * Copyright (c) 2026 ShakaCode LLC.
+ *
+ * SPDX-License-Identifier: LicenseRef-ShakaPerf-1.0
+ *
+ * This file is part of ShakaPerf. Use is governed by the ShakaPerf
+ * License in LICENSE.md.
+ */
+
+import {
+  buildA11ySection,
+  prepareA11ySection,
+  type A11ySectionView,
+} from '../client-report-model/a11y';
+import type { AccessibilityScan, AccessibilityViolation } from '../../audit/stages/accessibility/types';
+import type { PagePerf } from '../synthesis';
+
+function view(
+  impact: AccessibilityViolation['impact'],
+  options: { blocked?: boolean; ruleId?: string; score?: number } = {},
+): A11ySectionView {
+  const page: PagePerf = {
+    id: 'home', name: 'Home', startingPath: '/', chips: [], metrics: {},
+  };
+  const scan: AccessibilityScan = {
+    viewportLabel: 'phone',
+    viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 } as AccessibilityScan['viewport'],
+    url: 'https://example.com/',
+    violations: [{
+      ruleId: options.ruleId ?? 'target-size',
+      impact,
+      help: 'fixture',
+      helpUrl: '',
+      tags: [],
+      nodes: [{ target: ['.fixture'], html: '<button>Fixture</button>', failureSummary: '' }],
+    }],
+    ...(options.blocked ? { blocked: true } : {}),
+  };
+  return {
+    page,
+    scan,
+    counts: {
+      critical: impact === 'critical' ? 1 : 0,
+      serious: impact === 'serious' ? 1 : 0,
+      moderate: impact === 'moderate' ? 1 : 0,
+      minor: impact === 'minor' ? 1 : 0,
+    },
+    ...(options.score === undefined ? {} : { client: { score: options.score } }),
+  };
+}
+
+const promptCtx = { host: 'example.com', date: 'July 10, 2026' };
+
+describe('buildA11ySection', () => {
+  it('builds a measured barrier cost block from hand-built scans', () => {
+    const prepared = prepareA11ySection([view('serious')]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result).toMatchObject({
+      a11yStatus: 'fair',
+      highImpactTotal: 1,
+      a11yCost: {
+        state: 'measured',
+        headline: '1 high-impact barrier keeps some visitors from using the site.',
+        gapSubLines: [
+          'worst page: Home - 1 high-impact',
+          'touch targets too small - all 1 page',
+          'WCAG - passes at zero critical barriers',
+        ],
+      },
+    });
+  });
+
+  it('keeps optional contrast data absent when the scan has no contrast finding', () => {
+    const prepared = prepareA11ySection([view('serious')]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.gap).toBeUndefined();
+  });
+
+  it('uses the no-material-loss state for only lower-impact findings', () => {
+    const prepared = prepareA11ySection([view('moderate', { ruleId: 'color-contrast' })]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
+    expect(result.a11yStatus).toBe('good');
+  });
+
+  it('uses the blocked state when every supplied scan is bot-protected', () => {
+    const prepared = prepareA11ySection([view('serious', { blocked: true })]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCouldNotMeasure).toBe(true);
+    expect(result.a11yCost).toEqual({ tab: 'a11y', state: 'blocked', headline: '' });
+  });
+});
