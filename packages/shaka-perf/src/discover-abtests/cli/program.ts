@@ -18,6 +18,7 @@ import { parseReport } from '../parse-report';
 // from the repo-root .claude/ dir).
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..', '..');
 const SCRIPTS_DIR = path.resolve(PACKAGE_ROOT, 'dist', 'skills', 'discover-abtests', 'scripts');
+const DEFAULT_RESULTS_ROOT = 'compare-results';
 
 function printScript(filename: string): void {
   const filePath = path.resolve(SCRIPTS_DIR, filename);
@@ -28,6 +29,16 @@ function printScript(filename: string): void {
     );
   }
   process.stdout.write(fs.readFileSync(filePath, 'utf8'));
+}
+
+export function findDefaultVisregReports(resultsRoot = DEFAULT_RESULTS_ROOT): string[] {
+  if (!fs.existsSync(resultsRoot)) return [];
+
+  return fs.readdirSync(resultsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(resultsRoot, entry.name, 'artifacts', 'report.json'))
+    .filter((reportPath) => fs.existsSync(reportPath))
+    .sort();
 }
 
 export function createDiscoverAbtestsCommand(): Command {
@@ -52,9 +63,29 @@ export function createDiscoverAbtestsCommand(): Command {
 
   cmd
     .command('parse-report')
-    .description('Summarize a visreg report.json: pass/fail, diff %, whitespace, engine errors.')
-    .argument('[path]', 'Path to report.json', 'visreg_data/html_report/report.json')
-    .action((reportPath: string) => parseReport(reportPath));
+    .description('Summarize visreg report.json files: pass/fail, diff %, whitespace, engine errors.')
+    .argument('[path]', 'Path to one report.json; omit to read compare-results/ per-unit reports')
+    .action((reportPath?: string) => {
+      if (reportPath) {
+        parseReport(reportPath);
+        return;
+      }
+
+      const reportPaths = findDefaultVisregReports();
+      if (reportPaths.length === 0) {
+        console.error(
+          'No per-unit visreg reports found under compare-results/. ' +
+          'Run `shaka-perf compare --categories visreg` first, or pass a report.json path.',
+        );
+        process.exitCode = 1;
+        return;
+      }
+
+      for (const reportPath of reportPaths) {
+        if (reportPaths.length > 1) console.log(`\n${reportPath}`);
+        parseReport(reportPath);
+      }
+    });
 
   return cmd;
 }
