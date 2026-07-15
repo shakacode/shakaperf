@@ -7,12 +7,17 @@
  * License in LICENSE.md.
  */
 
-import { sortViolations } from '../../audit/stages/accessibility/report-utils';
+import { a11yIssueLabel, sortViolations } from '../../audit/stages/accessibility/report-utils';
 import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from '../../audit/stages/accessibility/types';
-import type { StrongPageGroup } from './cost';
+import { buildA11ySitePrompt } from '../copy-prompt';
+import { NO_MATERIAL_LOSS, a11yNoNumberLine } from '../cost-strings';
+import type { ClientReportA11yCard, ClientReportBlockedPage, ClientReportCostBlock, ClientReportModel, ClientReportStatus } from '../client-report-renderer';
+import type { PagePerf } from '../synthesis';
+import { a11yContrastGap, a11yFixText, worstContrastRatio, type StrongPageGroup } from './cost';
+import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
 
 /** A C-design strong-page group replaces individual cards on the a11y or AI tabs. */
 export type A11yStrongPageGroup = StrongPageGroup;
@@ -287,4 +292,305 @@ export function a11yAffectsProse(scan: AccessibilityScan): string {
 
 export function a11yFixClause(ruleId: string): string {
   return fixCopyForRule(ruleId)?.fixClause ?? A11Y_FALLBACK_FIX_CLAUSE;
+}
+
+export interface A11ySectionCounts {
+  critical: number;
+  serious: number;
+  moderate: number;
+  minor: number;
+}
+
+export interface A11ySectionView {
+  page: PagePerf;
+  scan: AccessibilityScan;
+  counts: A11ySectionCounts;
+  client?: { score?: number; summary?: string; fixes?: string[] };
+}
+
+export interface A11yPromptContext {
+  host: string;
+  date: string;
+}
+
+export interface PreparedA11ySection {
+  hasA11y: boolean;
+  a11yBlocked: ClientReportBlockedPage[];
+  a11yCouldNotMeasure: boolean;
+  a11yMeasurable: A11ySectionView[];
+  cardedA11y: A11ySectionView[];
+  fineA11y: A11ySectionView[];
+}
+
+export interface A11ySection extends PreparedA11ySection {
+  a11yCards: ClientReportA11yCard[];
+  a11yFine: ClientReportModel['a11yFine'];
+  a11yScore?: number;
+  a11yStatus: ClientReportStatus;
+  highImpactTotal: number;
+  a11yTopIssues: string[];
+  a11yWorst?: A11ySectionView;
+  a11yCost?: ClientReportCostBlock;
+}
+
+const hasMajorA11yBarrier = (counts: A11ySectionCounts): boolean => counts.critical + counts.serious > 0;
+
+export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA11ySection {
+  const a11yBlockedViews = views.filter((view) => view.scan.blocked === true);
+  const a11yMeasurable = views.filter((view) => view.scan.blocked !== true);
+  return {
+    hasA11y: views.length > 0,
+    a11yBlocked: a11yBlockedViews.map((view) => ({ name: view.page.name, path: view.page.startingPath || '/' })),
+    a11yCouldNotMeasure: a11yMeasurable.length === 0 && a11yBlockedViews.length > 0,
+    a11yMeasurable,
+    cardedA11y: a11yMeasurable.filter((view) => hasMajorA11yBarrier(view.counts)),
+    fineA11y: a11yMeasurable.filter((view) => !hasMajorA11yBarrier(view.counts)),
+  };
+}
+
+function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
+  return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
+}
+
+function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
+  return liveUrlFor(siteUrl, view.page.startingPath || '/') || view.scan.url || siteUrl;
+}
+
+function a11yFamilyId(violation: AccessibilityViolation): string | undefined {
+  const summary = summarizeA11yRuleFamilies([{ violations: [violation] }], 1);
+  return summary.countedFamilies[0]?.id ?? summary.notCountedExtras[0]?.id;
+}
+
+function isHighImpactA11yViolation(violation: AccessibilityViolation): boolean {
+  return violation.impact === 'critical' || violation.impact === 'serious';
+}
+
+function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
+  const selectors = new Set<string>();
+  for (const node of violation.nodes) {
+    for (const target of node.target) {
+      const selector = (Array.isArray(target) ? target.join(' ') : target).trim();
+      if (selector) selectors.add(selector);
+    }
+  }
+  return [...selectors];
+}
+
+function safeA11ySharedSelector(selector: string): string | undefined {
+  const normalized = selector.replace(/\s+/g, ' ').trim();
+  const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
+  const instructionLikeClass = /(?:^|\.)(?:ignore|disregard|forget|override|bypass)(?:[-_][A-Za-z0-9_]+)*[-_](?:instructions?|prompt|system|developer|assistant|user|tool)(?:$|\.|\[)/i;
+  return normalized.length > 0
+    && normalized.length <= 240
+    && !/(?:https?:)?\/\//i.test(normalized)
+    && !instructionLikeClass.test(normalized)
+    && simpleSelector.test(normalized)
+    ? normalized
+    : undefined;
+}
+
+function a11yFamilyPromptFindings(
+  views: readonly A11ySectionView[],
+  families: readonly { id: string; label: string; pageCount: number }[],
+  siteUrl: string,
+  highImpact: boolean,
+): Array<{
+  familyId: string;
+  label: string;
+  impact: string;
+  pageCount: number;
+  pageUrls: string[];
+  verificationRuleIds: string[];
+  sharedComponent?: { selector: string };
+}> {
+  return families.map((family) => {
+    const pageUrls = new Set<string>();
+    const ruleIds = new Set<string>();
+    const selectorPages = new Map<string, Set<string>>();
+    let critical = false;
+    let serious = false;
+    for (const view of views) {
+      for (const violation of view.scan.violations) {
+        if (a11yFamilyId(violation) !== family.id || isHighImpactA11yViolation(violation) !== highImpact) continue;
+        const pageUrl = a11yPageUrl(siteUrl, view);
+        pageUrls.add(pageUrl);
+        ruleIds.add(violation.ruleId);
+        critical ||= violation.impact === 'critical';
+        serious ||= violation.impact === 'serious';
+        for (const selector of a11yViolationSelectors(violation)) {
+          const pages = selectorPages.get(selector) ?? new Set<string>();
+          pages.add(pageUrl);
+          selectorPages.set(selector, pages);
+        }
+      }
+    }
+    const sharedSelector = [...selectorPages]
+      .filter(([, pages]) => pages.size > 1)
+      .map(([selector]) => safeA11ySharedSelector(selector))
+      .find((selector): selector is string => selector !== undefined);
+    return {
+      familyId: family.id,
+      label: family.label,
+      impact: critical ? 'critical' : serious ? 'serious' : 'moderate',
+      pageCount: family.pageCount,
+      pageUrls: [...pageUrls],
+      verificationRuleIds: [...ruleIds],
+      ...(sharedSelector ? { sharedComponent: { selector: sharedSelector } } : {}),
+    };
+  });
+}
+
+function a11yFamilyReach(pageCount: number, pageTotal: number): string {
+  return pageCount === pageTotal
+    ? `all ${pageTotal} ${pageTotal === 1 ? 'page' : 'pages'}`
+    : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
+}
+
+function a11yFamilyLine(family: { label: string; pageCount: number }, pageTotal: number): string {
+  return `${family.label} - ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+}
+
+/** Builds the a11y family, cost, and site-prompt data from already-read scans. */
+export function buildA11ySection(
+  prepared: PreparedA11ySection,
+  a11yCards: ClientReportA11yCard[],
+  siteUrl: string,
+  promptCtx: A11yPromptContext,
+): A11ySection {
+  const { hasA11y, a11yBlocked, a11yCouldNotMeasure, a11yMeasurable, cardedA11y, fineA11y } = prepared;
+  const a11yFindingScans = a11yMeasurable.map((view) => view.scan);
+  const a11yFamilySummary = summarizeA11yRuleFamilies(a11yFindingScans);
+  const a11yFine = fineA11y.map((view) => {
+    const score = view.client?.score;
+    const row: ClientReportModel['a11yFine'][number] = {
+      name: view.page.name,
+      path: view.page.startingPath || '/',
+      status: typeof score === 'number' ? scoreStatus(score) : 'good',
+      summary: view.client?.summary ? view.client.summary.replace(/\s*[—–]\s*/g, ' - ') : 'Only minor issues here.',
+    };
+    if (typeof score === 'number') row.score = score;
+    return row;
+  });
+  const a11yScores = [...a11yCards.map((card) => card.score), ...a11yFine.map((row) => row.score)].filter((score): score is number => typeof score === 'number');
+  const a11yScore = !a11yCouldNotMeasure && a11yScores.length > 0
+    ? Math.round(a11yScores.reduce((sum, score) => sum + score, 0) / a11yScores.length)
+    : undefined;
+  const highImpactTotal = a11yFamilySummary.headlineCount;
+  const criticalTotal = cardedA11y.reduce((total, view) => total + view.counts.critical, 0);
+  const a11yStatus: ClientReportStatus = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
+  const a11yIssueWeight = new Map<string, number>();
+  for (const view of cardedA11y) {
+    for (const violation of view.scan.violations) {
+      const label = a11yIssueLabel(violation.ruleId);
+      a11yIssueWeight.set(label, (a11yIssueWeight.get(label) ?? 0) + (violation.impact === 'critical' || violation.impact === 'serious' ? 3 : 1));
+    }
+  }
+  const a11yTopIssues = [...a11yIssueWeight.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([label]) => label).slice(0, 2);
+  const a11yWorst = cardedA11y[0];
+  const a11yHeadlineScope = cardedA11y.length === a11yMeasurable.length
+    ? `across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}`
+    : `on ${cardedA11y.length} of ${a11yMeasurable.length} pages checked`;
+  const a11yFix = a11yFixText(a11yFindingScans);
+  const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
+  const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
+  const widestA11yFamily = a11yCountedFamilies[0];
+  const a11yFixTextWithLead = widestA11yFamily
+    ? `Start with ${widestA11yFamily.label} - it reaches ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
+    : a11yFix;
+  const a11yWorstFamilyCount = a11yWorst
+    ? summarizeA11yRuleFamilies([a11yWorst.scan]).headlineCount
+    : 0;
+  const a11yFindingLines = a11yWorst
+    ? [
+      `worst page: ${a11yWorst.page.name} - ${a11yWorstFamilyCount} high-impact`,
+      ...(criticalTotal > 0 ? ['Critical accessibility barriers found'] : []),
+      ...a11yCountedFamilies.map((family) => a11yFamilyLine(family, a11yMeasurable.length)),
+      ...(a11yFamilySummary.notCountedExtras.length > 0
+        ? [`also seen, not counted in the ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
+        : []),
+      ...(a11yFamilySummary.smallerNotesCount > 0
+        ? [`plus ${a11yFamilySummary.smallerNotesCount} smaller ${a11yFamilySummary.smallerNotesCount === 1 ? 'note' : 'notes'}`]
+        : []),
+      'WCAG - passes at zero critical barriers',
+    ]
+    : [];
+  const a11yPromptFindings = a11yFamilyPromptFindings(a11yMeasurable, a11yCountedFamilies, siteUrl, true);
+  const a11yLowerImpactPromptFindings = a11yFamilySummary.notCountedExtras.length > 0
+    ? a11yFamilyPromptFindings(a11yMeasurable, a11yFamilySummary.notCountedExtras, siteUrl, false)
+    : undefined;
+  const a11ySitePromptData = a11yWorst && a11yWorstFamilyCount > 0
+    ? {
+      url: siteUrl,
+      host: promptCtx.host,
+      date: promptCtx.date,
+      pageCount: a11yMeasurable.length,
+      highImpactCount: highImpactTotal,
+      worstPage: { url: a11yPageUrl(siteUrl, a11yWorst), highImpactCount: a11yWorstFamilyCount },
+      pageUrls: a11yMeasurable.map((view) => a11yPageUrl(siteUrl, view)),
+      findings: a11yPromptFindings,
+      ...(a11yLowerImpactPromptFindings ? { lowerImpactFindings: a11yLowerImpactPromptFindings } : {}),
+      ...(a11yFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yFamilySummary.smallerNotesCount } : {}),
+    }
+    : undefined;
+  const a11ySitePrompt = a11ySitePromptData
+    ? buildA11ySitePrompt(a11ySitePromptData)
+      ?? buildA11ySitePrompt({
+        ...a11ySitePromptData,
+        findings: a11ySitePromptData.findings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding),
+        ...(a11ySitePromptData.lowerImpactFindings
+          ? { lowerImpactFindings: a11ySitePromptData.lowerImpactFindings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding) }
+          : {}),
+      })
+    : undefined;
+  const a11yAffects = (scan: AccessibilityScan): string =>
+    [a11yAffectsProse(scan), a11yNoNumberLine()].filter(Boolean).join(' ');
+  let a11yCost: ClientReportCostBlock | undefined;
+  if (a11yCouldNotMeasure) {
+    a11yCost = { tab: 'a11y', state: 'blocked', headline: '' };
+  } else if (highImpactTotal > 0 && a11yWorst) {
+    a11yCost = {
+      tab: 'a11y',
+      state: 'measured',
+      headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.`,
+      affectsProse: a11yAffects(a11yWorst.scan),
+      ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
+      gapSubLines: a11yFindingLines,
+      ...(a11yGap ? { gap: a11yGap } : {}),
+      ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
+      scoreBadgePolicy: SCORE_BADGE_POLICY,
+    };
+  } else if (fineA11y.some((view) => view.scan.violations.length > 0)) {
+    const strongestMinorScan = fineA11y.find((view) => view.scan.violations.length > 0)!.scan;
+    a11yCost = {
+      tab: 'a11y',
+      state: 'zero',
+      headline: NO_MATERIAL_LOSS,
+      affectsProse: a11yAffects(strongestMinorScan),
+      stakes: {
+        kind: 'no-material-loss',
+        prose: `${NO_MATERIAL_LOSS} Nothing we measured is turning visitors away today - that is rarer than it sounds, and worth protecting.`,
+      },
+      ...(a11yGap ? { gap: a11yGap } : {}),
+      ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
+      scoreBadgePolicy: SCORE_BADGE_POLICY,
+    };
+  }
+  const a11yStrongPages = fineA11y
+    .filter((view) => typeof view.client?.score === 'number' && scoreStatus(view.client.score) === 'good')
+    .map((view) => ({ name: view.page.name, score: view.client!.score! }));
+  if (a11yCost && a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
+    a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
+  }
+  return {
+    ...prepared,
+    a11yCards,
+    a11yFine,
+    ...(a11yScore !== undefined ? { a11yScore } : {}),
+    a11yStatus,
+    highImpactTotal,
+    a11yTopIssues,
+    ...(a11yWorst ? { a11yWorst } : {}),
+    ...(a11yCost ? { a11yCost } : {}),
+  };
 }

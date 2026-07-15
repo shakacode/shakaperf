@@ -7,8 +7,28 @@
  * License in LICENSE.md.
  */
 
-import type { ClientReportStatus } from '../client-report-renderer';
-import type { PerfProblemKind, ScoreBadgePolicy } from './perf';
+import type { ClientReportCostBlock, ClientReportStatus } from '../client-report-renderer';
+import { PERF_INDUSTRY_DATA_STATS, NO_MATERIAL_LOSS, perfCheckLine, perfGapHeadline, perfStudiesFooter, perfStudiesIntro } from '../cost-strings';
+import { DEFAULT_MOBILE_TRAFFIC_SHARE } from '../cost-model';
+import { buildPerfSitePrompt } from '../copy-prompt';
+import type { PagePerf } from '../synthesis';
+import {
+  compareClientReportPerfProblemCandidate,
+  dominantPerfProblem,
+  isPerfCostProblem,
+  metricVal,
+  perfAffectsProse,
+  perfCostCopyPromptEnabled,
+  perfCostHeadline,
+  perfProblemMetric,
+  perfProblemPhrase,
+  selectPerfCostAnchor,
+  SCORE_BADGE_POLICY,
+  type ClientReportPerfProblemCandidate,
+  type PerfProblemKind,
+  type Problem,
+  type ScoreBadgePolicy,
+} from './perf';
 
 /**
  * Published performance and accessibility lines.
@@ -644,4 +664,278 @@ export function a11yContrastGap(ratio: number | undefined): CostGap | undefined 
     lineOwner: 'WCAG AA',
     lineUrl: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html',
   };
+}
+
+export interface PerfCostPromptContext {
+  host: string;
+  date: string;
+  viewportLabel: string;
+  throttleProfile: string;
+}
+
+export interface PerfCostPage {
+  page: PagePerf;
+  lead: Problem;
+}
+
+export interface PerfCostAssembly {
+  perfCost?: ClientReportCostBlock;
+  perfCostAnchor?: ClientReportPerfProblemCandidate;
+  tilePerfProblem?: ClientReportPerfProblemCandidate;
+  perfProblemTx?: string;
+  perfProblemMetricTx?: string;
+  rankedCarded: readonly PerfCostPage[];
+}
+
+export interface BuildPerfCostInput {
+  hasPerf: boolean;
+  perfCouldNotMeasure: boolean;
+  perfStatus: ClientReportStatus;
+  measured: readonly PerfCostPage[];
+  rankedCarded: readonly PerfCostPage[];
+  siteUrl: string;
+  throttleProfile?: string;
+  promptCtx: PerfCostPromptContext;
+  moneyPage?: string;
+  pageUrl: (page: PagePerf) => string;
+  copyPromptForPage: (page: PagePerf) => string | undefined;
+  sameAsPsiDefaultProfile: (profile: string | undefined) => boolean;
+}
+
+function displayTimingMs(value: number | undefined): number | undefined {
+  return value === undefined || !Number.isFinite(value) ? undefined : Number((value / 1000).toFixed(1)) * 1000;
+}
+
+function displayFcpGapSubLines(
+  pages: Parameters<typeof heroMetricGapSubLines>[0],
+  anchor: Parameters<typeof heroMetricGapSubLines>[1],
+): string[] {
+  const lines = heroMetricGapSubLines(pages, anchor, FCP_HERO_METRIC);
+  const fcpValues = pages.map((page) => page.fcpMs).filter((value): value is number => value !== undefined);
+  if (fcpValues.length < 2) return lines;
+  const displayedAverageMs = displayTimingMs(fcpValues.reduce((sum, value) => sum + value, 0) / fcpValues.length);
+  if (displayedAverageMs === undefined) return lines;
+  const multiple = benchmarkMultiple(displayedAverageMs, FCP_HERO_METRIC.goodMs);
+  const suffix = multiple ? ` - ${multiple} the line` : '';
+  const averageLine = `site average: ${(displayedAverageMs / 1000).toFixed(1)}s${suffix}`;
+  return lines.map((line) => line.startsWith('site average: ') ? averageLine : line);
+}
+
+type CompletePerfPromptFacts = {
+  name: string;
+  lcpMs: number | undefined;
+  fcpMs: number;
+  jsKb: number;
+  downloadsBeforeLcpKb: number | undefined;
+  downloadsKb: number;
+};
+
+function hasCompletePerfPromptFacts(page: {
+  name: string;
+  lcpMs: number | undefined;
+  fcpMs?: number;
+  jsKb?: number;
+  downloadsBeforeLcpKb: number | undefined;
+  downloadsKb?: number;
+}): page is CompletePerfPromptFacts {
+  return page.fcpMs !== undefined
+    && page.jsKb !== undefined
+    && page.downloadsKb !== undefined;
+}
+
+/**
+ * Builds the performance cost treatment from already-read audit data. It does
+ * no artifact reads or network work, making all cost-state branches directly
+ * reusable and deterministic.
+ */
+export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
+  let siteDominantPerfProblem: ClientReportPerfProblemCandidate | undefined;
+  for (const page of input.measured) {
+    const candidate = dominantPerfProblem(page);
+    if (!candidate) continue;
+    if (!siteDominantPerfProblem || compareClientReportPerfProblemCandidate(siteDominantPerfProblem, candidate) > 0) siteDominantPerfProblem = candidate;
+  }
+  const rankedPerfCostCandidates = input.rankedCarded
+    .map((page) => dominantPerfProblem(page))
+    .filter((candidate): candidate is ClientReportPerfProblemCandidate => !!candidate && isPerfCostProblem(candidate.problem));
+  const perfCostProblem = rankedPerfCostCandidates[0];
+  const perfCostAnchor = selectPerfCostAnchor(rankedPerfCostCandidates, BENCHMARK_LINES.lcpMs.good);
+  const fcpCostCandidates = input.measured
+    .map(({ page }) => ({ page, fcpMs: displayTimingMs(metricVal(page, 'FCP')) }))
+    .filter((candidate): candidate is { page: PagePerf; fcpMs: number } => candidate.fcpMs !== undefined && candidate.fcpMs > FCP_HERO_METRIC.goodMs)
+    .sort((a, b) => b.fcpMs - a.fcpMs);
+  const fcpCostAnchor = fcpCostCandidates.find((candidate) => candidate.page.startingPath === '/') ?? fcpCostCandidates[0];
+  const fcpCostIsDominant = siteDominantPerfProblem?.problem.kind === 'blank'
+    || siteDominantPerfProblem?.problem.kind === 'late-paint'
+    || (siteDominantPerfProblem === undefined && input.perfStatus !== 'good');
+  const tilePerfProblem = perfCostProblem ?? siteDominantPerfProblem;
+  const perfProblemTx = tilePerfProblem ? perfProblemPhrase(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
+  const perfProblemMetricTx = tilePerfProblem ? perfProblemMetric(tilePerfProblem.problem, tilePerfProblem.page) : undefined;
+  let perfCost: ClientReportCostBlock | undefined;
+
+  if (input.hasPerf) {
+    if (!input.perfCouldNotMeasure && input.perfStatus !== 'good' && fcpCostAnchor && fcpCostIsDominant) {
+      const anchorPage = fcpCostAnchor.page;
+      const anchorUrl = input.pageUrl(anchorPage);
+      const pageSpeedUrl = `https://pagespeed.web.dev/analysis?url=${encodeURIComponent(anchorUrl)}`;
+      const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
+      const perfFactPages = input.measured.map(({ page }) => ({
+        name: page.name,
+        lcpMs: metricVal(page, 'LCP'),
+        fcpMs: displayTimingMs(metricVal(page, 'FCP')),
+        jsKb: metricVal(page, 'js'),
+        downloadsBeforeLcpKb: metricVal(page, 'downloads-before-LCP'),
+        downloadsKb: metricVal(page, 'downloads'),
+      }));
+      const anchorFacts = {
+        name: anchorPage.name,
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        fcpMs: displayTimingMs(metricVal(anchorPage, 'FCP')),
+        jsKb: metricVal(anchorPage, 'js'),
+        downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
+        downloadsKb: metricVal(anchorPage, 'downloads'),
+      };
+      const heroFcpMs = fcpCostAnchor.fcpMs;
+      const rawGap = perfGap('blank', { fcpMs: heroFcpMs });
+      const gap = rawGap && {
+        ...rawGap,
+        lineOwner: "Google's Lighthouse benchmark - first contentful paint",
+      };
+      const pageUrls = input.measured.map(({ page }) => input.pageUrl(page));
+      const completePromptPages = perfFactPages
+        .map((facts, index) => ({ facts, page: input.measured[index].page, url: pageUrls[index] }))
+        .filter((candidate): candidate is { facts: CompletePerfPromptFacts; page: PagePerf; url: string } => hasCompletePerfPromptFacts(candidate.facts));
+      const promptHomepage = completePromptPages.find((candidate) => candidate.page.startingPath === '/');
+      const perfSitePrompt = promptHomepage?.facts.downloadsBeforeLcpKb === undefined
+        ? undefined
+        : buildPerfSitePrompt({
+          url: input.siteUrl,
+          host: input.promptCtx.host,
+          date: input.promptCtx.date,
+          viewportLabel: input.promptCtx.viewportLabel,
+          throttleProfile: input.promptCtx.throttleProfile,
+          pageCount: completePromptPages.length,
+          homepage: promptHomepage.facts,
+          pages: completePromptPages.map((candidate) => candidate.facts),
+          pageUrls: completePromptPages.map((candidate) => candidate.url),
+        });
+      const perfHandoff = perfSitePrompt ?? input.copyPromptForPage(anchorPage);
+      const zeroLine = heroMetricCountedZeroLine(perfFactPages, FCP_HERO_METRIC);
+      const beforeContentKb = metricVal(anchorPage, 'downloads-before-LCP');
+      const fixText = [
+        beforeContentKb === undefined
+          ? undefined
+          : `Start where the wait is: ${anchorPage.name} pulls ${(beforeContentKb / 1024).toFixed(1)} MB before its main content shows.`,
+        'The target: something visible under 1.8 seconds on the same phone profile.',
+      ].filter((line): line is string => !!line).join(' ');
+      perfCost = {
+        tab: 'perf',
+        state: 'measured',
+        headline: gap ? `nothing for the first ${gap.measuredLabel}` : 'first content is slow on this page',
+        chip: 'measured',
+        checkLine: perfCheckLine(anchorUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
+        pageSpeedUrl,
+        affectsProse: perfAffectsProse({ kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }),
+        ...(perfHandoff ? { sitePrompts: { perf: perfHandoff } } : {}),
+        ...(gap ? { gap } : {}),
+        ...(gap && heroFcpMs !== undefined ? { scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs) } : {}),
+        gapSubLines: displayFcpGapSubLines(perfFactPages, anchorFacts),
+        stakes: {
+          kind: 'at-risk',
+          prose: perfStakesProse('late-paint'),
+          studies: PERF_INDUSTRY_DATA_STATS,
+          expanderIntro: perfStudiesIntro(),
+          expanderFooter: perfStudiesFooter(),
+        },
+        fix: { tone: 'primary', text: fixText },
+        calculator: {
+          mobileSharePrefill: DEFAULT_MOBILE_TRAFFIC_SHARE,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: MATERIALITY_FLOOR_USD_PER_MONTH,
+          inquiryNoun: 'inquiry',
+        },
+        ...(zeroLine ? { countedZeroLine: zeroLine } : {}),
+        scoreBadgePolicy: SCORE_BADGE_POLICY,
+      };
+    } else if (input.perfStatus === 'good') {
+      const everyMeasuredLcpUnderGoodLine = input.measured.every(({ page }) => {
+        const lcpMs = metricVal(page, 'LCP');
+        return lcpMs !== undefined && lcpMs <= BENCHMARK_LINES.lcpMs.good;
+      });
+      perfCost = {
+        tab: 'perf',
+        state: 'zero',
+        ...(everyMeasuredLcpUnderGoodLine ? {} : { headline: NO_MATERIAL_LOSS }),
+      };
+    } else if (!input.perfCouldNotMeasure && perfCostAnchor && isPerfCostProblem(perfCostAnchor.problem)) {
+      const supportingProblem = perfCostProblem ?? perfCostAnchor;
+      const supportingPerfProblem = isPerfCostProblem(supportingProblem.problem)
+        ? supportingProblem.problem
+        : perfCostAnchor.problem;
+      const anchorPage = perfCostAnchor.page;
+      const anchorProblemTx = perfProblemPhrase(perfCostAnchor.problem, anchorPage);
+      const anchorProblemMetricTx = perfProblemMetric(perfCostAnchor.problem, anchorPage);
+      const anchorProblemLabel = anchorProblemMetricTx ?? anchorProblemTx ?? perfCostAnchor.problem.chip;
+      const anchorProblemPhrase = anchorProblemTx ?? perfCostAnchor.problem.chip;
+      const problemUrl = input.pageUrl(supportingProblem.page);
+      const checkProfile = input.throttleProfile || 'a profile not recorded in this audit';
+      const perfFactPages = input.measured.map(({ page }) => ({
+        name: page.name,
+        lcpMs: metricVal(page, 'LCP'),
+        jsKb: metricVal(page, 'js'),
+        downloadsBeforeLcpKb: metricVal(page, 'downloads-before-LCP'),
+        downloadsKb: metricVal(page, 'downloads'),
+      }));
+      const anchorFacts = {
+        name: anchorPage.name,
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        jsKb: metricVal(anchorPage, 'js'),
+        downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
+        downloadsKb: metricVal(anchorPage, 'downloads'),
+      };
+      const gap = perfGap(perfCostAnchor.problem.kind, {
+        lcpMs: metricVal(anchorPage, 'LCP'),
+        cls: metricVal(anchorPage, 'CLS') !== undefined ? metricVal(anchorPage, 'CLS')! / 100 : undefined,
+        fcpMs: metricVal(anchorPage, 'FCP'),
+        tbtMs: metricVal(anchorPage, 'TBT'),
+      });
+      const bookingPage = moneyPage(
+        input.rankedCarded.map(({ page }) => ({ name: page.name, startingPath: page.startingPath, lcpMs: metricVal(page, 'LCP') })),
+        input.moneyPage,
+      );
+      const zeroLine = countedZeroLine(perfFactPages);
+      perfCost = {
+        tab: 'perf',
+        state: 'measured',
+        headline: perfCostHeadline(perfCostAnchor.problem, anchorProblemLabel, anchorProblemPhrase, anchorPage),
+        chip: 'measured',
+        checkLine: perfCheckLine(problemUrl, input.sameAsPsiDefaultProfile(input.throttleProfile), checkProfile),
+        affectsProse: perfAffectsProse(supportingPerfProblem),
+        sitePrompt: perfCostCopyPromptEnabled(supportingPerfProblem)
+          ? input.copyPromptForPage(supportingProblem.page)
+          : undefined,
+        ...(gap ? { gap } : {}),
+        gapSubLines: perfGapSubLines(perfFactPages, anchorFacts),
+        ...(bookingPage ? { bookingLine: bookingLine(bookingPage) } : {}),
+        stakes: {
+          kind: 'at-risk',
+          prose: perfStakesProse(perfCostAnchor.problem.kind),
+          studies: PERF_INDUSTRY_DATA_STATS,
+          expanderIntro: perfStudiesIntro(),
+          expanderFooter: perfStudiesFooter(),
+        },
+        fix: { tone: 'primary', text: perfFixText(perfFactPages, perfCostAnchor.problem.kind) },
+        calculator: {
+          mobileSharePrefill: DEFAULT_MOBILE_TRAFFIC_SHARE,
+          bands: RECOVERY_BANDS,
+          materialityFloorUsdPerMonth: MATERIALITY_FLOOR_USD_PER_MONTH,
+          inquiryNoun: 'inquiry',
+        },
+        ...(zeroLine ? { countedZeroLine: zeroLine } : {}),
+        scoreBadgePolicy: SCORE_BADGE_POLICY,
+      };
+    }
+  }
+
+  return { perfCost, perfCostAnchor, tilePerfProblem, perfProblemTx, perfProblemMetricTx, rankedCarded: input.rankedCarded };
 }
