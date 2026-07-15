@@ -53,7 +53,7 @@ interface A11yRuleFamilyDefinition {
 }
 
 const A11Y_RULE_FAMILY_DEFINITIONS: readonly A11yRuleFamilyDefinition[] = [
-  { id: 'target-size', label: 'touch targets too small', matches: (ruleId) => ruleId === 'target-size' },
+  { id: 'target-size', label: 'touch targets too small to tap reliably', matches: (ruleId) => ruleId === 'target-size' },
   { id: 'image-alt', label: 'images with no text description', matches: (ruleId) => /^(image-alt|svg-img-alt|input-image-alt)$/.test(ruleId) },
   { id: 'unlabeled-controls', label: 'unlabeled controls', matches: (ruleId) => /^(button-name|link-name|label|select-name|aria-input-field-name)$/.test(ruleId) },
   { id: 'list', label: 'broken list markup', matches: (ruleId) => ruleId === 'list' },
@@ -502,7 +502,6 @@ export function buildA11ySection(
   const a11yFindingLines = a11yWorst
     ? [
       `worst page: ${a11yWorst.page.name} - ${a11yWorstFamilyCount} high-impact`,
-      ...(criticalTotal > 0 ? ['Critical accessibility barriers found'] : []),
       ...a11yCountedFamilies.map((family) => a11yFamilyLine(family, a11yMeasurable.length)),
       ...(a11yFamilySummary.notCountedExtras.length > 0
         ? [`also seen, not counted in the ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
@@ -576,8 +575,9 @@ export function buildA11ySection(
     };
   }
   const a11yStrongPages = fineA11y
-    .filter((view) => typeof view.client?.score === 'number' && scoreStatus(view.client.score) === 'good')
-    .map((view) => ({ name: view.page.name, score: view.client!.score! }));
+    .flatMap((view) => typeof view.client?.score === 'number'
+      ? [{ name: view.page.name, score: view.client.score }]
+      : []);
   if (a11yCost && a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
     a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
   }

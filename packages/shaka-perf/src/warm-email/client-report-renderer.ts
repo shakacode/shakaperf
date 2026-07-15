@@ -8,6 +8,7 @@
  */
 
 import {
+  AI_STUDIES_OTHER_SITES_CAVEAT,
   CALC_HEADLINE_LABEL,
   CALC_HOW_WE_GOT_THIS_LABEL,
   CALC_DIAL_LABEL,
@@ -647,7 +648,7 @@ function aiMeasuredRow(cost: ClientReportCostBlock): string {
 function stakesRow(stakes: CostStakes, tab: CostTab, fallbackStudies?: readonly SourcedStat[]): string {
   const studies = industryData(stakes.studies ?? fallbackStudies, costId('cr', tab, 'stakes-data'), {
     expanderIntro: stakes.expanderIntro,
-    expanderFooter: stakes.expanderFooter,
+    expanderFooter: tab === 'ai' ? AI_STUDIES_OTHER_SITES_CAVEAT : stakes.expanderFooter,
   });
   const prose = stakes.kind === 'no-material-loss'
     ? `<div style="padding:12px 14px; border:1px solid ${PAL.good.line}; border-radius:9px; background:${PAL.good.bg}; color:${PAL.good.fg}; font-size:15px; line-height:1.55">${esc(stakes.prose)}</div>`
@@ -661,7 +662,9 @@ function costStakesRow(cost: ClientReportCostBlock): string {
   if (cost.stakes) return stakesRow(cost.stakes, cost.tab, cost.stats);
   if (cost.affectsProse) return stakesRow({ kind: 'at-risk', prose: cost.affectsProse }, cost.tab, cost.stats);
   if (!cost.stats?.length) return '';
-  return costGrammarRow('At stake', industryData(cost.stats, costId('cr', cost.tab, 'stakes-data')), 'stakes', cost.tab === 'ai');
+  return costGrammarRow('At stake', industryData(cost.stats, costId('cr', cost.tab, 'stakes-data'), {
+    ...(cost.tab === 'ai' ? { expanderFooter: AI_STUDIES_OTHER_SITES_CAVEAT } : {}),
+  }), 'stakes', cost.tab === 'ai');
 }
 
 function percentageLabel(value: number): string {
@@ -1053,8 +1056,9 @@ function strongPageGroupList(group: StrongPageGroup): string {
   const pages = group.pages
     .map((page) => `<span style="font-size:14px; color:#4a443c"><strong style="font-weight:700; color:#26221d">${esc(page.name)}</strong> <span style="font-family:'JetBrains Mono',monospace; color:${PAL[scoreStatus(page.score)].fg}">${esc(String(page.score))}</span></span>`)
     .join('<span style="color:#d8d0c3"> &middot; </span>');
-  return `${sectionKicker(`${esc(group.label)} &middot; ${group.pages.length} ${group.pages.length === 1 ? 'page' : 'pages'}`)}
-    <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:13px 18px; line-height:1.6">${pages}</div>`;
+  const pageCount = group.pages.length;
+  const label = `${pageCount} ${pageCount === 1 ? 'page looks' : 'pages look'} fine`;
+  return `    <div style="font-size:14px; line-height:1.6; color:#6f665c; margin:4px 0 14px">${esc(label)}: ${pages}</div>`;
 }
 
 // Pages walled by a bot challenge: shown as "could not measure", never scored or

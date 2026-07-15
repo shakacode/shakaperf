@@ -17,10 +17,10 @@ import type { PagePerf } from '../synthesis';
 
 function view(
   impact: AccessibilityViolation['impact'],
-  options: { blocked?: boolean; ruleId?: string; score?: number } = {},
+  options: { blocked?: boolean; ruleId?: string; score?: number; name?: string } = {},
 ): A11ySectionView {
   const page: PagePerf = {
-    id: 'home', name: 'Home', startingPath: '/', chips: [], metrics: {},
+    id: 'home', name: options.name ?? 'Home', startingPath: '/', chips: [], metrics: {},
   };
   const scan: AccessibilityScan = {
     viewportLabel: 'phone',
@@ -64,7 +64,7 @@ describe('buildA11ySection', () => {
         headline: '1 high-impact barrier keeps some visitors from using the site.',
         gapSubLines: [
           'worst page: Home - 1 high-impact',
-          'touch targets too small - all 1 page',
+          'touch targets too small to tap reliably - all 1 page',
           'WCAG - passes at zero critical barriers',
         ],
       },
@@ -84,6 +84,31 @@ describe('buildA11ySection', () => {
 
     expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
     expect(result.a11yStatus).toBe('good');
+  });
+
+  it('groups every score-bearing fine page even when another page has a high-impact finding', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('moderate', { name: 'Looks fine', score: 98 }),
+      view('minor', { name: 'Also looks fine', score: 70 }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Looks fine', score: 98 }, { name: 'Also looks fine', score: 70 }],
+    });
+  });
+
+  it('leaves grouping absent when a fine page has no score', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('moderate', { name: 'Scored fine page', score: 98 }),
+      view('minor', { name: 'Unscored fine page' }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
   });
 
   it('uses the blocked state when every supplied scan is bot-protected', () => {

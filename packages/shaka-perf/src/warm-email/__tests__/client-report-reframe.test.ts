@@ -245,7 +245,7 @@ describe('cost-of-pain reframe model', () => {
     });
     expect(a11y?.gapSubLines).toEqual(expect.arrayContaining([
       'worst page: Platform - 2 high-impact',
-      'touch targets too small - 2 pages',
+      'touch targets too small to tap reliably - 2 pages',
       'images with no text description - 1 page',
       'also seen, not counted in the 3: text that is too hard to read - 1 page',
       'WCAG - passes at zero critical barriers',
@@ -542,6 +542,7 @@ describe('cost-of-pain reframe model', () => {
     ]);
     expect(perfFixText([], 'layout-shift')).toBe('The target: layout shift under 0.10 on the same phone profile.');
     expect(perfStakesProse('layout-shift')).toContain('Layout shifts like this');
+    expect(perfStakesProse('layout-shift')).toContain('so we do not print a made-up number.');
   });
 
   it('keeps a minor accessibility finding number-free while carrying real finding details', async () => {

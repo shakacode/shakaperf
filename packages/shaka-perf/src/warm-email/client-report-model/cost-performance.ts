@@ -230,11 +230,11 @@ const PERF_FIX_TARGET: Record<PerfProblemKind, string> = {
 };
 
 const PERF_STAKES_PROSE: Record<PerfProblemKind, string> = {
-  'slow-lcp': 'Waits like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
-  'layout-shift': 'Layout shifts like this make visitors lose their place, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
-  blank: 'Blank starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
-  'late-paint': 'Slow starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
-  sluggish: 'Slow interactions like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up share for your pages.',
+  'slow-lcp': 'Waits like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up number.',
+  'layout-shift': 'Layout shifts like this make visitors lose their place, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up number.',
+  blank: 'Blank starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up number.',
+  'late-paint': 'Slow starts like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up number.',
+  sluggish: 'Slow interactions like this are where visitors give up, and every study that has measured it points the same way. No study has measured a gap as wide as yours, so we do not print a made-up number.',
 };
 
 export function perfFixText(pages: readonly PerfFactPage[], kind: PerfProblemKind = 'slow-lcp'): string {
