@@ -18,8 +18,7 @@ import { dimSeverityRank, type PerfCostAssembly, type PerfCostPage } from './cos
 import type { A11ySection } from './a11y';
 import type { AgentSection } from './ai';
 import { perfProblemTileCopy } from './perf';
-
-const stripTags = (text: string): string => text.replace(/<[^>]+>/g, '');
+import { stripTags } from './shared';
 
 export interface ClientReportPerformanceSection extends PerfCostAssembly {
   hasPerf: boolean;

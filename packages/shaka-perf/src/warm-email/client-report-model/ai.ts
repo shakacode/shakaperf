@@ -24,6 +24,7 @@ import type {
 } from '../client-report-renderer';
 import { MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO } from './cost';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
+import { dashSafe, liveUrlFor } from './shared';
 
 const AGENT_FACTOR_NAME: Record<string, string> = {
   ssr: 'Readable without running code',
@@ -53,12 +54,6 @@ export interface AgentSection {
   agentBlocked: ClientReportBlockedPage[];
   agentCouldNotMeasure: boolean;
   agentCost?: ClientReportCostBlock;
-}
-
-export const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ');
-
-function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
-  return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
 }
 
 function agentFactor(cat: CategoryScore): { name: string; score: number; status: ClientReportStatus } {

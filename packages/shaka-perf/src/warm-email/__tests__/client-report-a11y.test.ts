@@ -17,7 +17,6 @@ import {
   a11yIssuesHtml,
   compareA11yWorstFirst,
   enrichA11ySummaries,
-  hasMajorA11yBarrier,
   pageHasCleanA11y,
   readA11yClient,
   scoreBucket,
@@ -34,6 +33,7 @@ import type {
 import {
   a11yAffectsProse,
   a11yFixClause,
+  hasMajorA11yBarrier,
   a11yPromptRules,
 } from '../client-report-model/a11y';
 

@@ -8,7 +8,7 @@
  */
 
 import type { ClientReportCostBlock, ClientReportStatus } from '../client-report-renderer';
-import { PERF_INDUSTRY_DATA_STATS, NO_MATERIAL_LOSS, perfCheckLine, perfGapHeadline, perfStudiesFooter, perfStudiesIntro } from '../cost-strings';
+import { PERF_INDUSTRY_DATA_STATS, NO_MATERIAL_LOSS, perfCheckLine, perfStudiesFooter, perfStudiesIntro } from '../cost-strings';
 import { DEFAULT_MOBILE_TRAFFIC_SHARE } from '../cost-model';
 import { buildPerfSitePrompt } from '../copy-prompt';
 import type { PagePerf } from '../synthesis';

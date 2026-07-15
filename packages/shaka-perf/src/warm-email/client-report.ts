@@ -87,13 +87,17 @@ import {
   a11yPromptRules,
   buildA11ySection,
   prepareA11ySection,
+  type A11yPromptContext,
+  type A11ySectionCounts,
+  type A11ySectionView,
 } from './client-report-model/a11y';
-import { buildAgentSection, type AgentSection } from './client-report-model/ai';
+import { buildAgentSection, type AgentPromptContext, type AgentSection } from './client-report-model/ai';
 import {
   assembleClientReportModel,
   buildClientReportNarrativeFacts,
   type ClientReportReportInput,
 } from './client-report-model/report';
+import { dashSafe, liveUrlFor, stripTags } from './client-report-model/shared';
 
 export {
   detectProblems,
@@ -107,6 +111,8 @@ export {
   reportTbtStatus,
 } from './client-report-model/perf';
 export type { Problem, ProblemKind, ClientReportPagePerfStatusInput } from './client-report-model/perf';
+export { dashSafe };
+export { hasMajorA11yBarrier } from './client-report-model/a11y';
 
 const execFileAsync = promisify(execFile);
 
@@ -469,11 +475,6 @@ async function buildShots(resultsDir: string, page: PagePerf, frames: Frame[], d
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-// The audit's AI summaries are written by a separate model that sometimes emits
-// em/en-dashes; ShakaCode copy is plain-hyphen only.
-export const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ');
-const stripTags = (s: string): string => s.replace(/<[^>]+>/g, '');
-
 function mb(kb: number): string {
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
 }
@@ -687,16 +688,7 @@ export function isDuplicateStory(a: StoryKey, b: StoryKey): boolean {
 // an LLM rewrite of the raw axe findings into client language. When the sidecar
 // is absent the card falls back to a plain-language issue list and shows no score.
 
-export interface ImpactCounts { critical: number; serious: number; moderate: number; minor: number }
-
-interface A11yClient { score?: number; summary?: string; fixes?: string[] }
-
-interface A11yPageView {
-  page: PagePerf;
-  scan: AccessibilityScan;
-  counts: ImpactCounts;
-  client?: A11yClient;
-}
+export type ImpactCounts = A11ySectionCounts;
 
 export function tallyByImpact(violations: readonly AccessibilityViolation[]): ImpactCounts {
   const c: ImpactCounts = { critical: 0, serious: 0, moderate: 0, minor: 0 };
@@ -711,8 +703,6 @@ export function tallyByImpact(violations: readonly AccessibilityViolation[]): Im
 
 const highImpact = (c: ImpactCounts): number => c.critical + c.serious;
 const totalIssues = (c: ImpactCounts): number => c.critical + c.serious + c.moderate + c.minor;
-// A page gets a card only for a MAJOR barrier (serious/critical); moderate/minor-only pages fold into the reassurance line.
-export const hasMajorA11yBarrier = (c: ImpactCounts): boolean => highImpact(c) > 0;
 
 // A11y cards worst-first by the Lighthouse score on each card (lower = worse): it
 // weights every check, so it catches high-weight ARIA the axe high-impact count
@@ -765,7 +755,7 @@ export function pageHasCleanA11y(page: PagePerf): boolean {
 }
 
 // Per-page LLM rewrite + Lighthouse score, written by the enrichment pre-pass.
-export function readA11yClient(resultsDir: string, pageId: string): A11yClient | undefined {
+export function readA11yClient(resultsDir: string, pageId: string): A11ySectionView['client'] | undefined {
   const p = containedJoin(resultsDir, pageId, 'accessibility-client.json');
   if (!p || !fs.existsSync(p)) return undefined;
   try {
@@ -792,8 +782,8 @@ function readA11ySiteSummary(resultsDir: string): string | undefined {
   }
 }
 
-function buildA11yPages(pages: PagePerf[], resultsDir: string): A11yPageView[] {
-  const views: A11yPageView[] = [];
+function buildA11yPages(pages: PagePerf[], resultsDir: string): A11ySectionView[] {
+  const views: A11ySectionView[] = [];
   for (const page of pages) {
     const scan = a11yScan(page);
     if (!scan) continue;
@@ -1435,10 +1425,6 @@ function writeNarrativeOverlay(resultsDir: string, overlay: NarrativeOverlay): v
   }
 }
 
-function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
-  return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
-}
-
 function cardPerfProblem(rp: RenderedPage): ClientReportPerfProblemCandidate | undefined {
   const candidate = dominantPerfProblem(rp);
   if (!candidate || candidate.status === 'good') return undefined;
@@ -1558,16 +1544,11 @@ async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Pro
   }
 }
 
-interface A11yPromptContext {
-  host: string;
-  date: string;
-}
-
-function a11yPageUrl(siteUrl: string, view: A11yPageView): string {
+function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
   return liveUrlFor(siteUrl, view.page.startingPath || '/') || view.scan.url || siteUrl;
 }
 
-function a11yCopyPromptForView(view: A11yPageView, siteUrl: string, ctx: A11yPromptContext): string | undefined {
+function a11yCopyPromptForView(view: A11ySectionView, siteUrl: string, ctx: A11yPromptContext): string | undefined {
   return buildCopyPrompt('a11y', {
     url: a11yPageUrl(siteUrl, view),
     host: ctx.host,
@@ -1577,7 +1558,7 @@ function a11yCopyPromptForView(view: A11yPageView, siteUrl: string, ctx: A11yPro
   });
 }
 
-async function a11yCardModel(view: A11yPageView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
+async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
   const { page, scan, counts, client } = view;
   const crops = await a11yCropFrames(scan, true);
   const score = client?.score;
@@ -1629,13 +1610,6 @@ interface PerfPromptContext {
   date: string;
   viewportLabel: string;
   throttleProfile: string;
-}
-
-interface AgentPromptContext {
-  siteUrl: string;
-  host: string;
-  date: string;
-  conditions: string;
 }
 
 function agentPromptHost(siteUrl: string, domain: string): string {

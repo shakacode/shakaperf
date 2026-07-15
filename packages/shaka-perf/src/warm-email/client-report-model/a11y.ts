@@ -18,6 +18,7 @@ import type { ClientReportA11yCard, ClientReportBlockedPage, ClientReportCostBlo
 import type { PagePerf } from '../synthesis';
 import { a11yContrastGap, a11yFixText, worstContrastRatio, type StrongPageGroup } from './cost';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
+import { dashSafe, liveUrlFor } from './shared';
 
 /** A C-design strong-page group replaces individual cards on the a11y or AI tabs. */
 export type A11yStrongPageGroup = StrongPageGroup;
@@ -333,7 +334,7 @@ export interface A11ySection extends PreparedA11ySection {
   a11yCost?: ClientReportCostBlock;
 }
 
-const hasMajorA11yBarrier = (counts: A11ySectionCounts): boolean => counts.critical + counts.serious > 0;
+export const hasMajorA11yBarrier = (counts: A11ySectionCounts): boolean => counts.critical + counts.serious > 0;
 
 export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA11ySection {
   const a11yBlockedViews = views.filter((view) => view.scan.blocked === true);
@@ -346,10 +347,6 @@ export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA
     cardedA11y: a11yMeasurable.filter((view) => hasMajorA11yBarrier(view.counts)),
     fineA11y: a11yMeasurable.filter((view) => !hasMajorA11yBarrier(view.counts)),
   };
-}
-
-function liveUrlFor(siteUrl: string, startingPath: string): string | undefined {
-  return siteUrl && startingPath ? `${siteUrl.replace(/\/$/, '')}${startingPath}` : undefined;
 }
 
 function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
@@ -377,6 +374,8 @@ function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
 }
 
 function safeA11ySharedSelector(selector: string): string | undefined {
+  // The prompt builder intentionally rejects untrusted or incomplete selectors.
+  // Keep this optional shared-component evidence to a conservative subset it accepts.
   const normalized = selector.replace(/\s+/g, ' ').trim();
   const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
   const instructionLikeClass = /(?:^|\.)(?:ignore|disregard|forget|override|bypass)(?:[-_][A-Za-z0-9_]+)*[-_](?:instructions?|prompt|system|developer|assistant|user|tool)(?:$|\.|\[)/i;
@@ -466,7 +465,7 @@ export function buildA11ySection(
       name: view.page.name,
       path: view.page.startingPath || '/',
       status: typeof score === 'number' ? scoreStatus(score) : 'good',
-      summary: view.client?.summary ? view.client.summary.replace(/\s*[—–]\s*/g, ' - ') : 'Only minor issues here.',
+      summary: view.client?.summary ? dashSafe(view.client.summary) : 'Only minor issues here.',
     };
     if (typeof score === 'number') row.score = score;
     return row;
