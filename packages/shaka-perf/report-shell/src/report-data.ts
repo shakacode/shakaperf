@@ -3,6 +3,13 @@ import type { ReportData } from './types';
 
 const categorySchema = z.enum(['visreg', 'perf', 'accessibility']);
 const targetStatusSchema = z.enum(['active', 'found', 'invalid']);
+const mergeStatusSchema = z.enum([
+  'merge-uninvestigated', 'running', 'complete', 'octopus-unsupported', 'failed',
+]);
+const mergeResultSchema = z.enum([
+  'merge-uninvestigated', 'merge-introduced', 'source-found', 'nested-merge',
+  'octopus-unsupported',
+]);
 const scalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const targetObservationSchema = z.object({
   values: z.record(z.string(), scalarSchema),
@@ -19,6 +26,11 @@ const targetSchema = z.object({
   firstBadSha: z.string().optional(),
   invalidReason: z.string().optional(),
   badRefObservation: targetObservationSchema.optional(),
+  mainlineFirstBadSha: z.string().optional(),
+  mainlineIsMerge: z.boolean().optional(),
+  mergeInvestigationStatus: mergeStatusSchema.optional(),
+  mergeSourceSha: z.string().optional(),
+  mergeResult: mergeResultSchema.optional(),
 }).passthrough();
 const countsSchema = z.object({
   visreg: z.number(),
@@ -32,6 +44,8 @@ const commitSchema = z.object({
   measured: z.boolean(),
   counts: countsSchema,
   targetIds: z.array(z.string()),
+  isMerge: z.boolean().optional(),
+  mergeInvestigationStatus: mergeStatusSchema.optional(),
 }).passthrough();
 const viewSchema = z.object({ targetIds: z.array(z.string()) });
 const bisectSchema = z.object({

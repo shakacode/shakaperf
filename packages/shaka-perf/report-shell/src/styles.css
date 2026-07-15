@@ -832,6 +832,12 @@ input {
   white-space: nowrap;
 }
 
+.bisect-node__merge {
+  padding: 1px 4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
 .bisect-node__measurement {
   flex: 0 0 auto;
 }
