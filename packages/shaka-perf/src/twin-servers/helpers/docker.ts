@@ -7,6 +7,7 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'node:fs';
 import { exec, execSync_ } from './shell';
 import { colorize } from './ui';
 import type { ResolvedConfig } from '../types';
@@ -42,7 +43,7 @@ export function dockerImageExists(imageName: string): boolean {
   return result !== '';
 }
 
-function buildComposeOptions(config: ResolvedConfig) {
+export function buildComposeOptions(config: ResolvedConfig) {
   return {
     composeFile: config.composeFile,
     // The slug already encodes the local project path, so it is enough to
@@ -60,6 +61,23 @@ function buildComposeOptions(config: ResolvedConfig) {
       USER: process.env.USER || getUsername(),
     },
   };
+}
+
+export async function recreateExperimentContainer(config: ResolvedConfig): Promise<void> {
+  const opts = buildComposeOptions(config);
+  await exec(
+    'docker',
+    ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'rm', '-s', '-f', 'experiment-server'],
+    { cwd: opts.cwd, env: opts.env },
+  );
+  fs.rmSync(config.volumes.experiment, { recursive: true, force: true });
+  fs.mkdirSync(config.volumes.experiment, { recursive: true });
+  const result = await exec(
+    'docker',
+    ['compose', '-f', opts.composeFile, '-p', opts.projectName, 'up', '-d', '--force-recreate', 'experiment-server'],
+    { cwd: opts.cwd, env: opts.env },
+  );
+  if (result.code !== 0) throw new Error('Experiment container recreation failed');
 }
 
 export async function dockerComposeUp(config: ResolvedConfig): Promise<void> {

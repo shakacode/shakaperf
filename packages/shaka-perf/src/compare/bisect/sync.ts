@@ -67,7 +67,26 @@ function manifestPaths(options: VolumeSyncOptions): Set<string> {
 function removeOwnedPath(volumeDir: string, relativePath: string): void {
   const destinationPath = resolveWithin(volumeDir, relativePath);
   assertParentWithin(volumeDir, destinationPath);
-  fs.rmSync(destinationPath, { recursive: true, force: true });
+  removeDestinationFilePath(destinationPath);
+}
+
+function removeDestinationFilePath(destinationPath: string): void {
+  let destinationStat: fs.Stats;
+  try {
+    destinationStat = fs.lstatSync(destinationPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+
+  if (destinationStat.isDirectory()) {
+    if (fs.readdirSync(destinationPath).length > 0) {
+      throw new Error(`Refusing to remove non-empty directory at manifest file path: ${destinationPath}`);
+    }
+    fs.rmdirSync(destinationPath);
+    return;
+  }
+  fs.unlinkSync(destinationPath);
 }
 
 function validateSymlinkTarget(
@@ -117,17 +136,17 @@ function copyOwnedPath(sourceDir: string, volumeDir: string, relativePath: strin
   validateSourcePath(sourceDir, volumeDir, sourcePath, destinationPath);
   assertParentWithin(volumeDir, destinationPath);
   const sourceStat = fs.lstatSync(sourcePath);
+  if (!sourceStat.isFile() && !sourceStat.isSymbolicLink()) {
+    throw new Error(`Manifest path is not a file: ${relativePath}`);
+  }
   fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
-  fs.rmSync(destinationPath, { recursive: true, force: true });
+  removeDestinationFilePath(destinationPath);
 
   if (sourceStat.isSymbolicLink()) {
     const target = fs.readlinkSync(sourcePath);
     validateSymlinkTarget(sourceDir, volumeDir, sourcePath, destinationPath, target);
     fs.symlinkSync(target, destinationPath);
     return;
-  }
-  if (!sourceStat.isFile()) {
-    throw new Error(`Manifest path is not a file: ${relativePath}`);
   }
 
   fs.copyFileSync(sourcePath, destinationPath);

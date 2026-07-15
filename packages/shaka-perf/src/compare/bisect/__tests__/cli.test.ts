@@ -7,7 +7,12 @@
  * License in LICENSE.md.
  */
 
+import { Command } from 'commander';
 import { createCompareCommand } from '../../cli/program';
+import { createBisectCommand } from '../cli';
+import { runCompareBisectFromCli } from '../session';
+import type { AbTestsConfig } from '../../../config';
+import type { BisectSession } from '../types';
 
 describe('compare bisect command', () => {
   it('registers optional refs without replacing the compare action', async () => {
@@ -22,5 +27,102 @@ describe('compare bisect command', () => {
       'good-ref',
       'bad-ref',
     ]);
+  });
+
+  it('passes inherited compare options including endpoint overrides', async () => {
+    const run = jest.fn(async () => undefined);
+    const program = new Command()
+      .exitOverride()
+      .name('shaka-perf');
+    const compare = new Command('compare')
+      .option('--config <path>')
+      .option('--categories <list>')
+      .option('--filter <value>')
+      .option('--testPathPattern <regex>')
+      .option('--headed')
+      .option('--controlURL <url>')
+      .option('--experimentURL <url>');
+    compare.addCommand(createBisectCommand({ run }));
+    program.addCommand(compare);
+
+    await program.parseAsync([
+      'compare',
+      '--config', '/tmp/abtests.config.ts',
+      '--categories', 'visreg,perf',
+      '--filter', 'checkout',
+      '--testPathPattern', 'checkout\\.abtest',
+      '--headed',
+      '--controlURL', 'http://control.override',
+      '--experimentURL', 'http://experiment.override',
+      'bisect',
+      'good-ref',
+      'bad-ref',
+    ], { from: 'user' });
+
+    expect(run).toHaveBeenCalledWith('good-ref', 'bad-ref', {
+      configPath: '/tmp/abtests.config.ts',
+      categories: 'visreg,perf',
+      filter: 'checkout',
+      testPathPattern: 'checkout\\.abtest',
+      headed: true,
+      controlURL: 'http://control.override',
+      experimentURL: 'http://experiment.override',
+    });
+  });
+
+  it('loads config and frozen tests once before calling runBisect', async () => {
+    const consoleLog = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const parsedConfig = {
+      shared: {
+        controlURL: 'http://control.config',
+        experimentURL: 'http://experiment.config',
+      },
+      twinServers: { experimentDir: 'experiment' },
+    } as AbTestsConfig;
+    const resolvedTwinServers = { projectSlug: 'fixture' };
+    const loadConfig = jest.fn(async () => ({ raw: true }));
+    const loadFrozenTests = jest.fn(async () => []);
+    const run = jest.fn(async () => ({
+      version: 1,
+      status: 'complete',
+      goodSha: 'good',
+      badSha: 'bad',
+      originalExperiment: { sha: 'bad', branch: 'feature' },
+      selectedCategories: ['visreg'],
+      orderedCommits: ['good', 'bad'],
+      targets: [],
+      commitRuns: {},
+      startedAt: '2026-07-12T00:00:00.000Z',
+      finishedAt: '2026-07-12T00:01:00.000Z',
+    }) as BisectSession);
+
+    try {
+      await runCompareBisectFromCli('good', 'bad', {
+        configPath: '/tmp/abtests.config.ts',
+        categories: 'visreg',
+        controlURL: 'http://control.override',
+        experimentURL: 'http://experiment.override',
+      }, {
+        loadConfig,
+        parseConfig: () => parsedConfig,
+        resolveTwinServers: () => resolvedTwinServers as never,
+        loadFrozenTests,
+        run,
+      });
+    } finally {
+      consoleLog.mockRestore();
+    }
+
+    expect(loadConfig).toHaveBeenCalledTimes(1);
+    expect(loadFrozenTests).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({
+      goodRef: 'good',
+      badRef: 'bad',
+      config: parsedConfig,
+      twinServers: resolvedTwinServers,
+      frozenTests: [],
+      controlURL: 'http://control.override',
+      experimentURL: 'http://experiment.override',
+    }));
   });
 });

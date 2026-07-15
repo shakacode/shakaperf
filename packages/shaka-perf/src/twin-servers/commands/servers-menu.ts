@@ -47,6 +47,7 @@ import {
   type ServerLogStatus,
 } from '../helpers/server-log';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from '../helpers/project-paths';
+import { BisectSessionController, type BisectRefreshResult } from './bisect-session';
 
 export interface ServersMenuOptions {
   verbose?: boolean;
@@ -92,6 +93,17 @@ export interface MenuController {
    * (75) exit on the client side.
    */
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
+  /** Pause auto-sync and reject unrelated lifecycle actions while compare bisect owns the session. */
+  beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
+  /** Refresh the experiment side for the currently active compare bisect session. */
+  refreshBisectExperiment(request: {
+    sessionId: string;
+    mode: 'commands' | 'container';
+    rebuildCommands: string[];
+    noCache: boolean;
+  }): Promise<BisectRefreshResult>;
+  /** End the compare bisect session and allow normal menu auto-sync/actions again. */
+  endBisectSession(sessionId: string): Promise<void>;
 }
 
 export class MenuBusyError extends Error {
@@ -136,6 +148,7 @@ interface MenuState {
   picker: BranchPickerState | null;
   autoSyncCount: number;
   lastMessage: string | null;
+  bisectSession: BisectSessionController;
 }
 
 interface BranchPickerItem {
@@ -218,6 +231,7 @@ export async function runServersMenu(
     picker: null,
     autoSyncCount: 0,
     lastMessage: null,
+    bisectSession: new BisectSessionController(config),
   };
 
   let stopping = false;
@@ -633,9 +647,16 @@ export async function runServersMenu(
    * MenuBusyError on contention; that error is reserved for terminal
    * states (`stopping`, not yet `menuReady`).
    */
-  const runProxiedAction = async <T>(verb: string, runner: () => Promise<T>): Promise<T> => {
+  const runProxiedAction = async <T>(
+    verb: string,
+    runner: () => Promise<T>,
+    actionOptions: { allowDuringBisect?: boolean } = {},
+  ): Promise<T> => {
     if (!state.menuReady) throw new MenuBusyError('menu is still starting up');
     if (stopping) throw new MenuBusyError('menu is shutting down');
+    if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
+      throw new MenuBusyError('compare bisect session is active');
+    }
     const release = await acquireLock();
     // Recheck after the wait: the menu may have transitioned to a terminal
     // state while we were queued. Don't run a half-action against a session
@@ -643,6 +664,10 @@ export async function runServersMenu(
     if (stopping) {
       release();
       throw new MenuBusyError('menu is shutting down');
+    }
+    if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
+      release();
+      throw new MenuBusyError('compare bisect session is active');
     }
     state.busy = true;
     const previousActivity = state.activity;
@@ -661,7 +686,7 @@ export async function runServersMenu(
       } else if (state.activity.verb === verb) {
         state.activity = previousActivity;
       }
-      performAutoSync();
+      if (state.bisectSession.activeSessionId === null) performAutoSync();
       repaint();
       release();
     }
@@ -679,6 +704,33 @@ export async function runServersMenu(
     restartServers: () => runProxiedAction('restarting servers', runRestartServers),
     stopContainersAndExit: () => runProxiedAction('stopping containers', runStopContainersAndExit),
     runOneOff: (verb, runner) => runProxiedAction(verb, runner),
+    beginBisectSession: (sessionId, ownerPid) => runProxiedAction(
+      'beginning compare bisect session',
+      async () => {
+        state.bisectSession.beginSession(sessionId, ownerPid);
+        state.lastMessage = 'Compare bisect owns experiment refresh; auto-sync is paused.';
+      },
+      { allowDuringBisect: true },
+    ),
+    refreshBisectExperiment: (request) => runProxiedAction(
+      `refreshing compare bisect experiment (${request.mode})`,
+      async () => {
+        const result = await state.bisectSession.refreshExperiment(request.sessionId, request);
+        state.lastMessage = result.usedFallback
+          ? 'Compare bisect command refresh failed; rebuilt experiment container.'
+          : `Compare bisect refreshed experiment using ${result.mode} mode.`;
+        return result;
+      },
+      { allowDuringBisect: true },
+    ),
+    endBisectSession: (sessionId) => runProxiedAction(
+      'ending compare bisect session',
+      async () => {
+        state.bisectSession.endSession(sessionId);
+        state.lastMessage = 'Compare bisect finished; auto-sync resumed.';
+      },
+      { allowDuringBisect: true },
+    ),
   };
 
   options.onControllerReady?.(controller);
@@ -696,7 +748,7 @@ export async function runServersMenu(
     // Fast-fail menu keypresses while the slot is taken — the user is
     // expected to look at the menu and try again. (Contrast with proxied
     // requests in `runProxiedAction`, which deliberately queue.)
-    if (state.busy || stopping || !state.menuReady) return;
+    if (state.busy || stopping || !state.menuReady || state.bisectSession.activeSessionId !== null) return;
     const release = await acquireLock();
     // Recheck: the user could have pressed Ctrl+C while we were waiting
     // (in practice the lock is uncontended here because the menu
@@ -754,7 +806,7 @@ export async function runServersMenu(
       dispatchPickerKey(key);
       return;
     }
-    if (state.busy || stopping || !state.menuReady) return;
+    if (state.busy || stopping || !state.menuReady || state.bisectSession.activeSessionId !== null) return;
     const visible = visibleItems(items, state);
     if (key === 'up') {
       state.selectedIndex = Math.max(0, state.selectedIndex - 1);
@@ -858,7 +910,7 @@ export async function runServersMenu(
   const pendingSync = new Set<string>();
   let syncTimer: NodeJS.Timeout | null = null;
   const performAutoSync = (): void => {
-    if (state.busy || stopping || pendingSync.size === 0) return;
+    if (state.busy || stopping || state.bisectSession.activeSessionId !== null || pendingSync.size === 0) return;
     // Re-read per batch so a fresh rebuild's manifest is picked up immediately.
     // Without a manifest (never built, or older shaka-perf), fall back to the
     // live dockerignore and skip deletion handling — we can't safely unlink

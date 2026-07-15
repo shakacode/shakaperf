@@ -31,6 +31,20 @@ interface CategoryAnalyzer {
   observe(input: AnalyzeInput, targets: readonly BisectTarget[]): TargetObservation[];
 }
 
+export function assertNoPipelineErrors(
+  testResults: readonly TestResult[],
+  commitSha: string,
+): void {
+  for (const test of testResults) {
+    const outcome = test.outcomes.find((candidate) => candidate.kind === 'error');
+    if (!outcome) continue;
+    throw new Error(
+      `Candidate ${commitSha} has an error outcome for ${outcome.stage} in ${test.name}: ` +
+      `${outcome.error?.message ?? 'unknown pipeline error'}`,
+    );
+  }
+}
+
 export function discoverTargets(
   testResults: readonly TestResult[],
   orderedCommits: readonly string[],
@@ -77,8 +91,10 @@ const visregAnalyzer: CategoryAnalyzer = {
   },
   observe(input, targets) {
     return targets.map((target) => {
-      const artifacts = stageMeasurements(input.testResults, 'visreg', isVisregResult)
-        .filter((entry) => matchesTarget(entry, target))
+      const results = stageMeasurements(input.testResults, 'visreg', isVisregResult)
+        .filter((entry) => matchesTarget(entry, target));
+      requireMeasurement(results, target);
+      const artifacts = results
         .flatMap((entry) => entry.measurement.filter((artifact) => artifact.selector === target.subject));
       const artifact = artifacts[0];
       return observation(target, input.commitSha!, artifacts.some((item) => item.diffImage !== null), artifact ? {
@@ -101,8 +117,10 @@ const perfAnalyzer: CategoryAnalyzer = {
   },
   observe(input, targets) {
     return targets.map((target) => {
-      const metrics = stageMeasurements(input.testResults, 'perf', isPerfArtifact)
-        .filter((entry) => matchesTarget(entry, target))
+      const results = stageMeasurements(input.testResults, 'perf', isPerfArtifact)
+        .filter((entry) => matchesTarget(entry, target));
+      requireMeasurement(results, target);
+      const metrics = results
         .flatMap((entry) => (entry.measurement.metrics ?? []).filter((metric) => metric.label === target.subject));
       const metric = metrics[0];
       return observation(target, input.commitSha!, metrics.some((item) => item.direction === 'regression'), metric ? {
@@ -135,6 +153,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
     return targets.map((target) => {
       const results = stageMeasurements(input.testResults, 'accessibility', isAccessibilityCompareResult)
         .filter((entry) => matchesTarget(entry, target));
+      requireMeasurement(results, target);
       const findings = results.flatMap(({ measurement }) => measurement.findings
         .filter((finding) => finding.ruleId === target.subject));
       return observation(target, input.commitSha!, findings.some((finding) => finding.status === 'new'), {
@@ -203,6 +222,17 @@ function matchesTarget(
   return entry.test.filePath === target.testFile
     && entry.test.name === target.testName
     && entry.viewport === target.viewport;
+}
+
+function requireMeasurement(
+  results: readonly unknown[],
+  target: BisectTarget,
+): void {
+  if (results.length > 0) return;
+  throw new Error(
+    `Missing ${target.category} measurement for ${target.testName} ` +
+      `(${target.viewport}, ${target.subject})`,
+  );
 }
 
 function isVisregResult(measurement: unknown): measurement is VisregResult {

@@ -587,10 +587,9 @@ Build only experiment with the existing `build(config, { target: 'experiment' })
 
 - [ ] **Step 3: Implement targeted Overmind control**
 
-Discover process names from Procfile command bodies containing `run-overmind-command experiment` or `notify-server-started experiment`. Run:
+Discover process names from Procfile command bodies containing `run-overmind-command experiment` or `notify-server-started experiment`. Use Overmind's atomic restart command so the supervisor never observes a separate stopped-process interval:
 
 ```ts
-await exec('overmind', ['stop', '--socket', socketPath, ...processNames], { cwd: config.projectDir });
 await exec('overmind', ['restart', '--socket', socketPath, ...processNames], { cwd: config.projectDir });
 ```
 
@@ -770,7 +769,7 @@ bisect: {
     },
     {
       description: 'Precompile application assets',
-      command: 'SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
+      command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
     },
   ],
 },
@@ -782,9 +781,9 @@ Build observations matching the documented history and assert first bad SHAs for
 
 ```ts
 expect(summary.targets).toEqual(expect.arrayContaining([
-  expect.objectContaining({ category: 'visreg', firstBadSha: 'aa1b86a' }),
-  expect.objectContaining({ category: 'perf', firstBadSha: '5d38dcf' }),
-  expect.objectContaining({ category: 'accessibility', firstBadSha: '38e7882' }),
+  expect.objectContaining({ category: 'visreg', firstBadSha: '58cc828' }),
+  expect.objectContaining({ category: 'perf', firstBadSha: '9c7cfff' }),
+  expect.objectContaining({ category: 'accessibility', firstBadSha: 'fcb0e2b' }),
 ]));
 ```
 
@@ -826,10 +825,10 @@ yarn shaka-perf compare bisect 38dae68 codex/git-bisect-demo-history
 
 Verify `compare-bisect-results/summary.json` contains:
 
-- Homepage visual targets first bad at `aa1b86a`.
-- Homepage perf targets first bad at `5d38dcf`.
-- Homepage `button-name` accessibility target first bad at `38e7882`.
-- Product-detail visual and perf targets first bad at `993637a`.
+- Homepage visual targets first bad at `58cc828`.
+- Homepage perf targets first bad at `9c7cfff`.
+- Homepage `button-name` accessibility target first bad at `fcb0e2b`.
+- Product-detail visual and perf targets first bad at `5345dff`.
 - AB-test file, test, viewport, and category-specific values for every target.
 - Original experiment branch/SHA restored.
 - Control SHA unchanged.

@@ -8,7 +8,7 @@
  */
 
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
-import { discoverTargets, observeTargets } from '../analyze';
+import { assertNoPipelineErrors, discoverTargets, observeTargets } from '../analyze';
 import type { BisectTarget, TargetObservation } from '../types';
 import type { AccessibilityFindingStatus } from '../../stages/accessibility';
 import type { PerfArtifact } from '../../stages/perf';
@@ -232,6 +232,29 @@ describe('bisect regression analysis', () => {
     expect(observeTargets(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
       { targetId: existingTarget.id, commitSha: 'candidate', present: false },
     ]);
+  });
+
+  it('throws when a requested target has no matching measurement', () => {
+    const existingTarget = discoverTargets([
+      testResult(),
+    ], ['good', 'bad'], 'bad')
+      .find((target) => target.category === 'visreg')!;
+
+    expect(() => observeTargets([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
+      .toThrow(/missing visreg measurement/i);
+  });
+
+  it('rejects mixed valid and error outcomes before analysis', () => {
+    const result = testResult();
+    result.outcomes.push({
+      kind: 'error',
+      stage: 'visreg',
+      viewport: PHONE_VIEWPORT,
+      error: { message: 'phone capture failed' },
+    });
+
+    expect(() => assertNoPipelineErrors([result], 'candidate'))
+      .toThrow(/candidate.*visreg.*phone capture failed/i);
   });
 
   it('does not discover visreg artifacts without a diff image', () => {

@@ -8,9 +8,14 @@
  */
 
 import { Command } from 'commander';
+import { runCompareBisectFromCli, type BisectCliOptions } from './session';
 
 export interface BisectCliDependencies {
-  run?: (goodRef: string | undefined, badRef: string | undefined, command: Command) => Promise<void>;
+  run?: (
+    goodRef: string | undefined,
+    badRef: string | undefined,
+    options: BisectCliOptions,
+  ) => Promise<unknown>;
 }
 
 export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
@@ -19,7 +24,15 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
     .argument('[good-ref]', 'Known-good commit; defaults to control HEAD')
     .argument('[bad-ref]', 'Known-bad commit; defaults to experiment HEAD')
     .action(async function (goodRef?: string, badRef?: string) {
-      if (!deps.run) throw new Error('Bisect runner is not configured yet.');
-      await deps.run(goodRef, badRef, this);
+      const inherited = this.optsWithGlobals();
+      await (deps.run ?? runCompareBisectFromCli)(goodRef, badRef, {
+        configPath: inherited.config,
+        categories: inherited.categories,
+        filter: inherited.filter,
+        testPathPattern: inherited.testPathPattern,
+        headed: inherited.headed === true,
+        controlURL: inherited.controlURL,
+        experimentURL: inherited.experimentURL,
+      });
     });
 }
