@@ -10,7 +10,7 @@ See [`../../assess-abtest-quality/SKILL.md`](../../assess-abtest-quality/SKILL.m
 
 ### How to choose selectors
 
-1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element's bounding box thanks to `useBoundingBoxViewportForSelectors: true` in `visreg.config.ts`. The engine automatically calls `scrollIntoViewIfNeeded()` before capture, so manual scroll calls are only needed to trigger lazy loading, not for positioning.
+1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element clipped to its bounding box within the current viewport. The engine automatically calls `scrollIntoViewIfNeeded()` before capture, so manual scroll calls are only needed to trigger lazy loading, not for positioning. The page is not resized to fit the element, so if a section is taller than the viewport, run the test at a tall viewport (`PHONE_TALL`/`TABLET_TALL`/`DESKTOP_TALL`).
 
 2. **Viewport + scroll (fallback)** — only use `selectors: ['viewport']` if no CSS selector can target the section. See scroll-to-section pattern below.
 

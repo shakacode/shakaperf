@@ -16,8 +16,6 @@ const DEFAULT_NAV_TIMEOUT = 60000;
 export interface ComparisonSide {
   context: BrowserContext;
   page: PlaywrightPage;
-  /** Restore the scenario viewport (an element capture may have expanded it). */
-  resetViewport: () => Promise<void>;
   /** Close this side's context. Best-effort; safe if it's already gone. */
   dispose: () => Promise<void>;
 }
@@ -57,9 +55,6 @@ export async function createComparisonSide(
   return {
     context,
     page,
-    resetViewport: async () => {
-      await page.setViewportSize({ width: VP_W, height: VP_H });
-    },
     dispose: async () => {
       try { await context.close(); } catch { /* context may already be gone */ }
     },

@@ -78,7 +78,7 @@ function makeDeps(produce: Produce) {
 
   const createSide = jest.fn(async () => {
     created++;
-    return { page: {} as never, context: {} as never, resetViewport: async () => {}, dispose: async () => { disposed++; } };
+    return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
   });
   const preparePage = jest.fn(async () => ({
     visregSelectorsExp: ['document'],
@@ -105,7 +105,7 @@ function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig): Promise
     browser: {} as unknown as Browser,
     config, viewport, scenario,
     variantOrScenarioLabelSafe: 'S', scenarioLabelSafe: 'S',
-    pixelmatchThreshold: 0.1, useBoundingBox: undefined,
+    pixelmatchThreshold: 0.1,
   });
 }
 

@@ -12,6 +12,10 @@ abTest(name: string, {
       // What to capture
       selectors?: string[];          // CSS selectors to screenshot. Default: ['document']
                                      // Special values: 'document' (full page), 'viewport', 'body'
+                                     // A CSS selector is clipped to its box within the current
+                                     // viewport (the page is NOT resized to fit it) — if the element
+                                     // is taller than the viewport, run at a tall viewport
+                                     // (PHONE_TALL/TABLET_TALL/DESKTOP_TALL).
       hideSelectors?: string[];      // Hide elements (display:none) before capture
       removeSelectors?: string[];    // Remove elements from DOM before capture
 

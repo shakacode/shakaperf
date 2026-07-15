@@ -53,7 +53,7 @@ function createLogger (): CompareLogger {
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>, viewport: Viewport, config: DecoratedCompareConfig, useBoundingBox?: boolean) {
+async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {
@@ -61,26 +61,14 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
   } else if (selector === VIEWPORT_SELECTOR) {
     return await page.screenshot();
   } else {
-    // Element selector
+    // Element selector. Captured clipped to its bounding box within the current
+    // viewport — the viewport is NOT resized to fit the element. An element
+    // taller than the viewport must run at a tall viewport (see *_TALL_VIEWPORT).
     const el = await page.$(selector);
     if (el) {
       await el.scrollIntoViewIfNeeded();
-      let box = await el.boundingBox();
+      const box = await el.boundingBox();
       if (box) {
-        if ((useBoundingBox ?? config.useBoundingBoxViewportForSelectors) !== false) {
-          const bodyHandle = await page.$('body');
-          const boundingBox = await bodyHandle!.boundingBox();
-          await page.setViewportSize({
-            width: Math.max(viewport.width || viewport.viewport!.width, Math.ceil(boundingBox!.width)),
-            height: Math.max(viewport.height || viewport.viewport!.height, Math.ceil(boundingBox!.height))
-          });
-          // Re-fetch bounding box after viewport resize — layout may have shifted
-          const updatedBox = await el.boundingBox();
-          if (updatedBox) {
-            box = updatedBox;
-          }
-        }
-
         return await page.screenshot({ clip: box });
       }
     }
@@ -116,10 +104,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   const pixelmatchThreshold = scenario.comparePixelmatchThreshold != null
     ? scenario.comparePixelmatchThreshold
     : (config.comparePixelmatchThreshold != null ? config.comparePixelmatchThreshold : 0.1);
-  const useBoundingBox = scenario.useBoundingBoxViewportForSelectors != null
-    ? scenario.useBoundingBoxViewportForSelectors
-    : undefined;
-
   logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
 
   // A single attempt loop where attempt 0 IS the initial capture and every
@@ -128,7 +112,7 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   // back one outcome per selector for us to turn into a report entry.
   const outcomes = await runCompareAttempts(
     { captureScreenshot },
-    { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold, useBoundingBox },
+    { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold },
   );
   const selectors = outcomes.map((o) => o.selector);
 

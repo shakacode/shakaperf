@@ -78,7 +78,6 @@ export interface Scenario {
   compareRetryDelay?: number;
   maxNumDiffPixels?: number;
   comparePixelmatchThreshold?: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 
   // Internal (set at runtime)
   sIndex?: number;
@@ -179,8 +178,6 @@ export interface VisregConfig {
     testSuiteName?: string;
   };
 
-  useBoundingBoxViewportForSelectors?: boolean;
-
   // compare
   comparePixelmatchThreshold?: number;
 }
@@ -241,7 +238,6 @@ export interface DecoratedCompareConfig extends VisregConfig {
   compareRetries: number;
   compareRetryDelay: number;
   maxNumDiffPixels: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 }
 
 // ── Diff Result (from resemble.js comparison) ───────────────────────
@@ -358,6 +354,4 @@ export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
     testReportFileName?: string;
     testSuiteName?: string;
   };
-
-  useBoundingBoxViewportForSelectors?: boolean;
 };

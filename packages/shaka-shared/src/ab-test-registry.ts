@@ -42,6 +42,17 @@ export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 66
 export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
+// Tall counterparts of the canonical devices. Visreg captures a CSS-selector
+// element clipped to its bounding box WITHIN the current viewport and no longer
+// resizes the page to fit it, so an element taller than the viewport runs at one
+// of these instead: add it to `shared.viewports` + the category's `viewports`,
+// then narrow per-test via `options.viewports`. The width matches the base
+// device; only the height grows. (formFactor/deviceScaleFactor only feed
+// perf/Lighthouse; visreg ignores them.)
+export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 9000, formFactor: 'desktop', deviceScaleFactor: 1 };
+
 export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit';
 
 export interface TestFnContext {
@@ -91,7 +102,6 @@ export interface AbTestVisregConfig {
   compareRetries?: number;
   compareRetryDelay?: number;
   comparePixelmatchThreshold?: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 
   // Ready state (from Scenario)
   readyEvent?: string;

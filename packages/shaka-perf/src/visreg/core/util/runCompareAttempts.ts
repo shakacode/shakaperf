@@ -24,9 +24,6 @@ export type CaptureScreenshotFn = (
   page: PlaywrightPage,
   selector: string,
   selectorMap: Record<string, { filePath?: string }>,
-  viewport: Viewport,
-  config: DecoratedCompareConfig,
-  useBoundingBox?: boolean,
 ) => Promise<Buffer | null>;
 
 type PreparePageFn = (...args: unknown[]) => Promise<{
@@ -50,7 +47,6 @@ export interface CompareAttemptsParams {
   variantOrScenarioLabelSafe: string;
   scenarioLabelSafe: string;
   pixelmatchThreshold: number;
-  useBoundingBox?: boolean;
 }
 
 /** Per-selector verdict the caller turns into a report entry. */
@@ -94,7 +90,7 @@ export async function runCompareAttempts(
   deps: CompareAttemptsDeps,
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
-  const { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold, useBoundingBox } = params;
+  const { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold } = params;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
   const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
@@ -145,13 +141,9 @@ export async function runCompareAttempts(
       for (const run of runs) {
         if (run.done) continue;
 
-        // An element capture expands the viewport for its bounding box and
-        // nothing shrinks it back — reset both sides before each selector.
-        await Promise.all([refSide.resetViewport(), testSide.resetViewport()]);
-
         const [refBuffer, testBuffer] = await Promise.all([
-          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.visregSelectorsExpMap, viewport, config, useBoundingBox)),
-          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.visregSelectorsExpMap, viewport, config, useBoundingBox)),
+          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.visregSelectorsExpMap)),
+          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.visregSelectorsExpMap)),
         ]);
         if (!refBuffer || !testBuffer) {
           const where = !refBuffer && !testBuffer ? 'reference and test pages' : (!refBuffer ? 'reference page' : 'test page');
