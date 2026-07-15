@@ -23,13 +23,19 @@ import {
 } from '../compare-pipeline';
 import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analyze';
 import { checkoutDetached, prepareGitRange, restoreCheckout, type PreparedGitRange } from './git';
-import { applyCachedObservations, applyObservations, nextCandidate } from './search';
+import {
+  applyCachedObservations,
+  applyObservations,
+  nextCandidate,
+  testsForTargets,
+} from './search';
 import { writeSessionAtomic, writeSummary } from './persistence';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
   BisectNextAction,
   BisectSession,
+  BisectTestSelection,
   BisectTarget,
   CommitRun,
   TargetObservation,
@@ -306,7 +312,7 @@ export async function executeBisect(
   const measure = async (options: {
     sha: string;
     categories: readonly BisectCategory[];
-    testFiles: readonly string[];
+    tests: readonly BisectTestSelection[];
     targets: readonly BisectTarget[];
   }) => runCandidate({
     ...options,
@@ -371,7 +377,7 @@ export async function executeBisect(
       session = recordCommitRun(session, {
         sha: input.gitRange.badSha,
         requestedCategories: [...input.selectedCategories],
-        requestedTestFiles: [],
+        requestedTests: [],
         refreshMode: preferredRefreshMode(input.config),
         usedFallback: false,
         compareResultsPath: badRun.compareResultsPath,
@@ -388,7 +394,7 @@ export async function executeBisect(
       badRun = await measure({
         sha: input.gitRange.badSha,
         categories: input.selectedCategories,
-        testFiles: [],
+        tests: [],
         targets: [],
       });
     }
@@ -422,7 +428,7 @@ export async function executeBisect(
           kind: 'validate-good-ref' as const,
           sha: input.gitRange.goodSha,
           categories: categoriesForTargets(targets),
-          testFiles: testFilesForTargets(targets),
+          tests: testsForTargets(targets),
           targetIds: targets.map((target) => target.id),
         };
       } else if (targets.length > 0) {
@@ -435,7 +441,7 @@ export async function executeBisect(
             kind: 'measure-candidate' as const,
             sha: work.sha,
             categories: work.categories,
-            testFiles: work.testFiles,
+            tests: work.tests,
             targetIds: work.targetIds,
           };
         }
@@ -464,12 +470,12 @@ export async function executeBisect(
           sha: input.gitRange.goodSha,
           targetCount: goodTargets.length,
           categories: categoriesForTargets(goodTargets),
-          testFiles: testFilesForTargets(goodTargets),
+          tests: testsForTargets(goodTargets),
         });
         const goodRun = await measure({
           sha: input.gitRange.goodSha,
           categories: categoriesForTargets(goodTargets),
-          testFiles: testFilesForTargets(goodTargets),
+          tests: testsForTargets(goodTargets),
           targets: goodTargets,
         });
         session = validateGoodEndpoint(session, goodRun.observations);
@@ -497,13 +503,13 @@ export async function executeBisect(
         logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
           sha: work.sha,
           categories: work.categories,
-          testFiles: work.testFiles,
+          tests: work.tests,
           targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
         });
         const candidateRun = await measure({
           sha: work.sha,
           categories: work.categories,
-          testFiles: work.testFiles,
+          tests: work.tests,
           targets,
         });
         const observations = new Map(
@@ -726,7 +732,7 @@ function createDefaultDependencies(options: {
       resultsDirectory: options.resultsDirectory,
       sha: request.sha,
       categories: request.categories,
-      testFiles: request.testFiles,
+      tests: request.tests,
       headed: options.headed,
       controlURL: options.controlURL,
       experimentURL: options.experimentURL,
@@ -754,7 +760,7 @@ async function runCompareForCandidate(options: {
   resultsDirectory: string;
   sha: string;
   categories: readonly BisectCategory[];
-  testFiles: readonly string[];
+  tests: readonly BisectTestSelection[];
   headed: boolean;
   controlURL: string;
   experimentURL: string;
@@ -763,7 +769,7 @@ async function runCompareForCandidate(options: {
     artifactRoot: path.join(options.resultsDirectory, 'commits', options.sha),
     testPathPattern: options.config.shared.testPathPattern,
   }));
-  const tests = filterFrozenTests(options.frozenTests, options.cwd, options.testFiles);
+  const tests = filterFrozenTests(options.frozenTests, options.cwd, options.tests);
   const result = await runPipeline(pipeline, {
     cwd: options.cwd,
     tests,
@@ -954,10 +960,6 @@ function categoriesForTargets(targets: readonly BisectTarget[]): BisectCategory[
   return unique(targets.map((target) => target.category));
 }
 
-function testFilesForTargets(targets: readonly BisectTarget[]): string[] {
-  return unique(targets.map((target) => target.testFile));
-}
-
 function unique<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
@@ -983,17 +985,32 @@ function preferredRefreshMode(config: AbTestsConfig): RefreshMode {
   return 'commands';
 }
 
-function filterFrozenTests(
+export function filterFrozenTests(
   tests: readonly AbTestDefinition[],
   cwd: string,
-  testFiles: readonly string[],
+  selections: readonly BisectTestSelection[],
 ): AbTestDefinition[] {
-  if (testFiles.length === 0) return [...tests];
-  const wanted = new Set(testFiles);
+  if (selections.length === 0) return [...tests];
+  const wanted = new Set(selections.map((selection) => testSelectionKey(cwd, selection)));
   return tests.filter((test) => {
     if (!test.file) return false;
-    return wanted.has(path.relative(cwd, test.file));
+    return wanted.has(testSelectionKey(cwd, {
+      testFile: test.file,
+      testName: test.name,
+    }));
   });
+}
+
+function testSelectionKey(cwd: string, selection: BisectTestSelection): string {
+  return JSON.stringify([
+    normalizeRelativeTestFile(cwd, selection.testFile),
+    selection.testName,
+  ]);
+}
+
+function normalizeRelativeTestFile(cwd: string, testFile: string): string {
+  const relative = path.isAbsolute(testFile) ? path.relative(cwd, testFile) : testFile;
+  return path.posix.normalize(relative.replace(/\\/g, '/')).replace(/^\.\//, '');
 }
 
 function readRequiredBuildManifest(twinServers: ResolvedConfig): BuildManifest {
@@ -1030,7 +1047,13 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
         `for ${session.nextAction.targetIds.length} target(s)`,
       );
       console.log(`Categories: ${session.nextAction.categories.join(', ')}`);
-      console.log(`Test files: ${session.nextAction.testFiles.join(', ')}`);
+      if (session.nextAction.tests) {
+        console.log(`Tests: ${session.nextAction.tests
+          .map((test) => `${test.testFile} :: ${test.testName}`)
+          .join(', ')}`);
+      } else if (session.nextAction.testFiles) {
+        console.log(`Test files: ${session.nextAction.testFiles.join(', ')}`);
+      }
     } else {
       console.log('Next: no bisect action because no regression targets were discovered.');
     }

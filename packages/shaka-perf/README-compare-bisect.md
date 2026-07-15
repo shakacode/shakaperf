@@ -99,8 +99,9 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> \
 A dry run stops immediately after bad-ref target discovery. It prints every
 discovered category, test, viewport, and metric/rule/selector, then shows the
 first midpoint that a normal run would measure next, including its narrowed
-categories and test files. When `--validate-good-ref` is also passed, the preview
-shows that validation as the next action instead. `summary.json` and
+categories and exact AB tests, identified by test file plus test name. When
+`--validate-good-ref` is also passed, the preview shows that validation as the
+next action instead. `summary.json` and
 `session.json` record `dryRun: true`, `validateGoodRef`, and the structured
 `nextAction`.
 
@@ -189,8 +190,11 @@ regression targets.
    is measured; if the target is present, the bad boundary moves down. If absent,
    the good boundary moves up.
 7. **Share candidate work.** When one candidate SHA is useful for multiple
-   targets, the command measures all relevant categories and test files in one
-   compare run, then applies each target's observation independently.
+   targets, the command measures all relevant categories and individual AB tests
+   in one compare run, then applies each target's observation independently.
+   Exact `(test file, test name)` pairs are deduplicated, so different tests in
+   one file remain independently selectable and equal names in different files
+   remain distinct.
 8. **Finish on adjacency.** When a target's good and bad boundaries are adjacent,
    the bad boundary commit is recorded as `firstBadSha`.
 
@@ -340,8 +344,9 @@ Target statuses:
 
 Candidate run fields:
 
-- `requestedCategories` and `requestedTestFiles` describe the narrowed compare
-  work for that SHA.
+- `requestedCategories` and `requestedTests` describe the narrowed compare work
+  for that SHA, including the exact test file and test name for every selected
+  AB test.
 - `refreshMode` and `usedFallback` describe how the experiment side was rebuilt
   or restarted.
 - `infrastructureError` means the candidate was not used as evidence.
