@@ -27,6 +27,7 @@ export interface PrepareGitRangeOptions {
 export interface PreparedGitRange {
   goodSha: string;
   badSha: string;
+  commitSubjects: Record<string, string>;
   orderedCommits: string[];
   originalExperiment: CheckoutState;
 }
@@ -171,10 +172,23 @@ export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<
     throw new Error(`Bisect range must be linear; merge commit found at ${mergeLine.split(/\s+/)[0]}`);
   }
 
+  const orderedCommits = [goodSha, ...orderedOutput.split('\n').filter(Boolean)];
+  const subjectOutput = await git(options.experimentDir, [
+    'show',
+    '--no-patch',
+    '--format=%H%x00%s',
+    ...orderedCommits,
+  ]);
+  const commitSubjects = Object.fromEntries(subjectOutput.split('\n').filter(Boolean).map((line) => {
+    const [sha, subject] = line.split('\0');
+    return [sha, subject];
+  }));
+
   return {
     goodSha,
     badSha,
-    orderedCommits: [goodSha, ...orderedOutput.split('\n').filter(Boolean)],
+    commitSubjects,
+    orderedCommits,
     originalExperiment,
   };
 }

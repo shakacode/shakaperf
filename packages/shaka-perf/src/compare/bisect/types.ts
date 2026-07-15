@@ -78,6 +78,7 @@ export interface BisectSession {
     sha: string;
     branch: string | null;
   };
+  commitSubjects?: Record<string, string>;
   selectedCategories: BisectCategory[];
   orderedCommits: string[];
   targets: BisectTarget[];

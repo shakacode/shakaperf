@@ -86,6 +86,9 @@ describe('bisect Git helpers', () => {
     expect(prepared).toEqual({
       goodSha: fixture.commits[0],
       badSha: fixture.commits[4],
+      commitSubjects: Object.fromEntries(
+        fixture.commits.map((sha, index) => [sha, `commit-${index}`]),
+      ),
       orderedCommits: fixture.commits,
       originalExperiment: {
         branch: fixture.experimentBranch,
