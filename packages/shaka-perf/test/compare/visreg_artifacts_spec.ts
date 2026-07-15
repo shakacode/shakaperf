@@ -65,8 +65,7 @@ describe('readVisregArtifacts', function () {
       );
 
       const artifactSet = await readVisregArtifacts({
-        resultsRoot,
-        slug: 'homepage__desktop',
+        artifactsDir: path.join(resultsRoot, 'homepage__desktop', 'artifacts'),
         viewport: DESKTOP,
       });
 
@@ -94,8 +93,7 @@ describe('readVisregArtifacts', function () {
       });
 
       const artifactSet = await readVisregArtifacts({
-        resultsRoot,
-        slug: 'homepage__desktop',
+        artifactsDir: path.join(resultsRoot, 'homepage__desktop', 'artifacts'),
         viewport: DESKTOP,
       });
 

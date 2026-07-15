@@ -10,10 +10,8 @@
 import path from 'node:path';
 import * as fs from 'node:fs';
 import chalk from 'chalk';
-import { loadTests } from '../../../config-loader';
 import createLogger from '../util/logger';
 import compare from '../util/compare/index';
-import { unitIdForTest } from '../../../pipeline/unit-id';
 import type { RuntimeConfig, TestPair } from '../types';
 import type Reporter from '../util/Reporter';
 import type { Test } from '../util/Reporter';
@@ -24,50 +22,35 @@ const PNG_FIELDS = ['reference', 'test', 'pixelmatchDiffImage', 'diffImage', 'er
 type PngField = typeof PNG_FIELDS[number];
 
 /**
- * Writes per-test report.json files directly under
- * `<htmlReportDir>/<slug>/artifacts/`, mirroring the unified compare
- * per-unit layout.
+ * Writes this invocation's report.json into the unit artifacts dir the caller
+ * pinned (`paths.unitArtifacts`), mirroring the unified compare per-unit layout.
  *
- * PNGs captured by the engine into `<htmlReportDir>/{control,experiment}_screenshot/`
- * are moved into the per-test dirs as part of this writer; no monolithic
- * intermediate report.json is produced.
+ * PNGs captured by the engine into the flat `{control,experiment}_screenshot/`
+ * dirs are moved in alongside it; no monolithic intermediate report.json is
+ * produced. One invocation measures one unit (the compare stage pins a single
+ * test and viewport), so every pair the reporter holds belongs in that one dir.
  */
 async function writePerTestReports(config: RuntimeConfig, reporter: Reporter): Promise<void> {
-  const htmlReportDir = toAbsolute(config, config.htmlReportDir);
-  fs.mkdirSync(htmlReportDir, { recursive: true });
+  const destDir = config.unitArtifactsDir;
+  fs.mkdirSync(destDir, { recursive: true });
 
-  const unitIds = await unitIdsByLabelAndViewport(config);
-  const buckets = bucketTests(reporter, unitIds);
   const engineErrors: Array<{ viewport: string; selector: string; msg: string }> = [];
-
-  for (const [key, tests] of buckets) {
-    const sep = key.indexOf('\0');
-    const slug = key.slice(0, sep);
-    const viewport = key.slice(sep + 1);
-    const destDir = path.join(htmlReportDir, slug, 'artifacts');
-    fs.mkdirSync(destDir, { recursive: true });
-
-    const movedTests = tests.map((t) => moveAndRewritePngs(t, destDir));
-    for (const t of movedTests) {
-      const msg = (t.pair.error as string | undefined) ?? (t.pair.engineErrorMsg as string | undefined);
-      if (msg) {
-        engineErrors.push({
-          viewport,
-          selector: String(t.pair.selector ?? '(unknown selector)'),
-          msg,
-        });
-      }
+  const movedTests = reporter.tests.map((t) => moveAndRewritePngs(t, destDir));
+  for (const t of movedTests) {
+    const msg = (t.pair.error as string | undefined) ?? (t.pair.engineErrorMsg as string | undefined);
+    if (msg) {
+      engineErrors.push({
+        viewport: String(t.pair.viewportLabel ?? '(unknown viewport)'),
+        selector: String(t.pair.selector ?? '(unknown selector)'),
+        msg,
+      });
     }
-
-    const perTestReport = {
-      testSuite: reporter.testSuite,
-      tests: movedTests,
-    };
-    fs.writeFileSync(
-      path.join(destDir, 'report.json'),
-      JSON.stringify(perTestReport, null, 2),
-    );
   }
+
+  fs.writeFileSync(
+    path.join(destDir, 'report.json'),
+    JSON.stringify({ testSuite: reporter.testSuite, tests: movedTests }, null, 2),
+  );
 
   // Flat capture dirs may hold leftover PNGs from sibling parallel
   // invocations or from pairs whose move was skipped. They're scratch;
@@ -75,7 +58,7 @@ async function writePerTestReports(config: RuntimeConfig, reporter: Reporter): P
   // touch them here so we can't accidentally rm another in-flight
   // invocation's pending files.
 
-  logger.log(`Wrote per-test visreg reports under ${htmlReportDir}/<unit>/artifacts/`);
+  logger.log(`Wrote visreg report under ${destDir}`);
   if (engineErrors.length > 0) {
     logger.error(formatEngineErrorTranscript(engineErrors));
     throw new Error(summarizeEngineErrors(engineErrors));
@@ -92,41 +75,6 @@ function formatEngineErrorTranscript(
   return errors
     .map((e) => `-- ${e.viewport} / ${e.selector} --\n${e.msg}`)
     .join('\n\n');
-}
-
-async function unitIdsByLabelAndViewport(config: RuntimeConfig): Promise<Map<string, string>> {
-  const tests = await loadTests({
-    testPathPattern: config.args.testPathPattern as string | undefined,
-    filter: config.args.filter as string | undefined,
-    testType: 'visreg',
-    log: () => undefined,
-  });
-  const unitIds = new Map<string, string>();
-  for (const test of tests) {
-    for (const viewport of config.viewports) {
-      const key = `${test.name}\0${viewport.label}`;
-      if (!unitIds.has(key)) {
-        unitIds.set(key, unitIdForTest(test, viewport.label));
-      }
-    }
-  }
-  return unitIds;
-}
-
-function bucketTests(reporter: Reporter, unitIds: Map<string, string>): Map<string, Test[]> {
-  const buckets = new Map<string, Test[]>();
-  for (const t of reporter.tests) {
-    const label = t.pair.label;
-    const viewport = t.pair.viewportLabel;
-    if (!label || !viewport) continue;
-    const slug = unitIds.get(`${label}\0${viewport}`);
-    if (!slug) continue;
-    const key = `${slug}\0${viewport}`;
-    const list = buckets.get(key) ?? [];
-    list.push(t);
-    buckets.set(key, list);
-  }
-  return buckets;
 }
 
 function moveAndRewritePngs(t: Test, destDir: string): { pair: TestPair; status: string } {
@@ -155,10 +103,6 @@ function moveAndRewritePngs(t: Test, destDir: string): { pair: TestPair; status:
     (pair as unknown as Record<PngField, unknown>)[field] = relPath;
   }
   return { pair, status: t.status };
-}
-
-function toAbsolute(config: RuntimeConfig, p: string): string {
-  return path.isAbsolute(p) ? p : path.join(config.projectPath, p);
 }
 
 export interface VisregCompareResult {

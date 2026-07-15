@@ -10,7 +10,6 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { unitIdForTest } from '../../../../src/pipeline/unit-id';
 
 interface ReportModule {
   execute: (config: Record<string, unknown>) => Promise<{ passed: number; failed: number }>;
@@ -18,7 +17,7 @@ interface ReportModule {
 
 describe('visreg core report', function () {
   let report: ReportModule;
-  let htmlReportDir: string;
+  let scratchDir: string;
   // The Reporter instance the mocked `compare` resolves to. Tests mutate
   // `tests` per case, then call `report.execute(...)` which reads from this.
   let reporter: { testSuite: string; tests: Array<{ pair: Record<string, unknown>; status: string }>; passed(): number; failed(): number };
@@ -41,50 +40,46 @@ describe('visreg core report', function () {
       __esModule: true,
       default: () => ({ log: jest.fn(), error: jest.fn() }),
     }));
-    jest.mock('../../../../src/config-loader', () => ({
-      loadTests: jest.fn().mockResolvedValue([
-        { name: 'Homepage', file: null, line: null },
-      ]),
-    }));
-
     report = require('../../../../src/visreg/core/command/report') as ReportModule;
   });
 
   beforeEach(function () {
-    htmlReportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-report-'));
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-report-'));
+    unitArtifactsDir = path.join(scratchDir, 'homepage-desktop-abc12345-burn-2', 'artifacts');
     reporter.tests = [];
   });
 
   afterEach(function () {
-    fs.rmSync(htmlReportDir, { recursive: true, force: true });
+    fs.rmSync(scratchDir, { recursive: true, force: true });
   });
+
+  // The compare runner pins one test and one viewport per invocation, and pins
+  // the dir to write into — a burn-suffixed one under `--burn`. The engine never
+  // derives it.
+  let unitArtifactsDir: string;
 
   function makeConfig() {
     return {
-      htmlReportDir,
-      projectPath: htmlReportDir,
+      projectPath: scratchDir,
+      unitArtifactsDir,
       args: {},
-      viewports: [
-        { label: 'desktop' },
-        { label: 'tablet' },
-      ],
+      viewports: [{ label: 'desktop' }],
     };
   }
 
-  function readPerTestReport(label: string, viewport: string) {
-    const slug = unitIdForTest({ name: label, file: null, line: null } as any, viewport);
-    const p = path.join(htmlReportDir, slug, 'artifacts', 'report.json');
+  function readPerTestReport() {
+    const p = path.join(unitArtifactsDir, 'report.json');
     return JSON.parse(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
   }
 
-  it('writes a per-test report.json bucketed by (slug, viewport)', async function () {
+  it('writes report.json into the dir it was given, not one it derives', async function () {
     reporter.tests = [
       {
         pair: { label: 'Homepage', viewportLabel: 'desktop', selector: 'document' },
         status: 'pass',
       },
       {
-        pair: { label: 'Homepage', viewportLabel: 'tablet', selector: 'document' },
+        pair: { label: 'Homepage', viewportLabel: 'desktop', selector: 'header' },
         status: 'pass',
       },
     ];
@@ -92,15 +87,13 @@ describe('visreg core report', function () {
     const result = await report.execute(makeConfig());
     expect(result).toEqual({ passed: 2, failed: 0 });
 
-    const desktop = readPerTestReport('Homepage', 'desktop');
-    expect(desktop.testSuite).toBe('visreg');
-    expect(Array.isArray(desktop.tests)).toBe(true);
-    expect((desktop.tests as Array<unknown>).length).toBe(1);
-    expect(desktop).not.toHaveProperty('engineError');
-    expect(desktop).not.toHaveProperty('engineOutput');
-
-    const tablet = readPerTestReport('Homepage', 'tablet');
-    expect((tablet.tests as Array<unknown>).length).toBe(1);
+    // Writing anywhere but the dir the runner owns means the stage reads back an
+    // empty dir and reports "did not produce artifacts".
+    const json = readPerTestReport();
+    expect(json.testSuite).toBe('visreg');
+    expect((json.tests as Array<unknown>).length).toBe(2);
+    expect(json).not.toHaveProperty('engineError');
+    expect(json).not.toHaveProperty('engineOutput');
   });
 
   it('throws a single pair error after writing artifact JSON without an engine envelope', async function () {
@@ -114,7 +107,7 @@ describe('visreg core report', function () {
 
     await expect(report.execute(makeConfig())).rejects.toThrow('browser crashed');
 
-    const json = readPerTestReport('Homepage', 'desktop');
+    const json = readPerTestReport();
     expect(json).not.toHaveProperty('engineError');
     expect(json).not.toHaveProperty('engineOutput');
     expect((json.tests as Array<unknown>).length).toBe(1);
@@ -140,15 +133,15 @@ describe('visreg core report', function () {
 
     await expect(report.execute(makeConfig())).rejects.toThrow('2 pair(s) errored');
 
-    const json = readPerTestReport('Homepage', 'desktop');
+    const json = readPerTestReport();
     expect(json).not.toHaveProperty('engineError');
     expect(json).not.toHaveProperty('engineOutput');
     expect((json.tests as Array<unknown>).length).toBe(2);
   });
 
   it('leaves flat capture dirs for the runner-owned wipe', async function () {
-    fs.mkdirSync(path.join(htmlReportDir, 'control_screenshot'), { recursive: true });
-    fs.mkdirSync(path.join(htmlReportDir, 'experiment_screenshot'), { recursive: true });
+    fs.mkdirSync(path.join(scratchDir, 'control_screenshot'), { recursive: true });
+    fs.mkdirSync(path.join(scratchDir, 'experiment_screenshot'), { recursive: true });
 
     reporter.tests = [{
       pair: { label: 'Homepage', viewportLabel: 'desktop', selector: 'document' },
@@ -157,7 +150,7 @@ describe('visreg core report', function () {
 
     await report.execute(makeConfig());
 
-    expect(fs.existsSync(path.join(htmlReportDir, 'control_screenshot'))).toBe(true);
-    expect(fs.existsSync(path.join(htmlReportDir, 'experiment_screenshot'))).toBe(true);
+    expect(fs.existsSync(path.join(scratchDir, 'control_screenshot'))).toBe(true);
+    expect(fs.existsSync(path.join(scratchDir, 'experiment_screenshot'))).toBe(true);
   });
 });

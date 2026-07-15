@@ -90,10 +90,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   const { scenarioDefaults = {} } = config;
   scenario = { ...scenarioDefaults, ...scenario };
 
-  if (!config.paths) {
-    config.paths = {};
-  }
-
   config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
   config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;

@@ -353,34 +353,13 @@ engineOptions: {
 
 ## Reporting
 
-Use the `report` property to enable report types:
+Visreg has no report of its own. Each engine invocation measures one test at one
+viewport and writes a `report.json` into that unit's artifacts directory, which
+`shaka-perf compare` harvests into the single self-contained
+`compare-results/report.html`. The path is printed to the terminal at the end of
+a run — copy-paste it into your browser.
 
-```ts
-report: ['browser', 'CI']
-```
-
-Available report types:
-
-- `"browser"` — Interactive HTML report with visual diff UI, scrubber, and scenario filtering
-- `"CI"` — JUnit XML report for CI integration (Jenkins, GitLab CI, etc.)
-- `"json"` — Machine-readable JSON report
-
-After a compare run, the full path to the HTML report is printed to the terminal — copy-paste it into your browser to view.
-
-### CI Report Configuration
-
-Customize the JUnit report with:
-
-```ts
-paths: {
-  ciReport: 'visreg_data/ci_report',
-},
-ci: {
-  format: 'junit',
-  testReportFileName: 'myproject-xunit',
-  testSuiteName: 'shaka-perf-visreg',
-}
-```
+The compare runner pins where that `report.json` goes; the engine never chooses.
 
 ### Capturing Console Logs in Reports
 
@@ -445,7 +424,7 @@ This will also output your source payload to the terminal so you can verify the 
 For most projects, keeping reference files in source control is useful, but saving test screenshots is overkill. Add this to your `.gitignore`:
 
 ```
-visreg_data/html_report/
+compare-results/
 ```
 
 ## Programmatic Usage
