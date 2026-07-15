@@ -9,7 +9,7 @@ is absent means that capability is n/a in this repository.
 | --- | --- | --- |
 | `setup` | Install dependencies | `yarn install` |
 | `validate` | Pre-push gate | `yarn build && yarn typecheck && yarn test` |
-| `test` | Run tests | `yarn test` |
+| `test` | Build workspace packages, then run tests | `yarn build && yarn test` |
 | `lint` | Lint / format | n/a |
 | `build` | Build / type-check | `yarn build` |
 | `docs` | Docs checks | n/a |
