@@ -7,9 +7,13 @@
  * License in LICENSE.md.
  */
 
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
 import { comparePipelineMetadata, createComparePipeline } from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
+import { runPipeline } from '../../pipeline/runner';
 
 describe('compare accessibility pipeline integration', () => {
   it('registers accessibility as a first-class compare category and stage', () => {
@@ -24,6 +28,37 @@ describe('compare accessibility pipeline integration', () => {
 
     const pipeline = createComparePipeline(baseConfig());
     expect(pipeline.stages.map((stage) => stage.name)).toEqual(comparePipelineMetadata.stages);
+  });
+
+  it('uses the configured artifact root for compare results', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-compare-pipeline-test-'));
+    const pipeline = createComparePipeline({
+      ...baseConfig(),
+      artifactRoot: 'candidate-artifacts',
+    });
+
+    try {
+      const result = await runPipeline(pipeline, {
+        cwd,
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        skipReport: true,
+        retries: 0,
+        retryDelay: 0,
+        timeoutMs: 1_000,
+        viewports: {
+          visreg: [],
+          perf: [],
+          accessibility: [],
+          audit: [],
+        },
+        tests: [testDefinition()],
+      });
+
+      expect(result.resultsRoot).toBe(path.join(cwd, 'candidate-artifacts', 'compare-results'));
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it('emits failing accessibility regression chips and sort dimensions for new violations', () => {

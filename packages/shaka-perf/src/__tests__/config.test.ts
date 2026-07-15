@@ -61,3 +61,24 @@ describe('perf config', () => {
     expect(config.perf.regressionThreshold).toBe(50);
   });
 });
+
+describe('bisect config', () => {
+  it('defaults rebuild commands and container rebuilding', () => {
+    expect(parseAbTestsConfig(baseConfig()).bisect).toEqual({
+      rebuildCommands: [],
+      rebuildContainer: false,
+    });
+  });
+
+  it('preserves explicit rebuild settings', () => {
+    expect(parseAbTestsConfig(baseConfig({
+      bisect: {
+        rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
+        rebuildContainer: true,
+      },
+    })).bisect).toEqual({
+      rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
+      rebuildContainer: true,
+    });
+  });
+});

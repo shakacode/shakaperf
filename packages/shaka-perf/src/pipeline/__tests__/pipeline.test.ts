@@ -7,13 +7,24 @@
  * License in LICENSE.md.
  */
 
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import type { AbTestDefinition } from 'shaka-shared';
+import { loadTests } from '../../config-loader';
 import {
   createPipeline,
   resolveStageSelection,
   type Pipeline,
 } from '../pipeline';
+import { runPipeline, type RuntimeOptions } from '../runner';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
+
+jest.mock('../../config-loader', () => ({
+  ...jest.requireActual('../../config-loader'),
+  loadTests: jest.fn(),
+}));
 
 function stage(name: StageName, category: StageCategory = 'perf'): Stage<Record<string, never>> {
   return {
@@ -50,7 +61,9 @@ function pipeline(): Pipeline {
     builder.waitForAllTasksFinishAndDispose(serial);
 
     builder.buildChips({
-      chipsForAllTests: () => new Map(),
+      chipsForAllTests: (perTest) => new Map(
+        perTest.map(({ test }) => [test, []]),
+      ),
     });
     builder.buildSorts({
       sortsForAllTests: () => new Map(),
@@ -109,5 +122,57 @@ describe('resolveStageSelection', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+describe('runPipeline', () => {
+  const frozenTest: AbTestDefinition = {
+    name: 'Frozen homepage',
+    startingPath: '/',
+    file: null,
+    line: null,
+    options: {},
+    testTypes: null,
+    testFn: async () => {},
+  };
+
+  beforeEach(() => {
+    jest.mocked(loadTests).mockReset();
+  });
+
+  async function runWithFrozenTest(runtime: Partial<RuntimeOptions> = {}) {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-pipeline-test-'));
+    try {
+      return await runPipeline(pipeline(), {
+        cwd,
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        retries: 0,
+        retryDelay: 0,
+        timeoutMs: 1_000,
+        viewports: {
+          visreg: [],
+          perf: [],
+          accessibility: [],
+          audit: [],
+        },
+        tests: [frozenTest],
+        ...runtime,
+      });
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }
+
+  it('uses frozen report tests without loading test definitions', async () => {
+    await runWithFrozenTest({ reportOnly: true });
+
+    expect(loadTests).not.toHaveBeenCalled();
+  });
+
+  it('exposes assembled test results when skipping report generation', async () => {
+    const result = await runWithFrozenTest({ skipReport: true });
+
+    expect(result.testResults[0]?.name).toBe(frozenTest.name);
   });
 });
