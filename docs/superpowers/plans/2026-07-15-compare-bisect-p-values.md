@@ -6,6 +6,8 @@
 
 **Architecture:** Render performance targets through a dedicated table with aligned metric, control, experiment, delta, percent, and p-value columns. Render visual targets as mismatch, changed-pixel, and threshold summaries, keep accessibility targets unchanged, and cap the test-card grid at two columns.
 
+Summary target rows navigate to the matching detailed test card and owned stage using persisted test IDs and stage names. The destination receives focus and a temporary highlight after scrolling.
+
 **Tech Stack:** TypeScript, React 19, Jest, React DOM server rendering, Vite.
 
 ## Global Constraints

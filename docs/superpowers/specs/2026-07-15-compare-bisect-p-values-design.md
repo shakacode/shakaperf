@@ -13,6 +13,7 @@ Display the saved performance p-value in bisect regression cards so threshold-ed
 - Leave accessibility cards unchanged.
 - Limit the desktop test-card grid to two columns and stack cards at narrower widths.
 - Match the existing performance report's restrained spacing, dividers, and tabular number alignment.
+- Make every summary regression keyboard-accessible and clickable, scrolling to the matching detailed test stage and briefly highlighting the destination.
 
 ## Verification
 

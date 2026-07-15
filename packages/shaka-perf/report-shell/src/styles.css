@@ -1076,6 +1076,22 @@ input {
   border-bottom: 0;
 }
 
+.bisect-target[role="link"],
+.bisect-perf-table tbody tr[role="link"] {
+  cursor: pointer;
+}
+
+.bisect-target[role="link"]:hover,
+.bisect-target[role="link"]:focus-visible {
+  background: var(--bg-sunken);
+}
+
+.bisect-target[role="link"]:focus-visible,
+.bisect-perf-table tbody tr[role="link"]:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+}
+
 .bisect-target__header {
   display: flex;
   align-items: center;
@@ -1178,6 +1194,11 @@ input {
   border-bottom: 0;
 }
 
+.bisect-perf-table tbody tr[role="link"]:hover td,
+.bisect-perf-table tbody tr[role="link"]:focus-visible td {
+  background: var(--bg-sunken);
+}
+
 .bisect-perf-table__metric strong,
 .bisect-perf-table__metric span {
   display: block;
@@ -1209,6 +1230,19 @@ input {
 
 .bisect-perf-table__details .bisect-target__comparison {
   border-bottom: 1px solid var(--border);
+}
+
+.card,
+.outcome-slot {
+  scroll-margin-top: 180px;
+}
+
+[data-bisect-scroll-target="true"] {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--visual_change);
+  outline-offset: 5px;
+  box-shadow: 0 0 0 9px var(--visual_change-tint);
 }
 
 .bisect-target__invalid-reason {

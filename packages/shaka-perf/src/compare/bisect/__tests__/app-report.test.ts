@@ -58,6 +58,12 @@ describe('bisect report App rendering', () => {
     expect(homepageGroup).toContain('visual');
     expect(homepageGroup).toContain('performance');
     expect(homepageGroup).toContain('class="bisect-perf-table"');
+    expect(homepageGroup).toContain('data-scroll-target-test="homepage-card"');
+    expect(homepageGroup).toContain('data-scroll-target-stage="visreg"');
+    expect(homepageGroup).toContain('data-scroll-target-stage="perf"');
+    expect(homepageGroup.match(/role="link"/g)).toHaveLength(2);
+    expect(homepageGroup.match(/tabindex="0"/g)).toHaveLength(2);
+    expect(cardMarkup(html, 'Homepage')).toContain('data-report-test-id="homepage-card"');
     expect(homepageGroup).toContain('<th>Metric</th>');
     expect(homepageGroup).toContain('<th>Control</th>');
     expect(homepageGroup).toContain('<th>Experiment</th>');

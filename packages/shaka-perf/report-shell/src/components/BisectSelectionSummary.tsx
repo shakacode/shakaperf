@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { Fragment } from 'react';
+import { Fragment, type KeyboardEvent } from 'react';
 import { selectionTargetIds, type BisectSelection } from '../bisect-selection';
 import type { BisectReportModel, BisectReportTarget } from '../types';
 
@@ -209,6 +209,33 @@ function perfComparisonValue(target: BisectReportTarget): PerfComparisonValue {
   };
 }
 
+function scrollToDetailedTarget(target: BisectReportTarget): void {
+  if (!target.testId) return;
+  const card = Array.from(document.querySelectorAll<HTMLElement>('[data-report-test-id]'))
+    .find((element) => element.dataset.reportTestId === target.testId);
+  if (!card) return;
+  const stage = card.querySelector<HTMLElement>(`[data-stage="${target.category}"]`);
+  const destination = stage ?? card;
+  document.querySelectorAll<HTMLElement>('[data-bisect-scroll-target="true"]')
+    .forEach((element) => element.removeAttribute('data-bisect-scroll-target'));
+  destination.setAttribute('data-bisect-scroll-target', 'true');
+  destination.focus({ preventScroll: true });
+  destination.scrollIntoView({
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  });
+  window.setTimeout(() => destination.removeAttribute('data-bisect-scroll-target'), 1800);
+}
+
+function activateTargetFromKeyboard(
+  event: KeyboardEvent<HTMLElement>,
+  target: BisectReportTarget,
+): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  scrollToDetailedTarget(target);
+}
+
 function TargetDetails({ target }: { target: BisectReportTarget }) {
   return (
     <>
@@ -241,7 +268,19 @@ function PerfTargetTable({ targets }: { targets: readonly BisectReportTarget[] }
             const hasDetails = Boolean(target.invalidReason);
             return (
               <Fragment key={target.id}>
-                <tr data-category={target.category} data-target-id={target.id}>
+                <tr
+                  data-category={target.category}
+                  data-target-id={target.id}
+                  data-scroll-target-test={target.testId}
+                  data-scroll-target-stage={target.testId ? target.category : undefined}
+                  role={target.testId ? 'link' : undefined}
+                  tabIndex={target.testId ? 0 : undefined}
+                  onClick={target.testId ? () => scrollToDetailedTarget(target) : undefined}
+                  onKeyDown={target.testId
+                    ? (event) => activateTargetFromKeyboard(event, target)
+                    : undefined}
+                  title={target.testId ? 'Show detailed regression evidence' : undefined}
+                >
                   <td className="bisect-perf-table__metric">
                     <strong>{target.subject}</strong>
                     <span>{target.viewport}</span>
@@ -268,9 +307,21 @@ function PerfTargetTable({ targets }: { targets: readonly BisectReportTarget[] }
 
 function TargetRow({ target }: { target: BisectReportTarget }) {
   const comparison = comparisonValue(target);
+  const canNavigate = target.testId != null;
 
   return (
-    <li className="bisect-target" data-category={target.category} data-target-id={target.id}>
+    <li
+      className="bisect-target"
+      data-category={target.category}
+      data-target-id={target.id}
+      data-scroll-target-test={target.testId}
+      data-scroll-target-stage={canNavigate ? target.category : undefined}
+      role={canNavigate ? 'link' : undefined}
+      tabIndex={canNavigate ? 0 : undefined}
+      onClick={canNavigate ? () => scrollToDetailedTarget(target) : undefined}
+      onKeyDown={canNavigate ? (event) => activateTargetFromKeyboard(event, target) : undefined}
+      title={canNavigate ? 'Show detailed regression evidence' : undefined}
+    >
       <header className="bisect-target__header">
         <h4 className="bisect-target__subject">{target.subject}</h4>
         <span className="bisect-target__viewport">{target.viewport}</span>
