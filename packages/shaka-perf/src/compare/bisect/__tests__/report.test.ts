@@ -65,6 +65,25 @@ describe('writeBisectReport', () => {
 
     expect(path.isAbsolute(outputPath)).toBe(true);
   });
+
+  it('preserves the prior report when the atomic replacement fails', () => {
+    const outputPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
+    fs.writeFileSync(outputPath, 'prior report', 'utf8');
+    const rename = jest.spyOn(fs, 'renameSync').mockImplementationOnce(() => {
+      throw new Error('rename failed');
+    });
+
+    try {
+      expect(() => writeBisectReport({
+        resultsDirectory,
+        data: reportData(),
+        stages: [],
+      })).toThrow('rename failed');
+      expect(fs.readFileSync(outputPath, 'utf8')).toBe('prior report');
+    } finally {
+      rename.mockRestore();
+    }
+  });
 });
 
 function reportData(): BisectReportData {

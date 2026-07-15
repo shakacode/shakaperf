@@ -75,6 +75,7 @@ export class BisectInterruptedError extends Error {
 export async function runCandidate(options: RunCandidateOptions): Promise<CandidateResult> {
   const baseRun: CommitRun = {
     sha: options.sha,
+    compareCompleted: false,
     requestedCategories: [...options.categories],
     requestedTests: [...options.tests],
     refreshMode: options.preferredMode,
@@ -114,6 +115,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
     });
     commitRun = {
       ...commitRun,
+      compareCompleted: true,
       compareResultsPath: compare.compareResultsPath,
       finishedAt: options.dependencies.now(),
     };

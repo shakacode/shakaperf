@@ -44,6 +44,7 @@ export interface BisectTarget extends TargetKey {
 
 export interface CommitRun {
   sha: string;
+  compareCompleted?: boolean;
   requestedCategories: BisectCategory[];
   requestedTests?: BisectTestSelection[];
   requestedTestFiles?: string[];
