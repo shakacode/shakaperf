@@ -7,11 +7,11 @@ is absent means that capability is n/a in this repository.
 
 | Script | Purpose | This repo runs |
 | --- | --- | --- |
-| `setup` | Install dependencies | n/a |
-| `validate` | Pre-push gate | `yarn typecheck && yarn test` |
+| `setup` | Install dependencies | `yarn install` |
+| `validate` | Pre-push gate | `yarn build && yarn typecheck && yarn test` |
 | `test` | Run tests | `yarn test` |
 | `lint` | Lint / format | n/a |
-| `build` | Build / type-check | n/a |
+| `build` | Build / type-check | `yarn build` |
 | `docs` | Docs checks | n/a |
 | `ci-detect` | CI change detector | n/a |
 
