@@ -7,6 +7,7 @@
  * License in LICENSE.md.
  */
 
+import { Fragment } from 'react';
 import { selectionTargetIds, type BisectSelection } from '../bisect-selection';
 import type { BisectReportModel, BisectReportTarget } from '../types';
 
@@ -26,7 +27,14 @@ interface ComparisonValue {
   control: string;
   experiment: string;
   change: string;
-  pValue?: string;
+}
+
+interface PerfComparisonValue {
+  control: string;
+  experiment: string;
+  delta: string;
+  percent: string;
+  pValue: string;
 }
 
 const categoryOrder: BisectReportTarget['category'][] = [
@@ -127,12 +135,10 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
   if (value(values, 'controlDisplay') != null || value(values, 'experimentDisplay') != null) {
     const delta = display(value(values, 'deltaDisplay'));
     const percent = value(values, 'percentDisplay');
-    const pValue = value(values, 'pValue');
     return {
       control: display(value(values, 'controlDisplay')),
       experiment: display(value(values, 'experimentDisplay')),
       change: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
-      ...(typeof pValue === 'number' ? { pValue: formatPValue(pValue) } : {}),
     };
   }
 
@@ -175,6 +181,75 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
   return null;
 }
 
+function perfComparisonValue(target: BisectReportTarget): PerfComparisonValue {
+  const values = target.badRefObservation?.values ?? {};
+  const pValue = value(values, 'pValue');
+  return {
+    control: display(value(values, 'controlDisplay')),
+    experiment: display(value(values, 'experimentDisplay')),
+    delta: display(value(values, 'deltaDisplay')),
+    percent: display(value(values, 'percentDisplay')),
+    pValue: typeof pValue === 'number' ? formatPValue(pValue) : 'not recorded',
+  };
+}
+
+function TargetDetails({ target }: { target: BisectReportTarget }) {
+  return (
+    <>
+      {target.invalidReason ? (
+        <p className="bisect-target__invalid-reason">
+          <strong>Invalid:</strong> {target.invalidReason}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function PerfTargetTable({ targets }: { targets: readonly BisectReportTarget[] }) {
+  return (
+    <div className="bisect-perf-table-wrap">
+      <table className="bisect-perf-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Control</th>
+            <th>Experiment</th>
+            <th>Delta</th>
+            <th>%Delta</th>
+            <th>p</th>
+          </tr>
+        </thead>
+        <tbody>
+          {targets.map((target) => {
+            const comparison = perfComparisonValue(target);
+            const hasDetails = Boolean(target.invalidReason);
+            return (
+              <Fragment key={target.id}>
+                <tr data-category={target.category} data-target-id={target.id}>
+                  <td className="bisect-perf-table__metric">
+                    <strong>{target.subject}</strong>
+                    <span>{target.viewport}</span>
+                  </td>
+                  <td>{comparison.control}</td>
+                  <td>{comparison.experiment}</td>
+                  <td className="bisect-perf-table__delta">{comparison.delta}</td>
+                  <td className="bisect-perf-table__delta">{comparison.percent}</td>
+                  <td>{comparison.pValue}</td>
+                </tr>
+                {hasDetails ? (
+                  <tr className="bisect-perf-table__details">
+                    <td colSpan={6}><TargetDetails target={target} /></td>
+                  </tr>
+                ) : null}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function TargetRow({ target }: { target: BisectReportTarget }) {
   const comparison = comparisonValue(target);
 
@@ -198,19 +273,9 @@ function TargetRow({ target }: { target: BisectReportTarget }) {
             <dt>Change</dt>
             <dd>{comparison.change}</dd>
           </div>
-          {comparison.pValue ? (
-            <div>
-              <dt>p</dt>
-              <dd>{comparison.pValue}</dd>
-            </div>
-          ) : null}
         </dl>
       ) : null}
-      {target.invalidReason ? (
-        <p className="bisect-target__invalid-reason">
-          <strong>Invalid:</strong> {target.invalidReason}
-        </p>
-      ) : null}
+      <TargetDetails target={target} />
     </li>
   );
 }
@@ -238,9 +303,13 @@ function TestGroupCard({ group }: { group: TestGroup }) {
                   </span>
                   <span>{pluralize(targets.length, 'target')}</span>
                 </header>
-                <ul className="bisect-target-category__list">
-                  {targets.map((target) => <TargetRow key={target.id} target={target} />)}
-                </ul>
+                {category === 'perf' ? (
+                  <PerfTargetTable targets={targets} />
+                ) : (
+                  <ul className="bisect-target-category__list">
+                    {targets.map((target) => <TargetRow key={target.id} target={target} />)}
+                  </ul>
+                )}
               </section>
             );
           })}

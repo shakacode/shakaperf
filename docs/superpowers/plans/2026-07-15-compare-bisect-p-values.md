@@ -4,7 +4,7 @@
 
 **Goal:** Display saved performance p-values in compare bisect regression cards.
 
-**Architecture:** Extend the bisect summary card's derived comparison model with an optional p-value string. Reuse the existing performance report formatting rules and render a dedicated `p` definition-list item only when the saved observation contains a numeric p-value.
+**Architecture:** Render performance targets through a dedicated table with aligned metric, control, experiment, delta, percent, and p-value columns. Reuse the existing performance report formatting rules, keep non-performance targets unchanged, and cap the test-card grid at two columns.
 
 **Tech Stack:** TypeScript, React 19, Jest, React DOM server rendering, Vite.
 
@@ -24,21 +24,21 @@
 
 **Interfaces:**
 - Consumes: `BisectReportTarget.badRefObservation.values.pValue`
-- Produces: An optional `p` item in the target comparison definition list.
+- Produces: A six-column performance target table inside each bisect test card.
 
 - [ ] **Step 1: Write the failing rendering test**
 
-Add `pValue: 0.007813` to the homepage performance fixture and assert that its group markup contains `<dt>p</dt>` and `<dd>0.007813</dd>`.
+Add `pValue: 0.007813` to the homepage performance fixture and assert that its group markup contains the six table headings and a `0.007813` value cell.
 
 - [ ] **Step 2: Run the focused test to verify failure**
 
 Run: `yarn workspace shaka-perf test --runInBand packages/shaka-perf/src/compare/bisect/__tests__/app-report.test.ts`
 
-Expected: FAIL because the bisect card does not render the p-value.
+Expected: FAIL because the bisect card does not render the performance table.
 
 - [ ] **Step 3: Implement minimal p-value rendering**
 
-Extend `ComparisonValue` with `pValue?: string`, format finite numeric values using the same six-decimal, trimmed, exponential-under-1e-6 rules as the performance table, and render the `p` item when present.
+Add a dedicated performance comparison model, format finite numeric values using the same six-decimal, trimmed, exponential-under-1e-6 rules as the performance report, and render one semantic table row per performance target. Update the card grid and table spacing in `styles.css`.
 
 - [ ] **Step 4: Run focused verification**
 

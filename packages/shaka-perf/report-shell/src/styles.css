@@ -967,10 +967,10 @@ input {
 
 .bisect-test-group-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
   margin: 0;
-  padding: 14px;
+  padding: 18px;
   list-style: none;
 }
 
@@ -1124,6 +1124,91 @@ input {
   overflow-wrap: anywhere;
   font-size: 10px;
   font-weight: 700;
+}
+
+.bisect-perf-table-wrap {
+  overflow-x: auto;
+  padding: 10px 12px 13px;
+  background: var(--bg-elevated);
+}
+
+.bisect-perf-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+.bisect-perf-table th,
+.bisect-perf-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border-strong);
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.bisect-perf-table th {
+  color: var(--fg-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bisect-perf-table td {
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.bisect-perf-table th:first-child,
+.bisect-perf-table td:first-child {
+  width: 23%;
+  padding-left: 10px;
+  text-align: left;
+}
+
+.bisect-perf-table th:last-child,
+.bisect-perf-table td:last-child {
+  padding-right: 10px;
+}
+
+.bisect-perf-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bisect-perf-table__metric strong,
+.bisect-perf-table__metric span {
+  display: block;
+}
+
+.bisect-perf-table__metric strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+}
+
+.bisect-perf-table__metric span {
+  margin-top: 3px;
+  color: var(--fg-faint);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.bisect-perf-table__delta {
+  color: var(--regression);
+}
+
+.bisect-perf-table__details > td {
+  padding: 0;
+  white-space: normal;
+}
+
+.bisect-perf-table__details .bisect-target__comparison {
+  border-bottom: 1px solid var(--border);
 }
 
 .bisect-target__invalid-reason {
@@ -1916,6 +2001,12 @@ input {
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+@media (max-width: 1180px) {
+  .bisect-test-group-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
