@@ -543,8 +543,7 @@ input {
 }
 
 .bisect-navigator__stats dt,
-.bisect-target__details dt,
-.bisect-target__values dt {
+.bisect-target__comparison dt {
   color: var(--fg-faint);
   font-size: 9px;
   font-weight: 700;
@@ -553,8 +552,7 @@ input {
 }
 
 .bisect-navigator__stats dd,
-.bisect-target__details dd,
-.bisect-target__values dd {
+.bisect-target__comparison dd {
   margin: 0;
 }
 
@@ -644,6 +642,10 @@ input {
   flex: 0 0 clamp(190px, 18vw, 260px);
 }
 
+.bisect-tree__item--clean-run {
+  flex-basis: clamp(130px, 12vw, 175px);
+}
+
 .bisect-tree__item:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -669,6 +671,94 @@ input {
   font-weight: 800;
   line-height: 12px;
   transform: translateY(-6px);
+}
+
+.bisect-clean-run {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  gap: 7px;
+  width: 100%;
+  border: 2px dashed var(--border-strong);
+  padding: 12px;
+  background: var(--bg-elevated);
+  color: var(--fg);
+  text-align: center;
+  text-transform: none;
+  box-shadow: 3px 3px 0 var(--border);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.bisect-clean-run:hover {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 5px 5px 0 var(--fg);
+  transform: translate(-2px, -2px);
+}
+
+.bisect-clean-run strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.bisect-clean-run span {
+  color: var(--fg-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bisect-clean-run-dialog {
+  min-height: 0;
+  overflow: auto;
+}
+
+.bisect-clean-run-dialog__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bisect-clean-run-dialog__commit {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+}
+
+.bisect-clean-run-dialog__commit:last-child {
+  border-bottom: 0;
+}
+
+.bisect-clean-run-dialog__commit code {
+  grid-row: 1 / span 2;
+  align-self: start;
+  padding: 1px 4px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.bisect-clean-run-dialog__commit > span:not(.bisect-clean-run-dialog__meta) {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bisect-clean-run-dialog__meta {
+  color: var(--fg-muted);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .bisect-node {
@@ -711,6 +801,8 @@ input {
 
 .bisect-node:focus,
 .bisect-node:focus-visible,
+.bisect-clean-run:focus,
+.bisect-clean-run:focus-visible,
 .bisect-view-button:focus,
 .bisect-view-button:focus-visible {
   outline: 3px solid var(--error);
@@ -873,38 +965,123 @@ input {
   content: "[invalid] ";
 }
 
-.bisect-target-list {
+.bisect-test-group-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 14px;
   margin: 0;
-  padding: 12px;
+  padding: 14px;
   list-style: none;
 }
 
-.bisect-target > article {
+.bisect-test-group > article {
   height: 100%;
   border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: 3px 3px 0 var(--border);
+}
+
+.bisect-test-group__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border-strong);
   background: var(--bg);
 }
 
-.bisect-target[data-category="visreg"] > article {
+.bisect-test-group__header > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bisect-test-group__header h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.bisect-test-group__header code {
+  color: var(--fg-muted);
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.bisect-test-group__header > span,
+.bisect-target-category__header > span:last-child,
+.bisect-target__viewport {
+  flex: 0 0 auto;
+  color: var(--fg-muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bisect-test-group__header > span {
+  padding: 3px 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-sunken);
+}
+
+.bisect-test-group__categories {
+  display: grid;
+}
+
+.bisect-target-category {
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.bisect-target-category:last-child {
+  border-bottom: 0;
+}
+
+.bisect-target-category[data-category="visreg"] {
   border-left: 3px solid var(--visual_change);
 }
 
-.bisect-target[data-category="perf"] > article {
+.bisect-target-category[data-category="perf"] {
   border-left: 3px solid var(--regression);
 }
 
-.bisect-target[data-category="accessibility"] > article {
+.bisect-target-category[data-category="accessibility"] {
   border-left: 3px solid var(--error);
+}
+
+.bisect-target-category__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.bisect-target-category__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bisect-target {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.bisect-target:last-child {
+  border-bottom: 0;
 }
 
 .bisect-target__header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 11px 12px;
+  padding: 9px 11px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -920,65 +1097,41 @@ input {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.bisect-target__details,
-.bisect-target__values {
+.bisect-target__comparison {
   display: grid;
-  gap: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
+  background: var(--bg-elevated);
 }
 
-.bisect-target__details {
-  grid-template-columns: 2fr 1fr 1fr;
-}
-
-.bisect-target__details > div,
-.bisect-target__values > div {
+.bisect-target__comparison > div {
   display: grid;
   align-content: start;
   gap: 3px;
   min-width: 0;
-  padding: 9px 12px;
+  padding: 8px 11px;
   border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
 }
 
-.bisect-target__details > div:last-child,
-.bisect-target__values > div:last-child {
+.bisect-target__comparison > div:last-child {
   border-right: 0;
 }
 
-.bisect-target__details dd {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  font-size: 10px;
-  overflow-wrap: anywhere;
-}
-
-.bisect-target__details code {
-  color: var(--fg-muted);
-  font-size: 9px;
-  overflow-wrap: anywhere;
-}
-
-.bisect-target__details .bisect-target__invalid-reason {
-  grid-column: 1 / -1;
-  border-right: 0;
-  color: var(--error);
-}
-
-.bisect-target__values {
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  background: var(--bg-sunken);
-}
-
-.bisect-target__values dd {
+.bisect-target__comparison dd {
   overflow-wrap: anywhere;
   font-size: 10px;
   font-weight: 700;
+}
+
+.bisect-target__invalid-reason {
+  margin: 0;
+  padding: 9px 11px;
+  background: var(--error-tint);
+  color: var(--error);
+  font-size: 10px;
 }
 
 /* ───────── grid ─────────
@@ -1857,17 +2010,21 @@ input {
     gap: 4px;
   }
 
-  .bisect-target-list {
+  .bisect-test-group-list {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .bisect-target__details {
+  .bisect-target__comparison {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .bisect-target__details > div,
-  .bisect-target__values > div {
+  .bisect-target__comparison > div {
     border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .bisect-target__comparison > div:last-child {
+    border-bottom: 0;
   }
 
   .app--bisect .grid {
@@ -2088,6 +2245,17 @@ input {
   max-height: 95vh;
   width: 95vw;
   height: 95vh;
+}
+
+.ui-dialog--compact {
+  width: min(720px, calc(100vw - 32px));
+  height: auto;
+  max-width: calc(100vw - 32px);
+  max-height: 80vh;
+}
+
+.ui-dialog--compact .ui-dialog__surface {
+  max-height: 80vh;
 }
 
 .ui-dialog::backdrop {

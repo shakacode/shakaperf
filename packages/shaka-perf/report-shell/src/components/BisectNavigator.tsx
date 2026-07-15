@@ -7,7 +7,8 @@
  * License in LICENSE.md.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { Dialog } from '../../../src/pipeline/stage-report-components';
 import type {
   BisectReportCommit,
   BisectReportCounts,
@@ -85,6 +86,96 @@ function endpointLabel(commit: BisectReportCommit, model: BisectReportModel): st
   return null;
 }
 
+function hasRegressions(commit: BisectReportCommit): boolean {
+  return Object.values(commit.counts).some((count) => count > 0);
+}
+
+type CommitTimelineItem =
+  | { kind: 'clean-run'; commits: BisectReportCommit[] }
+  | { kind: 'regression'; commit: BisectReportCommit };
+
+function buildCommitTimeline(commits: readonly BisectReportCommit[]): CommitTimelineItem[] {
+  const items: CommitTimelineItem[] = [];
+  for (const commit of commits) {
+    const previous = items.at(-1);
+    if (!hasRegressions(commit)) {
+      if (previous?.kind === 'clean-run') previous.commits.push(commit);
+      else items.push({ kind: 'clean-run', commits: [commit] });
+    } else {
+      items.push({ kind: 'regression', commit });
+    }
+  }
+  return items;
+}
+
+function CleanCommitGroup({
+  commits,
+  model,
+  runIndex,
+}: {
+  commits: readonly BisectReportCommit[];
+  model: BisectReportModel;
+  runIndex: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const measuredCount = commits.filter((commit) => commit.measured).length;
+  const commitLabel = `${commits.length} commit${commits.length === 1 ? '' : 's'}`;
+  const firstCommit = commits[0];
+  const lastCommit = commits.at(-1);
+
+  return (
+    <li className="bisect-tree__item bisect-tree__item--clean-run">
+      <button
+        type="button"
+        className="bisect-clean-run"
+        data-bisect-clean-run={runIndex}
+        aria-haspopup="dialog"
+        aria-label={`${commitLabel} with no first-bad regressions`}
+        onClick={() => setOpen(true)}
+      >
+        <strong>[{commitLabel}]</strong>
+        <span>no first-bad regressions</span>
+      </button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        variant="compact"
+        title={<span className="ui-dialog__title-text">{commitLabel} with no first-bad regressions</span>}
+        meta={(
+          <dl className="ui-dialog__meta">
+            <div>
+              <dt>range</dt>
+              <dd>{firstCommit?.sha.slice(0, 7)} → {lastCommit?.sha.slice(0, 7)}</dd>
+            </div>
+            <div>
+              <dt>measurement</dt>
+              <dd>{measuredCount} measured · {commits.length - measuredCount} not measured</dd>
+            </div>
+          </dl>
+        )}
+      >
+        <div className="bisect-clean-run-dialog" data-bisect-clean-run-dialog={runIndex}>
+          <ol className="bisect-clean-run-dialog__list">
+          {commits.map((commit) => {
+            const endpoint = endpointLabel(commit, model);
+            return (
+              <li key={commit.sha} className="bisect-clean-run-dialog__commit">
+                <code>{commit.sha.slice(0, 7)}</code>
+                <span>{commit.subject}</span>
+                <span className="bisect-clean-run-dialog__meta">
+                  {endpoint ? `${endpoint} · ` : ''}
+                  {commit.measured ? 'measured' : 'not measured'}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        </div>
+      </Dialog>
+    </li>
+  );
+}
+
 function CommitNode({
   commit,
   model,
@@ -143,6 +234,8 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
   const foundCount = model.targets.filter((target) => target.status === 'found').length;
   const unresolvedCount = model.views.unresolved.targetIds.length;
   const invalidCount = model.views.invalid.targetIds.length;
+  const commitTimeline = buildCommitTimeline(model.commits);
+  let cleanRunIndex = -1;
 
   return (
     <section className="bisect-navigator" aria-labelledby="bisect-navigator-title">
@@ -174,7 +267,7 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
       <nav className="bisect-view-buttons" aria-label="Bisect report views">
         <SelectionButton
           kind="all"
-          label="All regressions"
+          label="Regression tests"
           count={foundCount}
           selected={selection.kind === 'all'}
           onSelect={onSelect}
@@ -197,15 +290,29 @@ export function BisectNavigator({ model, selection, onSelect }: Props) {
 
       <nav className="bisect-tree" aria-label="Bisect commit range">
         <ol className="bisect-tree__list">
-          {model.commits.map((commit) => (
-            <CommitNode
-              key={commit.sha}
-              commit={commit}
-              model={model}
-              selected={selection.kind === 'commit' && selection.sha === commit.sha}
-              onSelect={onSelect}
-            />
-          ))}
+          {commitTimeline.map((item) => {
+            if (item.kind === 'clean-run') {
+              cleanRunIndex += 1;
+              return (
+                <CleanCommitGroup
+                  key={`clean-${item.commits[0]?.sha}`}
+                  commits={item.commits}
+                  model={model}
+                  runIndex={cleanRunIndex}
+                />
+              );
+            }
+            const { commit } = item;
+            return (
+              <CommitNode
+                key={commit.sha}
+                commit={commit}
+                model={model}
+                selected={selection.kind === 'commit' && selection.sha === commit.sha}
+                onSelect={onSelect}
+              />
+            );
+          })}
         </ol>
       </nav>
     </section>

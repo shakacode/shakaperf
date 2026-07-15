@@ -27,9 +27,17 @@ interface DialogProps {
   title?: ReactNode;
   meta?: ReactNode;
   children: ReactNode;
+  variant?: 'default' | 'compact';
 }
 
-export function Dialog({ open, onClose, title, meta, children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  title,
+  meta,
+  children,
+  variant = 'default',
+}: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -67,7 +75,10 @@ export function Dialog({ open, onClose, title, meta, children }: DialogProps) {
   }, [onClose]);
 
   return (
-    <dialog ref={ref} className="ui-dialog">
+    <dialog
+      ref={ref}
+      className={`ui-dialog${variant === 'compact' ? ' ui-dialog--compact' : ''}`}
+    >
       <div className="ui-dialog__surface">
         <header className="ui-dialog__head">
           <div className="ui-dialog__title">{title}</div>
