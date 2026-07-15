@@ -1042,10 +1042,9 @@ export interface ClientReportResult {
   model: ClientReportModel;
 }
 
-// The audited site's own favicon, inlined so the hosted report's browser tab
-// shows the client's logo instead of a blank icon. Self-contained by design:
-// the bytes are embedded at render time, nothing is fetched when the report
-// opens. Best-effort - any failure falls back to a blank icon.
+// The audited site's own favicon, inlined when it is a plausible icon so the
+// hosted report's browser tab shows the client's logo. Best-effort: rejected
+// or unavailable responses omit the icon link.
 
 const FAVICON_MAX_BYTES = 512 * 1024;
 
@@ -1054,21 +1053,85 @@ const FAVICON_MAX_BYTES = 512 * 1024;
 // into the HTML, so cap it). The content-type is attacker-controlled (it comes
 // from the audited site), so only a clean `image/<subtype>` token is accepted -
 // anything with a quote, angle bracket, or space could otherwise break out of
-// the href attribute faviconLinkTag puts it in.
+// the href attribute faviconLinkTag puts it in. Known byte signatures take
+// precedence over the header because the header may be wrong; a clean image
+// header is only a fallback for icon formats we do not sniff. Text error bodies
+// never use that fallback.
 export function faviconDataUri(bytes: Uint8Array, contentType: string | null): string | null {
   if (bytes.length === 0 || bytes.length > FAVICON_MAX_BYTES) return null;
   const type = (contentType ?? '').split(';')[0].trim().toLowerCase();
-  const mime = /^image\/[a-z0-9.+-]+$/.test(type) ? type : 'image/x-icon';
+  const mime = faviconMimeFromBytes(bytes)
+    ?? (!isClearlyNonIconText(bytes) && /^image\/[a-z0-9.+-]+$/.test(type) && type !== 'image/svg+xml' ? type : null);
+  if (!mime) return null;
   return `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;
 }
 
-// Pure: the report head's icon link. The inlined favicon when we have one, else
-// a blank icon that suppresses the browser's default /favicon.ico request.
+function faviconMimeFromBytes(bytes: Uint8Array): string | null {
+  if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x01 && bytes[3] === 0x00) return 'image/x-icon';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
+  if (hasSvgRoot(faviconTextPrefix(bytes))) {
+    return 'image/svg+xml';
+  }
+  return null;
+}
+
+function isClearlyNonIconText(bytes: Uint8Array): boolean {
+  const text = faviconTextPrefix(bytes).trimStart();
+  return /^[<{[]/.test(text) || (!text.includes('\ufffd') && /^[\t\n\f\r -~]+$/.test(text));
+}
+
+function faviconTextPrefix(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes.subarray(0, 8192));
+}
+
+function hasSvgRoot(text: string): boolean {
+  let index = skipXmlWhitespace(text, 0);
+  if (text.startsWith('<?xml', index)) {
+    const end = text.indexOf('?>', index + 5);
+    if (end === -1) return false;
+    index = skipXmlWhitespace(text, end + 2);
+  }
+  for (let prefixes = 0; prefixes < 8; prefixes += 1) {
+    if (text.startsWith('<!--', index)) {
+      const end = text.indexOf('-->', index + 4);
+      if (end === -1) return false;
+      index = skipXmlWhitespace(text, end + 3);
+      continue;
+    }
+    if (text.startsWith('<!DOCTYPE', index)) {
+      const name = skipXmlWhitespace(text, index + '<!DOCTYPE'.length);
+      if (!text.startsWith('svg', name) || !isXmlDelimiter(text[name + 3])) return false;
+      const end = text.indexOf('>', name + 3);
+      if (end === -1) return false;
+      index = skipXmlWhitespace(text, end + 1);
+      continue;
+    }
+    break;
+  }
+  return text.startsWith('<svg', index) && isXmlDelimiter(text[index + 4]);
+}
+
+function skipXmlWhitespace(text: string, index: number): number {
+  while (isXmlWhitespace(text[index])) index += 1;
+  return index;
+}
+
+function isXmlWhitespace(character: string | undefined): boolean {
+  return character === ' ' || character === '\t' || character === '\n' || character === '\r' || character === '\f' || character === '\v' || character === '\ufeff';
+}
+
+function isXmlDelimiter(character: string | undefined): boolean {
+  return isXmlWhitespace(character) || character === '/' || character === '>';
+}
+
+// Pure: the report head's icon link. Omit it when no usable favicon was fetched.
 // esc() is defense-in-depth: faviconDataUri already constrains the MIME and
 // base64 has no HTML-special chars, but the href is attacker-influenced so we
 // escape at the boundary like every other attribute in this file.
 export function faviconLinkTag(faviconUri: string | null): string {
-  return `<link rel="icon" href="${esc(faviconUri ?? 'data:,')}" />`;
+  return faviconUri ? `<link rel="icon" href="${esc(faviconUri)}" />` : '';
 }
 
 // Pure: reject hosts that point at the machine itself or a private network -
@@ -1116,8 +1179,7 @@ export function parseIconHref(html: string): string | null {
 // the homepage's declared <link rel=icon> (SPAs often ship only PNG). Each
 // request is bounded by an 8s timeout that COVERS the body read, streamed with
 // a hard 512KB cap, and refuses any URL (or redirect hop) that resolves to a
-// non-public host. Returns null on any failure - the report falls back to the
-// blank icon.
+// non-public host. Returns null on any failure - the report omits the icon tag.
 async function fetchSiteFavicon(siteUrl: string): Promise<string | null> {
   let origin: string;
   try {

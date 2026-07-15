@@ -472,7 +472,7 @@ describe('isDuplicateStory', () => {
 });
 
 describe('faviconDataUri', () => {
-  it('inlines bytes with the response content-type', () => {
+  it('uses an image content-type as a fallback when no known icon signature is present', () => {
     const bytes = new Uint8Array([1, 2, 3, 4]);
     expect(faviconDataUri(bytes, 'image/png')).toBe(`data:image/png;base64,${Buffer.from(bytes).toString('base64')}`);
   });
@@ -484,11 +484,54 @@ describe('faviconDataUri', () => {
     );
   });
 
-  it('defaults to image/x-icon when the type is missing or not an image', () => {
-    const bytes = new Uint8Array([7, 7]);
-    const expected = `data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`;
-    expect(faviconDataUri(bytes, null)).toBe(expected);
-    expect(faviconDataUri(bytes, 'text/html')).toBe(expected);
+  it('rejects an HTML response instead of embedding it as an icon', () => {
+    const html = new TextEncoder().encode('<!doctype html><title>Not an icon</title>');
+    expect(faviconDataUri(html, 'text/html')).toBeNull();
+  });
+
+  it('rejects recognizable HTML and JSON bodies even when the response claims to be an image', () => {
+    const html = new TextEncoder().encode('<!doctype html><title>Not an icon</title>');
+    const json = new TextEncoder().encode('{"error":"not found"}');
+    expect(faviconDataUri(html, 'image/png')).toBeNull();
+    expect(faviconDataUri(json, 'image/png')).toBeNull();
+  });
+
+  it('rejects a plain-text error body even when the response claims to be an image', () => {
+    const text = new TextEncoder().encode('Not Found');
+    expect(faviconDataUri(text, 'image/png')).toBeNull();
+  });
+
+  it('uses ICO and PNG signatures before an incorrect response content-type', () => {
+    const ico = new Uint8Array([0x00, 0x00, 0x01, 0x00, 0x00, 0x00]);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(faviconDataUri(ico, 'image/png')).toBe(`data:image/x-icon;base64,${Buffer.from(ico).toString('base64')}`);
+    expect(faviconDataUri(png, 'text/plain')).toBe(`data:image/png;base64,${Buffer.from(png).toString('base64')}`);
+  });
+
+  it('recognizes GIF and JPEG signatures when the response content-type is wrong', () => {
+    const gif = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+    expect(faviconDataUri(gif, 'text/plain')).toBe(`data:image/gif;base64,${Buffer.from(gif).toString('base64')}`);
+    expect(faviconDataUri(jpeg, 'application/json')).toBe(`data:image/jpeg;base64,${Buffer.from(jpeg).toString('base64')}`);
+  });
+
+  it('uses an SVG root element before an incorrect response content-type', () => {
+    const svg = new TextEncoder().encode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"/>');
+    expect(faviconDataUri(svg, 'text/plain')).toBe(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+    expect(faviconDataUri(new TextEncoder().encode('<html/>'), 'image/svg+xml')).toBeNull();
+  });
+
+  it('recognizes an SVG root after valid XML prefixes without accepting a similarly named tag', () => {
+    const svg = new TextEncoder().encode('<?xml version="1.0"?><!-- icon --><!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg"/>');
+    expect(faviconDataUri(svg, 'text/plain')).toBe(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
+    expect(faviconDataUri(new TextEncoder().encode('<svg-not-an-icon/>'), 'image/png')).toBeNull();
+  });
+
+  it('rejects a long sequence of SVG-like comments without expensive backtracking', () => {
+    const body = new TextEncoder().encode('<!-- -->'.repeat(24) + 'X');
+    const started = performance.now();
+    expect(faviconDataUri(body, 'image/svg+xml')).toBeNull();
+    expect(performance.now() - started).toBeLessThan(80);
   });
 
   it('rejects empty bytes and files too large to inline (cap is inclusive)', () => {
@@ -498,12 +541,10 @@ describe('faviconDataUri', () => {
   });
 
   it('rejects a content-type that could break out of the href attribute', () => {
-    const bytes = new Uint8Array([1]);
+    const bytes = new Uint8Array([1, 2, 3, 4]);
     // Attacker-controlled header with a quote + tag: must NOT reach the data URI.
     const hostile = 'image/svg+xml"><script>alert(1)</script>';
-    expect(faviconDataUri(bytes, hostile)).toBe(`data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`);
-    // A legitimate compound subtype is still preserved.
-    expect(faviconDataUri(bytes, 'image/svg+xml')).toBe(`data:image/svg+xml;base64,${Buffer.from(bytes).toString('base64')}`);
+    expect(faviconDataUri(bytes, hostile)).toBeNull();
   });
 });
 
@@ -514,8 +555,8 @@ describe('faviconLinkTag', () => {
     );
   });
 
-  it('falls back to a blank icon that suppresses the default /favicon.ico request', () => {
-    expect(faviconLinkTag(null)).toBe('<link rel="icon" href="data:," />');
+  it('omits the icon link when no usable favicon was fetched', () => {
+    expect(faviconLinkTag(null)).toBe('');
   });
 
   it('escapes any HTML-special char that reaches the href (defense in depth)', () => {
