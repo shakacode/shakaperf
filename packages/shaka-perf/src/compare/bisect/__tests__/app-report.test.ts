@@ -64,9 +64,14 @@ describe('bisect report App rendering', () => {
     expect(homepageGroup).toContain('<th>Delta</th>');
     expect(homepageGroup).toContain('<th>%Delta</th>');
     expect(homepageGroup).toContain('<th>p</th>');
-    expect(homepageGroup).toContain('<dt>Control</dt>');
-    expect(homepageGroup).toContain('<dt>Experiment</dt>');
-    expect(homepageGroup).toContain('<dt>Change</dt>');
+    expect(homepageGroup).toContain('<dt>Mismatch</dt>');
+    expect(homepageGroup).toContain('<dt>Changed pixels</dt>');
+    expect(homepageGroup).toContain('<dt>Threshold</dt>');
+    expect(homepageGroup).toContain('<dd>12.5%</dd>');
+    expect(homepageGroup).toContain('<dd>4,200</dd>');
+    expect(homepageGroup).toContain('<dd>0.1%</dd>');
+    expect(homepageGroup).not.toContain('baseline image');
+    expect(homepageGroup).not.toContain('candidate image');
     expect(homepageGroup).toContain('1.8s');
     expect(homepageGroup).toContain('2.1s');
     expect(homepageGroup).toContain('+300ms');

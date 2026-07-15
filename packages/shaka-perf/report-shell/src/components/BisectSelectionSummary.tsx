@@ -24,9 +24,10 @@ interface TestGroup {
 }
 
 interface ComparisonValue {
-  control: string;
-  experiment: string;
-  change: string;
+  items: readonly {
+    label: string;
+    value: string;
+  }[];
 }
 
 interface PerfComparisonValue {
@@ -136,9 +137,14 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
     const delta = display(value(values, 'deltaDisplay'));
     const percent = value(values, 'percentDisplay');
     return {
-      control: display(value(values, 'controlDisplay')),
-      experiment: display(value(values, 'experimentDisplay')),
-      change: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
+      items: [
+        { label: 'Control', value: display(value(values, 'controlDisplay')) },
+        { label: 'Experiment', value: display(value(values, 'experimentDisplay')) },
+        {
+          label: 'Change',
+          value: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
+        },
+      ],
     };
   }
 
@@ -154,27 +160,37 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
       'nodes',
     );
     return {
-      control: accessibilityCount(values, 'control'),
-      experiment: accessibilityCount(values, 'experiment'),
-      change: `${violationChange} · ${nodeChange}`,
+      items: [
+        { label: 'Control', value: accessibilityCount(values, 'control') },
+        { label: 'Experiment', value: accessibilityCount(values, 'experiment') },
+        { label: 'Change', value: `${violationChange} · ${nodeChange}` },
+      ],
     };
   }
 
   if (value(values, 'misMatchPercentage') != null) {
     const mismatch = display(value(values, 'misMatchPercentage'));
     const pixels = display(value(values, 'diffPixels'));
+    const threshold = value(values, 'threshold');
     return {
-      control: 'baseline image',
-      experiment: 'candidate image',
-      change: `${mismatch}% mismatch · ${pixels} pixels`,
+      items: [
+        { label: 'Mismatch', value: `${mismatch}%` },
+        { label: 'Changed pixels', value: pixels },
+        {
+          label: 'Threshold',
+          value: threshold == null ? 'not recorded' : `${display(threshold)}%`,
+        },
+      ],
     };
   }
 
   if (value(values, 'controlValue') != null || value(values, 'experimentValue') != null) {
     return {
-      control: display(value(values, 'controlValue')),
-      experiment: display(value(values, 'experimentValue')),
-      change: display(value(values, 'deltaValue')),
+      items: [
+        { label: 'Control', value: display(value(values, 'controlValue')) },
+        { label: 'Experiment', value: display(value(values, 'experimentValue')) },
+        { label: 'Change', value: display(value(values, 'deltaValue')) },
+      ],
     };
   }
 
@@ -284,18 +300,12 @@ function TargetRow({ target }: { target: BisectReportTarget }) {
       </header>
       {comparison ? (
         <dl className="bisect-target__comparison">
-          <div>
-            <dt>Control</dt>
-            <dd>{comparison.control}</dd>
-          </div>
-          <div>
-            <dt>Experiment</dt>
-            <dd>{comparison.experiment}</dd>
-          </div>
-          <div>
-            <dt>Change</dt>
-            <dd>{comparison.change}</dd>
-          </div>
+          {comparison.items.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
         </dl>
       ) : null}
       <TargetDetails target={target} />
