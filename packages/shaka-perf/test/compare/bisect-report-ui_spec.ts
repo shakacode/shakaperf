@@ -122,7 +122,7 @@ describe('compare bisect report browser acceptance', () => {
     await expectText(page.locator('#bisect-selection-title'), 'Unresolved targets');
     await expectCount(page.locator('[data-target-id="unresolved-target"]'), 1);
     await expectText(
-      page.locator('[data-target-id="unresolved-target"] .bisect-target__subject'),
+      page.locator('[data-target-id="unresolved-target"] .bisect-perf-table__metric strong'),
       'CLS',
     );
     await expectText(
