@@ -38,4 +38,38 @@ describe('parseReportData', () => {
       },
     }))).toBeNull();
   });
+
+  it('rejects a malformed merge investigation projection', () => {
+    expect(parseReportData(JSON.stringify({
+      meta: {},
+      tests: [],
+      bisect: {
+        status: 'complete',
+        goodSha: 'good',
+        badSha: 'merge',
+        generatedAt: '2026-07-16T00:00:00.000Z',
+        commits: [{
+          sha: 'merge',
+          subject: 'merge topic',
+          position: 0,
+          measured: true,
+          counts: { visreg: 1, perf: 0, accessibility: 0 },
+          targetIds: ['visual'],
+          isMerge: true,
+          mergeInvestigationStatus: 'complete',
+          mergeInvestigation: {
+            status: 'complete',
+            sourceCommits: 'not-an-array',
+            mergeIntroducedTargetIds: [],
+          },
+        }],
+        targets: [],
+        targetsById: {},
+        views: {
+          unresolved: { targetIds: [] },
+          invalid: { targetIds: [] },
+        },
+      },
+    }))).toBeNull();
+  });
 });

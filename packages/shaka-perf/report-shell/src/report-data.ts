@@ -37,6 +37,22 @@ const countsSchema = z.object({
   perf: z.number(),
   accessibility: z.number(),
 });
+const mergeSourceCommitSchema = z.object({
+  sha: z.string(),
+  subject: z.string(),
+  measured: z.boolean(),
+  isMerge: z.boolean(),
+  counts: countsSchema,
+  targetIds: z.array(z.string()),
+});
+const mergeInvestigationSchema = z.object({
+  status: mergeStatusSchema,
+  failure: z.string().optional(),
+  mergeBase: z.string().optional(),
+  secondParent: z.string().optional(),
+  sourceCommits: z.array(mergeSourceCommitSchema),
+  mergeIntroducedTargetIds: z.array(z.string()),
+});
 const commitSchema = z.object({
   sha: z.string(),
   subject: z.string(),
@@ -46,6 +62,7 @@ const commitSchema = z.object({
   targetIds: z.array(z.string()),
   isMerge: z.boolean().optional(),
   mergeInvestigationStatus: mergeStatusSchema.optional(),
+  mergeInvestigation: mergeInvestigationSchema.optional(),
 }).passthrough();
 const viewSchema = z.object({ targetIds: z.array(z.string()) });
 const bisectSchema = z.object({

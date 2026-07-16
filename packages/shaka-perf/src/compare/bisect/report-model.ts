@@ -25,6 +25,24 @@ export interface BisectReportCounts {
   accessibility: number;
 }
 
+export interface BisectReportMergeSourceCommit {
+  sha: string;
+  subject: string;
+  measured: boolean;
+  isMerge: boolean;
+  targetIds: string[];
+  counts: BisectReportCounts;
+}
+
+export interface BisectReportMergeInvestigation {
+  status: MergeInvestigation['status'];
+  failure?: string;
+  mergeBase?: string;
+  secondParent?: string;
+  sourceCommits: BisectReportMergeSourceCommit[];
+  mergeIntroducedTargetIds: string[];
+}
+
 export interface BisectReportCommit {
   sha: string;
   subject: string;
@@ -34,6 +52,7 @@ export interface BisectReportCommit {
   targetIds: string[];
   isMerge?: boolean;
   mergeInvestigationStatus?: MergeInvestigation['status'];
+  mergeInvestigation?: BisectReportMergeInvestigation;
 }
 
 export interface BisectReportTarget {
@@ -125,6 +144,7 @@ export function buildBisectReportModel(
       targetIds,
       isMerge: (session.primary?.commitParents[sha] ?? []).length > 1,
       mergeInvestigationStatus: investigation?.status,
+      mergeInvestigation: buildMergeInvestigationReport(investigation, targetsById),
     };
   });
 
@@ -140,6 +160,54 @@ export function buildBisectReportModel(
       unresolved: { targetIds: targets.filter((target) => target.status === 'active').map((target) => target.id) },
       invalid: { targetIds: targets.filter((target) => target.status === 'invalid').map((target) => target.id) },
     },
+  };
+}
+
+function buildMergeInvestigationReport(
+  investigation: MergeInvestigation | undefined,
+  targetsById: Record<string, BisectReportTarget>,
+): BisectReportMergeInvestigation | undefined {
+  if (!investigation) return undefined;
+  const targetIdsBySourceSha = new Map<string, string[]>();
+  const mergeIntroducedTargetIds: string[] = [];
+  for (const targetId of investigation.targetIds) {
+    const result = investigation.targetResults[targetId];
+    if (result?.kind === 'merge-introduced') {
+      mergeIntroducedTargetIds.push(targetId);
+    } else if (result?.kind === 'source-found' || result?.kind === 'nested-merge') {
+      const targetIds = targetIdsBySourceSha.get(result.sourceSha) ?? [];
+      targetIds.push(targetId);
+      targetIdsBySourceSha.set(result.sourceSha, targetIds);
+    }
+  }
+
+  const phase = investigation.phase;
+  const measuredShas = new Set(
+    (phase?.attempts ?? [])
+      .filter((attempt) => attempt.status === 'complete')
+      .map((attempt) => attempt.sha),
+  );
+  const sourceCommits = (phase?.orderedCommits ?? [])
+    .filter((sha) => sha !== phase?.goodSha)
+    .map((sha) => {
+      const targetIds = targetIdsBySourceSha.get(sha) ?? [];
+      return {
+        sha,
+        subject: phase?.commitSubjects[sha] || sha.slice(0, 7),
+        measured: measuredShas.has(sha),
+        isMerge: (phase?.commitParents[sha] ?? []).length > 1,
+        targetIds,
+        counts: countsFor(targetIds, targetsById),
+      };
+    });
+
+  return {
+    status: investigation.status,
+    failure: investigation.failure,
+    mergeBase: phase?.goodSha,
+    secondParent: phase?.badSha,
+    sourceCommits,
+    mergeIntroducedTargetIds,
   };
 }
 

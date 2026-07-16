@@ -205,4 +205,127 @@ describe('buildBisectReportModel', () => {
       mergeSourceSha: 'topic-source',
     });
   });
+
+  it('projects an investigated merge into ordered attributable source commits', () => {
+    const sourceTarget = target('source-target', 'visreg', 'tests/source.abtest.ts', 'Source', {
+      firstBadSha: 'merge',
+    });
+    const nestedTarget = target(
+      'nested-target',
+      'accessibility',
+      'tests/nested.abtest.ts',
+      'Nested',
+      { firstBadSha: 'merge' },
+    );
+    const introducedTarget = target(
+      'introduced-target',
+      'perf',
+      'tests/merge.abtest.ts',
+      'Merge',
+      { firstBadSha: 'merge' },
+    );
+    const session = {
+      version: 2,
+      status: 'complete',
+      mode: 'complete',
+      goodSha: 'main-base',
+      badSha: 'merge',
+      originalExperiment: { sha: 'merge', branch: 'feature' },
+      selectedCategories: ['visreg', 'perf', 'accessibility'],
+      orderedCommits: ['main-base', 'merge'],
+      targets: [sourceTarget, nestedTarget, introducedTarget],
+      primary: {
+        id: 'primary',
+        status: 'complete',
+        goodSha: 'main-base',
+        badSha: 'merge',
+        orderedCommits: ['main-base', 'merge'],
+        commitSubjects: { 'main-base': 'main baseline', merge: 'merge topic' },
+        commitParents: { 'main-base': [], merge: ['main-base', 'source-tip'] },
+        targets: [sourceTarget, nestedTarget, introducedTarget],
+        attempts: [],
+      },
+      mergeQueue: ['merge'],
+      mergeInvestigations: {
+        merge: {
+          mergeSha: 'merge',
+          parents: ['main-base', 'source-tip'],
+          status: 'complete',
+          targetIds: [sourceTarget.id, nestedTarget.id, introducedTarget.id],
+          targetResults: {
+            [sourceTarget.id]: { kind: 'source-found', sourceSha: 'source-bad' },
+            [nestedTarget.id]: { kind: 'nested-merge', sourceSha: 'source-tip' },
+            [introducedTarget.id]: { kind: 'merge-introduced' },
+          },
+          phase: {
+            id: 'merge:merge',
+            status: 'complete',
+            goodSha: 'source-base',
+            badSha: 'source-tip',
+            orderedCommits: ['source-base', 'source-clean', 'source-bad', 'source-tip'],
+            commitSubjects: {
+              'source-base': 'shared baseline',
+              'source-clean': 'prepare source branch',
+              'source-bad': 'introduce visual regression',
+              'source-tip': 'merge nested source',
+            },
+            commitParents: {
+              'source-base': [],
+              'source-clean': ['source-base'],
+              'source-bad': ['source-clean'],
+              'source-tip': ['source-bad', 'nested-parent'],
+            },
+            targets: [],
+            attempts: [
+              { id: 'clean', sha: 'source-clean', status: 'incomplete' },
+              { id: 'bad', sha: 'source-bad', status: 'complete' },
+              { id: 'tip', sha: 'source-tip', status: 'complete' },
+            ],
+          },
+        },
+      },
+      commitRuns: { merge: { compareCompleted: true } },
+      startedAt: '2026-07-16T00:00:00.000Z',
+    } as unknown as BisectSession;
+
+    const model = buildBisectReportModel(session, [
+      testResult('source-card', 'tests/source.abtest.ts', 'Source'),
+      testResult('nested-card', 'tests/nested.abtest.ts', 'Nested'),
+      testResult('merge-card', 'tests/merge.abtest.ts', 'Merge'),
+    ], '2026-07-16T00:01:00.000Z');
+
+    expect(model.commits[1].mergeInvestigation).toEqual({
+      status: 'complete',
+      failure: undefined,
+      mergeBase: 'source-base',
+      secondParent: 'source-tip',
+      sourceCommits: [
+        {
+          sha: 'source-clean',
+          subject: 'prepare source branch',
+          measured: false,
+          isMerge: false,
+          targetIds: [],
+          counts: { visreg: 0, perf: 0, accessibility: 0 },
+        },
+        {
+          sha: 'source-bad',
+          subject: 'introduce visual regression',
+          measured: true,
+          isMerge: false,
+          targetIds: ['source-target'],
+          counts: { visreg: 1, perf: 0, accessibility: 0 },
+        },
+        {
+          sha: 'source-tip',
+          subject: 'merge nested source',
+          measured: true,
+          isMerge: true,
+          targetIds: ['nested-target'],
+          counts: { visreg: 0, perf: 0, accessibility: 1 },
+        },
+      ],
+      mergeIntroducedTargetIds: ['introduced-target'],
+    });
+  });
 });
