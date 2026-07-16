@@ -50,6 +50,7 @@ playwright-report/
 
 # Local Codex settings
 .codex
+.worktrees/
 
 # Visual Regression data (screenshots are inside html_report/)
 **/visreg_data/html_report
