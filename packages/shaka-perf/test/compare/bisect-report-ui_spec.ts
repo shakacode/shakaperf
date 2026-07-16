@@ -28,6 +28,9 @@ const PRE_VISUAL_SHA = '1212121212121212121212121212121212121212';
 const VISUAL_SHA = '2222222222222222222222222222222222222222';
 const CLEAN_SHA = '3333333333333333333333333333333333333333';
 const BAD_SHA = '4444444444444444444444444444444444444444';
+const SOURCE_BASE_SHA = '5555555555555555555555555555555555555555';
+const SOURCE_CLEAN_SHA = '6666666666666666666666666666666666666666';
+const SOURCE_BAD_SHA = '7777777777777777777777777777777777777777';
 
 describe('compare bisect report browser acceptance', () => {
   let browser: Browser;
@@ -95,6 +98,7 @@ describe('compare bisect report browser acceptance', () => {
     await expectCount(page.locator('.card--missing-artifacts'), 0);
 
     const visualNode = page.locator(`[data-bisect-sha="${VISUAL_SHA}"]`);
+    expect(await visualNode.getAttribute('aria-haspopup')).toBe('dialog');
     await expectText(
       visualNode.locator('[data-merge-investigation-status="complete"]'),
       'investigation: complete',
@@ -109,6 +113,21 @@ describe('compare bisect report browser acceptance', () => {
     );
     await visualNode.click();
 
+    const mergeDialog = page.locator('.ui-dialog[open]').filter({
+      has: page.locator(`[data-bisect-merge-dialog="${VISUAL_SHA}"]`),
+    });
+    await expectCount(mergeDialog, 1);
+    expect(await visualNode.getAttribute('aria-pressed')).toBe('true');
+    await expectText(mergeDialog, 'prepare source branch');
+    await expectText(mergeDialog, 'introduce hero regression');
+    await expectText(
+      mergeDialog.locator('[data-merge-source-result="responsible"]'),
+      'hero diff',
+    );
+    await expectCount(mergeDialog.locator('[data-merge-source-result="clear"]'), 1);
+    await page.keyboard.press('Escape');
+    await expectCount(page.locator('.ui-dialog[open]'), 0);
+    expect(await visualNode.evaluate((element) => element === document.activeElement)).toBe(true);
     expect(await visualNode.getAttribute('aria-pressed')).toBe('true');
     await expectCount(page.locator('.card:not(.card--missing-artifacts):not([data-dimmed="true"])'), 1);
     await expectCount(page.locator('.card:not(.card--missing-artifacts)[data-dimmed="true"]'), 2);
@@ -178,6 +197,8 @@ describe('compare bisect report browser acceptance', () => {
     )).toBe('1');
     await page.keyboard.press('Enter');
     expect(await visualNode.getAttribute('aria-pressed')).toBe('true');
+    await expectCount(page.locator('.ui-dialog[open]'), 1);
+    await page.keyboard.press('Escape');
 
     await page.setViewportSize({ width: 430, height: 900 });
     expect(await tree.evaluate((element) => getComputedStyle(element).flexDirection)).toBe('column');
@@ -185,6 +206,11 @@ describe('compare bisect report browser acceptance', () => {
     const phoneBoxes = await nodeBoxes(page);
     expect(phoneBoxes[1].y).toBeGreaterThan(phoneBoxes[0].y);
     expect(Math.abs(phoneBoxes[1].x - phoneBoxes[0].x)).toBeLessThan(8);
+    await visualNode.click();
+    const phoneDialog = page.locator('.ui-dialog[open]');
+    expect(await phoneDialog.locator('.ui-dialog__surface').evaluate(
+      (element) => element.getBoundingClientRect().width,
+    )).toBeLessThanOrEqual(430);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(430);
   });
 });
@@ -232,7 +258,7 @@ function reportData(): BisectReportData {
     mainlineIsMerge: true,
     mergeInvestigationStatus: 'complete',
     mergeResult: 'source-found',
-    mergeSourceSha: PRE_VISUAL_SHA,
+    mergeSourceSha: SOURCE_BAD_SHA,
   });
   const perfTarget = target({
     id: 'perf-target',
@@ -314,7 +340,34 @@ function reportData(): BisectReportData {
           true,
           [visualTarget.id],
           { visreg: 1, perf: 0, accessibility: 0 },
-          { isMerge: true, mergeInvestigationStatus: 'complete' },
+          {
+            isMerge: true,
+            mergeInvestigationStatus: 'complete',
+            mergeInvestigation: {
+              status: 'complete',
+              mergeBase: SOURCE_BASE_SHA,
+              secondParent: SOURCE_BAD_SHA,
+              sourceCommits: [
+                {
+                  sha: SOURCE_CLEAN_SHA,
+                  subject: 'prepare source branch',
+                  measured: false,
+                  isMerge: false,
+                  targetIds: [],
+                  counts: { visreg: 0, perf: 0, accessibility: 0 },
+                },
+                {
+                  sha: SOURCE_BAD_SHA,
+                  subject: 'introduce hero regression',
+                  measured: true,
+                  isMerge: false,
+                  targetIds: [visualTarget.id],
+                  counts: { visreg: 1, perf: 0, accessibility: 0 },
+                },
+              ],
+              mergeIntroducedTargetIds: [],
+            },
+          },
         ),
         commit(CLEAN_SHA, 'refactor copy', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(BAD_SHA, 'ship regressions', true, [perfTarget.id, accessibilityTarget.id], {
@@ -396,7 +449,7 @@ function commit(
   counts: { visreg: number; perf: number; accessibility: number },
   merge: Pick<
     BisectReportData['bisect']['commits'][number],
-    'isMerge' | 'mergeInvestigationStatus'
+    'isMerge' | 'mergeInvestigationStatus' | 'mergeInvestigation'
   > = {},
 ) {
   return { sha, subject, measured, targetIds, counts, position: 0, ...merge };

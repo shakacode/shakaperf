@@ -42,7 +42,7 @@ describe('bisect report App rendering', () => {
     expect(firstRegression).toBeGreaterThan(firstBundle);
     expect(secondBundle).toBeGreaterThan(firstRegression);
     expect(secondRegression).toBeGreaterThan(secondBundle);
-    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(2);
+    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(3);
     expect(html.match(/data-bisect-clean-run-dialog=/g)).toHaveLength(2);
     expect(html.match(/data-bisect-selection="commit"/g)).toHaveLength(2);
   });
@@ -221,6 +221,42 @@ describe('bisect report App rendering', () => {
     expect(html).toContain('<dt>merge source</dt>');
     expect(html).toContain('topic-s');
     expect(html).toContain('source found');
+  });
+
+  it('renders a merge investigation trace with truthful attribution', () => {
+    const html = renderApp(bisectReport());
+
+    expect(html).toContain('data-bisect-merge-dialog="mixed-commit"');
+    expect(html).toContain('prepare source branch');
+    expect(html).toContain('introduce hero regression');
+    expect(html).toContain('merge nested source');
+    expect(html).toContain('data-merge-source-result="responsible"');
+    expect(html).toContain('data-merge-source-result="clear"');
+    expect(html).toContain('nested merge');
+    expect(html).toContain('introduced by merge');
+    expect(html).toContain('Hero section');
+    expect(html).toContain('LCP');
+    expect(html).toContain('LCP regression');
+  });
+
+  it.each([
+    ['merge-uninvestigated', 'Source attribution has not been run.'],
+    ['running', 'Source investigation is still running.'],
+    ['failed', 'Source investigation failed.'],
+    ['octopus-unsupported', 'Source attribution is unavailable for octopus merges.'],
+  ] as const)('explains the %s modal state', (status, message) => {
+    const data = bisectReport();
+    data.bisect!.commits[2].mergeInvestigation = {
+      status,
+      failure: status === 'failed' ? 'merge-base failed' : undefined,
+      sourceCommits: [],
+      mergeIntroducedTargetIds: [],
+    };
+
+    const html = renderApp(data);
+
+    expect(html).toContain(message);
+    if (status === 'failed') expect(html).toContain('merge-base failed');
   });
 
   it.each([
@@ -404,6 +440,40 @@ function bisectReport(): AppReportData {
           measured: true,
           counts: { visreg: 1, perf: 2, accessibility: 0 },
           targetIds: [visualTarget.id, homepagePerfTarget.id, perfTarget.id],
+          isMerge: true,
+          mergeInvestigationStatus: 'complete',
+          mergeInvestigation: {
+            status: 'complete',
+            mergeBase: 'source-base',
+            secondParent: 'source-tip',
+            sourceCommits: [
+              {
+                sha: 'source-clean',
+                subject: 'prepare source branch',
+                measured: false,
+                isMerge: false,
+                targetIds: [],
+                counts: { visreg: 0, perf: 0, accessibility: 0 },
+              },
+              {
+                sha: 'source-bad',
+                subject: 'introduce hero regression',
+                measured: true,
+                isMerge: false,
+                targetIds: [visualTarget.id],
+                counts: { visreg: 1, perf: 0, accessibility: 0 },
+              },
+              {
+                sha: 'source-tip',
+                subject: 'merge nested source',
+                measured: true,
+                isMerge: true,
+                targetIds: [homepagePerfTarget.id],
+                counts: { visreg: 0, perf: 1, accessibility: 0 },
+              },
+            ],
+            mergeIntroducedTargetIds: [perfTarget.id],
+          },
         },
         {
           sha: 'copy-commit',

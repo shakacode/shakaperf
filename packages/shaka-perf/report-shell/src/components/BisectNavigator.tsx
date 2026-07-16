@@ -15,6 +15,7 @@ import type {
   BisectReportModel,
 } from '../types';
 import type { BisectSelection } from '../bisect-selection';
+import { MergeInvestigationDialog } from './MergeInvestigationDialog';
 
 interface Props {
   model: BisectReportModel;
@@ -198,10 +199,15 @@ function CommitNode({
   selected: boolean;
   onSelect: (selection: BisectSelection) => void;
 }) {
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const handleClick = useCallback(
-    () => onSelect({ kind: 'commit', sha: commit.sha }),
-    [commit.sha, onSelect],
+    () => {
+      onSelect({ kind: 'commit', sha: commit.sha });
+      if (commit.isMerge) setMergeDialogOpen(true);
+    },
+    [commit.isMerge, commit.sha, onSelect],
   );
+  const handleMergeDialogClose = useCallback(() => setMergeDialogOpen(false), []);
   const endpoint = endpointLabel(commit, model);
 
   return (
@@ -217,6 +223,7 @@ function CommitNode({
         data-bisect-sha={commit.sha}
         data-measured={commit.measured ? 'true' : 'false'}
         aria-pressed={selected}
+        aria-haspopup={commit.isMerge ? 'dialog' : undefined}
         onClick={handleClick}
       >
         <span className="bisect-node__meta">
@@ -246,6 +253,14 @@ function CommitNode({
           />
         </span>
       </button>
+      {commit.isMerge ? (
+        <MergeInvestigationDialog
+          commit={commit}
+          targetsById={model.targetsById}
+          open={mergeDialogOpen}
+          onClose={handleMergeDialogClose}
+        />
+      ) : null}
     </li>
   );
 }
