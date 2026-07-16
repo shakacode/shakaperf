@@ -96,6 +96,10 @@ describe('compare bisect report browser acceptance', () => {
 
     const visualNode = page.locator(`[data-bisect-sha="${VISUAL_SHA}"]`);
     await expectText(
+      visualNode.locator('[data-merge-investigation-status="complete"]'),
+      'investigation: complete',
+    );
+    await expectText(
       visualNode.locator('.bisect-counter[data-category="visreg"] strong'),
       '1',
     );
@@ -224,6 +228,11 @@ function reportData(): BisectReportData {
     subject: 'hero diff',
     status: 'found',
     firstBadSha: VISUAL_SHA,
+    mainlineFirstBadSha: VISUAL_SHA,
+    mainlineIsMerge: true,
+    mergeInvestigationStatus: 'complete',
+    mergeResult: 'source-found',
+    mergeSourceSha: PRE_VISUAL_SHA,
   });
   const perfTarget = target({
     id: 'perf-target',
@@ -299,7 +308,14 @@ function reportData(): BisectReportData {
       commits: [
         commit(GOOD_SHA, 'baseline', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(PRE_VISUAL_SHA, 'prepare hero', true, [], { visreg: 0, perf: 0, accessibility: 0 }),
-        commit(VISUAL_SHA, 'change hero', true, [visualTarget.id], { visreg: 1, perf: 0, accessibility: 0 }),
+        commit(
+          VISUAL_SHA,
+          'change hero',
+          true,
+          [visualTarget.id],
+          { visreg: 1, perf: 0, accessibility: 0 },
+          { isMerge: true, mergeInvestigationStatus: 'complete' },
+        ),
         commit(CLEAN_SHA, 'refactor copy', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(BAD_SHA, 'ship regressions', true, [perfTarget.id, accessibilityTarget.id], {
           visreg: 0,
@@ -378,8 +394,12 @@ function commit(
   measured: boolean,
   targetIds: string[],
   counts: { visreg: number; perf: number; accessibility: number },
+  merge: Pick<
+    BisectReportData['bisect']['commits'][number],
+    'isMerge' | 'mergeInvestigationStatus'
+  > = {},
 ) {
-  return { sha, subject, measured, targetIds, counts, position: 0 };
+  return { sha, subject, measured, targetIds, counts, position: 0, ...merge };
 }
 
 function comparePipelineConfig() {

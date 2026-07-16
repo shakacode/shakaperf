@@ -28,6 +28,7 @@ export interface RunSearchPhaseOptions {
   nextAttemptId(): string;
   now(): string;
   checkpoint(phase: BisectSearchPhase): void;
+  afterCheckpoint?(phase: BisectSearchPhase): void;
   measure(work: CandidateWork): Promise<CandidateResult>;
 }
 
@@ -40,6 +41,7 @@ export async function runSearchPhase(
     startedAt: options.phase.startedAt ?? options.now(),
   });
   options.checkpoint(phase);
+  options.afterCheckpoint?.(phase);
 
   while (true) {
     const work = nextCandidate(applyCachedObservations(toLegacySession(phase)));
@@ -50,6 +52,7 @@ export async function runSearchPhase(
         finishedAt: options.now(),
       };
       options.checkpoint(phase);
+      options.afterCheckpoint?.(phase);
       return phase;
     }
 
@@ -65,6 +68,8 @@ export async function runSearchPhase(
     };
     phase = { ...phase, attempts: [...phase.attempts, attempt] };
     options.checkpoint(phase);
+    options.afterCheckpoint?.(phase);
+    const preMeasurePhase = phase;
 
     try {
       const result = await options.measure(work);
@@ -82,12 +87,13 @@ export async function runSearchPhase(
           ? { compareResultsPath: result.commitRun.compareResultsPath }
           : {}),
       };
-      phase = normalizePhase({
-        ...phase,
+      const completedPhase = normalizePhase({
+        ...preMeasurePhase,
         targets: updated.targets,
-        attempts: replaceAttempt(phase.attempts, completedAttempt),
+        attempts: replaceAttempt(preMeasurePhase.attempts, completedAttempt),
       });
-      options.checkpoint(phase);
+      options.checkpoint(completedPhase);
+      phase = completedPhase;
     } catch (error) {
       const incompleteAttempt: CommitAttempt = {
         ...attempt,
@@ -96,12 +102,14 @@ export async function runSearchPhase(
         error: error instanceof Error ? error.message : String(error),
       };
       phase = {
-        ...phase,
-        attempts: replaceAttempt(phase.attempts, incompleteAttempt),
+        ...preMeasurePhase,
+        attempts: replaceAttempt(preMeasurePhase.attempts, incompleteAttempt),
       };
       options.checkpoint(phase);
+      options.afterCheckpoint?.(phase);
       throw error;
     }
+    options.afterCheckpoint?.(phase);
   }
 }
 

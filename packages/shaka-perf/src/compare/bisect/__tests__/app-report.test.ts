@@ -222,6 +222,27 @@ describe('bisect report App rendering', () => {
     expect(html).toContain('topic-s');
     expect(html).toContain('source found');
   });
+
+  it.each([
+    ['merge-uninvestigated', 'not started'],
+    ['running', 'running'],
+    ['complete', 'complete'],
+    ['octopus-unsupported', 'unsupported'],
+    ['failed', 'failed'],
+  ] as const)('renders the %s merge investigation state on its commit node', (status, label) => {
+    const data = bisectReport();
+    const model = data.bisect!;
+    model.commits[2] = {
+      ...model.commits[2],
+      isMerge: true,
+      mergeInvestigationStatus: status,
+    };
+
+    const html = renderApp(data);
+
+    expect(html).toContain(`data-merge-investigation-status="${status}"`);
+    expect(html).toContain(`investigation: ${label}`);
+  });
 });
 
 function renderApp(data: AppReportData, initialBisectSelection?: InitialBisectSelection): string {

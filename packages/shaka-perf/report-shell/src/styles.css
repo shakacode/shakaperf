@@ -812,7 +812,7 @@ input {
 .bisect-node__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
   color: var(--fg-muted);
@@ -838,8 +838,19 @@ input {
   border-radius: 999px;
 }
 
+.bisect-node__investigation {
+  padding: 1px 4px;
+  border: 1px dashed currentColor;
+  white-space: nowrap;
+}
+
+.bisect-node__investigation[data-merge-investigation-status="failed"] {
+  color: var(--error);
+}
+
 .bisect-node__measurement {
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .bisect-node[data-measured="true"] .bisect-node__measurement::before {

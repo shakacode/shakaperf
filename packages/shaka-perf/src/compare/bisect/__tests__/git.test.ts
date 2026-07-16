@@ -32,6 +32,7 @@ function commitFile(repoDir: string, filename: string, contents: string): string
 
 interface RepositoryFixture {
   rootDir: string;
+  sourceDir: string;
   controlDir: string;
   experimentDir: string;
   commits: string[];
@@ -57,6 +58,7 @@ function createRepositoryTemplate(): RepositoryFixture {
 
   return {
     rootDir,
+    sourceDir,
     controlDir,
     experimentDir,
     commits,
@@ -72,6 +74,7 @@ function createRepositoryFixture(template: RepositoryFixture): RepositoryFixture
   fs.cpSync(template.experimentDir, experimentDir, { recursive: true });
   return {
     rootDir,
+    sourceDir: template.sourceDir,
     controlDir,
     experimentDir,
     commits: template.commits,

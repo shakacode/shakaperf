@@ -59,6 +59,7 @@ export interface RunMergeInvestigationsOptions {
   nextAttemptId(): string;
   now(): string;
   checkpoint(session: BisectSession): void;
+  afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
   measure(work: CandidateWork, targets: readonly BisectTarget[]): Promise<CandidateResult>;
 }
@@ -75,10 +76,24 @@ export async function runMergeInvestigations(
     const primaryTargets = session.primary?.targets.filter((target) => (
       investigation!.targetIds.includes(target.id)
     )) ?? [];
-    const range = await options.prepareRange(investigation);
+    let range: PreparedChildGitRange;
+    try {
+      range = await options.prepareRange(investigation);
+    } catch (error) {
+      investigation = {
+        ...investigation,
+        status: 'failed',
+        failure: error instanceof Error ? error.message : String(error),
+      };
+      session = updateInvestigation(session, investigation);
+      options.checkpoint(session);
+      options.afterCheckpoint?.(session);
+      continue;
+    }
     investigation = { ...investigation, status: 'running' };
     session = updateInvestigation(session, investigation);
     options.checkpoint(session);
+    options.afterCheckpoint?.(session);
 
     let phase = investigation.phase;
     const validationComplete = phase?.attempts.some((attempt) => (
@@ -100,6 +115,7 @@ export async function runMergeInvestigations(
       investigation = { ...investigation, phase };
       session = updateInvestigation(session, investigation);
       options.checkpoint(session);
+      options.afterCheckpoint?.(session);
 
       let validation: CandidateResult;
       try {
@@ -116,6 +132,7 @@ export async function runMergeInvestigations(
         };
         session = updateInvestigation(session, { ...investigation, phase });
         options.checkpoint(session);
+        options.afterCheckpoint?.(session);
         throw error;
       }
 
@@ -146,6 +163,7 @@ export async function runMergeInvestigations(
       investigation = { ...investigation, phase, targetResults };
       session = updateInvestigation(session, investigation);
       options.checkpoint(session);
+      options.afterCheckpoint?.(session);
     }
 
     if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
@@ -161,6 +179,12 @@ export async function runMergeInvestigations(
           investigation = { ...investigation!, phase: updatedPhase };
           session = updateInvestigation(session, investigation);
           options.checkpoint(session);
+        },
+        afterCheckpoint(updatedPhase) {
+          phase = updatedPhase;
+          investigation = { ...investigation!, phase: updatedPhase };
+          session = updateInvestigation(session, investigation);
+          options.afterCheckpoint?.(session);
         },
         measure: (work) => options.measure(
           work,
@@ -181,6 +205,7 @@ export async function runMergeInvestigations(
     investigation = { ...investigation, phase, status: 'complete', targetResults };
     session = updateInvestigation(session, investigation);
     options.checkpoint(session);
+    options.afterCheckpoint?.(session);
   }
   return session;
 }

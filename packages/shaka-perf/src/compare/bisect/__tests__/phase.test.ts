@@ -183,4 +183,69 @@ describe('runSearchPhase', () => {
       { sha: 'a', status: 'complete' },
     ]);
   });
+
+  it('does not advance bounds when the completed checkpoint fails', async () => {
+    const initial = phase();
+    initial.targets = [initial.targets[0]];
+    let persisted = initial;
+    let failCompletedCheckpoint = true;
+    const measured: string[] = [];
+    let attemptId = 0;
+    const common = {
+      preferredRefreshMode: 'commands' as const,
+      nextAttemptId: () => `attempt-${++attemptId}`,
+      now: () => '2026-07-13T00:00:00.000Z',
+      checkpoint(value: BisectSearchPhase) {
+        if (failCompletedCheckpoint
+          && value.attempts.some((attempt) => attempt.status === 'complete')) {
+          failCompletedCheckpoint = false;
+          throw new Error('session checkpoint failed');
+        }
+        persisted = value;
+      },
+      async measure(work: { sha: string }) {
+        measured.push(work.sha);
+        return result(work.sha, [observation('visual', work.sha, true)]);
+      },
+    };
+
+    await expect(runSearchPhase({ ...common, phase: initial }))
+      .rejects.toThrow('session checkpoint failed');
+
+    expect(persisted.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 4 });
+    expect(persisted.targets[0].observations.b).toBeUndefined();
+    expect(persisted.attempts).toMatchObject([{ sha: 'b', status: 'incomplete' }]);
+
+    await runSearchPhase({ ...common, phase: persisted });
+
+    expect(measured.slice(0, 2)).toEqual(['b', 'b']);
+  });
+
+  it('keeps a durable completed attempt when report rendering fails afterward', async () => {
+    const initial = phase();
+    initial.targets = [initial.targets[0]];
+    let persisted = initial;
+
+    await expect(runSearchPhase({
+      phase: initial,
+      preferredRefreshMode: 'commands',
+      nextAttemptId: () => 'attempt-1',
+      now: () => '2026-07-13T00:00:00.000Z',
+      checkpoint(value) {
+        persisted = value;
+      },
+      afterCheckpoint(value) {
+        if (value.attempts.some((attempt) => attempt.status === 'complete')) {
+          throw new Error('report rendering failed');
+        }
+      },
+      async measure(work) {
+        return result(work.sha, [observation('visual', work.sha, true)]);
+      },
+    })).rejects.toThrow('report rendering failed');
+
+    expect(persisted.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 2 });
+    expect(persisted.targets[0].observations.b).toMatchObject({ present: true });
+    expect(persisted.attempts).toMatchObject([{ sha: 'b', status: 'complete' }]);
+  });
 });

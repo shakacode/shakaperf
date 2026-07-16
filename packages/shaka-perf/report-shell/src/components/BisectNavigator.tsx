@@ -90,6 +90,17 @@ function hasRegressions(commit: BisectReportCommit): boolean {
   return Object.values(commit.counts).some((count) => count > 0);
 }
 
+const mergeInvestigationLabels: Record<
+  NonNullable<BisectReportCommit['mergeInvestigationStatus']>,
+  string
+> = {
+  'merge-uninvestigated': 'not started',
+  running: 'running',
+  complete: 'complete',
+  'octopus-unsupported': 'unsupported',
+  failed: 'failed',
+};
+
 type CommitTimelineItem =
   | { kind: 'clean-run'; commits: BisectReportCommit[] }
   | { kind: 'regression'; commit: BisectReportCommit };
@@ -211,6 +222,14 @@ function CommitNode({
         <span className="bisect-node__meta">
           {endpoint ? <span className="bisect-node__endpoint">{endpoint}</span> : null}
           {commit.isMerge ? <span className="bisect-node__merge">merge</span> : null}
+          {commit.isMerge && commit.mergeInvestigationStatus ? (
+            <span
+              className="bisect-node__investigation"
+              data-merge-investigation-status={commit.mergeInvestigationStatus}
+            >
+              investigation: {mergeInvestigationLabels[commit.mergeInvestigationStatus]}
+            </span>
+          ) : null}
           <span className="bisect-node__measurement">
             {commit.measured ? 'measured' : 'not measured'}
           </span>

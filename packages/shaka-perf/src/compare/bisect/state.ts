@@ -118,6 +118,7 @@ const mergeInvestigationSchema = z.object({
   targetIds: z.array(z.string()),
   phase: phaseSchema.optional(),
   targetResults: z.record(z.string(), mergeTargetResultSchema),
+  failure: z.string().optional(),
 }).strict();
 
 const commitRunSchema = z.object({

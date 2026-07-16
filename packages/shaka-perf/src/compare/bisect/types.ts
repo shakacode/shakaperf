@@ -180,6 +180,7 @@ export interface MergeInvestigation {
   targetIds: string[];
   phase?: BisectSearchPhase;
   targetResults: Record<string, MergeTargetResult>;
+  failure?: string;
 }
 
 export interface BisectSessionV2 {

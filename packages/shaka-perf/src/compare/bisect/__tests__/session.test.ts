@@ -478,6 +478,31 @@ describe('compare bisect session orchestration', () => {
     expect(resumeHarness.calls.compares).toEqual([]);
   });
 
+  it('marks an empty primary phase complete so resume requires no work', async () => {
+    const bisectInput = input(rootDir);
+    const initialHarness = deps({ bad: [resultWithVisualDiff(null)] });
+    const completed = await executeBisect(bisectInput, initialHarness.deps);
+    const resumeHarness = deps({});
+
+    expect(completed).toMatchObject({
+      status: 'complete',
+      targets: [],
+      primary: { status: 'complete', targets: [], attempts: [] },
+    });
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: parseBisectSession(completed),
+      resumeBadRefTests: [resultWithVisualDiff(null)],
+    }, resumeHarness.deps);
+
+    expect(resumed.primary?.status).toBe('complete');
+    expect(resumeHarness.calls.events).not.toContain('lease:begin');
+    expect(resumeHarness.calls.checkouts).toEqual([]);
+    expect(resumeHarness.calls.materialized).toEqual([]);
+    expect(resumeHarness.calls.compares).toEqual([]);
+  });
+
   it('retries incomplete work with a full first reconciliation', async () => {
     const bisectInput = input(rootDir);
     const failedHarness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {

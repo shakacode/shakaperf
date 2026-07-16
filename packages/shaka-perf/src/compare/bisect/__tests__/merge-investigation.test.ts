@@ -197,4 +197,34 @@ describe('merge investigation', () => {
     expect(completed.mergeInvestigations?.merge.targetResults.one)
       .toEqual({ kind: 'source-found', sourceSha: 'source' });
   });
+
+  it('records child-range preparation failures without discarding the primary result', async () => {
+    const queued = buildMergeQueue(session(['main', 'topic']));
+    let checkpoint = queued;
+    let measured = false;
+
+    const completed = await runMergeInvestigations({
+      session: queued,
+      preferredRefreshMode: 'commands',
+      now: () => 'now',
+      nextAttemptId: () => 'attempt',
+      checkpoint(value) { checkpoint = value; },
+      async prepareRange() {
+        throw new Error('second parent is not reachable from merge base');
+      },
+      async measure() {
+        measured = true;
+        return result('topic', []);
+      },
+    });
+
+    expect(measured).toBe(false);
+    expect(completed.primary?.status).toBe('complete');
+    expect(completed.mergeInvestigations?.merge).toMatchObject({
+      status: 'failed',
+      failure: 'second parent is not reachable from merge base',
+      targetResults: { one: { kind: 'merge-uninvestigated' } },
+    });
+    expect(checkpoint).toEqual(completed);
+  });
 });

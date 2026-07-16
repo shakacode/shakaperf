@@ -416,9 +416,15 @@ export async function executeBisect(
   let cancellationSignal: NodeJS.Signals | null = null;
   let disposeSignalHandlers: (() => void) | null = null;
 
-  const persist = (): void => {
+  const persistSession = (): void => {
     deps.writeSession(session);
+  };
+  const refreshReport = (): void => {
     if (badRefTests) deps.writeReport(session, badRefTests);
+  };
+  const persist = (): void => {
+    persistSession();
+    refreshReport();
   };
   const checkCancellation = (): void => {
     if (cancellationSignal) throw new BisectInterruptedError(cancellationSignal);
@@ -619,6 +625,18 @@ export async function executeBisect(
       persist();
     } else if (session.targets.length === 0) {
       deps.logProgress('No regression targets were present at the bad ref');
+      const primary = session.primary!;
+      session = {
+        ...session,
+        primary: {
+          ...primary,
+          status: 'complete',
+          targets: [],
+          startedAt: primary.startedAt ?? deps.now(),
+          finishedAt: deps.now(),
+        },
+      };
+      persist();
     } else {
       if (input.validateGoodRef) {
         const goodTargets = activeTargets(session);
@@ -668,7 +686,11 @@ export async function executeBisect(
         now: deps.now,
         checkpoint(phase) {
           session = { ...session, primary: phase, targets: phase.targets };
-          persist();
+          persistSession();
+        },
+        afterCheckpoint(phase) {
+          session = { ...session, primary: phase, targets: phase.targets };
+          refreshReport();
         },
         async measure(work) {
           const targets = session.targets.filter((target) => work.targetIds.includes(target.id));
@@ -710,7 +732,11 @@ export async function executeBisect(
         now: deps.now,
         checkpoint(updated) {
           session = updated;
-          persist();
+          persistSession();
+        },
+        afterCheckpoint(updated) {
+          session = updated;
+          refreshReport();
         },
         prepareRange(investigation) {
           if (deps.prepareChildRange) return deps.prepareChildRange(investigation);
