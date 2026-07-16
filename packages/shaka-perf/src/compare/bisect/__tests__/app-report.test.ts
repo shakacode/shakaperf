@@ -227,6 +227,7 @@ describe('bisect report App rendering', () => {
     const html = renderApp(bisectReport());
 
     expect(html).toContain('data-bisect-merge-dialog="mixed-commit"');
+    expect(html).toContain('class="ui-dialog ui-dialog--wide"');
     expect(html).toContain('prepare source branch');
     expect(html).toContain('introduce hero regression');
     expect(html).toContain('merge nested source');

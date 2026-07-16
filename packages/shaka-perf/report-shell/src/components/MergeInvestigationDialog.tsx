@@ -129,6 +129,7 @@ export function MergeInvestigationDialog({ commit, targetsById, open, onClose }:
     <Dialog
       open={open}
       onClose={onClose}
+      variant="wide"
       title={(
         <span className="ui-dialog__title-text">
           merge investigation · {commit.sha.slice(0, 7)}

@@ -27,7 +27,7 @@ interface DialogProps {
   title?: ReactNode;
   meta?: ReactNode;
   children: ReactNode;
-  variant?: 'default' | 'compact';
+  variant?: 'default' | 'compact' | 'wide';
 }
 
 export function Dialog({
@@ -77,7 +77,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={`ui-dialog${variant === 'compact' ? ' ui-dialog--compact' : ''}`}
+      className={`ui-dialog${variant === 'default' ? '' : ` ui-dialog--${variant}`}`}
     >
       <div className="ui-dialog__surface">
         <header className="ui-dialog__head">

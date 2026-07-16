@@ -2396,6 +2396,18 @@ input {
   max-height: 80vh;
 }
 
+.ui-dialog--wide {
+  width: min(1080px, calc(100vw - 32px));
+  height: auto;
+  max-width: calc(100vw - 32px);
+  max-height: 90vh;
+}
+
+.ui-dialog--wide .ui-dialog__surface {
+  height: auto;
+  max-height: 90vh;
+}
+
 .ui-dialog::backdrop {
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
