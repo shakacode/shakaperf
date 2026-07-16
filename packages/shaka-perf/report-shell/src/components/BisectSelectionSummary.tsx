@@ -7,7 +7,9 @@
  * License in LICENSE.md.
  */
 
+import { Fragment, type KeyboardEvent } from 'react';
 import { selectionTargetIds, type BisectSelection } from '../bisect-selection';
+import { formatPValue } from '../../../src/compare/stages/shared/perf-report';
 import type { BisectReportModel, BisectReportTarget } from '../types';
 
 interface Props {
@@ -23,9 +25,18 @@ interface TestGroup {
 }
 
 interface ComparisonValue {
+  items: readonly {
+    label: string;
+    value: string;
+  }[];
+}
+
+interface PerfComparisonValue {
   control: string;
   experiment: string;
-  change: string;
+  delta: string;
+  percent: string;
+  pValue: string;
 }
 
 const categoryOrder: BisectReportTarget['category'][] = [
@@ -116,16 +127,6 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
   const values = target.badRefObservation?.values;
   if (!values) return null;
 
-  if (value(values, 'controlDisplay') != null || value(values, 'experimentDisplay') != null) {
-    const delta = display(value(values, 'deltaDisplay'));
-    const percent = value(values, 'percentDisplay');
-    return {
-      control: display(value(values, 'controlDisplay')),
-      experiment: display(value(values, 'experimentDisplay')),
-      change: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
-    };
-  }
-
   if (value(values, 'controlViolationCount') != null) {
     const violationChange = signedDifference(
       value(values, 'experimentViolationCount'),
@@ -138,63 +139,173 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
       'nodes',
     );
     return {
-      control: accessibilityCount(values, 'control'),
-      experiment: accessibilityCount(values, 'experiment'),
-      change: `${violationChange} · ${nodeChange}`,
+      items: [
+        { label: 'Control', value: accessibilityCount(values, 'control') },
+        { label: 'Experiment', value: accessibilityCount(values, 'experiment') },
+        { label: 'Change', value: `${violationChange} · ${nodeChange}` },
+      ],
     };
   }
 
   if (value(values, 'misMatchPercentage') != null) {
     const mismatch = display(value(values, 'misMatchPercentage'));
     const pixels = display(value(values, 'diffPixels'));
+    const threshold = value(values, 'threshold');
     return {
-      control: 'baseline image',
-      experiment: 'candidate image',
-      change: `${mismatch}% mismatch · ${pixels} pixels`,
-    };
-  }
-
-  if (value(values, 'controlValue') != null || value(values, 'experimentValue') != null) {
-    return {
-      control: display(value(values, 'controlValue')),
-      experiment: display(value(values, 'experimentValue')),
-      change: display(value(values, 'deltaValue')),
+      items: [
+        { label: 'Mismatch', value: `${mismatch}%` },
+        { label: 'Changed pixels', value: pixels },
+        {
+          label: 'Threshold',
+          value: threshold == null ? 'not recorded' : `${display(threshold)}%`,
+        },
+      ],
     };
   }
 
   return null;
 }
 
+function perfComparisonValue(target: BisectReportTarget): PerfComparisonValue {
+  const values = target.badRefObservation?.values ?? {};
+  const pValue = value(values, 'pValue');
+  return {
+    control: display(value(values, 'controlDisplay')),
+    experiment: display(value(values, 'experimentDisplay')),
+    delta: display(value(values, 'deltaDisplay')),
+    percent: display(value(values, 'percentDisplay')),
+    pValue: typeof pValue === 'number' ? formatPValue(pValue) : 'not recorded',
+  };
+}
+
+function scrollToDetailedTarget(target: BisectReportTarget): void {
+  if (!target.testId) return;
+  const card = Array.from(document.querySelectorAll<HTMLElement>('[data-report-test-id]'))
+    .find((element) => element.dataset.reportTestId === target.testId);
+  if (!card) return;
+  const stage = card.querySelector<HTMLElement>(`[data-stage="${target.category}"]`);
+  const destination = stage ?? card;
+  document.querySelectorAll<HTMLElement>('[data-bisect-scroll-target="true"]')
+    .forEach((element) => element.removeAttribute('data-bisect-scroll-target'));
+  destination.setAttribute('data-bisect-scroll-target', 'true');
+  destination.focus({ preventScroll: true });
+  destination.scrollIntoView({
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  });
+  window.setTimeout(() => destination.removeAttribute('data-bisect-scroll-target'), 1800);
+}
+
+function activateTargetFromKeyboard(
+  event: KeyboardEvent<HTMLElement>,
+  target: BisectReportTarget,
+): void {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  scrollToDetailedTarget(target);
+}
+
+function TargetDetails({ target }: { target: BisectReportTarget }) {
+  return (
+    <>
+      {target.invalidReason ? (
+        <p className="bisect-target__invalid-reason">
+          <strong>Invalid:</strong> {target.invalidReason}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function PerfTargetTable({ targets }: { targets: readonly BisectReportTarget[] }) {
+  return (
+    <div className="bisect-perf-table-wrap">
+      <table className="bisect-perf-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Control</th>
+            <th>Experiment</th>
+            <th>Delta</th>
+            <th>%Delta</th>
+            <th>p</th>
+          </tr>
+        </thead>
+        <tbody>
+          {targets.map((target) => {
+            const comparison = perfComparisonValue(target);
+            const hasDetails = Boolean(target.invalidReason);
+            return (
+              <Fragment key={target.id}>
+                <tr
+                  data-category={target.category}
+                  data-target-id={target.id}
+                  data-scroll-target-test={target.testId}
+                  data-scroll-target-stage={target.testId ? target.category : undefined}
+                  role={target.testId ? 'link' : undefined}
+                  tabIndex={target.testId ? 0 : undefined}
+                  onClick={target.testId ? () => scrollToDetailedTarget(target) : undefined}
+                  onKeyDown={target.testId
+                    ? (event) => activateTargetFromKeyboard(event, target)
+                    : undefined}
+                  title={target.testId ? 'Show detailed regression evidence' : undefined}
+                >
+                  <td className="bisect-perf-table__metric">
+                    <strong>{target.subject}</strong>
+                    <span>{target.viewport}</span>
+                  </td>
+                  <td>{comparison.control}</td>
+                  <td>{comparison.experiment}</td>
+                  <td className="bisect-perf-table__delta">{comparison.delta}</td>
+                  <td className="bisect-perf-table__delta">{comparison.percent}</td>
+                  <td>{comparison.pValue}</td>
+                </tr>
+                {hasDetails ? (
+                  <tr className="bisect-perf-table__details">
+                    <td colSpan={6}><TargetDetails target={target} /></td>
+                  </tr>
+                ) : null}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function TargetRow({ target }: { target: BisectReportTarget }) {
   const comparison = comparisonValue(target);
+  const canNavigate = target.testId != null;
 
   return (
-    <li className="bisect-target" data-category={target.category} data-target-id={target.id}>
+    <li
+      className="bisect-target"
+      data-category={target.category}
+      data-target-id={target.id}
+      data-scroll-target-test={target.testId}
+      data-scroll-target-stage={canNavigate ? target.category : undefined}
+      role={canNavigate ? 'link' : undefined}
+      tabIndex={canNavigate ? 0 : undefined}
+      onClick={canNavigate ? () => scrollToDetailedTarget(target) : undefined}
+      onKeyDown={canNavigate ? (event) => activateTargetFromKeyboard(event, target) : undefined}
+      title={canNavigate ? 'Show detailed regression evidence' : undefined}
+    >
       <header className="bisect-target__header">
         <h4 className="bisect-target__subject">{target.subject}</h4>
         <span className="bisect-target__viewport">{target.viewport}</span>
       </header>
       {comparison ? (
         <dl className="bisect-target__comparison">
-          <div>
-            <dt>Control</dt>
-            <dd>{comparison.control}</dd>
-          </div>
-          <div>
-            <dt>Experiment</dt>
-            <dd>{comparison.experiment}</dd>
-          </div>
-          <div>
-            <dt>Change</dt>
-            <dd>{comparison.change}</dd>
-          </div>
+          {comparison.items.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
         </dl>
       ) : null}
-      {target.invalidReason ? (
-        <p className="bisect-target__invalid-reason">
-          <strong>Invalid:</strong> {target.invalidReason}
-        </p>
-      ) : null}
+      <TargetDetails target={target} />
     </li>
   );
 }
@@ -222,9 +333,13 @@ function TestGroupCard({ group }: { group: TestGroup }) {
                   </span>
                   <span>{pluralize(targets.length, 'target')}</span>
                 </header>
-                <ul className="bisect-target-category__list">
-                  {targets.map((target) => <TargetRow key={target.id} target={target} />)}
-                </ul>
+                {category === 'perf' ? (
+                  <PerfTargetTable targets={targets} />
+                ) : (
+                  <ul className="bisect-target-category__list">
+                    {targets.map((target) => <TargetRow key={target.id} target={target} />)}
+                  </ul>
+                )}
               </section>
             );
           })}

@@ -30,14 +30,13 @@ function commitFile(repoDir: string, filename: string, contents: string): string
 
 interface RepositoryFixture {
   rootDir: string;
-  sourceDir: string;
   controlDir: string;
   experimentDir: string;
   commits: string[];
   experimentBranch: string;
 }
 
-function createRepositoryFixture(): RepositoryFixture {
+function createRepositoryTemplate(): RepositoryFixture {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-git-'));
   const sourceDir = path.join(rootDir, 'source');
   const controlDir = path.join(rootDir, 'control');
@@ -56,7 +55,6 @@ function createRepositoryFixture(): RepositoryFixture {
 
   return {
     rootDir,
-    sourceDir,
     controlDir,
     experimentDir,
     commits,
@@ -64,11 +62,35 @@ function createRepositoryFixture(): RepositoryFixture {
   };
 }
 
+function createRepositoryFixture(template: RepositoryFixture): RepositoryFixture {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-git-'));
+  const controlDir = path.join(rootDir, 'control');
+  const experimentDir = path.join(rootDir, 'experiment');
+  fs.cpSync(template.controlDir, controlDir, { recursive: true });
+  fs.cpSync(template.experimentDir, experimentDir, { recursive: true });
+  return {
+    rootDir,
+    controlDir,
+    experimentDir,
+    commits: template.commits,
+    experimentBranch: template.experimentBranch,
+  };
+}
+
 describe('bisect Git helpers', () => {
+  let template: RepositoryFixture;
   let fixture: RepositoryFixture;
 
+  beforeAll(() => {
+    template = createRepositoryTemplate();
+  });
+
+  afterAll(() => {
+    fs.rmSync(template.rootDir, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
-    fixture = createRepositoryFixture();
+    fixture = createRepositoryFixture(template);
   });
 
   afterEach(() => {

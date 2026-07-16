@@ -57,12 +57,31 @@ describe('bisect report App rendering', () => {
     expect(homepageGroup).toContain('2 regression targets');
     expect(homepageGroup).toContain('visual');
     expect(homepageGroup).toContain('performance');
-    expect(homepageGroup).toContain('<dt>Control</dt>');
-    expect(homepageGroup).toContain('<dt>Experiment</dt>');
-    expect(homepageGroup).toContain('<dt>Change</dt>');
+    expect(homepageGroup).toContain('class="bisect-perf-table"');
+    expect(homepageGroup).toContain('data-scroll-target-test="homepage-card"');
+    expect(homepageGroup).toContain('data-scroll-target-stage="visreg"');
+    expect(homepageGroup).toContain('data-scroll-target-stage="perf"');
+    expect(homepageGroup.match(/role="link"/g)).toHaveLength(2);
+    expect(homepageGroup.match(/tabindex="0"/g)).toHaveLength(2);
+    expect(cardMarkup(html, 'Homepage')).toContain('data-report-test-id="homepage-card"');
+    expect(homepageGroup).toContain('<th>Metric</th>');
+    expect(homepageGroup).toContain('<th>Control</th>');
+    expect(homepageGroup).toContain('<th>Experiment</th>');
+    expect(homepageGroup).toContain('<th>Delta</th>');
+    expect(homepageGroup).toContain('<th>%Delta</th>');
+    expect(homepageGroup).toContain('<th>p</th>');
+    expect(homepageGroup).toContain('<dt>Mismatch</dt>');
+    expect(homepageGroup).toContain('<dt>Changed pixels</dt>');
+    expect(homepageGroup).toContain('<dt>Threshold</dt>');
+    expect(homepageGroup).toContain('<dd>12.5%</dd>');
+    expect(homepageGroup).toContain('<dd>4,200</dd>');
+    expect(homepageGroup).toContain('<dd>0.1%</dd>');
+    expect(homepageGroup).not.toContain('baseline image');
+    expect(homepageGroup).not.toContain('candidate image');
     expect(homepageGroup).toContain('1.8s');
     expect(homepageGroup).toContain('2.1s');
     expect(homepageGroup).toContain('+300ms');
+    expect(homepageGroup).toContain('<td>0.007813</td>');
     expect(homepageGroup).not.toContain('controlDisplay');
     expect(homepageGroup).not.toContain('misMatchPercentage');
   });
@@ -276,6 +295,7 @@ function bisectReport(): AppReportData {
       experimentDisplay: '2.1s',
       deltaDisplay: '+300ms',
       percentDisplay: '+16.7%',
+      pValue: 0.007813,
     },
   });
   const perfTarget = bisectTarget({

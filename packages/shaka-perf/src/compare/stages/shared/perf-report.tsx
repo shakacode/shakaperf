@@ -23,7 +23,7 @@ const GROUPS: PerfMetricGroup[] = ['vitals', 'diagnostics'];
 // Switch to exponential below 1e-6 — at that point a decimal would need
 // more than 5 leading zeros and the magnitude is easier to read in mantissa
 // form. Trim trailing zeros so typical values stay compact (0.5, not 0.500000).
-function formatPValue(p: number): string {
+export function formatPValue(p: number): string {
   if (!Number.isFinite(p)) return String(p);
   if (p === 0) return '0';
   if (Math.abs(p) < 1e-6) return p.toExponential(1);
