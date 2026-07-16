@@ -9,6 +9,7 @@
 
 import { Fragment, type KeyboardEvent } from 'react';
 import { selectionTargetIds, type BisectSelection } from '../bisect-selection';
+import { formatPValue } from '../../../src/compare/stages/shared/perf-report';
 import type { BisectReportModel, BisectReportTarget } from '../types';
 
 interface Props {
@@ -102,13 +103,6 @@ function display(valueToFormat: string | number | boolean | null | undefined): s
     : String(valueToFormat);
 }
 
-function formatPValue(pValue: number): string {
-  if (!Number.isFinite(pValue)) return String(pValue);
-  if (pValue === 0) return '0';
-  if (Math.abs(pValue) < 1e-6) return pValue.toExponential(1);
-  return pValue.toFixed(6).replace(/\.?0+$/, '');
-}
-
 function signedDifference(experiment: unknown, control: unknown, label: string): string {
   if (typeof experiment !== 'number' || typeof control !== 'number') return 'not recorded';
   const difference = experiment - control;
@@ -132,21 +126,6 @@ function accessibilityCount(
 function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
   const values = target.badRefObservation?.values;
   if (!values) return null;
-
-  if (value(values, 'controlDisplay') != null || value(values, 'experimentDisplay') != null) {
-    const delta = display(value(values, 'deltaDisplay'));
-    const percent = value(values, 'percentDisplay');
-    return {
-      items: [
-        { label: 'Control', value: display(value(values, 'controlDisplay')) },
-        { label: 'Experiment', value: display(value(values, 'experimentDisplay')) },
-        {
-          label: 'Change',
-          value: percent == null || percent === '—' ? delta : `${delta} · ${display(percent)}`,
-        },
-      ],
-    };
-  }
 
   if (value(values, 'controlViolationCount') != null) {
     const violationChange = signedDifference(
@@ -180,16 +159,6 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
           label: 'Threshold',
           value: threshold == null ? 'not recorded' : `${display(threshold)}%`,
         },
-      ],
-    };
-  }
-
-  if (value(values, 'controlValue') != null || value(values, 'experimentValue') != null) {
-    return {
-      items: [
-        { label: 'Control', value: display(value(values, 'controlValue')) },
-        { label: 'Experiment', value: display(value(values, 'experimentValue')) },
-        { label: 'Change', value: display(value(values, 'deltaValue')) },
       ],
     };
   }

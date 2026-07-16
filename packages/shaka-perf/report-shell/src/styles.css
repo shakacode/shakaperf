@@ -1228,10 +1228,6 @@ input {
   white-space: normal;
 }
 
-.bisect-perf-table__details .bisect-target__comparison {
-  border-bottom: 1px solid var(--border);
-}
-
 .card,
 .outcome-slot {
   scroll-margin-top: 180px;
