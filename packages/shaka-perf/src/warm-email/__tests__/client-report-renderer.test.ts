@@ -1509,7 +1509,7 @@ describe('renderClientReport perf tile assembly', () => {
   });
 
   it('renders all-clean scored accessibility pages as one quiet line without an empty cost card', async () => {
-    const { html } = await renderClientReport(writePerfResultsForPages([
+    const { html, model: reportModel } = await renderClientReport(writePerfResultsForPages([
       {
         id: 'home',
         name: 'Home',
@@ -1532,9 +1532,11 @@ describe('renderClientReport perf tile assembly', () => {
     expect(a11yPanelHtml).toContain('Contact');
     expect(a11yPanelHtml).not.toContain('What this costs you');
     expect(a11yPanelHtml).not.toContain('class="cr-a11y-card"');
+    expect(reportModel.narrative.a11y.verdictPara).toBe('No accessibility issues turned up on the pages we measured.');
+    expect(reportModel.tiles.find((tile) => tile.target === 'a11y')?.conseq).toBe('No accessibility issues turned up on the pages we measured.');
   });
 
-  it('keeps the existing accessibility list fallback for an unscored clean page', async () => {
+  it('renders an unscored clean accessibility page without inventing lighter issues', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
         id: 'unscored',
@@ -1547,8 +1549,9 @@ describe('renderClientReport perf tile assembly', () => {
     const a11yPanelHtml = renderedPanel(html, 'a11y');
 
     expect(a11yPanelHtml).toContain('Unscored clean page');
-    expect(a11yPanelHtml).toContain('Lighter issues &middot; 1 page');
-    expect(a11yPanelHtml).not.toContain('page looks fine:');
+    expect(a11yPanelHtml).toContain('1 page looks fine:');
+    expect(a11yPanelHtml).not.toContain('Lighter issues');
+    expect(a11yPanelHtml).not.toContain('Only minor issues here.');
     expect(a11yPanelHtml).not.toContain('What this costs you');
   });
 
@@ -2393,7 +2396,7 @@ describe('renderClientReportHtml', () => {
   });
 
   it('groups strong a11y and AI pages into quiet lines when the optional C grouping slots are present', () => {
-    const a11yFine = [{ name: 'Should not render as a full card', path: '/strong', score: 98, status: 'good' as const, summary: 'Fine.' }];
+    const a11yFine = [{ name: 'Ungrouped lighter page', path: '/lighter', score: 88, status: 'fair' as const, summary: 'A smaller issue remains.' }];
     const agentFine = [{ name: 'Should not render as a full card', path: '/strong', score: 99, status: 'good' as const }];
     const html = renderClientReportHtml(model({
       hasA11y: true,
@@ -2419,7 +2422,7 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('Strong AI page');
     expect(html).toContain('Another strong AI page');
     expect(html).toContain('2 pages look fine:');
-    expect(html).not.toContain('Should not render as a full card');
+    expect(html).toContain('Ungrouped lighter page');
     expect(renderedPanel(html, 'a11y').match(/class="cr-a11y-card"/g)).toHaveLength(1);
     const ungroupedHtml = renderClientReportHtml(model({
       hasA11y: true,
@@ -2435,8 +2438,6 @@ describe('renderClientReportHtml', () => {
       panel.match(/background:#ffffff; border:1px solid #e7e1d8; border-radius:14px/g) ?? []
     ).length;
 
-    expect(framedCardCount(renderedPanel(ungroupedHtml, 'a11y'))).toBe(2);
-    expect(framedCardCount(renderedPanel(html, 'a11y'))).toBe(1);
     expect(framedCardCount(renderedPanel(ungroupedHtml, 'agent'))).toBe(3);
     expect(framedCardCount(renderedPanel(html, 'agent'))).toBe(2);
   });

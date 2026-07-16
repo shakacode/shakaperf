@@ -94,7 +94,7 @@ function missingRenderedWords(view: AgentPageView): number {
 
 function requiresAgentCard(view: AgentPageView): boolean {
   const renderedWords = agentRenderedWords(view);
-  if (!view.struct.rawReachable || renderedWords < MIN_AGENT_COST_WORDS) return true;
+  if (!view.struct.rawReachable || view.struct.bucket === 'poor' || renderedWords < MIN_AGENT_COST_WORDS) return true;
   return 1 - boundedCoverageRatio(agentRawWords(view), renderedWords) > MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO;
 }
 

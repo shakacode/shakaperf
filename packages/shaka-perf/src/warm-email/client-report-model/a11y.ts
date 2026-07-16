@@ -329,6 +329,7 @@ export interface A11ySection extends PreparedA11ySection {
   a11yScore?: number;
   a11yStatus: ClientReportStatus;
   highImpactTotal: number;
+  lowerImpactTotal: number;
   a11yTopIssues: string[];
   a11yWorst?: A11ySectionView;
   a11yCost?: ClientReportCostBlock;
@@ -351,6 +352,45 @@ export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA
 
 function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
   return liveUrlFor(siteUrl, view.page.startingPath || '/') || view.scan.url || siteUrl;
+}
+
+function canonicalA11yPageUrl(siteUrl: string, view: A11ySectionView): string {
+  const pageUrl = a11yPageUrl(siteUrl, view);
+  try {
+    const parsed = new URL(pageUrl);
+    parsed.hash = '';
+    return parsed.href;
+  } catch {
+    return pageUrl;
+  }
+}
+
+function aggregateA11yPromptViews(
+  views: readonly A11ySectionView[],
+  siteUrl: string,
+): A11ySectionView[] {
+  const byPageUrl = new Map<string, A11ySectionView>();
+  for (const view of views) {
+    const key = canonicalA11yPageUrl(siteUrl, view);
+    const existing = byPageUrl.get(key);
+    if (!existing) {
+      byPageUrl.set(key, view);
+      continue;
+    }
+    const violations = [...existing.scan.violations, ...view.scan.violations];
+    byPageUrl.set(key, {
+      ...existing,
+      scan: { ...existing.scan, violations },
+      counts: {
+        critical: existing.counts.critical + view.counts.critical,
+        serious: existing.counts.serious + view.counts.serious,
+        moderate: existing.counts.moderate + view.counts.moderate,
+        minor: existing.counts.minor + view.counts.minor,
+      },
+      client: existing.client ?? view.client,
+    });
+  }
+  return [...byPageUrl.values()];
 }
 
 function a11yFamilyId(violation: AccessibilityViolation): string | undefined {
@@ -457,9 +497,14 @@ export function buildA11ySection(
   promptCtx: A11yPromptContext,
 ): A11ySection {
   const { hasA11y, a11yBlocked, a11yCouldNotMeasure, a11yMeasurable, cardedA11y, fineA11y } = prepared;
+  const lowerImpactA11y = fineA11y.filter((view) => view.scan.violations.length > 0);
+  const groupLowerImpact = lowerImpactA11y.length > 0
+    && lowerImpactA11y.every((view) => typeof view.client?.score === 'number');
+  const groupedA11y = fineA11y.filter((view) => view.scan.violations.length === 0 || groupLowerImpact);
+  const ungroupedA11y = groupLowerImpact ? [] : lowerImpactA11y;
   const a11yFindingScans = a11yMeasurable.map((view) => view.scan);
   const a11yFamilySummary = summarizeA11yRuleFamilies(a11yFindingScans);
-  const a11yFine = fineA11y.map((view) => {
+  const a11yFine = ungroupedA11y.map((view) => {
     const score = view.client?.score;
     const row: ClientReportModel['a11yFine'][number] = {
       name: view.page.name,
@@ -470,11 +515,15 @@ export function buildA11ySection(
     if (typeof score === 'number') row.score = score;
     return row;
   });
-  const a11yScores = [...a11yCards.map((card) => card.score), ...a11yFine.map((row) => row.score)].filter((score): score is number => typeof score === 'number');
+  const a11yScores = [
+    ...a11yCards.map((card) => card.score),
+    ...fineA11y.map((view) => view.client?.score),
+  ].filter((score): score is number => typeof score === 'number');
   const a11yScore = !a11yCouldNotMeasure && a11yScores.length > 0
     ? Math.round(a11yScores.reduce((sum, score) => sum + score, 0) / a11yScores.length)
     : undefined;
   const highImpactTotal = a11yFamilySummary.headlineCount;
+  const lowerImpactTotal = lowerImpactA11y.reduce((total, view) => total + view.scan.violations.length, 0);
   const criticalTotal = cardedA11y.reduce((total, view) => total + view.counts.critical, 0);
   const a11yStatus: ClientReportStatus = !hasA11y || highImpactTotal === 0 ? 'good' : criticalTotal > 0 ? 'poor' : 'fair';
   const a11yIssueWeight = new Map<string, number>();
@@ -512,22 +561,30 @@ export function buildA11ySection(
       'WCAG - passes at zero critical barriers',
     ]
     : [];
-  const a11yPromptFindings = a11yFamilyPromptFindings(a11yMeasurable, a11yCountedFamilies, siteUrl, true);
-  const a11yLowerImpactPromptFindings = a11yFamilySummary.notCountedExtras.length > 0
-    ? a11yFamilyPromptFindings(a11yMeasurable, a11yFamilySummary.notCountedExtras, siteUrl, false)
+  const a11yPromptViews = aggregateA11yPromptViews(a11yMeasurable, siteUrl);
+  const a11yPromptFamilySummary = summarizeA11yRuleFamilies(a11yPromptViews.map((view) => view.scan));
+  const a11yPromptWorst = a11yWorst
+    ? a11yPromptViews.find((view) => canonicalA11yPageUrl(siteUrl, view) === canonicalA11yPageUrl(siteUrl, a11yWorst))
     : undefined;
-  const a11ySitePromptData = a11yWorst && a11yWorstFamilyCount > 0
+  const a11yPromptWorstFamilyCount = a11yPromptWorst
+    ? summarizeA11yRuleFamilies([a11yPromptWorst.scan]).headlineCount
+    : 0;
+  const a11yPromptFindings = a11yFamilyPromptFindings(a11yPromptViews, a11yPromptFamilySummary.countedFamilies, siteUrl, true);
+  const a11yLowerImpactPromptFindings = a11yPromptFamilySummary.notCountedExtras.length > 0
+    ? a11yFamilyPromptFindings(a11yPromptViews, a11yPromptFamilySummary.notCountedExtras, siteUrl, false)
+    : undefined;
+  const a11ySitePromptData = a11yPromptWorst && a11yPromptWorstFamilyCount > 0
     ? {
       url: siteUrl,
       host: promptCtx.host,
       date: promptCtx.date,
-      pageCount: a11yMeasurable.length,
-      highImpactCount: highImpactTotal,
-      worstPage: { url: a11yPageUrl(siteUrl, a11yWorst), highImpactCount: a11yWorstFamilyCount },
-      pageUrls: a11yMeasurable.map((view) => a11yPageUrl(siteUrl, view)),
+      pageCount: a11yPromptViews.length,
+      highImpactCount: a11yPromptFamilySummary.headlineCount,
+      worstPage: { url: a11yPageUrl(siteUrl, a11yPromptWorst), highImpactCount: a11yPromptWorstFamilyCount },
+      pageUrls: a11yPromptViews.map((view) => a11yPageUrl(siteUrl, view)),
       findings: a11yPromptFindings,
       ...(a11yLowerImpactPromptFindings ? { lowerImpactFindings: a11yLowerImpactPromptFindings } : {}),
-      ...(a11yFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yFamilySummary.smallerNotesCount } : {}),
+      ...(a11yPromptFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yPromptFamilySummary.smallerNotesCount } : {}),
     }
     : undefined;
   const a11ySitePrompt = a11ySitePromptData
@@ -558,8 +615,8 @@ export function buildA11ySection(
       ...(a11yFixTextWithLead ? { fix: { tone: 'secondary' as const, text: a11yFixTextWithLead } } : {}),
       scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
-  } else if (fineA11y.some((view) => view.scan.violations.length > 0)) {
-    const strongestMinorScan = fineA11y.find((view) => view.scan.violations.length > 0)!.scan;
+  } else if (lowerImpactA11y.length > 0) {
+    const strongestMinorScan = lowerImpactA11y[0].scan;
     a11yCost = {
       tab: 'a11y',
       state: 'zero',
@@ -574,11 +631,11 @@ export function buildA11ySection(
       scoreBadgePolicy: SCORE_BADGE_POLICY,
     };
   }
-  const a11yStrongPages = fineA11y
-    .flatMap((view) => typeof view.client?.score === 'number'
-      ? [{ name: view.page.name, score: view.client.score }]
-      : []);
-  if (a11yStrongPages.length === fineA11y.length && a11yStrongPages.length > 0) {
+  const a11yStrongPages = groupedA11y.map((view) => ({
+    name: view.page.name,
+    ...(typeof view.client?.score === 'number' ? { score: view.client.score } : {}),
+  }));
+  if (a11yStrongPages.length > 0) {
     a11yCost ??= { tab: 'a11y', state: 'zero' };
     a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
   }
@@ -589,6 +646,7 @@ export function buildA11ySection(
     ...(a11yScore !== undefined ? { a11yScore } : {}),
     a11yStatus,
     highImpactTotal,
+    lowerImpactTotal,
     a11yTopIssues,
     ...(a11yWorst ? { a11yWorst } : {}),
     ...(a11yCost ? { a11yCost } : {}),

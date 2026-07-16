@@ -1058,7 +1058,12 @@ ${items}
 function strongPageGroupList(group: StrongPageGroup): string {
   if (!group.pages.length) return '';
   const pages = group.pages
-    .map((page) => `<span style="font-size:14px; color:#4a443c"><strong style="font-weight:700; color:#26221d">${esc(page.name)}</strong> <span style="font-family:'JetBrains Mono',monospace; color:${PAL[scoreStatus(page.score)].fg}">${esc(String(page.score))}</span></span>`)
+    .map((page) => {
+      const score = typeof page.score === 'number'
+        ? ` <span style="font-family:'JetBrains Mono',monospace; color:${PAL[scoreStatus(page.score)].fg}">${esc(String(page.score))}</span>`
+        : '';
+      return `<span style="font-size:14px; color:#4a443c"><strong style="font-weight:700; color:#26221d">${esc(page.name)}</strong>${score}</span>`;
+    })
     .join('<span style="color:#d8d0c3"> &middot; </span>');
   const pageCount = group.pages.length;
   const label = `${pageCount} ${pageCount === 1 ? 'page looks' : 'pages look'} fine`;
@@ -1091,7 +1096,8 @@ function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string
   const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
-${m.a11yCost?.strongPageGroup ? strongPageGroupList(m.a11yCost.strongPageGroup) : a11yFineList(m.a11yFine)}
+${m.a11yCost?.strongPageGroup ? strongPageGroupList(m.a11yCost.strongPageGroup) : ''}
+${a11yFineList(m.a11yFine)}
 ${blockedSection(m.a11yBlocked)}`;
   return panelWrap('a11y', body, multi, first);
 }

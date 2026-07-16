@@ -414,6 +414,15 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
   });
 
+  it('keeps the a11y site prompt when a clean interaction variant shares the finding page path', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious' }] } }),
+      basePage({ id: 'home-scroll', name: 'Home after scroll', startingPath: '/', a11y: { score: 98, violations: [] } }),
+    ]));
+
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 1 high-impact issues pass');
+  });
+
   it('collapses a fully readable AI page even when its structural score is fair', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ agent: { rawWords: 300, renderedWords: 300, withoutStructuredData: true } }),
