@@ -117,6 +117,7 @@ describe('compare bisect report browser acceptance', () => {
       has: page.locator(`[data-bisect-merge-dialog="${VISUAL_SHA}"]`),
     });
     await expectCount(mergeDialog, 1);
+    await expectCount(page.getByRole('dialog', { name: /merge investigation/i }), 1);
     expect(await mergeDialog.locator('.ui-dialog__surface').evaluate(
       (element) => element.getBoundingClientRect().height,
     )).toBeLessThan(700);

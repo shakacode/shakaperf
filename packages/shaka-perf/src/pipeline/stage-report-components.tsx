@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { renderPipelineDialogMetaUrls } from './pipeline-artifacts';
 export interface StageArtifactTestMeta {
   readonly name: string;
@@ -39,6 +39,7 @@ export function Dialog({
   variant = 'default',
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const el = ref.current;
@@ -78,10 +79,11 @@ export function Dialog({
     <dialog
       ref={ref}
       className={`ui-dialog${variant === 'default' ? '' : ` ui-dialog--${variant}`}`}
+      aria-labelledby={title ? titleId : undefined}
     >
       <div className="ui-dialog__surface">
         <header className="ui-dialog__head">
-          <div className="ui-dialog__title">{title}</div>
+          <div id={title ? titleId : undefined} className="ui-dialog__title">{title}</div>
           <button
             type="button"
             className="ui-dialog__close"
