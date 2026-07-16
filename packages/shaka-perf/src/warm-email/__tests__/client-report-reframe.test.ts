@@ -414,12 +414,18 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
   });
 
-  it('keeps the a11y site prompt when a clean interaction variant shares the finding page path', async () => {
+  it('keeps same-path audit scenarios distinct while deduping the a11y site prompt', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious' }] } }),
       basePage({ id: 'home-scroll', name: 'Home after scroll', startingPath: '/', a11y: { score: 98, violations: [] } }),
     ]));
 
+    expect(result.model.a11yCards).toHaveLength(1);
+    expect(result.model.a11yCost?.headlineSub).toContain('on 1 of 2 pages checked');
+    expect(result.model.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Home after scroll', score: 98 }],
+    });
     expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 1 high-impact issues pass');
   });
 

@@ -369,6 +369,7 @@ function aggregateA11yPromptViews(
   views: readonly A11ySectionView[],
   siteUrl: string,
 ): A11ySectionView[] {
+  // Report rows stay scenario-specific; only remediation prompt URLs are coalesced.
   const byPageUrl = new Map<string, A11ySectionView>();
   for (const view of views) {
     const key = canonicalA11yPageUrl(siteUrl, view);
@@ -499,7 +500,10 @@ export function buildA11ySection(
   const { hasA11y, a11yBlocked, a11yCouldNotMeasure, a11yMeasurable, cardedA11y, fineA11y } = prepared;
   const lowerImpactA11y = fineA11y.filter((view) => view.scan.violations.length > 0);
   const groupLowerImpact = lowerImpactA11y.length > 0
-    && lowerImpactA11y.every((view) => typeof view.client?.score === 'number');
+    && lowerImpactA11y.every((view) => {
+      const score = view.client?.score;
+      return typeof score === 'number' && scoreStatus(score) !== 'poor';
+    });
   const groupedA11y = fineA11y.filter((view) => view.scan.violations.length === 0 || groupLowerImpact);
   const ungroupedA11y = groupLowerImpact ? [] : lowerImpactA11y;
   const a11yFindingScans = a11yMeasurable.map((view) => view.scan);

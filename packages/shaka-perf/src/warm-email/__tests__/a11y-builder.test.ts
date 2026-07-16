@@ -100,6 +100,19 @@ describe('buildA11ySection', () => {
     });
   });
 
+  it('keeps a poor lower-impact page out of the strong-page group', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('minor', { name: 'Poor lower-impact page', score: 49 }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
+    expect(result.a11yFine).toEqual([
+      expect.objectContaining({ name: 'Poor lower-impact page', score: 49, status: 'poor' }),
+    ]);
+  });
+
   it('groups clean score-bearing pages even when no a11y cost block was otherwise needed', () => {
     const prepared = prepareA11ySection([
       view('minor', { name: 'Homepage', score: 98, noViolations: true }),
