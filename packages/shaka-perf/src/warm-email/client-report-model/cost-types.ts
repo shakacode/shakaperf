@@ -58,7 +58,7 @@ export interface StrongPageGroup {
   label: string;
   pages: readonly {
     name: string;
-    score: number;
+    score?: number;
   }[];
 }
 

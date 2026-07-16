@@ -24,6 +24,7 @@ import {
 } from '../client-report-narrative';
 import {
   AI_INDUSTRY_DATA_STATS,
+  AI_STUDIES_OTHER_SITES_CAVEAT,
   AI_ZERO_COPY,
   BANNED_WORDS,
   BOT_WALL_COPY,
@@ -1420,7 +1421,8 @@ describe('renderClientReport perf tile assembly', () => {
     ], { throttleProfile: 'Fast-3G' }));
     const a11yPanelHtml = renderedPanel(html, 'a11y');
 
-    expect(a11yPanelHtml).toContain('Critical accessibility barriers found');
+    expect(a11yPanelHtml).toContain('unlabeled controls - all 1 page');
+    expect(a11yPanelHtml).not.toContain('Critical accessibility barriers found');
     expect(a11yPanelHtml).toContain('What this costs you');
     expect(a11yPanelHtml).toContain('The fix');
     expect(a11yPanelHtml).toContain('Screen-reader');
@@ -1476,6 +1478,81 @@ describe('renderClientReport perf tile assembly', () => {
     expect(a11yPanelHtml).not.toContain('cr-a11y-site-prompt');
     expect(a11yPanelHtml).not.toContain('cr-a11y-card');
     expect(a11yPanelHtml).not.toContain('Copy prompt');
+  });
+
+  it('keeps clean accessibility pages in the mixed-page denominator and quiet group', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'products',
+        name: 'Products',
+        startingPath: '/products',
+        metrics: {},
+        a11y: {
+          score: 72,
+          violations: [{ ruleId: 'button-name', impact: 'serious' }],
+        },
+      },
+      {
+        id: 'contact',
+        name: 'Contact',
+        startingPath: '/contact',
+        metrics: {},
+        a11y: { score: 98, violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('on 1 of 2 pages checked');
+    expect(a11yPanelHtml).toContain('1 page looks fine:');
+    expect(a11yPanelHtml).toContain('<strong style="font-weight:700; color:#26221d">Contact</strong>');
+    expect(a11yPanelHtml.match(/class="cr-a11y-card"/g)).toHaveLength(1);
+  });
+
+  it('renders all-clean scored accessibility pages as one quiet line without an empty cost card', async () => {
+    const { html, model: reportModel } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'home',
+        name: 'Home',
+        startingPath: '/',
+        metrics: {},
+        a11y: { score: 98, violations: [] },
+      },
+      {
+        id: 'contact',
+        name: 'Contact',
+        startingPath: '/contact',
+        metrics: {},
+        a11y: { score: 94, violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('2 pages look fine:');
+    expect(a11yPanelHtml).toContain('Home');
+    expect(a11yPanelHtml).toContain('Contact');
+    expect(a11yPanelHtml).not.toContain('What this costs you');
+    expect(a11yPanelHtml).not.toContain('class="cr-a11y-card"');
+    expect(reportModel.narrative.a11y.verdictPara).toBe('No accessibility issues turned up on the pages we measured.');
+    expect(reportModel.tiles.find((tile) => tile.target === 'a11y')?.conseq).toBe('No accessibility issues turned up on the pages we measured.');
+  });
+
+  it('renders an unscored clean accessibility page without inventing lighter issues', async () => {
+    const { html } = await renderClientReport(writePerfResultsForPages([
+      {
+        id: 'unscored',
+        name: 'Unscored clean page',
+        startingPath: '/unscored',
+        metrics: {},
+        a11y: { violations: [] },
+      },
+    ]));
+    const a11yPanelHtml = renderedPanel(html, 'a11y');
+
+    expect(a11yPanelHtml).toContain('Unscored clean page');
+    expect(a11yPanelHtml).toContain('1 page looks fine:');
+    expect(a11yPanelHtml).not.toContain('Lighter issues');
+    expect(a11yPanelHtml).not.toContain('Only minor issues here.');
+    expect(a11yPanelHtml).not.toContain('What this costs you');
   });
 
   it('writes footer guardrails only with measured cost blocks, uses honest throttle wording, and counts bot-walled pages', async () => {
@@ -1944,6 +2021,8 @@ describe('renderClientReportHtml', () => {
     expect(agentPanelHtml).toContain('industry data');
     expect(agentPanelHtml).toContain('Ahrefs, Dec 2025');
     expect(agentPanelHtml).toContain('GSQI, Aug 2025');
+    expect(agentPanelHtml).toContain(AI_STUDIES_OTHER_SITES_CAVEAT);
+    expect(renderedPanel(html, 'perf')).not.toContain(AI_STUDIES_OTHER_SITES_CAVEAT);
     expect(agentPanelHtml).toContain('data-copy-prompt="cr-agent-card-0-cards"');
     expect(agentPanelHtml).toContain('width:118px');
     expect(agentPanelHtml).toContain('Fix this page card.');
@@ -2316,29 +2395,65 @@ describe('renderClientReportHtml', () => {
     expect(classes.has('cr-calculator-has-output')).toBe(true);
   });
 
-  it('groups strong a11y and AI pages when the optional C grouping slots are present', () => {
+  it('groups strong a11y and AI pages into quiet lines when the optional C grouping slots are present', () => {
+    const a11yFine = [{ name: 'Ungrouped lighter page', path: '/lighter', score: 88, status: 'fair' as const, summary: 'A smaller issue remains.' }];
+    const agentFine = [{ name: 'Should not render as a full card', path: '/strong', score: 99, status: 'good' as const }];
     const html = renderClientReportHtml(model({
       hasA11y: true,
-      a11yCards: [],
-      a11yFine: [{ name: 'Should not render as a full card', path: '/strong', score: 98, status: 'good', summary: 'Fine.' }],
+      a11yCards: [{
+        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
+      }],
+      a11yFine,
       a11yCost: {
         tab: 'a11y',
         state: 'measured',
-        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong a11y page', score: 98 }] },
+        strongPageGroup: { label: 'Strong pages', pages: [{ name: 'Strong a11y page', score: 98 }, { name: 'Another strong a11y page', score: 70 }] },
       },
-      agentFine: [{ name: 'Should not render as a full card', path: '/strong', score: 99, status: 'good' }],
+      agentFine,
       agentCost: {
         tab: 'ai',
         state: 'measured',
-        strongPageGroup: { label: 'Reading <img src=x onerror=alert(1)>', pages: [{ name: 'Strong AI page', score: 99 }] },
+        strongPageGroup: { label: 'Strong pages', pages: [{ name: 'Strong AI page', score: 99 }, { name: 'Another strong AI page', score: 89 }] },
       },
     }));
 
     expect(html).toContain('Strong a11y page');
+    expect(html).toContain('Another strong a11y page');
     expect(html).toContain('Strong AI page');
-    expect(html).toContain('Reading &lt;img src=x onerror=alert(1)&gt;');
-    expect(html).not.toContain('<img src=x onerror=alert(1)>');
-    expect(html).not.toContain('Should not render as a full card');
+    expect(html).toContain('Another strong AI page');
+    expect(html).toContain('2 pages look fine:');
+    expect(html).toContain('Ungrouped lighter page');
+    expect(renderedPanel(html, 'a11y').match(/class="cr-a11y-card"/g)).toHaveLength(1);
+    const ungroupedHtml = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCards: [{
+        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
+      }],
+      a11yFine,
+      a11yCost: { tab: 'a11y', state: 'measured' },
+      agentFine,
+      agentCost: { tab: 'ai', state: 'measured' },
+    }));
+    const framedCardCount = (panel: string): number => (
+      panel.match(/background:#ffffff; border:1px solid #e7e1d8; border-radius:14px/g) ?? []
+    ).length;
+
+    expect(framedCardCount(renderedPanel(ungroupedHtml, 'agent'))).toBe(3);
+    expect(framedCardCount(renderedPanel(html, 'agent'))).toBe(2);
+  });
+
+  it('keeps strong pages in their existing ungrouped lists when grouping slots are absent', () => {
+    const html = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yFine: [{ name: 'Ungrouped a11y page', path: '/a11y', score: 98, status: 'good', summary: 'Fine.' }],
+      a11yCost: { tab: 'a11y', state: 'measured' },
+      agentFine: [{ name: 'Ungrouped AI page', path: '/ai', score: 99, status: 'good' }],
+      agentCost: { tab: 'ai', state: 'measured' },
+    }));
+
+    expect(html).toContain('Ungrouped a11y page');
+    expect(html).toContain('Ungrouped AI page');
+    expect(html).not.toContain('pages look fine:');
   });
 
   it('uses matrix flags to keep zero check lines and omit absent scales and calculators', () => {

@@ -136,7 +136,7 @@ describe('accessibility finding families', () => {
 
     expect(summary.headlineCount).toBe(12);
     expect(summary.countedFamilies).toEqual([
-      { id: 'target-size', label: 'touch targets too small', pageCount: 7 },
+      { id: 'target-size', label: 'touch targets too small to tap reliably', pageCount: 7 },
       { id: 'image-alt', label: 'images with no text description', pageCount: 2 },
       { id: 'unlabeled-controls', label: 'unlabeled controls', pageCount: 1 },
       { id: 'list', label: 'broken list markup', pageCount: 1 },

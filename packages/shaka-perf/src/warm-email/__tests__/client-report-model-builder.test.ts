@@ -40,6 +40,7 @@ function a11y(overrides: Partial<A11ySection> = {}): A11ySection {
     a11yFine: [],
     a11yStatus: 'good',
     highImpactTotal: 0,
+    lowerImpactTotal: 0,
     a11yTopIssues: [],
     ...overrides,
   };

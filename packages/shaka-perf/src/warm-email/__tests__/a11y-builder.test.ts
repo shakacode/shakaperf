@@ -17,16 +17,16 @@ import type { PagePerf } from '../synthesis';
 
 function view(
   impact: AccessibilityViolation['impact'],
-  options: { blocked?: boolean; ruleId?: string; score?: number } = {},
+  options: { blocked?: boolean; ruleId?: string; score?: number; name?: string; noViolations?: boolean } = {},
 ): A11ySectionView {
   const page: PagePerf = {
-    id: 'home', name: 'Home', startingPath: '/', chips: [], metrics: {},
+    id: 'home', name: options.name ?? 'Home', startingPath: '/', chips: [], metrics: {},
   };
   const scan: AccessibilityScan = {
     viewportLabel: 'phone',
     viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 } as AccessibilityScan['viewport'],
     url: 'https://example.com/',
-    violations: [{
+    violations: options.noViolations ? [] : [{
       ruleId: options.ruleId ?? 'target-size',
       impact,
       help: 'fixture',
@@ -64,7 +64,7 @@ describe('buildA11ySection', () => {
         headline: '1 high-impact barrier keeps some visitors from using the site.',
         gapSubLines: [
           'worst page: Home - 1 high-impact',
-          'touch targets too small - all 1 page',
+          'touch targets too small to tap reliably - all 1 page',
           'WCAG - passes at zero critical barriers',
         ],
       },
@@ -84,6 +84,58 @@ describe('buildA11ySection', () => {
 
     expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
     expect(result.a11yStatus).toBe('good');
+  });
+
+  it('groups every score-bearing fine page even when another page has a high-impact finding', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('moderate', { name: 'Looks fine', score: 98 }),
+      view('minor', { name: 'Also looks fine', score: 70 }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Looks fine', score: 98 }, { name: 'Also looks fine', score: 70 }],
+    });
+  });
+
+  it('keeps a poor lower-impact page out of the strong-page group', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('minor', { name: 'Poor lower-impact page', score: 49 }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
+    expect(result.a11yFine).toEqual([
+      expect.objectContaining({ name: 'Poor lower-impact page', score: 49, status: 'poor' }),
+    ]);
+  });
+
+  it('groups clean score-bearing pages even when no a11y cost block was otherwise needed', () => {
+    const prepared = prepareA11ySection([
+      view('minor', { name: 'Homepage', score: 98, noViolations: true }),
+      view('minor', { name: 'Contact', score: 94, noViolations: true }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
+    expect(result.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Homepage', score: 98 }, { name: 'Contact', score: 94 }],
+    });
+  });
+
+  it('leaves grouping absent when a fine page has no score', () => {
+    const prepared = prepareA11ySection([
+      view('serious', { name: 'Needs attention', score: 62 }),
+      view('moderate', { name: 'Scored fine page', score: 98 }),
+      view('minor', { name: 'Unscored fine page' }),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
   });
 
   it('uses the blocked state when every supplied scan is bot-protected', () => {

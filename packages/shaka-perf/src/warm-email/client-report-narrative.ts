@@ -39,6 +39,7 @@ export interface NarrativeFacts {
   a11y?: {
     status: ClientReportStatus;
     highImpact: number; // total high-impact issues across carded pages
+    lowerImpact?: number;
     pagesWithBarriers: number;
     topIssues: string[]; // plain issue labels, worst-first
     worstPage?: string; // page name
@@ -104,6 +105,9 @@ function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): ClientReportDimN
     return { verdictWord: 'Could not measure', verdictPara: COULD_NOT_MEASURE_PARA };
   }
   if (f.highImpact === 0) {
+    if (f.lowerImpact === 0) {
+      return { verdictWord: 'No barriers found', verdictPara: 'No accessibility issues turned up on the pages we measured.' };
+    }
     return { verdictWord: 'Usable by everyone', verdictPara: 'No major barriers turned up, so most visitors can use the site. Only minor polish is left.' };
   }
   const verdictWord = f.status === 'poor' ? 'Some visitors are blocked' : 'Needs attention';

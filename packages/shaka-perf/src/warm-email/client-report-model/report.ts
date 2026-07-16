@@ -79,6 +79,7 @@ export function buildClientReportNarrativeFacts(input: ClientReportReportInput):
     const a11yFact: NonNullable<NarrativeFacts['a11y']> = {
       status: a11y.a11yStatus,
       highImpact: a11y.highImpactTotal,
+      lowerImpact: a11y.lowerImpactTotal,
       pagesWithBarriers: a11y.cardedA11y.length,
       topIssues: a11y.a11yTopIssues,
     };
@@ -154,7 +155,9 @@ export function assembleClientReportModel(
         ? "The site's bot protection served our checker a challenge page, so we could not measure this."
         : a11y.highImpactTotal > 0
           ? 'One blocking issue can turn a customer away - and the same fixes lift your SEO.'
-          : 'Most visitors can use the site; only minor polish is left.',
+          : a11y.lowerImpactTotal > 0
+            ? 'Most visitors can use the site; only minor polish is left.'
+            : 'No accessibility issues turned up on the pages we measured.',
       ...(a11y.a11yCouldNotMeasure ? { blocked: true } : {}),
     });
   }

@@ -245,7 +245,7 @@ describe('cost-of-pain reframe model', () => {
     });
     expect(a11y?.gapSubLines).toEqual(expect.arrayContaining([
       'worst page: Platform - 2 high-impact',
-      'touch targets too small - 2 pages',
+      'touch targets too small to tap reliably - 2 pages',
       'images with no text description - 1 page',
       'also seen, not counted in the 3: text that is too hard to read - 1 page',
       'WCAG - passes at zero critical barriers',
@@ -414,15 +414,31 @@ describe('cost-of-pain reframe model', () => {
     expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
   });
 
-  it('uses the score-badge threshold for AI tiles and page cards', async () => {
+  it('keeps same-path audit scenarios distinct while deduping the a11y site prompt', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({ a11y: { violations: [{ ruleId: 'target-size', impact: 'serious' }] } }),
+      basePage({ id: 'home-scroll', name: 'Home after scroll', startingPath: '/', a11y: { score: 98, violations: [] } }),
+    ]));
+
+    expect(result.model.a11yCards).toHaveLength(1);
+    expect(result.model.a11yCost?.headlineSub).toContain('on 1 of 2 pages checked');
+    expect(result.model.a11yCost?.strongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'Home after scroll', score: 98 }],
+    });
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 1 high-impact issues pass');
+  });
+
+  it('collapses a fully readable AI page even when its structural score is fair', async () => {
     const result = await renderClientReport(writeResults([
       basePage({ agent: { rawWords: 300, renderedWords: 300, withoutStructuredData: true } }),
     ]));
 
     expect(result.model.tiles.find((tile) => tile.target === 'agent')).toMatchObject({ status: 'fair' });
-    expect(result.model.agentCards).toHaveLength(1);
-    expect(result.model.agentCards[0]).toMatchObject({ status: 'fair' });
-    expect(result.model.agentCards[0].headlineHtml).not.toContain('well structured');
+    expect(result.model.agentCards).toHaveLength(0);
+    expect(result.model.agentCost?.strongPageGroup).toMatchObject({
+      pages: [{ name: 'Home', score: 83 }],
+    });
   });
 
   it('preserves the established cost treatment when FCP is healthy but LCP is slow', async () => {
@@ -542,6 +558,7 @@ describe('cost-of-pain reframe model', () => {
     ]);
     expect(perfFixText([], 'layout-shift')).toBe('The target: layout shift under 0.10 on the same phone profile.');
     expect(perfStakesProse('layout-shift')).toContain('Layout shifts like this');
+    expect(perfStakesProse('layout-shift')).toContain('so we do not print a made-up number.');
   });
 
   it('keeps a minor accessibility finding number-free while carrying real finding details', async () => {
