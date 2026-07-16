@@ -14,6 +14,7 @@ import {
   Paper,
   Chip,
   Button,
+  IconButton,
 } from '@mui/material';
 import { LocalOffer } from '@mui/icons-material';
 
@@ -67,6 +68,9 @@ const DealsPage: React.FC = () => {
         <Typography variant="subtitle1" component="p" color="text.secondary">
           Current offers available in store
         </Typography>
+        <IconButton data-cy="deals-a11y-regression">
+          <LocalOffer />
+        </IconButton>
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
