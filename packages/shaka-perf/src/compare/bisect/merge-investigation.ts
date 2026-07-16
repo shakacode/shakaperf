@@ -90,7 +90,7 @@ export async function runMergeInvestigations(
       options.afterCheckpoint?.(session);
       continue;
     }
-    investigation = { ...investigation, status: 'running' };
+    investigation = { ...investigation, status: 'running', failure: undefined };
     session = updateInvestigation(session, investigation);
     options.checkpoint(session);
     options.afterCheckpoint?.(session);
@@ -117,52 +117,69 @@ export async function runMergeInvestigations(
       options.checkpoint(session);
       options.afterCheckpoint?.(session);
 
-      let validation: CandidateResult;
+      const preValidationPhase = phase;
+      const preValidationInvestigation = investigation;
+      const preValidationSession = session;
       try {
-        validation = await options.measure(validationWork, primaryTargets);
+        const validation = await options.measure(validationWork, primaryTargets);
+        const observations = new Map(
+          validation.observations.map((value) => [value.targetId, value]),
+        );
+        const reproducing: BisectTarget[] = [];
+        const targetResults = { ...preValidationInvestigation.targetResults };
+        for (const target of primaryTargets) {
+          const observation = observations.get(target.id);
+          if (!observation?.present) {
+            targetResults[target.id] = { kind: 'merge-introduced' };
+            continue;
+          }
+          reproducing.push({
+            ...target,
+            status: 'active',
+            goodIndex: 0,
+            badIndex: range.orderedCommits.length - 1,
+            firstBadSha: undefined,
+            invalidReason: undefined,
+            observations: { [range.secondParent]: observation },
+          });
+        }
+        const completedPhase = {
+          ...preValidationPhase,
+          targets: reproducing,
+          attempts: replaceAttempt(
+            preValidationPhase.attempts,
+            completeAttempt(attempt, validation, options.now()),
+          ),
+        };
+        const completedInvestigation = {
+          ...preValidationInvestigation,
+          phase: completedPhase,
+          targetResults,
+        };
+        const completedSession = updateInvestigation(
+          preValidationSession,
+          completedInvestigation,
+        );
+        options.checkpoint(completedSession);
+        phase = completedPhase;
+        investigation = completedInvestigation;
+        session = completedSession;
       } catch (error) {
         phase = {
-          ...phase,
-          attempts: replaceAttempt(phase.attempts, {
+          ...preValidationPhase,
+          attempts: replaceAttempt(preValidationPhase.attempts, {
             ...attempt,
             status: 'incomplete',
             finishedAt: options.now(),
             error: error instanceof Error ? error.message : String(error),
           }),
         };
-        session = updateInvestigation(session, { ...investigation, phase });
+        investigation = { ...preValidationInvestigation, phase };
+        session = updateInvestigation(preValidationSession, investigation);
         options.checkpoint(session);
         options.afterCheckpoint?.(session);
         throw error;
       }
-
-      const observations = new Map(validation.observations.map((value) => [value.targetId, value]));
-      const reproducing: BisectTarget[] = [];
-      const targetResults = { ...investigation.targetResults };
-      for (const target of primaryTargets) {
-        const observation = observations.get(target.id);
-        if (!observation?.present) {
-          targetResults[target.id] = { kind: 'merge-introduced' };
-          continue;
-        }
-        reproducing.push({
-          ...target,
-          status: 'active',
-          goodIndex: 0,
-          badIndex: range.orderedCommits.length - 1,
-          firstBadSha: undefined,
-          invalidReason: undefined,
-          observations: { [range.secondParent]: observation },
-        });
-      }
-      phase = {
-        ...phase,
-        targets: reproducing,
-        attempts: replaceAttempt(phase.attempts, completeAttempt(attempt, validation, options.now())),
-      };
-      investigation = { ...investigation, phase, targetResults };
-      session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
       options.afterCheckpoint?.(session);
     }
 

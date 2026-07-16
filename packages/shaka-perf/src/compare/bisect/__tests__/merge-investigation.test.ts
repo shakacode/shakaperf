@@ -227,4 +227,86 @@ describe('merge investigation', () => {
     });
     expect(checkpoint).toEqual(completed);
   });
+
+  it('retries second-parent validation when its completed checkpoint fails', async () => {
+    let persisted = buildMergeQueue(session(['main', 'topic']));
+    let failCompletedCheckpoint = true;
+    let attemptId = 0;
+    const measured: string[] = [];
+    const common = {
+      preferredRefreshMode: 'commands' as const,
+      now: () => 'now',
+      nextAttemptId: () => `attempt-${++attemptId}`,
+      checkpoint(value: BisectSession) {
+        persisted = value;
+        const completedValidation = value.mergeInvestigations?.merge.phase?.attempts.some(
+          (attempt) => attempt.sha === 'topic' && attempt.status === 'complete',
+        );
+        if (failCompletedCheckpoint && completedValidation) {
+          failCompletedCheckpoint = false;
+          throw new Error('session checkpoint failed');
+        }
+      },
+      async prepareRange() {
+        return {
+          mergeBase: 'base',
+          secondParent: 'topic',
+          orderedCommits: ['base', 'source', 'topic'],
+          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+          commitParents: { base: [], source: ['base'], topic: ['source'] },
+        };
+      },
+      async measure(work: { sha: string }) {
+        measured.push(work.sha);
+        return result(work.sha, [observation('one', work.sha, true)]);
+      },
+    };
+
+    await expect(runMergeInvestigations({ ...common, session: persisted }))
+      .rejects.toThrow('session checkpoint failed');
+
+    expect(persisted.mergeInvestigations?.merge).toMatchObject({
+      targetResults: { one: { kind: 'merge-uninvestigated' } },
+      phase: {
+        targets: [{ id: 'one', status: 'found', firstBadSha: 'merge' }],
+        attempts: [{ sha: 'topic', status: 'incomplete' }],
+      },
+    });
+
+    await runMergeInvestigations({ ...common, session: persisted });
+
+    expect(measured.slice(0, 2)).toEqual(['topic', 'topic']);
+  });
+
+  it('clears a stale range-preparation failure after a successful retry', async () => {
+    const failed = buildMergeQueue(session(['main', 'topic']));
+    failed.mergeInvestigations!.merge = {
+      ...failed.mergeInvestigations!.merge,
+      status: 'failed',
+      failure: 'old topology failure',
+    };
+
+    const completed = await runMergeInvestigations({
+      session: failed,
+      preferredRefreshMode: 'commands',
+      now: () => 'now',
+      nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
+      checkpoint: () => undefined,
+      async prepareRange() {
+        return {
+          mergeBase: 'base',
+          secondParent: 'topic',
+          orderedCommits: ['base', 'source', 'topic'],
+          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+          commitParents: { base: [], source: ['base'], topic: ['source'] },
+        };
+      },
+      async measure(work) {
+        return result(work.sha, [observation('one', work.sha, true)]);
+      },
+    });
+
+    expect(completed.mergeInvestigations?.merge).toMatchObject({ status: 'complete' });
+    expect(completed.mergeInvestigations?.merge.failure).toBeUndefined();
+  });
 });
