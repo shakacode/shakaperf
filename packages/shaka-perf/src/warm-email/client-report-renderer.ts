@@ -526,7 +526,9 @@ function costDetailsPanel(id: string, content: string, compact = false): string 
 function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): string {
   if (!scale) return '';
   const labelStacked = Math.abs(scale.markerPercent - scale.goodLinePercent) < 12;
-  const axisMax = Number.isInteger(scale.axisMaxSeconds) ? String(scale.axisMaxSeconds) : scale.axisMaxSeconds.toFixed(1);
+  const scaleAxis = gap.scaleAxis ?? { unit: 'seconds', precision: 1 };
+  const axisMax = Number.isInteger(scale.axisMaxSeconds) ? String(scale.axisMaxSeconds) : scale.axisMaxSeconds.toFixed(scaleAxis.precision);
+  const axisSuffix = scaleAxis.unit === 'seconds' ? 's' : '';
   return `            <div data-benchmark-scale data-benchmark-zone="${esc(gap.zone)}" data-benchmark-axis-max="${esc(axisMax)}"${labelStacked ? ' data-benchmark-label-stack' : ''} style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="${esc(`${gap.metricLabel} ${gap.measuredLabel}; Google's good line ${gap.goodLabel}`)}">
               <span style="position:absolute; top:0; left:${scale.goodLinePercent}%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#2f7d4f; white-space:nowrap">good &middot; ${esc(gap.goodLabel)}</span>
               <span data-benchmark-marker style="position:absolute; top:${labelStacked ? '-12px' : '0'}; left:${scale.markerPercent}%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#26221d; white-space:nowrap">you &middot; ${esc(gap.measuredLabel)}</span>
@@ -535,7 +537,7 @@ function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): st
               </div>
               <span style="position:absolute; top:13px; left:${scale.goodLinePercent}%; width:2px; height:20px; background:#2f7d4f; transform:translateX(-50%)"></span>
               <span style="position:absolute; top:11px; left:${scale.markerPercent}%; width:3px; height:24px; background:#26221d; border-radius:3px; transform:translateX(-50%)"></span>
-              <div style="display:flex; justify-content:space-between; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>${esc(axisMax)}s</span></div>
+              <div style="display:flex; justify-content:space-between; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#6f665c"><span>0${axisSuffix}</span><span>${esc(axisMax)}${axisSuffix}</span></div>
             </div>`;
 }
 

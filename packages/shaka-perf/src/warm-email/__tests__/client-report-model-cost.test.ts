@@ -9,6 +9,7 @@
 
 import {
   BENCHMARK_LINES,
+  BENCHMARK_SCALE_POLICIES,
   FCP_HERO_METRIC,
   MATERIALITY_FLOOR_USD_PER_MONTH,
   RECOVERY_BANDS,
@@ -88,6 +89,26 @@ describe('benchmarkScaleGeometry', () => {
 
   it('rejects thresholds that do not fit within the calculated axis', () => {
     expect(benchmarkScaleGeometry(3030, { good: 1800, poor: 4500 })).toBeUndefined();
+  });
+
+  it('uses each performance metric policy for a visible, native-unit scale', () => {
+    const lcp = benchmarkScaleGeometry(24_700, BENCHMARK_LINES.lcpMs, BENCHMARK_SCALE_POLICIES.lcpMs);
+    const tbt = benchmarkScaleGeometry(738, BENCHMARK_LINES.tbtMs, BENCHMARK_SCALE_POLICIES.tbtMs);
+    const cls = benchmarkScaleGeometry(0.32, BENCHMARK_LINES.cls, BENCHMARK_SCALE_POLICIES.cls);
+
+    expect(lcp).toMatchObject({ axisMax: 31_000, axisMaxMs: 31_000, axisMaxSeconds: 31 });
+    expect(lcp?.goodLinePercent).toBeCloseTo(8.064516129032258);
+    expect(lcp?.markerPercent).toBeCloseTo(79.6774193548387);
+
+    expect(tbt).toMatchObject({ axisMax: 1000, axisMaxMs: 1000, axisMaxSeconds: 1 });
+    expect(tbt?.goodLinePercent).toBe(20);
+    expect(tbt?.poorLinePercent).toBe(60);
+    expect(tbt?.markerPercent).toBeCloseTo(73.8);
+
+    expect(cls).toMatchObject({ axisMax: 0.4, axisMaxSeconds: 0.4 });
+    expect(cls?.goodLinePercent).toBe(25);
+    expect(cls?.poorLinePercent).toBe(62.5);
+    expect(cls?.markerPercent).toBe(80);
   });
 });
 

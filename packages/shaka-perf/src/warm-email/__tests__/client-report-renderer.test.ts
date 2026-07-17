@@ -60,6 +60,7 @@ import {
 import {
   BENCHMARK_LINES,
   benchmarkScaleGeometry,
+  perfGap,
   RECOVERY_BANDS,
   RECOVERY_CAP,
 } from '../client-report-model/cost';
@@ -2151,6 +2152,57 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('data-calc-headline');
     expect(html).toContain('band.hi > recoveryCap');
     expect(html).toContain('breakEvenUsdYear');
+  });
+
+  it.each([
+    {
+      name: 'LCP',
+      gap: {
+        metricLabel: 'Main content', measuredLabel: '24.7s', goodLabel: '2.5s', poorLabel: '4.0s', zone: 'poor' as const,
+        lineOwner: 'Google', lineUrl: 'https://web.dev/articles/lcp', scaleAxis: { unit: 'seconds' as const, precision: 1 },
+      },
+      scale: { axisMaxSeconds: 31, zones: { green: 8.1, amber: 4.8, red: 87.1 }, goodLinePercent: 8.1, poorLinePercent: 12.9, markerPercent: 79.7 },
+      expected: ['data-benchmark-axis-max="31"', '<span>0s</span><span>31s</span>'],
+    },
+    {
+      name: 'TBT',
+      gap: {
+        metricLabel: 'Tap delay', measuredLabel: '0.7s', goodLabel: '0.2s', poorLabel: '0.6s', zone: 'poor' as const,
+        lineOwner: 'Google', lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time', scaleAxis: { unit: 'seconds' as const, precision: 1 },
+      },
+      scale: { axisMaxSeconds: 1, zones: { green: 20, amber: 40, red: 40 }, goodLinePercent: 20, poorLinePercent: 60, markerPercent: 73.8 },
+      expected: ['data-benchmark-axis-max="1"', '<span>0s</span><span>1s</span>'],
+    },
+    {
+      name: 'CLS',
+      gap: {
+        metricLabel: 'Layout shift', measuredLabel: '0.32', goodLabel: '0.10', poorLabel: '0.25', zone: 'poor' as const,
+        lineOwner: 'Google', lineUrl: 'https://web.dev/articles/cls', scaleAxis: { unit: 'unitless' as const, precision: 2 },
+      },
+      scale: { axisMaxSeconds: 0.4, zones: { green: 25, amber: 37.5, red: 37.5 }, goodLinePercent: 25, poorLinePercent: 62.5, markerPercent: 80 },
+      expected: ['data-benchmark-axis-max="0.40"', '<span>0</span><span>0.40</span>'],
+    },
+  ])('renders $name scale labels in its native units', ({ gap, scale, expected }) => {
+    const html = renderClientReportHtml(model({
+      perfCost: { tab: 'perf', state: 'measured', gap, scale },
+    }));
+    const perfPanelHtml = renderedPanel(html, 'perf');
+
+    for (const markup of expected) expect(perfPanelHtml).toContain(markup);
+    if (gap.scaleAxis.unit === 'unitless') expect(perfPanelHtml).not.toContain('0.40s');
+  });
+
+  it('keeps the production FCP scale markup byte-for-byte compatible', () => {
+    const gap = perfGap('blank', { fcpMs: 3030 });
+    const scale = benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs);
+    if (!gap || !scale) throw new Error('the FCP benchmark scale must be computable');
+
+    const perfPanelHtml = renderedPanel(renderClientReportHtml(model({
+      perfCost: { tab: 'perf', state: 'measured', gap, scale },
+    })), 'perf');
+
+    expect(perfPanelHtml).toContain('data-benchmark-scale data-benchmark-zone="poor" data-benchmark-axis-max="4" style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="First content 3.0s; Google&#39;s good line 1.8s"');
+    expect(perfPanelHtml).toContain('<div style="display:flex; justify-content:space-between; margin-top:8px; font-family:\'JetBrains Mono\',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>4s</span></div>');
   });
 
   it('ports the C cost blocks with closed disclosures, honest geometry, and the middle calculator band', () => {

@@ -29,7 +29,15 @@ import {
   type Problem,
 } from './perf';
 
-import { BENCHMARK_LINES, benchmarkMultiple, benchmarkScaleGeometry, benchmarkZone, type CostGap } from './cost-benchmarks';
+import {
+  BENCHMARK_LINES,
+  BENCHMARK_SCALE_POLICIES,
+  benchmarkMultiple,
+  benchmarkScaleGeometry,
+  benchmarkZone,
+  type BenchmarkScalePolicy,
+  type CostGap,
+} from './cost-benchmarks';
 import { MATERIALITY_FLOOR_USD_PER_MONTH, RECOVERY_BANDS } from './cost-recovery';
 
 export type PerfGapKind = 'slow-lcp' | 'layout-shift' | 'blank' | 'late-paint' | 'sluggish';
@@ -44,6 +52,7 @@ export interface PerfGapMetrics {
 interface PerfGapSpec {
   metricLabel: string;
   line: { good: number; poor: number };
+  scalePolicy: BenchmarkScalePolicy;
   lineOwner: string;
   lineUrl: string;
   label: (value: number) => string;
@@ -53,6 +62,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'slow-lcp': {
     metricLabel: 'Main content',
     line: BENCHMARK_LINES.lcpMs,
+    scalePolicy: BENCHMARK_SCALE_POLICIES.lcpMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://web.dev/articles/lcp',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -60,6 +70,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'layout-shift': {
     metricLabel: 'Layout shift',
     line: BENCHMARK_LINES.cls,
+    scalePolicy: BENCHMARK_SCALE_POLICIES.cls,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://web.dev/articles/cls',
     label: (value) => value.toFixed(2),
@@ -67,6 +78,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   blank: {
     metricLabel: 'First content',
     line: BENCHMARK_LINES.fcpMs,
+    scalePolicy: BENCHMARK_SCALE_POLICIES.fcpMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -74,6 +86,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'late-paint': {
     metricLabel: 'First content',
     line: BENCHMARK_LINES.fcpMs,
+    scalePolicy: BENCHMARK_SCALE_POLICIES.fcpMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -81,6 +94,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   sluggish: {
     metricLabel: 'Tap delay',
     line: BENCHMARK_LINES.tbtMs,
+    scalePolicy: BENCHMARK_SCALE_POLICIES.tbtMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -114,6 +128,7 @@ export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | u
     zone: benchmarkZone(value, spec.line),
     lineOwner: spec.lineOwner,
     lineUrl: spec.lineUrl,
+    scaleAxis: { unit: spec.scalePolicy.unit, precision: spec.scalePolicy.precision },
   };
 }
 
@@ -539,12 +554,14 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
         downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
         downloadsKb: metricVal(anchorPage, 'downloads'),
       };
-      const gap = perfGap(perfCostAnchor.problem.kind, {
+      const gapMetrics = {
         lcpMs: metricVal(anchorPage, 'LCP'),
         cls: metricVal(anchorPage, 'CLS') !== undefined ? metricVal(anchorPage, 'CLS')! / 100 : undefined,
         fcpMs: metricVal(anchorPage, 'FCP'),
         tbtMs: metricVal(anchorPage, 'TBT'),
-      });
+      };
+      const gap = perfGap(perfCostAnchor.problem.kind, gapMetrics);
+      const scaleValue = perfGapValue(perfCostAnchor.problem.kind, gapMetrics);
       const bookingPage = moneyPage(
         input.rankedCarded.map(({ page }) => ({ name: page.name, startingPath: page.startingPath, lcpMs: metricVal(page, 'LCP') })),
         input.moneyPage,
@@ -561,6 +578,9 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
           ? input.copyPromptForPage(supportingProblem.page)
           : undefined,
         ...(gap ? { gap } : {}),
+        ...(gap && scaleValue !== undefined ? {
+          scale: benchmarkScaleGeometry(scaleValue, PERF_GAP_SPECS[perfCostAnchor.problem.kind].line, PERF_GAP_SPECS[perfCostAnchor.problem.kind].scalePolicy),
+        } : {}),
         gapSubLines: perfGapSubLines(perfFactPages, anchorFacts),
         ...(bookingPage ? { bookingLine: bookingLine(bookingPage) } : {}),
         stakes: {
