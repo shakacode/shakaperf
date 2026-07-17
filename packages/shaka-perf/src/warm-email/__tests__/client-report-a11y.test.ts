@@ -35,7 +35,6 @@ import {
   a11yFixClause,
   hasMajorA11yBarrier,
   a11yPromptRules,
-  summarizeA11yRuleFamilies,
   type A11ySectionView,
 } from '../client-report-model/a11y';
 import { buildCanonicalA11ySitePrompt } from '../client-report-model/a11y-site-prompt';
@@ -323,7 +322,6 @@ describe('client report a11y cost copy helpers', () => {
       worstView: promptSectionView('home-top', 'Home top', '/#top', [vRule('target-size', 'serious')]),
       siteUrl: 'https://example.com',
       promptContext: { host: 'example.com', date: 'July 10, 2026' },
-      summarizeRuleFamilies: summarizeA11yRuleFamilies,
     };
 
     const prompt = buildCanonicalA11ySitePrompt(input);

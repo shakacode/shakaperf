@@ -9,13 +9,8 @@
 
 import type { AccessibilityViolation } from '../../audit/stages/accessibility/types';
 import { buildA11ySitePrompt, type A11ySitePromptData, type A11ySitePromptFinding } from '../copy-prompt';
-import type {
-  A11yPromptContext,
-  A11yRuleFamily,
-  A11yRuleFamilyScan,
-  A11yRuleFamilySummary,
-  A11ySectionView,
-} from './a11y';
+import type { A11yPromptContext, A11ySectionView } from './a11y';
+import { summarizeA11yRuleFamilies, type A11yRuleFamily } from './a11y-rule-families';
 import { liveUrlFor } from './shared';
 
 export interface BuildCanonicalA11ySitePromptInput {
@@ -23,10 +18,6 @@ export interface BuildCanonicalA11ySitePromptInput {
   worstView?: A11ySectionView;
   siteUrl: string;
   promptContext: A11yPromptContext;
-  summarizeRuleFamilies: (
-    scans: readonly A11yRuleFamilyScan[],
-    visibleExtraLimit?: number,
-  ) => A11yRuleFamilySummary;
 }
 
 function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
@@ -73,11 +64,8 @@ function aggregateA11yPromptViews(
   return [...byPageUrl.values()];
 }
 
-function a11yFamilyId(
-  violation: AccessibilityViolation,
-  summarizeRuleFamilies: BuildCanonicalA11ySitePromptInput['summarizeRuleFamilies'],
-): string | undefined {
-  const summary = summarizeRuleFamilies([{ violations: [violation] }], 1);
+function a11yFamilyId(violation: AccessibilityViolation): string | undefined {
+  const summary = summarizeA11yRuleFamilies([{ violations: [violation] }], 1);
   return summary.countedFamilies[0]?.id ?? summary.notCountedExtras[0]?.id;
 }
 
@@ -116,7 +104,6 @@ function a11yFamilyPromptFindings(
   families: readonly A11yRuleFamily[],
   siteUrl: string,
   highImpact: boolean,
-  summarizeRuleFamilies: BuildCanonicalA11ySitePromptInput['summarizeRuleFamilies'],
 ): A11ySitePromptFinding[] {
   return families.map((family) => {
     const pageUrls = new Set<string>();
@@ -126,7 +113,7 @@ function a11yFamilyPromptFindings(
     let serious = false;
     for (const view of views) {
       for (const violation of view.scan.violations) {
-        if (a11yFamilyId(violation, summarizeRuleFamilies) !== family.id || isHighImpactA11yViolation(violation) !== highImpact) continue;
+        if (a11yFamilyId(violation) !== family.id || isHighImpactA11yViolation(violation) !== highImpact) continue;
         const pageUrl = a11yPageUrl(siteUrl, view);
         pageUrls.add(pageUrl);
         ruleIds.add(violation.ruleId);
@@ -168,21 +155,20 @@ function buildA11ySitePromptWithFallback(data: A11ySitePromptData): string | und
 
 /** Builds the canonical, cross-page accessibility remediation prompt from report views. */
 export function buildCanonicalA11ySitePrompt(input: BuildCanonicalA11ySitePromptInput): string | undefined {
-  const { views, worstView, siteUrl, promptContext, summarizeRuleFamilies } = input;
+  const { views, worstView, siteUrl, promptContext } = input;
   const promptViews = aggregateA11yPromptViews(views, siteUrl);
-  const promptFamilySummary = summarizeRuleFamilies(promptViews.map((view) => view.scan));
+  const promptFamilySummary = summarizeA11yRuleFamilies(promptViews.map((view) => view.scan));
   const promptWorst = worstView
     ? promptViews.find((view) => canonicalA11yPageUrl(siteUrl, view) === canonicalA11yPageUrl(siteUrl, worstView))
     : undefined;
   const promptWorstFamilyCount = promptWorst
-    ? summarizeRuleFamilies([promptWorst.scan]).headlineCount
+    ? summarizeA11yRuleFamilies([promptWorst.scan]).headlineCount
     : 0;
   const findings = a11yFamilyPromptFindings(
     promptViews,
     promptFamilySummary.countedFamilies,
     siteUrl,
     true,
-    summarizeRuleFamilies,
   );
   const lowerImpactFindings = promptFamilySummary.notCountedExtras.length > 0
     ? a11yFamilyPromptFindings(
@@ -190,7 +176,6 @@ export function buildCanonicalA11ySitePrompt(input: BuildCanonicalA11ySitePrompt
       promptFamilySummary.notCountedExtras,
       siteUrl,
       false,
-      summarizeRuleFamilies,
     )
     : undefined;
   const data: A11ySitePromptData | undefined = promptWorst && promptWorstFamilyCount > 0
