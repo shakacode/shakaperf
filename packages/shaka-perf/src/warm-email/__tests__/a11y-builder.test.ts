@@ -49,6 +49,38 @@ function view(
   };
 }
 
+function promptView(
+  id: string,
+  name: string,
+  startingPath: string,
+  violations: AccessibilityViolation[],
+): A11ySectionView {
+  return {
+    page: { id, name, startingPath, chips: [], metrics: {} },
+    scan: {
+      viewportLabel: 'phone',
+      viewport: { label: 'phone', width: 390, height: 844, formFactor: 'mobile', deviceScaleFactor: 2 } as AccessibilityScan['viewport'],
+      url: `https://example.com${startingPath}`,
+      violations,
+    },
+    counts: violations.reduce((counts, violation) => ({
+      ...counts,
+      ...(violation.impact ? { [violation.impact]: counts[violation.impact] + 1 } : {}),
+    }), { critical: 0, serious: 0, moderate: 0, minor: 0 }),
+  };
+}
+
+function promptViolation(ruleId: string, impact: AccessibilityViolation['impact']): AccessibilityViolation {
+  return {
+    ruleId,
+    impact,
+    help: 'fixture',
+    helpUrl: '',
+    tags: [],
+    nodes: [{ target: ['.fixture'], html: '<button>Fixture</button>', failureSummary: '' }],
+  };
+}
+
 const promptCtx = { host: 'example.com', date: 'July 10, 2026' };
 
 describe('buildA11ySection', () => {
@@ -144,5 +176,20 @@ describe('buildA11ySection', () => {
 
     expect(result.a11yCouldNotMeasure).toBe(true);
     expect(result.a11yCost).toEqual({ tab: 'a11y', state: 'blocked', headline: '' });
+  });
+
+  it('keeps report scenarios distinct while the site prompt aggregates their canonical page', () => {
+    const prepared = prepareA11ySection([
+      promptView('home-top', 'Home top', '/#top', [promptViolation('target-size', 'serious')]),
+      promptView('home-footer', 'Home footer', '/#footer', [promptViolation('image-alt', 'critical')]),
+      promptView('about', 'About', '/about', [promptViolation('target-size', 'serious')]),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+    const prompt = result.a11yCost?.sitePrompts?.a11y;
+
+    expect(result.cardedA11y).toHaveLength(3);
+    expect(result.a11yCost?.headlineSub).toContain('across your 3 pages');
+    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain('worst page: the homepage with 2');
   });
 });
