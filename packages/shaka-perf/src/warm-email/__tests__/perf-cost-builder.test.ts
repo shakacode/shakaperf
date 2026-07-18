@@ -106,6 +106,29 @@ describe('buildPerfCost', () => {
     expect(result.perfCost).toEqual({ tab: 'perf', state: 'zero' });
   });
 
+  it('uses slow FCP when every measured page lead is clean but the site status is fair', () => {
+    const clean = perfPage(
+      page('Home', '/', { LCP: 1700, FCP: 3030, CLS: 1, TBT: 50 }),
+      { kind: 'clean', status: 'good', severity: 0, headline: '', chip: '' },
+    );
+    const result = buildPerfCost(input({ perfStatus: 'fair', measured: [clean], rankedCarded: [clean] }));
+
+    expect(result.perfCost).toMatchObject({
+      state: 'measured',
+      gap: { metricLabel: 'First content' },
+    });
+  });
+
+  it('keeps the zero state when every measured page lead is clean and the site status is good', () => {
+    const clean = perfPage(
+      page('Home', '/', { LCP: 1700, FCP: 3030, CLS: 1, TBT: 50 }),
+      { kind: 'clean', status: 'good', severity: 0, headline: '', chip: '' },
+    );
+    const result = buildPerfCost(input({ perfStatus: 'good', measured: [clean], rankedCarded: [clean] }));
+
+    expect(result.perfCost).toEqual({ tab: 'perf', state: 'zero' });
+  });
+
   it('does not manufacture a cost block when performance could not be measured', () => {
     const result = buildPerfCost(input({ perfCouldNotMeasure: true, measured: [], rankedCarded: [] }));
 

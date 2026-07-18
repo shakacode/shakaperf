@@ -30,8 +30,8 @@ import {
   type BenchmarkScalePolicy,
   type CostGap,
 } from './cost-benchmarks';
-import { buildFcpMeasuredPerfCost } from './cost-performance-fcp';
-import { buildProblemMeasuredPerfCost } from './cost-performance-problem';
+import { buildFcpMeasuredPerfCost, type FcpPerfCostStateDependencies } from './cost-performance-fcp';
+import { buildProblemMeasuredPerfCost, type ProblemPerfCostStateDependencies } from './cost-performance-problem';
 import { buildZeroPerfCost } from './cost-performance-zero';
 
 export type PerfGapKind = 'slow-lcp' | 'layout-shift' | 'blank' | 'late-paint' | 'sluggish';
@@ -363,7 +363,8 @@ export interface BuildPerfCostInput {
   sameAsPsiDefaultProfile: (profile: string | undefined) => boolean;
 }
 
-const FCP_PERF_COST_STATE_DEPENDENCIES = {
+// Keep callbacks explicit so extracted state modules need only type back-imports.
+const FCP_PERF_COST_STATE_DEPENDENCIES: FcpPerfCostStateDependencies = {
   heroMetric: FCP_HERO_METRIC,
   heroMetricCountedZeroLine,
   heroMetricGapSubLines,
@@ -371,7 +372,7 @@ const FCP_PERF_COST_STATE_DEPENDENCIES = {
   perfStakesProse,
 };
 
-const PROBLEM_PERF_COST_STATE_DEPENDENCIES = {
+const PROBLEM_PERF_COST_STATE_DEPENDENCIES: ProblemPerfCostStateDependencies = {
   bookingLine,
   countedZeroLine,
   moneyPage,
