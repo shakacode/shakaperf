@@ -25,6 +25,25 @@ export const BENCHMARK_LINES = {
 
 export const MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO = 0.10;
 
+export type BenchmarkScaleUnit = 'seconds' | 'unitless';
+
+export interface BenchmarkScalePolicy {
+  unit: BenchmarkScaleUnit;
+  axisFloor: number;
+  axisStep: number;
+  displayDivisor: number;
+  precision: number;
+}
+
+export const BENCHMARK_SCALE_POLICIES = {
+  lcpMs: { unit: 'seconds', axisFloor: 4000, axisStep: 500, displayDivisor: 1000, precision: 1 },
+  // A 0.30 floor leaves headroom above the 0.25 poor line.
+  cls: { unit: 'unitless', axisFloor: 0.3, axisStep: 0.05, displayDivisor: 1, precision: 2 },
+  fcpMs: { unit: 'seconds', axisFloor: 4000, axisStep: 500, displayDivisor: 1000, precision: 1 },
+  // A 1000ms floor leaves 400ms of headroom above the 600ms poor line.
+  tbtMs: { unit: 'seconds', axisFloor: 1000, axisStep: 100, displayDivisor: 1000, precision: 1 },
+} as const satisfies Record<keyof Pick<typeof BENCHMARK_LINES, 'lcpMs' | 'cls' | 'fcpMs' | 'tbtMs'>, BenchmarkScalePolicy>;
+
 interface DecimalFraction {
   numerator: bigint;
   denominator: bigint;
@@ -81,11 +100,11 @@ export interface CostGap {
   zone: CostZone;
   lineOwner: string;
   lineUrl: string;
+  scaleAxis?: Pick<BenchmarkScalePolicy, 'unit' | 'precision'>;
 }
 
 export interface BenchmarkScaleGeometry {
-  axisMaxMs: number;
-  axisMaxSeconds: number;
+  axisMaxDisplay: number;
   zones: {
     green: number;
     amber: number;
@@ -98,12 +117,13 @@ export interface BenchmarkScaleGeometry {
 
 /** Returns data-derived geometry for the C benchmark scale. */
 export function benchmarkScaleGeometry(
-  valueMs: number,
+  value: number,
   line: { good: number; poor: number },
+  policy: BenchmarkScalePolicy,
 ): BenchmarkScaleGeometry | undefined {
   if (
-    !Number.isFinite(valueMs)
-    || valueMs < 0
+    !Number.isFinite(value)
+    || value < 0
     || !Number.isFinite(line.good)
     || !Number.isFinite(line.poor)
     || line.good <= 0
@@ -112,14 +132,13 @@ export function benchmarkScaleGeometry(
     return undefined;
   }
 
-  const axisMaxMs = Math.max(4000, Math.ceil((valueMs * 1.25) / 500) * 500);
-  if (line.poor > axisMaxMs) return undefined;
-  const percent = (value: number): number => (value / axisMaxMs) * 100;
+  const axisMax = Math.max(policy.axisFloor, Math.ceil((value * 1.25) / policy.axisStep) * policy.axisStep);
+  if (line.poor > axisMax) return undefined;
+  const percent = (axisValue: number): number => (axisValue / axisMax) * 100;
   const goodLinePercent = percent(line.good);
   const poorLinePercent = percent(line.poor);
   return {
-    axisMaxMs,
-    axisMaxSeconds: axisMaxMs / 1000,
+    axisMaxDisplay: axisMax / policy.displayDivisor,
     zones: {
       green: goodLinePercent,
       amber: poorLinePercent - goodLinePercent,
@@ -127,6 +146,6 @@ export function benchmarkScaleGeometry(
     },
     goodLinePercent,
     poorLinePercent,
-    markerPercent: percent(valueMs),
+    markerPercent: percent(value),
   };
 }

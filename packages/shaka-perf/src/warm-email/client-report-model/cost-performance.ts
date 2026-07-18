@@ -29,7 +29,15 @@ import {
   type Problem,
 } from './perf';
 
-import { BENCHMARK_LINES, benchmarkMultiple, benchmarkScaleGeometry, benchmarkZone, type CostGap } from './cost-benchmarks';
+import {
+  BENCHMARK_LINES,
+  BENCHMARK_SCALE_POLICIES,
+  benchmarkMultiple,
+  benchmarkScaleGeometry,
+  benchmarkZone,
+  type BenchmarkScalePolicy,
+  type CostGap,
+} from './cost-benchmarks';
 import { MATERIALITY_FLOOR_USD_PER_MONTH, RECOVERY_BANDS } from './cost-recovery';
 
 export type PerfGapKind = 'slow-lcp' | 'layout-shift' | 'blank' | 'late-paint' | 'sluggish';
@@ -44,6 +52,8 @@ export interface PerfGapMetrics {
 interface PerfGapSpec {
   metricLabel: string;
   line: { good: number; poor: number };
+  value: (metrics: PerfGapMetrics) => number | undefined;
+  scalePolicy?: BenchmarkScalePolicy;
   lineOwner: string;
   lineUrl: string;
   label: (value: number) => string;
@@ -53,6 +63,8 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'slow-lcp': {
     metricLabel: 'Main content',
     line: BENCHMARK_LINES.lcpMs,
+    value: (metrics) => finiteMetric(metrics.lcpMs),
+    scalePolicy: BENCHMARK_SCALE_POLICIES.lcpMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://web.dev/articles/lcp',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -60,6 +72,8 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'layout-shift': {
     metricLabel: 'Layout shift',
     line: BENCHMARK_LINES.cls,
+    value: (metrics) => finiteMetric(metrics.cls),
+    scalePolicy: BENCHMARK_SCALE_POLICIES.cls,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://web.dev/articles/cls',
     label: (value) => value.toFixed(2),
@@ -67,6 +81,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   blank: {
     metricLabel: 'First content',
     line: BENCHMARK_LINES.fcpMs,
+    value: (metrics) => finiteMetric(metrics.fcpMs),
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -74,6 +89,7 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'late-paint': {
     metricLabel: 'First content',
     line: BENCHMARK_LINES.fcpMs,
+    value: (metrics) => finiteMetric(metrics.fcpMs),
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -81,6 +97,8 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   sluggish: {
     metricLabel: 'Tap delay',
     line: BENCHMARK_LINES.tbtMs,
+    value: (metrics) => finiteMetric(metrics.tbtMs),
+    scalePolicy: BENCHMARK_SCALE_POLICIES.tbtMs,
     lineOwner: "Google's Core Web Vitals",
     lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time',
     label: (value) => `${(value / 1000).toFixed(1)}s`,
@@ -91,20 +109,10 @@ function finiteMetric(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) ? value : undefined;
 }
 
-function perfGapValue(kind: PerfGapKind, metrics: PerfGapMetrics): number | undefined {
-  switch (kind) {
-    case 'slow-lcp': return finiteMetric(metrics.lcpMs);
-    case 'layout-shift': return finiteMetric(metrics.cls);
-    case 'blank':
-    case 'late-paint': return finiteMetric(metrics.fcpMs);
-    case 'sluggish': return finiteMetric(metrics.tbtMs);
-  }
-}
-
 export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | undefined {
-  const value = perfGapValue(kind, metrics);
-  if (value === undefined) return undefined;
   const spec = PERF_GAP_SPECS[kind];
+  const value = spec.value(metrics);
+  if (value === undefined) return undefined;
   return {
     metricLabel: spec.metricLabel,
     measuredLabel: spec.label(value),
@@ -114,6 +122,7 @@ export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | u
     zone: benchmarkZone(value, spec.line),
     lineOwner: spec.lineOwner,
     lineUrl: spec.lineUrl,
+    ...(spec.scalePolicy ? { scaleAxis: { unit: spec.scalePolicy.unit, precision: spec.scalePolicy.precision } } : {}),
   };
 }
 
@@ -484,7 +493,9 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
         affectsProse: perfAffectsProse({ kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }),
         ...(perfHandoff ? { sitePrompts: { perf: perfHandoff } } : {}),
         ...(gap ? { gap } : {}),
-        ...(gap && heroFcpMs !== undefined ? { scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs) } : {}),
+        ...(gap && heroFcpMs !== undefined ? {
+          scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs),
+        } : {}),
         gapSubLines: displayFcpGapSubLines(perfFactPages, anchorFacts),
         stakes: {
           kind: 'at-risk',
@@ -539,12 +550,18 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
         downloadsBeforeLcpKb: metricVal(anchorPage, 'downloads-before-LCP'),
         downloadsKb: metricVal(anchorPage, 'downloads'),
       };
-      const gap = perfGap(perfCostAnchor.problem.kind, {
+      const gapMetrics = {
         lcpMs: metricVal(anchorPage, 'LCP'),
         cls: metricVal(anchorPage, 'CLS') !== undefined ? metricVal(anchorPage, 'CLS')! / 100 : undefined,
         fcpMs: metricVal(anchorPage, 'FCP'),
         tbtMs: metricVal(anchorPage, 'TBT'),
-      });
+      };
+      const gapSpec = PERF_GAP_SPECS[perfCostAnchor.problem.kind];
+      const gap = perfGap(perfCostAnchor.problem.kind, gapMetrics);
+      const scaleValue = gapSpec.value(gapMetrics);
+      const scale = gap && scaleValue !== undefined && gapSpec.scalePolicy
+        ? benchmarkScaleGeometry(scaleValue, gapSpec.line, gapSpec.scalePolicy)
+        : undefined;
       const bookingPage = moneyPage(
         input.rankedCarded.map(({ page }) => ({ name: page.name, startingPath: page.startingPath, lcpMs: metricVal(page, 'LCP') })),
         input.moneyPage,
@@ -561,6 +578,7 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
           ? input.copyPromptForPage(supportingProblem.page)
           : undefined,
         ...(gap ? { gap } : {}),
+        ...(scale ? { scale } : {}),
         gapSubLines: perfGapSubLines(perfFactPages, anchorFacts),
         ...(bookingPage ? { bookingLine: bookingLine(bookingPage) } : {}),
         stakes: {

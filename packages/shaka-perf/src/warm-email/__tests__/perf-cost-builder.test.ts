@@ -12,6 +12,7 @@ import {
   type BuildPerfCostInput,
   type PerfCostPage,
 } from '../client-report-model/cost-performance';
+import type { Problem } from '../client-report-model/perf';
 import type { PagePerf } from '../synthesis';
 
 function page(name: string, startingPath: string, metrics: Record<string, number>): PagePerf {
@@ -26,10 +27,10 @@ function page(name: string, startingPath: string, metrics: Record<string, number
   };
 }
 
-function perfPage(pageValue: PagePerf): PerfCostPage {
+function perfPage(pageValue: PagePerf, lead: Problem = { kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }): PerfCostPage {
   return {
     page: pageValue,
-    lead: { kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' },
+    lead,
   };
 }
 
@@ -79,7 +80,7 @@ describe('buildPerfCost', () => {
         multipleLabel: '1.6x',
         lineOwner: "Google's Lighthouse benchmark - first contentful paint",
       },
-      scale: { axisMaxSeconds: 4, markerPercent: 75 },
+      scale: { axisMaxDisplay: 4, markerPercent: 75 },
       calculator: { inquiryNoun: 'inquiry' },
     });
     expect(result.perfCost?.gapSubLines).toEqual([
@@ -109,5 +110,47 @@ describe('buildPerfCost', () => {
     const result = buildPerfCost(input({ perfCouldNotMeasure: true, measured: [], rankedCarded: [] }));
 
     expect(result.perfCost).toBeUndefined();
+  });
+
+  it.each([
+    {
+      kind: 'slow-lcp' as const,
+      metrics: { LCP: 24_700, FCP: 900, CLS: 2, TBT: 50 },
+      scale: { axisMaxDisplay: 31, goodLinePercent: 8.064516129032258, markerPercent: 79.6774193548387 },
+    },
+    {
+      kind: 'layout-shift' as const,
+      metrics: { LCP: 1800, FCP: 900, CLS: 32, TBT: 50 },
+      scale: { axisMaxDisplay: 0.4, goodLinePercent: 25, markerPercent: 80 },
+    },
+    {
+      kind: 'sluggish' as const,
+      metrics: { LCP: 1800, FCP: 900, CLS: 2, TBT: 738 },
+      scale: { axisMaxDisplay: 1, goodLinePercent: 20, markerPercent: 73.8 },
+    },
+  ])('adds a scale for a $kind branch-3 problem', ({ kind, metrics, scale }) => {
+    const measured = perfPage(
+      page('Home', '/', metrics),
+      { kind, status: 'poor', severity: 1, headline: '', chip: kind },
+    );
+    const result = buildPerfCost(input({ perfStatus: 'poor', measured: [measured], rankedCarded: [measured] }));
+
+    expect(result.perfCost?.scale).toMatchObject(scale);
+  });
+
+  it('keeps an FCP fallback in branch 3 free of a new scale', () => {
+    const lcp = perfPage(
+      page('Home', '/', { LCP: 12_000, FCP: 900, CLS: 2, TBT: 50 }),
+      { kind: 'slow-lcp', status: 'poor', severity: 1, headline: '', chip: 'slow-lcp' },
+    );
+    const fcp = perfPage(
+      page('Platform', '/platform', { LCP: 1800, FCP: 3030, CLS: 2, TBT: 50 }),
+      { kind: 'late-paint', status: 'fair', severity: 0.4, headline: '', chip: 'late-paint' },
+    );
+
+    const result = buildPerfCost(input({ perfStatus: 'poor', measured: [lcp, fcp], rankedCarded: [fcp] }));
+
+    expect(result.perfCost?.gap?.metricLabel).toBe('First content');
+    expect(result.perfCost?.scale).toBeUndefined();
   });
 });

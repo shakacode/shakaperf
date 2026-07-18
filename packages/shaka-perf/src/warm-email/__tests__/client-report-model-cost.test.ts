@@ -9,6 +9,7 @@
 
 import {
   BENCHMARK_LINES,
+  BENCHMARK_SCALE_POLICIES,
   FCP_HERO_METRIC,
   MATERIALITY_FLOOR_USD_PER_MONTH,
   RECOVERY_BANDS,
@@ -73,9 +74,9 @@ describe('benchmarkZone', () => {
 
 describe('benchmarkScaleGeometry', () => {
   it('uses the data-driven axis and zone widths that sum to 100%', () => {
-    const geometry = benchmarkScaleGeometry(3421.7, BENCHMARK_LINES.fcpMs);
+    const geometry = benchmarkScaleGeometry(3421.7, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs);
 
-    expect(geometry).toMatchObject({ axisMaxMs: 4500, axisMaxSeconds: 4.5, goodLinePercent: 40 });
+    expect(geometry).toMatchObject({ axisMaxDisplay: 4.5, goodLinePercent: 40 });
     expect(geometry?.zones.amber).toBeCloseTo(26.666666666666668);
     expect(geometry?.zones.red).toBeCloseTo(33.333333333333336);
     expect(Object.values(geometry?.zones ?? {}).reduce((sum, width) => sum + width, 0)).toBeCloseTo(100);
@@ -83,11 +84,31 @@ describe('benchmarkScaleGeometry', () => {
   });
 
   it('keeps the minimum four-second axis for a three-second first-content result', () => {
-    expect(benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs)?.axisMaxSeconds).toBe(4);
+    expect(benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs)?.axisMaxDisplay).toBe(4);
   });
 
   it('rejects thresholds that do not fit within the calculated axis', () => {
-    expect(benchmarkScaleGeometry(3030, { good: 1800, poor: 4500 })).toBeUndefined();
+    expect(benchmarkScaleGeometry(3030, { good: 1800, poor: 4500 }, BENCHMARK_SCALE_POLICIES.fcpMs)).toBeUndefined();
+  });
+
+  it('uses each performance metric policy for a visible, native-unit scale', () => {
+    const lcp = benchmarkScaleGeometry(24_700, BENCHMARK_LINES.lcpMs, BENCHMARK_SCALE_POLICIES.lcpMs);
+    const tbt = benchmarkScaleGeometry(738, BENCHMARK_LINES.tbtMs, BENCHMARK_SCALE_POLICIES.tbtMs);
+    const cls = benchmarkScaleGeometry(0.32, BENCHMARK_LINES.cls, BENCHMARK_SCALE_POLICIES.cls);
+
+    expect(lcp).toMatchObject({ axisMaxDisplay: 31 });
+    expect(lcp?.goodLinePercent).toBeCloseTo(8.064516129032258);
+    expect(lcp?.markerPercent).toBeCloseTo(79.6774193548387);
+
+    expect(tbt).toMatchObject({ axisMaxDisplay: 1 });
+    expect(tbt?.goodLinePercent).toBe(20);
+    expect(tbt?.poorLinePercent).toBe(60);
+    expect(tbt?.markerPercent).toBeCloseTo(73.8);
+
+    expect(cls).toMatchObject({ axisMaxDisplay: 0.4 });
+    expect(cls?.goodLinePercent).toBe(25);
+    expect(cls?.poorLinePercent).toBe(62.5);
+    expect(cls?.markerPercent).toBe(80);
   });
 });
 
