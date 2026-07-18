@@ -137,4 +137,20 @@ describe('buildPerfCost', () => {
 
     expect(result.perfCost?.scale).toMatchObject(scale);
   });
+
+  it('keeps an FCP fallback in branch 3 free of a new scale', () => {
+    const lcp = perfPage(
+      page('Home', '/', { LCP: 12_000, FCP: 900, CLS: 2, TBT: 50 }),
+      { kind: 'slow-lcp', status: 'poor', severity: 1, headline: '', chip: 'slow-lcp' },
+    );
+    const fcp = perfPage(
+      page('Platform', '/platform', { LCP: 1800, FCP: 3030, CLS: 2, TBT: 50 }),
+      { kind: 'late-paint', status: 'fair', severity: 0.4, headline: '', chip: 'late-paint' },
+    );
+
+    const result = buildPerfCost(input({ perfStatus: 'poor', measured: [lcp, fcp], rankedCarded: [fcp] }));
+
+    expect(result.perfCost?.gap?.metricLabel).toBe('First content');
+    expect(result.perfCost?.scale).toBeUndefined();
+  });
 });
