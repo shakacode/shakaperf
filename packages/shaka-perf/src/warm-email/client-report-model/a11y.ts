@@ -12,122 +12,25 @@ import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from '../../audit/stages/accessibility/types';
-import { buildA11ySitePrompt } from '../copy-prompt';
 import { NO_MATERIAL_LOSS, a11yNoNumberLine } from '../cost-strings';
 import type { ClientReportA11yCard, ClientReportBlockedPage, ClientReportCostBlock, ClientReportModel, ClientReportStatus } from '../client-report-renderer';
 import type { PagePerf } from '../synthesis';
 import { a11yContrastGap, a11yFixText, worstContrastRatio, type StrongPageGroup } from './cost';
+import { summarizeA11yRuleFamilies } from './a11y-rule-families';
+import { buildCanonicalA11ySitePrompt } from './a11y-site-prompt';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
-import { dashSafe, liveUrlFor } from './shared';
+import { dashSafe } from './shared';
 
 /** A C-design strong-page group replaces individual cards on the a11y or AI tabs. */
 export type A11yStrongPageGroup = StrongPageGroup;
 
-export interface A11yRuleFamilyViolation {
-  ruleId: string;
-  impact?: string | null;
-}
-
-export interface A11yRuleFamilyScan {
-  violations: readonly A11yRuleFamilyViolation[];
-}
-
-export interface A11yRuleFamily {
-  id: string;
-  label: string;
-  pageCount: number;
-}
-
-export interface A11yRuleFamilySummary {
-  /** Use with countedFamilies for the reconciled C-panel headline. */
-  headlineCount: number;
-  countedFamilies: readonly A11yRuleFamily[];
-  notCountedExtras: readonly A11yRuleFamily[];
-  smallerNotesCount: number;
-}
-
-interface A11yRuleFamilyDefinition {
-  id: string;
-  label: string;
-  matches: (ruleId: string) => boolean;
-}
-
-const A11Y_RULE_FAMILY_DEFINITIONS: readonly A11yRuleFamilyDefinition[] = [
-  { id: 'target-size', label: 'touch targets too small to tap reliably', matches: (ruleId) => ruleId === 'target-size' },
-  { id: 'image-alt', label: 'images with no text description', matches: (ruleId) => /^(image-alt|svg-img-alt|input-image-alt)$/.test(ruleId) },
-  { id: 'unlabeled-controls', label: 'unlabeled controls', matches: (ruleId) => /^(button-name|link-name|label|select-name|aria-input-field-name)$/.test(ruleId) },
-  { id: 'list', label: 'broken list markup', matches: (ruleId) => ruleId === 'list' },
-  { id: 'nested-interactive', label: 'controls nested inside controls', matches: (ruleId) => ruleId === 'nested-interactive' },
-  { id: 'contrast', label: 'text that is too hard to read', matches: (ruleId) => ruleId === 'color-contrast' },
-  { id: 'aria', label: 'accessibility markup problems', matches: (ruleId) => ruleId.startsWith('aria-') },
-  { id: 'structure', label: 'page structure that is hard to navigate', matches: (ruleId) => /^(region|landmark|heading|page-has-heading-one|empty-heading|html-has-lang|document-title)/.test(ruleId) },
-];
-
-const OTHER_A11Y_RULE_FAMILY: A11yRuleFamilyDefinition = {
-  id: 'other',
-  label: 'other accessibility barrier',
-  matches: () => false,
-};
-
-function a11yRuleFamilyDefinition(ruleId: string): A11yRuleFamilyDefinition {
-  return A11Y_RULE_FAMILY_DEFINITIONS.find((candidate) => candidate.matches(ruleId)) ?? OTHER_A11Y_RULE_FAMILY;
-}
-
-function isCountedA11yViolation(violation: A11yRuleFamilyViolation): boolean {
-  return violation.impact === 'critical' || violation.impact === 'serious';
-}
-
-/**
- * Builds reconciled rule-family counts for the C findings panel. A page can
- * count once per rule family, so counted-family totals always equal headlineCount.
- */
-export function summarizeA11yRuleFamilies(
-  scans: readonly A11yRuleFamilyScan[],
-  visibleExtraLimit = 2,
-): A11yRuleFamilySummary {
-  const counted = new Map<string, A11yRuleFamily>();
-  const extras = new Map<string, A11yRuleFamily>();
-  for (const scan of scans) {
-    const countedOnPage = new Map<string, A11yRuleFamilyDefinition>();
-    const extrasOnPage = new Map<string, A11yRuleFamilyDefinition>();
-    for (const violation of scan.violations) {
-      const definition = a11yRuleFamilyDefinition(violation.ruleId);
-      (isCountedA11yViolation(violation) ? countedOnPage : extrasOnPage).set(definition.id, definition);
-    }
-    for (const definition of countedOnPage.values()) {
-      const current = counted.get(definition.id) ?? { id: definition.id, label: definition.label, pageCount: 0 };
-      current.pageCount += 1;
-      counted.set(definition.id, current);
-    }
-    for (const definition of extrasOnPage.values()) {
-      if (countedOnPage.has(definition.id)) continue;
-      const current = extras.get(definition.id) ?? { id: definition.id, label: definition.label, pageCount: 0 };
-      current.pageCount += 1;
-      extras.set(definition.id, current);
-    }
-  }
-  for (const familyId of counted.keys()) extras.delete(familyId);
-  const familyOrder = (familyId: string): number => {
-    const index = A11Y_RULE_FAMILY_DEFINITIONS.findIndex((definition) => definition.id === familyId);
-    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
-  };
-  const sortFamilies = (a: A11yRuleFamily, b: A11yRuleFamily): number => (
-    b.pageCount - a.pageCount
-    || familyOrder(a.id) - familyOrder(b.id)
-    || a.id.localeCompare(b.id)
-  );
-  const countedFamilies = [...counted.values()].sort(sortFamilies);
-  const allExtras = [...extras.values()].sort(sortFamilies);
-  const safeExtraLimit = Math.max(0, Math.floor(visibleExtraLimit));
-  const notCountedExtras = allExtras.slice(0, safeExtraLimit);
-  const smallerNotesCount = allExtras.slice(safeExtraLimit).reduce((total, family) => total + family.pageCount, 0);
-  return {
-    headlineCount: countedFamilies.reduce((total, family) => total + family.pageCount, 0),
-    countedFamilies,
-    notCountedExtras,
-    smallerNotesCount,
-  };
-}
+export {
+  summarizeA11yRuleFamilies,
+  type A11yRuleFamily,
+  type A11yRuleFamilyScan,
+  type A11yRuleFamilySummary,
+  type A11yRuleFamilyViolation,
+} from './a11y-rule-families';
 
 export interface A11yPromptRule {
   ruleId: string;
@@ -350,136 +253,6 @@ export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA
   };
 }
 
-function a11yPageUrl(siteUrl: string, view: A11ySectionView): string {
-  return liveUrlFor(siteUrl, view.page.startingPath || '/') || view.scan.url || siteUrl;
-}
-
-function canonicalA11yPageUrl(siteUrl: string, view: A11ySectionView): string {
-  const pageUrl = a11yPageUrl(siteUrl, view);
-  try {
-    const parsed = new URL(pageUrl);
-    parsed.hash = '';
-    return parsed.href;
-  } catch {
-    return pageUrl;
-  }
-}
-
-function aggregateA11yPromptViews(
-  views: readonly A11ySectionView[],
-  siteUrl: string,
-): A11ySectionView[] {
-  // Report rows stay scenario-specific; only remediation prompt URLs are coalesced.
-  const byPageUrl = new Map<string, A11ySectionView>();
-  for (const view of views) {
-    const key = canonicalA11yPageUrl(siteUrl, view);
-    const existing = byPageUrl.get(key);
-    if (!existing) {
-      byPageUrl.set(key, view);
-      continue;
-    }
-    const violations = [...existing.scan.violations, ...view.scan.violations];
-    byPageUrl.set(key, {
-      ...existing,
-      scan: { ...existing.scan, violations },
-      counts: {
-        critical: existing.counts.critical + view.counts.critical,
-        serious: existing.counts.serious + view.counts.serious,
-        moderate: existing.counts.moderate + view.counts.moderate,
-        minor: existing.counts.minor + view.counts.minor,
-      },
-      client: existing.client ?? view.client,
-    });
-  }
-  return [...byPageUrl.values()];
-}
-
-function a11yFamilyId(violation: AccessibilityViolation): string | undefined {
-  const summary = summarizeA11yRuleFamilies([{ violations: [violation] }], 1);
-  return summary.countedFamilies[0]?.id ?? summary.notCountedExtras[0]?.id;
-}
-
-function isHighImpactA11yViolation(violation: AccessibilityViolation): boolean {
-  return violation.impact === 'critical' || violation.impact === 'serious';
-}
-
-function a11yViolationSelectors(violation: AccessibilityViolation): string[] {
-  const selectors = new Set<string>();
-  for (const node of violation.nodes) {
-    for (const target of node.target) {
-      const selector = (Array.isArray(target) ? target.join(' ') : target).trim();
-      if (selector) selectors.add(selector);
-    }
-  }
-  return [...selectors];
-}
-
-function safeA11ySharedSelector(selector: string): string | undefined {
-  // The prompt builder intentionally rejects untrusted or incomplete selectors.
-  // Keep this optional shared-component evidence to a conservative subset it accepts.
-  const normalized = selector.replace(/\s+/g, ' ').trim();
-  const simpleSelector = /^(?:(?:a|article|button|div|footer|form|h[1-6]|header|img|input|label|li|main|nav|ol|p|section|select|span|textarea|ul)(?:\.[A-Za-z_][\w-]*)*|\.[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)*)(?:\[[A-Za-z][\w:-]*(?:=(?:"[A-Za-z0-9_:#.+/-]*"|'[A-Za-z0-9_:#.+/-]*'|[A-Za-z0-9_:#.+/-]*))?\])?$/i;
-  const instructionLikeClass = /(?:^|\.)(?:ignore|disregard|forget|override|bypass)(?:[-_][A-Za-z0-9_]+)*[-_](?:instructions?|prompt|system|developer|assistant|user|tool)(?:$|\.|\[)/i;
-  return normalized.length > 0
-    && normalized.length <= 240
-    && !/(?:https?:)?\/\//i.test(normalized)
-    && !instructionLikeClass.test(normalized)
-    && simpleSelector.test(normalized)
-    ? normalized
-    : undefined;
-}
-
-function a11yFamilyPromptFindings(
-  views: readonly A11ySectionView[],
-  families: readonly { id: string; label: string; pageCount: number }[],
-  siteUrl: string,
-  highImpact: boolean,
-): Array<{
-  familyId: string;
-  label: string;
-  impact: string;
-  pageCount: number;
-  pageUrls: string[];
-  verificationRuleIds: string[];
-  sharedComponent?: { selector: string };
-}> {
-  return families.map((family) => {
-    const pageUrls = new Set<string>();
-    const ruleIds = new Set<string>();
-    const selectorPages = new Map<string, Set<string>>();
-    let critical = false;
-    let serious = false;
-    for (const view of views) {
-      for (const violation of view.scan.violations) {
-        if (a11yFamilyId(violation) !== family.id || isHighImpactA11yViolation(violation) !== highImpact) continue;
-        const pageUrl = a11yPageUrl(siteUrl, view);
-        pageUrls.add(pageUrl);
-        ruleIds.add(violation.ruleId);
-        critical ||= violation.impact === 'critical';
-        serious ||= violation.impact === 'serious';
-        for (const selector of a11yViolationSelectors(violation)) {
-          const pages = selectorPages.get(selector) ?? new Set<string>();
-          pages.add(pageUrl);
-          selectorPages.set(selector, pages);
-        }
-      }
-    }
-    const sharedSelector = [...selectorPages]
-      .filter(([, pages]) => pages.size > 1)
-      .map(([selector]) => safeA11ySharedSelector(selector))
-      .find((selector): selector is string => selector !== undefined);
-    return {
-      familyId: family.id,
-      label: family.label,
-      impact: critical ? 'critical' : serious ? 'serious' : 'moderate',
-      pageCount: family.pageCount,
-      pageUrls: [...pageUrls],
-      verificationRuleIds: [...ruleIds],
-      ...(sharedSelector ? { sharedComponent: { selector: sharedSelector } } : {}),
-    };
-  });
-}
-
 function a11yFamilyReach(pageCount: number, pageTotal: number): string {
   return pageCount === pageTotal
     ? `all ${pageTotal} ${pageTotal === 1 ? 'page' : 'pages'}`
@@ -565,42 +338,12 @@ export function buildA11ySection(
       'WCAG - passes at zero critical barriers',
     ]
     : [];
-  const a11yPromptViews = aggregateA11yPromptViews(a11yMeasurable, siteUrl);
-  const a11yPromptFamilySummary = summarizeA11yRuleFamilies(a11yPromptViews.map((view) => view.scan));
-  const a11yPromptWorst = a11yWorst
-    ? a11yPromptViews.find((view) => canonicalA11yPageUrl(siteUrl, view) === canonicalA11yPageUrl(siteUrl, a11yWorst))
-    : undefined;
-  const a11yPromptWorstFamilyCount = a11yPromptWorst
-    ? summarizeA11yRuleFamilies([a11yPromptWorst.scan]).headlineCount
-    : 0;
-  const a11yPromptFindings = a11yFamilyPromptFindings(a11yPromptViews, a11yPromptFamilySummary.countedFamilies, siteUrl, true);
-  const a11yLowerImpactPromptFindings = a11yPromptFamilySummary.notCountedExtras.length > 0
-    ? a11yFamilyPromptFindings(a11yPromptViews, a11yPromptFamilySummary.notCountedExtras, siteUrl, false)
-    : undefined;
-  const a11ySitePromptData = a11yPromptWorst && a11yPromptWorstFamilyCount > 0
-    ? {
-      url: siteUrl,
-      host: promptCtx.host,
-      date: promptCtx.date,
-      pageCount: a11yPromptViews.length,
-      highImpactCount: a11yPromptFamilySummary.headlineCount,
-      worstPage: { url: a11yPageUrl(siteUrl, a11yPromptWorst), highImpactCount: a11yPromptWorstFamilyCount },
-      pageUrls: a11yPromptViews.map((view) => a11yPageUrl(siteUrl, view)),
-      findings: a11yPromptFindings,
-      ...(a11yLowerImpactPromptFindings ? { lowerImpactFindings: a11yLowerImpactPromptFindings } : {}),
-      ...(a11yPromptFamilySummary.smallerNotesCount > 0 ? { smallerNotesCount: a11yPromptFamilySummary.smallerNotesCount } : {}),
-    }
-    : undefined;
-  const a11ySitePrompt = a11ySitePromptData
-    ? buildA11ySitePrompt(a11ySitePromptData)
-      ?? buildA11ySitePrompt({
-        ...a11ySitePromptData,
-        findings: a11ySitePromptData.findings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding),
-        ...(a11ySitePromptData.lowerImpactFindings
-          ? { lowerImpactFindings: a11ySitePromptData.lowerImpactFindings.map(({ sharedComponent: _sharedComponent, ...finding }) => finding) }
-          : {}),
-      })
-    : undefined;
+  const a11ySitePrompt = buildCanonicalA11ySitePrompt({
+    views: a11yMeasurable,
+    worstView: a11yWorst,
+    siteUrl,
+    promptContext: promptCtx,
+  });
   const a11yAffects = (scan: AccessibilityScan): string =>
     [a11yAffectsProse(scan), a11yNoNumberLine()].filter(Boolean).join(' ');
   let a11yCost: ClientReportCostBlock | undefined;

@@ -35,7 +35,9 @@ import {
   a11yFixClause,
   hasMajorA11yBarrier,
   a11yPromptRules,
+  type A11ySectionView,
 } from '../client-report-model/a11y';
+import { buildCanonicalA11ySitePrompt } from '../client-report-model/a11y-site-prompt';
 
 function viol(impact: AccessibilityViolation['impact']): AccessibilityViolation {
   // One node so `places` (nodes.length) is a realistic 1, not 0, in enrich requests.
@@ -57,6 +59,19 @@ function result(scans: AccessibilityScan[]): AccessibilityResult {
 
 function page(a11y?: AccessibilityResult): PagePerf {
   return { id: 'p', name: 'P', startingPath: '/', chips: [], metrics: {}, ...(a11y ? { a11y } : {}) };
+}
+
+function promptSectionView(
+  id: string,
+  name: string,
+  startingPath: string,
+  violations: AccessibilityViolation[],
+): A11ySectionView {
+  return {
+    page: { id, name, startingPath, chips: [], metrics: {} },
+    scan: { ...scan(violations), url: `https://example.com${startingPath}` },
+    counts: tallyByImpact(violations),
+  };
 }
 
 describe('tallyByImpact', () => {
@@ -287,6 +302,34 @@ describe('client report a11y cost copy helpers', () => {
         htmlExample: '<button> Checkout </button>',
       },
     ]);
+  });
+
+  it('selects the aggregated canonical page for the site prompt deterministically', () => {
+    const vRule = (ruleId: string, impact: AccessibilityViolation['impact']): AccessibilityViolation => ({
+      ruleId,
+      impact,
+      help: 'fixture',
+      helpUrl: '',
+      tags: [],
+      nodes: [{ target: ['.fixture'], html: '<button>Fixture</button>', failureSummary: '' }],
+    });
+    const input = {
+      views: [
+        promptSectionView('home-top', 'Home top', '/#top', [vRule('target-size', 'serious')]),
+        promptSectionView('home-footer', 'Home footer', '/#footer', [vRule('image-alt', 'critical')]),
+        promptSectionView('about', 'About', '/about', [vRule('target-size', 'serious')]),
+      ],
+      worstView: promptSectionView('home-top', 'Home top', '/#top', [vRule('target-size', 'serious')]),
+      siteUrl: 'https://example.com',
+      promptContext: { host: 'example.com', date: 'July 10, 2026' },
+    };
+
+    const prompt = buildCanonicalA11ySitePrompt(input);
+
+    expect(buildCanonicalA11ySitePrompt(input)).toBe(prompt);
+    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain('worst page: the homepage with 2');
+    expect(prompt).toContain("npx @axe-core/cli 'https://example.com/#top' 'https://example.com/about'");
   });
 });
 
