@@ -493,7 +493,9 @@ export function buildPerfCost(input: BuildPerfCostInput): PerfCostAssembly {
         affectsProse: perfAffectsProse({ kind: 'late-paint', status: 'fair', severity: 0, headline: '', chip: '' }),
         ...(perfHandoff ? { sitePrompts: { perf: perfHandoff } } : {}),
         ...(gap ? { gap } : {}),
-        ...(gap && heroFcpMs !== undefined ? { scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs) } : {}),
+        ...(gap && heroFcpMs !== undefined ? {
+          scale: benchmarkScaleGeometry(heroFcpMs, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs),
+        } : {}),
         gapSubLines: displayFcpGapSubLines(perfFactPages, anchorFacts),
         stakes: {
           kind: 'at-risk',

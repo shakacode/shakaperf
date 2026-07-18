@@ -59,6 +59,7 @@ import {
 } from '../client-report-model/perf';
 import {
   BENCHMARK_LINES,
+  BENCHMARK_SCALE_POLICIES,
   benchmarkScaleGeometry,
   perfGap,
   RECOVERY_BANDS,
@@ -2102,7 +2103,7 @@ describe('renderClientReportHtml', () => {
         },
         countedZeroLine: 'Visitor loss is counted once in this report.',
         scale: {
-          axisMaxSeconds: 10.5,
+          axisMaxDisplay: 10.5,
           zones: { green: 23.8, amber: 14.3, red: 61.9 },
           goodLinePercent: 23.8,
           poorLinePercent: 38.1,
@@ -2161,8 +2162,8 @@ describe('renderClientReportHtml', () => {
         metricLabel: 'Main content', measuredLabel: '24.7s', goodLabel: '2.5s', poorLabel: '4.0s', zone: 'poor' as const,
         lineOwner: 'Google', lineUrl: 'https://web.dev/articles/lcp', scaleAxis: { unit: 'seconds' as const, precision: 1 },
       },
-      scale: { axisMaxSeconds: 31, zones: { green: 8.1, amber: 4.8, red: 87.1 }, goodLinePercent: 8.1, poorLinePercent: 12.9, markerPercent: 79.7 },
-      expected: ['data-benchmark-axis-max="31"', '<span>0s</span><span>31s</span>'],
+      scale: { axisMaxDisplay: 31, zones: { green: 8.1, amber: 4.8, red: 87.1 }, goodLinePercent: 8.1, poorLinePercent: 12.9, markerPercent: 79.7 },
+      expected: ['data-benchmark-axis-max="31.0"', '<span>0s</span><span>31.0s</span>'],
     },
     {
       name: 'TBT',
@@ -2170,8 +2171,8 @@ describe('renderClientReportHtml', () => {
         metricLabel: 'Tap delay', measuredLabel: '0.7s', goodLabel: '0.2s', poorLabel: '0.6s', zone: 'poor' as const,
         lineOwner: 'Google', lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time', scaleAxis: { unit: 'seconds' as const, precision: 1 },
       },
-      scale: { axisMaxSeconds: 1, zones: { green: 20, amber: 40, red: 40 }, goodLinePercent: 20, poorLinePercent: 60, markerPercent: 73.8 },
-      expected: ['data-benchmark-axis-max="1"', '<span>0s</span><span>1s</span>'],
+      scale: { axisMaxDisplay: 1, zones: { green: 20, amber: 40, red: 40 }, goodLinePercent: 20, poorLinePercent: 60, markerPercent: 73.8 },
+      expected: ['data-benchmark-axis-max="1.0"', '<span>0s</span><span>1.0s</span>'],
     },
     {
       name: 'CLS',
@@ -2179,8 +2180,17 @@ describe('renderClientReportHtml', () => {
         metricLabel: 'Layout shift', measuredLabel: '0.32', goodLabel: '0.10', poorLabel: '0.25', zone: 'poor' as const,
         lineOwner: 'Google', lineUrl: 'https://web.dev/articles/cls', scaleAxis: { unit: 'unitless' as const, precision: 2 },
       },
-      scale: { axisMaxSeconds: 0.4, zones: { green: 25, amber: 37.5, red: 37.5 }, goodLinePercent: 25, poorLinePercent: 62.5, markerPercent: 80 },
+      scale: { axisMaxDisplay: 0.4, zones: { green: 25, amber: 37.5, red: 37.5 }, goodLinePercent: 25, poorLinePercent: 62.5, markerPercent: 80 },
       expected: ['data-benchmark-axis-max="0.40"', '<span>0</span><span>0.40</span>'],
+    },
+    {
+      name: 'CLS with an integer axis maximum',
+      gap: {
+        metricLabel: 'Layout shift', measuredLabel: '0.80', goodLabel: '0.10', poorLabel: '0.25', zone: 'poor' as const,
+        lineOwner: 'Google', lineUrl: 'https://web.dev/articles/cls', scaleAxis: { unit: 'unitless' as const, precision: 2 },
+      },
+      scale: { axisMaxDisplay: 1, zones: { green: 10, amber: 15, red: 75 }, goodLinePercent: 10, poorLinePercent: 25, markerPercent: 80 },
+      expected: ['data-benchmark-axis-max="1.00"', '<span>0</span><span>1.00</span>'],
     },
   ])('renders $name scale labels in its native units', ({ gap, scale, expected }) => {
     const html = renderClientReportHtml(model({
@@ -2194,7 +2204,7 @@ describe('renderClientReportHtml', () => {
 
   it('keeps the production FCP scale markup byte-for-byte compatible', () => {
     const gap = perfGap('blank', { fcpMs: 3030 });
-    const scale = benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs);
+    const scale = benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs);
     if (!gap || !scale) throw new Error('the FCP benchmark scale must be computable');
 
     const perfPanelHtml = renderedPanel(renderClientReportHtml(model({
@@ -2206,7 +2216,7 @@ describe('renderClientReportHtml', () => {
   });
 
   it('ports the C cost blocks with closed disclosures, honest geometry, and the middle calculator band', () => {
-    const canvasScale = benchmarkScaleGeometry(3000, BENCHMARK_LINES.fcpMs);
+    const canvasScale = benchmarkScaleGeometry(3000, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs);
     if (!canvasScale) throw new Error('the canvas performance scale must be computable');
     const html = renderClientReportHtml(model({
       hasA11y: true,

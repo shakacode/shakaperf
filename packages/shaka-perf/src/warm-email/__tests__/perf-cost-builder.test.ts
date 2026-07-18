@@ -80,7 +80,7 @@ describe('buildPerfCost', () => {
         multipleLabel: '1.6x',
         lineOwner: "Google's Lighthouse benchmark - first contentful paint",
       },
-      scale: { axisMaxSeconds: 4, markerPercent: 75 },
+      scale: { axisMaxDisplay: 4, markerPercent: 75 },
       calculator: { inquiryNoun: 'inquiry' },
     });
     expect(result.perfCost?.gapSubLines).toEqual([
@@ -116,17 +116,17 @@ describe('buildPerfCost', () => {
     {
       kind: 'slow-lcp' as const,
       metrics: { LCP: 24_700, FCP: 900, CLS: 2, TBT: 50 },
-      scale: { axisMaxSeconds: 31, goodLinePercent: 8.064516129032258, markerPercent: 79.6774193548387 },
+      scale: { axisMaxDisplay: 31, goodLinePercent: 8.064516129032258, markerPercent: 79.6774193548387 },
     },
     {
       kind: 'layout-shift' as const,
       metrics: { LCP: 1800, FCP: 900, CLS: 32, TBT: 50 },
-      scale: { axisMaxSeconds: 0.4, goodLinePercent: 25, markerPercent: 80 },
+      scale: { axisMaxDisplay: 0.4, goodLinePercent: 25, markerPercent: 80 },
     },
     {
       kind: 'sluggish' as const,
       metrics: { LCP: 1800, FCP: 900, CLS: 2, TBT: 738 },
-      scale: { axisMaxSeconds: 1, goodLinePercent: 20, markerPercent: 73.8 },
+      scale: { axisMaxDisplay: 1, goodLinePercent: 20, markerPercent: 73.8 },
     },
   ])('adds a scale for a $kind branch-3 problem', ({ kind, metrics, scale }) => {
     const measured = perfPage(

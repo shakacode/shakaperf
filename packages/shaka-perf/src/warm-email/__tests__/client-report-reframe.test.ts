@@ -221,7 +221,7 @@ describe('cost-of-pain reframe model', () => {
         metricLabel: 'First content', measuredLabel: '3.0s', goodLabel: '1.8s', poorLabel: '3.0s', multipleLabel: '1.6x',
         lineOwner: "Google's Lighthouse benchmark - first contentful paint",
       },
-      scale: { axisMaxSeconds: 4, markerPercent: 75 },
+      scale: { axisMaxDisplay: 4, markerPercent: 75 },
       pageSpeedUrl: 'https://pagespeed.web.dev/analysis?url=http%3A%2F%2Flocalhost%3A1%2F',
       scoreBadgePolicy: 'score-status',
     });

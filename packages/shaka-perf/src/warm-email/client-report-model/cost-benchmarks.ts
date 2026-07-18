@@ -37,8 +37,10 @@ export interface BenchmarkScalePolicy {
 
 export const BENCHMARK_SCALE_POLICIES = {
   lcpMs: { unit: 'seconds', axisFloor: 4000, axisStep: 500, displayDivisor: 1000, precision: 1 },
+  // A 0.30 floor leaves headroom above the 0.25 poor line.
   cls: { unit: 'unitless', axisFloor: 0.3, axisStep: 0.05, displayDivisor: 1, precision: 2 },
   fcpMs: { unit: 'seconds', axisFloor: 4000, axisStep: 500, displayDivisor: 1000, precision: 1 },
+  // A 1000ms floor leaves 400ms of headroom above the 600ms poor line.
   tbtMs: { unit: 'seconds', axisFloor: 1000, axisStep: 100, displayDivisor: 1000, precision: 1 },
 } as const satisfies Record<keyof Pick<typeof BENCHMARK_LINES, 'lcpMs' | 'cls' | 'fcpMs' | 'tbtMs'>, BenchmarkScalePolicy>;
 
@@ -102,10 +104,7 @@ export interface CostGap {
 }
 
 export interface BenchmarkScaleGeometry {
-  axisMax: number;
-  axisMaxMs?: number;
-  /** Legacy display-axis field retained for the existing renderer contract. */
-  axisMaxSeconds: number;
+  axisMaxDisplay: number;
   zones: {
     green: number;
     amber: number;
@@ -120,7 +119,7 @@ export interface BenchmarkScaleGeometry {
 export function benchmarkScaleGeometry(
   value: number,
   line: { good: number; poor: number },
-  policy: BenchmarkScalePolicy = BENCHMARK_SCALE_POLICIES.fcpMs,
+  policy: BenchmarkScalePolicy,
 ): BenchmarkScaleGeometry | undefined {
   if (
     !Number.isFinite(value)
@@ -139,9 +138,7 @@ export function benchmarkScaleGeometry(
   const goodLinePercent = percent(line.good);
   const poorLinePercent = percent(line.poor);
   return {
-    axisMax,
-    ...(policy.unit === 'seconds' ? { axisMaxMs: axisMax } : {}),
-    axisMaxSeconds: axisMax / policy.displayDivisor,
+    axisMaxDisplay: axisMax / policy.displayDivisor,
     zones: {
       green: goodLinePercent,
       amber: poorLinePercent - goodLinePercent,
