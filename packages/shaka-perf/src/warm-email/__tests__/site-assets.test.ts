@@ -10,8 +10,6 @@
 import {
   faviconDataUri,
   faviconLinkTag,
-  faviconMimeFromBytes,
-  faviconTextPrefix,
   isPublicHost,
   parseIconHref,
 } from '../site-assets';
@@ -90,22 +88,6 @@ describe('faviconDataUri', () => {
     // Attacker-controlled header with a quote + tag: must NOT reach the data URI.
     const hostile = 'image/svg+xml"><script>alert(1)</script>';
     expect(faviconDataUri(bytes, hostile)).toBeNull();
-  });
-});
-
-describe('faviconMimeFromBytes', () => {
-  it('identifies every binary icon signature before considering response metadata', () => {
-    expect(faviconMimeFromBytes(new Uint8Array([0x00, 0x00, 0x01, 0x00]))).toBe('image/x-icon');
-    expect(faviconMimeFromBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe('image/png');
-    expect(faviconMimeFromBytes(new Uint8Array([0x47, 0x49, 0x46]))).toBe('image/gif');
-    expect(faviconMimeFromBytes(new Uint8Array([0xff, 0xd8]))).toBe('image/jpeg');
-  });
-});
-
-describe('faviconTextPrefix', () => {
-  it('decodes only the bounded prefix used for text and SVG validation', () => {
-    const bytes = new TextEncoder().encode(`${'a'.repeat(8192)}b`);
-    expect(faviconTextPrefix(bytes)).toBe('a'.repeat(8192));
   });
 });
 

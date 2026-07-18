@@ -31,7 +31,7 @@ export function faviconDataUri(bytes: Uint8Array, contentType: string | null): s
   return `data:${mime};base64,${Buffer.from(bytes).toString('base64')}`;
 }
 
-export function faviconMimeFromBytes(bytes: Uint8Array): string | null {
+function faviconMimeFromBytes(bytes: Uint8Array): string | null {
   if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x01 && bytes[3] === 0x00) return 'image/x-icon';
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
   if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
@@ -47,7 +47,7 @@ function isClearlyNonIconText(bytes: Uint8Array): boolean {
   return /^[<{[]/.test(text) || (!text.includes('\ufffd') && /^[\t\n\f\r -~]+$/.test(text));
 }
 
-export function faviconTextPrefix(bytes: Uint8Array): string {
+function faviconTextPrefix(bytes: Uint8Array): string {
   return new TextDecoder().decode(bytes.subarray(0, 8192));
 }
 
