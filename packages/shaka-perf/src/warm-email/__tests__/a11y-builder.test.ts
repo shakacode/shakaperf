@@ -126,7 +126,7 @@ describe('buildA11ySection', () => {
     ]);
     const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
 
-    expect(result.a11yCost?.strongPageGroup).toEqual({
+    expect(result.a11yStrongPageGroup).toEqual({
       label: 'Strong pages',
       pages: [{ name: 'Looks fine', score: 98 }, { name: 'Also looks fine', score: 70 }],
     });
@@ -139,7 +139,7 @@ describe('buildA11ySection', () => {
     ]);
     const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
 
-    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
+    expect(result.a11yStrongPageGroup).toBeUndefined();
     expect(result.a11yFine).toEqual([
       expect.objectContaining({ name: 'Poor lower-impact page', score: 49, status: 'poor' }),
     ]);
@@ -152,8 +152,8 @@ describe('buildA11ySection', () => {
     ]);
     const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
 
-    expect(result.a11yCost).toMatchObject({ tab: 'a11y', state: 'zero' });
-    expect(result.a11yCost?.strongPageGroup).toEqual({
+    expect(result.a11yCost).toBeUndefined();
+    expect(result.a11yStrongPageGroup).toEqual({
       label: 'Strong pages',
       pages: [{ name: 'Homepage', score: 98 }, { name: 'Contact', score: 94 }],
     });
@@ -167,7 +167,7 @@ describe('buildA11ySection', () => {
     ]);
     const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
 
-    expect(result.a11yCost?.strongPageGroup).toBeUndefined();
+    expect(result.a11yStrongPageGroup).toBeUndefined();
   });
 
   it('uses the blocked state when every supplied scan is bot-protected', () => {

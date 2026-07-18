@@ -2469,8 +2469,8 @@ describe('renderClientReportHtml', () => {
       a11yCost: {
         tab: 'a11y',
         state: 'measured',
-        strongPageGroup: { label: 'Strong pages', pages: [{ name: 'Strong a11y page', score: 98 }, { name: 'Another strong a11y page', score: 70 }] },
       },
+      a11yStrongPageGroup: { label: 'Strong pages', pages: [{ name: 'Strong a11y page', score: 98 }, { name: 'Another strong a11y page', score: 70 }] },
       agentFine,
       agentCost: {
         tab: 'ai',

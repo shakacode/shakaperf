@@ -229,6 +229,7 @@ export interface PreparedA11ySection {
 export interface A11ySection extends PreparedA11ySection {
   a11yCards: ClientReportA11yCard[];
   a11yFine: ClientReportModel['a11yFine'];
+  a11yStrongPageGroup?: A11yStrongPageGroup;
   a11yScore?: number;
   a11yStatus: ClientReportStatus;
   highImpactTotal: number;
@@ -382,10 +383,9 @@ export function buildA11ySection(
     name: view.page.name,
     ...(typeof view.client?.score === 'number' ? { score: view.client.score } : {}),
   }));
-  if (a11yStrongPages.length > 0) {
-    a11yCost ??= { tab: 'a11y', state: 'zero' };
-    a11yCost.strongPageGroup = { label: 'Strong pages', pages: a11yStrongPages };
-  }
+  const a11yStrongPageGroup = a11yStrongPages.length > 0
+    ? { label: 'Strong pages', pages: a11yStrongPages }
+    : undefined;
   return {
     ...prepared,
     a11yCards,
@@ -396,6 +396,7 @@ export function buildA11ySection(
     lowerImpactTotal,
     a11yTopIssues,
     ...(a11yWorst ? { a11yWorst } : {}),
+    ...(a11yStrongPageGroup ? { a11yStrongPageGroup } : {}),
     ...(a11yCost ? { a11yCost } : {}),
   };
 }
