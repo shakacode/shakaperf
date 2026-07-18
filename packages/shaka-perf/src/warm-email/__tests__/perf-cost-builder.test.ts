@@ -140,6 +140,16 @@ describe('buildPerfCost', () => {
     expect(result.perfCost).toBeUndefined();
   });
 
+  it('does not manufacture a cost block when no page could be measured', () => {
+    const result = buildPerfCost(input({
+      perfCouldNotMeasure: true,
+      measured: [],
+      rankedCarded: [],
+    }));
+
+    expect(result.perfCost).toBeUndefined();
+  });
+
   it.each([
     {
       kind: 'slow-lcp' as const,
