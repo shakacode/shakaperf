@@ -6,4 +6,4 @@ The favicon and AI-readiness fetch paths currently maintain separate public-host
 
 ## Centralize HTML escaping
 
-Warm-email rendering paths repeat the same security-sensitive HTML escaping behavior. Create a domain-neutral helper and migrate callers without coupling site-asset fetching to report-model code.
+Warm-email rendering paths repeat the same security-sensitive HTML escaping behavior. Evaluate the existing `escapeHtml` helper in `packages/shaka-shared/src/html-diff.ts`, separate it from diff-specific dependencies if necessary, and migrate callers without coupling site-asset fetching to report-model code.
