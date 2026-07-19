@@ -187,6 +187,24 @@ export async function runMergeInvestigations(
 
     if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
 
+    const invalidTarget = phase.targets.find((target) => (
+      target.status === 'active' && target.goodIndex >= target.badIndex
+    ));
+    if (invalidTarget) {
+      const failure = `Cannot investigate merge source for ${mergeSha}: target `
+        + `${invalidTarget.id} has no distinct good and bad commits`;
+      phase = {
+        ...phase,
+        status: 'failed',
+        finishedAt: options.now(),
+      };
+      investigation = { ...investigation, phase, status: 'failed', failure };
+      session = updateInvestigation(session, investigation);
+      options.checkpoint(session);
+      options.afterCheckpoint?.(session);
+      continue;
+    }
+
     if (phase.targets.length > 0 && phase.status !== 'complete') {
       const completedPhase = await runSearchPhase({
         phase,

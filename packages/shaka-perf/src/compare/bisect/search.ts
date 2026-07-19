@@ -48,6 +48,13 @@ export function nextCandidate(session: Normalized<BisectSearchInput>): Candidate
 
   if (!selectedTarget) return null;
 
+  if (selectedTarget.goodIndex >= selectedTarget.badIndex) {
+    throw new Error(
+      `Invalid bisect interval for target ${selectedTarget.id}: good index `
+      + `${selectedTarget.goodIndex} must be less than bad index ${selectedTarget.badIndex}`,
+    );
+  }
+
   const candidateIndex = Math.floor((selectedTarget.goodIndex + selectedTarget.badIndex) / 2);
   const sha = session.orderedCommits[candidateIndex];
   if (!sha) return null;
@@ -58,6 +65,10 @@ export function nextCandidate(session: Normalized<BisectSearchInput>): Candidate
     && candidateIndex <= target.badIndex
     && !target.observations[sha]
   ));
+
+  if (targets.length === 0) {
+    throw new Error(`Bisect candidate ${sha} has no unobserved active targets`);
+  }
 
   return {
     sha,

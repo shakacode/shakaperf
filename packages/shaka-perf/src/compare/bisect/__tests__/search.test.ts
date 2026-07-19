@@ -64,6 +64,27 @@ function target(value: BisectSearchInput, id: string): BisectTarget {
 }
 
 describe('bisect scheduler', () => {
+  it('rejects a degenerate active interval instead of scheduling empty work', () => {
+    const normalized = applyCachedObservations(session([
+      bisectTarget('visual', 'visreg', {
+        goodIndex: 0,
+        badIndex: 0,
+        observations: { g: observation('visual', true, 'g') },
+      }),
+    ]));
+
+    expect(() => nextCandidate(normalized)).toThrow(/invalid bisect interval/i);
+  });
+
+  it('rejects a candidate with no unobserved active targets', () => {
+    const normalized = applyCachedObservations(session([
+      bisectTarget('visual', 'visreg'),
+    ]));
+    normalized.targets[0].observations.b = observation('visual', true, 'b');
+
+    expect(() => nextCandidate(normalized)).toThrow(/no unobserved active targets/i);
+  });
+
   it('updates divergent target intervals independently', () => {
     const updated = applyObservations(session([
       bisectTarget('visual', 'visreg'),

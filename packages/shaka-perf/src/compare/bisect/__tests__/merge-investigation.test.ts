@@ -245,6 +245,43 @@ describe('merge investigation', () => {
     expect(checkpoint).toEqual(completed);
   });
 
+  it('fails a zero-width child range when its only commit reproduces the target', async () => {
+    const queued = buildMergeQueue(session(['main', 'topic']));
+    const measured: string[] = [];
+
+    const completed = await runMergeInvestigations({
+      session: queued,
+      preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
+      now: () => 'now',
+      nextAttemptId: () => 'attempt',
+      checkpoint: () => undefined,
+      async prepareRange() {
+        return {
+          mergeBase: 'topic',
+          secondParent: 'topic',
+          orderedCommits: ['topic'],
+          commitSubjects: { topic: 'topic' },
+          commitParents: { topic: ['main'] },
+        };
+      },
+      async measure(work) {
+        measured.push(work.sha);
+        if (measured.length > 1) throw new Error('repeated zero-target work');
+        return result(work.sha, [observation('one', work.sha, true)]);
+      },
+    });
+
+    expect(measured).toEqual(['topic']);
+    expect(completed.primary.status).toBe('complete');
+    expect(completed.mergeInvestigations.merge).toMatchObject({
+      status: 'failed',
+      failure: expect.stringMatching(/distinct good and bad commits/i),
+      phase: { status: 'failed' },
+      targetResults: { one: { kind: 'merge-uninvestigated' } },
+    });
+  });
+
   it('retries second-parent validation when its completed checkpoint fails', async () => {
     let persisted = buildMergeQueue(session(['main', 'topic']));
     let failCompletedCheckpoint = true;

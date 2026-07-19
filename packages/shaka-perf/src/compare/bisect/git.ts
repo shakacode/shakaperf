@@ -275,6 +275,16 @@ export async function prepareChildGitRange(
   const secondParent = await resolveCommit(options.experimentDir, options.secondParent);
   const mergeBase = await git(options.experimentDir, ['merge-base', firstParent, secondParent]);
   const range = await loadFirstParentRange(options.experimentDir, mergeBase, secondParent);
+  for (let index = 1; index < range.orderedCommits.length; index += 1) {
+    const previousSha = range.orderedCommits[index - 1];
+    const currentSha = range.orderedCommits[index];
+    if (range.commitParents[currentSha]?.[0] !== previousSha) {
+      throw new Error(
+        `Cannot investigate merge source: range from merge base ${mergeBase} `
+        + `to second parent ${secondParent} is not a contiguous first-parent chain`,
+      );
+    }
+  }
   return {
     mergeBase,
     secondParent,

@@ -237,6 +237,23 @@ describe('bisect Git helpers', () => {
     expect(prepared.commitParents[featureTwo]).toEqual([featureOne]);
   });
 
+  it('rejects a child range whose merge base is not on the second-parent first-parent chain', async () => {
+    git(fixture.experimentDir, ['checkout', '-b', 'outer-main', fixture.commits[0]]);
+    const mergeBase = commitFile(fixture.experimentDir, 'shared.txt', 'shared\n');
+    const firstParent = commitFile(fixture.experimentDir, 'outer-main.txt', 'outer-main\n');
+
+    git(fixture.experimentDir, ['checkout', '-b', 'source', fixture.commits[0]]);
+    commitFile(fixture.experimentDir, 'source.txt', 'source\n');
+    git(fixture.experimentDir, ['merge', '--no-ff', mergeBase, '-m', 'nested merge']);
+    const secondParent = git(fixture.experimentDir, ['rev-parse', 'HEAD']);
+
+    await expect(prepareChildGitRange({
+      experimentDir: fixture.experimentDir,
+      firstParent,
+      secondParent,
+    })).rejects.toThrow(/merge base.*first-parent chain/i);
+  });
+
   it('records every parent of an octopus merge while keeping it atomic', async () => {
     git(fixture.experimentDir, ['checkout', '-b', 'topic-one', fixture.commits[2]]);
     const topicOne = commitFile(fixture.experimentDir, 'topic-one.txt', 'topic-one\n');
