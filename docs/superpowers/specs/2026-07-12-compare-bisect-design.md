@@ -1,6 +1,12 @@
-# Compare Bisect V0 Design
+# Compare Bisect Design
 
 Status: Implemented
+
+The merge-aware, resumable version-2 lifecycle in
+`2026-07-13-compare-bisect-merge-resume-design.md` extends this original design.
+Where this document says V0 rejects merges, stores diagnostic-only state, or
+narrows by AB-test file, version 2 instead uses first-parent atomic merges,
+resumable phases and attempts, and exact `(test file, test name)` selections.
 
 ## Summary
 
@@ -18,7 +24,7 @@ regression is monotonic between the good and bad refs.
 - Find a first bad commit for every regression target present at the bad ref.
 - Track visual, performance, and accessibility targets independently.
 - Run one candidate comparison for all active targets that can use it.
-- Narrow categories and AB-test files as target intervals diverge.
+- Narrow categories and exact AB-test selections as target intervals diverge.
 - Preserve category-specific measurements, not only binary classifications.
 - Refresh the experiment quickly with configured commands when possible.
 - Fall back to rebuilding the experiment image when an in-place refresh fails.
@@ -28,11 +34,11 @@ regression is monotonic between the good and bad refs.
 ## Non-goals
 
 - Handling regressions that are fixed and later reintroduced.
-- Searching unrelated Git branches or histories containing merge commits.
+- Searching unrelated Git histories beyond one-level source investigation for
+  primary first-bad merges.
 - Mutating or rebuilding the control side.
 - Automatically stashing a dirty experiment worktree.
 - An HTML bisect dashboard in V0.
-- Resuming an interrupted search in V0. Persisted state is diagnostic only.
 
 ## Command
 
@@ -49,8 +55,9 @@ The command is a child command of `compare`. It reuses compare options including
 - The command refuses to start unless the control checkout SHA equals the
   resolved good SHA.
 - The good SHA must be an ancestor of the bad SHA.
-- V0 requires one linear ancestry path from good to bad and rejects any merge
-  commit in the candidate range.
+- The primary range follows first-parent ancestry and treats merge commits as
+  atomic candidates. Optional source investigation begins only after all
+  primary results are complete.
 
 ## Configuration
 
@@ -166,7 +173,7 @@ search.
 
 ```ts
 interface BisectSession {
-  version: 1;
+  version: 2;
   status: 'running' | 'complete' | 'interrupted' | 'failed';
   goodSha: string;
   badSha: string;
@@ -184,13 +191,15 @@ interface BisectSession {
 }
 ```
 
-This file is diagnostic state only. V0 does not expose a resume command and
-does not continue a new invocation from a previous `session.json`.
+Version-2 state is resumable after repository, checkout, config, frozen-test,
+range, and rebuild fingerprints are validated. It contains generic primary and
+child phases, attempt history, a merge queue, repository identity, and the
+digest of `bad-ref-tests.json`.
 
 Each target stores its good and bad boundary indexes into `orderedCommits`, its
 status, optional first bad SHA, and observations keyed by commit SHA.
 
-Each commit run stores requested categories, requested test files, refresh mode,
+Each commit attempt stores requested categories, exact test pairs, refresh mode,
 fallback use, compare result path, timestamps, and infrastructure errors.
 
 `summary.json` is the stable final machine-readable result. The terminal prints
@@ -204,8 +213,8 @@ target metric/rule/selector.
 1. Checkout and measure the bad ref against the fixed control using all selected
    categories and user filters.
 2. Create one target for every observed bad-ref regression.
-3. Checkout and measure the good ref, narrowed to the discovered target files
-   and categories.
+3. Checkout and measure the good ref, narrowed to the discovered exact test
+   pairs and categories.
 4. Mark a target invalid if it is still present at the good ref. Invalid/noisy
    targets are reported but never searched.
 5. Seed every valid target with the full `[goodIndex, badIndex]` interval.
@@ -223,7 +232,8 @@ visreg -> perf -> accessibility
 
 For the highest-priority active target, choose the midpoint of its current
 interval. At that candidate, include every active target whose interval contains
-the candidate. Group the run by the union of their categories and AB-test files.
+the candidate. Group the run by the union of their categories and exact test
+pairs.
 
 The candidate comparison produces an observation for every requested target:
 
@@ -247,7 +257,7 @@ scheduler subtracts already-known observations. If all required observations
 exist, it updates intervals without rebuilding or comparing that commit.
 
 If only part of a commit is known, the next run requests only missing categories
-and AB-test files. This is the mechanism that narrows work as search branches
+and exact test pairs. This is the mechanism that narrows work as search branches
 diverge.
 
 ## Algorithm and Design Decisions
@@ -313,7 +323,7 @@ their boundaries can progress during visual-led rounds.
 
 After choosing the commit, the scheduler requests every active target whose
 interval contains that commit and lacks an observation there. The compare run is
-then narrowed to the union of those targets' categories and AB-test files. This
+then narrowed to the union of those targets' categories and exact test pairs. This
 keeps one candidate run useful for multiple targets without rerunning unrelated
 tests.
 
@@ -533,13 +543,13 @@ Mock Docker/Overmind boundaries to verify:
 - Frozen test definitions survive candidate checkout changes.
 - Per-candidate artifact roots do not overwrite each other.
 - Typed outcomes produce visual, perf, and accessibility targets.
-- Filtered candidate runs execute only requested categories and files.
+- Filtered candidate runs execute only requested categories and exact test pairs.
 
 ### Demo acceptance
 
 Against the dedicated demo seed-history branch, a full V0 run must report the
 documented first bad commit for visual, performance, and accessibility targets,
-including their affected AB-test files and category-specific values.
+including their affected AB tests and category-specific values.
 
 ## V0 Completion Criteria
 
@@ -547,7 +557,7 @@ V0 is complete when:
 
 - `shaka-perf compare bisect` implements the command and config contract.
 - The search finds independent first bad commits for every valid bad-ref target.
-- Candidate runs narrow categories and AB-test files and reuse observations.
+- Candidate runs narrow categories and exact AB-test pairs and reuse observations.
 - Both refresh strategies and fallback behavior work without mutating control.
 - Success, failure, and cancellation restore the experiment checkout/server.
 - JSON output records target values, observations, and first bad commits.

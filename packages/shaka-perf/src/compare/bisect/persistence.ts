@@ -9,7 +9,12 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { BisectCategory, BisectSession, BisectTarget } from './types';
+import type {
+  BisectCategory,
+  BisectNextAction,
+  BisectSession,
+  BisectTarget,
+} from './types';
 
 const categoryPriority: Record<BisectCategory, number> = {
   visreg: 0,
@@ -21,17 +26,29 @@ export function writeSessionAtomic(filePath: string, session: BisectSession): vo
   writeJsonAtomic(filePath, session);
 }
 
-export function writeSummary(filePath: string, session: BisectSession): void {
+export interface BisectSummaryMetadata {
+  dryRun?: boolean;
+  validateGoodRef?: boolean;
+  nextAction?: BisectNextAction;
+}
+
+export function writeSummary(
+  filePath: string,
+  session: BisectSession,
+  metadata: BisectSummaryMetadata = {},
+): void {
+  const { primary } = session;
   writeJsonAtomic(filePath, {
-    version: session.version,
     status: session.status,
-    goodSha: session.goodSha,
-    badSha: session.badSha,
-    commitSubjects: session.commitSubjects,
-    dryRun: session.dryRun,
-    validateGoodRef: session.validateGoodRef,
-    nextAction: session.nextAction,
-    targets: [...session.targets].sort(compareTargets),
+    goodSha: primary.goodSha,
+    badSha: primary.badSha,
+    commitSubjects: primary.commitSubjects,
+    ...metadata,
+    mode: session.mode,
+    primary,
+    mergeQueue: session.mergeQueue,
+    mergeInvestigations: session.mergeInvestigations,
+    targets: [...primary.targets].sort(compareTargets),
   });
 }
 

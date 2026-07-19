@@ -15,6 +15,7 @@ import type {
   BisectReportModel,
 } from '../types';
 import type { BisectSelection } from '../bisect-selection';
+import { MergeInvestigationDialog } from './MergeInvestigationDialog';
 
 interface Props {
   model: BisectReportModel;
@@ -89,6 +90,17 @@ function endpointLabel(commit: BisectReportCommit, model: BisectReportModel): st
 function hasRegressions(commit: BisectReportCommit): boolean {
   return Object.values(commit.counts).some((count) => count > 0);
 }
+
+const mergeInvestigationLabels: Record<
+  NonNullable<BisectReportCommit['mergeInvestigationStatus']>,
+  string
+> = {
+  'merge-uninvestigated': 'not started',
+  running: 'running',
+  complete: 'complete',
+  'octopus-unsupported': 'unsupported',
+  failed: 'failed',
+};
 
 type CommitTimelineItem =
   | { kind: 'clean-run'; commits: BisectReportCommit[] }
@@ -187,10 +199,15 @@ function CommitNode({
   selected: boolean;
   onSelect: (selection: BisectSelection) => void;
 }) {
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const handleClick = useCallback(
-    () => onSelect({ kind: 'commit', sha: commit.sha }),
-    [commit.sha, onSelect],
+    () => {
+      onSelect({ kind: 'commit', sha: commit.sha });
+      if (commit.isMerge) setMergeDialogOpen(true);
+    },
+    [commit.isMerge, commit.sha, onSelect],
   );
+  const handleMergeDialogClose = useCallback(() => setMergeDialogOpen(false), []);
   const endpoint = endpointLabel(commit, model);
 
   return (
@@ -206,10 +223,20 @@ function CommitNode({
         data-bisect-sha={commit.sha}
         data-measured={commit.measured ? 'true' : 'false'}
         aria-pressed={selected}
+        aria-haspopup={commit.isMerge ? 'dialog' : undefined}
         onClick={handleClick}
       >
         <span className="bisect-node__meta">
           {endpoint ? <span className="bisect-node__endpoint">{endpoint}</span> : null}
+          {commit.isMerge ? <span className="bisect-node__merge">merge</span> : null}
+          {commit.isMerge && commit.mergeInvestigationStatus ? (
+            <span
+              className="bisect-node__investigation"
+              data-merge-investigation-status={commit.mergeInvestigationStatus}
+            >
+              investigation: {mergeInvestigationLabels[commit.mergeInvestigationStatus]}
+            </span>
+          ) : null}
           <span className="bisect-node__measurement">
             {commit.measured ? 'measured' : 'not measured'}
           </span>
@@ -226,6 +253,14 @@ function CommitNode({
           />
         </span>
       </button>
+      {commit.isMerge ? (
+        <MergeInvestigationDialog
+          commit={commit}
+          targetsById={model.targetsById}
+          open={mergeDialogOpen}
+          onClose={handleMergeDialogClose}
+        />
+      ) : null}
     </li>
   );
 }

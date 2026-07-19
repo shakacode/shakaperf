@@ -20,11 +20,14 @@ import {
   type ExecuteBisectDependencies,
   type ExecuteBisectInput,
 } from '../session';
+import * as bisectGit from '../git';
 import { BisectInterruptedError, runCandidate } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
 import { BISECT_REPORT_FILENAME } from '../report';
+import { parseBisectSession } from '../state';
+import type { BisectSummaryMetadata } from '../persistence';
 
 function config(): AbTestsConfig {
   return {
@@ -51,6 +54,12 @@ function input(rootDir: string): ExecuteBisectInput {
         a: 'a',
         b: 'b',
         bad: 'bad',
+      },
+      commitParents: {
+        good: [],
+        a: ['good'],
+        b: ['a'],
+        bad: ['b'],
       },
       orderedCommits: ['good', 'a', 'b', 'bad'],
       originalExperiment: {
@@ -172,6 +181,7 @@ function deps(
     reports: Array<{ session: BisectSession; testNames: string[] }>;
     sessions: BisectSession[];
     summaries: BisectSession[];
+    summaryMetadata: BisectSummaryMetadata[];
     restored: Array<[string | null, string]>;
     events: string[];
     progress: string[];
@@ -198,6 +208,7 @@ function deps(
     reports: [] as Array<{ session: BisectSession; testNames: string[] }>,
     sessions: [] as BisectSession[],
     summaries: [] as BisectSession[],
+    summaryMetadata: [] as BisectSummaryMetadata[],
     restored: [] as Array<[string | null, string]>,
     events: [] as string[],
     progress: [] as string[],
@@ -310,12 +321,13 @@ function deps(
           testNames: badRefTests.map((test) => test.name),
         });
       },
-      writeSummary(session) {
+      writeSummary(session, metadata = {}) {
         calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
         if (options.signalOnSummary) {
           for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
         }
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+        calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
         calls.summaryAfterEvents.push([...calls.events]);
       },
       recordDecision(entry) {
@@ -354,11 +366,14 @@ describe('compare bisect session orchestration', () => {
     const session = await executeBisect(bisectInput, harness.deps);
 
     expect(session.status).toBe('complete');
-    expect(session.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
+    expect('version' in parseBisectSession(session)).toBe(false);
+    expect(session.primary.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
     expect(harness.calls.sessions).toContainEqual(expect.objectContaining({
-      commitSubjects: bisectInput.gitRange.commitSubjects,
+      primary: expect.objectContaining({
+        commitSubjects: bisectInput.gitRange.commitSubjects,
+      }),
     }));
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       category: 'visreg',
       subject: 'document',
       status: 'found',
@@ -393,6 +408,16 @@ describe('compare bisect session orchestration', () => {
     ]);
     expect(session.commitRuns.a).toMatchObject({
       requestedTests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+    });
+    expect((session as unknown as { primary: {
+      status: string;
+      attempts: Array<{ sha: string; status: string }>;
+    } }).primary).toMatchObject({
+      status: 'complete',
+      attempts: [
+        { sha: 'a', status: 'complete' },
+        { sha: 'b', status: 'complete' },
+      ],
     });
     expect(harness.calls.summaries.at(-1)?.status).toBe('complete');
     expect(harness.calls.reports.at(0)).toEqual({
@@ -436,6 +461,125 @@ describe('compare bisect session orchestration', () => {
         },
       })],
     });
+  });
+
+  it('resumes a complete primary session without acquiring a lease or comparing again', async () => {
+    const bisectInput = input(rootDir);
+    const initialHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    });
+    const completed = await executeBisect(bisectInput, initialHarness.deps);
+    const resumeHarness = deps({});
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: parseBisectSession(completed),
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.events).not.toContain('lease:begin');
+    expect(resumeHarness.calls.checkouts).toEqual([]);
+    expect(resumeHarness.calls.compares).toEqual([]);
+  });
+
+  it('marks an empty primary phase complete so resume requires no work', async () => {
+    const bisectInput = input(rootDir);
+    const initialHarness = deps({ bad: [resultWithVisualDiff(null)] });
+    const completed = await executeBisect(bisectInput, initialHarness.deps);
+    const resumeHarness = deps({});
+
+    expect(completed).toMatchObject({
+      status: 'complete',
+      primary: { status: 'complete', targets: [], attempts: [] },
+    });
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: parseBisectSession(completed),
+      resumeBadRefTests: [resultWithVisualDiff(null)],
+    }, resumeHarness.deps);
+
+    expect(resumed.primary?.status).toBe('complete');
+    expect(resumeHarness.calls.events).not.toContain('lease:begin');
+    expect(resumeHarness.calls.checkouts).toEqual([]);
+    expect(resumeHarness.calls.materialized).toEqual([]);
+    expect(resumeHarness.calls.compares).toEqual([]);
+  });
+
+  it('retries incomplete work with a full first reconciliation', async () => {
+    const bisectInput = input(rootDir);
+    const failedHarness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
+      compareErrorBySha: { a: new Error('compare stopped') },
+    });
+    await expect(executeBisect(bisectInput, failedHarness.deps)).rejects.toThrow('compare stopped');
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.events[0]).toBe('lease:begin');
+    expect(resumeHarness.calls.materialized).toEqual([
+      [null, 'a'],
+      ['a', 'b'],
+    ]);
+    expect(resumeHarness.calls.compares.map((run) => run.sha)).toEqual(['a', 'b']);
+    expect(resumed.primary?.attempts.map(({ sha, status }) => ({ sha, status }))).toEqual([
+      { sha: 'a', status: 'incomplete' },
+      { sha: 'a', status: 'complete' },
+      { sha: 'b', status: 'complete' },
+    ]);
+  });
+
+  it('checkpoints the complete primary report before investigating a merge source', async () => {
+    const bisectInput = input(rootDir);
+    bisectInput.investigateMerges = true;
+    bisectInput.gitRange.commitParents.b = ['a', 'topic'];
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      topic: [resultWithVisualDiff('diff.png')],
+      source: [resultWithVisualDiff('diff.png')],
+    });
+    const order: string[] = [];
+    const writeReport = harness.deps.writeReport;
+    harness.deps.writeReport = (session, tests) => {
+      if (session.primary?.status === 'complete') order.push('primary-report');
+      writeReport(session, tests);
+    };
+    harness.deps.prepareChildRange = async () => {
+      order.push('prepare-child');
+      return {
+        mergeBase: 'base',
+        secondParent: 'topic',
+        orderedCommits: ['base', 'source', 'topic'],
+        commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+        commitParents: { base: [], source: ['base'], topic: ['source'] },
+      };
+    };
+
+    const session = await executeBisect(bisectInput, harness.deps);
+
+    expect(parseBisectSession(session).mergeInvestigations.b.status).toBe('complete');
+    expect(order.indexOf('primary-report')).toBeLessThan(order.indexOf('prepare-child'));
+    expect(session.mergeQueue).toEqual(['b']);
+    expect(session.mergeInvestigations?.b.targetResults).toMatchObject({
+      [session.primary.targets[0].id]: { kind: 'source-found', sourceSha: 'source' },
+    });
+    expect(harness.calls.compares.map((run) => run.sha)).toEqual([
+      'bad', 'a', 'b', 'topic', 'source',
+    ]);
   });
 
   it('does not write a report when bad-ref validation fails before target discovery', async () => {
@@ -484,7 +628,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(reuseInput, harness.deps);
 
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'found',
       firstBadSha: 'b',
     }]);
@@ -517,7 +661,7 @@ describe('compare bisect session orchestration', () => {
       validateGoodRef: true,
     }, harness.deps);
 
-    expect(session.targets).toMatchObject([{ status: 'found', firstBadSha: 'b' }]);
+    expect(session.primary.targets).toMatchObject([{ status: 'found', firstBadSha: 'b' }]);
     expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
     expect(harness.calls.decisions.map((entry) => entry.event)).toContain('good-ref-validated');
@@ -541,6 +685,15 @@ describe('compare bisect session orchestration', () => {
 
     expect(session).toMatchObject({
       status: 'complete',
+      primary: {
+        targets: [expect.objectContaining({
+          status: 'active',
+          category: 'visreg',
+          subject: 'document',
+        })],
+      },
+    });
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       dryRun: true,
       nextAction: {
         kind: 'measure-candidate',
@@ -549,11 +702,6 @@ describe('compare bisect session orchestration', () => {
         tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
         targetIds: ['["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]'],
       },
-      targets: [expect.objectContaining({
-        status: 'active',
-        category: 'visreg',
-        subject: 'document',
-      })],
     });
     expect(harness.calls.reusedResults).toEqual([{ sha: 'bad', categories: ['visreg'] }]);
     expect(harness.calls.checkouts).toEqual([]);
@@ -580,6 +728,8 @@ describe('compare bisect session orchestration', () => {
 
     expect(session).toMatchObject({
       status: 'complete',
+    });
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       dryRun: true,
       nextAction: {
         kind: 'measure-candidate',
@@ -599,14 +749,14 @@ describe('compare bisect session orchestration', () => {
       bad: [resultWithVisualDiff('diff.png')],
     });
 
-    const session = await executeBisect({
+    await executeBisect({
       ...input(rootDir),
       reuseCurrentResults: true,
       dryRun: true,
       validateGoodRef: true,
     }, harness.deps);
 
-    expect(session).toMatchObject({
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       nextAction: {
         kind: 'validate-good-ref',
         sha: 'good',
@@ -627,7 +777,7 @@ describe('compare bisect session orchestration', () => {
     }, harness.deps);
 
     expect(session.status).toBe('complete');
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
       invalidReason: 'target is already present at the good ref',
     }]);
@@ -657,7 +807,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(adjacentInput, harness.deps);
 
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
       invalidReason: 'target is already present at the good ref',
       observations: {
@@ -834,9 +984,9 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'failed',
-      targets: [{ goodIndex: 0, badIndex: 3 }],
+      primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
     });
-    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
@@ -855,7 +1005,7 @@ describe('compare bisect session orchestration', () => {
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
       checkpoint.afterEvent === 'compare:a'
-      && checkpoint.session.targets[0]?.observations.a?.present === false
+      && checkpoint.session.primary.targets[0]?.observations.a?.present === false
     ))).toBe(true);
   });
 
@@ -911,7 +1061,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'interrupted',
     });
-    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
@@ -995,7 +1145,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(input(rootDir), harness.deps);
 
-    expect(session.targets).toHaveLength(2);
+    expect(session.primary.targets).toHaveLength(2);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a', 'b']);
   });
 
@@ -1051,20 +1201,41 @@ describe('compare bisect session orchestration', () => {
   it('exposes one-object runBisect and runCandidate contracts', async () => {
     const harness = deps({ bad: [] });
     const bisectInput = input(rootDir);
+    const inspectRepositories = jest.spyOn(bisectGit, 'inspectBisectRepositories')
+      .mockResolvedValue({
+        identity: {
+          controlRoot: '/control',
+          experimentRoot: '/experiment',
+          controlGitCommonDir: '/control/.git',
+          experimentGitCommonDir: '/experiment/.git',
+          controlOrigin: null,
+          experimentOrigin: null,
+        },
+        control: { branch: null, sha: 'good' },
+        experiment: { branch: 'feature', sha: 'bad' },
+      });
 
-    await expect(runBisect({
-      cwd: bisectInput.cwd,
-      resultsDirectory: bisectInput.resultsDirectory,
-      config: bisectInput.config,
-      twinServers: bisectInput.twinServers,
-      selectedCategories: bisectInput.selectedCategories,
-      frozenTests: bisectInput.frozenTests,
-      headed: bisectInput.headed,
-      controlURL: bisectInput.controlURL,
-      experimentURL: bisectInput.experimentURL,
-      gitRange: bisectInput.gitRange,
-      dependencies: harness.deps,
-    })).resolves.toMatchObject({ status: 'complete' });
+    try {
+      await expect(runBisect({
+        cwd: bisectInput.cwd,
+        resultsDirectory: bisectInput.resultsDirectory,
+        config: bisectInput.config,
+        twinServers: {
+          ...bisectInput.twinServers,
+          controlDir: '/control',
+          experimentDir: '/experiment',
+        },
+        selectedCategories: bisectInput.selectedCategories,
+        frozenTests: bisectInput.frozenTests,
+        headed: bisectInput.headed,
+        controlURL: bisectInput.controlURL,
+        experimentURL: bisectInput.experimentURL,
+        gitRange: bisectInput.gitRange,
+        dependencies: harness.deps,
+      })).resolves.toMatchObject({ status: 'complete' });
+    } finally {
+      inspectRepositories.mockRestore();
+    }
     expect(runCandidate).toEqual(expect.any(Function));
   });
 });

@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { exec } from '../../twin-servers/helpers/shell';
+import type { BisectRepositoryIdentity } from './types';
 
 export interface CheckoutState {
   branch: string | null;
@@ -28,12 +29,33 @@ export interface PreparedGitRange {
   goodSha: string;
   badSha: string;
   commitSubjects: Record<string, string>;
+  commitParents: Record<string, string[]>;
   orderedCommits: string[];
   originalExperiment: CheckoutState;
 }
 
+export interface PrepareChildGitRangeOptions {
+  experimentDir: string;
+  firstParent: string;
+  secondParent: string;
+}
+
+export interface PreparedChildGitRange {
+  mergeBase: string;
+  secondParent: string;
+  commitSubjects: Record<string, string>;
+  commitParents: Record<string, string[]>;
+  orderedCommits: string[];
+}
+
 export interface CleanCheckoutOptions {
   allowedPaths?: readonly string[];
+}
+
+export interface BisectRepositorySnapshot {
+  identity: BisectRepositoryIdentity;
+  control: CheckoutState;
+  experiment: CheckoutState;
 }
 
 async function git(repoDir: string, args: string[]): Promise<string> {
@@ -113,6 +135,58 @@ async function checkoutState(repoDir: string): Promise<CheckoutState> {
   return { branch: branchResult.code === 0 ? branchResult.stdout.trim() : null, sha };
 }
 
+async function repositoryIdentity(repoDir: string): Promise<{
+  root: string;
+  gitCommonDir: string;
+  origin: string | null;
+}> {
+  const root = realpathIfExists(await git(repoDir, ['rev-parse', '--show-toplevel']));
+  const commonDir = await git(repoDir, ['rev-parse', '--git-common-dir']);
+  const originResult = await exec('git', ['config', '--get', 'remote.origin.url'], {
+    cwd: repoDir,
+    silent: true,
+  });
+  if (originResult.code !== 0 && originResult.code !== 1) {
+    throw new Error(`Unable to read Git origin in ${repoDir}: ${originResult.stderr.trim()}`);
+  }
+  return {
+    root,
+    gitCommonDir: realpathIfExists(path.resolve(repoDir, commonDir)),
+    origin: originResult.code === 0 ? normalizeOrigin(originResult.stdout) : null,
+  };
+}
+
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '');
+}
+
+export async function inspectBisectRepositories(options: {
+  controlDir: string;
+  experimentDir: string;
+  allowedPaths?: readonly string[];
+}): Promise<BisectRepositorySnapshot> {
+  await requireClean(options.controlDir, 'Control', { allowedPaths: options.allowedPaths });
+  await requireClean(options.experimentDir, 'Experiment', { allowedPaths: options.allowedPaths });
+  const [controlRepository, experimentRepository, control, experiment] = await Promise.all([
+    repositoryIdentity(options.controlDir),
+    repositoryIdentity(options.experimentDir),
+    checkoutState(options.controlDir),
+    checkoutState(options.experimentDir),
+  ]);
+  return {
+    identity: {
+      controlRoot: controlRepository.root,
+      experimentRoot: experimentRepository.root,
+      controlGitCommonDir: controlRepository.gitCommonDir,
+      experimentGitCommonDir: experimentRepository.gitCommonDir,
+      controlOrigin: controlRepository.origin,
+      experimentOrigin: experimentRepository.origin,
+    },
+    control,
+    experiment,
+  };
+}
+
 async function verifyCheckout(
   repoDir: string,
   expected: CheckoutState,
@@ -127,6 +201,34 @@ async function verifyCheckout(
     );
   }
   await requireClean(repoDir, `${operation} result`, options);
+}
+
+async function loadFirstParentRange(
+  repoDir: string,
+  goodSha: string,
+  badSha: string,
+): Promise<Pick<PreparedGitRange, 'commitParents' | 'commitSubjects' | 'orderedCommits'>> {
+  const orderedOutput = await git(repoDir, [
+    'rev-list',
+    '--first-parent',
+    '--reverse',
+    `${goodSha}..${badSha}`,
+  ]);
+  const orderedCommits = [goodSha, ...orderedOutput.split('\n').filter(Boolean)];
+  const metadataOutput = await git(repoDir, [
+    'show',
+    '--no-patch',
+    '--format=%H%x00%P%x00%s',
+    ...orderedCommits,
+  ]);
+  const commitSubjects: Record<string, string> = {};
+  const commitParents: Record<string, string[]> = {};
+  for (const line of metadataOutput.split('\n').filter(Boolean)) {
+    const [sha, parents = '', subject = ''] = line.split('\0');
+    commitSubjects[sha] = subject;
+    commitParents[sha] = parents.split(' ').filter(Boolean);
+  }
+  return { commitParents, commitSubjects, orderedCommits };
 }
 
 export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<PreparedGitRange> {
@@ -156,40 +258,37 @@ export async function prepareGitRange(options: PrepareGitRangeOptions): Promise<
     throw new Error(`Unable to validate Git ancestry: ${ancestor.stderr.trim()}`);
   }
 
-  const orderedOutput = await git(options.experimentDir, [
-    'rev-list',
-    '--reverse',
-    '--ancestry-path',
-    `${goodSha}..${badSha}`,
-  ]);
-  const parentOutput = await git(options.experimentDir, [
-    'rev-list',
-    '--parents',
-    `${goodSha}..${badSha}`,
-  ]);
-  const mergeLine = parentOutput.split('\n').find((line) => line.trim().split(/\s+/).length > 2);
-  if (mergeLine) {
-    throw new Error(`Bisect range must be linear; merge commit found at ${mergeLine.split(/\s+/)[0]}`);
-  }
-
-  const orderedCommits = [goodSha, ...orderedOutput.split('\n').filter(Boolean)];
-  const subjectOutput = await git(options.experimentDir, [
-    'show',
-    '--no-patch',
-    '--format=%H%x00%s',
-    ...orderedCommits,
-  ]);
-  const commitSubjects = Object.fromEntries(subjectOutput.split('\n').filter(Boolean).map((line) => {
-    const [sha, subject] = line.split('\0');
-    return [sha, subject];
-  }));
+  const range = await loadFirstParentRange(options.experimentDir, goodSha, badSha);
 
   return {
     goodSha,
     badSha,
-    commitSubjects,
-    orderedCommits,
+    ...range,
     originalExperiment,
+  };
+}
+
+export async function prepareChildGitRange(
+  options: PrepareChildGitRangeOptions,
+): Promise<PreparedChildGitRange> {
+  const firstParent = await resolveCommit(options.experimentDir, options.firstParent);
+  const secondParent = await resolveCommit(options.experimentDir, options.secondParent);
+  const mergeBase = await git(options.experimentDir, ['merge-base', firstParent, secondParent]);
+  const range = await loadFirstParentRange(options.experimentDir, mergeBase, secondParent);
+  for (let index = 1; index < range.orderedCommits.length; index += 1) {
+    const previousSha = range.orderedCommits[index - 1];
+    const currentSha = range.orderedCommits[index];
+    if (range.commitParents[currentSha]?.[0] !== previousSha) {
+      throw new Error(
+        `Cannot investigate merge source: range from merge base ${mergeBase} `
+        + `to second parent ${secondParent} is not a contiguous first-parent chain`,
+      );
+    }
+  }
+  return {
+    mergeBase,
+    secondParent,
+    ...range,
   };
 }
 

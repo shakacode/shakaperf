@@ -25,6 +25,8 @@ export type {
   BisectReportCommit,
   BisectReportCounts,
   BisectReportData,
+  BisectReportMergeInvestigation,
+  BisectReportMergeSourceCommit,
   BisectReportModel,
   BisectReportTarget,
   BisectReportView,

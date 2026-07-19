@@ -23,14 +23,27 @@ import {
   comparePipelineMetadata,
 } from '../compare-pipeline';
 import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analyze';
-import { checkoutDetached, prepareGitRange, restoreCheckout, type PreparedGitRange } from './git';
+import {
+  checkoutDetached,
+  inspectBisectRepositories,
+  prepareChildGitRange,
+  prepareGitRange,
+  restoreCheckout,
+  type BisectRepositorySnapshot,
+  type PreparedGitRange,
+} from './git';
 import {
   applyCachedObservations,
-  applyObservations,
   nextCandidate,
   testsForTargets,
 } from './search';
-import { writeSessionAtomic, writeSummary } from './persistence';
+import { runSearchPhase } from './phase';
+import { buildMergeQueue, runMergeInvestigations } from './merge-investigation';
+import {
+  writeSessionAtomic,
+  writeSummary,
+  type BisectSummaryMetadata,
+} from './persistence';
 import {
   BISECT_REPORT_FILENAME,
   clearPriorBisectReportOutput,
@@ -41,11 +54,14 @@ import { regenerateBisectReport } from './report-only';
 import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
+  BisectCompatibility,
   BisectNextAction,
+  BisectSearchPhase,
   BisectSession,
   BisectTestSelection,
   BisectTarget,
   CommitRun,
+  PersistedRebuildStrategy,
   TargetObservation,
 } from './types';
 import { resolveConfig } from '../../twin-servers/config';
@@ -66,6 +82,12 @@ import {
   type RefreshResult,
 } from './run-candidate';
 import { loadReusableCompareResults } from './reuse-results';
+import {
+  buildCompatibility,
+  prepareResume,
+  readBisectSession,
+  writeBadRefTestsAtomic,
+} from './state';
 
 type RefreshMode = CommitRun['refreshMode'];
 
@@ -81,6 +103,8 @@ export interface BisectCliOptions {
   dryRun?: boolean;
   validateGoodRef?: boolean;
   reportOnly?: boolean;
+  resume?: boolean;
+  investigateMerges?: boolean;
 }
 
 export type {
@@ -145,6 +169,12 @@ export interface ExecuteBisectInput {
   reuseCurrentResults: boolean;
   dryRun: boolean;
   validateGoodRef: boolean;
+  repositorySnapshot?: BisectRepositorySnapshot;
+  compatibility?: BisectCompatibility;
+  rebuildStrategy?: PersistedRebuildStrategy;
+  resumeSession?: BisectSession;
+  resumeBadRefTests?: readonly TestResult[];
+  investigateMerges?: boolean;
 }
 
 export interface ReuseCurrentResultsRequest {
@@ -161,7 +191,9 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   clearPriorReportOutput(): void;
   writeSession(session: BisectSession): void;
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
-  writeSummary(session: BisectSession): void;
+  writeSummary(session: BisectSession, metadata?: BisectSummaryMetadata): void;
+  writeBadRefTests?(tests: readonly TestResult[]): string;
+  prepareChildRange?(investigation: import('./types').MergeInvestigation): ReturnType<typeof prepareChildGitRange>;
   recordDecision(entry: BisectDecisionLogEntry): void;
   logProgress(message: string): void;
   now(): string;
@@ -183,6 +215,9 @@ export interface RunBisectOptions {
   reuseCurrentResults?: boolean;
   dryRun?: boolean;
   validateGoodRef?: boolean;
+  resume?: boolean;
+  investigateMerges?: boolean;
+  compatibilityConfig?: unknown;
   gitRange?: PreparedGitRange;
   dependencies?: ExecuteBisectDependencies;
 }
@@ -243,7 +278,9 @@ export async function runCompareBisectFromCli(
       cwd,
       config,
       twinServers,
-      selectedCategories: parseCategories(cliOptions.categories),
+      selectedCategories: cliOptions.resume && cliOptions.categories === undefined
+        ? []
+        : parseCategories(cliOptions.categories),
       frozenTests,
       headed: cliOptions.headed === true,
       controlURL: cliOptions.controlURL,
@@ -251,8 +288,23 @@ export async function runCompareBisectFromCli(
       reuseCurrentResults: cliOptions.reuseCurrentResults === true,
       dryRun: cliOptions.dryRun === true,
       validateGoodRef: cliOptions.validateGoodRef === true,
+      resume: cliOptions.resume === true,
+      investigateMerges: cliOptions.investigateMerges === true,
+      compatibilityConfig: {
+        source: fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : raw,
+        overrides: {
+          filter: cliOptions.filter ?? config.shared.filter,
+          testPathPattern: cliOptions.testPathPattern ?? config.shared.testPathPattern,
+          headed: cliOptions.headed === true,
+          controlURL: cliOptions.controlURL ?? config.shared.controlURL,
+          experimentURL: cliOptions.experimentURL ?? config.shared.experimentURL,
+        },
+      },
     });
-    printBisectSummary(session, path.resolve(cwd, 'compare-bisect-results'));
+    printBisectSummary(session, path.resolve(cwd, 'compare-bisect-results'), {
+      dryRun: cliOptions.dryRun === true,
+      validateGoodRef: cliOptions.validateGoodRef === true,
+    });
     return session;
   });
 }
@@ -260,12 +312,53 @@ export async function runCompareBisectFromCli(
 export async function runBisect(options: RunBisectOptions): Promise<BisectSession> {
   const resultsDirectory = options.resultsDirectory
     ?? path.resolve(options.cwd, 'compare-bisect-results');
-  const gitRange = options.gitRange ?? await prepareGitRange({
+  const preliminaryResume = options.resume
+    ? readBisectSession(path.join(resultsDirectory, 'session.json'))
+    : null;
+  const selectedCategories = preliminaryResume && options.selectedCategories.length === 0
+    ? preliminaryResume.compatibility.effective.categories
+    : options.selectedCategories;
+  const gitRange = options.gitRange ?? (preliminaryResume ? {
+    goodSha: preliminaryResume.primary.goodSha,
+    badSha: preliminaryResume.primary.badSha,
+    commitSubjects: preliminaryResume.primary.commitSubjects,
+    commitParents: preliminaryResume.primary.commitParents,
+    orderedCommits: preliminaryResume.primary.orderedCommits,
+    originalExperiment: preliminaryResume.originalExperiment,
+  } : await prepareGitRange({
     experimentDir: options.twinServers.experimentDir,
     controlDir: options.twinServers.controlDir,
     goodRef: options.goodRef,
     badRef: options.badRef,
+  }));
+  const repositorySnapshot =
+    await inspectBisectRepositories({
+      experimentDir: options.twinServers.experimentDir,
+      controlDir: options.twinServers.controlDir,
+      allowedPaths: [resultsDirectory],
+    });
+  const rebuildStrategy = persistedRebuildStrategy(options.config);
+  const controlURL = options.controlURL ?? options.config.shared.controlURL;
+  const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
+  const compatibility = buildCompatibility({
+    config: options.compatibilityConfig
+      ?? { config: options.config, headed: options.headed, controlURL, experimentURL },
+    categories: selectedCategories,
+    tests: frozenTestSelections(options.frozenTests, options.cwd),
+    rebuildStrategy,
+    range: { goodSha: gitRange.goodSha, badSha: gitRange.badSha },
   });
+  const resumed = preliminaryResume && repositorySnapshot
+    ? prepareResume({
+      sessionPath: path.join(resultsDirectory, 'session.json'),
+      resultsDirectory,
+      compatibility,
+      repositories: repositorySnapshot,
+    })
+    : null;
+  if (preliminaryResume && !resumed) {
+    throw new Error('Cannot resume compare bisect without configured control and experiment repositories');
+  }
   const input: ExecuteBisectInput = {
     goodRef: options.goodRef,
     badRef: options.badRef,
@@ -273,15 +366,21 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     resultsDirectory,
     config: options.config,
     twinServers: options.twinServers,
-    selectedCategories: options.selectedCategories,
+    selectedCategories,
     frozenTests: options.frozenTests,
     gitRange,
     headed: options.headed,
-    controlURL: options.controlURL ?? options.config.shared.controlURL,
-    experimentURL: options.experimentURL ?? options.config.shared.experimentURL,
+    controlURL,
+    experimentURL,
     reuseCurrentResults: options.reuseCurrentResults === true,
     dryRun: options.dryRun === true,
     validateGoodRef: options.validateGoodRef === true,
+    repositorySnapshot,
+    compatibility,
+    rebuildStrategy,
+    resumeSession: resumed?.session,
+    resumeBadRefTests: resumed?.badRefTests,
+    investigateMerges: options.investigateMerges === true,
   };
   const dependencies = options.dependencies ?? createDefaultDependencies({
     cwd: options.cwd,
@@ -289,7 +388,9 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     twinServers: options.twinServers,
     frozenTests: options.frozenTests,
     resultsDirectory,
-    manifest: readRequiredBuildManifest(options.twinServers),
+    manifest: resumed && !resumeRequiresWork(resumed.session, options.investigateMerges === true)
+      ? undefined
+      : readRequiredBuildManifest(options.twinServers),
     gitRange,
     headed: options.headed,
     controlURL: input.controlURL,
@@ -303,10 +404,14 @@ export async function executeBisect(
   deps: ExecuteBisectDependencies,
 ): Promise<BisectSession> {
   fs.mkdirSync(input.resultsDirectory, { recursive: true });
-  deps.clearSummary();
-  deps.clearPriorReportOutput();
-  let session = initialSession(input, deps.now());
-  let badRefTests: readonly TestResult[] | null = null;
+  if (!input.resumeSession) {
+    deps.clearSummary();
+    deps.clearPriorReportOutput();
+  }
+  let session = input.resumeSession
+    ? resumedSession(input.resumeSession)
+    : initialSession(input, deps.now());
+  let badRefTests: readonly TestResult[] | null = input.resumeBadRefTests ?? null;
   let materializedSha: string | null = null;
   let volumeStateUncertain = false;
   let checkoutAttempted = false;
@@ -315,10 +420,17 @@ export async function executeBisect(
   const cleanupErrors: Error[] = [];
   let cancellationSignal: NodeJS.Signals | null = null;
   let disposeSignalHandlers: (() => void) | null = null;
+  let nextAction: BisectNextAction | undefined;
 
-  const persist = (): void => {
+  const persistSession = (): void => {
     deps.writeSession(session);
+  };
+  const refreshReport = (): void => {
     if (badRefTests) deps.writeReport(session, badRefTests);
+  };
+  const persist = (): void => {
+    persistSession();
+    refreshReport();
   };
   const checkCancellation = (): void => {
     if (cancellationSignal) throw new BisectInterruptedError(cancellationSignal);
@@ -378,12 +490,24 @@ export async function executeBisect(
       resultsDirectory: input.resultsDirectory,
       decisionLog: path.join(input.resultsDirectory, 'decision-log.md'),
     });
-    await deps.beginSession();
-    leaseAcquired = true;
-    logDecision('lease-acquired', 'Acquired twin-server bisect lease; experiment auto-sync is paused');
-    persist();
-    checkCancellation();
+    const resumeHasPrimaryWork = input.resumeSession
+      ? input.resumeSession.primary.status !== 'complete'
+        || (input.investigateMerges === true && input.resumeSession.mergeQueue.some((sha) => {
+          const status = input.resumeSession!.mergeInvestigations[sha]?.status;
+          return status !== 'complete' && status !== 'octopus-unsupported';
+        }))
+      : true;
+    if (resumeHasPrimaryWork) {
+      await deps.beginSession();
+      leaseAcquired = true;
+      logDecision('lease-acquired', 'Acquired twin-server bisect lease; experiment auto-sync is paused');
+      persist();
+      checkCancellation();
+    } else {
+      logDecision('resume-no-work', 'Saved primary bisect is already complete; no comparisons are required');
+    }
 
+    if (!input.resumeSession) {
     let badRun: CompareRunResult;
     if (input.reuseCurrentResults) {
       logDecision(
@@ -426,32 +550,43 @@ export async function executeBisect(
         targets: [],
       });
     }
-    session = {
-      ...session,
-      targets: discoverTargets(
-        badRun.testResults,
-        input.gitRange.orderedCommits,
-        input.gitRange.badSha,
-        input.selectedCategories,
-      ),
-    };
+    session = withPrimaryTargets(session, discoverTargets(
+      badRun.testResults,
+      input.gitRange.orderedCommits,
+      input.gitRange.badSha,
+      input.selectedCategories,
+    ));
     const badObservations = observeTargets(
       badRun.testResults,
-      session.targets,
+      session.primary.targets,
       input.gitRange.badSha,
     );
     session = recordEndpointObservations(session, badObservations);
     badRefTests = badRun.testResults;
-    logDecision('bad-ref-targets', `Discovered ${session.targets.length} regression target(s) at the bad ref`, {
+    if (deps.writeBadRefTests) {
+      session = {
+        ...session,
+        reportInput: {
+          filename: 'bad-ref-tests.json',
+          sha256: deps.writeBadRefTests(badRefTests),
+        },
+      };
+    }
+    logDecision('bad-ref-targets', `Discovered ${session.primary.targets.length} regression target(s) at the bad ref`, {
       sha: input.gitRange.badSha,
-      targetCount: session.targets.length,
-      targets: session.targets.map((target) => targetLogData(target)),
+      targetCount: session.primary.targets.length,
+      targets: session.primary.targets.map((target) => targetLogData(target)),
     });
     persist();
+    } else {
+      logDecision('session-resume', 'Resuming compatible compare bisect state', {
+        phaseStatus: session.primary?.status,
+        attempts: session.primary?.attempts.length ?? 0,
+      });
+    }
 
     if (input.dryRun) {
       let targets = activeTargets(session);
-      let nextAction: BisectNextAction | undefined;
       if (targets.length > 0 && input.validateGoodRef) {
         nextAction = {
           kind: 'validate-good-ref' as const,
@@ -461,8 +596,8 @@ export async function executeBisect(
           targetIds: targets.map((target) => target.id),
         };
       } else if (targets.length > 0) {
-        const normalized = applyCachedObservations(session);
-        session = normalized;
+        const normalized = applyCachedObservations(searchInput(session));
+        session = withPrimaryTargets(session, normalized.targets);
         targets = activeTargets(session);
         const work = nextCandidate(normalized);
         if (work) {
@@ -475,11 +610,6 @@ export async function executeBisect(
           };
         }
       }
-      session = {
-        ...session,
-        dryRun: true,
-        nextAction,
-      };
       logDecision(
         'dry-run-plan',
         nextAction
@@ -490,8 +620,20 @@ export async function executeBisect(
         nextAction ? { nextAction } : { targetCount: 0 },
       );
       persist();
-    } else if (session.targets.length === 0) {
+    } else if (session.primary.targets.length === 0) {
       deps.logProgress('No regression targets were present at the bad ref');
+      const primary = session.primary;
+      session = {
+        ...session,
+        primary: {
+          ...primary,
+          status: 'complete',
+          targets: [],
+          startedAt: primary.startedAt ?? deps.now(),
+          finishedAt: deps.now(),
+        },
+      };
+      persist();
     } else {
       if (input.validateGoodRef) {
         const goodTargets = activeTargets(session);
@@ -508,7 +650,7 @@ export async function executeBisect(
           targets: goodTargets,
         });
         session = validateGoodEndpoint(session, goodRun.observations);
-        const invalidTargets = session.targets.filter((target) => target.status === 'invalid');
+        const invalidTargets = session.primary.targets.filter((target) => target.status === 'invalid');
         logDecision('good-ref-validated', `Good ref validated: ${invalidTargets.length} target(s) already present at good`, {
           sha: input.gitRange.goodSha,
           invalidTargets: invalidTargets.map((target) => targetLogData(target)),
@@ -521,48 +663,84 @@ export async function executeBisect(
         });
       }
 
-      while (true) {
-        const normalized = applyCachedObservations(session);
-        session = normalized;
-        persist();
-        const work = nextCandidate(normalized);
-        if (!work) break;
-
-        const targets = session.targets.filter((target) => work.targetIds.includes(target.id));
-        logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
-          sha: work.sha,
-          categories: work.categories,
-          tests: work.tests,
-          targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
-        });
-        const candidateRun = await measure({
+      const primary: BisectSearchPhase = session.primary;
+      let attemptNumber = primary.attempts.length;
+      const completedPrimary = await runSearchPhase({
+        phase: primary,
+        preferredRefreshMode: preferredRefreshMode(input.config),
+        nextAttemptId: () => `primary-${++attemptNumber}`,
+        now: deps.now,
+        commitRuns: () => session.commitRuns,
+        checkpoint(phase) {
+          session = { ...session, primary: phase };
+          persistSession();
+        },
+        afterCheckpoint(phase) {
+          session = { ...session, primary: phase };
+          refreshReport();
+        },
+        async measure(work) {
+          const targets = session.primary.targets.filter((target) => work.targetIds.includes(target.id));
+          logDecision('candidate-selected', `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`, {
+            sha: work.sha,
+            categories: work.categories,
+            tests: work.tests,
+            targets: targets.map((target) => targetLogData(target, input.gitRange.orderedCommits)),
+          });
+          const candidateRun = await measure({
+            sha: work.sha,
+            categories: work.categories,
+            tests: work.tests,
+            targets,
+          });
+          logDecision('candidate-observed', `Measured ${candidateRun.observations.length} observation(s) at ${shortSha(work.sha)}`, {
+            sha: work.sha,
+            observations: candidateRun.observations.map((observation) => ({
+              targetId: observation.targetId,
+              present: observation.present,
+            })),
+          });
+          return candidateRun;
+        },
+      });
+      session = { ...session, primary: completedPrimary };
+    }
+    session = buildMergeQueue(session);
+    persist();
+    if (input.investigateMerges && (session.mergeQueue?.length ?? 0) > 0) {
+      if (badRefTests) deps.writeSummary(session);
+      session = { ...session, mode: 'merge-investigation' };
+      let mergeAttemptNumber = Object.values(session.mergeInvestigations ?? {})
+        .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
+      session = await runMergeInvestigations({
+        session,
+        preferredRefreshMode: preferredRefreshMode(input.config),
+        nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
+        now: deps.now,
+        commitRuns: () => session.commitRuns,
+        checkpoint(updated) {
+          session = updated;
+          persistSession();
+        },
+        afterCheckpoint(updated) {
+          session = updated;
+          refreshReport();
+        },
+        prepareRange(investigation) {
+          if (deps.prepareChildRange) return deps.prepareChildRange(investigation);
+          return prepareChildGitRange({
+            experimentDir: input.twinServers.experimentDir,
+            firstParent: investigation.parents[0],
+            secondParent: investigation.parents[1],
+          });
+        },
+        measure: (work, targets) => measure({
           sha: work.sha,
           categories: work.categories,
           tests: work.tests,
           targets,
-        });
-        const observations = new Map(
-          candidateRun.observations.map((observation) => [observation.targetId, observation]),
-        );
-        const beforeTargets = new Map(session.targets.map((target) => [target.id, target]));
-        session = applyObservations(session, work.sha, observations);
-        logDecision('candidate-observed', `Applied ${candidateRun.observations.length} observation(s) from ${shortSha(work.sha)}`, {
-          sha: work.sha,
-          observations: candidateRun.observations.map((observation) => {
-            const before = beforeTargets.get(observation.targetId);
-            const after = session.targets.find((target) => target.id === observation.targetId);
-            return {
-              targetId: observation.targetId,
-              present: observation.present,
-              previousInterval: before ? intervalLogData(before, input.gitRange.orderedCommits) : null,
-              nextInterval: after ? intervalLogData(after, input.gitRange.orderedCommits) : null,
-              status: after?.status,
-              firstBadSha: after?.firstBadSha,
-            };
-          }),
-        });
-        persist();
-      }
+        }),
+      });
     }
     checkCancellation();
   } catch (error) {
@@ -600,19 +778,19 @@ export async function executeBisect(
     session = terminalSession(session, primaryError, cleanupErrors, deps.now());
     const loggedStatus = session.status;
     try {
-      if (loggedStatus === 'complete' && session.dryRun) {
+      if (loggedStatus === 'complete' && input.dryRun) {
         logDecision('session-dry-run-complete', 'Compare bisect dry run completed', {
-          targets: session.targets.map((target) => targetLogData(target)),
-          nextAction: session.nextAction,
+          targets: session.primary.targets.map((target) => targetLogData(target)),
+          nextAction,
           summaryPath: path.join(input.resultsDirectory, 'summary.json'),
         });
       } else if (loggedStatus === 'complete') {
-        logDecision('session-complete', session.targets.length === 0
+        logDecision('session-complete', session.primary.targets.length === 0
           ? 'No regression targets were present at the bad ref'
           : 'Compare bisect session completed', {
-          foundTargets: session.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
-          invalidTargets: session.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
-          unresolvedTargets: session.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
+          foundTargets: session.primary.targets.filter((target) => target.status === 'found').map((target) => targetLogData(target)),
+          invalidTargets: session.primary.targets.filter((target) => target.status === 'invalid').map((target) => targetLogData(target)),
+          unresolvedTargets: session.primary.targets.filter((target) => target.status === 'active').map((target) => targetLogData(target)),
           summaryPath: path.join(input.resultsDirectory, 'summary.json'),
         });
       } else {
@@ -639,7 +817,11 @@ export async function executeBisect(
     const terminalPersisted = persistTerminal();
     if (terminalPersisted && cleanupErrors.length === 0) {
       try {
-        deps.writeSummary(session);
+        deps.writeSummary(session, {
+          dryRun: input.dryRun || undefined,
+          validateGoodRef: input.validateGoodRef || undefined,
+          nextAction,
+        });
       } catch (error) {
         cleanupErrors.push(new Error(`summary persistence failed: ${errorMessage(error)}`, { cause: error }));
         session = terminalSession(session, primaryError, cleanupErrors, deps.now());
@@ -666,7 +848,7 @@ function createDefaultDependencies(options: {
   twinServers: ResolvedConfig;
   frozenTests: readonly AbTestDefinition[];
   resultsDirectory: string;
-  manifest: BuildManifest;
+  manifest?: BuildManifest;
   gitRange: PreparedGitRange;
   headed: boolean;
   controlURL: string;
@@ -706,7 +888,7 @@ function createDefaultDependencies(options: {
           await reconcileExperimentVolume({
             sourceDir: options.twinServers.dockerBuildDir,
             volumeDir: options.twinServers.volumes.experiment,
-            manifest: options.manifest,
+            manifest: requireManifest(options.manifest),
             candidateSha: originalSha,
           });
           return;
@@ -714,7 +896,7 @@ function createDefaultDependencies(options: {
         await syncCommitDelta({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
-          manifest: options.manifest,
+          manifest: requireManifest(options.manifest),
           previousSha,
           candidateSha: originalSha,
         });
@@ -739,7 +921,7 @@ function createDefaultDependencies(options: {
         await reconcileExperimentVolume({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
-          manifest: options.manifest,
+          manifest: requireManifest(options.manifest),
           candidateSha,
         });
         return;
@@ -747,7 +929,7 @@ function createDefaultDependencies(options: {
       await syncCommitDelta({
         sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
-        manifest: options.manifest,
+        manifest: requireManifest(options.manifest),
         previousSha,
         candidateSha,
       });
@@ -804,6 +986,10 @@ function createDefaultDependencies(options: {
       });
     },
     writeSummary: (session) => writeSummary(path.join(options.resultsDirectory, 'summary.json'), session),
+    writeBadRefTests: (tests) => writeBadRefTestsAtomic(
+      path.join(options.resultsDirectory, 'bad-ref-tests.json'),
+      tests,
+    ),
     recordDecision: createDecisionLogWriter(options.resultsDirectory),
     logProgress: (message) => console.log(`[compare bisect] ${message}`),
     now: () => new Date().toISOString(),
@@ -873,21 +1059,74 @@ async function proxyBisect<T>(
 }
 
 function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSession {
+  const rebuildStrategy = input.rebuildStrategy ?? persistedRebuildStrategy(input.config);
+  const identity = input.repositorySnapshot?.identity ?? {
+    controlRoot: input.twinServers.controlDir ?? input.cwd,
+    experimentRoot: input.twinServers.experimentDir ?? input.cwd,
+    controlGitCommonDir: input.twinServers.controlDir ?? input.cwd,
+    experimentGitCommonDir: input.twinServers.experimentDir ?? input.cwd,
+    controlOrigin: null,
+    experimentOrigin: null,
+  };
+  const compatibility = input.compatibility ?? buildCompatibility({
+    config: input.config,
+    categories: input.selectedCategories,
+    tests: frozenTestSelections(input.frozenTests, input.cwd),
+    rebuildStrategy,
+    range: { goodSha: input.gitRange.goodSha, badSha: input.gitRange.badSha },
+  });
   return {
-    version: 1,
     status: 'running',
-    goodSha: input.gitRange.goodSha,
-    badSha: input.gitRange.badSha,
+    mode: 'primary',
+    identity,
+    compatibility,
+    control: input.repositorySnapshot?.control ?? { branch: null, sha: input.gitRange.goodSha },
+    rebuildStrategy,
+    reportInput: { filename: 'bad-ref-tests.json', sha256: '' },
+    primary: {
+      id: 'primary',
+      status: 'pending',
+      goodSha: input.gitRange.goodSha,
+      badSha: input.gitRange.badSha,
+      orderedCommits: input.gitRange.orderedCommits,
+      commitSubjects: input.gitRange.commitSubjects,
+      commitParents: input.gitRange.commitParents,
+      targets: [],
+      attempts: [],
+    },
+    mergeQueue: [],
+    mergeInvestigations: {},
     originalExperiment: input.gitRange.originalExperiment,
-    commitSubjects: input.gitRange.commitSubjects,
-    selectedCategories: [...input.selectedCategories],
-    orderedCommits: input.gitRange.orderedCommits,
-    targets: [],
     commitRuns: {},
-    dryRun: input.dryRun,
-    validateGoodRef: input.validateGoodRef,
     startedAt,
   };
+}
+
+function resumedSession(saved: BisectSession): BisectSession {
+  return {
+    ...saved,
+    status: 'running',
+    mode: saved.primary.status === 'complete' ? 'complete' : 'primary',
+    failure: undefined,
+    finishedAt: undefined,
+  };
+}
+
+function persistedRebuildStrategy(config: AbTestsConfig): PersistedRebuildStrategy {
+  return {
+    mode: preferredRefreshMode(config),
+    commands: config.bisect.rebuildCommands.map((command) => command.command),
+  };
+}
+
+function frozenTestSelections(
+  tests: readonly AbTestDefinition[],
+  cwd: string,
+): BisectTestSelection[] {
+  return tests.flatMap((test) => test.file ? [{
+    testFile: normalizeRelativeTestFile(cwd, test.file),
+    testName: test.name,
+  }] : []);
 }
 
 function validateGoodEndpoint(
@@ -895,31 +1134,28 @@ function validateGoodEndpoint(
   observations: readonly TargetObservation[],
 ): BisectSession {
   const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
-  return {
-    ...session,
-    targets: session.targets.map((target) => {
-      const observation = byTarget.get(target.id);
-      if (!observation) return target;
-      if (observation.present) {
-        return {
-          ...target,
-          status: 'invalid',
-          invalidReason: 'target is already present at the good ref',
-          observations: {
-            ...target.observations,
-            [observation.commitSha]: observation,
-          },
-        };
-      }
+  return withPrimaryTargets(session, session.primary.targets.map((target) => {
+    const observation = byTarget.get(target.id);
+    if (!observation) return target;
+    if (observation.present) {
       return {
         ...target,
+        status: 'invalid',
+        invalidReason: 'target is already present at the good ref',
         observations: {
           ...target.observations,
           [observation.commitSha]: observation,
         },
       };
-    }),
-  };
+    }
+    return {
+      ...target,
+      observations: {
+        ...target.observations,
+        [observation.commitSha]: observation,
+      },
+    };
+  }));
 }
 
 function recordEndpointObservations(
@@ -927,20 +1163,17 @@ function recordEndpointObservations(
   observations: readonly TargetObservation[],
 ): BisectSession {
   const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
-  return {
-    ...session,
-    targets: session.targets.map((target) => {
-      const observation = byTarget.get(target.id);
-      if (!observation) return target;
-      return {
-        ...target,
-        observations: {
-          ...target.observations,
-          [observation.commitSha]: observation,
-        },
-      };
-    }),
-  };
+  return withPrimaryTargets(session, session.primary.targets.map((target) => {
+    const observation = byTarget.get(target.id);
+    if (!observation) return target;
+    return {
+      ...target,
+      observations: {
+        ...target.observations,
+        [observation.commitSha]: observation,
+      },
+    };
+  }));
 }
 
 function terminalSession(
@@ -971,6 +1204,7 @@ function terminalSession(
   return {
     ...session,
     status: 'complete',
+    mode: 'complete',
     failure: undefined,
     finishedAt,
   };
@@ -1011,7 +1245,28 @@ function recordCommitRun(session: BisectSession, commitRun: CommitRun): BisectSe
 }
 
 function activeTargets(session: BisectSession): BisectTarget[] {
-  return session.targets.filter((target) => target.status === 'active');
+  return session.primary.targets.filter((target) => target.status === 'active');
+}
+
+function searchInput(session: BisectSession) {
+  return {
+    orderedCommits: session.primary.orderedCommits,
+    targets: session.primary.targets,
+    commitRuns: session.commitRuns,
+  };
+}
+
+function withPrimaryTargets(
+  session: BisectSession,
+  targets: BisectTarget[],
+): BisectSession {
+  return {
+    ...session,
+    primary: {
+      ...session.primary,
+      targets,
+    },
+  };
 }
 
 function categoriesForTargets(targets: readonly BisectTarget[]): BisectCategory[] {
@@ -1082,37 +1337,57 @@ function readRequiredBuildManifest(twinServers: ResolvedConfig): BuildManifest {
   return manifest;
 }
 
-function printBisectSummary(session: BisectSession, resultsDirectory: string): void {
-  const found = session.targets.filter((target) => target.status === 'found');
-  const invalid = session.targets.filter((target) => target.status === 'invalid');
-  const unresolved = session.targets.filter((target) => target.status === 'active');
+function requireManifest(manifest: BuildManifest | undefined): BuildManifest {
+  if (!manifest) throw new Error('compare bisect work requires an experiment build manifest');
+  return manifest;
+}
+
+function resumeRequiresWork(session: BisectSession, investigateMerges: boolean): boolean {
+  if (session.primary.status !== 'complete') return true;
+  if (!investigateMerges) return false;
+  return session.mergeQueue.some((sha) => {
+    const status = session.mergeInvestigations[sha]?.status;
+    return status !== 'complete' && status !== 'octopus-unsupported';
+  });
+}
+
+function printBisectSummary(
+  session: BisectSession,
+  resultsDirectory: string,
+  options: { dryRun: boolean; validateGoodRef: boolean },
+): void {
+  const targets = session.primary.targets;
+  const found = targets.filter((target) => target.status === 'found');
+  const invalid = targets.filter((target) => target.status === 'invalid');
+  const unresolved = targets.filter((target) => target.status === 'active');
   console.log('');
   const reportPath = path.join(resultsDirectory, BISECT_REPORT_FILENAME);
   if (fs.existsSync(reportPath)) console.log(`Report: ${reportPath}`);
-  if (session.dryRun) {
+  if (options.dryRun) {
+    const nextAction = dryRunNextAction(session, options.validateGoodRef);
     console.log('Compare bisect dry run complete.');
-    console.log(`Range: ${session.goodSha}..${session.badSha}`);
+    console.log(`Range: ${session.primary.goodSha}..${session.primary.badSha}`);
     console.log(`Summary: ${path.join(resultsDirectory, 'summary.json')}`);
     console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
-    console.log(`Targets discovered: ${session.targets.length}`);
-    for (const target of session.targets) {
+    console.log(`Targets discovered: ${targets.length}`);
+    for (const target of targets) {
       console.log(`  ${target.category} ${target.testName} ${target.viewport} ${target.subject}`);
     }
-    if (session.nextAction) {
-      const action = session.nextAction.kind === 'validate-good-ref'
+    if (nextAction) {
+      const action = nextAction.kind === 'validate-good-ref'
         ? 'validate good ref'
         : 'measure midpoint';
       console.log(
-        `Next: ${action} ${shortSha(session.nextAction.sha)} ` +
-        `for ${session.nextAction.targetIds.length} target(s)`,
+        `Next: ${action} ${shortSha(nextAction.sha)} ` +
+        `for ${nextAction.targetIds.length} target(s)`,
       );
-      console.log(`Categories: ${session.nextAction.categories.join(', ')}`);
-      if (session.nextAction.tests) {
-        console.log(`Tests: ${session.nextAction.tests
+      console.log(`Categories: ${nextAction.categories.join(', ')}`);
+      if (nextAction.tests) {
+        console.log(`Tests: ${nextAction.tests
           .map((test) => `${test.testFile} :: ${test.testName}`)
           .join(', ')}`);
-      } else if (session.nextAction.testFiles) {
-        console.log(`Test files: ${session.nextAction.testFiles.join(', ')}`);
+      } else if (nextAction.testFiles) {
+        console.log(`Test files: ${nextAction.testFiles.join(', ')}`);
       }
     } else {
       console.log('Next: no bisect action because no regression targets were discovered.');
@@ -1124,15 +1399,46 @@ function printBisectSummary(session: BisectSession, resultsDirectory: string): v
   console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
   console.log(`Targets: ${found.length} found, ${invalid.length} invalid, ${unresolved.length} unresolved`);
   if (found.length === 0) {
-    if (session.targets.length === 0) console.log('No regression targets were present at the bad ref.');
+    if (targets.length === 0) console.log('No regression targets were present at the bad ref.');
     return;
   }
   for (const target of found) {
+    const investigation = target.firstBadSha
+      ? session.mergeInvestigations?.[target.firstBadSha]
+      : undefined;
+    const mergeResult = investigation?.targetResults[target.id];
+    const source = mergeResult && 'sourceSha' in mergeResult
+      ? `; source ${shortSha(mergeResult.sourceSha)} (${mergeResult.kind})`
+      : mergeResult ? `; ${mergeResult.kind}` : '';
     console.log(
       `  ${target.category} ${target.testName} ${target.viewport} ${target.subject}: ` +
-      `${shortSha(target.firstBadSha!)}`,
+      `${shortSha(target.firstBadSha!)}${source}`,
     );
   }
+  const hasUninvestigatedMerge = Object.values(session.mergeInvestigations ?? {})
+    .some((investigation) => investigation.status === 'merge-uninvestigated');
+  if (hasUninvestigatedMerge) {
+    console.log('shaka-perf compare bisect --resume --investigate-merges');
+  }
+}
+
+function dryRunNextAction(
+  session: BisectSession,
+  validateGoodRef: boolean,
+): BisectNextAction | undefined {
+  const targets = activeTargets(session);
+  if (targets.length === 0) return undefined;
+  if (validateGoodRef) {
+    return {
+      kind: 'validate-good-ref',
+      sha: session.primary.goodSha,
+      categories: categoriesForTargets(targets),
+      tests: testsForTargets(targets),
+      targetIds: targets.map((target) => target.id),
+    };
+  }
+  const work = nextCandidate(applyCachedObservations(searchInput(session)));
+  return work ? { kind: 'measure-candidate', ...work } : undefined;
 }
 
 function shortSha(sha: string): string {

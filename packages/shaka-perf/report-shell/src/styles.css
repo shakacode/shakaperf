@@ -812,7 +812,7 @@ input {
 .bisect-node__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
   color: var(--fg-muted);
@@ -832,8 +832,25 @@ input {
   white-space: nowrap;
 }
 
+.bisect-node__merge {
+  padding: 1px 4px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.bisect-node__investigation {
+  padding: 1px 4px;
+  border: 1px dashed currentColor;
+  white-space: nowrap;
+}
+
+.bisect-node__investigation[data-merge-investigation-status="failed"] {
+  color: var(--error);
+}
+
 .bisect-node__measurement {
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .bisect-node[data-measured="true"] .bisect-node__measurement::before {
@@ -2379,6 +2396,18 @@ input {
   max-height: 80vh;
 }
 
+.ui-dialog--wide {
+  width: min(1080px, calc(100vw - 32px));
+  height: auto;
+  max-width: calc(100vw - 32px);
+  max-height: 90vh;
+}
+
+.ui-dialog--wide .ui-dialog__surface {
+  height: auto;
+  max-height: 90vh;
+}
+
 .ui-dialog::backdrop {
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
@@ -2478,6 +2507,200 @@ input {
   overflow: auto;
   display: flex;
   flex-direction: column;
+}
+
+/* ───────── merge investigation dialog ───────── */
+
+.merge-investigation-dialog {
+  min-width: min(52rem, calc(100vw - 5rem));
+  padding: 20px;
+}
+
+.merge-investigation-dialog__state,
+.merge-investigation-dialog__empty {
+  margin: 0;
+  border: 1px dashed var(--border-strong);
+  padding: 16px;
+  background: var(--bg-sunken);
+}
+
+.merge-investigation-dialog__state strong {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.merge-investigation-dialog__state p {
+  margin: 8px 0 0;
+  color: var(--regression);
+}
+
+.merge-source-trace {
+  display: grid;
+  margin: 0;
+  padding: 0 0 0 24px;
+  list-style: none;
+}
+
+.merge-source-commit {
+  position: relative;
+  border: 1px solid var(--border-strong);
+  border-bottom: 0;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.merge-source-commit:last-child {
+  border-bottom-width: 1px;
+}
+
+.merge-source-commit::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -24px;
+  width: 3px;
+  background: var(--fg);
+  content: '';
+}
+
+.merge-source-commit::after {
+  position: absolute;
+  top: 20px;
+  left: -29px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--fg);
+  background: var(--bg);
+  content: '';
+}
+
+.merge-source-commit[data-merge-source-result="responsible"] {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+  box-shadow: 6px 6px 0 var(--visual_change);
+  z-index: 1;
+}
+
+.merge-source-commit[data-merge-source-result="responsible"]::after {
+  background: var(--visual_change);
+}
+
+.merge-source-commit[data-merge-source-result="responsible"] code,
+.merge-source-commit[data-merge-source-result="responsible"] .merge-source-commit__measurement {
+  color: var(--bg);
+}
+
+.merge-source-commit[data-merge-source-result="clear"] {
+  background-color: var(--bg-elevated);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0,
+    transparent 8px,
+    rgba(0, 0, 0, 0.025) 8px,
+    rgba(0, 0, 0, 0.025) 9px
+  );
+}
+
+.merge-source-commit > header {
+  display: grid;
+  grid-template-columns: auto minmax(12rem, 1fr) auto auto;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.merge-source-commit > header code {
+  color: var(--fg-muted);
+  font-weight: 700;
+}
+
+.merge-source-commit__merge,
+.merge-regression-group h4 {
+  width: fit-content;
+  margin: 0;
+  border: 1px solid currentColor;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.merge-source-commit__measurement {
+  color: var(--fg-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.merge-regression-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.merge-regression-group ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-regression-group li {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid currentColor;
+  padding-top: 6px;
+}
+
+.merge-regression-group li > span {
+  font-size: 10px;
+}
+
+.merge-regression-group[data-category="visreg"] h4 {
+  color: var(--bisect-visual, var(--visual_change));
+}
+
+.merge-regression-group[data-category="perf"] h4 {
+  color: var(--regression);
+}
+
+.merge-regression-group[data-category="accessibility"] h4 {
+  color: var(--error);
+}
+
+.merge-source-commit[data-merge-source-result="responsible"] .merge-regression-group h4 {
+  color: inherit;
+}
+
+.merge-introduced-panel {
+  margin-top: 20px;
+  border: 2px solid var(--regression);
+  padding: 16px;
+  background: var(--regression-tint);
+}
+
+.merge-introduced-panel > h3 {
+  margin: 0;
+  color: var(--regression);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+@media (max-width: 760px) {
+  .merge-investigation-dialog {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .merge-source-commit > header,
+  .merge-regression-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ───────── reduced motion ───────── */

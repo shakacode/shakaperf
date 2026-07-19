@@ -7,10 +7,14 @@
  * License in LICENSE.md.
  */
 
-import { applyCachedObservations, applyObservations, nextCandidate } from '../search';
+import {
+  applyCachedObservations,
+  applyObservations,
+  nextCandidate,
+  type BisectSearchInput,
+} from '../search';
 import type {
   BisectCategory,
-  BisectSession,
   BisectTarget,
   TargetObservation,
 } from '../types';
@@ -47,26 +51,40 @@ function bisectTarget(
   };
 }
 
-function session(targets: BisectTarget[]): BisectSession {
+function session(targets: BisectTarget[]): BisectSearchInput {
   return {
-    version: 1,
-    status: 'running',
-    goodSha: 'g',
-    badSha: 'bad',
-    originalExperiment: { sha: 'bad', branch: 'feature' },
-    selectedCategories: ['visreg', 'perf', 'accessibility'],
     orderedCommits,
     targets,
     commitRuns: {},
-    startedAt: '2026-07-12T00:00:00.000Z',
   };
 }
 
-function target(value: BisectSession, id: string): BisectTarget {
+function target(value: BisectSearchInput, id: string): BisectTarget {
   return value.targets.find((item) => item.id === id)!;
 }
 
 describe('bisect scheduler', () => {
+  it('rejects a degenerate active interval instead of scheduling empty work', () => {
+    const normalized = applyCachedObservations(session([
+      bisectTarget('visual', 'visreg', {
+        goodIndex: 0,
+        badIndex: 0,
+        observations: { g: observation('visual', true, 'g') },
+      }),
+    ]));
+
+    expect(() => nextCandidate(normalized)).toThrow(/invalid bisect interval/i);
+  });
+
+  it('rejects a candidate with no unobserved active targets', () => {
+    const normalized = applyCachedObservations(session([
+      bisectTarget('visual', 'visreg'),
+    ]));
+    normalized.targets[0].observations.b = observation('visual', true, 'b');
+
+    expect(() => nextCandidate(normalized)).toThrow(/no unobserved active targets/i);
+  });
+
   it('updates divergent target intervals independently', () => {
     const updated = applyObservations(session([
       bisectTarget('visual', 'visreg'),
@@ -230,7 +248,7 @@ describe('bisect scheduler', () => {
       }),
     ]));
 
-    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSession;
+    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSearchInput;
 
     expect(target(persisted, 'visual')).toMatchObject({
       status: 'found',

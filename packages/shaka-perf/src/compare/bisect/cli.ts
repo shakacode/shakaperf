@@ -48,9 +48,31 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
       'Re-render compare-bisect-results/bisect-report.html from saved bisect report data',
       false,
     )
+    .option('--resume', 'Continue the latest compatible saved bisect session', false)
+    .option(
+      '--investigate-merges',
+      'After primary results, inspect eligible bad merge sources',
+      false,
+    )
     .action(async function (goodRef?: string, badRef?: string) {
       const local = this.opts();
       const inherited = this.optsWithGlobals();
+      const reportOnly = local.reportOnly === true || inherited.reportOnly === true;
+      if (local.resume && (goodRef || badRef)) {
+        throw new Error('--resume does not accept positional good-ref or bad-ref values');
+      }
+      if (local.resume && local.reuseCurrentResults) {
+        throw new Error('--resume cannot be combined with --reuse-current-results');
+      }
+      if (local.resume && local.dryRun) {
+        throw new Error('--resume cannot be combined with --dry-run');
+      }
+      if (local.resume && local.validateGoodRef) {
+        throw new Error('--resume cannot be combined with --validate-good-ref');
+      }
+      if (reportOnly && (local.resume || local.investigateMerges)) {
+        throw new Error('--report-only cannot be combined with resume or merge investigation');
+      }
       await (deps.run ?? runCompareBisectFromCli)(goodRef, badRef, {
         configPath: inherited.config,
         categories: local.categories ?? inherited.categories,
@@ -62,7 +84,9 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         reuseCurrentResults: local.reuseCurrentResults === true,
         dryRun: local.dryRun === true,
         validateGoodRef: local.validateGoodRef === true,
-        reportOnly: local.reportOnly === true || inherited.reportOnly === true,
+        reportOnly,
+        resume: local.resume === true,
+        investigateMerges: local.investigateMerges === true,
       });
     });
 }

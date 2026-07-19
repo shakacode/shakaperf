@@ -16,54 +16,9 @@ import {
   BISECT_REPORT_DATA_FILENAME,
   writeBisectReportArtifacts,
 } from './report';
+import { parseBisectSession } from './state';
 import type { BisectSession } from './types';
 
-const categorySchema = z.enum(['visreg', 'perf', 'accessibility']);
-const scalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-const observationSchema = z.object({
-  targetId: z.string(),
-  commitSha: z.string(),
-  present: z.boolean(),
-  values: z.record(z.string(), scalarSchema),
-  artifacts: z.array(z.string()),
-}).passthrough();
-const targetSchema = z.object({
-  id: z.string(),
-  category: categorySchema,
-  testFile: z.string(),
-  testName: z.string(),
-  viewport: z.string(),
-  subject: z.string(),
-  status: z.enum(['active', 'found', 'invalid']),
-  goodIndex: z.number().int().nonnegative(),
-  badIndex: z.number().int().nonnegative(),
-  firstBadSha: z.string().optional(),
-  invalidReason: z.string().optional(),
-  observations: z.record(z.string(), observationSchema),
-}).passthrough();
-const commitRunSchema = z.object({
-  sha: z.string(),
-  requestedCategories: z.array(categorySchema),
-  refreshMode: z.enum(['commands', 'container']),
-  usedFallback: z.boolean(),
-  startedAt: z.string(),
-}).passthrough();
-const sessionSchema = z.object({
-  version: z.literal(1),
-  status: z.enum(['running', 'complete', 'interrupted', 'failed']),
-  goodSha: z.string(),
-  badSha: z.string(),
-  originalExperiment: z.object({
-    sha: z.string(),
-    branch: z.string().nullable(),
-  }),
-  commitSubjects: z.record(z.string(), z.string()).optional(),
-  selectedCategories: z.array(categorySchema),
-  orderedCommits: z.array(z.string()),
-  targets: z.array(targetSchema),
-  commitRuns: z.record(z.string(), commitRunSchema),
-  startedAt: z.string(),
-}).passthrough();
 const reportSchema = z.object({
   meta: z.object({}).passthrough(),
   tests: z.array(z.object({
@@ -103,7 +58,7 @@ export function regenerateBisectReport(
 ): RegeneratedBisectReport {
   const sessionPath = path.join(options.resultsDirectory, 'session.json');
   const dataPath = path.join(options.resultsDirectory, BISECT_REPORT_DATA_FILENAME);
-  const session = readValidatedJson(sessionPath, sessionSchema) as BisectSession;
+  const session = readValidatedSession(sessionPath);
   const savedReport = readValidatedJson(dataPath, reportSchema) as unknown as BisectReportData;
   const generatedAt = options.now ?? new Date().toISOString();
   const data: BisectReportData = {
@@ -127,7 +82,24 @@ export function regenerateBisectReport(
   };
 }
 
+function readValidatedSession(filePath: string): BisectSession {
+  try {
+    return parseBisectSession(readJson(filePath));
+  } catch (error) {
+    throw new Error(`${path.basename(filePath)} is invalid: ${(error as Error).message}`);
+  }
+}
+
 function readValidatedJson<T extends z.ZodType>(filePath: string, schema: T): z.infer<T> {
+  const parsed = readJson(filePath);
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`${path.basename(filePath)} is invalid: ${result.error.issues[0]?.message ?? 'schema mismatch'}`);
+  }
+  return result.data;
+}
+
+function readJson(filePath: string): unknown {
   if (!fs.existsSync(filePath)) {
     throw new Error(`${path.basename(filePath)} not found at ${filePath}`);
   }
@@ -138,9 +110,5 @@ function readValidatedJson<T extends z.ZodType>(filePath: string, schema: T): z.
   } catch (error) {
     throw new Error(`${path.basename(filePath)} is invalid JSON: ${(error as Error).message}`);
   }
-  const result = schema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`${path.basename(filePath)} is invalid: ${result.error.issues[0]?.message ?? 'schema mismatch'}`);
-  }
-  return result.data;
+  return parsed;
 }

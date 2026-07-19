@@ -71,22 +71,18 @@ export type BisectNextAction = BisectNextActionBase & (
 );
 
 export interface BisectSession {
-  version: 1;
   status: 'running' | 'complete' | 'interrupted' | 'failed';
-  goodSha: string;
-  badSha: string;
-  originalExperiment: {
-    sha: string;
-    branch: string | null;
-  };
-  commitSubjects?: Record<string, string>;
-  selectedCategories: BisectCategory[];
-  orderedCommits: string[];
-  targets: BisectTarget[];
+  mode: 'primary' | 'merge-investigation' | 'complete';
+  identity: BisectRepositoryIdentity;
+  compatibility: BisectCompatibility;
+  originalExperiment: { sha: string; branch: string | null };
+  control: { sha: string; branch: string | null };
+  rebuildStrategy: PersistedRebuildStrategy;
+  reportInput: { filename: string; sha256: string };
+  primary: BisectSearchPhase;
+  mergeQueue: string[];
+  mergeInvestigations: Record<string, MergeInvestigation>;
   commitRuns: Record<string, CommitRun>;
-  dryRun?: boolean;
-  validateGoodRef?: boolean;
-  nextAction?: BisectNextAction;
   startedAt: string;
   finishedAt?: string;
   failure?: string;
@@ -94,6 +90,86 @@ export interface BisectSession {
 
 declare const normalizedBisectSessionBrand: unique symbol;
 
-export type NormalizedBisectSession = BisectSession & {
+/**
+ * Marks search input whose cached observations have already been folded into
+ * each target's good/bad interval, which `nextCandidate` requires.
+ */
+export type Normalized<T> = T & {
   readonly [normalizedBisectSessionBrand]: true;
 };
+
+export type PersistedAttemptStatus = 'running' | 'complete' | 'incomplete';
+
+export interface CommitAttempt {
+  id: string;
+  sha: string;
+  status: PersistedAttemptStatus;
+  requestedCategories: BisectCategory[];
+  requestedTests: BisectTestSelection[];
+  refreshMode: 'commands' | 'container';
+  usedFallback: boolean;
+  startedAt: string;
+  finishedAt?: string;
+  compareResultsPath?: string;
+  error?: string;
+}
+
+export interface BisectSearchPhase {
+  id: string;
+  status: 'pending' | 'running' | 'complete' | 'failed';
+  goodSha: string;
+  badSha: string;
+  orderedCommits: string[];
+  commitSubjects: Record<string, string>;
+  commitParents: Record<string, string[]>;
+  targets: BisectTarget[];
+  attempts: CommitAttempt[];
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface BisectRepositoryIdentity {
+  controlRoot: string;
+  experimentRoot: string;
+  controlGitCommonDir: string;
+  experimentGitCommonDir: string;
+  controlOrigin: string | null;
+  experimentOrigin: string | null;
+}
+
+export interface PersistedRebuildStrategy {
+  mode: 'commands' | 'container';
+  commands: string[];
+}
+
+export interface BisectCompatibility {
+  configFingerprint: string;
+  categoriesFingerprint: string;
+  testsFingerprint: string;
+  rebuildFingerprint: string;
+  rangeFingerprint: string;
+  effective: {
+    config: unknown;
+    categories: BisectCategory[];
+    tests: BisectTestSelection[];
+    rebuildStrategy: PersistedRebuildStrategy;
+    range: { goodSha: string; badSha: string };
+  };
+}
+
+export type MergeTargetResult =
+  | { kind: 'merge-uninvestigated' }
+  | { kind: 'merge-introduced' }
+  | { kind: 'source-found'; sourceSha: string }
+  | { kind: 'nested-merge'; sourceSha: string }
+  | { kind: 'octopus-unsupported' };
+
+export interface MergeInvestigation {
+  mergeSha: string;
+  parents: string[];
+  status: 'merge-uninvestigated' | 'running' | 'complete' | 'octopus-unsupported' | 'failed';
+  targetIds: string[];
+  phase?: BisectSearchPhase;
+  targetResults: Record<string, MergeTargetResult>;
+  failure?: string;
+}

@@ -13,6 +13,8 @@ import type {
   BisectCategory,
   BisectSession,
   CommitRun,
+  MergeInvestigation,
+  MergeTargetResult,
   TargetObservation,
   TargetStatus,
 } from './types';
@@ -23,6 +25,24 @@ export interface BisectReportCounts {
   accessibility: number;
 }
 
+export interface BisectReportMergeSourceCommit {
+  sha: string;
+  subject: string;
+  measured: boolean;
+  isMerge: boolean;
+  targetIds: string[];
+  counts: BisectReportCounts;
+}
+
+export interface BisectReportMergeInvestigation {
+  status: MergeInvestigation['status'];
+  failure?: string;
+  mergeBase?: string;
+  secondParent?: string;
+  sourceCommits: BisectReportMergeSourceCommit[];
+  mergeIntroducedTargetIds: string[];
+}
+
 export interface BisectReportCommit {
   sha: string;
   subject: string;
@@ -30,6 +50,9 @@ export interface BisectReportCommit {
   measured: boolean;
   counts: BisectReportCounts;
   targetIds: string[];
+  isMerge?: boolean;
+  mergeInvestigationStatus?: MergeInvestigation['status'];
+  mergeInvestigation?: BisectReportMergeInvestigation;
 }
 
 export interface BisectReportTarget {
@@ -44,6 +67,11 @@ export interface BisectReportTarget {
   firstBadSha?: string;
   invalidReason?: string;
   badRefObservation?: TargetObservation;
+  mainlineFirstBadSha?: string;
+  mainlineIsMerge?: boolean;
+  mergeInvestigationStatus?: MergeInvestigation['status'];
+  mergeSourceSha?: string;
+  mergeResult?: MergeTargetResult['kind'];
 }
 
 export interface BisectReportView {
@@ -71,39 +99,60 @@ export function buildBisectReportModel(
   badRefTests: readonly TestResult[],
   generatedAt: string,
 ): BisectReportModel {
+  const { primary } = session;
   const testIdsByKey = new Map(badRefTests.map((test) => [testKey(test.filePath, test.name), test.id]));
-  const targets = session.targets.map((target) => ({
-    id: target.id,
-    category: target.category,
-    testId: testIdsByKey.get(testKey(target.testFile, target.testName)) ?? null,
-    testFile: target.testFile,
-    testName: target.testName,
-    viewport: target.viewport,
-    subject: target.subject,
-    status: target.status,
-    firstBadSha: target.firstBadSha,
-    invalidReason: target.invalidReason,
-    badRefObservation: target.observations[session.badSha],
-  }));
+  const targets = primary.targets.map((target) => {
+    const parents = target.firstBadSha
+      ? primary.commitParents[target.firstBadSha] ?? []
+      : [];
+    const investigation = target.firstBadSha
+      ? session.mergeInvestigations?.[target.firstBadSha]
+      : undefined;
+    const mergeResult = investigation?.targetResults[target.id];
+    return {
+      id: target.id,
+      category: target.category,
+      testId: testIdsByKey.get(testKey(target.testFile, target.testName)) ?? null,
+      testFile: target.testFile,
+      testName: target.testName,
+      viewport: target.viewport,
+      subject: target.subject,
+      status: target.status,
+      firstBadSha: target.firstBadSha,
+      invalidReason: target.invalidReason,
+      badRefObservation: target.observations[primary.badSha],
+      mainlineFirstBadSha: target.firstBadSha,
+      mainlineIsMerge: parents.length > 1,
+      mergeInvestigationStatus: investigation?.status,
+      mergeResult: mergeResult?.kind,
+      mergeSourceSha: mergeResult && 'sourceSha' in mergeResult
+        ? mergeResult.sourceSha
+        : undefined,
+    };
+  });
   const targetsById = Object.fromEntries(targets.map((target) => [target.id, target]));
-  const commits = session.orderedCommits.map((sha, position) => {
+  const commits = primary.orderedCommits.map((sha, position) => {
     const targetIds = targets
       .filter((target) => target.status === 'found' && target.firstBadSha === sha)
       .map((target) => target.id);
+    const investigation = session.mergeInvestigations?.[sha];
     return {
       sha,
-      subject: session.commitSubjects?.[sha] || sha.slice(0, 7),
+      subject: primary.commitSubjects[sha] || sha.slice(0, 7),
       position,
       measured: commitWasMeasured(session.commitRuns[sha]),
       counts: countsFor(targetIds, targetsById),
       targetIds,
+      isMerge: (primary.commitParents[sha] ?? []).length > 1,
+      mergeInvestigationStatus: investigation?.status,
+      mergeInvestigation: buildMergeInvestigationReport(investigation, targetsById),
     };
   });
 
   return {
     status: session.status,
-    goodSha: session.goodSha,
-    badSha: session.badSha,
+    goodSha: primary.goodSha,
+    badSha: primary.badSha,
     generatedAt,
     commits,
     targets,
@@ -112,6 +161,54 @@ export function buildBisectReportModel(
       unresolved: { targetIds: targets.filter((target) => target.status === 'active').map((target) => target.id) },
       invalid: { targetIds: targets.filter((target) => target.status === 'invalid').map((target) => target.id) },
     },
+  };
+}
+
+function buildMergeInvestigationReport(
+  investigation: MergeInvestigation | undefined,
+  targetsById: Record<string, BisectReportTarget>,
+): BisectReportMergeInvestigation | undefined {
+  if (!investigation) return undefined;
+  const targetIdsBySourceSha = new Map<string, string[]>();
+  const mergeIntroducedTargetIds: string[] = [];
+  for (const targetId of investigation.targetIds) {
+    const result = investigation.targetResults[targetId];
+    if (result?.kind === 'merge-introduced') {
+      mergeIntroducedTargetIds.push(targetId);
+    } else if (result?.kind === 'source-found' || result?.kind === 'nested-merge') {
+      const targetIds = targetIdsBySourceSha.get(result.sourceSha) ?? [];
+      targetIds.push(targetId);
+      targetIdsBySourceSha.set(result.sourceSha, targetIds);
+    }
+  }
+
+  const phase = investigation.phase;
+  const measuredShas = new Set(
+    (phase?.attempts ?? [])
+      .filter((attempt) => attempt.status === 'complete')
+      .map((attempt) => attempt.sha),
+  );
+  const sourceCommits = (phase?.orderedCommits ?? [])
+    .filter((sha) => sha !== phase?.goodSha)
+    .map((sha) => {
+      const targetIds = targetIdsBySourceSha.get(sha) ?? [];
+      return {
+        sha,
+        subject: phase?.commitSubjects[sha] || sha.slice(0, 7),
+        measured: measuredShas.has(sha),
+        isMerge: (phase?.commitParents[sha] ?? []).length > 1,
+        targetIds,
+        counts: countsFor(targetIds, targetsById),
+      };
+    });
+
+  return {
+    status: investigation.status,
+    failure: investigation.failure,
+    mergeBase: phase?.goodSha,
+    secondParent: phase?.badSha,
+    sourceCommits,
+    mergeIntroducedTargetIds,
   };
 }
 

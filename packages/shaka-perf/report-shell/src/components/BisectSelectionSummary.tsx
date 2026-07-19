@@ -208,6 +208,29 @@ function activateTargetFromKeyboard(
 function TargetDetails({ target }: { target: BisectReportTarget }) {
   return (
     <>
+      {target.mainlineIsMerge || target.mergeResult ? (
+        <dl className="bisect-target__comparison bisect-target__merge-details">
+          {target.mainlineIsMerge && target.mainlineFirstBadSha ? (
+            <div>
+              <dt>mainline first bad</dt>
+              <dd>
+                <code>{target.mainlineFirstBadSha.slice(0, 7)}</code>
+                {' · merge'}
+              </dd>
+            </div>
+          ) : null}
+          {target.mergeResult ? (
+            <div>
+              <dt>merge source</dt>
+              <dd>
+                {target.mergeSourceSha ? <code>{target.mergeSourceSha.slice(0, 7)}</code> : null}
+                {target.mergeSourceSha ? ' · ' : ''}
+                {target.mergeResult.replaceAll('-', ' ')}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
       {target.invalidReason ? (
         <p className="bisect-target__invalid-reason">
           <strong>Invalid:</strong> {target.invalidReason}
@@ -234,7 +257,7 @@ function PerfTargetTable({ targets }: { targets: readonly BisectReportTarget[] }
         <tbody>
           {targets.map((target) => {
             const comparison = perfComparisonValue(target);
-            const hasDetails = Boolean(target.invalidReason);
+            const hasDetails = target.mainlineIsMerge || target.mergeResult || target.invalidReason;
             return (
               <Fragment key={target.id}>
                 <tr

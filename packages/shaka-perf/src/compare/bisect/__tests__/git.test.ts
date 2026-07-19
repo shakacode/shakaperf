@@ -13,6 +13,8 @@ import * as path from 'path';
 import { execFileSync } from 'child_process';
 import {
   checkoutDetached,
+  inspectBisectRepositories,
+  prepareChildGitRange,
   prepareGitRange,
   restoreCheckout,
 } from '../git';
@@ -30,6 +32,7 @@ function commitFile(repoDir: string, filename: string, contents: string): string
 
 interface RepositoryFixture {
   rootDir: string;
+  sourceDir: string;
   controlDir: string;
   experimentDir: string;
   commits: string[];
@@ -55,6 +58,7 @@ function createRepositoryTemplate(): RepositoryFixture {
 
   return {
     rootDir,
+    sourceDir,
     controlDir,
     experimentDir,
     commits,
@@ -70,6 +74,7 @@ function createRepositoryFixture(template: RepositoryFixture): RepositoryFixture
   fs.cpSync(template.experimentDir, experimentDir, { recursive: true });
   return {
     rootDir,
+    sourceDir: template.sourceDir,
     controlDir,
     experimentDir,
     commits: template.commits,
@@ -111,11 +116,33 @@ describe('bisect Git helpers', () => {
       commitSubjects: Object.fromEntries(
         fixture.commits.map((sha, index) => [sha, `commit-${index}`]),
       ),
+      commitParents: Object.fromEntries(
+        fixture.commits.map((sha, index) => [sha, index === 0 ? [] : [fixture.commits[index - 1]]]),
+      ),
       orderedCommits: fixture.commits,
       originalExperiment: {
         branch: fixture.experimentBranch,
         sha: fixture.commits[4],
       },
+    });
+  });
+
+  it('captures canonical repository identity and checkout state for resume', async () => {
+    const snapshot = await inspectBisectRepositories({
+      controlDir: fixture.controlDir,
+      experimentDir: fixture.experimentDir,
+    });
+
+    expect(snapshot.identity).toMatchObject({
+      controlRoot: fs.realpathSync(fixture.controlDir),
+      experimentRoot: fs.realpathSync(fixture.experimentDir),
+      controlOrigin: fixture.sourceDir,
+      experimentOrigin: fixture.sourceDir,
+    });
+    expect(snapshot.control).toEqual({ branch: null, sha: fixture.commits[0] });
+    expect(snapshot.experiment).toEqual({
+      branch: fixture.experimentBranch,
+      sha: fixture.commits[4],
     });
   });
 
@@ -173,18 +200,83 @@ describe('bisect Git helpers', () => {
     })).rejects.toThrow(/ancestor/i);
   });
 
-  it('rejects ranges containing merge commits', async () => {
+  it('traverses the primary range by first parent and records merge parents', async () => {
     git(fixture.experimentDir, ['checkout', '-b', 'feature', fixture.commits[2]]);
-    commitFile(fixture.experimentDir, 'feature.txt', 'feature\n');
+    const featureSha = commitFile(fixture.experimentDir, 'feature.txt', 'feature\n');
     git(fixture.experimentDir, ['checkout', fixture.experimentBranch]);
     git(fixture.experimentDir, ['merge', '--no-ff', 'feature', '-m', 'merge feature']);
     const mergeSha = git(fixture.experimentDir, ['rev-parse', 'HEAD']);
 
-    await expect(prepareGitRange({
+    const prepared = await prepareGitRange({
       experimentDir: fixture.experimentDir,
       controlDir: fixture.controlDir,
       badRef: mergeSha,
-    })).rejects.toThrow(/merge/i);
+    });
+
+    expect(prepared.orderedCommits).toEqual([...fixture.commits, mergeSha]);
+    expect(prepared.commitParents[mergeSha]).toEqual([fixture.commits[4], featureSha]);
+    expect(prepared.commitSubjects[mergeSha]).toBe('merge feature');
+  });
+
+  it('prepares a first-parent child range from merge base to second parent', async () => {
+    git(fixture.experimentDir, ['checkout', '-b', 'feature', fixture.commits[1]]);
+    const featureOne = commitFile(fixture.experimentDir, 'feature.txt', 'feature-one\n');
+    const featureTwo = commitFile(fixture.experimentDir, 'feature.txt', 'feature-two\n');
+
+    const prepared = await prepareChildGitRange({
+      experimentDir: fixture.experimentDir,
+      firstParent: fixture.commits[4],
+      secondParent: featureTwo,
+    });
+
+    expect(prepared).toMatchObject({
+      mergeBase: fixture.commits[1],
+      secondParent: featureTwo,
+      orderedCommits: [fixture.commits[1], featureOne, featureTwo],
+    });
+    expect(prepared.commitParents[featureTwo]).toEqual([featureOne]);
+  });
+
+  it('rejects a child range whose merge base is not on the second-parent first-parent chain', async () => {
+    git(fixture.experimentDir, ['checkout', '-b', 'outer-main', fixture.commits[0]]);
+    const mergeBase = commitFile(fixture.experimentDir, 'shared.txt', 'shared\n');
+    const firstParent = commitFile(fixture.experimentDir, 'outer-main.txt', 'outer-main\n');
+
+    git(fixture.experimentDir, ['checkout', '-b', 'source', fixture.commits[0]]);
+    commitFile(fixture.experimentDir, 'source.txt', 'source\n');
+    git(fixture.experimentDir, ['merge', '--no-ff', mergeBase, '-m', 'nested merge']);
+    const secondParent = git(fixture.experimentDir, ['rev-parse', 'HEAD']);
+
+    await expect(prepareChildGitRange({
+      experimentDir: fixture.experimentDir,
+      firstParent,
+      secondParent,
+    })).rejects.toThrow(/merge base.*first-parent chain/i);
+  });
+
+  it('records every parent of an octopus merge while keeping it atomic', async () => {
+    git(fixture.experimentDir, ['checkout', '-b', 'topic-one', fixture.commits[2]]);
+    const topicOne = commitFile(fixture.experimentDir, 'topic-one.txt', 'topic-one\n');
+    git(fixture.experimentDir, ['checkout', '-b', 'topic-two', fixture.commits[2]]);
+    const topicTwo = commitFile(fixture.experimentDir, 'topic-two.txt', 'topic-two\n');
+    git(fixture.experimentDir, ['checkout', fixture.experimentBranch]);
+    git(fixture.experimentDir, [
+      'merge', '--no-ff', 'topic-one', 'topic-two', '-m', 'merge topics',
+    ]);
+    const mergeSha = git(fixture.experimentDir, ['rev-parse', 'HEAD']);
+
+    const prepared = await prepareGitRange({
+      experimentDir: fixture.experimentDir,
+      controlDir: fixture.controlDir,
+      badRef: mergeSha,
+    });
+
+    expect(prepared.orderedCommits).toEqual([...fixture.commits, mergeSha]);
+    expect(prepared.commitParents[mergeSha]).toEqual([
+      fixture.commits[4],
+      topicOne,
+      topicTwo,
+    ]);
   });
 
   it('checks out candidates detached and restores a branch checkout', async () => {
