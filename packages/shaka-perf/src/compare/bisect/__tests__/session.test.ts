@@ -20,6 +20,7 @@ import {
   type ExecuteBisectDependencies,
   type ExecuteBisectInput,
 } from '../session';
+import * as bisectGit from '../git';
 import { BisectInterruptedError, runCandidate } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
@@ -1189,20 +1190,41 @@ describe('compare bisect session orchestration', () => {
   it('exposes one-object runBisect and runCandidate contracts', async () => {
     const harness = deps({ bad: [] });
     const bisectInput = input(rootDir);
+    const inspectRepositories = jest.spyOn(bisectGit, 'inspectBisectRepositories')
+      .mockResolvedValue({
+        identity: {
+          controlRoot: '/control',
+          experimentRoot: '/experiment',
+          controlGitCommonDir: '/control/.git',
+          experimentGitCommonDir: '/experiment/.git',
+          controlOrigin: null,
+          experimentOrigin: null,
+        },
+        control: { branch: null, sha: 'good' },
+        experiment: { branch: 'feature', sha: 'bad' },
+      });
 
-    await expect(runBisect({
-      cwd: bisectInput.cwd,
-      resultsDirectory: bisectInput.resultsDirectory,
-      config: bisectInput.config,
-      twinServers: bisectInput.twinServers,
-      selectedCategories: bisectInput.selectedCategories,
-      frozenTests: bisectInput.frozenTests,
-      headed: bisectInput.headed,
-      controlURL: bisectInput.controlURL,
-      experimentURL: bisectInput.experimentURL,
-      gitRange: bisectInput.gitRange,
-      dependencies: harness.deps,
-    })).resolves.toMatchObject({ status: 'complete' });
+    try {
+      await expect(runBisect({
+        cwd: bisectInput.cwd,
+        resultsDirectory: bisectInput.resultsDirectory,
+        config: bisectInput.config,
+        twinServers: {
+          ...bisectInput.twinServers,
+          controlDir: '/control',
+          experimentDir: '/experiment',
+        },
+        selectedCategories: bisectInput.selectedCategories,
+        frozenTests: bisectInput.frozenTests,
+        headed: bisectInput.headed,
+        controlURL: bisectInput.controlURL,
+        experimentURL: bisectInput.experimentURL,
+        gitRange: bisectInput.gitRange,
+        dependencies: harness.deps,
+      })).resolves.toMatchObject({ status: 'complete' });
+    } finally {
+      inspectRepositories.mockRestore();
+    }
     expect(runCandidate).toEqual(expect.any(Function));
   });
 });
