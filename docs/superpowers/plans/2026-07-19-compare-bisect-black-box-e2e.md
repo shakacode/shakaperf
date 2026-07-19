@@ -15,6 +15,12 @@
 - Do not change production behavior; all new support stays under `src/compare/bisect/__tests__/`.
 - Stub compare outcomes by immutable SHA; do not mock scheduler, range discovery, first-parent traversal, merge investigation, checkout restoration, or terminal session persistence.
 - Put the commit graph block comment immediately above every Jest `it(...)` case.
+- Use descriptive commit labels such as `known-good` and
+  `performance-regression-introduced`; do not use single-letter stand-ins.
+- Assert the exact commit comparison order in every case to prove midpoint
+  selection and effective binary-search traversal.
+- Express first-bad and merge-source expectations through readable helpers,
+  not ad hoc `Object.fromEntries(...)` transformations.
 - Preserve the current monotonic-regression contract.
 
 ---
@@ -193,3 +199,24 @@ git add packages/shaka-perf/src/compare/bisect/__tests__/e2e-fixture.ts \
   packages/shaka-perf/src/compare/bisect/__tests__/e2e.test.ts
 git commit -m "test(compare): verify bisect checkout restoration"
 ```
+
+### Task 5: Readable traversal and multi-source merge refinement
+
+**Files:**
+- Modify: `packages/shaka-perf/src/compare/bisect/__tests__/e2e-fixture.ts`
+- Modify: `packages/shaka-perf/src/compare/bisect/__tests__/e2e.test.ts`
+- Modify: `docs/superpowers/specs/2026-07-19-compare-bisect-black-box-e2e-design.md`
+
+**Interfaces:**
+- Produces: `expectBinarySearchTraversal(harness, fixture, commitLabels)`
+- Produces: `expectFirstBadCommits(session, fixture, expectations)`
+- Produces: `expectMergeAttributions(session, fixture, mergeCommit, expectations)`
+
+- [ ] Replace abbreviated labels with descriptive commit subjects in every
+  fixture, graph, timeline, and assertion.
+- [ ] Assert the exact compare-call commit order in all nine cases.
+- [ ] Expand case 9 to locate visual and accessibility regressions at different
+  commits inside the merged branch while retaining a later mainline performance
+  regression.
+- [ ] Run the focused E2E suite, full bisect suite, package typecheck, and
+  `git diff --check`.

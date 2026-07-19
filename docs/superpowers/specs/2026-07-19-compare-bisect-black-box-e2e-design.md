@@ -95,6 +95,7 @@ Every successful case asserts the returned session rather than internal helper
 calls first. Where the behavior matters, it additionally asserts:
 
 - requested SHA/category/exact-test history captured by the compare stub;
+- exact named commit traversal, including every binary-search midpoint;
 - merge investigation target results;
 - written `session.json` and `summary.json` terminal state; and
 - experiment branch and SHA after completion.
@@ -110,97 +111,114 @@ The same graph is copied as a block comment immediately above each corresponding
 ### 1. Linear history with different regression types
 
 ```text
-G clean -> V visreg -> N clean -> P +perf -> N clean -> A +a11y -> BAD all three
-           ^ first V              ^ first P            ^ first A
+known-good -> visual-regression-introduced -> visual-regression-confirmed
+              ^ first visual
+-> performance-regression-introduced -> visual-and-performance-confirmed
+   ^ first performance
+-> accessibility-regression-introduced -> known-bad
+   ^ first accessibility
 ```
 
-Expect visreg at `V`, perf at `P`, and accessibility at `A`. Verify later
-candidate requests narrow to unresolved categories and exact tests.
+Expect the three named introduction commits. Assert the exact binary-search
+traversal from `known-bad` through each midpoint and verify later candidate
+requests narrow to unresolved categories and exact tests.
 
 ### 2. One commit introduces multiple regressions
 
 ```text
-G clean -> N clean -> VP visreg+perf -> N both -> BAD both
-                      ^ first V/P
+known-good -> clean-before-regressions -> visual-and-performance-regressions-introduced
+                                           ^ first visual/performance
+-> regressions-confirmed -> known-bad
 ```
 
-Expect both targets at `VP`. Verify a shared midpoint is measured once for both
-targets.
+Expect both targets at the named introduction commit. Verify the exact midpoint
+order and that shared candidate work measures the introduction commit once.
 
 ### 3. Regression originates on a merged branch
 
 ```text
-G clean --------> M1 clean --------> M merge --------> BAD perf
- \                                  /
-  -> S1 perf --------> S2 perf -----
-     ^ source first bad              ^ primary first bad is M
+known-good ------------> mainline-before-merge ------> merge-topic-branch -> known-bad
+ \                                                    /
+  -> topic-first-commit -> topic-second-commit -------
+     ^ source first bad                                ^ primary first bad is merge
 ```
 
-Expect the primary first-parent result at merge `M`, followed by a merge
-investigation result of `source-found` at `S1`.
+Expect the primary first-parent result at `merge-topic-branch`, followed by a
+`source-found` result at `topic-first-commit`. Assert primary and child-history
+traversal in one exact sequence.
 
 ### 4. Compare failure restores the experiment checkout
 
 ```text
-G clean -> N clean -> X compare throws -> BAD visreg
+known-good -> clean-before-failure -> compare-failure -> known-bad
 ```
 
 Expect `runBisect(...)` to reject, persist failed state, and restore the
-experiment checkout to its original named branch and SHA.
+experiment checkout to its original named branch and SHA. Assert traversal
+stops exactly at `compare-failure`.
 
 ### 5. No regressions at the bad ref
 
 ```text
-G clean -> N1 clean -> N2 clean -> BAD clean
+known-good -> clean-midpoint-one -> clean-midpoint-two -> known-bad-clean
 ```
 
-Expect zero targets, no midpoint comparisons, a complete session, and a restored
-experiment checkout.
+Expect zero targets, only the bad-ref comparison, a complete session, and a
+restored experiment checkout.
 
 ### 6. First bad commit is adjacent to good
 
 ```text
-G clean -> V visreg -> N visreg -> BAD visreg
-           ^ first bad
+known-good -> visual-regression-introduced -> regression-confirmed -> known-bad
+              ^ first bad
 ```
 
-Expect `V`, proving the lower boundary is not skipped or replaced by a later
-midpoint.
+Expect `visual-regression-introduced` and assert only `known-bad` plus that
+adjacent midpoint are compared.
 
 ### 7. Same category, different exact tests, different first-bad commits
 
 ```text
-G clean -> H homepage -> N homepage -> C +cart -> BAD both
-           ^ first H                  ^ first C
+known-good -> homepage-regression-introduced -> homepage-regression-confirmed
+              ^ first homepage
+-> cart-regression-introduced -> known-bad
+   ^ first cart
 ```
 
-Expect Homepage at `H` and Cart at `C`. Verify candidate requests narrow by
-exact `(testFile, testName)` even though both targets use visreg.
+Expect the named Homepage and Cart commits. Verify the exact traversal and
+candidate narrowing by `(testFile, testName)` even though both targets use
+visreg.
 
 ### 8. Merge resolution introduces the regression
 
 ```text
-G clean --------> M1 clean --------> M visreg --------> BAD visreg
- \                                  /
-  -> S1 clean -------> S2 clean ----
-                                      ^ first bad only after merge
+known-good ------------> mainline-before-merge ------> merge-topic-branch -> known-bad
+ \                                                    /
+  -> topic-first-commit -> topic-second-commit -------
+                                                        ^ first bad after merge
 ```
 
-Expect primary first bad `M`, then `merge-introduced` because the target is
-absent at the merge's second parent.
+Expect primary first bad `merge-topic-branch`, then `merge-introduced` because
+the target is absent at the second parent. Assert the exact primary traversal
+and second-parent validation.
 
-### 9. Merge regression plus a later normal regression
+### 9. Multiple source commits inside a merge plus a later normal regression
 
 ```text
-G clean -----> M1 clean -----> M visreg -> N visreg -> P +perf -> BAD both
- \                            /  ^ first V             ^ first P
-  -> S1 clean -> S2 clean ----
+known-good ------------> mainline-before-merge ------> merge-topic-branch
+ \                                                    /
+  -> topic-first-commit -> topic-second-commit -------
+     ^ visual source       ^ accessibility source
+-> post-merge-clean-commit -> mainline-performance-regression-introduced -> known-bad
+                              ^ regression outside merge
 ```
 
-Expect visreg at merge `M` and perf at ordinary commit `P`. Only the visreg
-target enters merge investigation and is classified `merge-introduced`; perf
-remains attributed to `P`. Verify later work narrows to perf and its exact test
-after visreg has resolved.
+Expect primary visreg and accessibility targets at `merge-topic-branch` and the
+perf target at `mainline-performance-regression-introduced`. Merge investigation
+must attribute visreg to `topic-first-commit` and accessibility to
+`topic-second-commit`. Assert the full primary-plus-child traversal so the test
+proves midpoint reuse and binary narrowing instead of merely checking the final
+answers.
 
 ## Test Isolation and Cleanup
 
