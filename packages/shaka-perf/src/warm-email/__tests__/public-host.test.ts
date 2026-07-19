@@ -11,7 +11,15 @@ import { isPublicHost } from '../public-host';
 
 describe('isPublicHost', () => {
   it('accepts public hostnames and public IPs', () => {
-    for (const h of ['example.com', 'www.sunhub.com', '8.8.8.8', '1.2.3.4', 'fcbarcelona.com']) {
+    for (const h of [
+      'example.com',
+      'www.sunhub.com',
+      '8.8.8.8',
+      '1.2.3.4',
+      'fcbarcelona.com',
+      '172.15.0.1',
+      '2001:4860:4860::8888',
+    ]) {
       expect(isPublicHost(h)).toBe(true);
     }
   });
@@ -38,8 +46,46 @@ describe('isPublicHost', () => {
     }
   });
 
-  it('does not reject a public 172.x outside the private block', () => {
-    expect(isPublicHost('172.15.0.1')).toBe(true);
-    expect(isPublicHost('172.32.0.1')).toBe(true);
+  it('rejects IPv6 site-local and multicast ranges', () => {
+    expect(isPublicHost('fec0::1')).toBe(false);
+    expect(isPublicHost('ff02::1')).toBe(false);
+  });
+
+  it('rejects IPv4-mapped IPv6 addresses for non-public IPv4 ranges', () => {
+    for (const h of ['::ffff:127.0.0.1', '::ffff:192.168.1.1', '::ffff:0a00:1']) {
+      expect(isPublicHost(h)).toBe(false);
+    }
+  });
+
+  it('rejects unspecified IPv6 spellings', () => {
+    expect(isPublicHost('::')).toBe(false);
+    expect(isPublicHost('0:0:0:0:0:0:0:0')).toBe(false);
+  });
+
+  it('rejects localhost with a trailing dot', () => {
+    expect(isPublicHost('localhost.')).toBe(false);
+    expect(isPublicHost('LOCALHOST.')).toBe(false);
+  });
+
+  it('rejects reserved, documentation, benchmark, and multicast IPv4 ranges', () => {
+    for (const h of [
+      '192.0.0.1',
+      '192.0.2.1',
+      '198.18.0.1',
+      '198.19.255.255',
+      '198.51.100.1',
+      '203.0.113.1',
+      '224.0.0.1',
+      '240.0.0.1',
+      '255.255.255.255',
+    ]) {
+      expect(isPublicHost(h)).toBe(false);
+    }
+  });
+
+  it('accepts addresses adjacent to documentation ranges', () => {
+    expect(isPublicHost('192.0.1.1')).toBe(true);
+    expect(isPublicHost('198.51.99.1')).toBe(true);
+    expect(isPublicHost('203.0.112.1')).toBe(true);
   });
 });
