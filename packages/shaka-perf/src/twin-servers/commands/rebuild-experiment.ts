@@ -36,6 +36,7 @@ export function experimentRebuildCommandsAvailable(config: ResolvedConfig): bool
 
 export interface ExperimentRebuildMenuDefinition {
   id: 'rebuild-experiment-in-container';
+  numericKey: '9';
   label: 'Rebuild experiment in container (rebuildCommands)';
 }
 
@@ -45,6 +46,7 @@ export function experimentRebuildMenuDefinition(
   if (!experimentRebuildCommandsAvailable(config)) return null;
   return {
     id: 'rebuild-experiment-in-container',
+    numericKey: '9',
     label: 'Rebuild experiment in container (rebuildCommands)',
   };
 }

@@ -598,7 +598,6 @@ export async function runServersMenu(
       activity: { verb: 'restarting containers + servers', color: 'yellow' },
       run: runRestartContainersAndServers,
     },
-    ...(experimentRebuildItem ? [experimentRebuildItem] : []),
     {
       id: 'stop',
       numericKey: '8',
@@ -606,6 +605,7 @@ export async function runServersMenu(
       activity: { verb: 'stopping', color: 'gray' },
       run: runStopContainersAndExit,
     },
+    ...(experimentRebuildItem ? [experimentRebuildItem] : []),
   ];
 
   // ---------- IPC-driven controller surface ----------

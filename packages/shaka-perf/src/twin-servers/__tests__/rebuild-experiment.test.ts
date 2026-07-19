@@ -48,6 +48,7 @@ describe('experiment in-container rebuild', () => {
     expect(experimentRebuildMenuDefinition(fakeConfig([]))).toBeNull();
     expect(experimentRebuildMenuDefinition(fakeConfig(['yarn build']))).toEqual({
       id: 'rebuild-experiment-in-container',
+      numericKey: '9',
       label: 'Rebuild experiment in container (rebuildCommands)',
     });
   });
