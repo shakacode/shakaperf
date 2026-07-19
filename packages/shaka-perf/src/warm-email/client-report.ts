@@ -20,6 +20,7 @@ import type { FrameMetadata } from '../audit/stages/build_annotated_timeline/wor
 import { synthesizeSite } from './synthesis';
 import type { PagePerf, SiteScorecard } from './synthesis';
 import { faviconLinkTag, fetchSiteFavicon } from './site-assets';
+import { escapeHtml as esc } from './html-escape';
 import {
   a11yIssueLabel,
   isStructuralA11yRule,
@@ -475,8 +476,6 @@ async function buildShots(resultsDir: string, page: PagePerf, frames: Frame[], d
 
 // ---- HTML ----
 
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 function mb(kb: number): string {
   return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
 }

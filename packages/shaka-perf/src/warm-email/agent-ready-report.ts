@@ -9,6 +9,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { escapeHtml as esc } from './html-escape';
 import type { PagePerf } from './synthesis';
 import type { AgentReadinessResult } from '../audit/stages/agent_readiness/types';
 import {
@@ -33,10 +34,6 @@ import {
 
 export const AGENT_SCORE_VERSION = 'v1';
 
-// ---- local escapers (kept here so this module never imports client-report.ts,
-// which imports US - avoiding an import cycle). ----
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const pct = (ratio: number): string => `${Math.round(ratio * 100)}%`;
 
 function containedJoin(root: string, ...segs: string[]): string | null {
