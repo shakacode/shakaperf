@@ -10,7 +10,8 @@
 // Pure: reject hosts that point at the machine itself or a private network -
 // the obvious SSRF targets (loopback, RFC1918, CGNAT, link-local incl. the
 // 169.254.169.254 cloud-metadata endpoint). IP-literal only; a hostname that
-// DNS-resolves to a private IP is out of scope for these best-effort fetches.
+// DNS-resolves to a private IP is out of scope for these best-effort fetches
+// on a dev/CI box.
 export function isPublicHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '');
   if (h === 'localhost' || h.endsWith('.localhost')) return false;
