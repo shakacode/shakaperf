@@ -9,10 +9,10 @@
 
 import type {
   BisectCategory,
-  BisectSession,
   BisectTestSelection,
   BisectTarget,
-  NormalizedBisectSession,
+  CommitRun,
+  Normalized,
   TargetObservation,
 } from './types';
 
@@ -29,7 +29,18 @@ export interface CandidateWork {
   tests: BisectTestSelection[];
 }
 
-export function nextCandidate(session: NormalizedBisectSession): CandidateWork | null {
+/**
+ * The only state the search needs. Both `BisectSession` and a
+ * `BisectSearchPhase` paired with the session's commit runs satisfy it, so a
+ * phase never has to fabricate a session to drive the search.
+ */
+export interface BisectSearchInput {
+  orderedCommits: string[];
+  targets: BisectTarget[];
+  commitRuns: Record<string, CommitRun>;
+}
+
+export function nextCandidate(session: Normalized<BisectSearchInput>): CandidateWork | null {
   const selectedTarget = session.targets
     .filter((target) => target.status === 'active')
     .sort((left, right) => categoryPriority[left.category] - categoryPriority[right.category]
@@ -68,7 +79,7 @@ export function testsForTargets(targets: readonly BisectTarget[]): BisectTestSel
   return [...selections.values()];
 }
 
-export function applyCachedObservations(session: BisectSession): NormalizedBisectSession {
+export function applyCachedObservations<T extends BisectSearchInput>(session: T): Normalized<T> {
   const commitIndexes = new Map(session.orderedCommits.map((sha, index) => [sha, index]));
 
   return {
@@ -91,14 +102,14 @@ export function applyCachedObservations(session: BisectSession): NormalizedBisec
 
       return finalizeTarget(session, { ...target, goodIndex, badIndex });
     }),
-  } as NormalizedBisectSession;
+  } as Normalized<T>;
 }
 
-export function applyObservations(
-  session: BisectSession,
+export function applyObservations<T extends BisectSearchInput>(
+  session: T,
   sha: string,
   observations: Map<string, TargetObservation>,
-): BisectSession {
+): T {
   const infrastructureError = session.commitRuns[sha]?.infrastructureError;
   if (infrastructureError) {
     throw new Error(`Cannot apply observations for ${sha}: ${infrastructureError}`);
@@ -124,10 +135,10 @@ export function applyObservations(
 
       return finalizeTarget(session, updatedTarget);
     }),
-  };
+  } as T;
 }
 
-function finalizeTarget(session: BisectSession, target: BisectTarget): BisectTarget {
+function finalizeTarget(session: BisectSearchInput, target: BisectTarget): BisectTarget {
   if (target.badIndex - target.goodIndex !== 1) return target;
 
   return {

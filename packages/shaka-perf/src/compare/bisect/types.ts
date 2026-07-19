@@ -103,9 +103,15 @@ export interface BisectSession {
 
 declare const normalizedBisectSessionBrand: unique symbol;
 
-export type NormalizedBisectSession = BisectSession & {
+/**
+ * Marks search input whose cached observations have already been folded into
+ * each target's good/bad interval, which `nextCandidate` requires.
+ */
+export type Normalized<T> = T & {
   readonly [normalizedBisectSessionBrand]: true;
 };
+
+export type NormalizedBisectSession = Normalized<BisectSession>;
 
 export type PersistedAttemptStatus = 'running' | 'complete' | 'incomplete';
 
