@@ -157,7 +157,8 @@ link to from the draft.
 `src/warm-email/`: `synthesis.ts` (cross-page scorecard over the saved
 artifacts), `client-report.ts` (report orchestration, artifact IO, frame and
 a11y crop preparation, and `buildClientReportModel`), `site-assets.ts`
-(favicon fetching, validation, and SSRF protection), `client-report-renderer.ts`
+(favicon fetching and validation), `public-host.ts` (the shared SSRF host guard
+used by both favicon and agent-readiness fetches), `client-report-renderer.ts`
 (the pure templating module over that model), `client-report-model/` (pure
 model helpers such as performance problem/status policy),
 `client-report-narrative.ts` (the verdict copy: deterministic builder + AI
@@ -171,6 +172,7 @@ commands). The per-page score/summary sidecar writers live in
 in `src/email-polish/polish.ts`. Pure logic is unit-tested in
 `src/warm-email/__tests__/client-report.test.ts`,
 `src/warm-email/__tests__/site-assets.test.ts`,
+`src/warm-email/__tests__/public-host.test.ts`,
 `src/warm-email/__tests__/client-report-a11y.test.ts`,
 `src/warm-email/__tests__/caption-ai.test.ts`,
 `src/warm-email/__tests__/a11y-summary-ai.test.ts`,
