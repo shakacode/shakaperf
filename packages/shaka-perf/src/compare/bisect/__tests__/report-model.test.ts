@@ -73,38 +73,32 @@ describe('buildBisectReportModel', () => {
       ...observation('visual-found', { diffPixels: 5 }),
       commitSha: 'visual',
     };
+    const commitSubjects = {
+      good: 'establish baseline',
+      visual: 'change hero image',
+      clean: 'refresh copy',
+      bad: 'ship regressions',
+    };
+    const targets = [
+      target('visual-found', 'visreg', 'tests/../tests/homepage.abtest.ts', 'Homepage', {
+        firstBadSha: 'visual',
+        observations: { visual: midpointObservation, bad: visualObservation },
+      }),
+      target('perf-found', 'perf', 'tests/product.abtest.ts', 'Product'),
+      target('accessibility-found', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage'),
+      target('missing-card', 'visreg', 'tests/missing.abtest.ts', 'Missing'),
+      target('unresolved-target', 'perf', 'tests/homepage.abtest.ts', 'Homepage', {
+        status: 'active',
+        firstBadSha: undefined,
+      }),
+      target('invalid-target', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage', {
+        status: 'invalid',
+        firstBadSha: undefined,
+        invalidReason: 'target is already present at the good ref',
+      }),
+    ];
     const session = {
-      version: 1,
       status: 'complete',
-      goodSha: 'good',
-      badSha: 'bad',
-      commitSubjects: {
-        good: 'establish baseline',
-        visual: 'change hero image',
-        clean: 'refresh copy',
-        bad: 'ship regressions',
-      },
-      originalExperiment: { sha: 'bad', branch: 'feature' },
-      selectedCategories: ['visreg', 'perf', 'accessibility'],
-      orderedCommits: commits,
-      targets: [
-        target('visual-found', 'visreg', 'tests/../tests/homepage.abtest.ts', 'Homepage', {
-          firstBadSha: 'visual',
-          observations: { visual: midpointObservation, bad: visualObservation },
-        }),
-        target('perf-found', 'perf', 'tests/product.abtest.ts', 'Product'),
-        target('accessibility-found', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage'),
-        target('missing-card', 'visreg', 'tests/missing.abtest.ts', 'Missing'),
-        target('unresolved-target', 'perf', 'tests/homepage.abtest.ts', 'Homepage', {
-          status: 'active',
-          firstBadSha: undefined,
-        }),
-        target('invalid-target', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage', {
-          status: 'invalid',
-          firstBadSha: undefined,
-          invalidReason: 'target is already present at the good ref',
-        }),
-      ],
       commitRuns: {
         visual: { compareCompleted: true },
         clean: {
@@ -120,11 +114,11 @@ describe('buildBisectReportModel', () => {
       goodSha: 'good',
       badSha: 'bad',
       orderedCommits: commits,
-      commitSubjects: session.commitSubjects!,
+      commitSubjects,
       commitParents: {
         good: [], visual: ['good', 'topic'], clean: ['visual'], bad: ['clean'],
       },
-      targets: session.targets,
+      targets,
       attempts: [],
     };
     session.mergeQueue = ['visual'];
@@ -225,15 +219,9 @@ describe('buildBisectReportModel', () => {
       { firstBadSha: 'merge' },
     );
     const session = {
-      version: 2,
       status: 'complete',
       mode: 'complete',
-      goodSha: 'main-base',
-      badSha: 'merge',
       originalExperiment: { sha: 'merge', branch: 'feature' },
-      selectedCategories: ['visreg', 'perf', 'accessibility'],
-      orderedCommits: ['main-base', 'merge'],
-      targets: [sourceTarget, nestedTarget, introducedTarget],
       primary: {
         id: 'primary',
         status: 'complete',

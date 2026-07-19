@@ -11,7 +11,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { writeSessionAtomic, writeSummary } from '../persistence';
-import type { BisectSession, BisectTarget } from '../types';
+import type { BisectNextAction, BisectSession, BisectTarget } from '../types';
 
 function target(
   id: string,
@@ -35,18 +35,34 @@ function target(
 
 function session(targets: BisectTarget[] = []): BisectSession {
   return {
-    version: 1,
     status: 'running',
-    goodSha: 'good',
-    badSha: 'bad',
-    commitSubjects: {
-      good: 'Initial baseline',
-      bad: 'Introduce regression',
+    mode: 'primary',
+    identity: {
+      controlRoot: '/repo/control', experimentRoot: '/repo/experiment',
+      controlGitCommonDir: '/repo/control/.git', experimentGitCommonDir: '/repo/experiment/.git',
+      controlOrigin: null, experimentOrigin: null,
+    },
+    compatibility: {
+      configFingerprint: 'config', categoriesFingerprint: 'categories',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      effective: {
+        config: {}, categories: ['visreg', 'perf', 'accessibility'], tests: [],
+        rebuildStrategy: { mode: 'commands', commands: [] },
+        range: { goodSha: 'good', badSha: 'bad' },
+      },
     },
     originalExperiment: { sha: 'bad', branch: 'feature' },
-    selectedCategories: ['visreg', 'perf', 'accessibility'],
-    orderedCommits: ['good', 'bad'],
-    targets,
+    control: { sha: 'good', branch: null },
+    rebuildStrategy: { mode: 'commands', commands: [] },
+    reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
+    primary: {
+      id: 'primary', status: 'running', goodSha: 'good', badSha: 'bad',
+      commitSubjects: { good: 'Initial baseline', bad: 'Introduce regression' },
+      commitParents: { good: [], bad: ['good'] }, orderedCommits: ['good', 'bad'],
+      targets, attempts: [],
+    },
+    mergeQueue: [],
+    mergeInvestigations: {},
     commitRuns: {},
     startedAt: '2026-07-12T00:00:00.000Z',
   };
@@ -69,7 +85,6 @@ describe('bisect persistence', () => {
     writeSessionAtomic(sessionPath, session());
 
     expect(JSON.parse(fs.readFileSync(sessionPath, 'utf8'))).toMatchObject({
-      version: 1,
       status: 'running',
     });
     expect(fs.existsSync(`${sessionPath}.tmp`)).toBe(false);
@@ -86,7 +101,6 @@ describe('bisect persistence', () => {
 
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
     expect(summary).toMatchObject({
-      version: 1,
       status: 'running',
       goodSha: 'good',
       badSha: 'bad',
@@ -105,9 +119,7 @@ describe('bisect persistence', () => {
   it('writes the dry-run next action into the compact summary', () => {
     const summaryPath = path.join(resultsDirectory, 'summary.json');
     const value = session();
-    value.dryRun = true;
-    value.validateGoodRef = true;
-    value.nextAction = {
+    const nextAction: BisectNextAction = {
       kind: 'validate-good-ref',
       sha: 'good',
       categories: ['perf'],
@@ -115,12 +127,16 @@ describe('bisect persistence', () => {
       targetIds: ['target-1'],
     };
 
-    writeSummary(summaryPath, value);
+    writeSummary(summaryPath, value, {
+      dryRun: true,
+      validateGoodRef: true,
+      nextAction,
+    });
 
     expect(JSON.parse(fs.readFileSync(summaryPath, 'utf8'))).toMatchObject({
       dryRun: true,
       validateGoodRef: true,
-      nextAction: value.nextAction,
+      nextAction,
     });
   });
 });

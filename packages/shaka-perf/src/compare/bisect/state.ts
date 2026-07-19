@@ -16,7 +16,6 @@ import type {
   BisectCategory,
   BisectCompatibility,
   BisectSession,
-  BisectSessionV2,
   BisectTestSelection,
   PersistedRebuildStrategy,
 } from './types';
@@ -137,17 +136,7 @@ const commitRunSchema = z.object({
   reusedResults: z.boolean().optional(),
 }).strict();
 
-const nextActionSchema = z.object({
-  kind: z.enum(['validate-good-ref', 'measure-candidate']),
-  sha: z.string(),
-  categories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
-  tests: z.array(testSelectionSchema).optional(),
-  testFiles: z.array(z.string()).optional(),
-  targetIds: z.array(z.string()),
-}).strict();
-
 const sessionSchema = z.object({
-  version: z.literal(2),
   status: z.enum(['running', 'complete', 'interrupted', 'failed']),
   mode: z.enum(['primary', 'merge-investigation', 'complete']),
   identity: z.object({
@@ -169,16 +158,7 @@ const sessionSchema = z.object({
   startedAt: z.string(),
   finishedAt: z.string().optional(),
   failure: z.string().optional(),
-  goodSha: z.string().optional(),
-  badSha: z.string().optional(),
-  commitSubjects: z.record(z.string(), z.string()).optional(),
-  selectedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])).optional(),
-  orderedCommits: z.array(z.string()).optional(),
-  targets: z.array(targetSchema).optional(),
-  commitRuns: z.record(z.string(), commitRunSchema).optional(),
-  dryRun: z.boolean().optional(),
-  validateGoodRef: z.boolean().optional(),
-  nextAction: nextActionSchema.optional(),
+  commitRuns: z.record(z.string(), commitRunSchema),
 }).strict();
 
 const reportTestSchema = z.object({
@@ -254,11 +234,11 @@ export function assertCompatible(
 }
 
 export function assertRepositoryCompatible(
-  saved: BisectSessionV2,
+  saved: BisectSession,
   current: BisectRepositorySnapshot,
 ): void {
   const identityFields: Array<{
-    key: keyof BisectSessionV2['identity'];
+    key: keyof BisectSession['identity'];
     message: string;
   }> = [
     { key: 'controlRoot', message: 'control repository moved' },
@@ -282,8 +262,8 @@ export function assertRepositoryCompatible(
   }
 }
 
-function normalizeCrashedAttempts(session: BisectSessionV2): BisectSessionV2 {
-  const normalizePhase = (phase: BisectSessionV2['primary']): BisectSessionV2['primary'] => ({
+function normalizeCrashedAttempts(session: BisectSession): BisectSession {
+  const normalizePhase = (phase: BisectSession['primary']): BisectSession['primary'] => ({
     ...phase,
     attempts: phase.attempts.map((attempt) => attempt.status === 'running'
       ? {
@@ -304,30 +284,11 @@ function normalizeCrashedAttempts(session: BisectSessionV2): BisectSessionV2 {
   };
 }
 
-export function parseBisectSession(value: unknown): BisectSessionV2 {
-  if (value && typeof value === 'object' && (value as { version?: unknown }).version === 1) {
-    throw new Error(
-      'Cannot resume compare bisect: session version 1 predates resumable state. Start a fresh run.',
-    );
-  }
-  return normalizeCrashedAttempts(sessionSchema.parse(value) as BisectSessionV2);
+export function parseBisectSession(value: unknown): BisectSession {
+  return normalizeCrashedAttempts(sessionSchema.parse(value) as BisectSession);
 }
 
-export function materializeBisectSession(saved: BisectSessionV2): BisectSession {
-  return {
-    ...saved,
-    goodSha: saved.goodSha ?? saved.primary.goodSha,
-    badSha: saved.badSha ?? saved.primary.badSha,
-    commitSubjects: saved.commitSubjects ?? saved.primary.commitSubjects,
-    selectedCategories: saved.selectedCategories
-      ?? [...new Set(saved.primary.targets.map((target) => target.category))],
-    orderedCommits: saved.orderedCommits ?? saved.primary.orderedCommits,
-    targets: saved.primary.targets,
-    commitRuns: saved.commitRuns ?? {},
-  };
-}
-
-export function readBisectSession(filePath: string): BisectSessionV2 {
+export function readBisectSession(filePath: string): BisectSession {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Cannot resume compare bisect: saved session is missing at ${filePath}`);
   }
@@ -366,7 +327,7 @@ export function prepareResume(options: {
   resultsDirectory: string;
   compatibility: BisectCompatibility;
   repositories: BisectRepositorySnapshot;
-}): { session: BisectSessionV2; badRefTests: TestResult[] } {
+}): { session: BisectSession; badRefTests: TestResult[] } {
   const session = readBisectSession(options.sessionPath);
   assertCompatible(session.compatibility, options.compatibility);
   assertRepositoryCompatible(session, options.repositories);

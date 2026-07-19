@@ -16,7 +16,7 @@ import {
   BISECT_REPORT_DATA_FILENAME,
   writeBisectReportArtifacts,
 } from './report';
-import { materializeBisectSession, parseBisectSession } from './state';
+import { parseBisectSession } from './state';
 import type { BisectSession } from './types';
 
 const reportSchema = z.object({
@@ -84,7 +84,7 @@ export function regenerateBisectReport(
 
 function readValidatedSession(filePath: string): BisectSession {
   try {
-    return materializeBisectSession(parseBisectSession(readJson(filePath)));
+    return parseBisectSession(readJson(filePath));
   } catch (error) {
     throw new Error(`${path.basename(filePath)} is invalid: ${(error as Error).message}`);
   }

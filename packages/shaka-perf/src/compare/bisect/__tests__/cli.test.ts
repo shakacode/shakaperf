@@ -166,19 +166,7 @@ describe('compare bisect command', () => {
     const resolvedTwinServers = { projectSlug: 'fixture' };
     const loadConfig = jest.fn(async () => ({ raw: true }));
     const loadFrozenTests = jest.fn(async () => []);
-    const run = jest.fn(async () => ({
-      version: 1,
-      status: 'complete',
-      goodSha: 'good',
-      badSha: 'bad',
-      originalExperiment: { sha: 'bad', branch: 'feature' },
-      selectedCategories: ['visreg'],
-      orderedCommits: ['good', 'bad'],
-      targets: [],
-      commitRuns: {},
-      startedAt: '2026-07-12T00:00:00.000Z',
-      finishedAt: '2026-07-12T00:01:00.000Z',
-    }) as BisectSession);
+    const run = jest.fn(async () => completedSession());
 
     try {
       await runCompareBisectFromCli('good', 'bad', {
@@ -274,15 +262,23 @@ describe('compare bisect command', () => {
       twinServers: { experimentDir: 'experiment' },
     } as AbTestsConfig;
     const targetId = '["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]';
-    const run = jest.fn(async () => ({
-      version: 1,
-      status: 'complete',
-      goodSha: 'good-sha',
-      badSha: 'bad-sha',
-      originalExperiment: { sha: 'bad-sha', branch: 'feature' },
-      selectedCategories: ['visreg'],
-      orderedCommits: ['good-sha', 'middle-sha', 'bad-sha'],
-      targets: [{
+    const run = jest.fn(async (): Promise<BisectSession> => {
+      const session = completedSession();
+      return {
+        ...session,
+        originalExperiment: { sha: 'bad-sha', branch: 'feature' },
+        primary: {
+          ...session.primary,
+          goodSha: 'good-sha',
+          badSha: 'bad-sha',
+          orderedCommits: ['good-sha', 'middle-sha', 'bad-sha'],
+          commitSubjects: {
+            'good-sha': 'good', 'middle-sha': 'middle', 'bad-sha': 'bad',
+          },
+          commitParents: {
+            'good-sha': [], 'middle-sha': ['good-sha'], 'bad-sha': ['middle-sha'],
+          },
+          targets: [{
         id: targetId,
         category: 'visreg',
         testFile: 'tests/homepage.abtest.ts',
@@ -293,19 +289,10 @@ describe('compare bisect command', () => {
         goodIndex: 0,
         badIndex: 2,
         observations: {},
-      }],
-      commitRuns: {},
-      dryRun: true,
-      nextAction: {
-        kind: 'measure-candidate',
-        sha: 'middle-sha',
-        categories: ['visreg'],
-        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
-        targetIds: [targetId],
-      },
-      startedAt: '2026-07-12T00:00:00.000Z',
-      finishedAt: '2026-07-12T00:01:00.000Z',
-    }) as unknown as BisectSession);
+          }],
+        },
+      };
+    });
 
     try {
       await runCompareBisectFromCli('good-sha', 'bad-sha', {
@@ -356,10 +343,16 @@ describe('compare bisect command', () => {
         resolveTwinServers: () => ({}) as never,
         loadFrozenTests: async () => [],
         run: async () => ({
-          version: 2, status: 'complete', goodSha: 'good', badSha: 'merge-sha',
+          ...completedSession(),
           originalExperiment: { sha: 'merge-sha', branch: 'main' },
-          selectedCategories: ['visreg'], orderedCommits: ['good', 'merge-sha'],
-          targets: [target], commitRuns: {}, startedAt: 'now',
+          primary: {
+            ...completedSession().primary,
+            badSha: 'merge-sha',
+            orderedCommits: ['good', 'merge-sha'],
+            commitSubjects: { good: 'good', 'merge-sha': 'merge' },
+            commitParents: { good: [], 'merge-sha': ['good', 'topic'] },
+            targets: [target],
+          },
           mergeQueue: ['merge-sha'],
           mergeInvestigations: {
             'merge-sha': {
@@ -368,7 +361,7 @@ describe('compare bisect command', () => {
               targetResults: { target: { kind: 'merge-uninvestigated' } },
             },
           },
-        } as BisectSession),
+        }),
       });
     } finally {
       consoleLog.mockRestore();
@@ -380,14 +373,33 @@ describe('compare bisect command', () => {
 
 function completedSession(): BisectSession {
   return {
-    version: 1,
     status: 'complete',
-    goodSha: 'good',
-    badSha: 'bad',
+    mode: 'complete',
+    identity: {
+      controlRoot: '/repo/control', experimentRoot: '/repo/experiment',
+      controlGitCommonDir: '/repo/control/.git', experimentGitCommonDir: '/repo/experiment/.git',
+      controlOrigin: null, experimentOrigin: null,
+    },
+    compatibility: {
+      configFingerprint: 'config', categoriesFingerprint: 'categories',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      effective: {
+        config: {}, categories: ['visreg'], tests: [],
+        rebuildStrategy: { mode: 'commands', commands: [] },
+        range: { goodSha: 'good', badSha: 'bad' },
+      },
+    },
     originalExperiment: { sha: 'bad', branch: 'feature' },
-    selectedCategories: ['visreg'],
-    orderedCommits: ['good', 'bad'],
-    targets: [],
+    control: { sha: 'good', branch: null },
+    rebuildStrategy: { mode: 'commands', commands: [] },
+    reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
+    primary: {
+      id: 'primary', status: 'complete', goodSha: 'good', badSha: 'bad',
+      orderedCommits: ['good', 'bad'], commitSubjects: { good: 'good', bad: 'bad' },
+      commitParents: { good: [], bad: ['good'] }, targets: [], attempts: [],
+    },
+    mergeQueue: [],
+    mergeInvestigations: {},
     commitRuns: {},
     startedAt: '2026-07-13T00:00:00.000Z',
     finishedAt: '2026-07-13T00:01:00.000Z',

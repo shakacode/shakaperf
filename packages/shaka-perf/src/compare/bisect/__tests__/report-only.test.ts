@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { BisectReportData } from '../report-model';
-import type { BisectSessionV2 } from '../types';
+import type { BisectSession } from '../types';
 import { regenerateBisectReport } from '../report-only';
 
 describe('regenerateBisectReport', () => {
@@ -74,7 +74,7 @@ describe('regenerateBisectReport', () => {
   }
 });
 
-function savedSession(): BisectSessionV2 {
+function savedSession(): BisectSession {
   const targetId = '["visreg","homepage","desktop","document"]';
   const targets = [{
     id: targetId,
@@ -90,7 +90,6 @@ function savedSession(): BisectSessionV2 {
     observations: {},
   }];
   return {
-    version: 2,
     status: 'complete',
     mode: 'complete',
     identity: {
@@ -115,16 +114,10 @@ function savedSession(): BisectSessionV2 {
         range: { goodSha: 'good', badSha: 'bad' },
       },
     },
-    goodSha: 'good',
-    badSha: 'bad',
     originalExperiment: { sha: 'bad', branch: 'feature' },
     control: { sha: 'good', branch: null },
     rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
-    commitSubjects: { good: 'Baseline', middle: 'Break homepage', bad: 'Bad tip' },
-    selectedCategories: ['visreg'],
-    orderedCommits: ['good', 'middle', 'bad'],
-    targets,
     commitRuns: {},
     primary: {
       id: 'primary',

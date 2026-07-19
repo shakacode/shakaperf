@@ -7,10 +7,14 @@
  * License in LICENSE.md.
  */
 
-import { applyCachedObservations, applyObservations, nextCandidate } from '../search';
+import {
+  applyCachedObservations,
+  applyObservations,
+  nextCandidate,
+  type BisectSearchInput,
+} from '../search';
 import type {
   BisectCategory,
-  BisectSession,
   BisectTarget,
   TargetObservation,
 } from '../types';
@@ -47,22 +51,15 @@ function bisectTarget(
   };
 }
 
-function session(targets: BisectTarget[]): BisectSession {
+function session(targets: BisectTarget[]): BisectSearchInput {
   return {
-    version: 1,
-    status: 'running',
-    goodSha: 'g',
-    badSha: 'bad',
-    originalExperiment: { sha: 'bad', branch: 'feature' },
-    selectedCategories: ['visreg', 'perf', 'accessibility'],
     orderedCommits,
     targets,
     commitRuns: {},
-    startedAt: '2026-07-12T00:00:00.000Z',
   };
 }
 
-function target(value: BisectSession, id: string): BisectTarget {
+function target(value: BisectSearchInput, id: string): BisectTarget {
   return value.targets.find((item) => item.id === id)!;
 }
 
@@ -230,7 +227,7 @@ describe('bisect scheduler', () => {
       }),
     ]));
 
-    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSession;
+    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSearchInput;
 
     expect(target(persisted, 'visual')).toMatchObject({
       status: 'found',

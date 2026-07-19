@@ -27,6 +27,7 @@ import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
 import { BISECT_REPORT_FILENAME } from '../report';
 import { parseBisectSession } from '../state';
+import type { BisectSummaryMetadata } from '../persistence';
 
 function config(): AbTestsConfig {
   return {
@@ -180,6 +181,7 @@ function deps(
     reports: Array<{ session: BisectSession; testNames: string[] }>;
     sessions: BisectSession[];
     summaries: BisectSession[];
+    summaryMetadata: BisectSummaryMetadata[];
     restored: Array<[string | null, string]>;
     events: string[];
     progress: string[];
@@ -206,6 +208,7 @@ function deps(
     reports: [] as Array<{ session: BisectSession; testNames: string[] }>,
     sessions: [] as BisectSession[],
     summaries: [] as BisectSession[],
+    summaryMetadata: [] as BisectSummaryMetadata[],
     restored: [] as Array<[string | null, string]>,
     events: [] as string[],
     progress: [] as string[],
@@ -318,12 +321,13 @@ function deps(
           testNames: badRefTests.map((test) => test.name),
         });
       },
-      writeSummary(session) {
+      writeSummary(session, metadata = {}) {
         calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
         if (options.signalOnSummary) {
           for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
         }
         calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+        calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
         calls.summaryAfterEvents.push([...calls.events]);
       },
       recordDecision(entry) {
@@ -362,12 +366,14 @@ describe('compare bisect session orchestration', () => {
     const session = await executeBisect(bisectInput, harness.deps);
 
     expect(session.status).toBe('complete');
-    expect(parseBisectSession(session).version).toBe(2);
-    expect(session.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
+    expect('version' in parseBisectSession(session)).toBe(false);
+    expect(session.primary.commitSubjects).toEqual(bisectInput.gitRange.commitSubjects);
     expect(harness.calls.sessions).toContainEqual(expect.objectContaining({
-      commitSubjects: bisectInput.gitRange.commitSubjects,
+      primary: expect.objectContaining({
+        commitSubjects: bisectInput.gitRange.commitSubjects,
+      }),
     }));
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       category: 'visreg',
       subject: 'document',
       status: 'found',
@@ -487,7 +493,6 @@ describe('compare bisect session orchestration', () => {
 
     expect(completed).toMatchObject({
       status: 'complete',
-      targets: [],
       primary: { status: 'complete', targets: [], attempts: [] },
     });
 
@@ -570,7 +575,7 @@ describe('compare bisect session orchestration', () => {
     expect(order.indexOf('primary-report')).toBeLessThan(order.indexOf('prepare-child'));
     expect(session.mergeQueue).toEqual(['b']);
     expect(session.mergeInvestigations?.b.targetResults).toMatchObject({
-      [session.targets[0].id]: { kind: 'source-found', sourceSha: 'source' },
+      [session.primary.targets[0].id]: { kind: 'source-found', sourceSha: 'source' },
     });
     expect(harness.calls.compares.map((run) => run.sha)).toEqual([
       'bad', 'a', 'b', 'topic', 'source',
@@ -623,7 +628,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(reuseInput, harness.deps);
 
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'found',
       firstBadSha: 'b',
     }]);
@@ -656,7 +661,7 @@ describe('compare bisect session orchestration', () => {
       validateGoodRef: true,
     }, harness.deps);
 
-    expect(session.targets).toMatchObject([{ status: 'found', firstBadSha: 'b' }]);
+    expect(session.primary.targets).toMatchObject([{ status: 'found', firstBadSha: 'b' }]);
     expect(harness.calls.checkouts).toEqual(['good', 'a', 'b']);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['good', 'a', 'b']);
     expect(harness.calls.decisions.map((entry) => entry.event)).toContain('good-ref-validated');
@@ -680,6 +685,15 @@ describe('compare bisect session orchestration', () => {
 
     expect(session).toMatchObject({
       status: 'complete',
+      primary: {
+        targets: [expect.objectContaining({
+          status: 'active',
+          category: 'visreg',
+          subject: 'document',
+        })],
+      },
+    });
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       dryRun: true,
       nextAction: {
         kind: 'measure-candidate',
@@ -688,11 +702,6 @@ describe('compare bisect session orchestration', () => {
         tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
         targetIds: ['["visreg","tests/homepage.abtest.ts","Homepage","desktop","document"]'],
       },
-      targets: [expect.objectContaining({
-        status: 'active',
-        category: 'visreg',
-        subject: 'document',
-      })],
     });
     expect(harness.calls.reusedResults).toEqual([{ sha: 'bad', categories: ['visreg'] }]);
     expect(harness.calls.checkouts).toEqual([]);
@@ -719,6 +728,8 @@ describe('compare bisect session orchestration', () => {
 
     expect(session).toMatchObject({
       status: 'complete',
+    });
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       dryRun: true,
       nextAction: {
         kind: 'measure-candidate',
@@ -738,14 +749,14 @@ describe('compare bisect session orchestration', () => {
       bad: [resultWithVisualDiff('diff.png')],
     });
 
-    const session = await executeBisect({
+    await executeBisect({
       ...input(rootDir),
       reuseCurrentResults: true,
       dryRun: true,
       validateGoodRef: true,
     }, harness.deps);
 
-    expect(session).toMatchObject({
+    expect(harness.calls.summaryMetadata.at(-1)).toMatchObject({
       nextAction: {
         kind: 'validate-good-ref',
         sha: 'good',
@@ -766,7 +777,7 @@ describe('compare bisect session orchestration', () => {
     }, harness.deps);
 
     expect(session.status).toBe('complete');
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
       invalidReason: 'target is already present at the good ref',
     }]);
@@ -796,7 +807,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(adjacentInput, harness.deps);
 
-    expect(session.targets).toMatchObject([{
+    expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
       invalidReason: 'target is already present at the good ref',
       observations: {
@@ -973,9 +984,9 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'failed',
-      targets: [{ goodIndex: 0, badIndex: 3 }],
+      primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
     });
-    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
@@ -994,7 +1005,7 @@ describe('compare bisect session orchestration', () => {
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
       checkpoint.afterEvent === 'compare:a'
-      && checkpoint.session.targets[0]?.observations.a?.present === false
+      && checkpoint.session.primary.targets[0]?.observations.a?.present === false
     ))).toBe(true);
   });
 
@@ -1050,7 +1061,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'interrupted',
     });
-    expect(harness.calls.sessions.at(-1)?.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
@@ -1134,7 +1145,7 @@ describe('compare bisect session orchestration', () => {
 
     const session = await executeBisect(input(rootDir), harness.deps);
 
-    expect(session.targets).toHaveLength(2);
+    expect(session.primary.targets).toHaveLength(2);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a', 'b']);
   });
 

@@ -32,15 +32,26 @@ function target(id: string, firstBadSha: string): BisectTarget {
 
 function session(parents: string[], targets = [target('one', 'merge')]): BisectSession {
   return {
-    version: 2,
     status: 'running',
-    goodSha: 'good',
-    badSha: 'merge',
+    mode: 'primary',
+    identity: {
+      controlRoot: '/repo/control', experimentRoot: '/repo/experiment',
+      controlGitCommonDir: '/repo/control/.git', experimentGitCommonDir: '/repo/experiment/.git',
+      controlOrigin: null, experimentOrigin: null,
+    },
+    compatibility: {
+      configFingerprint: 'config', categoriesFingerprint: 'categories',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      effective: {
+        config: {}, categories: ['visreg'], tests: [],
+        rebuildStrategy: { mode: 'commands', commands: [] },
+        range: { goodSha: 'good', badSha: 'merge' },
+      },
+    },
     originalExperiment: { branch: 'main', sha: 'merge' },
-    commitSubjects: { good: 'good', merge: 'merge' },
-    selectedCategories: ['visreg'],
-    orderedCommits: ['good', 'merge'],
-    targets,
+    control: { branch: null, sha: 'good' },
+    rebuildStrategy: { mode: 'commands', commands: [] },
+    reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitRuns: {},
     primary: {
       id: 'primary',
@@ -53,6 +64,8 @@ function session(parents: string[], targets = [target('one', 'merge')]): BisectS
       targets,
       attempts: [],
     },
+    mergeQueue: [],
+    mergeInvestigations: {},
     startedAt: '2026-07-13T00:00:00.000Z',
   };
 }

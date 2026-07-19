@@ -99,10 +99,11 @@ export function buildBisectReportModel(
   badRefTests: readonly TestResult[],
   generatedAt: string,
 ): BisectReportModel {
+  const { primary } = session;
   const testIdsByKey = new Map(badRefTests.map((test) => [testKey(test.filePath, test.name), test.id]));
-  const targets = session.targets.map((target) => {
+  const targets = primary.targets.map((target) => {
     const parents = target.firstBadSha
-      ? session.primary?.commitParents[target.firstBadSha] ?? []
+      ? primary.commitParents[target.firstBadSha] ?? []
       : [];
     const investigation = target.firstBadSha
       ? session.mergeInvestigations?.[target.firstBadSha]
@@ -119,7 +120,7 @@ export function buildBisectReportModel(
       status: target.status,
       firstBadSha: target.firstBadSha,
       invalidReason: target.invalidReason,
-      badRefObservation: target.observations[session.badSha],
+      badRefObservation: target.observations[primary.badSha],
       mainlineFirstBadSha: target.firstBadSha,
       mainlineIsMerge: parents.length > 1,
       mergeInvestigationStatus: investigation?.status,
@@ -130,19 +131,19 @@ export function buildBisectReportModel(
     };
   });
   const targetsById = Object.fromEntries(targets.map((target) => [target.id, target]));
-  const commits = session.orderedCommits.map((sha, position) => {
+  const commits = primary.orderedCommits.map((sha, position) => {
     const targetIds = targets
       .filter((target) => target.status === 'found' && target.firstBadSha === sha)
       .map((target) => target.id);
     const investigation = session.mergeInvestigations?.[sha];
     return {
       sha,
-      subject: session.commitSubjects?.[sha] || sha.slice(0, 7),
+      subject: primary.commitSubjects[sha] || sha.slice(0, 7),
       position,
       measured: commitWasMeasured(session.commitRuns[sha]),
       counts: countsFor(targetIds, targetsById),
       targetIds,
-      isMerge: (session.primary?.commitParents[sha] ?? []).length > 1,
+      isMerge: (primary.commitParents[sha] ?? []).length > 1,
       mergeInvestigationStatus: investigation?.status,
       mergeInvestigation: buildMergeInvestigationReport(investigation, targetsById),
     };
@@ -150,8 +151,8 @@ export function buildBisectReportModel(
 
   return {
     status: session.status,
-    goodSha: session.goodSha,
-    badSha: session.badSha,
+    goodSha: primary.goodSha,
+    badSha: primary.badSha,
     generatedAt,
     commits,
     targets,

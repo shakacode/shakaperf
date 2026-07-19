@@ -19,11 +19,10 @@ import {
   readBadRefTests,
   writeBadRefTestsAtomic,
 } from '../state';
-import type { BisectSessionV2 } from '../types';
+import type { BisectSession } from '../types';
 
-function session(): BisectSessionV2 {
+function session(): BisectSession {
   return {
-    version: 2,
     status: 'running',
     mode: 'primary',
     identity: {
@@ -68,19 +67,19 @@ function session(): BisectSessionV2 {
     },
     mergeQueue: [],
     mergeInvestigations: {},
+    commitRuns: {},
     startedAt: '2026-07-13T00:00:00.000Z',
   };
 }
 
 describe('resumable bisect state', () => {
-  it('rejects version-1 diagnostic sessions with a specific explanation', () => {
-    expect(() => parseBisectSession({ version: 1 })).toThrow(/predates resumable state/i);
+  it.each([1, 2])('rejects versioned session files (%s)', (version) => {
+    expect(() => parseBisectSession({ ...session(), version })).toThrow(/unrecognized/i);
   });
 
-  it('strictly parses version-2 sessions and normalizes crashed attempts', () => {
+  it('strictly parses unversioned sessions and normalizes crashed attempts', () => {
     const parsed = parseBisectSession(session());
 
-    expect(parsed.version).toBe(2);
     expect(parsed.primary.attempts).toMatchObject([{
       id: 'attempt-1',
       status: 'incomplete',

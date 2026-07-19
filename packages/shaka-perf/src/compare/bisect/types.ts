@@ -71,31 +71,18 @@ export type BisectNextAction = BisectNextActionBase & (
 );
 
 export interface BisectSession {
-  version: 1 | 2;
   status: 'running' | 'complete' | 'interrupted' | 'failed';
-  goodSha: string;
-  badSha: string;
-  originalExperiment: {
-    sha: string;
-    branch: string | null;
-  };
-  commitSubjects?: Record<string, string>;
-  selectedCategories: BisectCategory[];
-  orderedCommits: string[];
-  targets: BisectTarget[];
-  primary?: BisectSearchPhase;
-  mode?: 'primary' | 'merge-investigation' | 'complete';
-  identity?: BisectRepositoryIdentity;
-  compatibility?: BisectCompatibility;
-  control?: { sha: string; branch: string | null };
-  rebuildStrategy?: PersistedRebuildStrategy;
-  reportInput?: { filename: string; sha256: string };
-  mergeQueue?: string[];
-  mergeInvestigations?: Record<string, MergeInvestigation>;
+  mode: 'primary' | 'merge-investigation' | 'complete';
+  identity: BisectRepositoryIdentity;
+  compatibility: BisectCompatibility;
+  originalExperiment: { sha: string; branch: string | null };
+  control: { sha: string; branch: string | null };
+  rebuildStrategy: PersistedRebuildStrategy;
+  reportInput: { filename: string; sha256: string };
+  primary: BisectSearchPhase;
+  mergeQueue: string[];
+  mergeInvestigations: Record<string, MergeInvestigation>;
   commitRuns: Record<string, CommitRun>;
-  dryRun?: boolean;
-  validateGoodRef?: boolean;
-  nextAction?: BisectNextAction;
   startedAt: string;
   finishedAt?: string;
   failure?: string;
@@ -110,8 +97,6 @@ declare const normalizedBisectSessionBrand: unique symbol;
 export type Normalized<T> = T & {
   readonly [normalizedBisectSessionBrand]: true;
 };
-
-export type NormalizedBisectSession = Normalized<BisectSession>;
 
 export type PersistedAttemptStatus = 'running' | 'complete' | 'incomplete';
 
@@ -187,32 +172,4 @@ export interface MergeInvestigation {
   phase?: BisectSearchPhase;
   targetResults: Record<string, MergeTargetResult>;
   failure?: string;
-}
-
-export interface BisectSessionV2 {
-  version: 2;
-  status: 'running' | 'complete' | 'interrupted' | 'failed';
-  mode: 'primary' | 'merge-investigation' | 'complete';
-  identity: BisectRepositoryIdentity;
-  compatibility: BisectCompatibility;
-  originalExperiment: { sha: string; branch: string | null };
-  control: { sha: string; branch: string | null };
-  rebuildStrategy: PersistedRebuildStrategy;
-  reportInput: { filename: string; sha256: string };
-  primary: BisectSearchPhase;
-  mergeQueue: string[];
-  mergeInvestigations: Record<string, MergeInvestigation>;
-  startedAt: string;
-  finishedAt?: string;
-  failure?: string;
-  goodSha?: string;
-  badSha?: string;
-  commitSubjects?: Record<string, string>;
-  selectedCategories?: BisectCategory[];
-  orderedCommits?: string[];
-  targets?: BisectTarget[];
-  commitRuns?: Record<string, CommitRun>;
-  dryRun?: boolean;
-  validateGoodRef?: boolean;
-  nextAction?: BisectNextAction;
 }
