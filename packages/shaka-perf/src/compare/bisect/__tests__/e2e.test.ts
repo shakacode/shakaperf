@@ -12,6 +12,7 @@ import {
   assertExperimentRestored,
   createE2eDependencies,
   createLinearFixture,
+  createMergeFixture,
   regressionTimeline,
   stubRegression,
   visregTimeline,
@@ -141,6 +142,156 @@ describe('compare bisect black-box E2E', () => {
         }),
         expect.objectContaining({
           tests: [{ testFile: 'tests/cart.abtest.ts', testName: 'Cart' }],
+        }),
+      ]));
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  /*
+   * G clean --------> M1 clean --------> M merge --------> BAD perf
+   *  \                                  /
+   *   -> S1 perf --------> S2 perf -----
+   *      ^ source first bad              ^ primary first bad is M
+   */
+  it('finds a regression on a merged branch after locating the primary merge', async () => {
+    const fixture = createMergeFixture(['BAD']);
+    try {
+      const performance = stubRegression('performance', 'perf');
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: regressionTimeline(fixture, [performance], {
+          G: [],
+          M1: [],
+          S1: ['performance'],
+          S2: ['performance'],
+          M: ['performance'],
+          BAD: ['performance'],
+        }),
+      });
+
+      const session = await runBisect({
+        ...fixture.runOptions,
+        selectedCategories: ['perf'],
+        investigateMerges: true,
+        dependencies: harness.dependencies,
+      });
+
+      expect(session.primary.targets).toMatchObject([{
+        firstBadSha: fixture.shas.M,
+      }]);
+      expect(session.mergeInvestigations[fixture.shas.M!]).toMatchObject({
+        status: 'complete',
+        targetResults: {
+          [session.primary.targets[0]!.id]: {
+            kind: 'source-found',
+            sourceSha: fixture.shas.S1,
+          },
+        },
+      });
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  /*
+   * G clean --------> M1 clean --------> M visreg --------> BAD visreg
+   *  \                                  /
+   *   -> S1 clean --------> S2 clean ---
+   *                                      ^ first bad only after merge
+   */
+  it('classifies a regression created by merge resolution as merge introduced', async () => {
+    const fixture = createMergeFixture(['BAD']);
+    try {
+      const visual = stubRegression('visual', 'visreg');
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: regressionTimeline(fixture, [visual], {
+          G: [],
+          M1: [],
+          S1: [],
+          S2: [],
+          M: ['visual'],
+          BAD: ['visual'],
+        }),
+      });
+
+      const session = await runBisect({
+        ...fixture.runOptions,
+        investigateMerges: true,
+        dependencies: harness.dependencies,
+      });
+
+      expect(session.primary.targets).toMatchObject([{
+        firstBadSha: fixture.shas.M,
+      }]);
+      expect(session.mergeInvestigations[fixture.shas.M!]).toMatchObject({
+        status: 'complete',
+        targetResults: {
+          [session.primary.targets[0]!.id]: { kind: 'merge-introduced' },
+        },
+      });
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  /*
+   * G clean -----> M1 clean -----> M visreg -> N visreg -> P +perf -> BAD both
+   *  \                            /  ^ first V             ^ first P
+   *   -> S1 clean -> S2 clean ----
+   */
+  it('separates a merge regression from a later normal commit regression', async () => {
+    const fixture = createMergeFixture(['N', 'P', 'BAD']);
+    try {
+      const visual = stubRegression('visual', 'visreg');
+      const performance = stubRegression('performance', 'perf', {
+        testFile: 'tests/performance.abtest.ts',
+        testName: 'Performance',
+      });
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: regressionTimeline(fixture, [visual, performance], {
+          G: [],
+          M1: [],
+          S1: [],
+          S2: [],
+          M: ['visual'],
+          N: ['visual'],
+          P: ['visual', 'performance'],
+          BAD: ['visual', 'performance'],
+        }),
+      });
+
+      const session = await runBisect({
+        ...fixture.runOptions,
+        selectedCategories: ['visreg', 'perf'],
+        investigateMerges: true,
+        dependencies: harness.dependencies,
+      });
+
+      expect(Object.fromEntries(session.primary.targets.map((target) => [
+        target.category,
+        target.firstBadSha,
+      ]))).toEqual({
+        perf: fixture.shas.P,
+        visreg: fixture.shas.M,
+      });
+      const visualTarget = session.primary.targets.find((target) => target.category === 'visreg')!;
+      expect(session.mergeInvestigations[fixture.shas.M!]?.targetResults[visualTarget.id])
+        .toEqual({ kind: 'merge-introduced' });
+      expect(session.mergeQueue).toEqual([fixture.shas.M]);
+      expect(harness.compareCalls).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          categories: ['perf'],
+          tests: [{
+            testFile: 'tests/performance.abtest.ts',
+            testName: 'Performance',
+          }],
         }),
       ]));
       assertExperimentRestored(fixture);

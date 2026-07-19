@@ -61,8 +61,9 @@ function git(cwd: string, args: string[]): string {
 }
 
 function commitLabel(repoDir: string, label: string): string {
-  fs.writeFileSync(path.join(repoDir, 'history.txt'), `${label}\n`, 'utf8');
-  git(repoDir, ['add', 'history.txt']);
+  const filename = `${label.replace(/[^a-zA-Z0-9_-]/g, '-')}.txt`;
+  fs.writeFileSync(path.join(repoDir, filename), `${label}\n`, 'utf8');
+  git(repoDir, ['add', filename]);
   git(repoDir, ['commit', '-m', label]);
   return git(repoDir, ['rev-parse', 'HEAD']);
 }
@@ -73,18 +74,58 @@ export function createLinearFixture(labels: readonly string[]): E2eRepositoryFix
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-e2e-'));
   const sourceDir = path.join(rootDir, 'source');
-  const controlDir = path.join(rootDir, 'control');
-  const experimentDir = path.join(rootDir, 'experiment');
-  const resultsDirectory = path.join(rootDir, 'compare-bisect-results');
   fs.mkdirSync(sourceDir);
   git(sourceDir, ['init', '--initial-branch=main']);
   git(sourceDir, ['config', 'user.email', 'bisect-e2e@example.com']);
   git(sourceDir, ['config', 'user.name', 'Bisect E2E']);
 
   const shas = Object.fromEntries(labels.map((label) => [label, commitLabel(sourceDir, label)]));
+  return finishFixture(rootDir, sourceDir, shas, labels[0]!, labels.at(-1)!);
+}
+
+export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepositoryFixture {
+  const reservedLabels = ['G', 'S1', 'S2', 'M1', 'M'];
+  const allLabels = [...reservedLabels, ...afterMergeLabels];
+  if (afterMergeLabels.length === 0) throw new Error('A merge fixture requires a bad commit after M');
+  if (new Set(allLabels).size !== allLabels.length) throw new Error('Merge fixture labels must be unique');
+
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-e2e-'));
+  const sourceDir = path.join(rootDir, 'source');
+  fs.mkdirSync(sourceDir);
+  git(sourceDir, ['init', '--initial-branch=main']);
+  git(sourceDir, ['config', 'user.email', 'bisect-e2e@example.com']);
+  git(sourceDir, ['config', 'user.name', 'Bisect E2E']);
+
+  const shas: Record<string, string> = {};
+  shas.G = commitLabel(sourceDir, 'G');
+  git(sourceDir, ['checkout', '--quiet', '-b', 'topic']);
+  shas.S1 = commitLabel(sourceDir, 'S1');
+  shas.S2 = commitLabel(sourceDir, 'S2');
+  git(sourceDir, ['checkout', '--quiet', 'main']);
+  shas.M1 = commitLabel(sourceDir, 'M1');
+  git(sourceDir, ['merge', '--quiet', '--no-ff', 'topic', '-m', 'M']);
+  shas.M = git(sourceDir, ['rev-parse', 'HEAD']);
+  for (const label of afterMergeLabels) shas[label] = commitLabel(sourceDir, label);
+
+  return finishFixture(rootDir, sourceDir, shas, 'G', afterMergeLabels.at(-1)!);
+}
+
+function finishFixture(
+  rootDir: string,
+  sourceDir: string,
+  shas: Record<string, string>,
+  goodLabel: string,
+  badLabel: string,
+): E2eRepositoryFixture {
+  const controlDir = path.join(rootDir, 'control');
+  const experimentDir = path.join(rootDir, 'experiment');
+  const resultsDirectory = path.join(rootDir, 'compare-bisect-results');
   git(rootDir, ['clone', '--quiet', sourceDir, controlDir]);
   git(rootDir, ['clone', '--quiet', sourceDir, experimentDir]);
-  git(controlDir, ['checkout', '--quiet', '--detach', shas[labels[0]!]!]);
+  git(controlDir, ['checkout', '--quiet', '--detach', shas[goodLabel]!]);
+  if (git(experimentDir, ['rev-parse', 'HEAD']) !== shas[badLabel]) {
+    throw new Error(`Experiment clone did not resolve bad fixture label ${badLabel}`);
+  }
 
   const experimentBranch = git(experimentDir, ['branch', '--show-current']);
   const originalExperimentSha = git(experimentDir, ['rev-parse', 'HEAD']);
