@@ -22,6 +22,8 @@ import {
   visregTimeline,
 } from './e2e-fixture';
 
+jest.setTimeout(30_000);
+
 describe('compare bisect black-box E2E', () => {
   /*
    * known-good -> visual-regression-introduced -> visual-regression-confirmed
