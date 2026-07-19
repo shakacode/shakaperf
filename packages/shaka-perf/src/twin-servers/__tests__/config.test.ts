@@ -205,11 +205,10 @@ describe('resolveConfig', () => {
     expect(resolved.rebuildCommands).toEqual([]);
   });
 
-  it('passes through rebuildCommands when provided by the runtime loader', () => {
-    const resolved = resolveConfig({
-      ...makeConfig(),
+  it('passes through configured rebuildCommands', () => {
+    const resolved = resolveConfig(makeConfig({
       rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
-    }, tmpDir);
+    }), tmpDir);
 
     expect(resolved.rebuildCommands).toEqual([
       { description: 'Build assets', command: 'yarn build' },
@@ -285,19 +284,30 @@ describe('resolveConfig', () => {
     expect(resolved.dockerBuildDir).toBe(path.resolve(tmpDir, 'build'));
   });
 
-  it('loads bisect rebuildCommands from an abtests config', async () => {
+  it('loads twinServers rebuildCommands from an abtests config', async () => {
     const configPath = path.join(tmpDir, 'abtests.config.js');
     fs.writeFileSync(configPath, `module.exports = ${JSON.stringify({
-      twinServers: makeConfig(),
-      bisect: {
+      twinServers: makeConfig({
         rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
-      },
+      }),
     })}`);
 
     const loaded = await loadConfig(configPath);
 
-    expect((loaded as TwinServersConfig & { rebuildCommands?: unknown }).rebuildCommands).toEqual([
+    expect(loaded.rebuildCommands).toEqual([
       { description: 'Build assets', command: 'yarn build' },
     ]);
+  });
+
+  it('rejects invalid twinServers rebuildCommands while loading an abtests config', async () => {
+    const configPath = path.join(tmpDir, 'abtests.config.invalid.js');
+    fs.writeFileSync(configPath, `module.exports = ${JSON.stringify({
+      twinServers: {
+        ...makeConfig(),
+        rebuildCommands: [{ description: 'Build assets', command: 42 }],
+      },
+    })}`);
+
+    await expect(loadConfig(configPath)).rejects.toThrow(/rebuildCommands/);
   });
 });

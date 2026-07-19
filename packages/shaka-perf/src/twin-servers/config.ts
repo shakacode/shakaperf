@@ -17,10 +17,8 @@ import {
   loadAbTestsConfig,
 } from '../config-loader';
 import {
-  SetupCommandSchema,
   TwinServersConfigSchema,
   type ResolvedConfig,
-  type SetupCommand,
   type TwinServersConfig,
   type TwinServersConfigInput,
 } from './types';
@@ -30,14 +28,6 @@ const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.
 // At runtime __dirname is dist/twin-servers/, so go up two levels to package root
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
 
-const TwinServersRuntimeConfigSchema = TwinServersConfigSchema.extend({
-  rebuildCommands: SetupCommandSchema.array().optional(),
-});
-
-type TwinServersRuntimeConfig = TwinServersConfig & {
-  rebuildCommands?: SetupCommand[];
-};
-
 export function defineConfig(config: TwinServersConfigInput): TwinServersConfigInput {
   return config;
 }
@@ -46,23 +36,29 @@ export function findConfigFile(cwd?: string): string | null {
   return findAbTestsConfig(cwd) ?? sharedFindConfigFile(LEGACY_CONFIG_FILENAMES, cwd);
 }
 
-export async function loadConfig(configPath: string): Promise<TwinServersRuntimeConfig> {
+function parseTwinServersConfig(config: unknown): TwinServersConfig {
+  const parseResult = TwinServersConfigSchema.safeParse(config);
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    const fieldPath = firstError.path.join('.');
+    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
+  }
+  return parseResult.data;
+}
+
+export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
   const basename = path.basename(configPath);
   if (basename.startsWith('abtests.config.')) {
     const raw = await loadAbTestsConfig(configPath);
-    const slice = (raw as { twinServers?: unknown }).twinServers;
+    const slice = raw.twinServers;
     if (!slice) {
       throw new Error(
         `${configPath} has no \`twinServers\` section. Add one or use a legacy twin-servers.config.ts.`,
       );
     }
-    const bisect = raw.bisect as { rebuildCommands?: SetupCommand[] } | undefined;
-    return {
-      ...(slice as TwinServersConfig),
-      rebuildCommands: bisect?.rebuildCommands,
-    };
+    return parseTwinServersConfig(slice);
   }
-  return loadConfigFile(configPath) as Promise<TwinServersRuntimeConfig>;
+  return parseTwinServersConfig(await loadConfigFile(configPath));
 }
 
 function expandTilde(filePath: string): string {
@@ -111,13 +107,7 @@ export function projectPathSlug(absPath: string): string {
 
 export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {
   // Validate schema with Zod
-  const parseResult = TwinServersRuntimeConfigSchema.safeParse(config);
-  if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
-    const fieldPath = firstError.path.join('.');
-    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
-  }
-  const validConfig = parseResult.data;
+  const validConfig = parseTwinServersConfig(config);
 
   // Resolve paths and validate existence.
   const projectDir = path.resolve(cwd);

@@ -63,22 +63,20 @@ describe('perf config', () => {
 });
 
 describe('bisect config', () => {
-  it('defaults rebuild commands and container rebuilding', () => {
+  it('defaults container rebuilding', () => {
     expect(parseAbTestsConfig(baseConfig()).bisect).toEqual({
-      rebuildCommands: [],
       rebuildContainer: false,
     });
   });
 
-  it('preserves explicit rebuild settings', () => {
+  it('preserves explicit container rebuilding', () => {
     expect(parseAbTestsConfig(baseConfig({
       bisect: {
-        rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
         rebuildContainer: true,
       },
     })).bisect).toEqual({
-      rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
       rebuildContainer: true,
     });
   });
+
 });

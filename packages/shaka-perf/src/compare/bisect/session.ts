@@ -1307,7 +1307,7 @@ async function refreshExperimentViaMenu(
     cmd: 'bisect-refresh',
     sessionId,
     mode: preferredMode,
-    rebuildCommands: config.bisect.rebuildCommands.map((command) => command.command),
+    rebuildCommands: configuredRebuildCommands(config).map((command) => command.command),
     noCache: false,
   });
 }
@@ -1380,7 +1380,7 @@ function resumedSession(saved: BisectSession): BisectSession {
 function persistedRebuildStrategy(config: AbTestsConfig): PersistedRebuildStrategy {
   return {
     mode: preferredRefreshMode(config),
-    commands: config.bisect.rebuildCommands.map((command) => command.command),
+    commands: configuredRebuildCommands(config).map((command) => command.command),
   };
 }
 
@@ -1557,10 +1557,14 @@ function parseCategories(input: string | string[] | undefined): BisectCategory[]
 }
 
 function preferredRefreshMode(config: AbTestsConfig): RefreshMode {
-  if (config.bisect.rebuildContainer || config.bisect.rebuildCommands.length === 0) {
+  if (config.bisect.rebuildContainer || configuredRebuildCommands(config).length === 0) {
     return 'container';
   }
   return 'commands';
+}
+
+function configuredRebuildCommands(config: AbTestsConfig) {
+  return config.twinServers?.rebuildCommands ?? [];
 }
 
 export function filterFrozenTests(

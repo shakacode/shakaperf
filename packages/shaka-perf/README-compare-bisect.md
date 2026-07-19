@@ -43,7 +43,7 @@ instead reports that the images are current and reuses already-running
 containers, select **Restart containers (resets state)** once before bisect to
 guarantee the same clean starting point.
 
-When `bisect.rebuildCommands` is configured, the menu also shows **Rebuild
+When `twinServers.rebuildCommands` is configured, the menu also shows **Rebuild
 experiment in container (rebuildCommands)**. That action is the faster path for
 rebuilding experiment application state after source changes: it runs the
 commands only in the experiment container and restarts only experiment
@@ -205,25 +205,29 @@ perf measurements do not look idle.
 
 ## Configuration
 
-The command reads the same `abtests.config.ts` used by `compare`. It also accepts
-an optional top-level `bisect` section:
+The command reads the same `abtests.config.ts` used by `compare`. Rebuild
+commands belong to the twin-server configuration, while container rebuilding
+is a bisect policy:
 
 ```ts
 export default defineConfig({
   // ...
-  bisect: {
+  twinServers: {
+    // ...
     rebuildCommands: [
       {
         description: 'Rebuild app assets',
         command: 'yarn build',
       },
     ],
+  },
+  bisect: {
     rebuildContainer: false,
   },
 });
 ```
 
-- `rebuildCommands` are run inside the experiment container after each
+- `twinServers.rebuildCommands` are run inside the experiment container after each
   candidate checkout. This is the fast path for apps where an in-place rebuild
   plus server restart is enough.
 - `rebuildContainer: true` rebuilds the experiment image for each candidate.

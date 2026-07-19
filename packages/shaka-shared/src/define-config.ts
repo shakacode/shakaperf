@@ -113,7 +113,6 @@ export interface SetupCommandInput {
 }
 
 export interface BisectConfigInput {
-  rebuildCommands?: SetupCommandInput[];
   rebuildContainer?: boolean;
 }
 
@@ -133,6 +132,11 @@ export interface TwinServersConfigInput {
    * image, chiefly starting an embedded service daemon.
    */
   setupCommands?: SetupCommandInput[];
+  /**
+   * Commands run inside the experiment container after its source changes,
+   * before the experiment processes restart.
+   */
+  rebuildCommands?: SetupCommandInput[];
 }
 
 export interface AbTestsConfigInput {

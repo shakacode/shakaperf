@@ -17,7 +17,7 @@ import {
   type TestType,
   type Viewport,
 } from 'shaka-shared';
-import { SetupCommandSchema, TwinServersConfigSchema } from './twin-servers/types';
+import { TwinServersConfigSchema } from './twin-servers/types';
 import type { PerfLighthouseConfig } from './bench/core/lighthouse-config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from './audit/stages/accessibility/defaults';
 
@@ -246,7 +246,6 @@ export const AccessibilityConfigSchema = z
   });
 
 export const BisectConfigSchema = z.object({
-  rebuildCommands: z.array(SetupCommandSchema).default([]),
   rebuildContainer: z.boolean().default(false),
 });
 
