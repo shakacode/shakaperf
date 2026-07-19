@@ -36,6 +36,20 @@ Then start the twin-server menu:
 yarn shaka-perf servers
 ```
 
+When this startup detects a required image rebuild, it stops and recreates the
+twin-server containers. Container startup clears their bind-mounted application
+state and reruns setup commands, giving bisect a clean environment. If the menu
+instead reports that the images are current and reuses already-running
+containers, select **Restart containers (resets state)** once before bisect to
+guarantee the same clean starting point.
+
+When `bisect.rebuildCommands` is configured, the menu also shows **Rebuild
+experiment in container (rebuildCommands)**. That action is the faster path for
+rebuilding experiment application state after source changes: it runs the
+commands only in the experiment container and restarts only experiment
+processes. It does not recreate either container, so it does not replace the
+initial clean-container step above.
+
 Then run bisect from the invocation checkout:
 
 ```bash

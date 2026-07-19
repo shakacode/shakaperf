@@ -62,6 +62,8 @@ export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeF
   experimentDir: string;
   /** Setup commands to run (empty array if none provided) */
   setupCommands: SetupCommand[];
+  /** Bisect rebuild commands available to the interactive experiment menu action. */
+  rebuildCommands: SetupCommand[];
   /** Resolved compose file path (defaults to bundled template) */
   composeFile: string;
   /**

@@ -48,6 +48,10 @@ import {
 } from '../helpers/server-log';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from '../helpers/project-paths';
 import { BisectSessionController, type BisectRefreshResult } from './bisect-session';
+import {
+  experimentRebuildMenuDefinition,
+  rebuildExperimentInContainer,
+} from './rebuild-experiment';
 
 export interface ServersMenuOptions {
   verbose?: boolean;
@@ -510,6 +514,18 @@ export async function runServersMenu(
 
   // ---------- Menu definition ----------
 
+  const experimentRebuildDefinition = experimentRebuildMenuDefinition(config);
+  const experimentRebuildItem: MenuItem | null = experimentRebuildDefinition
+    ? {
+        ...experimentRebuildDefinition,
+        activity: { verb: 'rebuilding experiment in container', color: 'yellow' },
+        run: async () => {
+          await rebuildExperimentInContainer(config);
+          state.lastMessage = 'Experiment rebuilt in container.';
+        },
+      }
+    : null;
+
   const items: MenuItem[] = [
     {
       id: 'experiment-checkout',
@@ -582,6 +598,7 @@ export async function runServersMenu(
       activity: { verb: 'restarting containers + servers', color: 'yellow' },
       run: runRestartContainersAndServers,
     },
+    ...(experimentRebuildItem ? [experimentRebuildItem] : []),
     {
       id: 'stop',
       numericKey: '8',

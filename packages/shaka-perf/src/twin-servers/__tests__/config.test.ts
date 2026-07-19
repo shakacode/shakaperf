@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { defineConfig, findConfigFile, projectPathSlug, resolveConfig } from '../config';
+import { defineConfig, findConfigFile, loadConfig, projectPathSlug, resolveConfig } from '../config';
 import type { TwinServersConfig } from '../types';
 
 describe('projectPathSlug', () => {
@@ -200,6 +200,22 @@ describe('resolveConfig', () => {
     expect(resolved.setupCommands).toEqual([]);
   });
 
+  it('defaults rebuildCommands to empty array', () => {
+    const resolved = resolveConfig(makeConfig(), tmpDir);
+    expect(resolved.rebuildCommands).toEqual([]);
+  });
+
+  it('passes through rebuildCommands when provided by the runtime loader', () => {
+    const resolved = resolveConfig({
+      ...makeConfig(),
+      rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
+    }, tmpDir);
+
+    expect(resolved.rebuildCommands).toEqual([
+      { description: 'Build assets', command: 'yarn build' },
+    ]);
+  });
+
   it('passes through setupCommands when provided', () => {
     const config = makeConfig({
       setupCommands: [{ command: 'rake db:migrate', description: 'Migrate' }],
@@ -267,5 +283,21 @@ describe('resolveConfig', () => {
     expect(resolved.experimentDir).toBe(path.resolve(tmpDir, 'project'));
     expect(resolved.controlDir).toBe(path.resolve(tmpDir, 'control'));
     expect(resolved.dockerBuildDir).toBe(path.resolve(tmpDir, 'build'));
+  });
+
+  it('loads bisect rebuildCommands from an abtests config', async () => {
+    const configPath = path.join(tmpDir, 'abtests.config.js');
+    fs.writeFileSync(configPath, `module.exports = ${JSON.stringify({
+      twinServers: makeConfig(),
+      bisect: {
+        rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
+      },
+    })}`);
+
+    const loaded = await loadConfig(configPath);
+
+    expect((loaded as TwinServersConfig & { rebuildCommands?: unknown }).rebuildCommands).toEqual([
+      { description: 'Build assets', command: 'yarn build' },
+    ]);
   });
 });

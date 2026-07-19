@@ -16,12 +16,27 @@ import {
   findAbTestsConfig,
   loadAbTestsConfig,
 } from '../config-loader';
-import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
+import {
+  SetupCommandSchema,
+  TwinServersConfigSchema,
+  type ResolvedConfig,
+  type SetupCommand,
+  type TwinServersConfig,
+  type TwinServersConfigInput,
+} from './types';
 
 const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
 // At runtime __dirname is dist/twin-servers/, so go up two levels to package root
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
+
+const TwinServersRuntimeConfigSchema = TwinServersConfigSchema.extend({
+  rebuildCommands: SetupCommandSchema.array().optional(),
+});
+
+type TwinServersRuntimeConfig = TwinServersConfig & {
+  rebuildCommands?: SetupCommand[];
+};
 
 export function defineConfig(config: TwinServersConfigInput): TwinServersConfigInput {
   return config;
@@ -31,7 +46,7 @@ export function findConfigFile(cwd?: string): string | null {
   return findAbTestsConfig(cwd) ?? sharedFindConfigFile(LEGACY_CONFIG_FILENAMES, cwd);
 }
 
-export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
+export async function loadConfig(configPath: string): Promise<TwinServersRuntimeConfig> {
   const basename = path.basename(configPath);
   if (basename.startsWith('abtests.config.')) {
     const raw = await loadAbTestsConfig(configPath);
@@ -41,9 +56,13 @@ export async function loadConfig(configPath: string): Promise<TwinServersConfig>
         `${configPath} has no \`twinServers\` section. Add one or use a legacy twin-servers.config.ts.`,
       );
     }
-    return slice as TwinServersConfig;
+    const bisect = raw.bisect as { rebuildCommands?: SetupCommand[] } | undefined;
+    return {
+      ...(slice as TwinServersConfig),
+      rebuildCommands: bisect?.rebuildCommands,
+    };
   }
-  return loadConfigFile(configPath) as Promise<TwinServersConfig>;
+  return loadConfigFile(configPath) as Promise<TwinServersRuntimeConfig>;
 }
 
 function expandTilde(filePath: string): string {
@@ -92,7 +111,7 @@ export function projectPathSlug(absPath: string): string {
 
 export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {
   // Validate schema with Zod
-  const parseResult = TwinServersConfigSchema.safeParse(config);
+  const parseResult = TwinServersRuntimeConfigSchema.safeParse(config);
   if (!parseResult.success) {
     const firstError = parseResult.error.errors[0];
     const fieldPath = firstError.path.join('.');
@@ -143,6 +162,7 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     },
     ports: validConfig.ports,
     setupCommands: validConfig.setupCommands ?? [],
+    rebuildCommands: validConfig.rebuildCommands ?? [],
     projectSlug: slug,
   };
 }
