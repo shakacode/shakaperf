@@ -12,13 +12,13 @@ import {
   applyCachedObservations,
   applyObservations,
   nextCandidate,
+  type BisectSearchInput,
   type CandidateWork,
 } from './search';
 import type {
-  BisectCategory,
   BisectSearchPhase,
-  BisectSession,
   CommitAttempt,
+  CommitRun,
   TargetObservation,
 } from './types';
 
@@ -27,6 +27,12 @@ export interface RunSearchPhaseOptions {
   preferredRefreshMode: RefreshMode;
   nextAttemptId(): string;
   now(): string;
+  /**
+   * The session's commit runs as of *now*. Read through a getter because
+   * `measure` records a run mid-flight, and `applyObservations` must see the
+   * resulting `infrastructureError` to refuse the observations it produced.
+   */
+  commitRuns(): Record<string, CommitRun>;
   checkpoint(phase: BisectSearchPhase): void;
   afterCheckpoint?(phase: BisectSearchPhase): void;
   measure(work: CandidateWork): Promise<CandidateResult>;
@@ -35,6 +41,16 @@ export interface RunSearchPhaseOptions {
 export async function runSearchPhase(
   options: RunSearchPhaseOptions,
 ): Promise<BisectSearchPhase> {
+  const searchInput = (phase: BisectSearchPhase): BisectSearchInput => ({
+    orderedCommits: phase.orderedCommits,
+    targets: phase.targets,
+    commitRuns: options.commitRuns(),
+  });
+  const normalizePhase = (phase: BisectSearchPhase): BisectSearchPhase => ({
+    ...phase,
+    targets: applyCachedObservations(searchInput(phase)).targets,
+  });
+
   let phase = normalizePhase({
     ...options.phase,
     status: 'running',
@@ -44,7 +60,7 @@ export async function runSearchPhase(
   options.afterCheckpoint?.(phase);
 
   while (true) {
-    const work = nextCandidate(applyCachedObservations(toLegacySession(phase)));
+    const work = nextCandidate(applyCachedObservations(searchInput(phase)));
     if (!work) {
       phase = {
         ...phase,
@@ -76,7 +92,7 @@ export async function runSearchPhase(
       const observations = new Map<string, TargetObservation>(
         result.observations.map((observation) => [observation.targetId, observation]),
       );
-      const updated = applyObservations(toLegacySession(phase), work.sha, observations);
+      const updated = applyObservations(searchInput(phase), work.sha, observations);
       const completedAttempt: CommitAttempt = {
         ...attempt,
         status: 'complete',
@@ -113,27 +129,6 @@ export async function runSearchPhase(
   }
 }
 
-function normalizePhase(phase: BisectSearchPhase): BisectSearchPhase {
-  const normalized = applyCachedObservations(toLegacySession(phase));
-  return { ...phase, targets: normalized.targets };
-}
-
-function toLegacySession(phase: BisectSearchPhase): BisectSession {
-  return {
-    version: 1,
-    status: 'running',
-    goodSha: phase.goodSha,
-    badSha: phase.badSha,
-    originalExperiment: { sha: phase.badSha, branch: null },
-    commitSubjects: phase.commitSubjects,
-    selectedCategories: unique(phase.targets.map((target) => target.category)),
-    orderedCommits: phase.orderedCommits,
-    targets: phase.targets,
-    commitRuns: {},
-    startedAt: phase.startedAt ?? '',
-  };
-}
-
 function replaceAttempt(
   attempts: readonly CommitAttempt[],
   replacement: CommitAttempt,
@@ -141,8 +136,4 @@ function replaceAttempt(
   return attempts.map((attempt) => (
     attempt.id === replacement.id ? replacement : attempt
   ));
-}
-
-function unique(values: BisectCategory[]): BisectCategory[] {
-  return [...new Set(values)];
 }

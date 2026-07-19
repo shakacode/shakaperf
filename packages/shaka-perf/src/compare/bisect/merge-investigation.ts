@@ -17,6 +17,7 @@ import type {
   BisectSession,
   BisectTarget,
   CommitAttempt,
+  CommitRun,
   MergeInvestigation,
   MergeTargetResult,
 } from './types';
@@ -58,6 +59,7 @@ export interface RunMergeInvestigationsOptions {
   preferredRefreshMode: RefreshMode;
   nextAttemptId(): string;
   now(): string;
+  commitRuns(): Record<string, CommitRun>;
   checkpoint(session: BisectSession): void;
   afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
@@ -191,6 +193,7 @@ export async function runMergeInvestigations(
         preferredRefreshMode: options.preferredRefreshMode,
         nextAttemptId: options.nextAttemptId,
         now: options.now,
+        commitRuns: options.commitRuns,
         checkpoint(updatedPhase) {
           phase = updatedPhase;
           investigation = { ...investigation!, phase: updatedPhase };

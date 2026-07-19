@@ -685,6 +685,7 @@ export async function executeBisect(
         preferredRefreshMode: preferredRefreshMode(input.config),
         nextAttemptId: () => `primary-${++attemptNumber}`,
         now: deps.now,
+        commitRuns: () => session.commitRuns,
         checkpoint(phase) {
           session = { ...session, primary: phase, targets: phase.targets };
           persistSession();
@@ -731,6 +732,7 @@ export async function executeBisect(
         preferredRefreshMode: preferredRefreshMode(input.config),
         nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
         now: deps.now,
+        commitRuns: () => session.commitRuns,
         checkpoint(updated) {
           session = updated;
           persistSession();

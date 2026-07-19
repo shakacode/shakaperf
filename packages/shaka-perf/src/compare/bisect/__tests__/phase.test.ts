@@ -12,6 +12,7 @@ import type { CandidateResult } from '../run-candidate';
 import type {
   BisectSearchPhase,
   BisectTarget,
+  CommitRun,
   TargetObservation,
 } from '../types';
 
@@ -93,6 +94,7 @@ describe('runSearchPhase', () => {
     const completed = await runSearchPhase({
       phase: phase(),
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       nextAttemptId: (() => {
         let id = 0;
         return () => `attempt-${++id}`;
@@ -152,6 +154,7 @@ describe('runSearchPhase', () => {
     let calls = 0;
     const options = {
       preferredRefreshMode: 'commands' as const,
+      commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${calls + 1}`,
       now: () => '2026-07-13T00:00:00.000Z',
       checkpoint(value: BisectSearchPhase) {
@@ -193,6 +196,7 @@ describe('runSearchPhase', () => {
     let attemptId = 0;
     const common = {
       preferredRefreshMode: 'commands' as const,
+      commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${++attemptId}`,
       now: () => '2026-07-13T00:00:00.000Z',
       checkpoint(value: BisectSearchPhase) {
@@ -229,6 +233,7 @@ describe('runSearchPhase', () => {
     await expect(runSearchPhase({
       phase: initial,
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       nextAttemptId: () => 'attempt-1',
       now: () => '2026-07-13T00:00:00.000Z',
       checkpoint(value) {
@@ -247,5 +252,27 @@ describe('runSearchPhase', () => {
     expect(persisted.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 2 });
     expect(persisted.targets[0].observations.b).toMatchObject({ present: true });
     expect(persisted.attempts).toMatchObject([{ sha: 'b', status: 'complete' }]);
+  });
+
+  it('refuses observations from a commit whose run recorded an infrastructure error', async () => {
+    const commitRuns: Record<string, CommitRun> = {};
+
+    await expect(runSearchPhase({
+      phase: phase(),
+      preferredRefreshMode: 'commands',
+      commitRuns: () => commitRuns,
+      nextAttemptId: () => 'attempt-1',
+      now: () => '2026-07-13T00:00:00.000Z',
+      checkpoint: () => undefined,
+      async measure(work) {
+        // Mirrors run-candidate recording a failed refresh mid-measurement.
+        commitRuns[work.sha] = {
+          ...result(work.sha, []).commitRun,
+          compareCompleted: false,
+          infrastructureError: 'container refresh failed',
+        };
+        return result(work.sha, [observation('visual', work.sha, true)]);
+      },
+    })).rejects.toThrow('Cannot apply observations for b: container refresh failed');
   });
 });

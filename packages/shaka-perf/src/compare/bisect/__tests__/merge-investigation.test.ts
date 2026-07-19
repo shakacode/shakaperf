@@ -86,6 +86,7 @@ describe('merge investigation', () => {
     const completed = await runMergeInvestigations({
       session: queued,
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
       checkpoint: () => undefined,
@@ -115,6 +116,7 @@ describe('merge investigation', () => {
     const completed = await runMergeInvestigations({
       session: queued,
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
       checkpoint: () => undefined,
@@ -164,6 +166,7 @@ describe('merge investigation', () => {
     let checkpoint = buildMergeQueue(session(['main', 'topic']));
     const common = {
       preferredRefreshMode: 'commands' as const,
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
       checkpoint(value: BisectSession) { checkpoint = value; },
@@ -206,6 +209,7 @@ describe('merge investigation', () => {
     const completed = await runMergeInvestigations({
       session: queued,
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
       checkpoint(value) { checkpoint = value; },
@@ -235,6 +239,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
     const common = {
       preferredRefreshMode: 'commands' as const,
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => `attempt-${++attemptId}`,
       checkpoint(value: BisectSession) {
@@ -289,6 +294,7 @@ describe('merge investigation', () => {
     const completed = await runMergeInvestigations({
       session: failed,
       preferredRefreshMode: 'commands',
+      commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
       checkpoint: () => undefined,
