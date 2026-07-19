@@ -23,6 +23,7 @@ import type {
   RunBisectOptions,
 } from '../session';
 import { writeBadRefTestsAtomic } from '../state';
+import type { BisectCategory } from '../types';
 
 export interface E2eRepositoryFixture {
   rootDir: string;
@@ -45,6 +46,14 @@ export interface E2eDependencyHarness {
 interface E2eDependencyOptions {
   fixture: E2eRepositoryFixture;
   resultsBySha: Record<string, readonly TestResult[]>;
+}
+
+export interface StubRegression {
+  id: string;
+  category: BisectCategory;
+  testFile: string;
+  testName: string;
+  subject: string;
 }
 
 function git(cwd: string, args: string[]): string {
@@ -142,7 +151,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
         });
         const results = options.resultsBySha[request.sha];
         if (!results) throw new Error(`No stubbed compare results for ${request.sha}`);
-        return { testResults: results };
+        return { testResults: filterCompareResults(results, request) };
       },
       async restore() {
         await restoreCheckout(fixture.experimentDir, {
@@ -192,11 +201,185 @@ export function visregTimeline(
   }));
 }
 
-function visregResult(present: boolean): TestResult {
+export function stubRegression(
+  id: string,
+  category: BisectCategory,
+  options: {
+    testFile?: string;
+    testName?: string;
+    subject?: string;
+  } = {},
+): StubRegression {
   return {
-    id: 'homepage',
-    name: 'Homepage',
-    filePath: 'tests/homepage.abtest.ts',
+    id,
+    category,
+    testFile: options.testFile ?? 'tests/homepage.abtest.ts',
+    testName: options.testName ?? 'Homepage',
+    subject: options.subject ?? {
+      visreg: 'document',
+      perf: 'TBT',
+      accessibility: 'button-name',
+    }[category],
+  };
+}
+
+export function regressionTimeline(
+  fixture: E2eRepositoryFixture,
+  targets: readonly StubRegression[],
+  presentByLabel: Record<string, readonly string[]>,
+): Record<string, readonly TestResult[]> {
+  const targetIds = new Set(targets.map((target) => target.id));
+  return Object.fromEntries(Object.entries(presentByLabel).map(([label, presentIds]) => {
+    const sha = fixture.shas[label];
+    if (!sha) throw new Error(`Unknown fixture label: ${label}`);
+    for (const id of presentIds) {
+      if (!targetIds.has(id)) throw new Error(`Unknown regression target: ${id}`);
+    }
+    const present = new Set(presentIds);
+    const grouped = new Map<string, StubRegression[]>();
+    for (const target of targets) {
+      const key = JSON.stringify([target.testFile, target.testName]);
+      grouped.set(key, [...(grouped.get(key) ?? []), target]);
+    }
+    return [sha, [...grouped.values()].map((group) => regressionResult(group, present))];
+  }));
+}
+
+function filterCompareResults(
+  results: readonly TestResult[],
+  request: CompareRunRequest,
+): TestResult[] {
+  const requestedTests = new Set(request.tests.map(({ testFile, testName }) => (
+    JSON.stringify([testFile, testName])
+  )));
+  const requestedCategories = new Set(request.categories);
+  return results
+    .filter((result) => requestedTests.size === 0 || requestedTests.has(JSON.stringify([
+      result.filePath,
+      result.name,
+    ])))
+    .map((result) => ({
+      ...result,
+      outcomes: result.outcomes.filter((outcome) => requestedCategories.has(outcome.stage as BisectCategory)),
+    }));
+}
+
+function regressionResult(
+  targets: readonly StubRegression[],
+  present: ReadonlySet<string>,
+): TestResult {
+  const first = targets[0]!;
+  const visualTargets = targets.filter((target) => target.category === 'visreg');
+  const perfTargets = targets.filter((target) => target.category === 'perf');
+  const accessibilityTargets = targets.filter((target) => target.category === 'accessibility');
+  return {
+    ...baseResult(first.testFile, first.testName),
+    outcomes: [
+      ...(visualTargets.length === 0 ? [] : [{
+        kind: 'ok' as const,
+        stage: 'visreg',
+        viewport: DESKTOP_VIEWPORT,
+        measurement: visualTargets.map((target) => ({
+          selector: target.subject,
+          controlImage: `${target.id}-control.png`,
+          experimentImage: `${target.id}-experiment.png`,
+          diffImage: present.has(target.id) ? `${target.id}-diff.png` : null,
+          misMatchPercentage: present.has(target.id) ? 2.5 : 0,
+          diffPixels: present.has(target.id) ? 42 : 0,
+          threshold: 0.1,
+          diffBbox: null,
+          savedByRetries: false,
+        })),
+      }]),
+      ...(perfTargets.length === 0 ? [] : [{
+        kind: 'ok' as const,
+        stage: 'perf',
+        viewport: DESKTOP_VIEWPORT,
+        measurement: {
+          metrics: perfTargets.map((target) => ({
+            label: target.subject,
+            group: 'vitals',
+            controlValue: 100,
+            experimentValue: present.has(target.id) ? 120 : 100,
+            deltaValue: present.has(target.id) ? 20 : 0,
+            controlDisplay: '100ms',
+            experimentDisplay: present.has(target.id) ? '120ms' : '100ms',
+            deltaDisplay: present.has(target.id) ? '+20ms' : '0ms',
+            percentDisplay: present.has(target.id) ? '+20%' : '0%',
+            deltaPercent: present.has(target.id) ? 20 : 0,
+            pValue: present.has(target.id) ? 0.01 : 1,
+            direction: present.has(target.id) ? 'regression' as const : 'none' as const,
+          })),
+        },
+      }]),
+      ...(accessibilityTargets.length === 0 ? [] : [{
+        kind: 'ok' as const,
+        stage: 'accessibility',
+        viewport: DESKTOP_VIEWPORT,
+        measurement: accessibilityMeasurement(accessibilityTargets, present),
+      }]),
+    ],
+  };
+}
+
+function accessibilityMeasurement(
+  targets: readonly StubRegression[],
+  present: ReadonlySet<string>,
+) {
+  const findings = targets.filter((target) => present.has(target.id)).map((target) => ({
+    status: 'new' as const,
+    signature: `${target.subject}|[data-cy="${target.id}"]`,
+    ruleId: target.subject,
+    impact: 'critical' as const,
+    tags: ['wcag2a'],
+    experiment: {
+      impact: 'critical' as const,
+      help: 'Element must be accessible',
+      helpUrl: 'https://example.test/accessibility',
+      tags: ['wcag2a'],
+      nodes: [{
+        target: [`[data-cy="${target.id}"]`],
+        html: '<button></button>',
+        failureSummary: 'Fix the element',
+      }],
+    },
+  }));
+  return {
+    control: {
+      side: 'control' as const,
+      url: 'http://control.test/',
+      violations: [],
+      rawArtifactHref: 'control-accessibility.json',
+    },
+    experiment: {
+      side: 'experiment' as const,
+      url: 'http://experiment.test/',
+      violations: [],
+      rawArtifactHref: 'experiment-accessibility.json',
+    },
+    effectiveConfig: { tags: [], disableRules: [], includeRules: null },
+    failOnViolation: true,
+    findings,
+    summary: {
+      new: findings.length,
+      fixed: 0,
+      changed: 0,
+      unchanged: 0,
+      errors: 0,
+      blocked: 0,
+      newByImpact: findings.length === 0 ? {} : { critical: findings.length },
+      fixedByImpact: {},
+      changedByImpact: {},
+    },
+    comparisonArtifactHref: 'accessibility-comparison.html',
+  };
+}
+
+function baseResult(testFile: string, testName: string): TestResult {
+  return {
+    id: JSON.stringify([testFile, testName]),
+    name: testName,
+    filePath: testFile,
     startingPath: '/',
     controlUrl: 'http://control.test/',
     experimentUrl: 'http://experiment.test/',
@@ -207,6 +390,13 @@ function visregResult(present: boolean): TestResult {
     measuredAt: null,
     runId: null,
     viewportArtifactPaths: [],
+    outcomes: [],
+  };
+}
+
+function visregResult(present: boolean): TestResult {
+  return {
+    ...baseResult('tests/homepage.abtest.ts', 'Homepage'),
     outcomes: [{
       kind: 'ok',
       stage: 'visreg',
