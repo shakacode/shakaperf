@@ -326,13 +326,12 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     goodRef: options.goodRef,
     badRef: options.badRef,
   }));
-  const repositorySnapshot = options.twinServers.controlDir && options.twinServers.experimentDir
-    ? await inspectBisectRepositories({
+  const repositorySnapshot =
+    await inspectBisectRepositories({
       experimentDir: options.twinServers.experimentDir,
       controlDir: options.twinServers.controlDir,
       allowedPaths: [resultsDirectory],
-    })
-    : undefined;
+    });
   const rebuildStrategy = persistedRebuildStrategy(options.config);
   const controlURL = options.controlURL ?? options.config.shared.controlURL;
   const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
