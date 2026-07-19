@@ -8,6 +8,7 @@
  */
 
 import type { CandidateResult, RefreshMode } from './run-candidate';
+import { runCheckpointedAttempt } from './attempt';
 import {
   applyCachedObservations,
   applyObservations,
@@ -17,7 +18,6 @@ import {
 } from './search';
 import type {
   BisectSearchPhase,
-  CommitAttempt,
   CommitRun,
   TargetObservation,
 } from './types';
@@ -72,68 +72,38 @@ export async function runSearchPhase(
       return phase;
     }
 
-    const attempt: CommitAttempt = {
-      id: options.nextAttemptId(),
-      sha: work.sha,
-      status: 'running',
-      requestedCategories: [...work.categories],
-      requestedTests: [...work.tests],
-      refreshMode: options.preferredRefreshMode,
-      usedFallback: false,
-      startedAt: options.now(),
-    };
-    phase = { ...phase, attempts: [...phase.attempts, attempt] };
-    options.checkpoint(phase);
-    options.afterCheckpoint?.(phase);
-    const preMeasurePhase = phase;
-
-    try {
-      const result = await options.measure(work);
-      const observations = new Map<string, TargetObservation>(
-        result.observations.map((observation) => [observation.targetId, observation]),
-      );
-      const updated = applyObservations(searchInput(phase), work.sha, observations);
-      const completedAttempt: CommitAttempt = {
-        ...attempt,
-        status: 'complete',
-        refreshMode: result.refresh.mode,
-        usedFallback: result.refresh.usedFallback,
-        finishedAt: result.commitRun.finishedAt ?? options.now(),
-        ...(result.commitRun.compareResultsPath
-          ? { compareResultsPath: result.commitRun.compareResultsPath }
-          : {}),
-      };
-      const completedPhase = normalizePhase({
-        ...preMeasurePhase,
-        targets: updated.targets,
-        attempts: replaceAttempt(preMeasurePhase.attempts, completedAttempt),
-      });
-      options.checkpoint(completedPhase);
-      phase = completedPhase;
-    } catch (error) {
-      const incompleteAttempt: CommitAttempt = {
-        ...attempt,
-        status: 'incomplete',
-        finishedAt: options.now(),
-        error: error instanceof Error ? error.message : String(error),
-      };
-      phase = {
-        ...preMeasurePhase,
-        attempts: replaceAttempt(preMeasurePhase.attempts, incompleteAttempt),
-      };
-      options.checkpoint(phase);
-      options.afterCheckpoint?.(phase);
-      throw error;
-    }
-    options.afterCheckpoint?.(phase);
+    let preMeasurePhase = phase;
+    await runCheckpointedAttempt({
+      attempts: phase.attempts,
+      work,
+      preferredRefreshMode: options.preferredRefreshMode,
+      nextAttemptId: options.nextAttemptId,
+      now: options.now,
+      checkpointRunning(attempts) {
+        preMeasurePhase = { ...phase, attempts };
+        phase = preMeasurePhase;
+        options.checkpoint(phase);
+      },
+      checkpointComplete(attempts, result) {
+        const observations = new Map<string, TargetObservation>(
+          result.observations.map((observation) => [observation.targetId, observation]),
+        );
+        const updated = applyObservations(searchInput(preMeasurePhase), work.sha, observations);
+        phase = normalizePhase({
+          ...preMeasurePhase,
+          targets: updated.targets,
+          attempts,
+        });
+        options.checkpoint(phase);
+      },
+      checkpointIncomplete(attempts) {
+        phase = { ...preMeasurePhase, attempts };
+        options.checkpoint(phase);
+      },
+      afterCheckpoint() {
+        options.afterCheckpoint?.(phase);
+      },
+      measure: () => options.measure(work),
+    });
   }
-}
-
-function replaceAttempt(
-  attempts: readonly CommitAttempt[],
-  replacement: CommitAttempt,
-): CommitAttempt[] {
-  return attempts.map((attempt) => (
-    attempt.id === replacement.id ? replacement : attempt
-  ));
 }

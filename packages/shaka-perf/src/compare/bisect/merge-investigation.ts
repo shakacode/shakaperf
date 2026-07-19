@@ -8,6 +8,7 @@
  */
 
 import type { PreparedChildGitRange } from './git';
+import { runCheckpointedAttempt } from './attempt';
 import { runSearchPhase } from './phase';
 import type { CandidateResult, RefreshMode } from './run-candidate';
 import { testsForTargets, type CandidateWork } from './search';
@@ -16,7 +17,6 @@ import type {
   BisectSearchPhase,
   BisectSession,
   BisectTarget,
-  CommitAttempt,
   CommitRun,
   MergeInvestigation,
   MergeTargetResult,
@@ -103,86 +103,81 @@ export async function runMergeInvestigations(
     )) === true;
     if (!validationComplete) {
       const validationWork = workForTargets(range.secondParent, primaryTargets);
-      const attempt = runningAttempt(
-        options.nextAttemptId(), validationWork, options.preferredRefreshMode, options.now(),
-      );
-      phase = phase
+      const phaseBeforeValidation: BisectSearchPhase = phase
         ? {
           ...phase,
           status: 'pending',
           targets: [...primaryTargets],
-          attempts: [...phase.attempts, attempt],
         }
-        : childPhase(investigation, range, primaryTargets, [attempt]);
-      investigation = { ...investigation, phase };
-      session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
-      options.afterCheckpoint?.(session);
+        : childPhase(investigation, range, primaryTargets);
+      let preValidationPhase = phaseBeforeValidation;
+      let preValidationInvestigation = investigation;
+      let preValidationSession = session;
 
-      const preValidationPhase = phase;
-      const preValidationInvestigation = investigation;
-      const preValidationSession = session;
-      try {
-        const validation = await options.measure(validationWork, primaryTargets);
-        const observations = new Map(
-          validation.observations.map((value) => [value.targetId, value]),
-        );
-        const reproducing: BisectTarget[] = [];
-        const targetResults = { ...preValidationInvestigation.targetResults };
-        for (const target of primaryTargets) {
-          const observation = observations.get(target.id);
-          if (!observation?.present) {
-            targetResults[target.id] = { kind: 'merge-introduced' };
-            continue;
+      await runCheckpointedAttempt({
+        attempts: phaseBeforeValidation.attempts,
+        work: validationWork,
+        preferredRefreshMode: options.preferredRefreshMode,
+        nextAttemptId: options.nextAttemptId,
+        now: options.now,
+        checkpointRunning(attempts) {
+          preValidationPhase = { ...phaseBeforeValidation, attempts };
+          preValidationInvestigation = {
+            ...investigation!,
+            phase: preValidationPhase,
+          };
+          preValidationSession = updateInvestigation(session, preValidationInvestigation);
+          phase = preValidationPhase;
+          investigation = preValidationInvestigation;
+          session = preValidationSession;
+          options.checkpoint(session);
+        },
+        checkpointComplete(attempts, validation) {
+          const observations = new Map(
+            validation.observations.map((value) => [value.targetId, value]),
+          );
+          const reproducing: BisectTarget[] = [];
+          const targetResults = { ...preValidationInvestigation.targetResults };
+          for (const target of primaryTargets) {
+            const observation = observations.get(target.id);
+            if (!observation?.present) {
+              targetResults[target.id] = { kind: 'merge-introduced' };
+              continue;
+            }
+            reproducing.push({
+              ...target,
+              status: 'active',
+              goodIndex: 0,
+              badIndex: range.orderedCommits.length - 1,
+              firstBadSha: undefined,
+              invalidReason: undefined,
+              observations: { [range.secondParent]: observation },
+            });
           }
-          reproducing.push({
-            ...target,
-            status: 'active',
-            goodIndex: 0,
-            badIndex: range.orderedCommits.length - 1,
-            firstBadSha: undefined,
-            invalidReason: undefined,
-            observations: { [range.secondParent]: observation },
-          });
-        }
-        const completedPhase = {
-          ...preValidationPhase,
-          targets: reproducing,
-          attempts: replaceAttempt(
-            preValidationPhase.attempts,
-            completeAttempt(attempt, validation, options.now()),
-          ),
-        };
-        const completedInvestigation = {
-          ...preValidationInvestigation,
-          phase: completedPhase,
-          targetResults,
-        };
-        const completedSession = updateInvestigation(
-          preValidationSession,
-          completedInvestigation,
-        );
-        options.checkpoint(completedSession);
-        phase = completedPhase;
-        investigation = completedInvestigation;
-        session = completedSession;
-      } catch (error) {
-        phase = {
-          ...preValidationPhase,
-          attempts: replaceAttempt(preValidationPhase.attempts, {
-            ...attempt,
-            status: 'incomplete',
-            finishedAt: options.now(),
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        };
-        investigation = { ...preValidationInvestigation, phase };
-        session = updateInvestigation(preValidationSession, investigation);
-        options.checkpoint(session);
-        options.afterCheckpoint?.(session);
-        throw error;
-      }
-      options.afterCheckpoint?.(session);
+          phase = {
+            ...preValidationPhase,
+            targets: reproducing,
+            attempts,
+          };
+          investigation = {
+            ...preValidationInvestigation,
+            phase,
+            targetResults,
+          };
+          session = updateInvestigation(preValidationSession, investigation);
+          options.checkpoint(session);
+        },
+        checkpointIncomplete(attempts) {
+          phase = { ...preValidationPhase, attempts };
+          investigation = { ...preValidationInvestigation, phase };
+          session = updateInvestigation(preValidationSession, investigation);
+          options.checkpoint(session);
+        },
+        afterCheckpoint() {
+          options.afterCheckpoint?.(session);
+        },
+        measure: () => options.measure(validationWork, primaryTargets),
+      });
     }
 
     if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
@@ -252,7 +247,6 @@ function childPhase(
   investigation: MergeInvestigation,
   range: PreparedChildGitRange,
   targets: readonly BisectTarget[],
-  attempts: CommitAttempt[],
 ): BisectSearchPhase {
   return {
     id: `merge:${investigation.mergeSha}`,
@@ -263,7 +257,7 @@ function childPhase(
     commitSubjects: range.commitSubjects,
     commitParents: range.commitParents,
     targets: [...targets],
-    attempts,
+    attempts: [],
   };
 }
 
@@ -274,45 +268,6 @@ function workForTargets(sha: string, targets: readonly BisectTarget[]): Candidat
     categories: unique(targets.map((target) => target.category)),
     tests: testsForTargets(targets),
   };
-}
-
-function runningAttempt(
-  id: string,
-  work: CandidateWork,
-  refreshMode: RefreshMode,
-  startedAt: string,
-): CommitAttempt {
-  return {
-    id,
-    sha: work.sha,
-    status: 'running',
-    requestedCategories: [...work.categories],
-    requestedTests: [...work.tests],
-    refreshMode,
-    usedFallback: false,
-    startedAt,
-  };
-}
-
-function completeAttempt(
-  attempt: CommitAttempt,
-  result: CandidateResult,
-  finishedAt: string,
-): CommitAttempt {
-  return {
-    ...attempt,
-    status: 'complete',
-    refreshMode: result.refresh.mode,
-    usedFallback: result.refresh.usedFallback,
-    finishedAt: result.commitRun.finishedAt ?? finishedAt,
-    ...(result.commitRun.compareResultsPath
-      ? { compareResultsPath: result.commitRun.compareResultsPath }
-      : {}),
-  };
-}
-
-function replaceAttempt(attempts: readonly CommitAttempt[], replacement: CommitAttempt): CommitAttempt[] {
-  return attempts.map((attempt) => attempt.id === replacement.id ? replacement : attempt);
 }
 
 function updateInvestigation(
