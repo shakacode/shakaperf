@@ -15,6 +15,7 @@ import type { TestResult } from '../../pipeline/report';
 import type {
   BisectCategory,
   BisectCompatibility,
+  BisectSession,
   BisectSessionV2,
   BisectTestSelection,
   PersistedRebuildStrategy,
@@ -310,6 +311,20 @@ export function parseBisectSession(value: unknown): BisectSessionV2 {
     );
   }
   return normalizeCrashedAttempts(sessionSchema.parse(value) as BisectSessionV2);
+}
+
+export function materializeBisectSession(saved: BisectSessionV2): BisectSession {
+  return {
+    ...saved,
+    goodSha: saved.goodSha ?? saved.primary.goodSha,
+    badSha: saved.badSha ?? saved.primary.badSha,
+    commitSubjects: saved.commitSubjects ?? saved.primary.commitSubjects,
+    selectedCategories: saved.selectedCategories
+      ?? [...new Set(saved.primary.targets.map((target) => target.category))],
+    orderedCommits: saved.orderedCommits ?? saved.primary.orderedCommits,
+    targets: saved.primary.targets,
+    commitRuns: saved.commitRuns ?? {},
+  };
 }
 
 export function readBisectSession(filePath: string): BisectSessionV2 {

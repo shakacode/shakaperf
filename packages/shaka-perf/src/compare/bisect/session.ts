@@ -81,6 +81,7 @@ import {
 import { loadReusableCompareResults } from './reuse-results';
 import {
   buildCompatibility,
+  materializeBisectSession,
   prepareResume,
   readBisectSession,
   writeBadRefTestsAtomic,
@@ -1121,17 +1122,9 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
 
 function sessionViewFromPersisted(saved: BisectSessionV2): BisectSession {
   return {
-    ...saved,
+    ...materializeBisectSession(saved),
     status: 'running',
     mode: saved.primary.status === 'complete' ? 'complete' : 'primary',
-    goodSha: saved.goodSha ?? saved.primary.goodSha,
-    badSha: saved.badSha ?? saved.primary.badSha,
-    commitSubjects: saved.commitSubjects ?? saved.primary.commitSubjects,
-    selectedCategories: saved.selectedCategories
-      ?? unique(saved.primary.targets.map((target) => target.category)),
-    orderedCommits: saved.orderedCommits ?? saved.primary.orderedCommits,
-    targets: saved.primary.targets,
-    commitRuns: saved.commitRuns ?? {},
     dryRun: false,
     validateGoodRef: false,
     failure: undefined,

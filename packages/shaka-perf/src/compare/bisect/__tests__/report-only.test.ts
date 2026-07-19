@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { BisectReportData } from '../report-model';
-import type { BisectSession } from '../types';
+import type { BisectSessionV2 } from '../types';
 import { regenerateBisectReport } from '../report-only';
 
 describe('regenerateBisectReport', () => {
@@ -74,31 +74,73 @@ describe('regenerateBisectReport', () => {
   }
 });
 
-function savedSession(): BisectSession {
+function savedSession(): BisectSessionV2 {
   const targetId = '["visreg","homepage","desktop","document"]';
+  const targets = [{
+    id: targetId,
+    category: 'visreg' as const,
+    testFile: 'tests/homepage.abtest.ts',
+    testName: 'Homepage',
+    viewport: 'desktop',
+    subject: 'document',
+    status: 'found' as const,
+    goodIndex: 0,
+    badIndex: 1,
+    firstBadSha: 'middle',
+    observations: {},
+  }];
   return {
-    version: 1,
+    version: 2,
     status: 'complete',
+    mode: 'complete',
+    identity: {
+      controlRoot: '/repo/control',
+      experimentRoot: '/repo/experiment',
+      controlGitCommonDir: '/repo/control/.git',
+      experimentGitCommonDir: '/repo/experiment/.git',
+      controlOrigin: 'git@example.com:repo.git',
+      experimentOrigin: 'git@example.com:repo.git',
+    },
+    compatibility: {
+      configFingerprint: 'config',
+      categoriesFingerprint: 'categories',
+      testsFingerprint: 'tests',
+      rebuildFingerprint: 'rebuild',
+      rangeFingerprint: 'range',
+      effective: {
+        config: {},
+        categories: ['visreg'],
+        tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
+        rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
+        range: { goodSha: 'good', badSha: 'bad' },
+      },
+    },
     goodSha: 'good',
     badSha: 'bad',
     originalExperiment: { sha: 'bad', branch: 'feature' },
+    control: { sha: 'good', branch: null },
+    rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
+    reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitSubjects: { good: 'Baseline', middle: 'Break homepage', bad: 'Bad tip' },
     selectedCategories: ['visreg'],
     orderedCommits: ['good', 'middle', 'bad'],
-    targets: [{
-      id: targetId,
-      category: 'visreg',
-      testFile: 'tests/homepage.abtest.ts',
-      testName: 'Homepage',
-      viewport: 'desktop',
-      subject: 'document',
-      status: 'found',
-      goodIndex: 0,
-      badIndex: 1,
-      firstBadSha: 'middle',
-      observations: {},
-    }],
+    targets,
     commitRuns: {},
+    primary: {
+      id: 'primary',
+      status: 'complete',
+      goodSha: 'good',
+      badSha: 'bad',
+      orderedCommits: ['good', 'middle', 'bad'],
+      commitSubjects: { good: 'Baseline', middle: 'Break homepage', bad: 'Bad tip' },
+      commitParents: { good: [], middle: ['good'], bad: ['middle'] },
+      targets,
+      attempts: [],
+      startedAt: '2026-07-13T10:00:00.000Z',
+      finishedAt: '2026-07-13T11:00:00.000Z',
+    },
+    mergeQueue: [],
+    mergeInvestigations: {},
     startedAt: '2026-07-13T10:00:00.000Z',
     finishedAt: '2026-07-13T11:00:00.000Z',
   };
