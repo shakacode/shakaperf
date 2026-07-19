@@ -321,19 +321,19 @@ describe('compare bisect command', () => {
     ]));
   });
 
-  it('prints the exact merge investigation follow-up for uninvestigated results', async () => {
+  it('prints selected categories in the merge investigation follow-up', async () => {
     const output: string[] = [];
     const consoleLog = jest.spyOn(console, 'log').mockImplementation((message = '') => {
       output.push(String(message));
     });
     const target = {
-      id: 'target', category: 'visreg' as const, testFile: 'home.abtest.ts', testName: 'Home',
+      id: 'target', category: 'accessibility' as const, testFile: 'home.abtest.ts', testName: 'Home',
       viewport: 'desktop', subject: 'document', status: 'found' as const,
       goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', observations: {},
     };
     try {
       await runCompareBisectFromCli('good', 'merge-sha', {
-        configPath: '/tmp/abtests.config.ts', categories: 'visreg',
+        configPath: '/tmp/abtests.config.ts', categories: 'accessibility',
       }, {
         loadConfig: async () => ({}),
         parseConfig: () => ({
@@ -344,6 +344,13 @@ describe('compare bisect command', () => {
         loadFrozenTests: async () => [],
         run: async () => ({
           ...completedSession(),
+          compatibility: {
+            ...completedSession().compatibility,
+            effective: {
+              ...completedSession().compatibility.effective,
+              categories: ['accessibility'],
+            },
+          },
           originalExperiment: { sha: 'merge-sha', branch: 'main' },
           primary: {
             ...completedSession().primary,
@@ -367,7 +374,9 @@ describe('compare bisect command', () => {
       consoleLog.mockRestore();
     }
 
-    expect(output).toContain('shaka-perf compare bisect --resume --investigate-merges');
+    expect(output).toContain(
+      'shaka-perf compare bisect --categories accessibility --resume --investigate-merges',
+    );
   });
 });
 
