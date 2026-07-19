@@ -1418,7 +1418,10 @@ function printBisectSummary(
   const hasUninvestigatedMerge = Object.values(session.mergeInvestigations ?? {})
     .some((investigation) => investigation.status === 'merge-uninvestigated');
   if (hasUninvestigatedMerge) {
-    console.log('shaka-perf compare bisect --resume --investigate-merges');
+    console.log(
+      `shaka-perf compare bisect --categories ` +
+      `${session.compatibility.effective.categories.join(',')} --resume --investigate-merges`,
+    );
   }
 }
 
