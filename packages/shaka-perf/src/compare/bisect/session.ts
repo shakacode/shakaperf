@@ -310,6 +310,18 @@ export async function runCompareBisectFromCli(
 }
 
 export async function runBisect(options: RunBisectOptions): Promise<BisectSession> {
+  const prepared = await prepareBisectExecution(options);
+  return executeBisect(prepared.input, prepared.dependencies);
+}
+
+interface PreparedBisectExecution {
+  input: ExecuteBisectInput;
+  dependencies: ExecuteBisectDependencies;
+}
+
+async function prepareBisectExecution(
+  options: RunBisectOptions,
+): Promise<PreparedBisectExecution> {
   const resultsDirectory = options.resultsDirectory
     ?? path.resolve(options.cwd, 'compare-bisect-results');
   const preliminaryResume = options.resume
@@ -318,19 +330,7 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
   const selectedCategories = preliminaryResume && options.selectedCategories.length === 0
     ? preliminaryResume.compatibility.effective.categories
     : options.selectedCategories;
-  const gitRange = options.gitRange ?? (preliminaryResume ? {
-    goodSha: preliminaryResume.primary.goodSha,
-    badSha: preliminaryResume.primary.badSha,
-    commitSubjects: preliminaryResume.primary.commitSubjects,
-    commitParents: preliminaryResume.primary.commitParents,
-    orderedCommits: preliminaryResume.primary.orderedCommits,
-    originalExperiment: preliminaryResume.originalExperiment,
-  } : await prepareGitRange({
-    experimentDir: options.twinServers.experimentDir,
-    controlDir: options.twinServers.controlDir,
-    goodRef: options.goodRef,
-    badRef: options.badRef,
-  }));
+  const gitRange = await resolveBisectGitRange(options, preliminaryResume);
   const repositorySnapshot =
     await inspectBisectRepositories({
       experimentDir: options.twinServers.experimentDir,
@@ -348,17 +348,12 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     rebuildStrategy,
     range: { goodSha: gitRange.goodSha, badSha: gitRange.badSha },
   });
-  const resumed = preliminaryResume && repositorySnapshot
-    ? prepareResume({
-      sessionPath: path.join(resultsDirectory, 'session.json'),
-      resultsDirectory,
-      compatibility,
-      repositories: repositorySnapshot,
-    })
-    : null;
-  if (preliminaryResume && !resumed) {
-    throw new Error('Cannot resume compare bisect without configured control and experiment repositories');
-  }
+  const resumed = prepareCompatibleResume({
+    preliminaryResume,
+    repositorySnapshot,
+    resultsDirectory,
+    compatibility,
+  });
   const input: ExecuteBisectInput = {
     goodRef: options.goodRef,
     badRef: options.badRef,
@@ -396,7 +391,50 @@ export async function runBisect(options: RunBisectOptions): Promise<BisectSessio
     controlURL: input.controlURL,
     experimentURL: input.experimentURL,
   });
-  return executeBisect(input, dependencies);
+  return { input, dependencies };
+}
+
+async function resolveBisectGitRange(
+  options: RunBisectOptions,
+  preliminaryResume: BisectSession | null,
+): Promise<PreparedGitRange> {
+  if (options.gitRange) return options.gitRange;
+  if (preliminaryResume) return gitRangeFromSession(preliminaryResume);
+  return prepareGitRange({
+    experimentDir: options.twinServers.experimentDir,
+    controlDir: options.twinServers.controlDir,
+    goodRef: options.goodRef,
+    badRef: options.badRef,
+  });
+}
+
+function gitRangeFromSession(session: BisectSession): PreparedGitRange {
+  return {
+    goodSha: session.primary.goodSha,
+    badSha: session.primary.badSha,
+    commitSubjects: session.primary.commitSubjects,
+    commitParents: session.primary.commitParents,
+    orderedCommits: session.primary.orderedCommits,
+    originalExperiment: session.originalExperiment,
+  };
+}
+
+function prepareCompatibleResume(options: {
+  preliminaryResume: BisectSession | null;
+  repositorySnapshot: BisectRepositorySnapshot | null;
+  resultsDirectory: string;
+  compatibility: BisectCompatibility;
+}) {
+  if (!options.preliminaryResume) return null;
+  if (!options.repositorySnapshot) {
+    throw new Error('Cannot resume compare bisect without configured control and experiment repositories');
+  }
+  return prepareResume({
+    sessionPath: path.join(options.resultsDirectory, 'session.json'),
+    resultsDirectory: options.resultsDirectory,
+    compatibility: options.compatibility,
+    repositories: options.repositorySnapshot,
+  });
 }
 
 export async function executeBisect(
