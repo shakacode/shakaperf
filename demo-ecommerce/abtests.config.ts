@@ -85,6 +85,19 @@ export default defineConfig({
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
 
+  bisect: {
+    rebuildCommands: [
+      {
+        description: 'Install JavaScript dependencies',
+        command: 'yarn install --immutable',
+      },
+      {
+        description: 'Precompile application assets',
+        command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
+      },
+    ],
+  },
+
   twinServers: {
     experimentDir: process.cwd(),
     controlDir: process.env.CONTROL_REPO_DIR || '../../shaka-perf-control/demo-ecommerce',
