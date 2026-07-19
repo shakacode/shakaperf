@@ -13,6 +13,7 @@ import {
   createE2eDependencies,
   createLinearFixture,
   createMergeFixture,
+  readPersistedSession,
   regressionTimeline,
   stubRegression,
   visregTimeline,
@@ -294,6 +295,38 @@ describe('compare bisect black-box E2E', () => {
           }],
         }),
       ]));
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  /*
+   * G clean -> N clean -> X compare throws -> BAD visreg
+   */
+  it('restores the experiment checkout and persists failure when compare throws', async () => {
+    const fixture = createLinearFixture(['G', 'N', 'X', 'BAD']);
+    try {
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: visregTimeline(fixture, {
+          G: false,
+          N: false,
+          X: true,
+          BAD: true,
+        }),
+        failAtSha: fixture.shas.X,
+      });
+
+      await expect(runBisect({
+        ...fixture.runOptions,
+        dependencies: harness.dependencies,
+      })).rejects.toThrow(/stubbed compare failure/i);
+
+      expect(readPersistedSession(fixture)).toMatchObject({
+        status: 'failed',
+        failure: expect.stringMatching(/stubbed compare failure/i),
+      });
       assertExperimentRestored(fixture);
     } finally {
       fixture.cleanup();

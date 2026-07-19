@@ -22,8 +22,8 @@ import type {
   ExecuteBisectDependencies,
   RunBisectOptions,
 } from '../session';
-import { writeBadRefTestsAtomic } from '../state';
-import type { BisectCategory } from '../types';
+import { parseBisectSession, writeBadRefTestsAtomic } from '../state';
+import type { BisectCategory, BisectSession } from '../types';
 
 export interface E2eRepositoryFixture {
   rootDir: string;
@@ -46,6 +46,7 @@ export interface E2eDependencyHarness {
 interface E2eDependencyOptions {
   fixture: E2eRepositoryFixture;
   resultsBySha: Record<string, readonly TestResult[]>;
+  failAtSha?: string;
 }
 
 export interface StubRegression {
@@ -190,6 +191,9 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
           categories: [...request.categories],
           tests: [...request.tests],
         });
+        if (request.sha === options.failAtSha) {
+          throw new Error(`Stubbed compare failure at ${request.sha}`);
+        }
         const results = options.resultsBySha[request.sha];
         if (!results) throw new Error(`No stubbed compare results for ${request.sha}`);
         return { testResults: filterCompareResults(results, request) };
@@ -462,4 +466,11 @@ export function assertExperimentRestored(fixture: E2eRepositoryFixture): void {
     .toBe(fixture.experimentBranch);
   expect(git(fixture.experimentDir, ['rev-parse', 'HEAD']))
     .toBe(fixture.originalExperimentSha);
+}
+
+export function readPersistedSession(fixture: E2eRepositoryFixture): BisectSession {
+  return parseBisectSession(JSON.parse(fs.readFileSync(
+    path.join(fixture.resultsDirectory, 'session.json'),
+    'utf8',
+  )));
 }
