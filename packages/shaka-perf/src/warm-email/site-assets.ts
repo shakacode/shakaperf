@@ -8,6 +8,7 @@
  */
 
 import { isPublicHost } from './public-host';
+import { escapeHtml as esc } from './html-escape';
 
 export { isPublicHost } from './public-host';
 
@@ -101,9 +102,6 @@ function isXmlDelimiter(character: string | undefined): boolean {
 export function faviconLinkTag(faviconUri: string | null): string {
   return faviconUri ? `<link rel="icon" href="${esc(faviconUri)}" />` : '';
 }
-
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // Pure: the favicon href a homepage declares, or null. Bounded input + a
 // de-nested tag scan (no adjacent unbounded quantifiers) so a hostile body

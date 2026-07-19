@@ -14,6 +14,7 @@
 
 import type { ClientReportDimNarrative, ClientReportNarrative, ClientReportStatus } from './client-report-renderer';
 import { BANNED_WORDS, findBannedWords } from './cost-strings';
+import { escapeHtml as escHtml } from './html-escape';
 
 const OUTPUT_DASH_RE = /\s*[\u2013\u2014]\s*/g;
 const FILTER_DASH_RE = /[\u2010-\u2015\u2212]/g;
@@ -256,9 +257,6 @@ export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: Cl
   const after = escHtml(text.slice(hit.i + hit.len));
   return `${before}<span style="color:${BOTTOM_HL[worstStatus]}; font-weight:700">${match}</span>${after}`;
 }
-
-const escHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // The full deterministic narrative (always renderable).
 export function buildDeterministicNarrative(f: NarrativeFacts): ClientReportNarrative {

@@ -37,6 +37,7 @@ import {
   type State as CostState,
   type Tab as CostTab,
 } from './cost-strings';
+import { escapeHtml as esc } from './html-escape';
 import {
   RECOVERY_CAP,
   type BenchmarkScaleGeometry,
@@ -52,9 +53,6 @@ import { scoreStatus } from './client-report-model/perf';
 // `ClientReportModel` (built in ./client-report.ts, which does all the IO).
 // Styling is inline per the design handoff; the <head> <style> only adds what
 // inline can't (font, :hover, tab/lightbox JS, mobile reflow).
-
-const esc = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 export type ClientReportStatus = 'good' | 'fair' | 'poor';
 
