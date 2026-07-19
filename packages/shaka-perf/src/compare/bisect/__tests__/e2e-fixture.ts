@@ -57,6 +57,16 @@ export interface StubRegression {
   subject: string;
 }
 
+export interface ExpectedFirstBadCommit {
+  regression: StubRegression;
+  commit: string;
+}
+
+export interface ExpectedMergeAttribution {
+  regression: StubRegression;
+  sourceCommit: string | null;
+}
+
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
@@ -85,9 +95,17 @@ export function createLinearFixture(labels: readonly string[]): E2eRepositoryFix
 }
 
 export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepositoryFixture {
-  const reservedLabels = ['G', 'S1', 'S2', 'M1', 'M'];
+  const reservedLabels = [
+    'known-good',
+    'topic-first-commit',
+    'topic-second-commit',
+    'mainline-before-merge',
+    'merge-topic-branch',
+  ];
   const allLabels = [...reservedLabels, ...afterMergeLabels];
-  if (afterMergeLabels.length === 0) throw new Error('A merge fixture requires a bad commit after M');
+  if (afterMergeLabels.length === 0) {
+    throw new Error('A merge fixture requires a bad commit after the merge commit');
+  }
   if (new Set(allLabels).size !== allLabels.length) throw new Error('Merge fixture labels must be unique');
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-e2e-'));
@@ -98,17 +116,17 @@ export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepo
   git(sourceDir, ['config', 'user.name', 'Bisect E2E']);
 
   const shas: Record<string, string> = {};
-  shas.G = commitLabel(sourceDir, 'G');
+  shas['known-good'] = commitLabel(sourceDir, 'known-good');
   git(sourceDir, ['checkout', '--quiet', '-b', 'topic']);
-  shas.S1 = commitLabel(sourceDir, 'S1');
-  shas.S2 = commitLabel(sourceDir, 'S2');
+  shas['topic-first-commit'] = commitLabel(sourceDir, 'topic-first-commit');
+  shas['topic-second-commit'] = commitLabel(sourceDir, 'topic-second-commit');
   git(sourceDir, ['checkout', '--quiet', 'main']);
-  shas.M1 = commitLabel(sourceDir, 'M1');
-  git(sourceDir, ['merge', '--quiet', '--no-ff', 'topic', '-m', 'M']);
-  shas.M = git(sourceDir, ['rev-parse', 'HEAD']);
+  shas['mainline-before-merge'] = commitLabel(sourceDir, 'mainline-before-merge');
+  git(sourceDir, ['merge', '--quiet', '--no-ff', 'topic', '-m', 'merge-topic-branch']);
+  shas['merge-topic-branch'] = git(sourceDir, ['rev-parse', 'HEAD']);
   for (const label of afterMergeLabels) shas[label] = commitLabel(sourceDir, label);
 
-  return finishFixture(rootDir, sourceDir, shas, 'G', afterMergeLabels.at(-1)!);
+  return finishFixture(rootDir, sourceDir, shas, 'known-good', afterMergeLabels.at(-1)!);
 }
 
 function finishFixture(
@@ -466,6 +484,60 @@ export function assertExperimentRestored(fixture: E2eRepositoryFixture): void {
     .toBe(fixture.experimentBranch);
   expect(git(fixture.experimentDir, ['rev-parse', 'HEAD']))
     .toBe(fixture.originalExperimentSha);
+}
+
+export function expectBinarySearchTraversal(
+  harness: E2eDependencyHarness,
+  fixture: E2eRepositoryFixture,
+  expectedCommitLabels: readonly string[],
+): void {
+  const labelsBySha = new Map(Object.entries(fixture.shas).map(([label, sha]) => [sha, label]));
+  const actualCommitLabels = harness.compareCalls.map((call) => {
+    const label = labelsBySha.get(call.sha);
+    if (!label) throw new Error(`Compare traversed unknown commit ${call.sha}`);
+    return label;
+  });
+  expect(actualCommitLabels).toEqual(expectedCommitLabels);
+}
+
+export function expectFirstBadCommits(
+  session: BisectSession,
+  fixture: E2eRepositoryFixture,
+  expected: readonly ExpectedFirstBadCommit[],
+): void {
+  for (const { regression, commit } of expected) {
+    expect(targetForRegression(session, regression)).toMatchObject({
+      status: 'found',
+      firstBadSha: fixture.shas[commit],
+    });
+  }
+}
+
+export function expectMergeAttributions(
+  session: BisectSession,
+  fixture: E2eRepositoryFixture,
+  mergeCommit: string,
+  expected: readonly ExpectedMergeAttribution[],
+): void {
+  const investigation = session.mergeInvestigations[fixture.shas[mergeCommit]!];
+  expect(investigation?.status).toBe('complete');
+  for (const { regression, sourceCommit } of expected) {
+    const target = targetForRegression(session, regression);
+    expect(investigation?.targetResults[target.id]).toEqual(sourceCommit === null
+      ? { kind: 'merge-introduced' }
+      : { kind: 'source-found', sourceSha: fixture.shas[sourceCommit] });
+  }
+}
+
+function targetForRegression(session: BisectSession, regression: StubRegression) {
+  const matchingTargets = session.primary.targets.filter((target) => (
+    target.category === regression.category
+    && target.testFile === regression.testFile
+    && target.testName === regression.testName
+    && target.subject === regression.subject
+  ));
+  expect(matchingTargets).toHaveLength(1);
+  return matchingTargets[0]!;
 }
 
 export function readPersistedSession(fixture: E2eRepositoryFixture): BisectSession {
