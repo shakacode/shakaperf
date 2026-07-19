@@ -86,6 +86,7 @@ describe('assembleClientReportModel', () => {
         a11yStatus: 'poor',
         highImpactTotal: 2,
         a11yCost: { tab: 'a11y', state: 'measured' },
+        a11yStrongPageGroup: { label: 'Strong pages', pages: [{ name: 'Contact', score: 98 }] },
       }),
     }), null);
 
@@ -94,6 +95,7 @@ describe('assembleClientReportModel', () => {
     expect(result).toMatchObject({
       perfCost: { state: 'measured' },
       a11yCost: { state: 'measured' },
+      a11yStrongPageGroup: { label: 'Strong pages', pages: [{ name: 'Contact', score: 98 }] },
       agentCost: { state: 'zero' },
     });
   });

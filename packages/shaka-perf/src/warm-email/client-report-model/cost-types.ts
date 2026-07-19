@@ -43,6 +43,7 @@ export interface CostBlockExtras {
   countedZeroLine?: string;
   // Filled only by later builder waves for the C renderer.
   sitePrompts?: CostSitePromptSlots;
+  // Kept nested on cost blocks for the AI tab only.
   strongPageGroup?: StrongPageGroup;
   scoreBadgePolicy?: ScoreBadgePolicy;
 }

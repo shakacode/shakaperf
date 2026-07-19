@@ -241,7 +241,10 @@ describe('cost-of-pain reframe model', () => {
       headline: '3 high-impact barriers keep some visitors from using the site.',
       headlineSub: 'The bar for any website is zero barriers that block someone. We found 3 on 2 of 3 pages checked.',
       scoreBadgePolicy: 'score-status',
-      strongPageGroup: { label: 'Strong pages', pages: [{ name: 'About', score: 96 }] },
+    });
+    expect(result.model.a11yStrongPageGroup).toEqual({
+      label: 'Strong pages',
+      pages: [{ name: 'About', score: 96 }],
     });
     expect(a11y?.gapSubLines).toEqual(expect.arrayContaining([
       'worst page: Platform - 2 high-impact',
@@ -422,7 +425,7 @@ describe('cost-of-pain reframe model', () => {
 
     expect(result.model.a11yCards).toHaveLength(1);
     expect(result.model.a11yCost?.headlineSub).toContain('on 1 of 2 pages checked');
-    expect(result.model.a11yCost?.strongPageGroup).toEqual({
+    expect(result.model.a11yStrongPageGroup).toEqual({
       label: 'Strong pages',
       pages: [{ name: 'Home after scroll', score: 98 }],
     });

@@ -269,6 +269,7 @@ export interface ClientReportModel {
   a11yScore?: number;
   a11yCards: ClientReportA11yCard[];
   a11yFine: ClientReportA11yFineRow[];
+  a11yStrongPageGroup?: StrongPageGroup;
   a11yBlocked: ClientReportBlockedPage[]; // pages walled by a bot challenge - "could not measure"
   a11yCouldNotMeasure: boolean; // true when NO a11y page could be measured
   // AI visibility (optional)
@@ -767,10 +768,7 @@ ${!blocked ? fixRow(cost) : ''}
 
 function costBlock(cost: ClientReportCostBlock | undefined): string {
   if (!cost) return '';
-  const groupingOnlyA11yZero = cost.tab === 'a11y'
-    && cost.state === 'zero'
-    && Object.keys(cost).every((key) => key === 'tab' || key === 'state' || key === 'strongPageGroup');
-  return groupingOnlyA11yZero ? '' : costGrammarBlock(cost);
+  return costGrammarBlock(cost);
 }
 
 function verdictHead(
@@ -1104,7 +1102,7 @@ function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string
   const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
-${m.a11yCost?.strongPageGroup ? strongPageGroupList(m.a11yCost.strongPageGroup) : ''}
+${m.a11yStrongPageGroup ? strongPageGroupList(m.a11yStrongPageGroup) : ''}
 ${a11yFineList(m.a11yFine)}
 ${blockedSection(m.a11yBlocked)}`;
   return panelWrap('a11y', body, multi, first);

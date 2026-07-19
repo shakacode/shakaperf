@@ -224,6 +224,7 @@ export function assembleClientReportModel(
     ...(a11y.a11yScore !== undefined ? { a11yScore: a11y.a11yScore } : {}),
     a11yCards: a11y.a11yCards,
     a11yFine: a11y.a11yFine,
+    ...(a11y.a11yStrongPageGroup ? { a11yStrongPageGroup: a11y.a11yStrongPageGroup } : {}),
     a11yBlocked: a11y.a11yBlocked,
     a11yCouldNotMeasure: a11y.a11yCouldNotMeasure,
     hasAgent: input.hasAgent,
