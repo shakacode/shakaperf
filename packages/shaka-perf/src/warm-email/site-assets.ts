@@ -7,6 +7,10 @@
  * License in LICENSE.md.
  */
 
+import { isPublicHost } from './public-host';
+
+export { isPublicHost } from './public-host';
+
 // The audited site's own favicon, inlined when it is a plausible icon so the
 // hosted report's browser tab shows the client's logo. Best-effort: rejected
 // or unavailable responses omit the icon link.
@@ -100,32 +104,6 @@ export function faviconLinkTag(faviconUri: string | null): string {
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-// Pure: reject hosts that point at the machine itself or a private network -
-// the obvious SSRF targets (loopback, RFC1918, CGNAT, link-local incl. the
-// 169.254.169.254 cloud-metadata endpoint) - when an audited site redirects its
-// favicon, or declares an icon URL, at an internal address. IP-literal only; a
-// hostname that DNS-resolves to a private IP is out of scope for a cosmetic
-// favicon fetch on a dev/CI box.
-export function isPublicHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[/, '').replace(/\]$/, '');
-  if (h === 'localhost' || h.endsWith('.localhost')) return false;
-  if (h.includes(':')) {
-    // IPv6 literal: loopback ::1, unique-local fc00::/7, link-local fe80::/10.
-    return !(h === '::1' || /^f[cd]/.test(h) || /^fe[89ab]/.test(h));
-  }
-  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const a = Number(v4[1]);
-    const b = Number(v4[2]);
-    if (a === 0 || a === 10 || a === 127) return false;
-    if (a === 169 && b === 254) return false;
-    if (a === 192 && b === 168) return false;
-    if (a === 172 && b >= 16 && b <= 31) return false;
-    if (a === 100 && b >= 64 && b <= 127) return false;
-  }
-  return true;
-}
 
 // Pure: the favicon href a homepage declares, or null. Bounded input + a
 // de-nested tag scan (no adjacent unbounded quantifiers) so a hostile body
