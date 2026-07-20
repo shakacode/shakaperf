@@ -982,12 +982,12 @@ function a11yShot(fr: ClientReportA11yFrame): string {
         </figure>`;
 }
 
-function scoreBadge(score: number | undefined): string {
+function scoreBadge(score: number | undefined, label = 'score'): string {
   if (typeof score !== 'number' || !Number.isFinite(score)) return '';
   const p = PAL[scoreStatus(score)];
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
             <div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>
-            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">score</div>
+            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">${label}</div>
           </div>`;
 }
 
@@ -1008,6 +1008,10 @@ function a11yCard(c: ClientReportA11yCard, index: number): string {
   const sevHint = boxedLevels.size > 0
     ? `\n          <span style="font-size:12px; color:#9b9286; align-self:center">&larr; tap to highlight</span>`
     : '';
+  const highImpactCount = c.sev.find((severity) => severity.label === 'high-impact')?.num ?? 0;
+  const lighthouseHint = typeof c.score === 'number' && c.score >= 90 && highImpactCount > 0
+    ? `        <div style="font-size:12px; color:#9b9286; margin:-6px 0 14px">The 90+ score is Lighthouse's scale; these counts come from a deeper scan.</div>`
+    : '';
   const shots = c.frames.length
     ? `        <div class="cr-strip" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-start">
 ${c.frames.map(a11yShot).join('\n')}
@@ -1026,9 +1030,10 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             <div style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#9b9286">${esc(c.path)}</div>
           </div>
-          ${scoreBadge(c.score)}
+          ${scoreBadge(c.score, 'Lighthouse')}
         </div>
         ${sev ? `<div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; align-items:center">\n${sev}${sevHint}\n        </div>` : ''}
+${lighthouseHint}
         ${c.summary ? `<p style="font-size:15.5px; line-height:1.55; color:#3a352e; margin:0 0 18px; max-width:64ch">${esc(c.summary)}</p>` : ''}
 ${shots}
 ${fixes}

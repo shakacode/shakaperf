@@ -184,7 +184,7 @@ export function buildCanonicalA11ySitePrompt(input: BuildCanonicalA11ySitePrompt
       host: promptContext.host,
       date: promptContext.date,
       pageCount: promptViews.length,
-      highImpactCount: promptFamilySummary.headlineCount,
+      highImpactCount: promptFamilySummary.occurrenceCount,
       worstPage: { url: a11yPageUrl(siteUrl, promptWorst), highImpactCount: promptWorstFamilyCount },
       pageUrls: promptViews.map((view) => a11yPageUrl(siteUrl, view)),
       findings,

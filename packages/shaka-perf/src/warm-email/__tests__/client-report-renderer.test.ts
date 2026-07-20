@@ -1438,6 +1438,28 @@ describe('renderClientReport perf tile assembly', () => {
     expect(a11yPanelHtml).not.toContain('$0.');
   });
 
+  it('labels a11y scores as Lighthouse and explains the separate scan only when needed', async () => {
+    const highScore = await renderClientReport(writePerfResultsForPages([{
+      id: 'high-score', name: 'High score', startingPath: '/high-score', metrics: {},
+      a11y: { score: 96, violations: [{ ruleId: 'button-name', impact: 'serious', selectors: ['button.checkout'] }] },
+    }]));
+    const lowScore = await renderClientReport(writePerfResultsForPages([{
+      id: 'low-score', name: 'Low score', startingPath: '/low-score', metrics: {},
+      a11y: { score: 70, violations: [{ ruleId: 'button-name', impact: 'serious', selectors: ['button.checkout'] }] },
+    }]));
+    const noHighImpact = await renderClientReport(writePerfResultsForPages([{
+      id: 'no-high-impact', name: 'No high impact', startingPath: '/no-high-impact', metrics: {},
+      a11y: { score: 96, violations: [{ ruleId: 'color-contrast', impact: 'moderate', selectors: ['.copy'] }] },
+    }]));
+
+    const hint = "The 90+ score is Lighthouse's scale; these counts come from a deeper scan.";
+    expect(renderedPanel(highScore.html, 'a11y')).toContain('>Lighthouse</div>');
+    expect(renderedPanel(highScore.html, 'a11y')).toContain(hint);
+    expect(renderedPanel(lowScore.html, 'a11y')).toContain('>Lighthouse</div>');
+    expect(renderedPanel(lowScore.html, 'a11y')).not.toContain(hint);
+    expect(renderedPanel(noHighImpact.html, 'a11y')).not.toContain(hint);
+  });
+
   it('skips malformed a11y node HTML while still building selectors-only prompts', async () => {
     const { html } = await renderClientReport(writePerfResultsForPages([
       {
@@ -1575,6 +1597,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(withCost.html).toContain('over the Fast-3G profile -');
     expect(withCost.html).not.toContain('Fast-3G profile Google PageSpeed uses');
     expect(withCost.html).toContain(FOOTER_GUARDRAIL);
+    expect(withCost.html).toContain('issue counts come from a deeper axe-core scan whose rules sit partly outside Lighthouse');
 
     const cleanPerf = await renderClientReport(writePerfResults({
       LCP: 1900,

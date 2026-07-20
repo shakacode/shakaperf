@@ -238,8 +238,8 @@ describe('cost-of-pain reframe model', () => {
     const a11y = result.model.a11yCost;
     expect(a11y).toMatchObject({
       state: 'measured',
-      headline: '3 high-impact barriers keep some visitors from using the site.',
-      headlineSub: 'The bar for any website is zero barriers that block someone. We found 3 on 2 of 3 pages checked.',
+      headline: '2 high-impact barriers keep some visitors from using the site.',
+      headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 on 2 of 3 pages checked. One of them repeats on 2 pages via a shared component - one fix clears it everywhere.',
       scoreBadgePolicy: 'score-status',
     });
     expect(result.model.a11yStrongPageGroup).toEqual({
@@ -250,7 +250,7 @@ describe('cost-of-pain reframe model', () => {
       'worst page: Platform - 2 high-impact',
       'touch targets too small to tap reliably - 2 pages',
       'images with no text description - 1 page',
-      'also seen, not counted in the 3: text that is too hard to read - 1 page',
+      'also seen, not counted in the 2: text that is too hard to read - 1 page',
       'WCAG - passes at zero critical barriers',
     ]));
     expect(a11y?.sitePrompts?.a11y).toContain('Goal: all 3 high-impact issues pass');
@@ -395,7 +395,12 @@ describe('cost-of-pain reframe model', () => {
       basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: 'a[href="https://example.com/contact"]' }] } }),
     ]));
 
+    expect(result.model.a11yCost).toMatchObject({
+      headline: '1 high-impact barrier keeps some visitors from using the site.',
+      headlineSub: 'The bar for any website is zero barriers that block someone. We found 1 across your 2 pages. It repeats on all 2 pages via a shared component - one fix clears it everywhere.',
+    });
     expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+    expect(result.html).toContain('data-copy-prompt="cr-a11y-site-prompt"');
   });
 
   it('keeps a shared user-card selector as a11y prompt evidence', async () => {

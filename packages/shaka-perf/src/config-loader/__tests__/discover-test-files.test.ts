@@ -80,7 +80,7 @@ describe('findTestFiles', () => {
 
     const results = findTestFiles({ cwd: tmpDir });
     expect(results).toHaveLength(1);
-    expect(results[0]).not.toContain('dist');
+    expect(path.relative(tmpDir, results[0])).not.toMatch(/(?:^|[\\/])dist(?:[\\/]|$)/);
   });
 
   it('skips build, .next, and coverage directories', () => {

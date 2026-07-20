@@ -103,6 +103,22 @@ describe('buildA11ySection', () => {
     });
   });
 
+  it('names multiple shared components after the distinct-defect headline', () => {
+    const prepared = prepareA11ySection([
+      promptView('home', 'Home', '/', [promptViolation('target-size', 'serious'), promptViolation('image-alt', 'serious')]),
+      promptView('about', 'About', '/about', [promptViolation('target-size', 'serious'), promptViolation('image-alt', 'serious')]),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result).toMatchObject({
+      highImpactTotal: 2,
+      a11yCost: {
+        headline: '2 high-impact barriers keep some visitors from using the site.',
+        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. 2 of them repeat across multiple pages via shared components - one fix each clears them everywhere.',
+      },
+    });
+  });
+
   it('keeps optional contrast data absent when the scan has no contrast finding', () => {
     const prepared = prepareA11ySection([view('serious')]);
     const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
