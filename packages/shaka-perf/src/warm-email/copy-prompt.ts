@@ -85,7 +85,7 @@ export interface A11ySitePromptData {
   host: string;
   date: string;
   pageCount: number;
-  /** Reconciled headline count: one critical or serious family per affected page. */
+  /** Reconciled occurrence count: one critical or serious family per affected page. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
   pageUrls: readonly string[];

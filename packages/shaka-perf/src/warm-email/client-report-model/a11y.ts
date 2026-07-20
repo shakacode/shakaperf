@@ -30,6 +30,7 @@ export {
   type A11yRuleFamilyScan,
   type A11yRuleFamilySummary,
   type A11yRuleFamilyViolation,
+  type A11yRuleFamilyViolationNode,
 } from './a11y-rule-families';
 
 export interface A11yPromptRule {
@@ -316,6 +317,14 @@ export function buildA11ySection(
   const a11yHeadlineScope = cardedA11y.length === a11yMeasurable.length
     ? `across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}`
     : `on ${cardedA11y.length} of ${a11yMeasurable.length} pages checked`;
+  const a11ySharedDefects = a11yFamilySummary.sharedDefects;
+  const a11ySharedComponentNote = a11ySharedDefects.length === 0
+    ? ''
+    : a11ySharedDefects.length === 1
+      ? highImpactTotal === 1
+        ? ` It repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
+        : ` One of them repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
+      : ` ${a11ySharedDefects.length} of them repeat across multiple pages via shared components - one fix each clears them everywhere.`;
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
   const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
@@ -355,7 +364,7 @@ export function buildA11ySection(
       tab: 'a11y',
       state: 'measured',
       headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
-      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.${a11ySharedComponentNote}`,
       affectsProse: a11yAffects(a11yWorst.scan),
       ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
       gapSubLines: a11yFindingLines,
