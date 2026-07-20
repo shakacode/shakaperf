@@ -214,6 +214,25 @@ describe('fetchSiteFavicon', () => {
   });
 
   it.each([
+    ['a non-success response', 404, {}],
+    ['an oversized declared response', 200, { 'content-length': String(512 * 1024 + 1) }],
+  ])('cancels %s before falling back', async (_label, status, headers) => {
+    const faviconResponse = response('https://example.com/favicon.ico', status, 'error body', headers);
+    const cancelSpy = jest.spyOn(faviconResponse.body!, 'cancel');
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      if (String(input) === 'https://example.com/favicon.ico') return faviconResponse;
+      if (String(input) === 'https://example.com/') {
+        return response('https://example.com/', 200, 'no icon', { 'content-type': 'text/html' });
+      }
+      throw new Error(`Unexpected URL: ${String(input)}`);
+    });
+
+    await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
     ['a missing Location header', undefined],
     ['a malformed Location header', 'http://[::1'],
     ['a non-http Location header', 'ftp://example.com/favicon.ico'],

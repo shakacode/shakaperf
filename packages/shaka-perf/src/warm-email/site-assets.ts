@@ -169,9 +169,15 @@ export async function fetchSiteFavicon(siteUrl: string): Promise<string | null> 
           if (!isPublicHost(target.hostname)) return null;
           continue;
         }
-        if (!res.ok) return null;
+        if (!res.ok) {
+          await res.body?.cancel().catch(() => {});
+          return null;
+        }
         const declared = Number(res.headers.get('content-length'));
-        if (Number.isFinite(declared) && declared > FAVICON_MAX_BYTES) return null;
+        if (Number.isFinite(declared) && declared > FAVICON_MAX_BYTES) {
+          await res.body?.cancel().catch(() => {});
+          return null;
+        }
         const reader = res.body?.getReader();
         if (!reader) return null;
         const chunks: Uint8Array[] = [];
