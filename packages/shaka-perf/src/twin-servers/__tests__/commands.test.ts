@@ -66,6 +66,7 @@ function createMockConfig(tmpDir: string): ResolvedConfig {
     },
     ports: { control: 3020, experiment: 3030 },
     setupCommands: [],
+    rebuildCommands: [],
     projectSlug: 'test-slug',
   };
 }

@@ -95,6 +95,16 @@ export default defineConfig({
       control: CONTROL_PORT,
       experiment: EXPERIMENT_PORT,
     },
+    rebuildCommands: [
+      {
+        description: 'Install JavaScript dependencies',
+        command: 'yarn install --immutable',
+      },
+      {
+        description: 'Precompile application assets',
+        command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
+      },
+    ],
     setupCommands: [
       { command: 'bin/rails db:prepare', description: 'Preparing database' },
       { command: 'bin/rails db:seed', description: 'Seeding database' },

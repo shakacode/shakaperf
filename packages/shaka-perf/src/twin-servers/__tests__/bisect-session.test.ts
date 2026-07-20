@@ -52,6 +52,7 @@ function fakeConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
     },
     ports: { control: 3020, experiment: 3030 },
     setupCommands: [{ command: 'bin/setup', description: 'Set up experiment' }],
+    rebuildCommands: [],
     projectSlug: 'bisect-session',
     ...overrides,
   };

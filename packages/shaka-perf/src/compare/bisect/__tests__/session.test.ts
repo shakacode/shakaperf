@@ -32,8 +32,10 @@ import type { BisectSummaryMetadata } from '../persistence';
 function config(): AbTestsConfig {
   return {
     bisect: {
-      rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
       rebuildContainer: false,
+    },
+    twinServers: {
+      rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],
     },
   } as AbTestsConfig;
 }
