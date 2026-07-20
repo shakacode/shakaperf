@@ -245,8 +245,10 @@ describe('compare bisect black-box E2E', () => {
    *      ^ source first bad                                ^ primary first bad is merge
    * -> good-unrelated-commit-one -> good-unrelated-commit-two -> known-bad
    *    ^ skipped                     ^ skipped
+   *
+   * First run: primary only. Resume: investigate the merge source without repeating primary work.
    */
-  it('finds a regression on a merged branch after locating the primary merge', async () => {
+  it('resumes a completed primary run to investigate a merged regression source', async () => {
     const fixture = createMergeFixture([
       'good-unrelated-commit-one',
       'good-unrelated-commit-two',
@@ -254,41 +256,70 @@ describe('compare bisect black-box E2E', () => {
     ]);
     try {
       const performance = stubRegression('performance', 'perf');
-      const harness = createE2eDependencies({
+      const resultsBySha = regressionTimeline(fixture, [performance], {
+        'known-good': [],
+        'mainline-before-merge': [],
+        'topic-first-commit': ['performance'],
+        'topic-second-commit': ['performance'],
+        'merge-topic-branch': ['performance'],
+        'good-unrelated-commit-one': ['performance'],
+        'good-unrelated-commit-two': ['performance'],
+        'known-bad': ['performance'],
+      });
+      const primaryHarness = createE2eDependencies({
         fixture,
-        resultsBySha: regressionTimeline(fixture, [performance], {
-          'known-good': [],
-          'mainline-before-merge': [],
-          'topic-first-commit': ['performance'],
-          'topic-second-commit': ['performance'],
-          'merge-topic-branch': ['performance'],
-          'good-unrelated-commit-one': ['performance'],
-          'good-unrelated-commit-two': ['performance'],
-          'known-bad': ['performance'],
-        }),
+        resultsBySha,
       });
 
-      const session = await runBisect({
+      const primarySession = await runBisect({
         ...fixture.runOptions,
         selectedCategories: ['perf'],
-        investigateMerges: true,
-        dependencies: harness.dependencies,
+        investigateMerges: false,
+        dependencies: primaryHarness.dependencies,
       });
 
-      expectFirstBadCommits(session, fixture, [
+      expectFirstBadCommits(primarySession, fixture, [
         { regression: performance, commit: 'merge-topic-branch' },
       ]);
-      expectMergeAttributions(session, fixture, 'merge-topic-branch', [
-        { regression: performance, sourceCommit: 'topic-first-commit' },
-      ]);
-      expectBinarySearchTraversal(harness, fixture, [
+      const primaryTarget = primarySession.primary.targets[0]!;
+      expect(primarySession.mergeInvestigations[fixture.shas['merge-topic-branch']!])
+        .toMatchObject({
+          status: 'merge-uninvestigated',
+          targetResults: {
+            [primaryTarget.id]: { kind: 'merge-uninvestigated' },
+          },
+        });
+      expectBinarySearchTraversal(primaryHarness, fixture, [
         'known-bad',
         'merge-topic-branch',
         'mainline-before-merge',
+      ]);
+      expectCommitsSkippedByBinarySearch(primaryHarness, fixture, [
+        'good-unrelated-commit-one',
+        'good-unrelated-commit-two',
+      ]);
+      assertExperimentRestored(fixture);
+
+      const resumeHarness = createE2eDependencies({ fixture, resultsBySha });
+      const resumedSession = await runBisect({
+        ...fixture.runOptions,
+        selectedCategories: ['perf'],
+        resume: true,
+        investigateMerges: true,
+        dependencies: resumeHarness.dependencies,
+      });
+
+      expectFirstBadCommits(resumedSession, fixture, [
+        { regression: performance, commit: 'merge-topic-branch' },
+      ]);
+      expectMergeAttributions(resumedSession, fixture, 'merge-topic-branch', [
+        { regression: performance, sourceCommit: 'topic-first-commit' },
+      ]);
+      expectBinarySearchTraversal(resumeHarness, fixture, [
         'topic-second-commit',
         'topic-first-commit',
       ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
+      expectCommitsSkippedByBinarySearch(resumeHarness, fixture, [
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
@@ -305,8 +336,10 @@ describe('compare bisect black-box E2E', () => {
    *                                                        ^ regression starts at merge
    * -> good-unrelated-commit-one -> good-unrelated-commit-two -> known-bad
    *    ^ skipped                     ^ skipped
+   *
+   * First run: merge validation fails. Resume: retry only merge validation.
    */
-  it('classifies a regression created by merge resolution as merge introduced', async () => {
+  it('resumes an interrupted merge investigation and classifies merge-introduced regression', async () => {
     const fixture = createMergeFixture([
       'good-unrelated-commit-one',
       'good-unrelated-commit-two',
@@ -314,39 +347,58 @@ describe('compare bisect black-box E2E', () => {
     ]);
     try {
       const visual = stubRegression('visual', 'visreg');
-      const harness = createE2eDependencies({
+      const resultsBySha = regressionTimeline(fixture, [visual], {
+        'known-good': [],
+        'mainline-before-merge': [],
+        'topic-first-commit': [],
+        'topic-second-commit': [],
+        'merge-topic-branch': ['visual'],
+        'good-unrelated-commit-one': ['visual'],
+        'good-unrelated-commit-two': ['visual'],
+        'known-bad': ['visual'],
+      });
+      const interruptedHarness = createE2eDependencies({
         fixture,
-        resultsBySha: regressionTimeline(fixture, [visual], {
-          'known-good': [],
-          'mainline-before-merge': [],
-          'topic-first-commit': [],
-          'topic-second-commit': [],
-          'merge-topic-branch': ['visual'],
-          'good-unrelated-commit-one': ['visual'],
-          'good-unrelated-commit-two': ['visual'],
-          'known-bad': ['visual'],
-        }),
+        resultsBySha,
+        failAtSha: fixture.shas['topic-second-commit'],
       });
 
-      const session = await runBisect({
+      await expect(runBisect({
         ...fixture.runOptions,
         investigateMerges: true,
-        dependencies: harness.dependencies,
-      });
+        dependencies: interruptedHarness.dependencies,
+      })).rejects.toThrow(/stubbed compare failure/i);
 
-      expectFirstBadCommits(session, fixture, [
-        { regression: visual, commit: 'merge-topic-branch' },
-      ]);
-      expectMergeAttributions(session, fixture, 'merge-topic-branch', [
-        { regression: visual, sourceCommit: null },
-      ]);
-      expectBinarySearchTraversal(harness, fixture, [
+      expect(readPersistedSession(fixture)).toMatchObject({
+        status: 'failed',
+        mode: 'merge-investigation',
+      });
+      expectBinarySearchTraversal(interruptedHarness, fixture, [
         'known-bad',
         'merge-topic-branch',
         'mainline-before-merge',
         'topic-second-commit',
       ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
+      assertExperimentRestored(fixture);
+
+      const resumeHarness = createE2eDependencies({ fixture, resultsBySha });
+      const resumedSession = await runBisect({
+        ...fixture.runOptions,
+        resume: true,
+        investigateMerges: true,
+        dependencies: resumeHarness.dependencies,
+      });
+
+      expectFirstBadCommits(resumedSession, fixture, [
+        { regression: visual, commit: 'merge-topic-branch' },
+      ]);
+      expectMergeAttributions(resumedSession, fixture, 'merge-topic-branch', [
+        { regression: visual, sourceCommit: null },
+      ]);
+      expectBinarySearchTraversal(resumeHarness, fixture, [
+        'topic-second-commit',
+      ]);
+      expectCommitsSkippedByBinarySearch(resumeHarness, fixture, [
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
@@ -457,8 +509,10 @@ describe('compare bisect black-box E2E', () => {
    *    ^ traversed good commit
    * -> good-unrelated-commit-two -> known-bad
    *    ^ skipped
+   *
+   * First run: midpoint comparison fails. Resume: retry that midpoint without merge work.
    */
-  it('restores the experiment checkout and persists failure when compare throws', async () => {
+  it('resumes an interrupted primary search without merge investigations', async () => {
     const fixture = createLinearFixture([
       'known-good',
       'good-unrelated-commit-one',
@@ -469,35 +523,57 @@ describe('compare bisect black-box E2E', () => {
       'known-bad',
     ]);
     try {
-      const harness = createE2eDependencies({
+      const visual = stubRegression('visual', 'visreg');
+      const resultsBySha = visregTimeline(fixture, {
+        'known-good': false,
+        'good-unrelated-commit-one': false,
+        'clean-before-failure': false,
+        'good-unrelated-commit-traversed': false,
+        'compare-failure': true,
+        'good-unrelated-commit-two': true,
+        'known-bad': true,
+      });
+      const interruptedHarness = createE2eDependencies({
         fixture,
-        resultsBySha: visregTimeline(fixture, {
-          'known-good': false,
-          'good-unrelated-commit-one': false,
-          'clean-before-failure': false,
-          'good-unrelated-commit-traversed': false,
-          'compare-failure': true,
-          'good-unrelated-commit-two': true,
-          'known-bad': true,
-        }),
+        resultsBySha,
         failAtSha: fixture.shas['compare-failure'],
       });
 
       await expect(runBisect({
         ...fixture.runOptions,
-        dependencies: harness.dependencies,
+        investigateMerges: false,
+        dependencies: interruptedHarness.dependencies,
       })).rejects.toThrow(/stubbed compare failure/i);
 
       expect(readPersistedSession(fixture)).toMatchObject({
         status: 'failed',
         failure: expect.stringMatching(/stubbed compare failure/i),
       });
-      expectBinarySearchTraversal(harness, fixture, [
+      expectBinarySearchTraversal(interruptedHarness, fixture, [
         'known-bad',
         'good-unrelated-commit-traversed',
         'compare-failure',
       ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
+      expectCommitsSkippedByBinarySearch(interruptedHarness, fixture, [
+        'good-unrelated-commit-one',
+        'good-unrelated-commit-two',
+      ]);
+      assertExperimentRestored(fixture);
+
+      const resumeHarness = createE2eDependencies({ fixture, resultsBySha });
+      const resumedSession = await runBisect({
+        ...fixture.runOptions,
+        resume: true,
+        investigateMerges: false,
+        dependencies: resumeHarness.dependencies,
+      });
+
+      expect(resumedSession.status).toBe('complete');
+      expectFirstBadCommits(resumedSession, fixture, [
+        { regression: visual, commit: 'compare-failure' },
+      ]);
+      expectBinarySearchTraversal(resumeHarness, fixture, ['compare-failure']);
+      expectCommitsSkippedByBinarySearch(resumeHarness, fixture, [
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
