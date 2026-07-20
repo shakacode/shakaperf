@@ -8,8 +8,8 @@
  */
 
 import {
-  applyCachedObservations,
-  applyObservations,
+  recalculateTargetBoundariesFromCachedObservations,
+  recordCommitObservationsAndUpdateTargetBoundaries,
   nextCandidate,
   type BisectSearchInput,
 } from '../search';
@@ -65,7 +65,7 @@ function target(value: BisectSearchInput, id: string): BisectTarget {
 
 describe('bisect scheduler', () => {
   it('rejects a degenerate active interval instead of scheduling empty work', () => {
-    const normalized = applyCachedObservations(session([
+    const normalized = recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 0,
         badIndex: 0,
@@ -77,7 +77,7 @@ describe('bisect scheduler', () => {
   });
 
   it('rejects a candidate with no unobserved active targets', () => {
-    const normalized = applyCachedObservations(session([
+    const normalized = recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg'),
     ]));
     normalized.targets[0].observations.b = observation('visual', true, 'b');
@@ -86,7 +86,7 @@ describe('bisect scheduler', () => {
   });
 
   it('updates divergent target intervals independently', () => {
-    const updated = applyObservations(session([
+    const updated = recordCommitObservationsAndUpdateTargetBoundaries(session([
       bisectTarget('visual', 'visreg'),
       bisectTarget('tbt', 'perf'),
       bisectTarget('button-name', 'accessibility'),
@@ -100,7 +100,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects the first target by category priority and stable id', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('zebra', 'visreg', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('alpha', 'visreg', { goodIndex: 0, badIndex: 2 }),
       bisectTarget('tbt', 'perf'),
@@ -119,7 +119,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects only the active test from a file containing multiple tests', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('account-overview', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Account overview',
@@ -138,7 +138,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects multiple active tests from the same file once each', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('account-overview-document', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Account overview',
@@ -162,7 +162,7 @@ describe('bisect scheduler', () => {
   });
 
   it('keeps identical test names in different files distinct', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('account-overview', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Overview',
@@ -180,7 +180,7 @@ describe('bisect scheduler', () => {
   });
 
   it('groups every active target whose interval contains the candidate', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 4 }),
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('button-name', 'accessibility', { goodIndex: 2, badIndex: 4 }),
@@ -190,7 +190,7 @@ describe('bisect scheduler', () => {
   });
 
   it('subtracts targets with cached observations at the candidate', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
         badIndex: 3,
@@ -217,7 +217,7 @@ describe('bisect scheduler', () => {
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
     ]);
 
-    const normalized = applyCachedObservations(initial);
+    const normalized = recalculateTargetBoundariesFromCachedObservations(initial);
 
     expect(target(initial, 'visual')).toMatchObject({ status: 'active', goodIndex: 0, badIndex: 4 });
     expect(target(normalized, 'visual')).toMatchObject({
@@ -235,7 +235,7 @@ describe('bisect scheduler', () => {
   });
 
   it('requires no rerun and exposes persistable found boundaries when every candidate is cached', () => {
-    const normalized = applyCachedObservations(session([
+    const normalized = recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
         badIndex: 3,
@@ -273,11 +273,11 @@ describe('bisect scheduler', () => {
       nextCandidate(rawSession);
     }
 
-    expect(nextCandidate(applyCachedObservations(rawSession))?.sha).toBe('b');
+    expect(nextCandidate(recalculateTargetBoundariesFromCachedObservations(rawSession))?.sha).toBe('b');
   });
 
   it('finds the first bad commit when boundaries become adjacent', () => {
-    const updated = applyObservations(session([
+    const updated = recordCommitObservationsAndUpdateTargetBoundaries(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 2 }),
     ]), 'a', new Map([
       ['visual', observation('visual', true, 'a')],
@@ -304,15 +304,15 @@ describe('bisect scheduler', () => {
     };
     const originalTarget = target(initial, 'visual');
 
-    expect(() => applyObservations(initial, 'b', new Map([
+    expect(() => recordCommitObservationsAndUpdateTargetBoundaries(initial, 'b', new Map([
       ['visual', observation('visual', true)],
-    ]))).toThrow('Cannot apply observations for b: compare timed out');
+    ]))).toThrow('Cannot record commit observations for b: compare timed out');
     expect(target(initial, 'visual')).toBe(originalTarget);
     expect(originalTarget).toMatchObject({ goodIndex: 0, badIndex: 4, observations: {} });
   });
 
   it('skips invalid targets', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(session([
       bisectTarget('visual', 'visreg', {
         status: 'invalid',
         invalidReason: 'Present at known-good commit',

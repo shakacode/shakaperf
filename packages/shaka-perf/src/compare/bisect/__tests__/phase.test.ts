@@ -273,6 +273,6 @@ describe('runSearchPhase', () => {
         };
         return result(work.sha, [observation('visual', work.sha, true)]);
       },
-    })).rejects.toThrow('Cannot apply observations for b: container refresh failed');
+    })).rejects.toThrow('Cannot record commit observations for b: container refresh failed');
   });
 });

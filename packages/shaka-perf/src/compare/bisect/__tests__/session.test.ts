@@ -155,7 +155,7 @@ interface HarnessOptions {
   signal?: NodeJS.Signals;
   beginSessionError?: Error;
   checkoutErrorBySha?: Record<string, Error>;
-  materializeErrorBySha?: Record<string, Error>;
+  syncCandidateFilesErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
@@ -172,7 +172,7 @@ function deps(
   emitSignal(signal: NodeJS.Signals): void;
   calls: {
     checkouts: string[];
-    materialized: Array<[string | null, string]>;
+    syncedCandidateFiles: Array<[string | null, string]>;
     refreshes: string[];
     compares: Array<{
       sha: string;
@@ -199,7 +199,7 @@ function deps(
 } {
   const calls = {
     checkouts: [] as string[],
-    materialized: [] as Array<[string | null, string]>,
+    syncedCandidateFiles: [] as Array<[string | null, string]>,
     refreshes: [] as string[],
     compares: [] as Array<{
       sha: string;
@@ -251,7 +251,7 @@ function deps(
         if (checkoutError) throw checkoutError;
       },
       async restore(request) {
-        calls.restored.push([request.previousSha, request.originalSha]);
+        calls.restored.push([request.previouslySyncedSha, request.originalSha]);
         calls.events.push('checkout:original');
         calls.events.push('sync:original');
         calls.events.push('refresh:original');
@@ -261,11 +261,11 @@ function deps(
       clearPriorReportOutput() {
         options.clearPriorReportOutput?.();
       },
-      async materialize(request) {
-        calls.materialized.push([request.previousSha, request.candidateSha]);
-        calls.events.push(`materialize:${request.candidateSha}`);
-        const materializeError = options.materializeErrorBySha?.[request.candidateSha];
-        if (materializeError) throw materializeError;
+      async syncCandidateFilesToExperimentVolume(request) {
+        calls.syncedCandidateFiles.push([request.previouslySyncedSha, request.candidateSha]);
+        calls.events.push(`sync-candidate-files:${request.candidateSha}`);
+        const syncCandidateFilesError = options.syncCandidateFilesErrorBySha?.[request.candidateSha];
+        if (syncCandidateFilesError) throw syncCandidateFilesError;
       },
       async refresh(request) {
         calls.refreshes.push(request.sha);
@@ -390,7 +390,7 @@ describe('compare bisect session orchestration', () => {
       },
     }]);
     expect(harness.calls.checkouts).toEqual(['bad', 'a', 'b']);
-    expect(harness.calls.materialized).toEqual([
+    expect(harness.calls.syncedCandidateFiles).toEqual([
       [null, 'bad'],
       ['bad', 'a'],
       ['a', 'b'],
@@ -507,7 +507,7 @@ describe('compare bisect session orchestration', () => {
     expect(resumed.primary?.status).toBe('complete');
     expect(resumeHarness.calls.events).not.toContain('lease:begin');
     expect(resumeHarness.calls.checkouts).toEqual([]);
-    expect(resumeHarness.calls.materialized).toEqual([]);
+    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([]);
     expect(resumeHarness.calls.compares).toEqual([]);
   });
 
@@ -531,7 +531,7 @@ describe('compare bisect session orchestration', () => {
 
     expect(resumed.status).toBe('complete');
     expect(resumeHarness.calls.events[0]).toBe('lease:begin');
-    expect(resumeHarness.calls.materialized).toEqual([
+    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([
       [null, 'a'],
       ['a', 'b'],
     ]);
@@ -958,18 +958,18 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
-  it('forces a full restore reconcile after materialization partially fails', async () => {
+  it('forces a full restore reconcile after candidate file synchronization partially fails', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       bad: [resultWithVisualDiff('diff.png')],
     }, {
-      materializeErrorBySha: {
-        a: new Error('materialize partially copied then exploded'),
+      syncCandidateFilesErrorBySha: {
+        a: new Error('candidate file sync partially copied then exploded'),
       },
     });
 
     await expect(executeBisect(input(rootDir), harness.deps))
-      .rejects.toThrow(/materialize partially copied then exploded/i);
+      .rejects.toThrow(/candidate file sync partially copied then exploded/i);
 
     expect(harness.calls.restored).toEqual([[null, 'bad']]);
   });
@@ -992,7 +992,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, materialize, refresh, compare, and boundary checkpoints', async () => {
+  it('persists checkout, candidate file sync, refresh, compare, and boundary checkpoints', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -1002,7 +1002,7 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'materialize:bad', 'refresh:bad', 'compare:bad']) {
+    for (const event of ['checkout:bad', 'sync-candidate-files:bad', 'refresh:bad', 'compare:bad']) {
       expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (

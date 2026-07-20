@@ -8,7 +8,7 @@
  */
 
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
-import { assertNoPipelineErrors, discoverTargets, observeTargets } from '../analyze';
+import { assertNoPipelineErrors, discoverTargets, deriveTargetObservationsFromTestResults } from '../analyze';
 import type { BisectTarget, TargetObservation } from '../types';
 import type { AccessibilityFindingStatus } from '../../stages/accessibility';
 import type { PerfArtifact } from '../../stages/perf';
@@ -155,7 +155,7 @@ describe('bisect regression analysis', () => {
   it('discovers stable typed targets and observations across all categories', () => {
     const results = [testResult()];
     const targets = discoverTargets(results, ['good', 'candidate', 'bad'], 'bad');
-    const observations = observeTargets(results, targets, 'bad');
+    const observations = deriveTargetObservationsFromTestResults(results, targets, 'bad');
 
     expect(targets.map((item: BisectTarget) => [item.category, item.subject])).toEqual([
       ['accessibility', 'button-name'],
@@ -242,7 +242,7 @@ describe('bisect regression analysis', () => {
     ], ['good', 'bad'], 'bad')[0]!;
     const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
 
-    expect(observeTargets(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
+    expect(deriveTargetObservationsFromTestResults(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
       { targetId: existingTarget.id, commitSha: 'candidate', present: false },
     ]);
   });
@@ -253,7 +253,7 @@ describe('bisect regression analysis', () => {
     ], ['good', 'bad'], 'bad')
       .find((target) => target.category === 'visreg')!;
 
-    expect(() => observeTargets([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
+    expect(() => deriveTargetObservationsFromTestResults([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
       .toThrow(/missing visreg measurement/i);
   });
 

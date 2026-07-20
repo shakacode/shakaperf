@@ -15,6 +15,7 @@ import type {
   Normalized,
   TargetObservation,
 } from './types';
+import { BisectTargetModel } from './models';
 
 const categoryPriority: Record<BisectCategory, number> = {
   visreg: 0,
@@ -41,30 +42,35 @@ export interface BisectSearchInput {
 }
 
 export function nextCandidate(session: Normalized<BisectSearchInput>): CandidateWork | null {
-  const selectedTarget = session.targets
-    .filter((target) => target.status === 'active')
-    .sort((left, right) => categoryPriority[left.category] - categoryPriority[right.category]
-      || left.id.localeCompare(right.id))[0];
+  const targetModels = session.targets.map((target) => (
+    BisectTargetModel.from(target, session.orderedCommits)
+  ));
+  const selectedTargetModel = targetModels
+    .filter((target) => target.isActive())
+    .sort((left, right) => {
+      const leftTarget = left.toTarget();
+      const rightTarget = right.toTarget();
+      return categoryPriority[leftTarget.category] - categoryPriority[rightTarget.category]
+        || leftTarget.id.localeCompare(rightTarget.id);
+    })[0];
 
-  if (!selectedTarget) return null;
+  if (!selectedTargetModel) return null;
+  const selectedTarget = selectedTargetModel.toTarget();
 
-  if (selectedTarget.goodIndex >= selectedTarget.badIndex) {
+  if (!selectedTargetModel.hasValidSearchRange()) {
     throw new Error(
       `Invalid bisect interval for target ${selectedTarget.id}: good index `
       + `${selectedTarget.goodIndex} must be less than bad index ${selectedTarget.badIndex}`,
     );
   }
 
-  const candidateIndex = Math.floor((selectedTarget.goodIndex + selectedTarget.badIndex) / 2);
+  const candidateIndex = selectedTargetModel.middleCommitIndex();
   const sha = session.orderedCommits[candidateIndex];
   if (!sha) return null;
 
-  const targets = session.targets.filter((target) => (
-    target.status === 'active'
-    && target.goodIndex <= candidateIndex
-    && candidateIndex <= target.badIndex
-    && !target.observations[sha]
-  ));
+  const targets = targetModels
+    .filter((target) => target.needsObservationAt(sha, candidateIndex))
+    .map((target) => target.toTarget());
 
   if (targets.length === 0) {
     throw new Error(`Bisect candidate ${sha} has no unobserved active targets`);
@@ -90,40 +96,28 @@ export function testsForTargets(targets: readonly BisectTarget[]): BisectTestSel
   return [...selections.values()];
 }
 
-export function applyCachedObservations<T extends BisectSearchInput>(session: T): Normalized<T> {
+export function recalculateTargetBoundariesFromCachedObservations<T extends BisectSearchInput>(
+  session: T,
+): Normalized<T> {
   const commitIndexes = new Map(session.orderedCommits.map((sha, index) => [sha, index]));
 
   return {
     ...session,
-    targets: session.targets.map((target) => {
-      if (target.status !== 'active') return target;
-
-      let goodIndex = target.goodIndex;
-      let badIndex = target.badIndex;
-
-      for (const observation of Object.values(target.observations)) {
-        const commitIndex = commitIndexes.get(observation.commitSha);
-        if (commitIndex === undefined
-          || commitIndex < target.goodIndex
-          || commitIndex > target.badIndex) continue;
-
-        if (observation.present) badIndex = Math.min(badIndex, commitIndex);
-        else goodIndex = Math.max(goodIndex, commitIndex);
-      }
-
-      return finalizeTarget(session, { ...target, goodIndex, badIndex });
-    }),
+    targets: session.targets.map((target) => BisectTargetModel
+      .from(target, session.orderedCommits)
+      .recalculateSearchRangeFromCachedObservations(commitIndexes)
+      .toTarget()),
   } as Normalized<T>;
 }
 
-export function applyObservations<T extends BisectSearchInput>(
+export function recordCommitObservationsAndUpdateTargetBoundaries<T extends BisectSearchInput>(
   session: T,
   sha: string,
   observations: Map<string, TargetObservation>,
 ): T {
   const infrastructureError = session.commitRuns[sha]?.infrastructureError;
   if (infrastructureError) {
-    throw new Error(`Cannot apply observations for ${sha}: ${infrastructureError}`);
+    throw new Error(`Cannot record commit observations for ${sha}: ${infrastructureError}`);
   }
 
   const commitIndex = session.orderedCommits.indexOf(sha);
@@ -133,30 +127,13 @@ export function applyObservations<T extends BisectSearchInput>(
     ...session,
     targets: session.targets.map((target) => {
       const observation = observations.get(target.id);
-      if (!observation || target.status !== 'active') return target;
+      if (!observation) return target;
 
-      const updatedTarget = {
-        ...target,
-        observations: {
-          ...target.observations,
-          [sha]: observation,
-        },
-        ...(observation.present ? { badIndex: commitIndex } : { goodIndex: commitIndex }),
-      };
-
-      return finalizeTarget(session, updatedTarget);
+      return BisectTargetModel.from(target, session.orderedCommits)
+        .recordObservationAndUpdateSearchBoundary(observation, commitIndex)
+        .toTarget();
     }),
   } as T;
-}
-
-function finalizeTarget(session: BisectSearchInput, target: BisectTarget): BisectTarget {
-  if (target.badIndex - target.goodIndex !== 1) return target;
-
-  return {
-    ...target,
-    status: 'found',
-    firstBadSha: session.orderedCommits[target.badIndex],
-  };
 }
 
 function unique<T>(values: T[]): T[] {

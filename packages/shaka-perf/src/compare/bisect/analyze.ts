@@ -11,6 +11,7 @@ import type { TestResult } from '../../pipeline/report';
 import type { AccessibilityCompareResult } from '../stages/accessibility';
 import type { PerfArtifact } from '../stages/perf';
 import type { VisregResult } from '../stages/visreg';
+import { TestResultsModel } from './models';
 import type {
   BisectCategory,
   BisectTarget,
@@ -28,7 +29,10 @@ interface DiscoveredTarget extends TargetKey {}
 interface CategoryAnalyzer {
   readonly category: BisectCategory;
   discover(input: AnalyzeInput): DiscoveredTarget[];
-  observe(input: AnalyzeInput, targets: readonly BisectTarget[]): TargetObservation[];
+  deriveTargetObservations(
+    input: AnalyzeInput,
+    targets: readonly BisectTarget[],
+  ): TargetObservation[];
 }
 
 export function assertNoPipelineErrors(
@@ -71,13 +75,13 @@ export function discoverTargets(
   return [...targets.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-export function observeTargets(
+export function deriveTargetObservationsFromTestResults(
   testResults: readonly TestResult[],
   targets: readonly BisectTarget[],
   commitSha: string,
 ): TargetObservation[] {
   const input = { testResults, commitSha };
-  return categoryAnalyzers.flatMap((analyzer) => analyzer.observe(
+  return categoryAnalyzers.flatMap((analyzer) => analyzer.deriveTargetObservations(
     input,
     targets.filter((target) => target.category === analyzer.category),
   )).sort((left, right) => left.targetId.localeCompare(right.targetId));
@@ -86,25 +90,33 @@ export function observeTargets(
 const visregAnalyzer: CategoryAnalyzer = {
   category: 'visreg',
   discover(input) {
-    return stageMeasurements(input.testResults, 'visreg', isVisregResult)
+    return new TestResultsModel(input.testResults)
+      .successfulMeasurementsForStage('visreg', isVisregResult)
       .flatMap(({ test, viewport, measurement }) => measurement
         .filter((artifact) => artifact.diffImage !== null)
         .map((artifact) => targetKey('visreg', test, viewport, artifact.selector)));
   },
-  observe(input, targets) {
+  deriveTargetObservations(input, targets) {
     return targets.map((target) => {
-      const results = stageMeasurements(input.testResults, 'visreg', isVisregResult)
-        .filter((entry) => matchesTarget(entry, target));
-      requireMeasurement(results, target);
+      const results = new TestResultsModel(input.testResults)
+        .successfulMeasurementsForStage('visreg', isVisregResult)
+        .filter((entry) => entry.matchesTarget(target));
+      assertMeasurementsExistForTarget(results, target);
       const artifacts = results
         .flatMap((entry) => entry.measurement.filter((artifact) => artifact.selector === target.subject));
       const artifact = artifacts[0];
-      return observation(target, input.commitSha!, artifacts.some((item) => item.diffImage !== null), artifact ? {
-        misMatchPercentage: artifact.misMatchPercentage,
-        diffPixels: artifact.diffPixels,
-        threshold: artifact.threshold,
-        savedByRetries: artifact.savedByRetries,
-      } : {}, artifact ? strings([artifact.controlImage, artifact.experimentImage, artifact.diffImage]) : []);
+      return createTargetObservation(
+        target,
+        input.commitSha!,
+        artifacts.some((item) => item.diffImage !== null),
+        artifact ? {
+          misMatchPercentage: artifact.misMatchPercentage,
+          diffPixels: artifact.diffPixels,
+          threshold: artifact.threshold,
+          savedByRetries: artifact.savedByRetries,
+        } : {},
+        artifact ? strings([artifact.controlImage, artifact.experimentImage, artifact.diffImage]) : [],
+      );
     });
   },
 };
@@ -112,20 +124,24 @@ const visregAnalyzer: CategoryAnalyzer = {
 const perfAnalyzer: CategoryAnalyzer = {
   category: 'perf',
   discover(input) {
-    return stageMeasurements(input.testResults, 'perf', isPerfArtifact)
+    return new TestResultsModel(input.testResults)
+      .successfulMeasurementsForStage('perf', isPerfArtifact)
       .flatMap(({ test, viewport, measurement }) => (measurement.metrics ?? [])
         .filter((metric) => metric.direction === 'regression')
         .map((metric) => targetKey('perf', test, viewport, metric.label)));
   },
-  observe(input, targets) {
+  deriveTargetObservations(input, targets) {
     return targets.map((target) => {
-      const results = stageMeasurements(input.testResults, 'perf', isPerfArtifact)
-        .filter((entry) => matchesTarget(entry, target));
-      requireMeasurement(results, target);
+      const results = new TestResultsModel(input.testResults)
+        .successfulMeasurementsForStage('perf', isPerfArtifact)
+        .filter((entry) => entry.matchesTarget(target));
+      assertMeasurementsExistForTarget(results, target);
       const metrics = results
         .flatMap((entry) => (entry.measurement.metrics ?? []).filter((metric) => metric.label === target.subject));
       const metric = metrics[0];
-      return observation(target, input.commitSha!, metrics.some((item) => item.direction === 'regression'), metric ? {
+      return createTargetObservation(target, input.commitSha!, metrics.some((item) => (
+        item.direction === 'regression'
+      )), metric ? {
         controlValue: metric.controlValue,
         experimentValue: metric.experimentValue,
         deltaValue: metric.deltaValue,
@@ -144,21 +160,25 @@ const perfAnalyzer: CategoryAnalyzer = {
 const accessibilityAnalyzer: CategoryAnalyzer = {
   category: 'accessibility',
   discover(input) {
-    return stageMeasurements(input.testResults, 'accessibility', isAccessibilityCompareResult)
+    return new TestResultsModel(input.testResults)
+      .successfulMeasurementsForStage('accessibility', isAccessibilityCompareResult)
       .flatMap(({ test, viewport, measurement }) => unique(
         measurement.findings
           .filter((finding) => finding.status === 'new')
           .map((finding) => finding.ruleId),
       ).map((ruleId) => targetKey('accessibility', test, viewport, ruleId)));
   },
-  observe(input, targets) {
+  deriveTargetObservations(input, targets) {
     return targets.map((target) => {
-      const results = stageMeasurements(input.testResults, 'accessibility', isAccessibilityCompareResult)
-        .filter((entry) => matchesTarget(entry, target));
-      requireMeasurement(results, target);
+      const results = new TestResultsModel(input.testResults)
+        .successfulMeasurementsForStage('accessibility', isAccessibilityCompareResult)
+        .filter((entry) => entry.matchesTarget(target));
+      assertMeasurementsExistForTarget(results, target);
       const findings = results.flatMap(({ measurement }) => measurement.findings
         .filter((finding) => finding.ruleId === target.subject));
-      return observation(target, input.commitSha!, findings.some((finding) => finding.status === 'new'), {
+      return createTargetObservation(target, input.commitSha!, findings.some((finding) => (
+        finding.status === 'new'
+      )), {
         controlViolationCount: findings.filter((finding) => finding.control).length,
         controlNodeCount: findings.reduce((count, finding) => count + (finding.control?.nodes.length ?? 0), 0),
         experimentViolationCount: findings.filter((finding) => finding.experiment).length,
@@ -195,7 +215,7 @@ function targetKey(
   return { id: JSON.stringify([category, test.filePath, test.name, viewport, subject]), ...target };
 }
 
-function observation(
+function createTargetObservation(
   target: BisectTarget,
   commitSha: string,
   present: boolean,
@@ -205,28 +225,7 @@ function observation(
   return { targetId: target.id, commitSha, present, values, artifacts };
 }
 
-function stageMeasurements<T>(
-  testResults: readonly TestResult[],
-  stage: string,
-  predicate: (measurement: unknown) => measurement is T,
-): Array<{ test: TestResult; viewport: string; measurement: T }> {
-  return testResults.flatMap((test) => test.outcomes.flatMap((outcome) => (
-    outcome.kind === 'ok' && outcome.stage === stage && predicate(outcome.measurement)
-      ? [{ test, viewport: outcome.viewport.label, measurement: outcome.measurement }]
-      : []
-  )));
-}
-
-function matchesTarget(
-  entry: { test: TestResult; viewport: string },
-  target: BisectTarget,
-): boolean {
-  return entry.test.filePath === target.testFile
-    && entry.test.name === target.testName
-    && entry.viewport === target.viewport;
-}
-
-function requireMeasurement(
+function assertMeasurementsExistForTarget(
   results: readonly unknown[],
   target: BisectTarget,
 ): void {

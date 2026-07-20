@@ -1,5 +1,5 @@
 import type { TestResult } from '../../pipeline/report';
-import { assertNoPipelineErrors, observeTargets } from './analyze';
+import { assertNoPipelineErrors, deriveTargetObservationsFromTestResults } from './analyze';
 import type {
   BisectCategory,
   BisectTestSelection,
@@ -31,16 +31,21 @@ export interface RefreshResult {
   usedFallback: boolean;
 }
 
-export interface MaterializeRequest {
-  previousSha: string | null;
+export interface SyncCandidateFilesRequest {
+  previouslySyncedSha: string | null;
   candidateSha: string;
 }
 
-export type CandidateCheckpoint = 'checkout' | 'materialize' | 'refresh' | 'compare' | 'failed';
+export type CandidateRunProgressEvent =
+  | 'checkout-completed'
+  | 'candidate-files-synced'
+  | 'experiment-refreshed'
+  | 'comparison-completed'
+  | 'candidate-run-failed';
 
 export interface CandidateDependencies {
   checkout(sha: string): Promise<void>;
-  materialize(request: MaterializeRequest): Promise<void>;
+  syncCandidateFilesToExperimentVolume(request: SyncCandidateFilesRequest): Promise<void>;
   refresh(request: RefreshRequest): Promise<RefreshResult>;
   compare(request: CompareRunRequest): Promise<CompareRunResult>;
   now(): string;
@@ -48,13 +53,13 @@ export interface CandidateDependencies {
 
 export interface RunCandidateOptions {
   sha: string;
-  previousSha: string | null;
+  previouslySyncedSha: string | null;
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
   preferredMode: RefreshMode;
   dependencies: CandidateDependencies;
-  onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun): void;
+  recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun): void;
   checkCancellation(): void;
 }
 
@@ -86,14 +91,14 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
 
   try {
     await options.dependencies.checkout(options.sha);
-    options.onCheckpoint('checkout', commitRun);
+    options.recordCandidateRunProgress('checkout-completed', commitRun);
     options.checkCancellation();
 
-    await options.dependencies.materialize({
-      previousSha: options.previousSha,
+    await options.dependencies.syncCandidateFilesToExperimentVolume({
+      previouslySyncedSha: options.previouslySyncedSha,
       candidateSha: options.sha,
     });
-    options.onCheckpoint('materialize', commitRun);
+    options.recordCandidateRunProgress('candidate-files-synced', commitRun);
     options.checkCancellation();
 
     const refresh = await options.dependencies.refresh({
@@ -105,7 +110,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
       refreshMode: refresh.mode,
       usedFallback: refresh.usedFallback,
     };
-    options.onCheckpoint('refresh', commitRun);
+    options.recordCandidateRunProgress('experiment-refreshed', commitRun);
     options.checkCancellation();
 
     const compare = await options.dependencies.compare({
@@ -119,13 +124,13 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
       compareResultsPath: compare.compareResultsPath,
       finishedAt: options.dependencies.now(),
     };
-    options.onCheckpoint('compare', commitRun);
+    options.recordCandidateRunProgress('comparison-completed', commitRun);
     options.checkCancellation();
     assertNoPipelineErrors(compare.testResults, options.sha);
 
     const observations = options.targets.length === 0
       ? []
-      : observeTargets(compare.testResults, options.targets, options.sha);
+      : deriveTargetObservationsFromTestResults(compare.testResults, options.targets, options.sha);
     return {
       commitRun,
       testResults: compare.testResults,
@@ -140,7 +145,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
         ? {}
         : { infrastructureError: (error as Error).message }),
     };
-    options.onCheckpoint('failed', failedRun);
+    options.recordCandidateRunProgress('candidate-run-failed', failedRun);
     if (error instanceof BisectInterruptedError) throw error;
     throw new Error(`Candidate ${options.sha} failed: ${(error as Error).message}`, { cause: error });
   }

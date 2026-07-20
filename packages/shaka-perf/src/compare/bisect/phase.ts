@@ -10,8 +10,8 @@
 import type { CandidateResult, RefreshMode } from './run-candidate';
 import { runCheckpointedAttempt } from './attempt';
 import {
-  applyCachedObservations,
-  applyObservations,
+  recalculateTargetBoundariesFromCachedObservations,
+  recordCommitObservationsAndUpdateTargetBoundaries,
   nextCandidate,
   type BisectSearchInput,
   type CandidateWork,
@@ -29,7 +29,8 @@ export interface RunSearchPhaseOptions {
   now(): string;
   /**
    * The session's commit runs as of *now*. Read through a getter because
-   * `measure` records a run mid-flight, and `applyObservations` must see the
+   * `measure` records a run mid-flight, and
+   * `recordCommitObservationsAndUpdateTargetBoundaries` must see the
    * resulting `infrastructureError` to refuse the observations it produced.
    */
   commitRuns(): Record<string, CommitRun>;
@@ -48,7 +49,7 @@ export async function runSearchPhase(
   });
   const normalizePhase = (phase: BisectSearchPhase): BisectSearchPhase => ({
     ...phase,
-    targets: applyCachedObservations(searchInput(phase)).targets,
+    targets: recalculateTargetBoundariesFromCachedObservations(searchInput(phase)).targets,
   });
 
   let phase = normalizePhase({
@@ -60,7 +61,9 @@ export async function runSearchPhase(
   options.afterCheckpoint?.(phase);
 
   while (true) {
-    const work = nextCandidate(applyCachedObservations(searchInput(phase)));
+    const work = nextCandidate(
+      recalculateTargetBoundariesFromCachedObservations(searchInput(phase)),
+    );
     if (!work) {
       phase = {
         ...phase,
@@ -88,7 +91,11 @@ export async function runSearchPhase(
         const observations = new Map<string, TargetObservation>(
           result.observations.map((observation) => [observation.targetId, observation]),
         );
-        const updated = applyObservations(searchInput(preMeasurePhase), work.sha, observations);
+        const updated = recordCommitObservationsAndUpdateTargetBoundaries(
+          searchInput(preMeasurePhase),
+          work.sha,
+          observations,
+        );
         phase = normalizePhase({
           ...preMeasurePhase,
           targets: updated.targets,

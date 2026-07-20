@@ -22,7 +22,11 @@ import {
   createComparePipeline,
   comparePipelineMetadata,
 } from '../compare-pipeline';
-import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analyze';
+import {
+  assertNoPipelineErrors,
+  deriveTargetObservationsFromTestResults,
+  discoverTargets,
+} from './analyze';
 import {
   checkoutDetached,
   inspectBisectRepositories,
@@ -33,7 +37,7 @@ import {
   type PreparedGitRange,
 } from './git';
 import {
-  applyCachedObservations,
+  recalculateTargetBoundariesFromCachedObservations,
   nextCandidate,
   testsForTargets,
 } from './search';
@@ -73,11 +77,11 @@ import type { BisectRefreshResult } from '../../twin-servers/commands/bisect-ses
 import {
   BisectInterruptedError,
   runCandidate,
-  type CandidateCheckpoint,
+  type CandidateRunProgressEvent,
   type CandidateDependencies,
   type CompareRunRequest,
   type CompareRunResult,
-  type MaterializeRequest,
+  type SyncCandidateFilesRequest,
   type RefreshRequest,
   type RefreshResult,
 } from './run-candidate';
@@ -110,13 +114,13 @@ export interface BisectCliOptions {
 export type {
   CompareRunRequest,
   CompareRunResult,
-  MaterializeRequest,
+  SyncCandidateFilesRequest,
   RefreshRequest,
   RefreshResult,
 } from './run-candidate';
 
 export interface RestoreRequest {
-  previousSha: string | null;
+  previouslySyncedSha: string | null;
   originalSha: string;
 }
 
@@ -469,7 +473,7 @@ interface CandidateMeasureOptions {
 interface BisectExecutionState {
   session: BisectSession;
   badRefTests: readonly TestResult[] | null;
-  materializedSha: string | null;
+  volumeSyncedSha: string | null;
   volumeStateUncertain: boolean;
   checkoutAttempted: boolean;
   leaseAcquired: boolean;
@@ -506,7 +510,7 @@ function createBisectExecutionContext(
       ? resumedSession(input.resumeSession)
       : initialSession(input, deps.now()),
     badRefTests: input.resumeBadRefTests ?? null,
-    materializedSha: null,
+    volumeSyncedSha: null,
     volumeStateUncertain: false,
     checkoutAttempted: false,
     leaseAcquired: false,
@@ -547,7 +551,7 @@ function createBisectExecutionContext(
     measure(options) {
       return runCandidate({
         ...options,
-        previousSha: state.materializedSha,
+        previouslySyncedSha: state.volumeSyncedSha,
         preferredMode: preferredRefreshMode(input.config),
         dependencies: {
           ...deps,
@@ -555,15 +559,15 @@ function createBisectExecutionContext(
             state.checkoutAttempted = true;
             await deps.checkout(sha);
           },
-          async materialize(request) {
+          async syncCandidateFilesToExperimentVolume(request) {
             state.volumeStateUncertain = true;
-            await deps.materialize(request);
+            await deps.syncCandidateFilesToExperimentVolume(request);
             state.volumeStateUncertain = false;
           },
         },
         checkCancellation: context.checkCancellation,
-        onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun) {
-          if (checkpoint === 'materialize') state.materializedSha = options.sha;
+        recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun) {
+          if (event === 'candidate-files-synced') state.volumeSyncedSha = options.sha;
           state.session = recordCommitRun(state.session, commitRun);
           context.persist();
         },
@@ -642,7 +646,7 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
     input.gitRange.badSha,
     input.selectedCategories,
   ));
-  const badObservations = observeTargets(
+  const badObservations = deriveTargetObservationsFromTestResults(
     badRun.testResults,
     state.session.primary.targets,
     input.gitRange.badSha,
@@ -747,7 +751,7 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       targetIds: targets.map((target) => target.id),
     };
   } else if (targets.length > 0) {
-    const normalized = applyCachedObservations(searchInput(state.session));
+    const normalized = recalculateTargetBoundariesFromCachedObservations(searchInput(state.session));
     state.session = withPrimaryTargets(state.session, normalized.targets);
     targets = activeTargets(state.session);
     const work = nextCandidate(normalized);
@@ -948,7 +952,7 @@ async function restoreExperimentAfterBisect(context: BisectExecutionContext): Pr
   if (!state.checkoutAttempted) return;
   try {
     await deps.restore({
-      previousSha: state.volumeStateUncertain ? null : state.materializedSha,
+      previouslySyncedSha: state.volumeStateUncertain ? null : state.volumeSyncedSha,
       originalSha: input.gitRange.originalExperiment.sha,
     });
   } catch (error) {
@@ -1142,14 +1146,14 @@ function createDefaultDependencies(options: {
     checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
       allowedPaths: [options.resultsDirectory],
     }),
-    restore: ({ previousSha, originalSha }) => restoreExperimentState({
+    restore: ({ previouslySyncedSha, originalSha }) => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,
         options.gitRange.originalExperiment,
         { allowedPaths: [options.resultsDirectory] },
       ),
       syncVolume: async () => {
-        if (previousSha === null) {
+        if (previouslySyncedSha === null) {
           await reconcileExperimentVolume({
             sourceDir: options.twinServers.dockerBuildDir,
             volumeDir: options.twinServers.volumes.experiment,
@@ -1162,7 +1166,7 @@ function createDefaultDependencies(options: {
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
           manifest: requireManifest(options.manifest),
-          previousSha,
+          previousSha: previouslySyncedSha,
           candidateSha: originalSha,
         });
       },
@@ -1181,8 +1185,8 @@ function createDefaultDependencies(options: {
     clearPriorReportOutput: () => {
       clearPriorBisectReportOutput(options.resultsDirectory);
     },
-    materialize: async ({ previousSha, candidateSha }) => {
-      if (previousSha === null) {
+    syncCandidateFilesToExperimentVolume: async ({ previouslySyncedSha, candidateSha }) => {
+      if (previouslySyncedSha === null) {
         await reconcileExperimentVolume({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
@@ -1195,7 +1199,7 @@ function createDefaultDependencies(options: {
         sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
         manifest: requireManifest(options.manifest),
-        previousSha,
+        previousSha: previouslySyncedSha,
         candidateSha,
       });
     },
@@ -1709,7 +1713,7 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const work = nextCandidate(applyCachedObservations(searchInput(session)));
+  const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(searchInput(session)));
   return work ? { kind: 'measure-candidate', ...work } : undefined;
 }
 
