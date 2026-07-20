@@ -65,7 +65,7 @@ function target(value: BisectSearchInput, id: string): BisectTarget {
 
 describe('bisect scheduler', () => {
   it('rejects a degenerate active interval instead of scheduling empty work', () => {
-    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(session([
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 0,
         badIndex: 0,
@@ -73,16 +73,16 @@ describe('bisect scheduler', () => {
       }),
     ]));
 
-    expect(() => nextCandidate(normalized)).toThrow(/invalid bisect interval/i);
+    expect(() => nextCandidate(searchStateWithCurrentBoundaries)).toThrow(/invalid bisect interval/i);
   });
 
   it('rejects a candidate with no active targets requiring evaluation', () => {
-    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(session([
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg'),
     ]));
-    normalized.targets[0].recordedTargetEvaluations.b = evaluation('visual', true, 'b');
+    searchStateWithCurrentBoundaries.targets[0].recordedTargetEvaluations.b = evaluation('visual', true, 'b');
 
-    expect(() => nextCandidate(normalized)).toThrow(/no active targets requiring evaluation/i);
+    expect(() => nextCandidate(searchStateWithCurrentBoundaries)).toThrow(/no active targets requiring evaluation/i);
   });
 
   it('updates divergent target intervals independently', () => {
@@ -217,16 +217,16 @@ describe('bisect scheduler', () => {
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
     ]);
 
-    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(initial);
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(initial);
 
     expect(target(initial, 'visual')).toMatchObject({ status: 'active', goodIndex: 0, badIndex: 4 });
-    expect(target(normalized, 'visual')).toMatchObject({
+    expect(target(searchStateWithCurrentBoundaries, 'visual')).toMatchObject({
       status: 'found',
       goodIndex: 1,
       badIndex: 2,
       firstBadSha: 'b',
     });
-    expect(nextCandidate(normalized)).toMatchObject({
+    expect(nextCandidate(searchStateWithCurrentBoundaries)).toMatchObject({
       sha: 'b',
       targetIds: ['tbt'],
       categories: ['perf'],
@@ -235,7 +235,7 @@ describe('bisect scheduler', () => {
   });
 
   it('requires no rerun and exposes persistable found boundaries when every candidate is cached', () => {
-    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(session([
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
         badIndex: 3,
@@ -248,7 +248,7 @@ describe('bisect scheduler', () => {
       }),
     ]));
 
-    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSearchInput;
+    const persisted = JSON.parse(JSON.stringify(searchStateWithCurrentBoundaries)) as BisectSearchInput;
 
     expect(target(persisted, 'visual')).toMatchObject({
       status: 'found',
@@ -262,10 +262,10 @@ describe('bisect scheduler', () => {
       badIndex: 3,
       firstBadSha: 'c',
     });
-    expect(nextCandidate(normalized)).toBeNull();
+    expect(nextCandidate(searchStateWithCurrentBoundaries)).toBeNull();
   });
 
-  it('requires a normalized session before scheduling at compile time', () => {
+  it('requires current target boundaries before scheduling at compile time', () => {
     const rawSession = session([bisectTarget('visual', 'visreg')]);
 
     if (false) {

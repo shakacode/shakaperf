@@ -41,7 +41,9 @@ export interface BisectSearchInput {
   commitRuns: Record<string, CommitRun>;
 }
 
-export function nextCandidate(session: SearchStateWithCurrentBoundaries<BisectSearchInput>): CandidateMeasurementPlan | null {
+export function nextCandidate(
+  session: SearchStateWithCurrentBoundaries<BisectSearchInput>,
+): CandidateMeasurementPlan | null {
   const targetModels = session.targets.map((target) => (
     BisectTargetModel.from(target, session.orderedCommits)
   ));

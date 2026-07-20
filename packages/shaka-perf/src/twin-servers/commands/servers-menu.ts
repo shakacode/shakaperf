@@ -735,7 +735,7 @@ export async function runServersMenu(
         const result = await state.bisectSession.reloadExperiment(request.sessionId, request);
         state.lastMessage = result.usedFallback
           ? 'Compare bisect command reload failed; rebuilt experiment container.'
-          : `Compare bisect refreshed experiment using ${result.mode} mode.`;
+          : `Compare bisect reloaded experiment using ${result.mode} mode.`;
         return result;
       },
       { allowDuringBisect: true },

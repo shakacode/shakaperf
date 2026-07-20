@@ -47,12 +47,14 @@ export async function runSearchPhase(
     targets: phase.targets,
     commitRuns: options.commitRuns(),
   });
-  const normalizePhase = (phase: BisectSearchPhase): BisectSearchPhase => ({
+  const narrowPhaseSearchRangesUsingRecordedEvaluations = (
+    phase: BisectSearchPhase,
+  ): BisectSearchPhase => ({
     ...phase,
     targets: narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)).targets,
   });
 
-  let phase = normalizePhase({
+  let phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
     ...options.phase,
     status: 'running',
     startedAt: options.phase.startedAt ?? options.now(),
@@ -96,7 +98,7 @@ export async function runSearchPhase(
           work.sha,
           targetEvaluations,
         );
-        phase = normalizePhase({
+        phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
           ...preMeasurePhase,
           targets: updated.targets,
           attempts,

@@ -751,10 +751,15 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       targetIds: targets.map((target) => target.id),
     };
   } else if (targets.length > 0) {
-    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(state.session));
-    state.session = withPrimaryTargets(state.session, normalized.targets);
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(
+      searchInput(state.session),
+    );
+    state.session = withPrimaryTargets(
+      state.session,
+      searchStateWithCurrentBoundaries.targets,
+    );
     targets = activeTargets(state.session);
-    const work = nextCandidate(normalized);
+    const work = nextCandidate(searchStateWithCurrentBoundaries);
     if (work) {
       state.nextAction = {
         kind: 'measure-candidate' as const,

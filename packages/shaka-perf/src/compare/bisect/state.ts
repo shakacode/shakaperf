@@ -263,7 +263,9 @@ export function assertRepositoryCompatible(
 }
 
 function normalizeCrashedAttempts(session: BisectSession): BisectSession {
-  const normalizePhase = (phase: BisectSession['primary']): BisectSession['primary'] => ({
+  const markRunningAttemptsAsIncomplete = (
+    phase: BisectSession['primary'],
+  ): BisectSession['primary'] => ({
     ...phase,
     attempts: phase.attempts.map((attempt) => attempt.status === 'running'
       ? {
@@ -275,11 +277,13 @@ function normalizeCrashedAttempts(session: BisectSession): BisectSession {
   });
   return {
     ...session,
-    primary: normalizePhase(session.primary),
+    primary: markRunningAttemptsAsIncomplete(session.primary),
     mergeInvestigations: Object.fromEntries(Object.entries(session.mergeInvestigations)
       .map(([sha, investigation]) => [sha, {
         ...investigation,
-        ...(investigation.phase ? { phase: normalizePhase(investigation.phase) } : {}),
+        ...(investigation.phase
+          ? { phase: markRunningAttemptsAsIncomplete(investigation.phase) }
+          : {}),
       }])),
   };
 }
