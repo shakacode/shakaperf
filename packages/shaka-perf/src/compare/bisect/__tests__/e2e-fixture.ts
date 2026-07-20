@@ -94,7 +94,10 @@ export function createLinearFixture(labels: readonly string[]): E2eRepositoryFix
   return finishFixture(rootDir, sourceDir, shas, labels[0]!, labels.at(-1)!);
 }
 
-export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepositoryFixture {
+export function createMergeFixture(
+  afterMergeLabels: readonly string[],
+  beforeMergeLabels: readonly string[] = [],
+): E2eRepositoryFixture {
   const reservedLabels = [
     'known-good',
     'topic-first-commit',
@@ -102,7 +105,7 @@ export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepo
     'mainline-before-merge',
     'merge-topic-branch',
   ];
-  const allLabels = [...reservedLabels, ...afterMergeLabels];
+  const allLabels = [...reservedLabels, ...beforeMergeLabels, ...afterMergeLabels];
   if (afterMergeLabels.length === 0) {
     throw new Error('A merge fixture requires a bad commit after the merge commit');
   }
@@ -121,6 +124,7 @@ export function createMergeFixture(afterMergeLabels: readonly string[]): E2eRepo
   shas['topic-first-commit'] = commitLabel(sourceDir, 'topic-first-commit');
   shas['topic-second-commit'] = commitLabel(sourceDir, 'topic-second-commit');
   git(sourceDir, ['checkout', '--quiet', 'main']);
+  for (const label of beforeMergeLabels) shas[label] = commitLabel(sourceDir, label);
   shas['mainline-before-merge'] = commitLabel(sourceDir, 'mainline-before-merge');
   git(sourceDir, ['merge', '--quiet', '--no-ff', 'topic', '-m', 'merge-topic-branch']);
   shas['merge-topic-branch'] = git(sourceDir, ['rev-parse', 'HEAD']);
