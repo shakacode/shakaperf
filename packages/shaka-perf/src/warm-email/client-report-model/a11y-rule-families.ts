@@ -74,17 +74,29 @@ function normalizeTargetSegment(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function targetKey(target: readonly (string | readonly string[])[]): string {
-  return JSON.stringify(target.map((segment) =>
-    typeof segment === 'string' ? normalizeTargetSegment(segment) : segment.map(normalizeTargetSegment),
-  ));
+function targetKey(target: readonly unknown[]): string {
+  const normalizedTarget: Array<string | string[]> = [];
+  for (const segment of target) {
+    if (typeof segment === 'string') {
+      const normalized = normalizeTargetSegment(segment);
+      if (normalized) normalizedTarget.push(normalized);
+      continue;
+    }
+    if (!Array.isArray(segment)) continue;
+    const parts = segment
+      .filter((part): part is string => typeof part === 'string')
+      .map(normalizeTargetSegment)
+      .filter(Boolean);
+    if (parts.length > 0) normalizedTarget.push(parts);
+  }
+  return JSON.stringify(normalizedTarget);
 }
 
-function hasSelector(target: readonly (string | readonly string[])[]): boolean {
+function hasSelector(target: readonly unknown[]): boolean {
   return target.some((segment) =>
     typeof segment === 'string'
       ? normalizeTargetSegment(segment).length > 0
-      : segment.some((part) => normalizeTargetSegment(part).length > 0),
+      : Array.isArray(segment) && segment.some((part) => typeof part === 'string' && normalizeTargetSegment(part).length > 0),
   );
 }
 
@@ -106,7 +118,7 @@ function countedFamily(definition: A11yRuleFamilyDefinition): CountedA11yRuleFam
 
 /**
  * Builds rule-family counts for the C findings panel. The headline counts
- * distinct selector clusters, while family rows retain their page coverage.
+ * distinct rule-selector pairs, while family rows retain their page coverage.
  */
 export function summarizeA11yRuleFamilies(
   scans: readonly A11yRuleFamilyScan[],
@@ -125,16 +137,20 @@ export function summarizeA11yRuleFamilies(
       }
       countedOnPage.set(definition.id, definition);
       const current = counted.get(definition.id) ?? countedFamily(definition);
-      let hasKeyedNode = false;
+      let hasNode = false;
+      let hasUnkeyedNode = false;
       for (const node of violation.nodes ?? []) {
-        if (!node.target || !hasSelector(node.target)) continue;
-        hasKeyedNode = true;
+        hasNode = true;
+        if (!Array.isArray(node.target) || !hasSelector(node.target)) {
+          hasUnkeyedNode = true;
+          continue;
+        }
         const selector = `${violation.ruleId}|${targetKey(node.target)}`;
         const selectorPages = current.selectorPages.get(selector) ?? new Set<number>();
         selectorPages.add(pageIndex);
         current.selectorPages.set(selector, selectorPages);
       }
-      if (!hasKeyedNode) current.unkeyedPages.add(pageIndex);
+      if (!hasNode || hasUnkeyedNode) current.unkeyedPages.add(pageIndex);
       counted.set(definition.id, current);
     }
     for (const definition of countedOnPage.values()) {
@@ -162,17 +178,12 @@ export function summarizeA11yRuleFamilies(
   );
   const sharedDefects: Array<{ familyId: string; label: string; pageCount: number }> = [];
   for (const family of counted.values()) {
-    const pageDefects = new Set(family.unkeyedPages);
-    let sharedCount = 0;
     for (const pages of family.selectorPages.values()) {
       if (pages.size > 1) {
-        sharedCount += 1;
         sharedDefects.push({ familyId: family.id, label: family.label, pageCount: pages.size });
-      } else {
-        for (const pageIndex of pages) pageDefects.add(pageIndex);
       }
     }
-    family.defectCount = sharedCount + pageDefects.size;
+    family.defectCount = family.selectorPages.size + family.unkeyedPages.size;
   }
   const countedFamilies = [...counted.values()]
     .map(({ id, label, defectCount, pageCount }) => ({ id, label, defectCount, pageCount }))

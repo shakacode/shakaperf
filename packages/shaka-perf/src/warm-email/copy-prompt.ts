@@ -65,6 +65,9 @@ export interface A11ySitePromptFinding {
   /** Accepted for model compatibility; canonical copy is selected from familyId. */
   label: string;
   impact: string;
+  /** Distinct rule-selector defects in this family. */
+  defectCount: number;
+  /** Number of audited pages where the family appears. */
   pageCount: number;
   /** Same-origin audited URLs for named finding examples. */
   pageUrls?: readonly string[];
@@ -85,7 +88,7 @@ export interface A11ySitePromptData {
   host: string;
   date: string;
   pageCount: number;
-  /** Reconciled occurrence count: one critical or serious family per affected page. */
+  /** Reconciled distinct high-impact defect count. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
   pageUrls: readonly string[];
@@ -363,7 +366,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   if (
     completeFindings.length === 0
     || completeFindings.some((finding) => finding.pageCount > pageCount)
-    || completeFindings.reduce((total, finding) => total + finding.pageCount, 0) !== highImpactCount
+    || completeFindings.reduce((total, finding) => total + finding.defectCount, 0) !== highImpactCount
   ) return undefined;
 
   const worstPageName = pageRouteLabel(worstPageUrl);
@@ -612,6 +615,7 @@ interface SitePromptFinding {
   label: string;
   nodeNoun: string;
   impact: string;
+  defectCount: number;
   pageCount: number;
   pageNames: string[];
   nodeCount?: number;
@@ -800,12 +804,15 @@ function siteFinding(
   requireHighImpact = false,
 ): SitePromptFinding | undefined {
   if (!isRecord(finding)) return undefined;
+  const defectCount = wholeNumber(finding.defectCount);
   const pageCount = wholeNumber(finding.pageCount);
   const familyId = cleanIdentifier(finding.familyId);
   const impact = cleanIdentifier(finding.impact);
   const family = familyId && Object.hasOwn(A11Y_FAMILIES, familyId) ? A11Y_FAMILIES[familyId] : undefined;
   if (
-    pageCount === undefined
+    defectCount === undefined
+    || defectCount === 0
+    || pageCount === undefined
     || pageCount === 0
     || !familyId
     || !family
@@ -835,6 +842,7 @@ function siteFinding(
     label: family.label,
     nodeNoun: family.nodeNoun,
     impact,
+    defectCount,
     pageCount,
     pageNames: (pageUrls as string[]).map(pageRouteLabel),
     verificationRuleIds,

@@ -114,7 +114,7 @@ describe('buildA11ySection', () => {
       highImpactTotal: 2,
       a11yCost: {
         headline: '2 high-impact barriers keep some visitors from using the site.',
-        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. 2 of them repeat across multiple pages via shared components - one fix each clears them everywhere.',
+        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. All 2 repeat across multiple pages via shared components - one fix each clears them everywhere.',
       },
     });
   });
@@ -205,7 +205,7 @@ describe('buildA11ySection', () => {
 
     expect(result.cardedA11y).toHaveLength(3);
     expect(result.a11yCost?.headlineSub).toContain('across your 3 pages');
-    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain("2 high-impact issues across the site's 2 pages");
     expect(prompt).toContain('worst page: the homepage with 2');
   });
 });

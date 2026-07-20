@@ -1453,11 +1453,32 @@ describe('renderClientReport perf tile assembly', () => {
     }]));
 
     const hint = "The 90+ score is Lighthouse's scale; these counts come from a deeper scan.";
-    expect(renderedPanel(highScore.html, 'a11y')).toContain('>Lighthouse</div>');
+    expect(renderedPanel(highScore.html, 'a11y').match(/>Lighthouse<\/div>/g)).toHaveLength(2);
     expect(renderedPanel(highScore.html, 'a11y')).toContain(hint);
     expect(renderedPanel(lowScore.html, 'a11y')).toContain('>Lighthouse</div>');
     expect(renderedPanel(lowScore.html, 'a11y')).not.toContain(hint);
     expect(renderedPanel(noHighImpact.html, 'a11y')).not.toContain(hint);
+  });
+
+  it('uses the typed high-impact count instead of a severity display label', () => {
+    const highImpact = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCards: [{
+        name: 'Products', path: '/products', score: 96, highImpact: 1, status: 'fair',
+        sev: [{ num: 1, label: 'urgent', status: 'poor' }], summary: 's', frames: [], fixes: [],
+      }],
+    }));
+    const noHighImpact = renderClientReportHtml(model({
+      hasA11y: true,
+      a11yCards: [{
+        name: 'Products', path: '/products', score: 96, highImpact: 0, status: 'fair',
+        sev: [{ num: 1, label: 'high-impact', status: 'poor' }], summary: 's', frames: [], fixes: [],
+      }],
+    }));
+    const hint = "The 90+ score is Lighthouse's scale; these counts come from a deeper scan.";
+
+    expect(renderedPanel(highImpact, 'a11y')).toContain(hint);
+    expect(renderedPanel(noHighImpact, 'a11y')).not.toContain(hint);
   });
 
   it('skips malformed a11y node HTML while still building selectors-only prompts', async () => {
@@ -1709,7 +1730,8 @@ describe('renderClientReportHtml', () => {
       a11yScore: 95,
       agentScore: 85,
     }));
-    expect(html.match(/>score<\/div>/g)).toHaveLength(3);
+    expect(html.match(/>score<\/div>/g)).toHaveLength(2);
+    expect(html.match(/>Lighthouse<\/div>/g)).toHaveLength(1);
 
     expect(renderedPanel(html, 'perf')).toContain('display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px');
     expect(renderedPanel(html, 'perf')).toContain('<div style="font-size:24px; font-weight:800; color:#c0271f; line-height:1">42</div>');
@@ -1887,6 +1909,7 @@ describe('renderClientReportHtml', () => {
           name: 'Products',
           path: '/products',
           score: 88,
+          highImpact: 3,
           status: 'fair',
           sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
           summary: 'Hard to use by keyboard.',
@@ -1983,7 +2006,7 @@ describe('renderClientReportHtml', () => {
         perfFine: [],
         hasA11y: true,
         a11yCards: [
-          { name: 'Products', path: '/products', score: 88, status: 'fair', sev: [{ num: 3, label: 'high-impact', status: 'poor' }], summary: 's', frames: [], fixes: ['x'] },
+          { name: 'Products', path: '/products', score: 88, highImpact: 3, status: 'fair', sev: [{ num: 3, label: 'high-impact', status: 'poor' }], summary: 's', frames: [], fixes: ['x'] },
         ],
         // hasAgent stays true (from base model)
       }),
@@ -2487,7 +2510,7 @@ describe('renderClientReportHtml', () => {
     const html = renderClientReportHtml(model({
       hasA11y: true,
       a11yCards: [{
-        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
+        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, highImpact: 0, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
       }],
       a11yFine,
       a11yCost: {
@@ -2513,7 +2536,7 @@ describe('renderClientReportHtml', () => {
     const ungroupedHtml = renderClientReportHtml(model({
       hasA11y: true,
       a11yCards: [{
-        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
+        name: 'A11y page with a finding', path: '/a11y-finding', score: 72, highImpact: 0, status: 'poor', sev: [], summary: 'A real finding.', frames: [], fixes: [],
       }],
       a11yFine,
       a11yCost: { tab: 'a11y', state: 'measured' },
@@ -2714,6 +2737,7 @@ describe('renderClientReportHtml', () => {
           name: 'Products',
           path: '/products',
           score: 88,
+          highImpact: 3,
           status: 'fair',
           sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
           summary: 'Hard to use by keyboard.',
@@ -2751,6 +2775,7 @@ describe('renderClientReportHtml', () => {
           name: 'Products',
           path: '/products',
           score: 88,
+          highImpact: 3,
           status: 'fair',
           sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
           summary: 'Hard to use by keyboard.',
@@ -2849,6 +2874,7 @@ describe('renderClientReportHtml', () => {
             name: 'Products',
             path: '/products',
             score: 88,
+            highImpact: 3,
             status: 'fair',
             sev: [{ num: 3, label: 'high-impact', status: 'poor' }],
             summary: 'Hard to use by keyboard.',
@@ -2873,6 +2899,7 @@ describe('renderClientReportHtml', () => {
             name: 'Home',
             path: '/',
             score: 71,
+            highImpact: 1,
             status: 'fair',
             sev: [{ num: 1, label: 'high-impact', status: 'poor' }],
             summary: 'The page structure has barriers.',

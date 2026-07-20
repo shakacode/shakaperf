@@ -327,7 +327,7 @@ describe('client report a11y cost copy helpers', () => {
     const prompt = buildCanonicalA11ySitePrompt(input);
 
     expect(buildCanonicalA11ySitePrompt(input)).toBe(prompt);
-    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain("2 high-impact issues across the site's 2 pages");
     expect(prompt).toContain('worst page: the homepage with 2');
     expect(prompt).toContain("npx @axe-core/cli 'https://example.com/#top' 'https://example.com/about'");
   });

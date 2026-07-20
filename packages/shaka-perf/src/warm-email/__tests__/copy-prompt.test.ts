@@ -85,6 +85,7 @@ const a11ySiteData: A11ySitePromptData = {
       familyId: 'target-size',
       label: 'Touch targets too small to tap reliably',
       impact: 'serious',
+      defectCount: 7,
       pageCount: 7,
       verificationRuleIds: ['target-size'],
       sharedComponent: {
@@ -96,6 +97,7 @@ const a11ySiteData: A11ySitePromptData = {
       familyId: 'image-alt',
       label: 'Images without text descriptions',
       impact: 'critical',
+      defectCount: 2,
       pageCount: 2,
       pageUrls: ['https://example.com/', 'https://example.com/audience'],
       pageNames: ['Homepage', 'Audience landing'],
@@ -106,6 +108,7 @@ const a11ySiteData: A11ySitePromptData = {
       familyId: 'unlabeled-controls',
       label: 'Unlabeled controls',
       impact: 'serious',
+      defectCount: 1,
       pageCount: 1,
       pageUrls: ['https://example.com/'],
       pageNames: ['Homepage'],
@@ -115,6 +118,7 @@ const a11ySiteData: A11ySitePromptData = {
       familyId: 'list',
       label: 'Broken list markup',
       impact: 'serious',
+      defectCount: 1,
       pageCount: 1,
       pageNames: ['Homepage'],
       pageUrls: ['https://example.com/'],
@@ -124,12 +128,13 @@ const a11ySiteData: A11ySitePromptData = {
       familyId: 'nested-interactive',
       label: 'Interactive controls nested inside each other',
       impact: 'serious',
+      defectCount: 1,
       pageCount: 1,
       verificationRuleIds: ['nested-interactive'],
     },
   ],
   lowerImpactFindings: [
-    { familyId: 'structure', label: 'Unlabeled page sections', impact: 'moderate', pageCount: 5, verificationRuleIds: ['region'] },
+    { familyId: 'structure', label: 'Unlabeled page sections', impact: 'moderate', defectCount: 5, pageCount: 5, verificationRuleIds: ['region'] },
   ],
   smallerNotesCount: 2,
 };
@@ -529,6 +534,28 @@ describe('site-wide copy prompts', () => {
     expect(prompt).toContain('Source: ShakaPerf audit of example.com, 2026-07-06.');
   });
 
+  it('keeps a site prompt when one family has more defects than audited pages', () => {
+    const prompt = buildA11ySitePrompt({
+      ...a11ySiteData,
+      pageCount: 5,
+      highImpactCount: 40,
+      worstPage: { url: a11ySiteData.url, highImpactCount: 40 },
+      pageUrls: a11ySiteData.pageUrls.slice(0, 5),
+      findings: [{
+        ...a11ySiteData.findings[0],
+        defectCount: 40,
+        pageCount: 5,
+        pageUrls: a11ySiteData.pageUrls.slice(0, 5),
+      }],
+      lowerImpactFindings: undefined,
+      smallerNotesCount: 0,
+    });
+
+    expect(prompt).toContain("40 high-impact issues across the site's 5 pages");
+    expect(prompt).toContain('Touch targets too small to tap reliably (target-size, serious): all 5 pages');
+    expect(prompt).toContain('Goal: all 40 high-impact issues pass');
+  });
+
   it('orders site priorities by reach and keeps node nouns specific to their family', () => {
     const prompt = buildA11ySitePrompt({
       ...a11ySiteData,
@@ -545,6 +572,7 @@ describe('site-wide copy prompts', () => {
           familyId: 'aria',
           label: 'Accessibility markup problems',
           impact: 'serious',
+          defectCount: 2,
           pageCount: 2,
           pageUrls: ['https://example.com/', 'https://example.com/audience'],
           verificationRuleIds: ['aria-valid-attr'],
@@ -743,7 +771,7 @@ describe('site-wide copy prompts', () => {
       highImpactCount: 1,
       worstPage: { url: a11ySiteData.url, highImpactCount: 1 },
       pageUrls: [a11ySiteData.url],
-      findings: [{ ...a11ySiteData.findings[0], pageCount: 1 }],
+      findings: [{ ...a11ySiteData.findings[0], defectCount: 1, pageCount: 1 }],
       lowerImpactFindings: undefined,
       smallerNotesCount: 0,
     });

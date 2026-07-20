@@ -141,6 +141,7 @@ export interface ClientReportA11yCard {
   name: string;
   path: string;
   score?: number;
+  highImpact: number;
   status: ClientReportStatus;
   sev: { num: number; label: string; status: ClientReportStatus }[];
   summary?: string;
@@ -776,9 +777,10 @@ function verdictHead(
   blocked?: boolean,
   score?: number,
   cost?: ClientReportCostBlock,
+  scoreLabel = 'score',
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
-  const badge = blocked ? '' : scoreBadge(score);
+  const badge = blocked ? '' : scoreBadge(score, scoreLabel);
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
@@ -987,7 +989,7 @@ function scoreBadge(score: number | undefined, label = 'score'): string {
   const p = PAL[scoreStatus(score)];
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
             <div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>
-            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">${label}</div>
+            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">${esc(label)}</div>
           </div>`;
 }
 
@@ -1008,8 +1010,7 @@ function a11yCard(c: ClientReportA11yCard, index: number): string {
   const sevHint = boxedLevels.size > 0
     ? `\n          <span style="font-size:12px; color:#9b9286; align-self:center">&larr; tap to highlight</span>`
     : '';
-  const highImpactCount = c.sev.find((severity) => severity.label === 'high-impact')?.num ?? 0;
-  const lighthouseHint = typeof c.score === 'number' && c.score >= 90 && highImpactCount > 0
+  const lighthouseHint = typeof c.score === 'number' && c.score >= 90 && c.highImpact > 0
     ? `        <div style="font-size:12px; color:#9b9286; margin:-6px 0 14px">The 90+ score is Lighthouse's scale; these counts come from a deeper scan.</div>`
     : '';
   const shots = c.frames.length
@@ -1102,7 +1103,7 @@ ${items}
 
 function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
-  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
+  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost, 'Lighthouse')}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
 ${m.a11yStrongPageGroup ? strongPageGroupList(m.a11yStrongPageGroup) : ''}

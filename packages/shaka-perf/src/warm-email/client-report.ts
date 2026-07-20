@@ -1423,6 +1423,7 @@ async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?
   const card: ClientReportA11yCard = {
     name: page.name,
     path: page.startingPath || '/',
+    highImpact: hi,
     status,
     sev: a11ySevChips(counts),
     summary,

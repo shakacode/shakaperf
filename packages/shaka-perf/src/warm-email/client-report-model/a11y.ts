@@ -324,7 +324,9 @@ export function buildA11ySection(
       ? highImpactTotal === 1
         ? ` It repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
         : ` One of them repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
-      : ` ${a11ySharedDefects.length} of them repeat across multiple pages via shared components - one fix each clears them everywhere.`;
+      : a11ySharedDefects.length === highImpactTotal
+        ? ` All ${highImpactTotal} repeat across multiple pages via shared components - one fix each clears them everywhere.`
+        : ` ${a11ySharedDefects.length} of them repeat across multiple pages via shared components - one fix each clears them everywhere.`;
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
   const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
