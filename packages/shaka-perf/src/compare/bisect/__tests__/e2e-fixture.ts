@@ -80,8 +80,12 @@ function commitLabel(repoDir: string, label: string): string {
 }
 
 export function createLinearFixture(labels: readonly string[]): E2eRepositoryFixture {
-  if (labels.length < 2) throw new Error('A bisect fixture requires at least good and bad commits');
-  if (new Set(labels).size !== labels.length) throw new Error('Bisect fixture labels must be unique');
+  if (labels.length < 2) {
+    throw new Error('A bisect fixture requires at least good and bad commits');
+  }
+  if (new Set(labels).size !== labels.length) {
+    throw new Error('Bisect fixture labels must be unique');
+  }
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-e2e-'));
   const sourceDir = path.join(rootDir, 'source');
@@ -109,7 +113,9 @@ export function createMergeFixture(
   if (afterMergeLabels.length === 0) {
     throw new Error('A merge fixture requires a bad commit after the merge commit');
   }
-  if (new Set(allLabels).size !== allLabels.length) throw new Error('Merge fixture labels must be unique');
+  if (new Set(allLabels).size !== allLabels.length) {
+    throw new Error('Merge fixture labels must be unique');
+  }
 
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-e2e-'));
   const sourceDir = path.join(rootDir, 'source');
@@ -124,11 +130,15 @@ export function createMergeFixture(
   shas['topic-first-commit'] = commitLabel(sourceDir, 'topic-first-commit');
   shas['topic-second-commit'] = commitLabel(sourceDir, 'topic-second-commit');
   git(sourceDir, ['checkout', '--quiet', 'main']);
-  for (const label of beforeMergeLabels) shas[label] = commitLabel(sourceDir, label);
+  for (const label of beforeMergeLabels) {
+    shas[label] = commitLabel(sourceDir, label);
+  }
   shas['mainline-before-merge'] = commitLabel(sourceDir, 'mainline-before-merge');
   git(sourceDir, ['merge', '--quiet', '--no-ff', 'topic', '-m', 'merge-topic-branch']);
   shas['merge-topic-branch'] = git(sourceDir, ['rev-parse', 'HEAD']);
-  for (const label of afterMergeLabels) shas[label] = commitLabel(sourceDir, label);
+  for (const label of afterMergeLabels) {
+    shas[label] = commitLabel(sourceDir, label);
+  }
 
   return finishFixture(rootDir, sourceDir, shas, 'known-good', afterMergeLabels.at(-1)!);
 }
@@ -217,7 +227,9 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
           throw new Error(`Stubbed compare failure at ${request.sha}`);
         }
         const results = options.resultsBySha[request.sha];
-        if (!results) throw new Error(`No stubbed compare results for ${request.sha}`);
+        if (!results) {
+          throw new Error(`No stubbed compare results for ${request.sha}`);
+        }
         return { testResults: filterCompareResults(results, request) };
       },
       async restore() {
@@ -250,7 +262,9 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       },
       async reuseCurrentResults(request) {
         const results = options.resultsBySha[request.sha];
-        if (!results) throw new Error(`No reusable compare results for ${request.sha}`);
+        if (!results) {
+          throw new Error(`No reusable compare results for ${request.sha}`);
+        }
         return { testResults: results };
       },
     },
@@ -263,7 +277,9 @@ export function visregTimeline(
 ): Record<string, readonly TestResult[]> {
   return Object.fromEntries(Object.entries(states).map(([label, present]) => {
     const sha = fixture.shas[label];
-    if (!sha) throw new Error(`Unknown fixture label: ${label}`);
+    if (!sha) {
+      throw new Error(`Unknown fixture label: ${label}`);
+    }
     return [sha, [visregResult(present)]];
   }));
 }
@@ -298,9 +314,13 @@ export function regressionTimeline(
   const targetIds = new Set(targets.map((target) => target.id));
   return Object.fromEntries(Object.entries(presentByLabel).map(([label, presentIds]) => {
     const sha = fixture.shas[label];
-    if (!sha) throw new Error(`Unknown fixture label: ${label}`);
+    if (!sha) {
+      throw new Error(`Unknown fixture label: ${label}`);
+    }
     for (const id of presentIds) {
-      if (!targetIds.has(id)) throw new Error(`Unknown regression target: ${id}`);
+      if (!targetIds.has(id)) {
+        throw new Error(`Unknown regression target: ${id}`);
+      }
     }
     const present = new Set(presentIds);
     const grouped = new Map<string, StubRegression[]>();
@@ -498,7 +518,9 @@ export function expectBinarySearchTraversal(
   const labelsBySha = new Map(Object.entries(fixture.shas).map(([label, sha]) => [sha, label]));
   const actualCommitLabels = harness.compareCalls.map((call) => {
     const label = labelsBySha.get(call.sha);
-    if (!label) throw new Error(`Compare traversed unknown commit ${call.sha}`);
+    if (!label) {
+      throw new Error(`Compare traversed unknown commit ${call.sha}`);
+    }
     return label;
   });
   expect(actualCommitLabels).toEqual(expectedCommitLabels);
