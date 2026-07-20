@@ -59,10 +59,12 @@ describe('fetchSiteAccessSignals', () => {
 
   it('does not fetch a private redirect target for agent-readiness files', async () => {
     const internalUrl = 'http://169.254.169.254/latest/meta-data/';
+    const redirectResponse = response('https://example.com/robots.txt', 302, '', { location: internalUrl });
+    const cancelSpy = jest.spyOn(redirectResponse.body!, 'cancel');
     const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       switch (String(input)) {
         case 'https://example.com/robots.txt':
-          return response('https://example.com/robots.txt', 302, '', { location: internalUrl });
+          return redirectResponse;
         case 'https://example.com/llms.txt':
         case 'https://example.com/sitemap.xml':
           return response(String(input), 404);
@@ -79,6 +81,7 @@ describe('fetchSiteAccessSignals', () => {
       llmsTxtConfirmedAbsent: true,
     });
     expect(fetchedUrls(fetchSpy)).not.toContain(internalUrl);
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -125,6 +128,18 @@ describe('fetchSiteAccessSignals', () => {
       robots: { fetched: false },
       sitemap: false,
     });
-    expect(fetchedUrls(fetchSpy)).not.toContain('https://example.com/robots-hop-6');
+    const urls = fetchedUrls(fetchSpy);
+    expect(urls).toHaveLength(8);
+    expect(urls).toEqual(expect.arrayContaining([
+      'https://example.com/robots.txt',
+      'https://example.com/robots-hop-1',
+      'https://example.com/robots-hop-2',
+      'https://example.com/robots-hop-3',
+      'https://example.com/robots-hop-4',
+      'https://example.com/robots-hop-5',
+      'https://example.com/llms.txt',
+      'https://example.com/sitemap.xml',
+    ]));
+    expect(urls).not.toContain('https://example.com/robots-hop-6');
   });
 });

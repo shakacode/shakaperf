@@ -156,6 +156,7 @@ export async function fetchSiteFavicon(siteUrl: string): Promise<string | null> 
           headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf client-report favicon)' },
         });
         if (res.status >= 300 && res.status < 400) {
+          await res.body?.cancel().catch(() => {});
           if (redirects >= MAX_REDIRECT_HOPS) return null;
           const location = res.headers.get('location');
           if (!location) return null;

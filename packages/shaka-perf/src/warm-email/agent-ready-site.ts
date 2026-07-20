@@ -42,8 +42,8 @@ const FETCH_TIMEOUT_MS = 8000;
 const MAX_BYTES = 512 * 1024;
 const MAX_REDIRECT_HOPS = 5;
 
-// One bounded GET. Returns the (truncated) body text + status, or null on any
-// failure / non-public host / oversized body.
+// One bounded request with up to five manually followed redirects. Returns the
+// truncated body text + status, or null on a fetch, URL, or host-validation failure.
 async function fetchText(url: string): Promise<{ status: number; text: string } | null> {
   let target: URL;
   try {
@@ -63,6 +63,7 @@ async function fetchText(url: string): Promise<{ status: number; text: string } 
         headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf agent-readiness check)' },
       });
       if (res.status >= 300 && res.status < 400) {
+        await res.body?.cancel().catch(() => {});
         if (redirects >= MAX_REDIRECT_HOPS) return null;
         const location = res.headers.get('location');
         if (!location) return null;

@@ -195,9 +195,11 @@ describe('fetchSiteFavicon', () => {
 
   it('does not fetch a private redirect target', async () => {
     const internalUrl = 'http://169.254.169.254/latest/meta-data/';
+    const redirectResponse = response('https://example.com/favicon.ico', 302, '', { location: internalUrl });
+    const cancelSpy = jest.spyOn(redirectResponse.body!, 'cancel');
     const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       if (String(input) === 'https://example.com/favicon.ico') {
-        return response('https://example.com/favicon.ico', 302, '', { location: internalUrl });
+        return redirectResponse;
       }
       if (String(input) === 'https://example.com/') {
         return response('https://example.com/', 200, 'no icon', { 'content-type': 'text/html' });
@@ -208,6 +210,7 @@ describe('fetchSiteFavicon', () => {
     await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
     expect(fetchedUrls(fetchSpy)).not.toContain(internalUrl);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
   });
 
   it.each([
