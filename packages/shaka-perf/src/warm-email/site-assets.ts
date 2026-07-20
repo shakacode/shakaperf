@@ -17,6 +17,7 @@ export { isPublicHost } from './public-host';
 // or unavailable responses omit the icon link.
 
 const FAVICON_MAX_BYTES = 512 * 1024;
+const MAX_REDIRECT_HOPS = 5;
 
 // Pure: fetched favicon bytes + content-type -> an inline data URI, or null
 // when unusable. Guards an empty body and an absurdly large file (it inlines
@@ -130,9 +131,10 @@ export async function fetchSiteFavicon(siteUrl: string): Promise<string | null> 
   } catch {
     return null;
   }
-  // One bounded fetch: validates scheme + host up front, reads the body under
-  // the same timeout, and aborts the moment the stream exceeds the cap. Returns
-  // the final (post-redirect) URL so a relative icon href resolves correctly.
+  // One bounded fetch: validates scheme + host up front and before every
+  // redirect hop, reads the body under the same timeout, and aborts the moment
+  // the stream exceeds the cap. Returns the final URL so a relative icon href
+  // resolves correctly.
   const fetchBounded = async (
     url: string,
   ): Promise<{ bytes: Uint8Array; contentType: string | null; finalUrl: string } | null> => {
@@ -147,39 +149,59 @@ export async function fetchSiteFavicon(siteUrl: string): Promise<string | null> 
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8000);
     try {
-      const res = await fetch(url, {
-        signal: ctl.signal,
-        redirect: 'follow',
-        headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf client-report favicon)' },
-      });
-      // A redirect can land on an internal host even when the start URL was
-      // public - re-check the final hop before reading anything back.
-      if (!res.ok || !isPublicHost(new URL(res.url).hostname)) return null;
-      const declared = Number(res.headers.get('content-length'));
-      if (Number.isFinite(declared) && declared > FAVICON_MAX_BYTES) return null;
-      const reader = res.body?.getReader();
-      if (!reader) return null;
-      const chunks: Uint8Array[] = [];
-      let total = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        total += value.length;
-        if (total > FAVICON_MAX_BYTES) {
-          ctl.abort();
+      for (let redirects = 0; ; redirects += 1) {
+        const res = await fetch(target.href, {
+          signal: ctl.signal,
+          redirect: 'manual',
+          headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf client-report favicon)' },
+        });
+        if (res.status >= 300 && res.status < 400) {
+          await res.body?.cancel().catch(() => {});
+          if (redirects >= MAX_REDIRECT_HOPS) return null;
+          const location = res.headers.get('location');
+          if (!location) return null;
+          try {
+            target = new URL(location, target);
+          } catch {
+            return null;
+          }
+          if (target.protocol !== 'http:' && target.protocol !== 'https:') return null;
+          if (!isPublicHost(target.hostname)) return null;
+          continue;
+        }
+        if (!res.ok) {
+          await res.body?.cancel().catch(() => {});
           return null;
         }
-        chunks.push(value);
+        const declared = Number(res.headers.get('content-length'));
+        if (Number.isFinite(declared) && declared > FAVICON_MAX_BYTES) {
+          await res.body?.cancel().catch(() => {});
+          return null;
+        }
+        const reader = res.body?.getReader();
+        if (!reader) return null;
+        const chunks: Uint8Array[] = [];
+        let total = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          total += value.length;
+          if (total > FAVICON_MAX_BYTES) {
+            ctl.abort();
+            return null;
+          }
+          chunks.push(value);
+        }
+        if (total === 0) return null;
+        const bytes = new Uint8Array(total);
+        let offset = 0;
+        for (const c of chunks) {
+          bytes.set(c, offset);
+          offset += c.length;
+        }
+        return { bytes, contentType: res.headers.get('content-type'), finalUrl: target.href };
       }
-      if (total === 0) return null;
-      const bytes = new Uint8Array(total);
-      let offset = 0;
-      for (const c of chunks) {
-        bytes.set(c, offset);
-        offset += c.length;
-      }
-      return { bytes, contentType: res.headers.get('content-type'), finalUrl: res.url };
     } catch {
       return null;
     } finally {

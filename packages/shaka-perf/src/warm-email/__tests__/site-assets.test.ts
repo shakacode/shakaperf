@@ -10,8 +10,23 @@
 import {
   faviconDataUri,
   faviconLinkTag,
+  fetchSiteFavicon,
   parseIconHref,
 } from '../site-assets';
+
+function response(url: string, status: number, body: string | Uint8Array = '', headers: Record<string, string> = {}): Response {
+  const result = new Response(body as unknown as BodyInit, { status, headers });
+  Object.defineProperty(result, 'url', { value: url });
+  return result;
+}
+
+function fetchedUrls(fetchSpy: jest.SpyInstance): string[] {
+  return fetchSpy.mock.calls.map(([input]) => String(input));
+}
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe('faviconDataUri', () => {
   it('uses an image content-type as a fallback when no known icon signature is present', () => {
@@ -127,5 +142,139 @@ describe('parseIconHref', () => {
     // A 300KB run of unterminated icon-like text used to hang the old regex.
     const hostile = '<link rel="' + '"icon"'.repeat(50_000);
     expect(parseIconHref(hostile)).toBeNull();
+  });
+});
+
+describe('fetchSiteFavicon', () => {
+  it('keeps the successful non-redirect favicon path', async () => {
+    const icon = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+      response('https://example.com/favicon.ico', 200, icon, { 'content-type': 'image/png' }),
+    );
+
+    await expect(fetchSiteFavicon('https://example.com/products')).resolves.toBe(
+      `data:image/png;base64,${Buffer.from(icon).toString('base64')}`,
+    );
+    expect(fetchedUrls(fetchSpy)).toEqual(['https://example.com/favicon.ico']);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://example.com/favicon.ico',
+      expect.objectContaining({ redirect: 'manual' }),
+    );
+  });
+
+  it('follows a public redirect manually and resolves a relative icon URL against the final page URL', async () => {
+    const icon = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      switch (String(input)) {
+        case 'https://example.com/favicon.ico':
+          return response('https://example.com/favicon.ico', 200, 'not an icon', { 'content-type': 'text/plain' });
+        case 'https://example.com/':
+          return response('https://example.com/', 302, '', { location: 'https://www.example.com/app/' });
+        case 'https://www.example.com/app/':
+          return response('https://www.example.com/app/', 200, '<link rel="icon" href="icons/favicon.png">', { 'content-type': 'text/html' });
+        case 'https://www.example.com/app/icons/favicon.png':
+          return response('https://www.example.com/app/icons/favicon.png', 200, icon, { 'content-type': 'image/png' });
+        default:
+          throw new Error(`Unexpected URL: ${String(input)}`);
+      }
+    });
+
+    await expect(fetchSiteFavicon('https://example.com/products')).resolves.toBe(
+      `data:image/png;base64,${Buffer.from(icon).toString('base64')}`,
+    );
+    expect(fetchedUrls(fetchSpy)).toEqual([
+      'https://example.com/favicon.ico',
+      'https://example.com/',
+      'https://www.example.com/app/',
+      'https://www.example.com/app/icons/favicon.png',
+    ]);
+    for (const [, options] of fetchSpy.mock.calls) {
+      expect(options).toEqual(expect.objectContaining({ redirect: 'manual' }));
+    }
+  });
+
+  it('does not fetch a private redirect target', async () => {
+    const internalUrl = 'http://169.254.169.254/latest/meta-data/';
+    const redirectResponse = response('https://example.com/favicon.ico', 302, '', { location: internalUrl });
+    const cancelSpy = jest.spyOn(redirectResponse.body!, 'cancel');
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      if (String(input) === 'https://example.com/favicon.ico') {
+        return redirectResponse;
+      }
+      if (String(input) === 'https://example.com/') {
+        return response('https://example.com/', 200, 'no icon', { 'content-type': 'text/html' });
+      }
+      throw new Error(`Unexpected URL: ${String(input)}`);
+    });
+
+    await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
+    expect(fetchedUrls(fetchSpy)).not.toContain(internalUrl);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['a non-success response', 404, {}],
+    ['an oversized declared response', 200, { 'content-length': String(512 * 1024 + 1) }],
+  ])('cancels %s before falling back', async (_label, status, headers) => {
+    const faviconResponse = response('https://example.com/favicon.ico', status, 'error body', headers);
+    const cancelSpy = jest.spyOn(faviconResponse.body!, 'cancel');
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      if (String(input) === 'https://example.com/favicon.ico') return faviconResponse;
+      if (String(input) === 'https://example.com/') {
+        return response('https://example.com/', 200, 'no icon', { 'content-type': 'text/html' });
+      }
+      throw new Error(`Unexpected URL: ${String(input)}`);
+    });
+
+    await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['a missing Location header', undefined],
+    ['a malformed Location header', 'http://[::1'],
+    ['a non-http Location header', 'ftp://example.com/favicon.ico'],
+  ])('rejects %s without fetching it', async (_label, location) => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      if (String(input) === 'https://example.com/favicon.ico') {
+        return response('https://example.com/favicon.ico', 302, '', location ? { location } : {});
+      }
+      if (String(input) === 'https://example.com/') {
+        return response('https://example.com/', 200, 'no icon', { 'content-type': 'text/html' });
+      }
+      throw new Error(`Unexpected URL: ${String(input)}`);
+    });
+
+    await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    if (location) expect(fetchedUrls(fetchSpy)).not.toContain(location);
+  });
+
+  it('stops following favicon redirects after five hops', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === 'https://example.com/') {
+        return response(url, 200, 'no icon', { 'content-type': 'text/html' });
+      }
+      if (url === 'https://example.com/favicon.ico') {
+        return response(url, 302, '', { location: '/hop-1' });
+      }
+      const hop = url.match(/^https:\/\/example\.com\/hop-(\d)$/)?.[1];
+      if (hop) return response(url, 302, '', { location: `/hop-${Number(hop) + 1}` });
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    await expect(fetchSiteFavicon('https://example.com')).resolves.toBeNull();
+    expect(fetchedUrls(fetchSpy)).toEqual([
+      'https://example.com/favicon.ico',
+      'https://example.com/hop-1',
+      'https://example.com/hop-2',
+      'https://example.com/hop-3',
+      'https://example.com/hop-4',
+      'https://example.com/hop-5',
+      'https://example.com/',
+    ]);
   });
 });

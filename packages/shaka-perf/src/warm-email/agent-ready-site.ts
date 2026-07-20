@@ -40,9 +40,10 @@ export const KNOWN_AI_BOTS = [
 
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_BYTES = 512 * 1024;
+const MAX_REDIRECT_HOPS = 5;
 
-// One bounded GET. Returns the (truncated) body text + status, or null on any
-// failure / non-public host / oversized body.
+// One bounded request with up to five manually followed redirects. Returns the
+// truncated body text + status, or null on a fetch, URL, or host-validation failure.
 async function fetchText(url: string): Promise<{ status: number; text: string } | null> {
   let target: URL;
   try {
@@ -55,36 +56,51 @@ async function fetchText(url: string): Promise<{ status: number; text: string } 
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      signal: ctl.signal,
-      redirect: 'follow',
-      headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf agent-readiness check)' },
-    });
-    if (!isPublicHost(new URL(res.url).hostname)) return null;
-    const reader = res.body?.getReader();
-    if (!reader) return { status: res.status, text: '' };
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      total += value.length;
-      if (total > MAX_BYTES) {
-        ctl.abort();
-        break;
+    for (let redirects = 0; ; redirects += 1) {
+      const res = await fetch(target.href, {
+        signal: ctl.signal,
+        redirect: 'manual',
+        headers: { 'user-agent': 'Mozilla/5.0 (shaka-perf agent-readiness check)' },
+      });
+      if (res.status >= 300 && res.status < 400) {
+        await res.body?.cancel().catch(() => {});
+        if (redirects >= MAX_REDIRECT_HOPS) return null;
+        const location = res.headers.get('location');
+        if (!location) return null;
+        try {
+          target = new URL(location, target);
+        } catch {
+          return null;
+        }
+        if (target.protocol !== 'http:' && target.protocol !== 'https:') return null;
+        if (!isPublicHost(target.hostname)) return null;
+        continue;
       }
-      chunks.push(value);
+      const reader = res.body?.getReader();
+      if (!reader) return { status: res.status, text: '' };
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.length;
+        if (total > MAX_BYTES) {
+          ctl.abort();
+          break;
+        }
+        chunks.push(value);
+      }
+      const buf = new Uint8Array(Math.min(total, MAX_BYTES));
+      let offset = 0;
+      for (const c of chunks) {
+        if (offset >= buf.length) break;
+        const slice = c.subarray(0, buf.length - offset);
+        buf.set(slice, offset);
+        offset += slice.length;
+      }
+      return { status: res.status, text: new TextDecoder('utf-8', { fatal: false }).decode(buf) };
     }
-    const buf = new Uint8Array(Math.min(total, MAX_BYTES));
-    let offset = 0;
-    for (const c of chunks) {
-      if (offset >= buf.length) break;
-      const slice = c.subarray(0, buf.length - offset);
-      buf.set(slice, offset);
-      offset += slice.length;
-    }
-    return { status: res.status, text: new TextDecoder('utf-8', { fatal: false }).decode(buf) };
   } catch {
     return null;
   } finally {
