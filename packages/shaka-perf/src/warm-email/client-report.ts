@@ -708,9 +708,9 @@ const totalIssues = (c: ImpactCounts): number => c.critical + c.serious + c.mode
 
 // A11y cards worst-first by the Lighthouse score on each card (lower = worse): it
 // weights every check, so it catches high-weight ARIA the axe high-impact count
-// misses. Ties: high-impact breadth, critical, moderate, homepage-first/path;
+// misses. Ties: high-impact defect count, critical, moderate, homepage-first/path;
 // unscored pages (LH timed out) trail.
-export interface A11yPageRank { counts: ImpactCounts; score?: number; startingPath: string }
+export interface A11yPageRank { counts: ImpactCounts; highImpact?: number; score?: number; startingPath: string }
 export function compareA11yWorstFirst(a: A11yPageRank, b: A11yPageRank): number {
   const aScored = Number.isFinite(a.score);
   const bScored = Number.isFinite(b.score);
@@ -719,7 +719,7 @@ export function compareA11yWorstFirst(a: A11yPageRank, b: A11yPageRank): number 
   } else if (aScored !== bScored) {
     return aScored ? -1 : 1; // unscored page (LH timed out) trails scored ones
   }
-  const hi = highImpact(b.counts) - highImpact(a.counts);
+  const hi = (b.highImpact ?? highImpact(b.counts)) - (a.highImpact ?? highImpact(a.counts));
   if (hi !== 0) return hi;
   if (b.counts.critical !== a.counts.critical) return b.counts.critical - a.counts.critical;
   if (b.counts.moderate !== a.counts.moderate) return b.counts.moderate - a.counts.moderate;
@@ -787,11 +787,12 @@ function buildA11yPages(pages: PagePerf[], resultsDir: string): A11ySectionView[
     if (!scan) continue;
     views.push({ page, scan, counts: tallyByImpact(scan.violations), client: readA11yClient(resultsDir, page.id) });
   }
+  const highImpactByView = new Map(views.map((view) => [view, summarizeA11yRuleFamilies([view.scan]).headlineCount]));
   // Worst accessibility first (see compareA11yWorstFirst).
   views.sort((a, b) =>
     compareA11yWorstFirst(
-      { counts: a.counts, score: a.client?.score, startingPath: a.page.startingPath },
-      { counts: b.counts, score: b.client?.score, startingPath: b.page.startingPath },
+      { counts: a.counts, highImpact: highImpactByView.get(a), score: a.client?.score, startingPath: a.page.startingPath },
+      { counts: b.counts, highImpact: highImpactByView.get(b), score: b.client?.score, startingPath: b.page.startingPath },
     ),
   );
   return views;
@@ -1344,11 +1345,20 @@ function a11yFallbackFixes(scan: AccessibilityScan): string[] {
   return out;
 }
 
-function a11ySevChips(counts: ImpactCounts, highImpact: number): ClientReportA11yCard['sev'] {
+function lowerImpactDefectCount(scan: AccessibilityScan, impact: 'moderate' | 'minor'): number {
+  const summary = summarizeA11yRuleFamilies([{
+    violations: scan.violations.filter((violation) => violation.impact === impact),
+  }], Number.MAX_SAFE_INTEGER);
+  return summary.notCountedExtras.reduce((total, family) => total + family.defectCount, 0);
+}
+
+function a11ySevChips(scan: AccessibilityScan, highImpact: number): ClientReportA11yCard['sev'] {
   const chips: ClientReportA11yCard['sev'] = [];
   if (highImpact > 0) chips.push({ num: highImpact, label: 'high-impact', status: 'poor' });
-  if (counts.moderate > 0) chips.push({ num: counts.moderate, label: 'moderate', status: 'fair' });
-  if (counts.minor > 0) chips.push({ num: counts.minor, label: 'low', status: 'good' });
+  const moderate = lowerImpactDefectCount(scan, 'moderate');
+  const minor = lowerImpactDefectCount(scan, 'minor');
+  if (moderate > 0) chips.push({ num: moderate, label: 'moderate', status: 'fair' });
+  if (minor > 0) chips.push({ num: minor, label: 'low', status: 'good' });
   return chips;
 }
 
@@ -1393,7 +1403,7 @@ function a11yCopyPromptForView(view: A11ySectionView, siteUrl: string, ctx: A11y
 }
 
 async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
-  const { page, scan, counts, client } = view;
+  const { page, scan, client } = view;
   const crops = await a11yCropFrames(scan, true);
   const score = client?.score;
   const status: ClientReportStatus = typeof score === 'number' ? scoreStatus(score) : 'poor';
@@ -1425,7 +1435,7 @@ async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?
     path: page.startingPath || '/',
     highImpact: hi,
     status,
-    sev: a11ySevChips(counts, hi),
+    sev: a11ySevChips(scan, hi),
     summary,
     frames,
     fixes: client?.fixes?.length ? client.fixes.map(dashSafe) : a11yFallbackFixes(scan),

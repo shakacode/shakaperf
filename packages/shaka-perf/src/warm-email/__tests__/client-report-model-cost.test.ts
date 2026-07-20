@@ -295,7 +295,15 @@ describe('accessibility finding families', () => {
       { violations: [sharedScroll, seriousViolation('button-name', ['.newsletter-submit'])] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 3 });
+    expect(summary).toMatchObject({
+      headlineCount: 3,
+      countedFamilies: [
+        { id: 'other', defectCount: 1, pageCount: 6 },
+        { id: 'unlabeled-controls', defectCount: 1, pageCount: 1 },
+        { id: 'contrast', defectCount: 1, pageCount: 1 },
+      ],
+      sharedDefects: [{ familyId: 'other', pageCount: 6 }],
+    });
   });
 
   it('keeps different selector structures as distinct defects', () => {
@@ -372,6 +380,29 @@ describe('accessibility finding families', () => {
     expect(summary.notCountedExtras).toEqual([
       { id: 'structure', label: 'page structure that is hard to navigate', defectCount: 2, pageCount: 1 },
     ]);
+  });
+
+  it('counts hidden lower-impact notes by defects instead of page reach', () => {
+    const scans = Array.from({ length: 8 }, (_, index) => ({
+      violations: [
+        {
+          ruleId: 'button-name', impact: 'minor', nodes: [{ target: ['.shared-control'] }],
+        },
+        ...(index === 0 ? [{
+          ruleId: 'color-contrast', impact: 'moderate', nodes: [
+            { target: ['.contrast-one'] }, { target: ['.contrast-two'] }, { target: ['.contrast-three'] },
+          ],
+        }] : []),
+        ...(index === 1 ? [{
+          ruleId: 'region', impact: 'moderate', nodes: [{ target: ['main'] }, { target: ['footer'] }],
+        }] : []),
+      ],
+    }));
+
+    const summary = summarizeA11yRuleFamilies(scans);
+
+    expect(summary.notCountedExtras.map((family) => family.id)).toEqual(['contrast', 'structure']);
+    expect(summary.smallerNotesCount).toBe(1);
   });
 
   it('keeps a malformed node unkeyed when its violation also has a selector', () => {

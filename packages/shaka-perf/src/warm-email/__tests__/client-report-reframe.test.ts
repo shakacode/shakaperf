@@ -36,7 +36,7 @@ import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent
 interface A11yFixture {
   blocked?: boolean;
   score?: number;
-  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string; selector?: string }>;
+  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string; selector?: string; selectors?: string[] }>;
 }
 
 interface AgentFixture {
@@ -119,7 +119,9 @@ function a11y(url: string, fixture: A11yFixture, pageId: string): AccessibilityR
     help: violation.ruleId,
     helpUrl: '',
     tags: [],
-    nodes: [{ target: [violation.selector ?? `.fixture-${pageId}`], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '' }],
+    nodes: (violation.selectors ?? [violation.selector ?? `.fixture-${pageId}`]).map((selector) => ({
+      target: [selector], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '',
+    })),
   }));
   const scan: AccessibilityScan = {
     viewportLabel: 'phone',
@@ -250,7 +252,7 @@ describe('cost-of-pain reframe model', () => {
       'worst page: Platform - 2 high-impact',
       'touch targets too small to tap reliably - 1 defect on 2 pages',
       'images with no text description - 1 defect on 1 page',
-      'also seen, not counted in the 2: text that is too hard to read - 1 defect on 1 page',
+      'lower-impact issues, not included in the high-impact total of 2: text that is too hard to read - 1 defect on 1 page',
       'WCAG - passes at zero critical barriers',
     ]));
     expect(a11y?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
@@ -383,7 +385,7 @@ describe('cost-of-pain reframe model', () => {
 
     expect(cost).toMatchObject({
       headline: '3 high-impact barriers keep some visitors from using the site.',
-      fix: { text: expect.stringContaining('Start with unlabeled controls - it reaches 1 page.') },
+      fix: { text: expect.stringContaining('Start with unlabeled controls - 2 defects on 1 page.') },
     });
     expect(cost?.gapSubLines).toContain('worst page: Home - 3 high-impact');
     expect(cost?.sitePrompts?.a11y).toContain('Goal: all 3 high-impact issues pass');
@@ -401,6 +403,26 @@ describe('cost-of-pain reframe model', () => {
     });
     expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: the 1 high-impact issue passes');
     expect(result.html).toContain('data-copy-prompt="cr-a11y-site-prompt"');
+  });
+
+  it('uses distinct defects for every severity chip on a card', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({
+        a11y: {
+          violations: [
+            { ruleId: 'target-size', impact: 'serious', selectors: ['.action-one', '.action-two', '.action-three'] },
+            { ruleId: 'region', impact: 'moderate', selectors: ['main', 'footer'] },
+            { ruleId: 'color-contrast', impact: 'minor', selectors: ['.promo', '.banner'] },
+          ],
+        },
+      }),
+    ]));
+
+    expect(result.model.a11yCards[0]?.sev).toEqual([
+      { num: 3, label: 'high-impact', status: 'poor' },
+      { num: 2, label: 'moderate', status: 'fair' },
+      { num: 2, label: 'low', status: 'good' },
+    ]);
   });
 
   it('keeps a shared user-card selector as a11y prompt evidence', async () => {

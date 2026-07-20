@@ -126,6 +126,7 @@ function trackViolation(
     selectorPages.add(pageIndex);
     family.selectorPages.set(selector, selectorPages);
   }
+  // A malformed target has no stable selector, so count its rule once per page.
   if (!hasNode || hasUnkeyedNode) family.unkeyedKeys.add(`${violation.ruleId}|page:${pageIndex}`);
 }
 
@@ -202,7 +203,7 @@ export function summarizeA11yRuleFamilies(
   const allExtras = [...extras.values()].map(finalizeFamily).sort(sortFamilies);
   const safeExtraLimit = Math.max(0, Math.floor(visibleExtraLimit));
   const notCountedExtras = allExtras.slice(0, safeExtraLimit);
-  const smallerNotesCount = allExtras.slice(safeExtraLimit).reduce((total, family) => total + family.pageCount, 0);
+  const smallerNotesCount = allExtras.slice(safeExtraLimit).reduce((total, family) => total + family.defectCount, 0);
   return {
     headlineCount: countedFamilies.reduce((total, family) => total + family.defectCount, 0),
     countedFamilies,

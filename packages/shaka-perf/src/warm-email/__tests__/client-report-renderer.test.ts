@@ -1424,7 +1424,7 @@ describe('renderClientReport perf tile assembly', () => {
     ], { throttleProfile: 'Fast-3G' }));
     const a11yPanelHtml = renderedPanel(html, 'a11y');
 
-    expect(a11yPanelHtml).toContain('unlabeled controls - 3 defects on all 1 page');
+    expect(a11yPanelHtml).toContain('unlabeled controls - 3 defects on the only page');
     expect(a11yPanelHtml).toContain('>5 high-impact</span>');
     expect(a11yPanelHtml).not.toContain('Critical accessibility barriers found');
     expect(a11yPanelHtml).toContain('What this costs you');

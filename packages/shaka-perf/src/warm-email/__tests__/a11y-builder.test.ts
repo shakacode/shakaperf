@@ -96,7 +96,7 @@ describe('buildA11ySection', () => {
         headline: '1 high-impact barrier keeps some visitors from using the site.',
         gapSubLines: [
           'worst page: Home - 1 high-impact',
-          'touch targets too small to tap reliably - 1 defect on all 1 page',
+          'touch targets too small to tap reliably - 1 defect on the only page',
           'WCAG - passes at zero critical barriers',
         ],
       },

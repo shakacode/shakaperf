@@ -256,8 +256,9 @@ export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA
 }
 
 function a11yFamilyReach(pageCount: number, pageTotal: number): string {
+  if (pageTotal === 1) return 'the only page';
   return pageCount === pageTotal
-    ? `all ${pageTotal} ${pageTotal === 1 ? 'page' : 'pages'}`
+    ? `all ${pageTotal} pages`
     : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
 }
 
@@ -344,7 +345,7 @@ export function buildA11ySection(
   const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
   const widestA11yFamily = a11yCountedFamilies[0];
   const a11yFixTextWithLead = widestA11yFamily
-    ? `Start with ${widestA11yFamily.label} - it reaches ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
+    ? `Start with ${widestA11yFamily.label} - ${widestA11yFamily.defectCount} ${widestA11yFamily.defectCount === 1 ? 'defect' : 'defects'} on ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
     : a11yFix;
   const a11yWorstFamilyCount = a11yWorst
     ? summarizeA11yRuleFamilies([a11yWorst.scan]).headlineCount
@@ -354,7 +355,7 @@ export function buildA11ySection(
       `worst page: ${a11yWorst.page.name} - ${a11yWorstFamilyCount} high-impact`,
       ...a11yCountedFamilies.map((family) => a11yFamilyLine(family, a11yMeasurable.length)),
       ...(a11yFamilySummary.notCountedExtras.length > 0
-        ? [`also seen, not counted in the ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
+        ? [`lower-impact issues, not included in the high-impact total of ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
         : []),
       ...(a11yFamilySummary.smallerNotesCount > 0
         ? [`plus ${a11yFamilySummary.smallerNotesCount} smaller ${a11yFamilySummary.smallerNotesCount === 1 ? 'note' : 'notes'}`]
