@@ -101,8 +101,10 @@ describe('compare bisect black-box E2E', () => {
   /*
    * known-good -> good-unrelated-commit-one -> good-unrelated-commit-two
    *                 ^ skipped                    ^ skipped
-   * -> clean-before-regressions -> visual-and-performance-regressions-introduced
-   *                                ^ first visual/performance
+   * -> good-unrelated-commit-traversed -> clean-before-regressions
+   *    ^ traversed good commit
+   * -> visual-and-performance-regressions-introduced
+   *    ^ first visual/performance
    * -> regressions-confirmed -> known-bad
    */
   it('finds multiple regressions introduced by one commit with shared candidate work', async () => {
@@ -110,6 +112,7 @@ describe('compare bisect black-box E2E', () => {
       'known-good',
       'good-unrelated-commit-one',
       'good-unrelated-commit-two',
+      'good-unrelated-commit-traversed',
       'clean-before-regressions',
       'visual-and-performance-regressions-introduced',
       'regressions-confirmed',
@@ -124,6 +127,7 @@ describe('compare bisect black-box E2E', () => {
           'known-good': [],
           'good-unrelated-commit-one': [],
           'good-unrelated-commit-two': [],
+          'good-unrelated-commit-traversed': [],
           'clean-before-regressions': [],
           'visual-and-performance-regressions-introduced': ['visual', 'performance'],
           'regressions-confirmed': ['visual', 'performance'],
@@ -143,8 +147,9 @@ describe('compare bisect black-box E2E', () => {
       ]);
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
-        'clean-before-regressions',
+        'good-unrelated-commit-traversed',
         'visual-and-performance-regressions-introduced',
+        'clean-before-regressions',
       ]);
       expectCommitsSkippedByBinarySearch(harness, fixture, [
         'good-unrelated-commit-one',
@@ -448,14 +453,17 @@ describe('compare bisect black-box E2E', () => {
   /*
    * known-good -> good-unrelated-commit-one -> clean-before-failure
    *                 ^ skipped
-   * -> compare-failure -> good-unrelated-commit-two -> known-bad
-   *                         ^ skipped
+   * -> good-unrelated-commit-traversed -> compare-failure
+   *    ^ traversed good commit
+   * -> good-unrelated-commit-two -> known-bad
+   *    ^ skipped
    */
   it('restores the experiment checkout and persists failure when compare throws', async () => {
     const fixture = createLinearFixture([
       'known-good',
       'good-unrelated-commit-one',
       'clean-before-failure',
+      'good-unrelated-commit-traversed',
       'compare-failure',
       'good-unrelated-commit-two',
       'known-bad',
@@ -467,6 +475,7 @@ describe('compare bisect black-box E2E', () => {
           'known-good': false,
           'good-unrelated-commit-one': false,
           'clean-before-failure': false,
+          'good-unrelated-commit-traversed': false,
           'compare-failure': true,
           'good-unrelated-commit-two': true,
           'known-bad': true,
@@ -485,7 +494,7 @@ describe('compare bisect black-box E2E', () => {
       });
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
-        'clean-before-failure',
+        'good-unrelated-commit-traversed',
         'compare-failure',
       ]);
       expectCommitsSkippedByBinarySearch(harness, fixture, [
