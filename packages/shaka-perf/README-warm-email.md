@@ -102,12 +102,13 @@ Overviews) - the data comes from the audit's `agent-readiness` stage (always on
 under the `audit` category), so a plain `shaka-perf audit` produces it; with no
 agent data on disk the bytes stay identical to before. The stage captures each
 page twice - the raw HTML the server sends (a no-JS fetch) and the rendered DOM -
-and writes `<id>/agent-readiness.json`. Each page score combines content reachable
-without JavaScript (40%), machine-readable structure (20%), and semantic HTML
-(15%) into a 0-100 directional diagnostic. Crawler access (25%) is assessed
-separately on its own site-wide card. The headline site score averages the page
-structure scores; when at least half the reachable pages are near-empty no-JS
-shells, or robots.txt blocks every AI answer crawler, it is capped at "poor".
+and writes `<id>/agent-readiness.json`. Each page score adds content reachable
+without JavaScript (40 points), machine-readable structure (20 points), and
+semantic HTML (15 points) out of 75, then rescales to 0-100. Crawler access
+(25 points) is assessed separately and rescaled to its own site-wide 0-100 card.
+The headline site score averages the page structure scores; when at least half
+the reachable pages are near-empty no-JS shells, or robots.txt blocks every AI
+answer crawler, it is capped at "poor".
 The site-level robots.txt / sitemap.xml / llms.txt are fetched once at report time
 (same bounded, SSRF-guarded pattern as the favicon).
 A report-time `claude` pass (model `sonnet`, cached, `--no-ai-agent` to skip)

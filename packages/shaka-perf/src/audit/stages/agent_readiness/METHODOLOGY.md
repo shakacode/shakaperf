@@ -3,13 +3,13 @@
 The "Agent Ready" tab scores how legible a site is to AI agents and answer
 engines (ChatGPT, Claude, Perplexity, Google AI Overviews, shopping agents). It
 is a directional 0-100 diagnostic (like a Lighthouse score), version-stamped,
-with the weighting shown - NOT a guarantee of AI rankings or citations. This file
+with the raw point allocation shown - NOT a guarantee of AI rankings or citations. This file
 is the source of truth for what the report may and may not claim. Sourced from a
 verified research pass (2026-06-23); see citations inline.
 
 ## Score components (v1)
 
-| Category | Weight | Why this weight |
+| Category | Raw points | Why these points |
 |---|---|---|
 | Reachable without JavaScript (SSR) | 40 (gating) | The single most directly measurable, evidence-backed AI-visibility factor. |
 | Crawler access (robots.txt / sitemap / llms.txt) | 25 | Documented lever for AI-search inclusion, but only for the search/citation bots. |
