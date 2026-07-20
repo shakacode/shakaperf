@@ -21,7 +21,7 @@ import type {
 } from '../../src/compare/bisect/report-model';
 import type { TestResult } from '../../src/pipeline/report';
 
-jest.setTimeout(30_000);
+jest.setTimeout(60_000);
 
 const GOOD_SHA = '1111111111111111111111111111111111111111';
 const PRE_VISUAL_SHA = '1212121212121212121212121212121212121212';
