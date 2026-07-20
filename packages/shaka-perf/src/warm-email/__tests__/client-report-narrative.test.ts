@@ -132,5 +132,10 @@ describe('narrative: verdict tiers', () => {
     const prompt = buildNarrativePrompt({ domain: 'x.com', worstDim: 'agent', agent: { status: 'fair', score: 68, accessBlocked: false } });
     expect(prompt).toContain('Each verdictWord must match its stated status. For fair and poor statuses');
     expect(prompt).toContain(OVERSELL_VERDICT_WORDS.join(', '));
+    expect(OVERSELL_VERDICT_WORDS).toEqual([
+      'good', 'great', 'excellent', 'strong', 'solid', 'healthy', 'fine', 'ok',
+      'okay', 'well', 'mostly', 'largely', 'nearly', 'almost', 'already', 'ahead',
+      'readable',
+    ]);
   });
 });

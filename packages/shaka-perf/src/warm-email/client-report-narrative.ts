@@ -86,7 +86,8 @@ export const OVERSELL_VERDICT_WORDS = [
   'okay', 'well', 'mostly', 'largely', 'nearly', 'almost', 'already', 'ahead',
   'readable',
 ] as const;
-export const OVERSELL_VERDICT_RE = new RegExp(`\\b(${OVERSELL_VERDICT_WORDS.join('|')})\\b`, 'i');
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const OVERSELL_VERDICT_RE = new RegExp(`\\b(${OVERSELL_VERDICT_WORDS.map(escapeRegExp).join('|')})\\b`, 'i');
 
 const DIM_LABEL: Record<Dim, string> = {
   perf: 'mobile speed',
