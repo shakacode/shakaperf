@@ -108,6 +108,8 @@ structure 20%, semantic HTML 15%) into a 0-100 directional diagnostic, with two
 honesty gates: a near-empty no-JS shell or a robots.txt that blocks every crawler
 caps the score at "poor". The site-level robots.txt / sitemap.xml / llms.txt are
 fetched once at report time (same bounded, SSRF-guarded pattern as the favicon).
+The headline site score averages the page structure scores, while crawler access
+is assessed separately on its own site-wide card.
 A report-time `claude` pass (model `sonnet`, cached, `--no-ai-agent` to skip)
 rewrites the findings into a plain-language summary + "what to change" list to
 `<id>/agent-ready-client.json` and a site `agent-ready-site.json`; without it the

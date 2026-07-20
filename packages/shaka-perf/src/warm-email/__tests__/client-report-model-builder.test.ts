@@ -92,6 +92,10 @@ describe('assembleClientReportModel', () => {
 
     expect(result.tiles.map((tile) => tile.target)).toEqual(['perf', 'a11y', 'agent']);
     expect(result.tabOrder).toEqual(['a11y', 'perf', 'agent']);
+    expect(result.tiles).toContainEqual(expect.objectContaining({
+      target: 'agent',
+      metricSub: 'out of 100 - avg page readability for AI',
+    }));
     expect(result).toMatchObject({
       perfCost: { state: 'measured' },
       a11yCost: { state: 'measured' },

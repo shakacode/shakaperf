@@ -77,7 +77,7 @@ export const WHAT_THIS_COSTS_YOU = 'What this costs you';
 export const INDUSTRY_DATA = 'industry data';
 export const NOTHING_TO_FIX = 'Nothing to fix here';
 export const PERF_ZERO_COPY = "Under Google's 2.5-second line on every page we measured - no material loss here.";
-export const AI_ZERO_COPY = 'AI tools can already read your site - no material loss here.';
+export const AI_ZERO_COPY = "AI tools can read your pages' text - no material text loss here.";
 export const NO_MATERIAL_LOSS = 'No material loss here.';
 export const BOT_WALL_COPY =
   "The site's bot protection served our checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";

@@ -16,6 +16,13 @@ verified research pass (2026-06-23); see citations inline.
 | Machine-readable structure (structured data + meta) | 20 | Helps machines parse/understand the page. |
 | Semantic HTML and content quality | 15 | Helps any extractor pull the real content accurately. |
 
+## How the numbers roll up
+
+1. Each page-card score adds SSR, machine-readable structure, and semantic HTML and content quality. The raw total is out of 75, then rescaled to 0-100. Crawler access is excluded because it is site-wide.
+2. Crawler access has a raw total out of 25, then rescaled to 0-100. It is shown once on its own site-wide card.
+3. The headline site score is the average of the per-page structure scores.
+4. A shell coverage below 20% or a robots.txt block for every AI answer crawler caps the headline at 49 in every case.
+
 Gating rules that keep the headline number honest:
 
 1. If the raw (no-JS) fetch failed or was bot-blocked, the report says "we could

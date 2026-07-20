@@ -57,6 +57,7 @@ export interface CostSitePromptSlots {
 /** A quiet one-line group used instead of full cards for strong pages. */
 export interface StrongPageGroup {
   label: string;
+  verdict?: string;
   pages: readonly {
     name: string;
     score?: number;

@@ -283,12 +283,28 @@ describe('scoreSiteAccess', () => {
 });
 
 describe('scoreSite', () => {
-  it('blends per-page structure with site access into a /100 headline', () => {
-    const s = scoreSite([result(), result()], openAccess);
-    expect(s.overall).toBeGreaterThanOrEqual(90);
-    expect(s.overall).toBeLessThanOrEqual(100);
+  it('uses the rounded average of per-page structure scores as the headline', () => {
+    const pages = [result(), result({}, { textWords: 200 }, { textWords: 400 })];
+    const perPage = pages.map((page) => scorePageStructure(page));
+    const s = scoreSite(pages, openAccess);
+
+    expect(s.overall).toBe(Math.round(perPage.reduce((sum, page) => sum + page.score, 0) / perPage.length));
+    expect(s.overall).toBe(s.structureAvg);
     expect(s.bucket).toBe('good');
     expect(s.shellCapped).toBe(false);
+  });
+
+  it('keeps the headline independent from the separate crawler-access score', () => {
+    const pages = [result(), result({}, { textWords: 200 }, { textWords: 400 })];
+    const open = scoreSite(pages, openAccess);
+    const limitedAccess = scoreSite(pages, {
+      robots: { fetched: true, blocksAiBots: [], blocksAll: false },
+      sitemap: false,
+      llmsTxt: false,
+    });
+
+    expect(open.access.score).not.toBe(limitedAccess.access.score);
+    expect(open.overall).toBe(limitedAccess.overall);
   });
 
   it('caps the site when most pages are client-rendered shells', () => {

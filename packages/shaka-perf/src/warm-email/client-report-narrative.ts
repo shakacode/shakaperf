@@ -81,6 +81,7 @@ export function versionNarrativeOverlay(overlay: NarrativeOverlay): NarrativeOve
 export const MAX_VERDICT_WORD = 40;
 export const MAX_PARA = 320;
 export const MAX_BOTTOM_LINE = 280;
+export const OVERSELL_VERDICT_RE = /\b(good|great|excellent|strong|solid|healthy|fine|ok(?:ay)?|well|mostly|largely|nearly|almost|already|ahead|readable)\b/i;
 
 const DIM_LABEL: Record<Dim, string> = {
   perf: 'mobile speed',
@@ -294,10 +295,18 @@ function hasUnsafeAiText(s: string): boolean {
   return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
 }
 
-function mergeDim(base: ClientReportDimNarrative, ov: Partial<ClientReportDimNarrative> | undefined): ClientReportDimNarrative {
+function mergeDim(
+  base: ClientReportDimNarrative,
+  ov: Partial<ClientReportDimNarrative> | undefined,
+  status: ClientReportStatus | undefined,
+): ClientReportDimNarrative {
   if (!ov) return base;
+  const overlayVerdict = useText(ov.verdictWord, MAX_VERDICT_WORD);
+  const verdictWord = (status === 'fair' || status === 'poor') && overlayVerdict && OVERSELL_VERDICT_RE.test(overlayVerdict)
+    ? base.verdictWord
+    : overlayVerdict ?? base.verdictWord;
   return {
-    verdictWord: useText(ov.verdictWord, MAX_VERDICT_WORD) ?? base.verdictWord,
+    verdictWord,
     verdictPara: useText(ov.verdictPara, MAX_PARA) ?? base.verdictPara,
   };
 }
@@ -313,9 +322,9 @@ export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverla
   const blockedAware = !!(facts.perf?.couldNotMeasure || facts.a11y?.couldNotMeasure || facts.agent?.couldNotMeasure);
   return {
     bottomLineHtml: aiBottom && !blockedAware ? highlightBottomLine(aiBottom, facts.worstDim, worstStatusOf(facts)) : base.bottomLineHtml,
-    perf: facts.perf?.couldNotMeasure ? base.perf : mergeDim(base.perf, overlay.perf),
-    a11y: facts.a11y?.couldNotMeasure ? base.a11y : mergeDim(base.a11y, overlay.a11y),
-    agent: facts.agent?.couldNotMeasure ? base.agent : mergeDim(base.agent, overlay.agent),
+    perf: facts.perf?.couldNotMeasure ? base.perf : mergeDim(base.perf, overlay.perf, facts.perf?.status),
+    a11y: facts.a11y?.couldNotMeasure ? base.a11y : mergeDim(base.a11y, overlay.a11y, facts.a11y?.status),
+    agent: facts.agent?.couldNotMeasure ? base.agent : mergeDim(base.agent, overlay.agent, facts.agent?.status),
   };
 }
 
@@ -392,6 +401,7 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     'en-dashes anywhere, plain hyphens only.',
     'Never state or invent a dollar amount or price.',
     `Never use these words: ${BANNED_WORDS.join(', ')}.`,
+    'Each verdictWord must match its stated status. For fair and poor statuses, do not use reassuring words (good, great, strong, solid, fine, healthy, mostly, largely, nearly, almost, already, well, readable). A fair verdict must name what still needs work, for example "Readable, but needs work".',
     'For ACCESSIBILITY, write 2-3 short plain sentences (about grade-6 reading level), the whole paragraph UNDER 300 characters, answering "Can everyone use your site?". (1) Open by naming the real people blocked - screen reader users, keyboard-only users, low-vision users - and keep at least one of those groups present in EVERY sentence about the problem; never collapse to "anyone"/"users"/"people" in general, and never add a separate "Who this affects:" line. (2) Say in concrete everyday words what each group actually experiences ("thrown back to the top", "no clear way to reach the main content", "cannot tell the menu apart"), not the technical cause. (3) Translate every technical term to plain English; NEVER emit these words: axe, ARIA, landmark, region, DOM, meta-refresh, semantic, WCAG. Examples: "the page reloads itself and throws them back to the top"; "the main content is not clearly marked, so a screen reader cannot jump to it"; "the page areas are not clearly named, so a screen reader cannot tell them apart". (4) Give the number of affected pages as a digit and name the single worst page. (5) Close with the stakes in a few words, each mentioned once only - lost customers, some legal risk, weaker search visibility; use the word "search" at most once and never explain how search engines work. Calm and factual, never alarmist.',
     'Use digits for any count (write "11", not "eleven").',
     'OUTPUT ONLY the JSON object, no prose, no code fence.',

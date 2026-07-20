@@ -170,7 +170,7 @@ export function assembleClientReportModel(
       metric: agent.agentCouldNotMeasure ? 'n/a' : String(agent.agentOverall),
       metricSub: agent.agentCouldNotMeasure
         ? `${agent.agentBlocked.length} page${agent.agentBlocked.length === 1 ? '' : 's'} blocked by bot protection`
-        : 'out of 100 - can AI read & recommend you',
+        : 'out of 100 - avg page readability for AI',
       conseq: agent.agentCouldNotMeasure
         ? "The site's bot protection served our checker a challenge page, so we could not measure this."
         : agent.agentAccessBlocked

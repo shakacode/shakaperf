@@ -326,7 +326,7 @@ export function scorePage(result: AgentReadinessResult, site: SiteAccessSignals 
 // The page-varying portion of the score (SSR + structure + semantics), rescaled
 // to /100 so a per-page card reads as a clean 0-100. Crawler access is excluded
 // here because it is site-wide; it gets its own section once.
-export const PAGE_STRUCTURE_MAX = W_SSR + W_STRUCTURE + W_SEMANTICS; // 80
+export const PAGE_STRUCTURE_MAX = W_SSR + W_STRUCTURE + W_SEMANTICS; // 75
 
 export interface PageStructureScore {
   score: number; // 0-100, after the shell cap
@@ -378,18 +378,18 @@ export function scoreSiteAccess(site: SiteAccessSignals | undefined, page: PageS
 }
 
 export interface SiteAgentScore {
-  overall: number; // 0-100, the weighted blend shown as the headline
+  overall: number; // 0-100 average of the per-page structure scores, capped at GATED_CAP when shell- or robots-gated
   bucket: Bucket;
-  structureAvg: number; // average per-page structure score (/100)
+  structureAvg: number; // ungated 0-100 average of the per-page structure scores
   access: SiteAccessScore;
   shellCapped: boolean; // most pages are near-empty raw shells (CSR), capping the site
   accessBlocked: boolean; // robots.txt blocks every crawler - no AI engine can read any page
   allRawUnreadable: boolean; // every page's raw fetch failed/blocked - show a caveat, not a number
 }
 
-// The headline site score: per-page structure (cats 1,3,4) averaged + the single
-// site-access score (cat 2). Two gating rules cap it at "poor": most pages are
-// near-empty raw shells, or robots.txt blocks every AI answer crawler.
+// The headline site score is the average 0-100 per-page structure score, on the
+// same scale as the page cards. Two gating rules cap it at "poor": most pages
+// are near-empty raw shells, or robots.txt blocks every AI answer crawler.
 export function scoreSite(results: readonly AgentReadinessResult[], site: SiteAccessSignals | undefined): SiteAgentScore {
   // noindex is per-page, but the Access section is shown once for the whole site:
   // flag it if ANY audited page carries a noindex (not just page 0).
@@ -399,17 +399,16 @@ export function scoreSite(results: readonly AgentReadinessResult[], site: SiteAc
   const reachable = pages.filter((p) => p.rawReachable);
   const structureRaws = pages.map((p) => p.rawPoints);
   const structureRawAvg = structureRaws.length ? structureRaws.reduce((a, b) => a + b, 0) / structureRaws.length : 0;
-  const uncapped = Math.round(structureRawAvg + access.rawPoints); // (max 75) + (max 25) = /100
   const structureAvg = Math.round((structureRawAvg / PAGE_STRUCTURE_MAX) * 100);
   // Most reachable pages are shells -> the site is effectively CSR-invisible.
   const shellCapped =
-    reachable.length > 0 && reachable.filter((p) => p.coverage < SHELL_COVERAGE).length >= Math.ceil(reachable.length / 2) && uncapped > GATED_CAP;
+    reachable.length > 0 && reachable.filter((p) => p.coverage < SHELL_COVERAGE).length >= Math.ceil(reachable.length / 2) && structureAvg > GATED_CAP;
   // robots.txt blocks every AI answer crawler -> a well-built page is still
   // invisible to AI. Uses the citation-aware gate: a site that blocks generic
   // crawlers but allows the AI answer bots is NOT capped.
   const accessBlocked = citationFullyBlocked(site);
   const allRawUnreadable = pages.length > 0 && pages.every((p) => p.rawUnreadable);
-  const overall = shellCapped || (accessBlocked && uncapped > GATED_CAP) ? GATED_CAP : uncapped;
+  const overall = shellCapped || (accessBlocked && structureAvg > GATED_CAP) ? GATED_CAP : structureAvg;
   return { overall, bucket: scoreBucket(overall), structureAvg, access, shellCapped, accessBlocked, allRawUnreadable };
 }
 
