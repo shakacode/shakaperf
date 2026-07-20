@@ -89,6 +89,7 @@ import {
   a11yPromptRules,
   buildA11ySection,
   prepareA11ySection,
+  summarizeA11yRuleFamilies,
   type A11yPromptContext,
   type A11ySectionCounts,
   type A11ySectionView,
@@ -1343,10 +1344,9 @@ function a11yFallbackFixes(scan: AccessibilityScan): string[] {
   return out;
 }
 
-function a11ySevChips(counts: ImpactCounts): ClientReportA11yCard['sev'] {
-  const hi = counts.critical + counts.serious;
+function a11ySevChips(counts: ImpactCounts, highImpact: number): ClientReportA11yCard['sev'] {
   const chips: ClientReportA11yCard['sev'] = [];
-  if (hi > 0) chips.push({ num: hi, label: 'high-impact', status: 'poor' });
+  if (highImpact > 0) chips.push({ num: highImpact, label: 'high-impact', status: 'poor' });
   if (counts.moderate > 0) chips.push({ num: counts.moderate, label: 'moderate', status: 'fair' });
   if (counts.minor > 0) chips.push({ num: counts.minor, label: 'low', status: 'good' });
   return chips;
@@ -1398,7 +1398,7 @@ async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?
   const score = client?.score;
   const status: ClientReportStatus = typeof score === 'number' ? scoreStatus(score) : 'poor';
   const topLabel = sortViolations(scan.violations)[0] ? a11yIssueLabel(sortViolations(scan.violations)[0].ruleId) : '';
-  const hi = counts.critical + counts.serious;
+  const hi = summarizeA11yRuleFamilies([scan]).headlineCount;
   const summary = client?.summary
     ? dashSafe(client.summary)
     : `${hi} high-impact issue${hi === 1 ? '' : 's'} on this page${topLabel ? `, mainly ${topLabel}` : ''}.`;
@@ -1425,7 +1425,7 @@ async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?
     path: page.startingPath || '/',
     highImpact: hi,
     status,
-    sev: a11ySevChips(counts),
+    sev: a11ySevChips(counts, hi),
     summary,
     frames,
     fixes: client?.fixes?.length ? client.fixes.map(dashSafe) : a11yFallbackFixes(scan),

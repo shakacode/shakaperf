@@ -372,7 +372,7 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   const worstPageName = pageRouteLabel(worstPageUrl);
   const date = slot(input.date, 48, 5);
   const host = structuralSlot(input.host, 120, 3);
-  const orderedFindings = [...completeFindings].sort((a, b) => b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
+  const orderedFindings = [...completeFindings].sort((a, b) => b.defectCount - a.defectCount || b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
   const findingLines = orderedFindings.map((finding) => siteFindingLine(finding, pageCount));
   const rawExtras = input.lowerImpactFindings;
   if (rawExtras !== undefined && !Array.isArray(rawExtras)) return undefined;
@@ -389,21 +389,23 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
     : undefined;
   const priority = orderedFindings.slice(0, 3).map((finding) => siteFixPriority(finding.familyId));
   const priorityLine = priority.length > 1
-    ? `${priority[0]} (widest reach), then ${joinNatural(priority.slice(1))}`
-    : `${priority[0]} (widest reach)`;
+    ? `${priority[0]} (most defects), then ${joinNatural(priority.slice(1))}`
+    : `${priority[0]} (most defects)`;
   const ruleIds = [...new Set(completeFindings.flatMap((finding) => finding.verificationRuleIds))];
   const verification = ruleIds.length > 0
     ? `confirm ${joinNatural(ruleIds)} report zero violations.`
     : 'confirm each listed high-impact family reports zero violations.';
 
   return finalizePrompt([
-    `Accessibility barriers are blocking some visitors: ${highImpactCount} high-impact issues across the site's ${pageCount} pages (worst page: the ${worstPageName} with ${worstCount}).`,
+    `Accessibility barriers are blocking some visitors: ${highImpactCount} high-impact ${highImpactCount === 1 ? 'issue' : 'issues'} across the site's ${pagePhrase(pageCount)} (worst page: the ${worstPageName} with ${worstCount}).`,
     '',
-    `Measured on ${url} (${date}, automated axe accessibility scan across ${pageCount} pages):`,
+    `Measured on ${url} (${date}, automated axe accessibility scan across ${pagePhrase(pageCount)}):`,
     ...findingLines,
     ...(extraLine ? [extraLine] : []),
     '',
-    `Goal: all ${highImpactCount} high-impact issues pass while the pages remain visually unchanged - start with the ${priorityLine}.`,
+    highImpactCount === 1
+      ? `Goal: the 1 high-impact issue passes while the pages remain visually unchanged - start with the ${priorityLine}.`
+      : `Goal: all ${highImpactCount} high-impact issues pass while the pages remain visually unchanged - start with the ${priorityLine}.`,
     '',
     'Constraints:',
     '- Do not assume a framework or language - inspect this codebase and work within its existing setup.',

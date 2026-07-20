@@ -8,7 +8,7 @@
  */
 
 export interface A11yRuleFamilyViolationNode {
-  target?: readonly (string | readonly string[])[];
+  target?: unknown;
 }
 
 export interface A11yRuleFamilyViolation {
@@ -31,8 +31,6 @@ export interface A11yRuleFamily {
 export interface A11yRuleFamilySummary {
   /** Distinct high-impact defects for the C-panel headline. */
   headlineCount: number;
-  /** High-impact family occurrences, counted once per affected page. */
-  occurrenceCount: number;
   countedFamilies: readonly A11yRuleFamily[];
   notCountedExtras: readonly A11yRuleFamily[];
   smallerNotesCount: number;
@@ -74,45 +72,69 @@ function normalizeTargetSegment(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function targetKey(target: readonly unknown[]): string {
-  const normalizedTarget: Array<string | string[]> = [];
-  for (const segment of target) {
-    if (typeof segment === 'string') {
-      const normalized = normalizeTargetSegment(segment);
-      if (normalized) normalizedTarget.push(normalized);
-      continue;
-    }
-    if (!Array.isArray(segment)) continue;
-    const parts = segment
-      .filter((part): part is string => typeof part === 'string')
-      .map(normalizeTargetSegment)
-      .filter(Boolean);
-    if (parts.length > 0) normalizedTarget.push(parts);
-  }
-  return JSON.stringify(normalizedTarget);
+function targetKey(target: readonly (string | readonly string[])[]): string {
+  return JSON.stringify(target.map((segment) =>
+    typeof segment === 'string' ? normalizeTargetSegment(segment) : segment.map(normalizeTargetSegment),
+  ));
 }
 
-function hasSelector(target: readonly unknown[]): boolean {
-  return target.some((segment) =>
-    typeof segment === 'string'
+function isKeyableTarget(target: unknown): target is readonly (string | readonly string[])[] {
+  return Array.isArray(target)
+    && target.length > 0
+    && target.every((segment) => typeof segment === 'string'
       ? normalizeTargetSegment(segment).length > 0
-      : Array.isArray(segment) && segment.some((part) => typeof part === 'string' && normalizeTargetSegment(part).length > 0),
-  );
+      : Array.isArray(segment)
+        && segment.length > 0
+        && segment.every((part) => typeof part === 'string' && normalizeTargetSegment(part).length > 0));
 }
 
-interface CountedA11yRuleFamily extends A11yRuleFamily {
+interface TrackedA11yRuleFamily extends A11yRuleFamily {
   selectorPages: Map<string, Set<number>>;
-  unkeyedPages: Set<number>;
+  unkeyedKeys: Set<string>;
 }
 
-function countedFamily(definition: A11yRuleFamilyDefinition): CountedA11yRuleFamily {
+function trackedFamily(definition: A11yRuleFamilyDefinition): TrackedA11yRuleFamily {
   return {
     id: definition.id,
     label: definition.label,
     defectCount: 0,
     pageCount: 0,
     selectorPages: new Map(),
-    unkeyedPages: new Set(),
+    unkeyedKeys: new Set(),
+  };
+}
+
+function trackViolation(
+  family: TrackedA11yRuleFamily,
+  violation: A11yRuleFamilyViolation,
+  pageIndex: number,
+): void {
+  let hasNode = false;
+  let hasUnkeyedNode = false;
+  for (const node of violation.nodes ?? []) {
+    if (!node || typeof node !== 'object') {
+      hasUnkeyedNode = true;
+      continue;
+    }
+    hasNode = true;
+    if (!isKeyableTarget(node.target)) {
+      hasUnkeyedNode = true;
+      continue;
+    }
+    const selector = `${violation.ruleId}|${targetKey(node.target)}`;
+    const selectorPages = family.selectorPages.get(selector) ?? new Set<number>();
+    selectorPages.add(pageIndex);
+    family.selectorPages.set(selector, selectorPages);
+  }
+  if (!hasNode || hasUnkeyedNode) family.unkeyedKeys.add(`${violation.ruleId}|page:${pageIndex}`);
+}
+
+function finalizeFamily(family: TrackedA11yRuleFamily): A11yRuleFamily {
+  return {
+    id: family.id,
+    label: family.label,
+    defectCount: family.selectorPages.size + family.unkeyedKeys.size,
+    pageCount: family.pageCount,
   };
 }
 
@@ -124,8 +146,8 @@ export function summarizeA11yRuleFamilies(
   scans: readonly A11yRuleFamilyScan[],
   visibleExtraLimit = 2,
 ): A11yRuleFamilySummary {
-  const counted = new Map<string, CountedA11yRuleFamily>();
-  const extras = new Map<string, A11yRuleFamily>();
+  const counted = new Map<string, TrackedA11yRuleFamily>();
+  const extras = new Map<string, TrackedA11yRuleFamily>();
   for (const [pageIndex, scan] of scans.entries()) {
     const countedOnPage = new Map<string, A11yRuleFamilyDefinition>();
     const extrasOnPage = new Map<string, A11yRuleFamilyDefinition>();
@@ -133,36 +155,25 @@ export function summarizeA11yRuleFamilies(
       const definition = a11yRuleFamilyDefinition(violation.ruleId);
       if (!isCountedA11yViolation(violation)) {
         extrasOnPage.set(definition.id, definition);
+        const current = extras.get(definition.id) ?? trackedFamily(definition);
+        trackViolation(current, violation, pageIndex);
+        extras.set(definition.id, current);
         continue;
       }
       countedOnPage.set(definition.id, definition);
-      const current = counted.get(definition.id) ?? countedFamily(definition);
-      let hasNode = false;
-      let hasUnkeyedNode = false;
-      for (const node of violation.nodes ?? []) {
-        hasNode = true;
-        if (!Array.isArray(node.target) || !hasSelector(node.target)) {
-          hasUnkeyedNode = true;
-          continue;
-        }
-        const selector = `${violation.ruleId}|${targetKey(node.target)}`;
-        const selectorPages = current.selectorPages.get(selector) ?? new Set<number>();
-        selectorPages.add(pageIndex);
-        current.selectorPages.set(selector, selectorPages);
-      }
-      if (!hasNode || hasUnkeyedNode) current.unkeyedPages.add(pageIndex);
+      const current = counted.get(definition.id) ?? trackedFamily(definition);
+      trackViolation(current, violation, pageIndex);
       counted.set(definition.id, current);
     }
     for (const definition of countedOnPage.values()) {
-      const current = counted.get(definition.id) ?? countedFamily(definition);
+      const current = counted.get(definition.id) ?? trackedFamily(definition);
       current.pageCount += 1;
       counted.set(definition.id, current);
     }
     for (const definition of extrasOnPage.values()) {
       if (countedOnPage.has(definition.id)) continue;
-      const current = extras.get(definition.id) ?? { id: definition.id, label: definition.label, defectCount: 0, pageCount: 0 };
+      const current = extras.get(definition.id) ?? trackedFamily(definition);
       current.pageCount += 1;
-      current.defectCount += 1;
       extras.set(definition.id, current);
     }
   }
@@ -172,7 +183,8 @@ export function summarizeA11yRuleFamilies(
     return index === -1 ? Number.MAX_SAFE_INTEGER : index;
   };
   const sortFamilies = (a: A11yRuleFamily, b: A11yRuleFamily): number => (
-    b.pageCount - a.pageCount
+    b.defectCount - a.defectCount
+    || b.pageCount - a.pageCount
     || familyOrder(a.id) - familyOrder(b.id)
     || a.id.localeCompare(b.id)
   );
@@ -183,18 +195,16 @@ export function summarizeA11yRuleFamilies(
         sharedDefects.push({ familyId: family.id, label: family.label, pageCount: pages.size });
       }
     }
-    family.defectCount = family.selectorPages.size + family.unkeyedPages.size;
   }
   const countedFamilies = [...counted.values()]
-    .map(({ id, label, defectCount, pageCount }) => ({ id, label, defectCount, pageCount }))
+    .map(finalizeFamily)
     .sort(sortFamilies);
-  const allExtras = [...extras.values()].sort(sortFamilies);
+  const allExtras = [...extras.values()].map(finalizeFamily).sort(sortFamilies);
   const safeExtraLimit = Math.max(0, Math.floor(visibleExtraLimit));
   const notCountedExtras = allExtras.slice(0, safeExtraLimit);
   const smallerNotesCount = allExtras.slice(safeExtraLimit).reduce((total, family) => total + family.pageCount, 0);
   return {
     headlineCount: countedFamilies.reduce((total, family) => total + family.defectCount, 0),
-    occurrenceCount: countedFamilies.reduce((total, family) => total + family.pageCount, 0),
     countedFamilies,
     notCountedExtras,
     smallerNotesCount,

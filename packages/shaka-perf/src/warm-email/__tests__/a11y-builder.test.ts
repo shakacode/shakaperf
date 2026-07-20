@@ -96,7 +96,7 @@ describe('buildA11ySection', () => {
         headline: '1 high-impact barrier keeps some visitors from using the site.',
         gapSubLines: [
           'worst page: Home - 1 high-impact',
-          'touch targets too small to tap reliably - all 1 page',
+          'touch targets too small to tap reliably - 1 defect on all 1 page',
           'WCAG - passes at zero critical barriers',
         ],
       },
@@ -114,7 +114,7 @@ describe('buildA11ySection', () => {
       highImpactTotal: 2,
       a11yCost: {
         headline: '2 high-impact barriers keep some visitors from using the site.',
-        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. All 2 repeat across multiple pages via shared components - one fix each clears them everywhere.',
+        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. All 2 repeat across multiple pages via shared components.',
       },
     });
   });

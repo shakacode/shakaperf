@@ -16,7 +16,7 @@ import { NO_MATERIAL_LOSS, a11yNoNumberLine } from '../cost-strings';
 import type { ClientReportA11yCard, ClientReportBlockedPage, ClientReportCostBlock, ClientReportModel, ClientReportStatus } from '../client-report-renderer';
 import type { PagePerf } from '../synthesis';
 import { a11yContrastGap, a11yFixText, worstContrastRatio, type StrongPageGroup } from './cost';
-import { summarizeA11yRuleFamilies } from './a11y-rule-families';
+import { summarizeA11yRuleFamilies, type A11yRuleFamily } from './a11y-rule-families';
 import { buildCanonicalA11ySitePrompt } from './a11y-site-prompt';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
 import { dashSafe } from './shared';
@@ -261,8 +261,24 @@ function a11yFamilyReach(pageCount: number, pageTotal: number): string {
     : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
 }
 
-function a11yFamilyLine(family: { label: string; pageCount: number }, pageTotal: number): string {
-  return `${family.label} - ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+function a11yFamilyLine(family: A11yRuleFamily, pageTotal: number): string {
+  return `${family.label} - ${family.defectCount} ${family.defectCount === 1 ? 'defect' : 'defects'} on ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+}
+
+function a11ySharedComponentNote(
+  sharedDefectCount: number,
+  highImpactTotal: number,
+  pageReach: string,
+): string {
+  if (sharedDefectCount === 0) return '';
+  if (sharedDefectCount === 1) {
+    return highImpactTotal === 1
+      ? ` It repeats on ${pageReach} via a shared component.`
+      : ` One of them repeats on ${pageReach} via a shared component.`;
+  }
+  return sharedDefectCount === highImpactTotal
+    ? ` All ${highImpactTotal} repeat across multiple pages via shared components.`
+    : ` ${sharedDefectCount} of them repeat across multiple pages via shared components.`;
 }
 
 /** Builds the a11y family, cost, and site-prompt data from already-read scans. */
@@ -318,15 +334,11 @@ export function buildA11ySection(
     ? `across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}`
     : `on ${cardedA11y.length} of ${a11yMeasurable.length} pages checked`;
   const a11ySharedDefects = a11yFamilySummary.sharedDefects;
-  const a11ySharedComponentNote = a11ySharedDefects.length === 0
-    ? ''
-    : a11ySharedDefects.length === 1
-      ? highImpactTotal === 1
-        ? ` It repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
-        : ` One of them repeats on ${a11yFamilyReach(a11ySharedDefects[0].pageCount, a11yMeasurable.length)} via a shared component - one fix clears it everywhere.`
-      : a11ySharedDefects.length === highImpactTotal
-        ? ` All ${highImpactTotal} repeat across multiple pages via shared components - one fix each clears them everywhere.`
-        : ` ${a11ySharedDefects.length} of them repeat across multiple pages via shared components - one fix each clears them everywhere.`;
+  const sharedComponentNote = a11ySharedComponentNote(
+    a11ySharedDefects.length,
+    highImpactTotal,
+    a11yFamilyReach(a11ySharedDefects[0]?.pageCount ?? 0, a11yMeasurable.length),
+  );
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
   const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
@@ -366,7 +378,7 @@ export function buildA11ySection(
       tab: 'a11y',
       state: 'measured',
       headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
-      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.${a11ySharedComponentNote}`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.${sharedComponentNote}`,
       affectsProse: a11yAffects(a11yWorst.scan),
       ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
       gapSubLines: a11yFindingLines,

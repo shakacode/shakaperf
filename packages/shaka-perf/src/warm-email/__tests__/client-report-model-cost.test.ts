@@ -21,7 +21,7 @@ import {
   heroMetricCountedZeroLine,
   heroMetricGapSubLines,
 } from '../client-report-model/cost';
-import { summarizeA11yRuleFamilies, type A11yRuleFamilyViolation, type A11yRuleFamilyViolationNode, type A11yStrongPageGroup } from '../client-report-model/a11y';
+import { summarizeA11yRuleFamilies, type A11yRuleFamilyViolation, type A11yStrongPageGroup } from '../client-report-model/a11y';
 import { scoreBadgeStatus } from '../client-report-model/perf';
 
 describe('benchmarkMultiple', () => {
@@ -156,7 +156,6 @@ describe('accessibility finding families', () => {
     const summary = summarizeA11yRuleFamilies(scans);
 
     expect(summary.headlineCount).toBe(12);
-    expect(summary.occurrenceCount).toBe(12);
     expect(summary.countedFamilies).toEqual([
       { id: 'target-size', label: 'touch targets too small to tap reliably', defectCount: 7, pageCount: 7 },
       { id: 'image-alt', label: 'images with no text description', defectCount: 2, pageCount: 2 },
@@ -165,24 +164,23 @@ describe('accessibility finding families', () => {
       { id: 'nested-interactive', label: 'controls nested inside controls', defectCount: 1, pageCount: 1 },
     ]);
     expect(summary.sharedDefects).toEqual([]);
-    expect(summary.countedFamilies.reduce((total, family) => total + family.pageCount, 0)).toBe(summary.occurrenceCount);
     expect(summary.countedFamilies.reduce((total, family) => total + family.defectCount, 0)).toBe(summary.headlineCount);
   });
 
-  it('merges same-page axe rules that belong to the same visible family', () => {
+  it('counts distinct same-page rule-selector defects within visible families', () => {
     const summary = summarizeA11yRuleFamilies([{
       violations: [
-        { ruleId: 'image-alt', impact: 'serious' },
-        { ruleId: 'svg-img-alt', impact: 'serious' },
-        { ruleId: 'button-name', impact: 'serious' },
-        { ruleId: 'link-name', impact: 'serious' },
+        { ruleId: 'image-alt', impact: 'serious', nodes: [{ target: ['img.logo'] }] },
+        { ruleId: 'svg-img-alt', impact: 'serious', nodes: [{ target: ['svg.logo'] }] },
+        { ruleId: 'button-name', impact: 'serious', nodes: [{ target: ['button.menu'] }] },
+        { ruleId: 'link-name', impact: 'serious', nodes: [{ target: ['a.menu-link'] }] },
       ],
     }]);
 
-    expect(summary.headlineCount).toBe(2);
+    expect(summary.headlineCount).toBe(4);
     expect(summary.countedFamilies).toEqual([
-      { id: 'image-alt', label: 'images with no text description', defectCount: 1, pageCount: 1 },
-      { id: 'unlabeled-controls', label: 'unlabeled controls', defectCount: 1, pageCount: 1 },
+      { id: 'image-alt', label: 'images with no text description', defectCount: 2, pageCount: 1 },
+      { id: 'unlabeled-controls', label: 'unlabeled controls', defectCount: 2, pageCount: 1 },
     ]);
   });
 
@@ -225,9 +223,9 @@ describe('accessibility finding families', () => {
       ],
     }]);
 
-    expect(summary.headlineCount).toBe(1);
+    expect(summary.headlineCount).toBe(3);
     expect(summary.countedFamilies).toEqual([
-      { id: 'other', label: 'other accessibility barrier', defectCount: 1, pageCount: 1 },
+      { id: 'other', label: 'other accessibility barrier', defectCount: 3, pageCount: 1 },
     ]);
   });
 
@@ -237,7 +235,7 @@ describe('accessibility finding families', () => {
   ): A11yRuleFamilyViolation => ({
     ruleId,
     impact: 'serious' as const,
-    ...(target === undefined ? {} : { nodes: [{ target: target as A11yRuleFamilyViolationNode['target'] }] }),
+    ...(target === undefined ? {} : { nodes: [{ target }] }),
   });
 
   it('counts a shared selector as one defect while retaining all page occurrences', () => {
@@ -246,7 +244,6 @@ describe('accessibility finding families', () => {
     })));
 
     expect(summary.headlineCount).toBe(1);
-    expect(summary.occurrenceCount).toBe(6);
     expect(summary.countedFamilies).toEqual([
       { id: 'target-size', label: 'touch targets too small to tap reliably', defectCount: 1, pageCount: 6 },
     ]);
@@ -268,7 +265,7 @@ describe('accessibility finding families', () => {
 
     expect(summaries.map((summary) => summary.headlineCount)).toEqual([3, 3, 3]);
     expect(summaries.map((summary) => summary.countedFamilies[0].defectCount)).toEqual([3, 3, 3]);
-    expect(summaries.map((summary) => summary.occurrenceCount)).toEqual([1, 2, 6]);
+    expect(summaries.map((summary) => summary.countedFamilies[0].pageCount)).toEqual([1, 2, 6]);
   });
 
   it('counts each shared footer selector once instead of once per page', () => {
@@ -279,7 +276,7 @@ describe('accessibility finding families', () => {
     };
     const summary = summarizeA11yRuleFamilies(Array.from({ length: 5 }, () => ({ violations: [footerViolation] })));
 
-    expect(summary).toMatchObject({ headlineCount: 40, occurrenceCount: 5 });
+    expect(summary).toMatchObject({ headlineCount: 40 });
     expect(summary.countedFamilies).toEqual([
       { id: 'target-size', label: 'touch targets too small to tap reliably', defectCount: 40, pageCount: 5 },
     ]);
@@ -298,7 +295,7 @@ describe('accessibility finding families', () => {
       { violations: [sharedScroll, seriousViolation('button-name', ['.newsletter-submit'])] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 3, occurrenceCount: 8 });
+    expect(summary).toMatchObject({ headlineCount: 3 });
   });
 
   it('keeps different selector structures as distinct defects', () => {
@@ -308,7 +305,6 @@ describe('accessibility finding families', () => {
     ]);
 
     expect(summary.headlineCount).toBe(2);
-    expect(summary.occurrenceCount).toBe(2);
     expect(summary.sharedDefects).toEqual([]);
   });
 
@@ -318,7 +314,7 @@ describe('accessibility finding families', () => {
       { violations: [seriousViolation('target-size')] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 2, sharedDefects: [] });
+    expect(summary).toMatchObject({ headlineCount: 2, sharedDefects: [] });
   });
 
   it('treats blank selector targets as unkeyed page occurrences', () => {
@@ -327,7 +323,7 @@ describe('accessibility finding families', () => {
       { violations: [seriousViolation('target-size', ['   '])] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 2, sharedDefects: [] });
+    expect(summary).toMatchObject({ headlineCount: 2, sharedDefects: [] });
   });
 
   it('treats malformed target values as unkeyed page occurrences', () => {
@@ -338,7 +334,44 @@ describe('accessibility finding families', () => {
       { violations: [seriousViolation('target-size', '.not-an-array')] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 4, occurrenceCount: 4, sharedDefects: [] });
+    expect(summary).toMatchObject({ headlineCount: 4, sharedDefects: [] });
+  });
+
+  it('treats a partially malformed target as unkeyed instead of merging it with a valid selector', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [seriousViolation('target-size', ['.valid-target', null])],
+    }]);
+
+    expect(summary).toMatchObject({
+      headlineCount: 1,
+      countedFamilies: [{ id: 'target-size', defectCount: 1, pageCount: 1 }],
+      sharedDefects: [],
+    });
+  });
+
+  it('counts unkeyed rules separately within one family on one page', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [seriousViolation('image-alt'), seriousViolation('svg-img-alt')],
+    }]);
+
+    expect(summary).toMatchObject({
+      headlineCount: 2,
+      countedFamilies: [{ id: 'image-alt', defectCount: 2, pageCount: 1 }],
+    });
+  });
+
+  it('gives lower-impact families the same distinct-selector semantics', () => {
+    const summary = summarizeA11yRuleFamilies([{
+      violations: [{
+        ruleId: 'region',
+        impact: 'moderate',
+        nodes: [{ target: ['main'] }, { target: ['footer'] }],
+      }],
+    }]);
+
+    expect(summary.notCountedExtras).toEqual([
+      { id: 'structure', label: 'page structure that is hard to navigate', defectCount: 2, pageCount: 1 },
+    ]);
   });
 
   it('keeps a malformed node unkeyed when its violation also has a selector', () => {
@@ -346,11 +379,11 @@ describe('accessibility finding families', () => {
       violations: [{
         ruleId: 'target-size',
         impact: 'serious',
-        nodes: [{ target: ['.valid-target'] }, { target: [null] as unknown as A11yRuleFamilyViolationNode['target'] }],
+        nodes: [{ target: ['.valid-target'] }, { target: [null] }],
       }],
     }]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 1, sharedDefects: [] });
+    expect(summary).toMatchObject({ headlineCount: 2, sharedDefects: [] });
   });
 
   it('counts a shared selector plus a page-specific selector as two defects', () => {
@@ -359,7 +392,7 @@ describe('accessibility finding families', () => {
       { violations: [seriousViolation('target-size', ['.shared'])] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 2 });
+    expect(summary).toMatchObject({ headlineCount: 2 });
     expect(summary.sharedDefects).toEqual([
       { familyId: 'target-size', label: 'touch targets too small to tap reliably', pageCount: 2 },
     ]);
@@ -371,7 +404,7 @@ describe('accessibility finding families', () => {
       { violations: [seriousViolation('target-size', ['.shared']), seriousViolation('image-alt', ['.shared'])] },
     ]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 4 });
+    expect(summary).toMatchObject({ headlineCount: 2 });
     expect(summary.sharedDefects).toEqual([
       { familyId: 'target-size', label: 'touch targets too small to tap reliably', pageCount: 2 },
       { familyId: 'image-alt', label: 'images with no text description', pageCount: 2 },
@@ -383,7 +416,7 @@ describe('accessibility finding families', () => {
       violations: [seriousViolation('target-size', ['.one']), seriousViolation('target-size', ['.two'])],
     }]);
 
-    expect(summary).toMatchObject({ headlineCount: 2, occurrenceCount: 1, sharedDefects: [] });
+    expect(summary).toMatchObject({ headlineCount: 2, sharedDefects: [] });
   });
 
   it('keeps type-only strong-page grouping and score badge policy ready for later waves', () => {

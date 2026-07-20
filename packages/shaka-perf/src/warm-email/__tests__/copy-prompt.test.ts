@@ -583,7 +583,7 @@ describe('site-wide copy prompts', () => {
     });
 
     expect(prompt).toContain('Broken list markup (list, serious): 1 page (homepage - 12 list items).');
-    expect(prompt).toContain('start with the tap-target fix (widest reach), then ARIA markup fix and list markup.');
+    expect(prompt).toContain('start with the tap-target fix (most defects), then ARIA markup fix and list markup.');
   });
 
   it('builds a measured performance brief with the before-content and non-causal JavaScript facts', () => {
