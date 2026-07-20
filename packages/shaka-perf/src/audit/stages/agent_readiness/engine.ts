@@ -12,7 +12,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
-import { isPublicHost } from '../../../warm-email/public-host';
+import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
 import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
 import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';

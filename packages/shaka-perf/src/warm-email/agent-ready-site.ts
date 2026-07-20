@@ -9,7 +9,7 @@
 
 import chalk from 'chalk';
 import type { SiteAccessSignals } from './agent-ready-score';
-import { isPublicHost } from './public-host';
+import { isPublicHost } from '../net/public-host';
 
 // Site-level (origin-wide) agent-readiness signals, fetched ONCE at report time
 // the same way the favicon is: robots.txt control of AI crawlers, a published
