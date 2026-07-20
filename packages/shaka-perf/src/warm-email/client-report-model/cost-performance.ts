@@ -258,7 +258,10 @@ export function perfFixText(pages: readonly PerfFactPage[], kind: PerfProblemKin
   const clauses: string[] = [];
   if (jsValues.length > 0) {
     const subject = jsValues.length === pages.length ? 'every page carries' : 'the pages with JavaScript data carry';
-    clauses.push(`${subject} ${mbNumber(Math.min(...jsValues))}-${mbNumber(Math.max(...jsValues))} MB of JavaScript`);
+    const minimum = mbNumber(Math.min(...jsValues));
+    const maximum = mbNumber(Math.max(...jsValues));
+    const jsWeight = minimum === maximum ? minimum : `${minimum}-${maximum}`;
+    clauses.push(`${subject} ${jsWeight} MB of JavaScript`);
   }
   if (downloads.length > 0) clauses.push(`the heaviest page moves ${mb(Math.max(...downloads))} in total`);
   const target = PERF_FIX_TARGET[kind];

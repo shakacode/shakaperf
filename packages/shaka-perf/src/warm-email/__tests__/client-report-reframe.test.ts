@@ -564,6 +564,13 @@ describe('cost-of-pain reframe model', () => {
     expect(perfStakesProse('layout-shift')).toContain('so we do not print a made-up number.');
   });
 
+  it('collapses JavaScript weights that match after display rounding', () => {
+    expect(perfFixText([
+      { name: 'First page', jsKb: 0.51 * 1024 },
+      { name: 'Second page', jsKb: 0.54 * 1024 },
+    ])).toBe('The target: main content under 2.5 seconds on the same phone profile. The dominant cause we measured: every page carries 0.5 MB of JavaScript.');
+  });
+
   it('keeps a minor accessibility finding number-free while carrying real finding details', async () => {
     const result = await renderClientReport(writeResults([
       basePage({
