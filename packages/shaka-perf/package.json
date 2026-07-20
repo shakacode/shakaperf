@@ -80,7 +80,7 @@
     "build": "yarn build-report-shell && tsc && node scripts/copy-assets.mjs",
     "build-report-shell": "vite build --config report-shell/vite.config.ts",
     "dev-report-shell": "vite --config report-shell/vite.config.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "jest",
     "prepublishOnly": "yarn build",
     "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
