@@ -35,7 +35,13 @@ export interface MachineReportTest {
   outcomes?: { summary?: { summary?: unknown } }[];
 }
 interface MachineReport {
-  meta?: { experimentUrl?: string; controlUrl?: string; generatedAt?: string };
+  meta?: {
+    experimentUrl?: string;
+    controlUrl?: string;
+    generatedAt?: string;
+    throttleProfile?: string;
+    viewport?: { width?: number; height?: number };
+  };
   tests?: MachineReportTest[];
 }
 
@@ -74,6 +80,8 @@ export interface Stat {
 export interface SiteScorecard {
   url: string;
   generatedAt: string;
+  throttleProfile?: string;
+  viewport?: { width: number; height: number };
   pageCount: number;
   pages: PagePerf[];
   slowestByLcp?: PagePerf;
@@ -134,6 +142,10 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
   }
   const meta = report.meta ?? {};
   const tests: MachineReportTest[] = selectViewportRows(Array.isArray(report.tests) ? report.tests : []);
+  const metaViewport = meta.viewport;
+  const viewport = typeof metaViewport?.width === 'number' && typeof metaViewport.height === 'number'
+    ? { width: metaViewport.width, height: metaViewport.height }
+    : undefined;
 
   const pages: PagePerf[] = tests.map((t): PagePerf => {
     const metrics: Record<string, PageMetric> = {};
@@ -218,6 +230,8 @@ export function synthesizeSite(resultsDir: string): SiteScorecard {
   return {
     url: meta.experimentUrl ?? meta.controlUrl ?? '',
     generatedAt: meta.generatedAt ?? '',
+    ...(typeof meta.throttleProfile === 'string' ? { throttleProfile: meta.throttleProfile } : {}),
+    ...(viewport ? { viewport } : {}),
     pageCount: pages.length,
     pages,
     slowestByLcp: [...withLcp].sort((a, b) => metricVal(b, 'LCP')! - metricVal(a, 'LCP')!)[0],

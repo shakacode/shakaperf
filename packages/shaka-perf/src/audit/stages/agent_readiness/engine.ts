@@ -12,6 +12,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
+import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
 import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
 import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
@@ -30,6 +31,7 @@ interface AgentReadinessSlotState extends PoolWorkerState {
 const RAW_FETCH_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const RAW_HTML_MAX_BYTES = 3 * 1024 * 1024;
+const RAW_FETCH_MAX_REDIRECT_HOPS = 5;
 
 async function disposeAgentReadinessBrowser(state: Record<string, unknown>): Promise<void> {
   const slot = state as AgentReadinessSlotState;
@@ -71,46 +73,70 @@ async function launchBrowser(
 // parsed, not stored, but a runaway response should not pin memory). Never
 // throws: a failed fetch returns ok:false so the report can say "we could not
 // read the server HTML" instead of pretending the page was empty.
-async function fetchRawHtml(
+export async function fetchRawHtml(
   url: string,
   timeoutMs: number,
 ): Promise<{ html: string | null; status?: number; contentType?: string; bytes?: number }> {
+  let target: URL;
+  try {
+    target = new URL(url);
+  } catch {
+    return { html: null };
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return { html: null };
+  if (!isPublicHost(target.hostname)) return { html: null };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
-      signal: ctl.signal,
-      redirect: 'follow',
-      headers: { 'user-agent': RAW_FETCH_UA, accept: 'text/html,application/xhtml+xml' },
-    });
-    const contentType = res.headers.get('content-type') ?? undefined;
-    const reader = res.body?.getReader();
-    if (!reader) return { html: null, status: res.status, contentType };
-    const chunks: Uint8Array[] = [];
-    let total = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      total += value.length;
-      if (total > RAW_HTML_MAX_BYTES) {
-        ctl.abort();
-        break;
+    for (let redirects = 0; ; redirects += 1) {
+      const res = await fetch(target.href, {
+        signal: ctl.signal,
+        redirect: 'manual',
+        headers: { 'user-agent': RAW_FETCH_UA, accept: 'text/html,application/xhtml+xml' },
+      });
+      if (res.status >= 300 && res.status < 400) {
+        await res.body?.cancel().catch(() => {});
+        if (redirects >= RAW_FETCH_MAX_REDIRECT_HOPS) return { html: null };
+        const location = res.headers.get('location');
+        if (!location) return { html: null };
+        try {
+          target = new URL(location, target);
+        } catch {
+          return { html: null };
+        }
+        if (target.protocol !== 'http:' && target.protocol !== 'https:') return { html: null };
+        if (!isPublicHost(target.hostname)) return { html: null };
+        continue;
       }
-      chunks.push(value);
-    }
-    const buf = new Uint8Array(total > RAW_HTML_MAX_BYTES ? RAW_HTML_MAX_BYTES : total);
-    let offset = 0;
-    for (const c of chunks) {
-      if (offset + c.length > buf.length) {
-        buf.set(c.subarray(0, buf.length - offset), offset);
-        break;
+      const contentType = res.headers.get('content-type') ?? undefined;
+      const reader = res.body?.getReader();
+      if (!reader) return { html: null, status: res.status, contentType };
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.length;
+        if (total > RAW_HTML_MAX_BYTES) {
+          ctl.abort();
+          break;
+        }
+        chunks.push(value);
       }
-      buf.set(c, offset);
-      offset += c.length;
+      const buf = new Uint8Array(total > RAW_HTML_MAX_BYTES ? RAW_HTML_MAX_BYTES : total);
+      let offset = 0;
+      for (const c of chunks) {
+        if (offset + c.length > buf.length) {
+          buf.set(c.subarray(0, buf.length - offset), offset);
+          break;
+        }
+        buf.set(c, offset);
+        offset += c.length;
+      }
+      const html = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+      return { html, status: res.status, contentType, bytes: total };
     }
-    const html = new TextDecoder('utf-8', { fatal: false }).decode(buf);
-    return { html, status: res.status, contentType, bytes: total };
   } catch {
     return { html: null };
   } finally {

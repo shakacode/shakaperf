@@ -7,14 +7,18 @@
  * License in LICENSE.md.
  */
 
-// v2 narrative copy: the "bottom line" + each tab's verdict word/paragraph. Two
+// Client report narrative copy: the "bottom line" + each tab's verdict word/paragraph. Two
 // layers: a DETERMINISTIC builder (always present, so the report renders
 // with no `claude`) and an optional AI overlay that only rewrites the wording
 // (best-effort). Statuses/numbers come from the caller; only prose is written here.
 
-import type { V2DimNarrative, V2Narrative, V2Status } from './client-report-v2';
+import type { ClientReportDimNarrative, ClientReportNarrative, ClientReportStatus } from './client-report-renderer';
+import { BANNED_WORDS, findBannedWords } from './cost-strings';
+import { escapeHtml as escHtml } from './html-escape';
 
-const dashSafe = (s: string): string => s.replace(/\s*[—–]\s*/g, ' - ').trim();
+const OUTPUT_DASH_RE = /\s*[\u2013\u2014]\s*/g;
+const FILTER_DASH_RE = /[\u2010-\u2015\u2212]/g;
+const dashSafe = (s: string): string => s.replace(OUTPUT_DASH_RE, ' - ').trim();
 
 export type Dim = 'perf' | 'a11y' | 'agent';
 
@@ -24,23 +28,26 @@ export interface NarrativeFacts {
   domain: string;
   worstDim: Dim; // the single biggest gap, for the bottom line
   perf?: {
-    status: V2Status;
+    status: ClientReportStatus;
     avgLabel?: string; // e.g. "5.3s"
     slowCount: number;
     jumpyCount: number;
     worst: { name: string; problem: string }[]; // worst-first, plain problem text
+    benchmarkMultiples?: string[];
+    gapHeadline?: string;
     couldNotMeasure?: boolean; // reserved; perf block-detection is a follow-up
   };
   a11y?: {
-    status: V2Status;
+    status: ClientReportStatus;
     highImpact: number; // total high-impact issues across carded pages
+    lowerImpact?: number;
     pagesWithBarriers: number;
     topIssues: string[]; // plain issue labels, worst-first
     worstPage?: string; // page name
     couldNotMeasure?: boolean; // a bot-protection challenge blocked every page's scan
   };
   agent?: {
-    status: V2Status;
+    status: ClientReportStatus;
     score: number;
     coveragePct?: number;
     accessBlocked: boolean;
@@ -54,19 +61,33 @@ const COULD_NOT_MEASURE_PARA =
   "Your site's bot protection served our automated checker a challenge page instead of the real page, so this could not be measured. Allowlist our checker and we will re-run a clean pass.";
 const PERF_COULD_NOT_MEASURE_PARA = 'The audit did not return enough mobile speed data to make a speed claim. Re-run the audit once the pages can be measured cleanly.';
 
+export const NARRATIVE_OVERLAY_SCHEMA_VERSION = 2;
+
 // AI overlay: all fields optional, applied over deterministic copy only when usable.
 // bottomLine is PLAIN text (the highlight span is re-applied after merge).
 export interface NarrativeOverlay {
+  schemaVersion?: typeof NARRATIVE_OVERLAY_SCHEMA_VERSION;
   bottomLine?: string;
-  perf?: Partial<V2DimNarrative>;
-  a11y?: Partial<V2DimNarrative>;
-  agent?: Partial<V2DimNarrative>;
+  perf?: Partial<ClientReportDimNarrative>;
+  a11y?: Partial<ClientReportDimNarrative>;
+  agent?: Partial<ClientReportDimNarrative>;
 }
 export type NarrativeSummarizer = (facts: NarrativeFacts) => Promise<NarrativeOverlay | null>;
+
+export function versionNarrativeOverlay(overlay: NarrativeOverlay): NarrativeOverlay {
+  return { ...overlay, schemaVersion: NARRATIVE_OVERLAY_SCHEMA_VERSION };
+}
 
 export const MAX_VERDICT_WORD = 40;
 export const MAX_PARA = 320;
 export const MAX_BOTTOM_LINE = 280;
+export const OVERSELL_VERDICT_WORDS = [
+  'good', 'great', 'excellent', 'strong', 'solid', 'healthy', 'fine', 'ok',
+  'okay', 'well', 'mostly', 'largely', 'nearly', 'almost', 'already', 'ahead',
+  'readable',
+] as const;
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const OVERSELL_VERDICT_RE = new RegExp(`\\b(${OVERSELL_VERDICT_WORDS.map(escapeRegExp).join('|')})\\b`, 'i');
 
 const DIM_LABEL: Record<Dim, string> = {
   perf: 'mobile speed',
@@ -76,7 +97,7 @@ const DIM_LABEL: Record<Dim, string> = {
 
 // ---- deterministic builders ----
 
-function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
+function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: PERF_COULD_NOT_MEASURE_PARA };
   }
@@ -87,11 +108,14 @@ function perfNarrative(f: NonNullable<NarrativeFacts['perf']>): V2DimNarrative {
   return { verdictWord, verdictPara: wait };
 }
 
-function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): V2DimNarrative {
+function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: COULD_NOT_MEASURE_PARA };
   }
   if (f.highImpact === 0) {
+    if (f.lowerImpact === 0) {
+      return { verdictWord: 'No barriers found', verdictPara: 'No accessibility issues turned up on the pages we measured.' };
+    }
     return { verdictWord: 'Usable by everyone', verdictPara: 'No major barriers turned up, so most visitors can use the site. Only minor polish is left.' };
   }
   const verdictWord = f.status === 'poor' ? 'Some visitors are blocked' : 'Needs attention';
@@ -103,7 +127,7 @@ function a11yNarrative(f: NonNullable<NarrativeFacts['a11y']>): V2DimNarrative {
   return { verdictWord, verdictPara };
 }
 
-function agentNarrative(f: NonNullable<NarrativeFacts['agent']>): V2DimNarrative {
+function agentNarrative(f: NonNullable<NarrativeFacts['agent']>): ClientReportDimNarrative {
   if (f.couldNotMeasure) {
     return { verdictWord: 'Could not measure', verdictPara: COULD_NOT_MEASURE_PARA };
   }
@@ -165,6 +189,7 @@ function bottomLineText(f: NarrativeFacts): string {
   const goodClause = goods.length
     ? `Your site ${goods.length === 1 ? goods[0] : `${goods.slice(0, -1).join(', ')} and ${goods[goods.length - 1]}`}. `
     : '';
+  if (f.worstDim === 'perf' && f.perf?.gapHeadline) return `${goodClause}${f.perf.gapHeadline}.${blockedNote}`;
   const reason =
     f.worstDim === 'perf'
       ? 'the thing most likely to be costing you customers right now'
@@ -176,14 +201,14 @@ function bottomLineText(f: NarrativeFacts): string {
 
 // On-dark highlight colors for the bottom-line box (dark bg), keyed by how
 // serious the worst dimension is: red (poor) / amber (needs work) / green (good).
-const BOTTOM_HL: Record<V2Status, string> = {
+const BOTTOM_HL: Record<ClientReportStatus, string> = {
   poor: '#ec8f7f',
   fair: '#e8a36b',
   good: '#86c79b',
 };
 
 // The worst dimension's own status drives the highlight color.
-function worstStatusOf(f: NarrativeFacts): V2Status {
+function worstStatusOf(f: NarrativeFacts): ClientReportStatus {
   return f[f.worstDim]?.status ?? 'fair';
 }
 
@@ -230,7 +255,7 @@ function findKeySpan(text: string, worstDim: Dim): { i: number; len: number } | 
 
 // Wrap the bottom line's KEY span (the wait time / count, else the problem
 // phrase) in the design's highlight, colored by severity; else leave it plain.
-export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: V2Status = 'fair'): string {
+export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: ClientReportStatus = 'fair'): string {
   const safe = escHtml(text);
   const hit = findKeySpan(text, worstDim);
   if (!hit) return safe;
@@ -240,12 +265,9 @@ export function highlightBottomLine(text: string, worstDim: Dim, worstStatus: V2
   return `${before}<span style="color:${BOTTOM_HL[worstStatus]}; font-weight:700">${match}</span>${after}`;
 }
 
-const escHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
 // The full deterministic narrative (always renderable).
-export function buildDeterministicNarrative(f: NarrativeFacts): V2Narrative {
-  const empty: V2DimNarrative = { verdictWord: '', verdictPara: '' };
+export function buildDeterministicNarrative(f: NarrativeFacts): ClientReportNarrative {
+  const empty: ClientReportDimNarrative = { verdictWord: '', verdictPara: '' };
   return {
     bottomLineHtml: highlightBottomLine(bottomLineText(f), f.worstDim, worstStatusOf(f)),
     perf: f.perf ? perfNarrative(f.perf) : empty,
@@ -259,19 +281,44 @@ export function buildDeterministicNarrative(f: NarrativeFacts): V2Narrative {
 const useText = (s: unknown, max: number): string | null => {
   if (typeof s !== 'string') return null;
   const t = dashSafe(s);
-  return t.length > 0 && t.length <= max ? t : null;
+  return t.length > 0 && t.length <= max && !hasUnsafeAiText(s) && !hasUnsafeAiText(t) ? t : null;
 };
 
-function mergeDim(base: V2DimNarrative, ov: Partial<V2DimNarrative> | undefined): V2DimNarrative {
+const FORMAT_OR_CONTROL_RE = /[\p{Cc}\p{Cf}]/gu;
+const HYPHEN_WITH_SPACES_RE = /\s*-\s*/g;
+const CURRENCY_FIGURE_RE = [
+  /[$€£¥₹]\s*(?:\d|\.\d)/i,
+  /\b(?:usd|eur|gbp|jpy|inr|us\s+dollars?|euros?|pounds?|yen|rupees?)\s*[$€£¥₹]?\s*(?:\d|\.\d)/i,
+  /\bdollars?\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:usd|eur|gbp|jpy|inr|dollars?|euros?|pounds?|yen|rupees?|cents?|bucks|grand)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s*(?:k|m|bn)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d[\d,]*(?:\.\d+)?\s+(?:hundred|thousand|million|billion)\s+(?:dollars?|euros?|pounds?|bucks)\b/i,
+  /\b\d+(?:\.\d+)?\s*(?:k|m|bn)\b(?:\s*(?:a|per|each)\s*)?(?:month|year|week|day|visit|order|customer)\b/i,
+] as const;
+
+function hasUnsafeAiText(s: string): boolean {
+  const normalized = s.normalize('NFKC').replace(FILTER_DASH_RE, '-').replace(FORMAT_OR_CONTROL_RE, '').replace(HYPHEN_WITH_SPACES_RE, '-');
+  return CURRENCY_FIGURE_RE.some((re) => re.test(normalized)) || findBannedWords(normalized).length > 0;
+}
+
+function mergeDim(
+  base: ClientReportDimNarrative,
+  ov: Partial<ClientReportDimNarrative> | undefined,
+  status: ClientReportStatus | undefined,
+): ClientReportDimNarrative {
   if (!ov) return base;
+  const overlayVerdict = useText(ov.verdictWord, MAX_VERDICT_WORD);
+  const verdictWord = (status === 'fair' || status === 'poor') && overlayVerdict && OVERSELL_VERDICT_RE.test(overlayVerdict)
+    ? base.verdictWord
+    : overlayVerdict ?? base.verdictWord;
   return {
-    verdictWord: useText(ov.verdictWord, MAX_VERDICT_WORD) ?? base.verdictWord,
+    verdictWord,
     verdictPara: useText(ov.verdictPara, MAX_PARA) ?? base.verdictPara,
   };
 }
 
 // Deterministic base with any usable AI field laid over it; bottom line re-highlighted.
-export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverlay | null): V2Narrative {
+export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverlay | null): ClientReportNarrative {
   const base = buildDeterministicNarrative(facts);
   if (!overlay) return base;
   const aiBottom = useText(overlay.bottomLine, MAX_BOTTOM_LINE);
@@ -281,9 +328,9 @@ export function composeNarrative(facts: NarrativeFacts, overlay: NarrativeOverla
   const blockedAware = !!(facts.perf?.couldNotMeasure || facts.a11y?.couldNotMeasure || facts.agent?.couldNotMeasure);
   return {
     bottomLineHtml: aiBottom && !blockedAware ? highlightBottomLine(aiBottom, facts.worstDim, worstStatusOf(facts)) : base.bottomLineHtml,
-    perf: facts.perf?.couldNotMeasure ? base.perf : mergeDim(base.perf, overlay.perf),
-    a11y: facts.a11y?.couldNotMeasure ? base.a11y : mergeDim(base.a11y, overlay.a11y),
-    agent: facts.agent?.couldNotMeasure ? base.agent : mergeDim(base.agent, overlay.agent),
+    perf: facts.perf?.couldNotMeasure ? base.perf : mergeDim(base.perf, overlay.perf, facts.perf?.status),
+    a11y: facts.a11y?.couldNotMeasure ? base.a11y : mergeDim(base.a11y, overlay.a11y, facts.a11y?.status),
+    agent: facts.agent?.couldNotMeasure ? base.agent : mergeDim(base.agent, overlay.agent, facts.agent?.status),
   };
 }
 
@@ -302,6 +349,7 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     } else {
       if (f.perf.avgLabel) lines.push(`  typical wait for the main content: ${f.perf.avgLabel}`);
       lines.push(`  pages a visitor waits on: ${f.perf.slowCount}; pages that visibly jump: ${f.perf.jumpyCount}`);
+      if (f.perf.benchmarkMultiples?.length) lines.push(`  benchmark gap: ${f.perf.benchmarkMultiples.join(', ')}`);
       if (f.perf.worst.length) lines.push(`  worst pages: ${f.perf.worst.map((w) => `${fence(w.name)} (${fence(w.problem)})`).join('; ')}`);
     }
   }
@@ -348,6 +396,7 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     '',
     'Write JSON exactly in this shape (only the keys shown):',
     '{',
+    `  "schemaVersion": ${NARRATIVE_OVERLAY_SCHEMA_VERSION},`,
     '  "bottomLine": "ONE sentence naming the single biggest gap and why it matters most, mentioning what is already good if anything is; do not wrap anything in tags",',
     dimAsks,
     '}',
@@ -356,20 +405,29 @@ export function buildNarrativePrompt(f: NarrativeFacts): string {
     `(max ${MAX_VERDICT_WORD} chars). verdictPara max ${MAX_PARA} chars;`,
     `bottomLine max ${MAX_BOTTOM_LINE} chars. Receiver-focused. HARD: no em-dashes and no`,
     'en-dashes anywhere, plain hyphens only.',
+    'Never state or invent a dollar amount or price.',
+    `Never use these words: ${BANNED_WORDS.join(', ')}.`,
+    `Each verdictWord must match its stated status. For fair and poor statuses, do not use reassuring words (${OVERSELL_VERDICT_WORDS.join(', ')}). A fair verdict must name what still needs work, for example "Readable, but needs work".`,
     'For ACCESSIBILITY, write 2-3 short plain sentences (about grade-6 reading level), the whole paragraph UNDER 300 characters, answering "Can everyone use your site?". (1) Open by naming the real people blocked - screen reader users, keyboard-only users, low-vision users - and keep at least one of those groups present in EVERY sentence about the problem; never collapse to "anyone"/"users"/"people" in general, and never add a separate "Who this affects:" line. (2) Say in concrete everyday words what each group actually experiences ("thrown back to the top", "no clear way to reach the main content", "cannot tell the menu apart"), not the technical cause. (3) Translate every technical term to plain English; NEVER emit these words: axe, ARIA, landmark, region, DOM, meta-refresh, semantic, WCAG. Examples: "the page reloads itself and throws them back to the top"; "the main content is not clearly marked, so a screen reader cannot jump to it"; "the page areas are not clearly named, so a screen reader cannot tell them apart". (4) Give the number of affected pages as a digit and name the single worst page. (5) Close with the stakes in a few words, each mentioned once only - lost customers, some legal risk, weaker search visibility; use the word "search" at most once and never explain how search engines work. Calm and factual, never alarmist.',
     'Use digits for any count (write "11", not "eleven").',
     'OUTPUT ONLY the JSON object, no prose, no code fence.',
   ].join('\n');
 }
 
-export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
+interface ParseNarrativeResponseOptions {
+  requireSchemaVersion?: boolean;
+}
+
+export function parseNarrativeResponse(raw: string, opts: ParseNarrativeResponseOptions = {}): NarrativeOverlay | null {
   const json = parseJsonLoose(raw.trim());
   if (typeof json !== 'object' || json === null) return null;
   const o = json as Record<string, unknown>;
-  const dim = (v: unknown): Partial<V2DimNarrative> | undefined => {
+  const hasSchemaVersion = Object.prototype.hasOwnProperty.call(o, 'schemaVersion');
+  if ((opts.requireSchemaVersion || hasSchemaVersion) && Number(o.schemaVersion) !== NARRATIVE_OVERLAY_SCHEMA_VERSION) return null;
+  const dim = (v: unknown): Partial<ClientReportDimNarrative> | undefined => {
     if (typeof v !== 'object' || v === null) return undefined;
     const d = v as Record<string, unknown>;
-    const out: Partial<V2DimNarrative> = {};
+    const out: Partial<ClientReportDimNarrative> = {};
     if (typeof d.verdictWord === 'string') out.verdictWord = d.verdictWord;
     if (typeof d.verdictPara === 'string') out.verdictPara = d.verdictPara;
     return Object.keys(out).length ? out : undefined;
@@ -384,7 +442,7 @@ export function parseNarrativeResponse(raw: string): NarrativeOverlay | null {
   if (agent) overlay.agent = agent;
   // Nothing usable anywhere -> signal a miss so the caller keeps deterministic copy.
   if (!overlay.bottomLine && !perf && !a11y && !agent) return null;
-  return overlay;
+  return versionNarrativeOverlay(overlay);
 }
 
 function parseJsonLoose(s: string): unknown {

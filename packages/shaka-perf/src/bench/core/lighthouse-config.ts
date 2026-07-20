@@ -20,6 +20,7 @@ export const DEFAULT_MARKERS: Marker[] = [
 
 export const SCREENCAST_FILENAME = 'screencast.mp4';
 export const SCREENCAST_START_FILENAME = 'screencast_start.json';
+export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
@@ -97,6 +98,56 @@ export function lhConfigForViewport(
       disabled: false,
     },
   };
+}
+
+export interface LighthouseReportMeta {
+  throttleProfile?: string;
+  viewport?: { width: number; height: number };
+}
+
+export function reportMetaForLighthouseRun(
+  viewport: Viewport | undefined,
+  userOverrides: PerfLighthouseConfig = {},
+): LighthouseReportMeta {
+  const activeConfig = viewport ? lhConfigForViewport(viewport, userOverrides) : userOverrides;
+  const screen = (activeConfig as Partial<LighthouseConfig>).screenEmulation;
+  const width = typeof screen?.width === 'number' ? screen.width : undefined;
+  const height = typeof screen?.height === 'number' ? screen.height : undefined;
+  // Label the configured Lighthouse throttling profile. Runtime CPU calibration
+  // such as CI's multiplier does not create a different named profile.
+  const throttleProfile = configuredThrottleProfileForLighthouseConfig(userOverrides);
+  return {
+    ...(throttleProfile ? { throttleProfile } : {}),
+    ...(width !== undefined && height !== undefined ? { viewport: { width, height } } : {}),
+  };
+}
+
+const SLOW_4G_METHODS = new Set<unknown>(['simulate', 'devtools']);
+const SLOW_4G_THROTTLING_FIELDS = [
+  'rttMs',
+  'throughputKbps',
+  'requestLatencyMs',
+  'downloadThroughputKbps',
+  'uploadThroughputKbps',
+  'cpuSlowdownMultiplier',
+] as const;
+
+function configuredThrottleProfileForLighthouseConfig(userOverrides: PerfLighthouseConfig): string | undefined {
+  const method = userOverrides.throttlingMethod ?? DEFAULT_LH_CONFIG.throttlingMethod;
+  if (!SLOW_4G_METHODS.has(method)) return undefined;
+  const throttling = effectiveThrottlingForMeta(userOverrides);
+  const defaultThrottling = DEFAULT_LH_CONFIG.throttling as Record<string, unknown>;
+  const matchesSlow4G = SLOW_4G_THROTTLING_FIELDS.every((field) => (
+    throttling[field] === defaultThrottling[field]
+  ));
+  return matchesSlow4G ? DEFAULT_THROTTLE_PROFILE_LABEL : undefined;
+}
+
+function effectiveThrottlingForMeta(userOverrides: PerfLighthouseConfig): Record<string, unknown> {
+  if (userOverrides.throttling !== undefined) {
+    return userOverrides.throttling as Record<string, unknown>;
+  }
+  return DEFAULT_LH_CONFIG.throttling as Record<string, unknown>;
 }
 
 export function getCpuSlowdownMultiplier(lhSettings: LighthouseConfig): number {
