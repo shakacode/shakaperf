@@ -179,5 +179,6 @@ in `src/email-polish/polish.ts`. Pure logic is unit-tested in
 `src/warm-email/__tests__/a11y-summary-ai.test.ts`,
 `src/warm-email/__tests__/client-report-renderer.test.ts` (the narrative builder +
 renderer), and `src/email-polish/__tests__/polish.test.ts`. The neutral
-`src/net/public-host.ts` provides the shared SSRF host guard used by favicon and
-agent-readiness fetches; its tests are in `src/net/__tests__/public-host.test.ts`.
+`src/net/public-host.ts` provides the shared SSRF host guard used by warm-email
+favicon and site-signal fetches and by the audit agent-readiness stage; its
+tests are in `src/net/__tests__/public-host.test.ts`.
