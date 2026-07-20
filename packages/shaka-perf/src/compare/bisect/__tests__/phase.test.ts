@@ -73,14 +73,14 @@ function result(
       compareCompleted: true,
       requestedCategories: [],
       requestedTests: [],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: '2026-07-13T00:00:00.000Z',
       finishedAt: '2026-07-13T00:00:01.000Z',
     },
     testResults: [],
     targetEvaluations,
-    refresh: { mode: 'commands', usedFallback: false },
+    experimentReload: { mode: 'commands', usedFallback: false },
   };
 }
 
@@ -93,7 +93,7 @@ describe('runSearchPhase', () => {
     }> = [];
     const completed = await runSearchPhase({
       phase: phase(),
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       nextAttemptId: (() => {
         let id = 0;
@@ -153,7 +153,7 @@ describe('runSearchPhase', () => {
     let checkpoint = initial;
     let calls = 0;
     const options = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${calls + 1}`,
       now: () => '2026-07-13T00:00:00.000Z',
@@ -195,7 +195,7 @@ describe('runSearchPhase', () => {
     const measured: string[] = [];
     let attemptId = 0;
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${++attemptId}`,
       now: () => '2026-07-13T00:00:00.000Z',
@@ -232,7 +232,7 @@ describe('runSearchPhase', () => {
 
     await expect(runSearchPhase({
       phase: initial,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       nextAttemptId: () => 'attempt-1',
       now: () => '2026-07-13T00:00:00.000Z',
@@ -259,20 +259,20 @@ describe('runSearchPhase', () => {
 
     await expect(runSearchPhase({
       phase: phase(),
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => commitRuns,
       nextAttemptId: () => 'attempt-1',
       now: () => '2026-07-13T00:00:00.000Z',
       checkpoint: () => undefined,
       async measure(work) {
-        // Mirrors run-candidate recording a failed refresh mid-measurement.
+        // Mirrors run-candidate recording a failed experiment reload mid-measurement.
         commitRuns[work.sha] = {
           ...result(work.sha, []).commitRun,
           compareCompleted: false,
-          infrastructureError: 'container refresh failed',
+          infrastructureError: 'container reload failed',
         };
         return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
-    })).rejects.toThrow('Cannot record target evaluations for b: container refresh failed');
+    })).rejects.toThrow('Cannot record target evaluations for b: container reload failed');
   });
 });

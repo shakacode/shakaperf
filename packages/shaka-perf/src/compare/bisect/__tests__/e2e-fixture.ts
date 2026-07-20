@@ -20,7 +20,7 @@ import { writeSessionAtomic, writeSummary } from '../persistence';
 import type {
   CompareRunRequest,
   ExecuteBisectDependencies,
-  RefreshRequest,
+  ExperimentReloadRequest,
   RunBisectOptions,
 } from '../session';
 import { parseBisectSession, writeBadRefTestsAtomic } from '../state';
@@ -41,8 +41,8 @@ export interface E2eRepositoryFixture {
 
 export interface E2eDependencyHarness {
   dependencies: ExecuteBisectDependencies;
-  compareCalls: CompareRunRequest[];
-  refreshCalls: RefreshRequest[];
+  candidateComparisonCalls: CompareRunRequest[];
+  experimentReloadCalls: ExperimentReloadRequest[];
 }
 
 interface E2eDependencyOptions {
@@ -206,13 +206,13 @@ function finishFixture(
 
 export function createE2eDependencies(options: E2eDependencyOptions): E2eDependencyHarness {
   const { fixture } = options;
-  const compareCalls: CompareRunRequest[] = [];
-  const refreshCalls: RefreshRequest[] = [];
+  const candidateComparisonCalls: CompareRunRequest[] = [];
+  const experimentReloadCalls: ExperimentReloadRequest[] = [];
   let tick = 0;
 
   return {
-    compareCalls,
-    refreshCalls,
+    candidateComparisonCalls,
+    experimentReloadCalls,
     dependencies: {
       installSignalHandlers() {
         return () => undefined;
@@ -221,15 +221,15 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       async endSession() {},
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
       async syncCandidateFilesToExperimentVolume() {},
-      async refresh(request) {
-        refreshCalls.push({ ...request });
+      async reloadExperiment(request) {
+        experimentReloadCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
           return { mode: 'container', usedFallback: true };
         }
-        return { mode: request.preferredMode, usedFallback: false };
+        return { mode: request.preferredExperimentReloadMode, usedFallback: false };
       },
-      async compare(request) {
-        compareCalls.push({
+      async runCandidateComparisons(request) {
+        candidateComparisonCalls.push({
           ...request,
           categories: [...request.categories],
           tests: [...request.tests],
@@ -527,7 +527,7 @@ export function expectBinarySearchTraversal(
   expectedCommitLabels: readonly string[],
 ): void {
   const labelsBySha = new Map(Object.entries(fixture.shas).map(([label, sha]) => [sha, label]));
-  const actualCommitLabels = harness.compareCalls.map((call) => {
+  const actualCommitLabels = harness.candidateComparisonCalls.map((call) => {
     const label = labelsBySha.get(call.sha);
     if (!label) {
       throw new Error(`Compare traversed unknown commit ${call.sha}`);

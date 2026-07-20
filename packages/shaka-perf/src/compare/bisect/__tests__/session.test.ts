@@ -254,7 +254,7 @@ function deps(
         calls.restored.push([request.previouslySyncedSha, request.originalSha]);
         calls.events.push('checkout:original');
         calls.events.push('sync:original');
-        calls.events.push('refresh:original');
+        calls.events.push('reload-experiment:original');
         if (options.restoreError) throw options.restoreError;
       },
       clearSummary() {},
@@ -267,14 +267,14 @@ function deps(
         const syncCandidateFilesError = options.syncCandidateFilesErrorBySha?.[request.candidateSha];
         if (syncCandidateFilesError) throw syncCandidateFilesError;
       },
-      async refresh(request) {
+      async reloadExperiment(request) {
         calls.refreshes.push(request.sha);
-        calls.events.push(`refresh:${request.sha}`);
+        calls.events.push(`reload-experiment:${request.sha}`);
         return options.refreshBySha?.[request.sha]
-          ?? { mode: request.preferredMode, usedFallback: false };
+          ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
       },
-      async compare(request) {
-        calls.events.push(`compare:${request.sha}`);
+      async runCandidateComparisons(request) {
+        calls.events.push(`run-candidate-comparisons:${request.sha}`);
         calls.compares.push({
           sha: request.sha,
           categories: [...request.categories],
@@ -432,7 +432,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
@@ -788,7 +788,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -839,7 +839,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -953,7 +953,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -992,7 +992,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, candidate file sync, refresh, compare, and boundary checkpoints', async () => {
+  it('persists checkout, file sync, experiment reload, comparisons, and boundary checkpoints', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -1002,16 +1002,16 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'sync-candidate-files:bad', 'refresh:bad', 'compare:bad']) {
+    for (const event of ['checkout:bad', 'sync-candidate-files:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
       expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
-      checkpoint.afterEvent === 'compare:a'
+      checkpoint.afterEvent === 'run-candidate-comparisons:a'
       && checkpoint.session.primary.targets[0]?.recordedTargetEvaluations.a?.regressionDetected === false
     ))).toBe(true);
   });
 
-  it('persists actual fallback metadata before a compare failure', async () => {
+  it('persists actual reload fallback metadata before a comparison failure', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       bad: [resultWithVisualDiff('diff.png')],
@@ -1028,12 +1028,12 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)?.commitRuns.a).toMatchObject({
       compareCompleted: false,
-      refreshMode: 'container',
+      experimentReloadMode: 'container',
       usedFallback: true,
       infrastructureError: 'compare exploded',
     });
     const beforeCompare = harness.calls.checkpoints.find((checkpoint) => (
-      checkpoint.afterEvent === 'refresh:a'
+      checkpoint.afterEvent === 'reload-experiment:a'
       && checkpoint.session.commitRuns.a?.usedFallback === true
     ));
     expect(beforeCompare?.session.commitRuns.a?.compareResultsPath).toBeUndefined();
@@ -1067,7 +1067,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
     expect(harness.calls.signalHandlers.size).toBe(0);
@@ -1106,7 +1106,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.summaryAfterEvents[0]?.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -1280,7 +1280,7 @@ describe('experiment restoration', () => {
   it.each([
     ['checkout', ['checkout', 'refresh']],
     ['sync', ['checkout', 'sync', 'refresh']],
-  ] as const)('attempts refresh after %s restoration fails', async (failure, expectedEvents) => {
+  ] as const)('attempts an experiment reload after %s restoration fails', async (failure, expectedEvents) => {
     const events: string[] = [];
 
     await expect(restoreExperimentState({
@@ -1292,7 +1292,7 @@ describe('experiment restoration', () => {
         events.push('sync');
         if (failure === 'sync') throw new Error('volume restore failed');
       },
-      async refreshExperiment() {
+      async reloadExperiment() {
         events.push('refresh');
       },
     })).rejects.toThrow(new RegExp(failure === 'checkout' ? 'checkout restore' : 'volume restore'));

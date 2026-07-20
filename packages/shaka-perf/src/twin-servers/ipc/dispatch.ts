@@ -99,7 +99,7 @@ export function createDispatcher(
         await requireController().beginBisectSession(req.sessionId, req.ownerPid);
         return;
       case 'bisect-refresh':
-        return requireController().refreshBisectExperiment({
+        return requireController().reloadBisectExperiment({
           sessionId: req.sessionId,
           mode: req.mode,
           rebuildCommands: req.rebuildCommands,

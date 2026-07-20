@@ -81,14 +81,14 @@ function result(sha: string, targetEvaluations: TargetEvaluationAtCommit[]): Can
       compareCompleted: true,
       requestedCategories: ['visreg'],
       requestedTests: [],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: 'start',
       finishedAt: 'finish',
     },
     testResults: [],
     targetEvaluations,
-    refresh: { mode: 'commands', usedFallback: false },
+    experimentReload: { mode: 'commands', usedFallback: false },
   };
 }
 
@@ -98,7 +98,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -128,7 +128,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
@@ -178,7 +178,7 @@ describe('merge investigation', () => {
   it('retries an incomplete second-parent validation before narrowing the child range', async () => {
     let checkpoint = buildMergeQueue(session(['main', 'topic']));
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
@@ -221,7 +221,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -251,7 +251,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -288,7 +288,7 @@ describe('merge investigation', () => {
     let attemptId = 0;
     const measured: string[] = [];
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => `attempt-${++attemptId}`,
@@ -343,7 +343,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: failed,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),

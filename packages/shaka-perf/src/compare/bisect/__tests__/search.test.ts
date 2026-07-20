@@ -296,7 +296,7 @@ describe('bisect scheduler', () => {
       sha: 'b',
       requestedCategories: ['visreg'],
       requestedTestFiles: ['visual.abtest.ts'],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: '2026-07-12T00:01:00.000Z',
       finishedAt: '2026-07-12T00:02:00.000Z',

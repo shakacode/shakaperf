@@ -59,7 +59,7 @@ const attemptSchema = z.object({
   status: z.enum(['running', 'complete', 'incomplete']),
   requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
   requestedTests: z.array(testSelectionSchema),
-  refreshMode: z.enum(['commands', 'container']),
+  experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
   startedAt: z.string(),
   finishedAt: z.string().optional(),
@@ -127,7 +127,7 @@ const commitRunSchema = z.object({
   requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
   requestedTests: z.array(testSelectionSchema).optional(),
   requestedTestFiles: z.array(z.string()).optional(),
-  refreshMode: z.enum(['commands', 'container']),
+  experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
   compareResultsPath: z.string().optional(),
   startedAt: z.string(),
@@ -289,35 +289,58 @@ function normalizeCrashedAttempts(session: BisectSession): BisectSession {
  * are translated at the parse boundary. Strict Zod validation still runs on
  * the translated value and newly persisted sessions use only the current keys.
  */
-function normalizeLegacyEvaluationVocabulary(value: unknown): unknown {
+function normalizeLegacyBisectSessionVocabulary(value: unknown): unknown {
   if (!isRecord(value)) return value;
 
   return {
     ...value,
-    primary: normalizeLegacyPhaseEvaluationVocabulary(value.primary),
+    primary: normalizeLegacyPhaseVocabulary(value.primary),
     mergeInvestigations: isRecord(value.mergeInvestigations)
       ? Object.fromEntries(Object.entries(value.mergeInvestigations).map(([sha, investigation]) => (
-        [sha, normalizeLegacyMergeInvestigationEvaluationVocabulary(investigation)]
+        [sha, normalizeLegacyMergeInvestigationVocabulary(investigation)]
       )))
       : value.mergeInvestigations,
+    commitRuns: isRecord(value.commitRuns)
+      ? Object.fromEntries(Object.entries(value.commitRuns).map(([sha, commitRun]) => (
+        [sha, normalizeLegacyExperimentReloadModeVocabulary(commitRun)]
+      )))
+      : value.commitRuns,
   };
 }
 
-function normalizeLegacyMergeInvestigationEvaluationVocabulary(value: unknown): unknown {
+function normalizeLegacyMergeInvestigationVocabulary(value: unknown): unknown {
   if (!isRecord(value)) return value;
   return {
     ...value,
     ...(value.phase === undefined
       ? {}
-      : { phase: normalizeLegacyPhaseEvaluationVocabulary(value.phase) }),
+      : { phase: normalizeLegacyPhaseVocabulary(value.phase) }),
   };
 }
 
-function normalizeLegacyPhaseEvaluationVocabulary(value: unknown): unknown {
+function normalizeLegacyPhaseVocabulary(value: unknown): unknown {
   if (!isRecord(value) || !Array.isArray(value.targets)) return value;
   return {
     ...value,
     targets: value.targets.map(normalizeLegacyTargetEvaluationVocabulary),
+    attempts: Array.isArray(value.attempts)
+      ? value.attempts.map(normalizeLegacyExperimentReloadModeVocabulary)
+      : value.attempts,
+  };
+}
+
+function normalizeLegacyExperimentReloadModeVocabulary(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const {
+    refreshMode,
+    experimentReloadMode,
+    ...record
+  } = value;
+  return {
+    ...record,
+    experimentReloadMode: experimentReloadMode === undefined
+      ? refreshMode
+      : experimentReloadMode,
   };
 }
 
@@ -365,7 +388,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function parseBisectSession(value: unknown): BisectSession {
-  const normalized = normalizeLegacyEvaluationVocabulary(value);
+  const normalized = normalizeLegacyBisectSessionVocabulary(value);
   return normalizeCrashedAttempts(sessionSchema.parse(normalized) as BisectSession);
 }
 

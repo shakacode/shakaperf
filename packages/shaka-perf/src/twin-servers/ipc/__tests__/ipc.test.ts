@@ -16,7 +16,7 @@ import { endpointPaths } from '../paths';
 import { PROTOCOL_VERSION } from '../protocol';
 import { createDispatcher } from '../dispatch';
 import { MenuBusyError, type MenuController } from '../../commands/servers-menu';
-import type { BisectRefreshResult } from '../../commands/bisect-session';
+import type { BisectExperimentReloadResult } from '../../commands/bisect-session';
 import type { ResolvedConfig } from '../../types';
 
 /**
@@ -71,12 +71,12 @@ describe('ipc proxy', () => {
   it('returns typed response data from a required bisect proxy', async () => {
     await withHome(async () => {
       const slug = 'bisect-data';
-      const result: BisectRefreshResult = { mode: 'container', usedFallback: true };
+      const result: BisectExperimentReloadResult = { mode: 'container', usedFallback: true };
       const dispatch: ProxyDispatcher = async () => result;
       const proxy = await startProxyServer({ config: fakeConfig(slug), dispatch });
 
       try {
-        await expect(requireBisectProxy<BisectRefreshResult>({
+        await expect(requireBisectProxy<BisectExperimentReloadResult>({
           slug,
           request: {
             v: PROTOCOL_VERSION,
@@ -278,7 +278,7 @@ describe('ipc proxy', () => {
 });
 
 describe('ipc dispatcher', () => {
-  it('routes compare bisect lease and refresh requests through the menu controller', async () => {
+  it('routes compare bisect lease and reload requests through the menu controller', async () => {
     const calls: string[] = [];
     const controller: MenuController = {
       async rebuildAndRestart() {
@@ -300,7 +300,7 @@ describe('ipc dispatcher', () => {
       async beginBisectSession(sessionId, ownerPid) {
         calls.push(`begin:${sessionId}:${ownerPid}`);
       },
-      async refreshBisectExperiment(request) {
+      async reloadBisectExperiment(request) {
         calls.push(`refresh:${request.sessionId}:${request.mode}:${request.rebuildCommands.join('|')}`);
         return { mode: 'container', usedFallback: true };
       },

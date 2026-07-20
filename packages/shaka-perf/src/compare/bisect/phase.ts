@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import type { CandidateResult, RefreshMode } from './run-candidate';
+import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import { runCheckpointedAttempt } from './attempt';
 import {
   narrowTargetSearchRangesUsingRecordedEvaluations,
@@ -24,7 +24,7 @@ import type {
 
 export interface RunSearchPhaseOptions {
   phase: BisectSearchPhase;
-  preferredRefreshMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
   now(): string;
   /**
@@ -79,7 +79,7 @@ export async function runSearchPhase(
     await runCheckpointedAttempt({
       attempts: phase.attempts,
       work,
-      preferredRefreshMode: options.preferredRefreshMode,
+      preferredExperimentReloadMode: options.preferredExperimentReloadMode,
       nextAttemptId: options.nextAttemptId,
       now: options.now,
       checkpointRunning(attempts) {

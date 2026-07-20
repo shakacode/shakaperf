@@ -155,7 +155,7 @@ describe('compare bisect black-box E2E', () => {
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
-      expect(harness.compareCalls.filter((call) => (
+      expect(harness.candidateComparisonCalls.filter((call) => (
         call.sha === fixture.shas['visual-and-performance-regressions-introduced']
       ))).toHaveLength(1);
       assertExperimentRestored(fixture);
@@ -224,7 +224,7 @@ describe('compare bisect black-box E2E', () => {
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
-      expect(harness.compareCalls).toEqual(expect.arrayContaining([
+      expect(harness.candidateComparisonCalls).toEqual(expect.arrayContaining([
         expect.objectContaining({
           tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
         }),
@@ -487,7 +487,7 @@ describe('compare bisect black-box E2E', () => {
         'good-unrelated-commit-one',
         'good-unrelated-commit-two',
       ]);
-      expect(harness.compareCalls).toEqual(expect.arrayContaining([
+      expect(harness.candidateComparisonCalls).toEqual(expect.arrayContaining([
         expect.objectContaining({
           categories: ['perf'],
           tests: [{
@@ -626,13 +626,13 @@ describe('compare bisect black-box E2E', () => {
         'command-rebuild-fails',
         'visual-regression-introduced',
       ]);
-      expect(harness.refreshCalls).toContainEqual({
+      expect(harness.experimentReloadCalls).toContainEqual({
         sha: fixture.shas['command-rebuild-fails'],
-        preferredMode: 'commands',
+        preferredExperimentReloadMode: 'commands',
       });
       expect(session.commitRuns[fixture.shas['command-rebuild-fails']!]).toMatchObject({
         compareCompleted: true,
-        refreshMode: 'container',
+        experimentReloadMode: 'container',
         usedFallback: true,
       });
       expectCommitsSkippedByBinarySearch(harness, fixture, [
@@ -748,7 +748,7 @@ function expectCommitsSkippedByBinarySearch(
   fixture: E2eRepositoryFixture,
   commitLabels: readonly string[],
 ): void {
-  const traversedShas = harness.compareCalls.map((call) => call.sha);
+  const traversedShas = harness.candidateComparisonCalls.map((call) => call.sha);
   for (const label of commitLabels) {
     expect(traversedShas).not.toContain(fixture.shas[label]);
   }

@@ -48,7 +48,7 @@ export interface CommitRun {
   requestedCategories: BisectCategory[];
   requestedTests?: BisectTestSelection[];
   requestedTestFiles?: string[];
-  refreshMode: 'commands' | 'container';
+  experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
   compareResultsPath?: string;
   startedAt: string;
@@ -106,7 +106,7 @@ export interface CommitAttempt {
   status: PersistedAttemptStatus;
   requestedCategories: BisectCategory[];
   requestedTests: BisectTestSelection[];
-  refreshMode: 'commands' | 'container';
+  experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
   startedAt: string;
   finishedAt?: string;

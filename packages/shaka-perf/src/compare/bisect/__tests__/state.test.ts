@@ -59,7 +59,7 @@ function session(): BisectSession {
         status: 'running',
         requestedCategories: ['visreg'],
         requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
-        refreshMode: 'commands',
+        experimentReloadMode: 'commands',
         usedFallback: false,
         startedAt: '2026-07-13T00:01:00.000Z',
       }],
@@ -149,6 +149,33 @@ describe('resumable bisect state', () => {
         }],
       },
     })).toThrow();
+  });
+
+  it('reads legacy experiment reload mode fields on attempts and commit runs', () => {
+    const currentSession = session();
+    const currentAttempt = currentSession.primary.attempts[0]!;
+    const { experimentReloadMode, ...legacyAttempt } = currentAttempt;
+
+    const parsed = parseBisectSession({
+      ...currentSession,
+      primary: {
+        ...currentSession.primary,
+        attempts: [{ ...legacyAttempt, refreshMode: experimentReloadMode }],
+      },
+      commitRuns: {
+        mid: {
+          sha: 'mid',
+          requestedCategories: ['visreg'],
+          refreshMode: 'commands',
+          usedFallback: false,
+          startedAt: '2026-07-13T00:01:00.000Z',
+        },
+      },
+    });
+
+    expect(parsed.primary.attempts[0]?.experimentReloadMode).toBe('commands');
+    expect(parsed.commitRuns.mid?.experimentReloadMode).toBe('commands');
+    expect(JSON.stringify(parsed)).not.toContain('"refreshMode"');
   });
 
   it('rejects unknown persisted fields', () => {

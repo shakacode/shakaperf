@@ -173,14 +173,14 @@ describe('experiment-only container recreation', () => {
   });
 });
 
-describe('BisectSessionController refresh strategy', () => {
+describe('BisectSessionController experiment reload strategy', () => {
   it('runs rebuild commands and refreshes only experiment processes in command mode', async () => {
     const config = fakeConfig();
     const deps = fakeDependencies();
     const controller = new BisectSessionController(config, deps);
     controller.beginSession('session-1', process.pid);
 
-    await expect(controller.refreshExperiment('session-1', {
+    await expect(controller.reloadExperiment('session-1', {
       mode: 'commands',
       rebuildCommands: ['yarn build', 'bin/rails db:migrate'],
       noCache: false,
@@ -202,7 +202,7 @@ describe('BisectSessionController refresh strategy', () => {
     const controller = new BisectSessionController(config, deps);
     controller.beginSession('session-1', process.pid);
 
-    await expect(controller.refreshExperiment('session-1', {
+    await expect(controller.reloadExperiment('session-1', {
       mode: 'container',
       rebuildCommands: ['command-mode-only rebuild'],
       noCache: true,
@@ -222,7 +222,7 @@ describe('BisectSessionController refresh strategy', () => {
     const controller = new BisectSessionController(config, deps);
     controller.beginSession('session-1', process.pid);
 
-    await expect(controller.refreshExperiment('session-1', {
+    await expect(controller.reloadExperiment('session-1', {
       mode: 'commands',
       rebuildCommands: [],
       noCache: false,
@@ -242,7 +242,7 @@ describe('BisectSessionController refresh strategy', () => {
     const controller = new BisectSessionController(config, deps);
     controller.beginSession('session-1', process.pid);
 
-    await expect(controller.refreshExperiment('session-1', {
+    await expect(controller.reloadExperiment('session-1', {
       mode: 'commands',
       rebuildCommands: ['yarn build'],
       noCache: false,
@@ -266,7 +266,7 @@ describe('BisectSessionController refresh strategy', () => {
     const controller = new BisectSessionController(config, deps);
     controller.beginSession('session-1', process.pid);
 
-    await expect(controller.refreshExperiment('session-1', {
+    await expect(controller.reloadExperiment('session-1', {
       mode: 'commands',
       rebuildCommands: ['yarn build'],
       noCache: false,
@@ -288,12 +288,12 @@ describe('BisectSessionController lease', () => {
     expect(() => controller.beginSession('fractional', 1.5)).toThrow(/positive owner PID/);
   });
 
-  it('rejects competing sessions and requires the owner session for refresh and end', async () => {
+  it('rejects competing sessions and requires the owner session for reload and end', async () => {
     const controller = new BisectSessionController(fakeConfig(), fakeDependencies());
     controller.beginSession('owner', process.pid);
 
     expect(() => controller.beginSession('competitor', process.pid)).toThrow(/already active/);
-    await expect(controller.refreshExperiment('competitor', {
+    await expect(controller.reloadExperiment('competitor', {
       mode: 'commands',
       rebuildCommands: ['yarn build'],
       noCache: false,

@@ -26,7 +26,7 @@ function result(): CandidateResult {
       compareCompleted: true,
       requestedCategories: [...work.categories],
       requestedTests: [...work.tests],
-      refreshMode: 'container',
+      experimentReloadMode: 'container',
       usedFallback: true,
       compareResultsPath: '/results/candidate',
       startedAt: 'run-started',
@@ -34,7 +34,7 @@ function result(): CandidateResult {
     },
     testResults: [],
     targetEvaluations: [],
-    refresh: { mode: 'container', usedFallback: true },
+    experimentReload: { mode: 'container', usedFallback: true },
   };
 }
 
@@ -48,7 +48,7 @@ describe('runCheckpointedAttempt', () => {
     await expect(runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: () => 'attempt-started',
       checkpointRunning(attempts) {
@@ -86,7 +86,7 @@ describe('runCheckpointedAttempt', () => {
       status: 'complete',
       requestedCategories: ['visreg'],
       requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
-      refreshMode: 'container',
+      experimentReloadMode: 'container',
       usedFallback: true,
       startedAt: 'attempt-started',
       finishedAt: 'run-finished',
@@ -101,7 +101,7 @@ describe('runCheckpointedAttempt', () => {
     await expect(runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: (() => {
         const values = ['attempt-started', 'attempt-finished'];
@@ -129,7 +129,7 @@ describe('runCheckpointedAttempt', () => {
     await expect(runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: () => 'now',
       checkpointRunning(attempts) { statuses.push(attempts.at(-1)!.status); },
@@ -157,7 +157,7 @@ describe('runCheckpointedAttempt', () => {
     await expect(runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: () => 'now',
       checkpointRunning(attempts) { statuses.push(attempts.at(-1)!.status); },
@@ -182,7 +182,7 @@ describe('runCheckpointedAttempt', () => {
     await runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: (() => {
         const values = ['attempt-started', 'attempt-finished'];
@@ -204,7 +204,7 @@ describe('runCheckpointedAttempt', () => {
     await expect(runCheckpointedAttempt({
       attempts: [],
       work,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       nextAttemptId: () => 'attempt-1',
       now: () => 'now',
       checkpointRunning(attempts) { statuses.push(attempts.at(-1)!.status); },

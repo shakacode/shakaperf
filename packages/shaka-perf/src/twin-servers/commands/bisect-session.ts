@@ -16,12 +16,12 @@ import {
   waitForExperimentReady,
 } from '../helpers/overmind-processes';
 
-export interface BisectRefreshResult {
+export interface BisectExperimentReloadResult {
   mode: 'commands' | 'container';
   usedFallback: boolean;
 }
 
-export interface BisectRefreshOptions {
+export interface BisectExperimentReloadOptions {
   mode: 'commands' | 'container';
   rebuildCommands: string[];
   noCache: boolean;
@@ -74,13 +74,13 @@ export class BisectSessionController {
     this.activeSession = { sessionId, ownerPid };
   }
 
-  async refreshExperiment(
+  async reloadExperiment(
     sessionId: string,
-    options: BisectRefreshOptions,
-  ): Promise<BisectRefreshResult> {
+    options: BisectExperimentReloadOptions,
+  ): Promise<BisectExperimentReloadResult> {
     this.requireSession(sessionId);
     if (options.mode === 'container' || options.rebuildCommands.length === 0) {
-      await this.refreshContainer(options.noCache);
+      await this.rebuildAndReloadExperimentContainer(options.noCache);
       return { mode: 'container', usedFallback: false };
     }
 
@@ -91,7 +91,7 @@ export class BisectSessionController {
       await this.restartAndWait();
       return { mode: 'commands', usedFallback: false };
     } catch {
-      await this.refreshContainer(options.noCache);
+      await this.rebuildAndReloadExperimentContainer(options.noCache);
       return { mode: 'container', usedFallback: true };
     }
   }
@@ -108,7 +108,7 @@ export class BisectSessionController {
     }
   }
 
-  private async refreshContainer(noCache: boolean): Promise<void> {
+  private async rebuildAndReloadExperimentContainer(noCache: boolean): Promise<void> {
     await this.dependencies.buildExperiment(this.config, noCache);
     await this.dependencies.recreateExperimentContainer(this.config);
     for (const setupCommand of this.config.setupCommands) {

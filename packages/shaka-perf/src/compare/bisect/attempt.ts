@@ -7,14 +7,14 @@
  * License in LICENSE.md.
  */
 
-import type { CandidateResult, RefreshMode } from './run-candidate';
+import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import type { CandidateMeasurementPlan } from './search';
 import type { CommitAttempt } from './types';
 
 export interface RunCheckpointedAttemptOptions {
   attempts: readonly CommitAttempt[];
   work: CandidateMeasurementPlan;
-  preferredRefreshMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
   now(): string;
   checkpointRunning(attempts: CommitAttempt[]): void;
@@ -33,7 +33,7 @@ export async function runCheckpointedAttempt(
     status: 'running',
     requestedCategories: [...options.work.categories],
     requestedTests: [...options.work.tests],
-    refreshMode: options.preferredRefreshMode,
+    experimentReloadMode: options.preferredExperimentReloadMode,
     usedFallback: false,
     startedAt: options.now(),
   };
@@ -47,8 +47,8 @@ export async function runCheckpointedAttempt(
     const completedAttempt: CommitAttempt = {
       ...attempt,
       status: 'complete',
-      refreshMode: result.refresh.mode,
-      usedFallback: result.refresh.usedFallback,
+      experimentReloadMode: result.experimentReload.mode,
+      usedFallback: result.experimentReload.usedFallback,
       finishedAt: result.commitRun.finishedAt ?? options.now(),
       ...(result.commitRun.compareResultsPath
         ? { compareResultsPath: result.commitRun.compareResultsPath }

@@ -47,7 +47,7 @@ import {
   type ServerLogStatus,
 } from '../helpers/server-log';
 import { dockerBuildDirForSide, dockerfileAbsForSide } from '../helpers/project-paths';
-import { BisectSessionController, type BisectRefreshResult } from './bisect-session';
+import { BisectSessionController, type BisectExperimentReloadResult } from './bisect-session';
 import {
   experimentRebuildMenuDefinition,
   rebuildExperimentInContainer,
@@ -99,13 +99,13 @@ export interface MenuController {
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
   /** Pause auto-sync and reject unrelated lifecycle actions while compare bisect owns the session. */
   beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
-  /** Refresh the experiment side for the currently active compare bisect session. */
-  refreshBisectExperiment(request: {
+  /** Reload the experiment side for the currently active compare bisect session. */
+  reloadBisectExperiment(request: {
     sessionId: string;
     mode: 'commands' | 'container';
     rebuildCommands: string[];
     noCache: boolean;
-  }): Promise<BisectRefreshResult>;
+  }): Promise<BisectExperimentReloadResult>;
   /** End the compare bisect session and allow normal menu auto-sync/actions again. */
   endBisectSession(sessionId: string): Promise<void>;
 }
@@ -725,16 +725,16 @@ export async function runServersMenu(
       'beginning compare bisect session',
       async () => {
         state.bisectSession.beginSession(sessionId, ownerPid);
-        state.lastMessage = 'Compare bisect owns experiment refresh; auto-sync is paused.';
+        state.lastMessage = 'Compare bisect owns experiment reload; auto-sync is paused.';
       },
       { allowDuringBisect: true },
     ),
-    refreshBisectExperiment: (request) => runProxiedAction(
-      `refreshing compare bisect experiment (${request.mode})`,
+    reloadBisectExperiment: (request) => runProxiedAction(
+      `reloading compare bisect experiment (${request.mode})`,
       async () => {
-        const result = await state.bisectSession.refreshExperiment(request.sessionId, request);
+        const result = await state.bisectSession.reloadExperiment(request.sessionId, request);
         state.lastMessage = result.usedFallback
-          ? 'Compare bisect command refresh failed; rebuilt experiment container.'
+          ? 'Compare bisect command reload failed; rebuilt experiment container.'
           : `Compare bisect refreshed experiment using ${result.mode} mode.`;
         return result;
       },
