@@ -1,14 +1,14 @@
 import type { TestResult } from '../../pipeline/report';
-import { assertNoPipelineErrors, observeTargets } from './analyze';
+import { assertNoPipelineErrors, evaluateTargetsAtCommitFromTestResults } from './analyze';
 import type {
   BisectCategory,
   BisectTestSelection,
   BisectTarget,
   CommitRun,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 
-export type RefreshMode = CommitRun['refreshMode'];
+export type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
 export interface CompareRunRequest {
   sha: string;
@@ -21,48 +21,53 @@ export interface CompareRunResult {
   compareResultsPath?: string;
 }
 
-export interface RefreshRequest {
+export interface ExperimentReloadRequest {
   sha: string;
-  preferredMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
 }
 
-export interface RefreshResult {
-  mode: RefreshMode;
+export interface ExperimentReloadResult {
+  mode: ExperimentReloadMode;
   usedFallback: boolean;
 }
 
-export interface MaterializeRequest {
-  previousSha: string | null;
+export interface SyncCandidateFilesRequest {
+  previouslySyncedSha: string | null;
   candidateSha: string;
 }
 
-export type CandidateCheckpoint = 'checkout' | 'materialize' | 'refresh' | 'compare' | 'failed';
+export type CandidateRunProgressEvent =
+  | 'checkout-completed'
+  | 'candidate-files-synced'
+  | 'experiment-reloaded'
+  | 'comparison-completed'
+  | 'candidate-run-failed';
 
 export interface CandidateDependencies {
   checkout(sha: string): Promise<void>;
-  materialize(request: MaterializeRequest): Promise<void>;
-  refresh(request: RefreshRequest): Promise<RefreshResult>;
-  compare(request: CompareRunRequest): Promise<CompareRunResult>;
+  syncCandidateFilesToExperimentVolume(request: SyncCandidateFilesRequest): Promise<void>;
+  reloadExperiment(request: ExperimentReloadRequest): Promise<ExperimentReloadResult>;
+  runCandidateComparisons(request: CompareRunRequest): Promise<CompareRunResult>;
   now(): string;
 }
 
 export interface RunCandidateOptions {
   sha: string;
-  previousSha: string | null;
+  previouslySyncedSha: string | null;
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
-  preferredMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
   dependencies: CandidateDependencies;
-  onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun): void;
+  recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun): void;
   checkCancellation(): void;
 }
 
 export interface CandidateResult {
   commitRun: CommitRun;
   testResults: readonly TestResult[];
-  observations: readonly TargetObservation[];
-  refresh: RefreshResult;
+  targetEvaluations: readonly TargetEvaluationAtCommit[];
+  experimentReload: ExperimentReloadResult;
 }
 
 export class BisectInterruptedError extends Error {
@@ -78,7 +83,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
     compareCompleted: false,
     requestedCategories: [...options.categories],
     requestedTests: [...options.tests],
-    refreshMode: options.preferredMode,
+    experimentReloadMode: options.preferredExperimentReloadMode,
     usedFallback: false,
     startedAt: options.dependencies.now(),
   };
@@ -86,29 +91,29 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
 
   try {
     await options.dependencies.checkout(options.sha);
-    options.onCheckpoint('checkout', commitRun);
+    options.recordCandidateRunProgress('checkout-completed', commitRun);
     options.checkCancellation();
 
-    await options.dependencies.materialize({
-      previousSha: options.previousSha,
+    await options.dependencies.syncCandidateFilesToExperimentVolume({
+      previouslySyncedSha: options.previouslySyncedSha,
       candidateSha: options.sha,
     });
-    options.onCheckpoint('materialize', commitRun);
+    options.recordCandidateRunProgress('candidate-files-synced', commitRun);
     options.checkCancellation();
 
-    const refresh = await options.dependencies.refresh({
+    const experimentReload = await options.dependencies.reloadExperiment({
       sha: options.sha,
-      preferredMode: options.preferredMode,
+      preferredExperimentReloadMode: options.preferredExperimentReloadMode,
     });
     commitRun = {
       ...commitRun,
-      refreshMode: refresh.mode,
-      usedFallback: refresh.usedFallback,
+      experimentReloadMode: experimentReload.mode,
+      usedFallback: experimentReload.usedFallback,
     };
-    options.onCheckpoint('refresh', commitRun);
+    options.recordCandidateRunProgress('experiment-reloaded', commitRun);
     options.checkCancellation();
 
-    const compare = await options.dependencies.compare({
+    const candidateComparisons = await options.dependencies.runCandidateComparisons({
       sha: options.sha,
       categories: options.categories,
       tests: options.tests,
@@ -116,21 +121,25 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
     commitRun = {
       ...commitRun,
       compareCompleted: true,
-      compareResultsPath: compare.compareResultsPath,
+      compareResultsPath: candidateComparisons.compareResultsPath,
       finishedAt: options.dependencies.now(),
     };
-    options.onCheckpoint('compare', commitRun);
+    options.recordCandidateRunProgress('comparison-completed', commitRun);
     options.checkCancellation();
-    assertNoPipelineErrors(compare.testResults, options.sha);
+    assertNoPipelineErrors(candidateComparisons.testResults, options.sha);
 
-    const observations = options.targets.length === 0
+    const targetEvaluations = options.targets.length === 0
       ? []
-      : observeTargets(compare.testResults, options.targets, options.sha);
+      : evaluateTargetsAtCommitFromTestResults(
+        candidateComparisons.testResults,
+        options.targets,
+        options.sha,
+      );
     return {
       commitRun,
-      testResults: compare.testResults,
-      observations,
-      refresh,
+      testResults: candidateComparisons.testResults,
+      targetEvaluations,
+      experimentReload,
     };
   } catch (error) {
     const failedRun: CommitRun = {
@@ -140,7 +149,7 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
         ? {}
         : { infrastructureError: (error as Error).message }),
     };
-    options.onCheckpoint('failed', failedRun);
+    options.recordCandidateRunProgress('candidate-run-failed', failedRun);
     if (error instanceof BisectInterruptedError) throw error;
     throw new Error(`Candidate ${options.sha} failed: ${(error as Error).message}`, { cause: error });
   }

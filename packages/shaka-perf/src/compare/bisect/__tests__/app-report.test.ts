@@ -370,7 +370,7 @@ function bisectReport(): AppReportData {
     testId: 'homepage-card',
     testName: 'Homepage',
     subject: 'Hero section',
-    values: { misMatchPercentage: 12.5, diffPixels: 4_200, threshold: 0.1 },
+    evidence: { misMatchPercentage: 12.5, diffPixels: 4_200, threshold: 0.1 },
   });
   const homepagePerfTarget = bisectTarget({
     id: 'homepage-perf-target',
@@ -378,7 +378,7 @@ function bisectReport(): AppReportData {
     testId: 'homepage-card',
     testName: 'Homepage',
     subject: 'LCP',
-    values: {
+    evidence: {
       controlDisplay: '1.8s',
       experimentDisplay: '2.1s',
       deltaDisplay: '+300ms',
@@ -522,14 +522,14 @@ function bisectTarget({
   testId,
   testName,
   subject,
-  values,
+  evidence,
 }: {
   id: string;
   category: BisectReportTarget['category'];
   testId: string;
   testName: string;
   subject: string;
-  values?: Record<string, string | number | boolean | null>;
+  evidence?: Record<string, string | number | boolean | null>;
 }): BisectReportTarget {
   return {
     id,
@@ -540,12 +540,12 @@ function bisectTarget({
     viewport: 'desktop',
     subject,
     status: 'found',
-    badRefObservation: values ? {
+    badRefEvaluation: evidence ? {
       targetId: id,
       commitSha: 'mixed-commit',
-      present: true,
-      values,
-      artifacts: [],
+      regressionDetected: true,
+      evidence,
+      evidenceArtifacts: [],
     } : undefined,
   };
 }

@@ -8,8 +8,8 @@
  */
 
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
-import { assertNoPipelineErrors, discoverTargets, observeTargets } from '../analyze';
-import type { BisectTarget, TargetObservation } from '../types';
+import { assertNoPipelineErrors, discoverTargets, evaluateTargetsAtCommitFromTestResults } from '../analyze';
+import type { BisectTarget, TargetEvaluationAtCommit } from '../types';
 import type { AccessibilityFindingStatus } from '../../stages/accessibility';
 import type { PerfArtifact } from '../../stages/perf';
 import type { VisregResult } from '../../stages/visreg';
@@ -138,13 +138,13 @@ function finding(ruleId: string, target: string, status: AccessibilityFindingSta
   };
 }
 
-function observationFor(
-  observations: readonly TargetObservation[],
+function evaluationFor(
+  targetEvaluations: readonly TargetEvaluationAtCommit[],
   category: string,
   subject: string,
   viewport: string,
 ) {
-  return observations.find((observation: TargetObservation) => observation.targetId === targetId(category, subject, viewport))!;
+  return targetEvaluations.find((evaluation: TargetEvaluationAtCommit) => evaluation.targetId === targetId(category, subject, viewport))!;
 }
 
 function targetId(category: string, subject: string, viewport: string) {
@@ -152,10 +152,10 @@ function targetId(category: string, subject: string, viewport: string) {
 }
 
 describe('bisect regression analysis', () => {
-  it('discovers stable typed targets and observations across all categories', () => {
+  it('discovers stable typed targets and evaluates them across all categories', () => {
     const results = [testResult()];
     const targets = discoverTargets(results, ['good', 'candidate', 'bad'], 'bad');
-    const observations = observeTargets(results, targets, 'bad');
+    const targetEvaluations = evaluateTargetsAtCommitFromTestResults(results, targets, 'bad');
 
     expect(targets.map((item: BisectTarget) => [item.category, item.subject])).toEqual([
       ['accessibility', 'button-name'],
@@ -165,25 +165,25 @@ describe('bisect regression analysis', () => {
     expect(targets.filter((item: BisectTarget) => item.category === 'accessibility')).toMatchObject([
       { viewport: 'desktop', goodIndex: 0, badIndex: 2, status: 'active' },
     ]);
-    expect(observationFor(observations, 'accessibility', 'button-name', 'desktop')).toMatchObject({
+    expect(evaluationFor(targetEvaluations, 'accessibility', 'button-name', 'desktop')).toMatchObject({
       commitSha: 'bad',
-      present: true,
-      values: {
+      regressionDetected: true,
+      evidence: {
         controlViolationCount: 0,
         controlNodeCount: 0,
         experimentViolationCount: 2,
         experimentNodeCount: 2,
       },
-      artifacts: [
+      evidenceArtifacts: [
         'accessibility-comparison.html',
         'control-accessibility.json',
         'experiment-accessibility.json',
       ],
     });
-    expect(observationFor(observations, 'perf', 'TBT', 'desktop')).toMatchObject({
+    expect(evaluationFor(targetEvaluations, 'perf', 'TBT', 'desktop')).toMatchObject({
       commitSha: 'bad',
-      present: true,
-      values: {
+      regressionDetected: true,
+      evidence: {
         controlValue: 100,
         experimentValue: 120,
         deltaValue: 20,
@@ -192,16 +192,16 @@ describe('bisect regression analysis', () => {
         direction: 'regression',
       },
     });
-    expect(observationFor(observations, 'visreg', '[data-cy="hero-section"]', 'desktop')).toMatchObject({
+    expect(evaluationFor(targetEvaluations, 'visreg', '[data-cy="hero-section"]', 'desktop')).toMatchObject({
       commitSha: 'bad',
-      present: true,
-      values: {
+      regressionDetected: true,
+      evidence: {
         misMatchPercentage: 2.5,
         diffPixels: 24,
         threshold: 0.1,
         savedByRetries: false,
       },
-      artifacts: ['control.png', 'experiment.png', 'diff.png'],
+      evidenceArtifacts: ['control.png', 'experiment.png', 'diff.png'],
     });
   });
 
@@ -236,14 +236,14 @@ describe('bisect regression analysis', () => {
     expect(discoverTargets(changedOnlyResults, ['good', 'bad'], 'bad')).toEqual([]);
   });
 
-  it('observes an existing accessibility target absent for changed-only findings', () => {
+  it('evaluates an existing accessibility target as regression-free for changed-only findings', () => {
     const existingTarget = discoverTargets([
       testResult(DESKTOP_VIEWPORT, false),
     ], ['good', 'bad'], 'bad')[0]!;
     const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
 
-    expect(observeTargets(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
-      { targetId: existingTarget.id, commitSha: 'candidate', present: false },
+    expect(evaluateTargetsAtCommitFromTestResults(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
+      { targetId: existingTarget.id, commitSha: 'candidate', regressionDetected: false },
     ]);
   });
 
@@ -253,7 +253,7 @@ describe('bisect regression analysis', () => {
     ], ['good', 'bad'], 'bad')
       .find((target) => target.category === 'visreg')!;
 
-    expect(() => observeTargets([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
+    expect(() => evaluateTargetsAtCommitFromTestResults([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
       .toThrow(/missing visreg measurement/i);
   });
 

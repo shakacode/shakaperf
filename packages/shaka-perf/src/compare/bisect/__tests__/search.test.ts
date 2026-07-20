@@ -8,26 +8,26 @@
  */
 
 import {
-  applyCachedObservations,
-  applyObservations,
+  narrowTargetSearchRangesUsingRecordedEvaluations,
+  recordTargetEvaluationsAndNarrowSearchRanges,
   nextCandidate,
   type BisectSearchInput,
 } from '../search';
 import type {
   BisectCategory,
   BisectTarget,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from '../types';
 
 const orderedCommits = ['g', 'a', 'b', 'c', 'bad'];
 
-function observation(targetId: string, present: boolean, commitSha = 'b'): TargetObservation {
+function evaluation(targetId: string, regressionDetected: boolean, commitSha = 'b'): TargetEvaluationAtCommit {
   return {
     targetId,
     commitSha,
-    present,
-    values: {},
-    artifacts: [],
+    regressionDetected,
+    evidence: {},
+    evidenceArtifacts: [],
   };
 }
 
@@ -46,7 +46,7 @@ function bisectTarget(
     status: 'active',
     goodIndex: 0,
     badIndex: 4,
-    observations: {},
+    recordedTargetEvaluations: {},
     ...options,
   };
 }
@@ -65,34 +65,34 @@ function target(value: BisectSearchInput, id: string): BisectTarget {
 
 describe('bisect scheduler', () => {
   it('rejects a degenerate active interval instead of scheduling empty work', () => {
-    const normalized = applyCachedObservations(session([
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 0,
         badIndex: 0,
-        observations: { g: observation('visual', true, 'g') },
+        recordedTargetEvaluations: { g: evaluation('visual', true, 'g') },
       }),
     ]));
 
-    expect(() => nextCandidate(normalized)).toThrow(/invalid bisect interval/i);
+    expect(() => nextCandidate(searchStateWithCurrentBoundaries)).toThrow(/invalid bisect interval/i);
   });
 
-  it('rejects a candidate with no unobserved active targets', () => {
-    const normalized = applyCachedObservations(session([
+  it('rejects a candidate with no active targets requiring evaluation', () => {
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg'),
     ]));
-    normalized.targets[0].observations.b = observation('visual', true, 'b');
+    searchStateWithCurrentBoundaries.targets[0].recordedTargetEvaluations.b = evaluation('visual', true, 'b');
 
-    expect(() => nextCandidate(normalized)).toThrow(/no unobserved active targets/i);
+    expect(() => nextCandidate(searchStateWithCurrentBoundaries)).toThrow(/no active targets requiring evaluation/i);
   });
 
   it('updates divergent target intervals independently', () => {
-    const updated = applyObservations(session([
+    const updated = recordTargetEvaluationsAndNarrowSearchRanges(session([
       bisectTarget('visual', 'visreg'),
       bisectTarget('tbt', 'perf'),
       bisectTarget('button-name', 'accessibility'),
     ]), 'b', new Map([
-      ['visual', observation('visual', true)],
-      ['tbt', observation('tbt', false)],
+      ['visual', evaluation('visual', true)],
+      ['tbt', evaluation('tbt', false)],
     ]));
 
     expect(target(updated, 'visual').badIndex).toBe(2);
@@ -100,7 +100,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects the first target by category priority and stable id', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('zebra', 'visreg', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('alpha', 'visreg', { goodIndex: 0, badIndex: 2 }),
       bisectTarget('tbt', 'perf'),
@@ -119,7 +119,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects only the active test from a file containing multiple tests', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('account-overview', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Account overview',
@@ -138,7 +138,7 @@ describe('bisect scheduler', () => {
   });
 
   it('selects multiple active tests from the same file once each', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('account-overview-document', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Account overview',
@@ -162,7 +162,7 @@ describe('bisect scheduler', () => {
   });
 
   it('keeps identical test names in different files distinct', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('account-overview', 'visreg', {
         testFile: 'tests/account.abtest.ts',
         testName: 'Overview',
@@ -180,7 +180,7 @@ describe('bisect scheduler', () => {
   });
 
   it('groups every active target whose interval contains the candidate', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 4 }),
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('button-name', 'accessibility', { goodIndex: 2, badIndex: 4 }),
@@ -189,12 +189,12 @@ describe('bisect scheduler', () => {
     expect(work).toMatchObject({ sha: 'b', targetIds: ['visual', 'tbt', 'button-name'] });
   });
 
-  it('subtracts targets with cached observations at the candidate', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+  it('subtracts targets with recorded evaluations at the candidate', () => {
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
         badIndex: 3,
-        observations: { b: observation('visual', true) },
+        recordedTargetEvaluations: { b: evaluation('visual', true) },
       }),
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
       bisectTarget('button-name', 'accessibility', { goodIndex: 1, badIndex: 3 }),
@@ -204,29 +204,29 @@ describe('bisect scheduler', () => {
     expect(work?.categories).toEqual(['perf', 'accessibility']);
   });
 
-  it('applies cached observations before scheduling partially cached candidate work', () => {
+  it('applies recorded evaluations before scheduling partially evaluated candidate work', () => {
     const initial = session([
       bisectTarget('visual', 'visreg', {
-        observations: {
-          g: observation('visual', false, 'g'),
-          a: observation('visual', false, 'a'),
-          b: observation('visual', true, 'b'),
-          bad: observation('visual', true, 'bad'),
+        recordedTargetEvaluations: {
+          g: evaluation('visual', false, 'g'),
+          a: evaluation('visual', false, 'a'),
+          b: evaluation('visual', true, 'b'),
+          bad: evaluation('visual', true, 'bad'),
         },
       }),
       bisectTarget('tbt', 'perf', { goodIndex: 1, badIndex: 3 }),
     ]);
 
-    const normalized = applyCachedObservations(initial);
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(initial);
 
     expect(target(initial, 'visual')).toMatchObject({ status: 'active', goodIndex: 0, badIndex: 4 });
-    expect(target(normalized, 'visual')).toMatchObject({
+    expect(target(searchStateWithCurrentBoundaries, 'visual')).toMatchObject({
       status: 'found',
       goodIndex: 1,
       badIndex: 2,
       firstBadSha: 'b',
     });
-    expect(nextCandidate(normalized)).toMatchObject({
+    expect(nextCandidate(searchStateWithCurrentBoundaries)).toMatchObject({
       sha: 'b',
       targetIds: ['tbt'],
       categories: ['perf'],
@@ -235,20 +235,20 @@ describe('bisect scheduler', () => {
   });
 
   it('requires no rerun and exposes persistable found boundaries when every candidate is cached', () => {
-    const normalized = applyCachedObservations(session([
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         goodIndex: 1,
         badIndex: 3,
-        observations: { b: observation('visual', true, 'b') },
+        recordedTargetEvaluations: { b: evaluation('visual', true, 'b') },
       }),
       bisectTarget('tbt', 'perf', {
         goodIndex: 1,
         badIndex: 3,
-        observations: { b: observation('tbt', false, 'b') },
+        recordedTargetEvaluations: { b: evaluation('tbt', false, 'b') },
       }),
     ]));
 
-    const persisted = JSON.parse(JSON.stringify(normalized)) as BisectSearchInput;
+    const persisted = JSON.parse(JSON.stringify(searchStateWithCurrentBoundaries)) as BisectSearchInput;
 
     expect(target(persisted, 'visual')).toMatchObject({
       status: 'found',
@@ -262,25 +262,25 @@ describe('bisect scheduler', () => {
       badIndex: 3,
       firstBadSha: 'c',
     });
-    expect(nextCandidate(normalized)).toBeNull();
+    expect(nextCandidate(searchStateWithCurrentBoundaries)).toBeNull();
   });
 
-  it('requires a normalized session before scheduling at compile time', () => {
+  it('requires current target boundaries before scheduling at compile time', () => {
     const rawSession = session([bisectTarget('visual', 'visreg')]);
 
     if (false) {
-      // @ts-expect-error nextCandidate requires cached observations to be normalized first
+      // @ts-expect-error nextCandidate requires recorded evaluations to update boundaries first
       nextCandidate(rawSession);
     }
 
-    expect(nextCandidate(applyCachedObservations(rawSession))?.sha).toBe('b');
+    expect(nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(rawSession))?.sha).toBe('b');
   });
 
   it('finds the first bad commit when boundaries become adjacent', () => {
-    const updated = applyObservations(session([
+    const updated = recordTargetEvaluationsAndNarrowSearchRanges(session([
       bisectTarget('visual', 'visreg', { goodIndex: 0, badIndex: 2 }),
     ]), 'a', new Map([
-      ['visual', observation('visual', true, 'a')],
+      ['visual', evaluation('visual', true, 'a')],
     ]));
 
     expect(target(updated, 'visual')).toMatchObject({
@@ -290,13 +290,13 @@ describe('bisect scheduler', () => {
     });
   });
 
-  it('rejects observations after an infrastructure error without mutating boundaries', () => {
+  it('rejects target evaluations after an infrastructure error without mutating boundaries', () => {
     const initial = session([bisectTarget('visual', 'visreg')]);
     initial.commitRuns.b = {
       sha: 'b',
       requestedCategories: ['visreg'],
       requestedTestFiles: ['visual.abtest.ts'],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: '2026-07-12T00:01:00.000Z',
       finishedAt: '2026-07-12T00:02:00.000Z',
@@ -304,15 +304,15 @@ describe('bisect scheduler', () => {
     };
     const originalTarget = target(initial, 'visual');
 
-    expect(() => applyObservations(initial, 'b', new Map([
-      ['visual', observation('visual', true)],
-    ]))).toThrow('Cannot apply observations for b: compare timed out');
+    expect(() => recordTargetEvaluationsAndNarrowSearchRanges(initial, 'b', new Map([
+      ['visual', evaluation('visual', true)],
+    ]))).toThrow('Cannot record target evaluations for b: compare timed out');
     expect(target(initial, 'visual')).toBe(originalTarget);
-    expect(originalTarget).toMatchObject({ goodIndex: 0, badIndex: 4, observations: {} });
+    expect(originalTarget).toMatchObject({ goodIndex: 0, badIndex: 4, recordedTargetEvaluations: {} });
   });
 
   it('skips invalid targets', () => {
-    const work = nextCandidate(applyCachedObservations(session([
+    const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(session([
       bisectTarget('visual', 'visreg', {
         status: 'invalid',
         invalidReason: 'Present at known-good commit',

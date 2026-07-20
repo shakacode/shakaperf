@@ -12,7 +12,7 @@ import {
   runMergeInvestigations,
 } from '../merge-investigation';
 import type { CandidateResult } from '../run-candidate';
-import type { BisectSession, BisectTarget, TargetObservation } from '../types';
+import type { BisectSession, BisectTarget, TargetEvaluationAtCommit } from '../types';
 
 function target(id: string, firstBadSha: string): BisectTarget {
   return {
@@ -26,7 +26,7 @@ function target(id: string, firstBadSha: string): BisectTarget {
     goodIndex: 0,
     badIndex: 1,
     firstBadSha,
-    observations: {},
+    recordedTargetEvaluations: {},
   };
 }
 
@@ -70,25 +70,25 @@ function session(parents: string[], targets = [target('one', 'merge')]): BisectS
   };
 }
 
-function observation(targetId: string, sha: string, present: boolean): TargetObservation {
-  return { targetId, commitSha: sha, present, values: {}, artifacts: [] };
+function evaluation(targetId: string, sha: string, regressionDetected: boolean): TargetEvaluationAtCommit {
+  return { targetId, commitSha: sha, regressionDetected, evidence: {}, evidenceArtifacts: [] };
 }
 
-function result(sha: string, observations: TargetObservation[]): CandidateResult {
+function result(sha: string, targetEvaluations: TargetEvaluationAtCommit[]): CandidateResult {
   return {
     commitRun: {
       sha,
       compareCompleted: true,
       requestedCategories: ['visreg'],
       requestedTests: [],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: 'start',
       finishedAt: 'finish',
     },
     testResults: [],
-    observations,
-    refresh: { mode: 'commands', usedFallback: false },
+    targetEvaluations,
+    experimentReload: { mode: 'commands', usedFallback: false },
   };
 }
 
@@ -98,7 +98,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -128,7 +128,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
@@ -152,15 +152,15 @@ describe('merge investigation', () => {
       async measure(work) {
         measured.push(work.sha);
         if (work.sha === 'topic') return result('topic', [
-          observation('introduced', 'topic', false),
-          observation('source', 'topic', true),
-          observation('nested', 'topic', true),
+          evaluation('introduced', 'topic', false),
+          evaluation('source', 'topic', true),
+          evaluation('nested', 'topic', true),
         ]);
         if (work.sha === 'source-commit') return result(work.sha, [
-          observation('source', work.sha, true),
-          observation('nested', work.sha, false),
+          evaluation('source', work.sha, true),
+          evaluation('nested', work.sha, false),
         ]);
-        return result(work.sha, [observation('nested', work.sha, true)]);
+        return result(work.sha, [evaluation('nested', work.sha, true)]);
       },
     });
 
@@ -178,7 +178,7 @@ describe('merge investigation', () => {
   it('retries an incomplete second-parent validation before narrowing the child range', async () => {
     let checkpoint = buildMergeQueue(session(['main', 'topic']));
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
@@ -205,7 +205,7 @@ describe('merge investigation', () => {
       session: checkpoint,
       async measure(work) {
         measured.push(work.sha);
-        return result(work.sha, [observation('one', work.sha, true)]);
+        return result(work.sha, [evaluation('one', work.sha, true)]);
       },
     });
 
@@ -221,7 +221,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -251,7 +251,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: queued,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => 'attempt',
@@ -268,7 +268,7 @@ describe('merge investigation', () => {
       async measure(work) {
         measured.push(work.sha);
         if (measured.length > 1) throw new Error('repeated zero-target work');
-        return result(work.sha, [observation('one', work.sha, true)]);
+        return result(work.sha, [evaluation('one', work.sha, true)]);
       },
     });
 
@@ -288,7 +288,7 @@ describe('merge investigation', () => {
     let attemptId = 0;
     const measured: string[] = [];
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: () => `attempt-${++attemptId}`,
@@ -313,7 +313,7 @@ describe('merge investigation', () => {
       },
       async measure(work: { sha: string }) {
         measured.push(work.sha);
-        return result(work.sha, [observation('one', work.sha, true)]);
+        return result(work.sha, [evaluation('one', work.sha, true)]);
       },
     };
 
@@ -343,7 +343,7 @@ describe('merge investigation', () => {
 
     const completed = await runMergeInvestigations({
       session: failed,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       now: () => 'now',
       nextAttemptId: (() => { let id = 0; return () => `attempt-${++id}`; })(),
@@ -358,7 +358,7 @@ describe('merge investigation', () => {
         };
       },
       async measure(work) {
-        return result(work.sha, [observation('one', work.sha, true)]);
+        return result(work.sha, [evaluation('one', work.sha, true)]);
       },
     });
 

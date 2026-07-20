@@ -22,7 +22,11 @@ import {
   createComparePipeline,
   comparePipelineMetadata,
 } from '../compare-pipeline';
-import { assertNoPipelineErrors, discoverTargets, observeTargets } from './analyze';
+import {
+  assertNoPipelineErrors,
+  evaluateTargetsAtCommitFromTestResults,
+  discoverTargets,
+} from './analyze';
 import {
   checkoutDetached,
   inspectBisectRepositories,
@@ -33,7 +37,7 @@ import {
   type PreparedGitRange,
 } from './git';
 import {
-  applyCachedObservations,
+  narrowTargetSearchRangesUsingRecordedEvaluations,
   nextCandidate,
   testsForTargets,
 } from './search';
@@ -62,24 +66,24 @@ import type {
   BisectTarget,
   CommitRun,
   PersistedRebuildStrategy,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 import { resolveConfig } from '../../twin-servers/config';
 import type { ResolvedConfig } from '../../twin-servers/types';
 import { readBuildManifest, type BuildManifest } from '../../twin-servers/helpers/rebuild-check';
 import { requireBisectProxy } from '../../twin-servers/ipc/client';
 import { PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/ipc/protocol';
-import type { BisectRefreshResult } from '../../twin-servers/commands/bisect-session';
+import type { BisectExperimentReloadResult } from '../../twin-servers/commands/bisect-session';
 import {
   BisectInterruptedError,
   runCandidate,
-  type CandidateCheckpoint,
+  type CandidateRunProgressEvent,
   type CandidateDependencies,
   type CompareRunRequest,
   type CompareRunResult,
-  type MaterializeRequest,
-  type RefreshRequest,
-  type RefreshResult,
+  type SyncCandidateFilesRequest,
+  type ExperimentReloadRequest,
+  type ExperimentReloadResult,
 } from './run-candidate';
 import { loadReusableCompareResults } from './reuse-results';
 import {
@@ -89,7 +93,7 @@ import {
   writeBadRefTestsAtomic,
 } from './state';
 
-type RefreshMode = CommitRun['refreshMode'];
+type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
 export interface BisectCliOptions {
   configPath?: string;
@@ -110,20 +114,20 @@ export interface BisectCliOptions {
 export type {
   CompareRunRequest,
   CompareRunResult,
-  MaterializeRequest,
-  RefreshRequest,
-  RefreshResult,
+  SyncCandidateFilesRequest,
+  ExperimentReloadRequest,
+  ExperimentReloadResult,
 } from './run-candidate';
 
 export interface RestoreRequest {
-  previousSha: string | null;
+  previouslySyncedSha: string | null;
   originalSha: string;
 }
 
 export interface RestoreExperimentStateDependencies {
   restoreCheckout(): Promise<void>;
   syncVolume(): Promise<void>;
-  refreshExperiment(): Promise<void>;
+  reloadExperiment(): Promise<void>;
 }
 
 export async function restoreExperimentState(
@@ -145,7 +149,7 @@ export async function restoreExperimentState(
     }
   }
   try {
-    await dependencies.refreshExperiment();
+    await dependencies.reloadExperiment();
   } catch (error) {
     errors.push(asError(error));
   }
@@ -469,7 +473,7 @@ interface CandidateMeasureOptions {
 interface BisectExecutionState {
   session: BisectSession;
   badRefTests: readonly TestResult[] | null;
-  materializedSha: string | null;
+  volumeSyncedSha: string | null;
   volumeStateUncertain: boolean;
   checkoutAttempted: boolean;
   leaseAcquired: boolean;
@@ -485,8 +489,8 @@ interface BisectExecutionContext {
   deps: ExecuteBisectDependencies;
   state: BisectExecutionState;
   persistSession(): void;
-  refreshReport(): void;
-  persist(): void;
+  writeCurrentReport(): void;
+  persistSessionAndReport(): void;
   checkCancellation(): void;
   logDecision(event: string, message: string, data?: Record<string, unknown>): void;
   measure(options: CandidateMeasureOptions): ReturnType<typeof runCandidate>;
@@ -506,7 +510,7 @@ function createBisectExecutionContext(
       ? resumedSession(input.resumeSession)
       : initialSession(input, deps.now()),
     badRefTests: input.resumeBadRefTests ?? null,
-    materializedSha: null,
+    volumeSyncedSha: null,
     volumeStateUncertain: false,
     checkoutAttempted: false,
     leaseAcquired: false,
@@ -523,12 +527,12 @@ function createBisectExecutionContext(
     persistSession() {
       deps.writeSession(state.session);
     },
-    refreshReport() {
+    writeCurrentReport() {
       if (state.badRefTests) deps.writeReport(state.session, state.badRefTests);
     },
-    persist() {
+    persistSessionAndReport() {
       context.persistSession();
-      context.refreshReport();
+      context.writeCurrentReport();
     },
     checkCancellation() {
       if (state.cancellationSignal) {
@@ -547,25 +551,25 @@ function createBisectExecutionContext(
     measure(options) {
       return runCandidate({
         ...options,
-        previousSha: state.materializedSha,
-        preferredMode: preferredRefreshMode(input.config),
+        previouslySyncedSha: state.volumeSyncedSha,
+        preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
         dependencies: {
           ...deps,
           async checkout(sha) {
             state.checkoutAttempted = true;
             await deps.checkout(sha);
           },
-          async materialize(request) {
+          async syncCandidateFilesToExperimentVolume(request) {
             state.volumeStateUncertain = true;
-            await deps.materialize(request);
+            await deps.syncCandidateFilesToExperimentVolume(request);
             state.volumeStateUncertain = false;
           },
         },
         checkCancellation: context.checkCancellation,
-        onCheckpoint(checkpoint: CandidateCheckpoint, commitRun: CommitRun) {
-          if (checkpoint === 'materialize') state.materializedSha = options.sha;
+        recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun) {
+          if (event === 'candidate-files-synced') state.volumeSyncedSha = options.sha;
           state.session = recordCommitRun(state.session, commitRun);
-          context.persist();
+          context.persistSessionAndReport();
         },
       });
     },
@@ -578,7 +582,7 @@ function startBisectExecution(context: BisectExecutionContext): void {
   state.disposeSignalHandlers = deps.installSignalHandlers((signal) => {
     state.cancellationSignal ??= signal;
   });
-  context.persist();
+  context.persistSessionAndReport();
   context.logDecision('session-start', 'Starting compare bisect session', {
     goodSha: input.gitRange.goodSha,
     badSha: input.gitRange.badSha,
@@ -603,7 +607,7 @@ async function acquireBisectLease(context: BisectExecutionContext): Promise<void
     'lease-acquired',
     'Acquired twin-server bisect lease; experiment auto-sync is paused',
   );
-  context.persist();
+  context.persistSessionAndReport();
   context.checkCancellation();
 }
 
@@ -642,12 +646,12 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
     input.gitRange.badSha,
     input.selectedCategories,
   ));
-  const badObservations = observeTargets(
+  const badRefTargetEvaluations = evaluateTargetsAtCommitFromTestResults(
     badRun.testResults,
     state.session.primary.targets,
     input.gitRange.badSha,
   );
-  state.session = recordEndpointObservations(state.session, badObservations);
+  state.session = recordEndpointTargetEvaluations(state.session, badRefTargetEvaluations);
   state.badRefTests = badRun.testResults;
   if (deps.writeBadRefTests) {
     state.session = {
@@ -667,7 +671,7 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
       targets: state.session.primary.targets.map((target) => targetLogData(target)),
     },
   );
-  context.persist();
+  context.persistSessionAndReport();
 }
 
 async function measureOrReuseBadRef(
@@ -695,14 +699,14 @@ async function measureOrReuseBadRef(
       compareCompleted: true,
       requestedCategories: [...input.selectedCategories],
       requestedTests: [],
-      refreshMode: preferredRefreshMode(input.config),
+      experimentReloadMode: preferredExperimentReloadMode(input.config),
       usedFallback: false,
       compareResultsPath: badRun.compareResultsPath,
       startedAt,
       finishedAt: deps.now(),
       reusedResults: true,
     });
-    context.persist();
+    context.persistSessionAndReport();
     return badRun;
   }
   context.logDecision(
@@ -747,10 +751,15 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       targetIds: targets.map((target) => target.id),
     };
   } else if (targets.length > 0) {
-    const normalized = applyCachedObservations(searchInput(state.session));
-    state.session = withPrimaryTargets(state.session, normalized.targets);
+    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(
+      searchInput(state.session),
+    );
+    state.session = withPrimaryTargets(
+      state.session,
+      searchStateWithCurrentBoundaries.targets,
+    );
     targets = activeTargets(state.session);
-    const work = nextCandidate(normalized);
+    const work = nextCandidate(searchStateWithCurrentBoundaries);
     if (work) {
       state.nextAction = {
         kind: 'measure-candidate' as const,
@@ -770,12 +779,12 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       : 'Dry run found no regression targets and has no next action',
     state.nextAction ? { nextAction: state.nextAction } : { targetCount: 0 },
   );
-  context.persist();
+  context.persistSessionAndReport();
 }
 
 function completeEmptyPrimary(context: BisectExecutionContext): void {
   const { deps, state } = context;
-  deps.logProgress('No regression targets were present at the bad ref');
+  deps.logProgress('No regression targets were detected at the bad ref');
   const primary = state.session.primary;
   state.session = {
     ...state.session,
@@ -787,7 +796,7 @@ function completeEmptyPrimary(context: BisectExecutionContext): void {
       finishedAt: deps.now(),
     },
   };
-  context.persist();
+  context.persistSessionAndReport();
 }
 
 async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<void> {
@@ -797,7 +806,7 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
   let attemptNumber = primary.attempts.length;
   const completedPrimary = await runSearchPhase({
     phase: primary,
-    preferredRefreshMode: preferredRefreshMode(input.config),
+    preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
     nextAttemptId: () => `primary-${++attemptNumber}`,
     now: deps.now,
     commitRuns: () => state.session.commitRuns,
@@ -807,7 +816,7 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
     },
     afterCheckpoint(phase) {
       state.session = { ...state.session, primary: phase };
-      context.refreshReport();
+      context.writeCurrentReport();
     },
     async measure(work) {
       const targets = state.session.primary.targets.filter((target) => (
@@ -834,12 +843,12 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
       });
       context.logDecision(
         'candidate-observed',
-        `Measured ${candidateRun.observations.length} observation(s) at ${shortSha(work.sha)}`,
+        `Measured ${candidateRun.targetEvaluations.length} evaluation(s) at ${shortSha(work.sha)}`,
         {
           sha: work.sha,
-          observations: candidateRun.observations.map((observation) => ({
-            targetId: observation.targetId,
-            present: observation.present,
+          targetEvaluations: candidateRun.targetEvaluations.map((evaluation) => ({
+            targetId: evaluation.targetId,
+            regressionDetected: evaluation.regressionDetected,
           })),
         },
       );
@@ -874,26 +883,26 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     tests: testsForTargets(goodTargets),
     targets: goodTargets,
   });
-  state.session = validateGoodEndpoint(state.session, goodRun.observations);
+  state.session = validateGoodEndpoint(state.session, goodRun.targetEvaluations);
   const invalidTargets = state.session.primary.targets.filter((target) => (
     target.status === 'invalid'
   ));
   context.logDecision(
     'good-ref-validated',
-    `Good ref validated: ${invalidTargets.length} target(s) already present at good`,
+    `Good ref validated: ${invalidTargets.length} target(s) already detected at good`,
     {
       sha: input.gitRange.goodSha,
       invalidTargets: invalidTargets.map((target) => targetLogData(target)),
       activeTargets: activeTargets(state.session).map((target) => targetLogData(target)),
     },
   );
-  context.persist();
+  context.persistSessionAndReport();
 }
 
 async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
   state.session = buildMergeQueue(state.session);
-  context.persist();
+  context.persistSessionAndReport();
   if (!input.investigateMerges || (state.session.mergeQueue?.length ?? 0) === 0) return;
   if (state.badRefTests) deps.writeSummary(state.session);
   state.session = { ...state.session, mode: 'merge-investigation' };
@@ -901,7 +910,7 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
     .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
   state.session = await runMergeInvestigations({
     session: state.session,
-    preferredRefreshMode: preferredRefreshMode(input.config),
+    preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
     nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
     now: deps.now,
     commitRuns: () => state.session.commitRuns,
@@ -911,7 +920,7 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
     },
     afterCheckpoint(updated) {
       state.session = updated;
-      context.refreshReport();
+      context.writeCurrentReport();
     },
     prepareRange(investigation) {
       if (deps.prepareChildRange) return deps.prepareChildRange(investigation);
@@ -948,7 +957,7 @@ async function restoreExperimentAfterBisect(context: BisectExecutionContext): Pr
   if (!state.checkoutAttempted) return;
   try {
     await deps.restore({
-      previousSha: state.volumeStateUncertain ? null : state.materializedSha,
+      previouslySyncedSha: state.volumeStateUncertain ? null : state.volumeSyncedSha,
       originalSha: input.gitRange.originalExperiment.sha,
     });
   } catch (error) {
@@ -1013,7 +1022,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
       context.logDecision(
         'session-complete',
         state.session.primary.targets.length === 0
-          ? 'No regression targets were present at the bad ref'
+          ? 'No regression targets were detected at the bad ref'
           : 'Compare bisect session completed',
         {
           foundTargets: state.session.primary.targets
@@ -1052,7 +1061,7 @@ function persistTerminalBisectState(context: BisectExecutionContext): boolean {
   const { deps, state } = context;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      context.persist();
+      context.persistSessionAndReport();
       return true;
     } catch (error) {
       state.cleanupErrors.push(new Error(
@@ -1142,14 +1151,14 @@ function createDefaultDependencies(options: {
     checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
       allowedPaths: [options.resultsDirectory],
     }),
-    restore: ({ previousSha, originalSha }) => restoreExperimentState({
+    restore: ({ previouslySyncedSha, originalSha }) => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,
         options.gitRange.originalExperiment,
         { allowedPaths: [options.resultsDirectory] },
       ),
       syncVolume: async () => {
-        if (previousSha === null) {
+        if (previouslySyncedSha === null) {
           await reconcileExperimentVolume({
             sourceDir: options.twinServers.dockerBuildDir,
             volumeDir: options.twinServers.volumes.experiment,
@@ -1162,15 +1171,15 @@ function createDefaultDependencies(options: {
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
           manifest: requireManifest(options.manifest),
-          previousSha,
+          previousSha: previouslySyncedSha,
           candidateSha: originalSha,
         });
       },
-      refreshExperiment: async () => {
-        await refreshExperimentViaMenu(
+      reloadExperiment: async () => {
+        await reloadExperimentViaMenu(
           options.twinServers,
           options.config,
-          preferredRefreshMode(options.config),
+          preferredExperimentReloadMode(options.config),
           bisectSessionId,
         );
       },
@@ -1181,8 +1190,8 @@ function createDefaultDependencies(options: {
     clearPriorReportOutput: () => {
       clearPriorBisectReportOutput(options.resultsDirectory);
     },
-    materialize: async ({ previousSha, candidateSha }) => {
-      if (previousSha === null) {
+    syncCandidateFilesToExperimentVolume: async ({ previouslySyncedSha, candidateSha }) => {
+      if (previouslySyncedSha === null) {
         await reconcileExperimentVolume({
           sourceDir: options.twinServers.dockerBuildDir,
           volumeDir: options.twinServers.volumes.experiment,
@@ -1195,17 +1204,17 @@ function createDefaultDependencies(options: {
         sourceDir: options.twinServers.dockerBuildDir,
         volumeDir: options.twinServers.volumes.experiment,
         manifest: requireManifest(options.manifest),
-        previousSha,
+        previousSha: previouslySyncedSha,
         candidateSha,
       });
     },
-    refresh: (request) => refreshExperimentViaMenu(
+    reloadExperiment: (request) => reloadExperimentViaMenu(
       options.twinServers,
       options.config,
-      request.preferredMode,
+      request.preferredExperimentReloadMode,
       bisectSessionId,
     ),
-    compare: (request) => runCompareForCandidate({
+    runCandidateComparisons: (request) => runCandidateComparisons({
       cwd: options.cwd,
       config: options.config,
       frozenTests: options.frozenTests,
@@ -1261,7 +1270,7 @@ function createDefaultDependencies(options: {
   };
 }
 
-async function runCompareForCandidate(options: {
+async function runCandidateComparisons(options: {
   cwd: string;
   config: AbTestsConfig;
   frozenTests: readonly AbTestDefinition[];
@@ -1297,16 +1306,16 @@ async function runCompareForCandidate(options: {
   };
 }
 
-async function refreshExperimentViaMenu(
+async function reloadExperimentViaMenu(
   twinServers: ResolvedConfig,
   config: AbTestsConfig,
-  preferredMode: RefreshMode,
+  preferredExperimentReloadMode: ExperimentReloadMode,
   sessionId: string,
-): Promise<RefreshResult> {
-  return proxyBisect<BisectRefreshResult>(twinServers, {
+): Promise<ExperimentReloadResult> {
+  return proxyBisect<BisectExperimentReloadResult>(twinServers, {
     cmd: 'bisect-refresh',
     sessionId,
-    mode: preferredMode,
+    mode: preferredExperimentReloadMode,
     rebuildCommands: configuredRebuildCommands(config).map((command) => command.command),
     noCache: false,
   });
@@ -1379,7 +1388,7 @@ function resumedSession(saved: BisectSession): BisectSession {
 
 function persistedRebuildStrategy(config: AbTestsConfig): PersistedRebuildStrategy {
   return {
-    mode: preferredRefreshMode(config),
+    mode: preferredExperimentReloadMode(config),
     commands: configuredRebuildCommands(config).map((command) => command.command),
   };
 }
@@ -1396,46 +1405,46 @@ function frozenTestSelections(
 
 function validateGoodEndpoint(
   session: BisectSession,
-  observations: readonly TargetObservation[],
+  targetEvaluations: readonly TargetEvaluationAtCommit[],
 ): BisectSession {
-  const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
+  const byTarget = new Map(targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]));
   return withPrimaryTargets(session, session.primary.targets.map((target) => {
-    const observation = byTarget.get(target.id);
-    if (!observation) return target;
-    if (observation.present) {
+    const evaluation = byTarget.get(target.id);
+    if (!evaluation) return target;
+    if (evaluation.regressionDetected) {
       return {
         ...target,
         status: 'invalid',
-        invalidReason: 'target is already present at the good ref',
-        observations: {
-          ...target.observations,
-          [observation.commitSha]: observation,
+        invalidReason: 'regression is already detected at the good ref',
+        recordedTargetEvaluations: {
+          ...target.recordedTargetEvaluations,
+          [evaluation.commitSha]: evaluation,
         },
       };
     }
     return {
       ...target,
-      observations: {
-        ...target.observations,
-        [observation.commitSha]: observation,
+      recordedTargetEvaluations: {
+        ...target.recordedTargetEvaluations,
+        [evaluation.commitSha]: evaluation,
       },
     };
   }));
 }
 
-function recordEndpointObservations(
+function recordEndpointTargetEvaluations(
   session: BisectSession,
-  observations: readonly TargetObservation[],
+  targetEvaluations: readonly TargetEvaluationAtCommit[],
 ): BisectSession {
-  const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
+  const byTarget = new Map(targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]));
   return withPrimaryTargets(session, session.primary.targets.map((target) => {
-    const observation = byTarget.get(target.id);
-    if (!observation) return target;
+    const evaluation = byTarget.get(target.id);
+    if (!evaluation) return target;
     return {
       ...target,
-      observations: {
-        ...target.observations,
-        [observation.commitSha]: observation,
+      recordedTargetEvaluations: {
+        ...target.recordedTargetEvaluations,
+        [evaluation.commitSha]: evaluation,
       },
     };
   }));
@@ -1556,7 +1565,7 @@ function parseCategories(input: string | string[] | undefined): BisectCategory[]
   return categories as BisectCategory[];
 }
 
-function preferredRefreshMode(config: AbTestsConfig): RefreshMode {
+function preferredExperimentReloadMode(config: AbTestsConfig): ExperimentReloadMode {
   if (config.bisect.rebuildContainer || configuredRebuildCommands(config).length === 0) {
     return 'container';
   }
@@ -1668,7 +1677,7 @@ function printBisectSummary(
   console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
   console.log(`Targets: ${found.length} found, ${invalid.length} invalid, ${unresolved.length} unresolved`);
   if (found.length === 0) {
-    if (targets.length === 0) console.log('No regression targets were present at the bad ref.');
+    if (targets.length === 0) console.log('No regression targets were detected at the bad ref.');
     return;
   }
   for (const target of found) {
@@ -1709,7 +1718,7 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const work = nextCandidate(applyCachedObservations(searchInput(session)));
+  const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(session)));
   return work ? { kind: 'measure-candidate', ...work } : undefined;
 }
 

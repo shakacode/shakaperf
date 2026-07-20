@@ -11,8 +11,8 @@ const mergeResultSchema = z.enum([
   'octopus-unsupported',
 ]);
 const scalarSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
-const targetObservationSchema = z.object({
-  values: z.record(z.string(), scalarSchema),
+const targetEvaluationAtCommitSchema = z.object({
+  evidence: z.record(z.string(), scalarSchema),
 }).passthrough();
 const targetSchema = z.object({
   id: z.string(),
@@ -25,7 +25,7 @@ const targetSchema = z.object({
   status: targetStatusSchema,
   firstBadSha: z.string().optional(),
   invalidReason: z.string().optional(),
-  badRefObservation: targetObservationSchema.optional(),
+  badRefEvaluation: targetEvaluationAtCommitSchema.optional(),
   mainlineFirstBadSha: z.string().optional(),
   mainlineIsMerge: z.boolean().optional(),
   mergeInvestigationStatus: mergeStatusSchema.optional(),

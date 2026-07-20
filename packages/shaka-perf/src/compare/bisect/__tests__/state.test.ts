@@ -59,7 +59,7 @@ function session(): BisectSession {
         status: 'running',
         requestedCategories: ['visreg'],
         requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
-        refreshMode: 'commands',
+        experimentReloadMode: 'commands',
         usedFallback: false,
         startedAt: '2026-07-13T00:01:00.000Z',
       }],

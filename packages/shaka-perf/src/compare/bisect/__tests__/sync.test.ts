@@ -70,7 +70,7 @@ describe('bisect experiment volume synchronization', () => {
     expect(fs.readFileSync(path.join(volumeDir, 'generated/cache.json'), 'utf8'))
       .toBe('preserve me');
     expect(JSON.parse(fs.readFileSync(
-      path.join(volumeDir, '.shaka-bisect-materialized.json'),
+      path.join(volumeDir, '.shaka-bisect-synced-candidate.json'),
       'utf8',
     ))).toEqual({ sha: 'candidate-sha' });
   });
@@ -133,7 +133,7 @@ describe('bisect experiment volume synchronization', () => {
     expect(fs.readFileSync(path.join(volumeDir, 'generated/cache.json'), 'utf8'))
       .toBe('preserve me');
     expect(JSON.parse(fs.readFileSync(
-      path.join(volumeDir, '.shaka-bisect-materialized.json'),
+      path.join(volumeDir, '.shaka-bisect-synced-candidate.json'),
       'utf8',
     ))).toEqual({ sha: candidateSha });
   });
@@ -353,7 +353,7 @@ describe('bisect experiment volume synchronization', () => {
   });
 
   it('rejects deleting a non-empty directory at an owned file path without writing marker', async () => {
-    const markerPath = path.join(volumeDir, '.shaka-bisect-materialized.json');
+    const markerPath = path.join(volumeDir, '.shaka-bisect-synced-candidate.json');
     write(volumeDir, 'owned.txt/generated/cache.json', 'preserve me');
 
     await expect(reconcileExperimentVolume({
@@ -369,7 +369,7 @@ describe('bisect experiment volume synchronization', () => {
   });
 
   it('rejects replacing a non-empty directory at an owned file path without advancing marker', async () => {
-    const markerPath = path.join(volumeDir, '.shaka-bisect-materialized.json');
+    const markerPath = path.join(volumeDir, '.shaka-bisect-synced-candidate.json');
     write(sourceDir, 'owned.txt', 'candidate contents');
     write(volumeDir, 'owned.txt/generated/cache.json', 'preserve me');
     fs.writeFileSync(markerPath, JSON.stringify({ sha: 'previous-sha' }), 'utf8');

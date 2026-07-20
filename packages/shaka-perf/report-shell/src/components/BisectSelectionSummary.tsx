@@ -90,10 +90,10 @@ function groupTargets(targets: readonly BisectReportTarget[]): TestGroup[] {
 }
 
 function value(
-  values: Record<string, string | number | boolean | null>,
+  evidence: Record<string, string | number | boolean | null>,
   key: string,
 ): string | number | boolean | null | undefined {
-  return values[key];
+  return evidence[key];
 }
 
 function display(valueToFormat: string | number | boolean | null | undefined): string {
@@ -111,11 +111,11 @@ function signedDifference(experiment: unknown, control: unknown, label: string):
 }
 
 function accessibilityCount(
-  values: Record<string, string | number | boolean | null>,
+  evidence: Record<string, string | number | boolean | null>,
   side: 'control' | 'experiment',
 ): string {
-  const violations = value(values, `${side}ViolationCount`);
-  const nodes = value(values, `${side}NodeCount`);
+  const violations = value(evidence, `${side}ViolationCount`);
+  const nodes = value(evidence, `${side}NodeCount`);
   const violationText = typeof violations === 'number'
     ? pluralize(violations, 'violation')
     : 'violations not recorded';
@@ -124,33 +124,33 @@ function accessibilityCount(
 }
 
 function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
-  const values = target.badRefObservation?.values;
-  if (!values) return null;
+  const evidence = target.badRefEvaluation?.evidence;
+  if (!evidence) return null;
 
-  if (value(values, 'controlViolationCount') != null) {
+  if (value(evidence, 'controlViolationCount') != null) {
     const violationChange = signedDifference(
-      value(values, 'experimentViolationCount'),
-      value(values, 'controlViolationCount'),
+      value(evidence, 'experimentViolationCount'),
+      value(evidence, 'controlViolationCount'),
       'violations',
     );
     const nodeChange = signedDifference(
-      value(values, 'experimentNodeCount'),
-      value(values, 'controlNodeCount'),
+      value(evidence, 'experimentNodeCount'),
+      value(evidence, 'controlNodeCount'),
       'nodes',
     );
     return {
       items: [
-        { label: 'Control', value: accessibilityCount(values, 'control') },
-        { label: 'Experiment', value: accessibilityCount(values, 'experiment') },
+        { label: 'Control', value: accessibilityCount(evidence, 'control') },
+        { label: 'Experiment', value: accessibilityCount(evidence, 'experiment') },
         { label: 'Change', value: `${violationChange} · ${nodeChange}` },
       ],
     };
   }
 
-  if (value(values, 'misMatchPercentage') != null) {
-    const mismatch = display(value(values, 'misMatchPercentage'));
-    const pixels = display(value(values, 'diffPixels'));
-    const threshold = value(values, 'threshold');
+  if (value(evidence, 'misMatchPercentage') != null) {
+    const mismatch = display(value(evidence, 'misMatchPercentage'));
+    const pixels = display(value(evidence, 'diffPixels'));
+    const threshold = value(evidence, 'threshold');
     return {
       items: [
         { label: 'Mismatch', value: `${mismatch}%` },
@@ -167,13 +167,13 @@ function comparisonValue(target: BisectReportTarget): ComparisonValue | null {
 }
 
 function perfComparisonValue(target: BisectReportTarget): PerfComparisonValue {
-  const values = target.badRefObservation?.values ?? {};
-  const pValue = value(values, 'pValue');
+  const evidence = target.badRefEvaluation?.evidence ?? {};
+  const pValue = value(evidence, 'pValue');
   return {
-    control: display(value(values, 'controlDisplay')),
-    experiment: display(value(values, 'experimentDisplay')),
-    delta: display(value(values, 'deltaDisplay')),
-    percent: display(value(values, 'percentDisplay')),
+    control: display(value(evidence, 'controlDisplay')),
+    experiment: display(value(evidence, 'experimentDisplay')),
+    delta: display(value(evidence, 'deltaDisplay')),
+    percent: display(value(evidence, 'percentDisplay')),
     pValue: typeof pValue === 'number' ? formatPValue(pValue) : 'not recorded',
   };
 }

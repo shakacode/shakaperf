@@ -155,7 +155,7 @@ interface HarnessOptions {
   signal?: NodeJS.Signals;
   beginSessionError?: Error;
   checkoutErrorBySha?: Record<string, Error>;
-  materializeErrorBySha?: Record<string, Error>;
+  syncCandidateFilesErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
   restoreError?: Error;
@@ -172,7 +172,7 @@ function deps(
   emitSignal(signal: NodeJS.Signals): void;
   calls: {
     checkouts: string[];
-    materialized: Array<[string | null, string]>;
+    syncedCandidateFiles: Array<[string | null, string]>;
     refreshes: string[];
     compares: Array<{
       sha: string;
@@ -199,7 +199,7 @@ function deps(
 } {
   const calls = {
     checkouts: [] as string[],
-    materialized: [] as Array<[string | null, string]>,
+    syncedCandidateFiles: [] as Array<[string | null, string]>,
     refreshes: [] as string[],
     compares: [] as Array<{
       sha: string;
@@ -251,30 +251,30 @@ function deps(
         if (checkoutError) throw checkoutError;
       },
       async restore(request) {
-        calls.restored.push([request.previousSha, request.originalSha]);
+        calls.restored.push([request.previouslySyncedSha, request.originalSha]);
         calls.events.push('checkout:original');
         calls.events.push('sync:original');
-        calls.events.push('refresh:original');
+        calls.events.push('reload-experiment:original');
         if (options.restoreError) throw options.restoreError;
       },
       clearSummary() {},
       clearPriorReportOutput() {
         options.clearPriorReportOutput?.();
       },
-      async materialize(request) {
-        calls.materialized.push([request.previousSha, request.candidateSha]);
-        calls.events.push(`materialize:${request.candidateSha}`);
-        const materializeError = options.materializeErrorBySha?.[request.candidateSha];
-        if (materializeError) throw materializeError;
+      async syncCandidateFilesToExperimentVolume(request) {
+        calls.syncedCandidateFiles.push([request.previouslySyncedSha, request.candidateSha]);
+        calls.events.push(`sync-candidate-files:${request.candidateSha}`);
+        const syncCandidateFilesError = options.syncCandidateFilesErrorBySha?.[request.candidateSha];
+        if (syncCandidateFilesError) throw syncCandidateFilesError;
       },
-      async refresh(request) {
+      async reloadExperiment(request) {
         calls.refreshes.push(request.sha);
-        calls.events.push(`refresh:${request.sha}`);
+        calls.events.push(`reload-experiment:${request.sha}`);
         return options.refreshBySha?.[request.sha]
-          ?? { mode: request.preferredMode, usedFallback: false };
+          ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
       },
-      async compare(request) {
-        calls.events.push(`compare:${request.sha}`);
+      async runCandidateComparisons(request) {
+        calls.events.push(`run-candidate-comparisons:${request.sha}`);
         calls.compares.push({
           sha: request.sha,
           categories: [...request.categories],
@@ -380,17 +380,17 @@ describe('compare bisect session orchestration', () => {
       subject: 'document',
       status: 'found',
       firstBadSha: 'b',
-      observations: {
+      recordedTargetEvaluations: {
         bad: expect.objectContaining({
           commitSha: 'bad',
-          present: true,
-          values: expect.objectContaining({ diffPixels: 42 }),
-          artifacts: expect.arrayContaining(['control.png', 'experiment.png', 'diff.png']),
+          regressionDetected: true,
+          evidence: expect.objectContaining({ diffPixels: 42 }),
+          evidenceArtifacts: expect.arrayContaining(['control.png', 'experiment.png', 'diff.png']),
         }),
       },
     }]);
     expect(harness.calls.checkouts).toEqual(['bad', 'a', 'b']);
-    expect(harness.calls.materialized).toEqual([
+    expect(harness.calls.syncedCandidateFiles).toEqual([
       [null, 'bad'],
       ['bad', 'a'],
       ['a', 'b'],
@@ -432,7 +432,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
@@ -507,7 +507,7 @@ describe('compare bisect session orchestration', () => {
     expect(resumed.primary?.status).toBe('complete');
     expect(resumeHarness.calls.events).not.toContain('lease:begin');
     expect(resumeHarness.calls.checkouts).toEqual([]);
-    expect(resumeHarness.calls.materialized).toEqual([]);
+    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([]);
     expect(resumeHarness.calls.compares).toEqual([]);
   });
 
@@ -531,7 +531,7 @@ describe('compare bisect session orchestration', () => {
 
     expect(resumed.status).toBe('complete');
     expect(resumeHarness.calls.events[0]).toBe('lease:begin');
-    expect(resumeHarness.calls.materialized).toEqual([
+    expect(resumeHarness.calls.syncedCandidateFiles).toEqual([
       [null, 'a'],
       ['a', 'b'],
     ]);
@@ -767,7 +767,7 @@ describe('compare bisect session orchestration', () => {
     });
   });
 
-  it('marks targets invalid when they are already present at the good ref', async () => {
+  it('marks targets invalid when regressions are already detected at the good ref', async () => {
     const harness = deps({
       good: [resultWithVisualDiff('diff.png')],
       bad: [resultWithVisualDiff('diff.png')],
@@ -781,14 +781,14 @@ describe('compare bisect session orchestration', () => {
     expect(session.status).toBe('complete');
     expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
-      invalidReason: 'target is already present at the good ref',
+      invalidReason: 'regression is already detected at the good ref',
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
     expect(harness.calls.restored).toEqual([['good', 'bad']]);
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -811,10 +811,10 @@ describe('compare bisect session orchestration', () => {
 
     expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
-      invalidReason: 'target is already present at the good ref',
-      observations: {
-        bad: expect.objectContaining({ present: true }),
-        good: expect.objectContaining({ present: true }),
+      invalidReason: 'regression is already detected at the good ref',
+      recordedTargetEvaluations: {
+        bad: expect.objectContaining({ regressionDetected: true }),
+        good: expect.objectContaining({ regressionDetected: true }),
       },
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
@@ -839,7 +839,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -953,23 +953,23 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
 
-  it('forces a full restore reconcile after materialization partially fails', async () => {
+  it('forces a full restore reconcile after candidate file synchronization partially fails', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       bad: [resultWithVisualDiff('diff.png')],
     }, {
-      materializeErrorBySha: {
-        a: new Error('materialize partially copied then exploded'),
+      syncCandidateFilesErrorBySha: {
+        a: new Error('candidate file sync partially copied then exploded'),
       },
     });
 
     await expect(executeBisect(input(rootDir), harness.deps))
-      .rejects.toThrow(/materialize partially copied then exploded/i);
+      .rejects.toThrow(/candidate file sync partially copied then exploded/i);
 
     expect(harness.calls.restored).toEqual([[null, 'bad']]);
   });
@@ -988,11 +988,11 @@ describe('compare bisect session orchestration', () => {
       status: 'failed',
       primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
     });
-    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, materialize, refresh, compare, and boundary checkpoints', async () => {
+  it('persists checkout, file sync, experiment reload, comparisons, and boundary checkpoints', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -1002,16 +1002,16 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'materialize:bad', 'refresh:bad', 'compare:bad']) {
+    for (const event of ['checkout:bad', 'sync-candidate-files:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
       expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
-      checkpoint.afterEvent === 'compare:a'
-      && checkpoint.session.primary.targets[0]?.observations.a?.present === false
+      checkpoint.afterEvent === 'run-candidate-comparisons:a'
+      && checkpoint.session.primary.targets[0]?.recordedTargetEvaluations.a?.regressionDetected === false
     ))).toBe(true);
   });
 
-  it('persists actual fallback metadata before a compare failure', async () => {
+  it('persists actual reload fallback metadata before a comparison failure', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       bad: [resultWithVisualDiff('diff.png')],
@@ -1028,12 +1028,12 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)?.commitRuns.a).toMatchObject({
       compareCompleted: false,
-      refreshMode: 'container',
+      experimentReloadMode: 'container',
       usedFallback: true,
       infrastructureError: 'compare exploded',
     });
     const beforeCompare = harness.calls.checkpoints.find((checkpoint) => (
-      checkpoint.afterEvent === 'refresh:a'
+      checkpoint.afterEvent === 'reload-experiment:a'
       && checkpoint.session.commitRuns.a?.usedFallback === true
     ));
     expect(beforeCompare?.session.commitRuns.a?.compareResultsPath).toBeUndefined();
@@ -1063,11 +1063,11 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'interrupted',
     });
-    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
     expect(harness.calls.signalHandlers.size).toBe(0);
@@ -1106,7 +1106,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.summaryAfterEvents[0]?.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',
-      'refresh:original',
+      'reload-experiment:original',
       'lease:end',
     ]);
   });
@@ -1280,7 +1280,7 @@ describe('experiment restoration', () => {
   it.each([
     ['checkout', ['checkout', 'refresh']],
     ['sync', ['checkout', 'sync', 'refresh']],
-  ] as const)('attempts refresh after %s restoration fails', async (failure, expectedEvents) => {
+  ] as const)('attempts an experiment reload after %s restoration fails', async (failure, expectedEvents) => {
     const events: string[] = [];
 
     await expect(restoreExperimentState({
@@ -1292,7 +1292,7 @@ describe('experiment restoration', () => {
         events.push('sync');
         if (failure === 'sync') throw new Error('volume restore failed');
       },
-      async refreshExperiment() {
+      async reloadExperiment() {
         events.push('refresh');
       },
     })).rejects.toThrow(new RegExp(failure === 'checkout' ? 'checkout restore' : 'volume restore'));

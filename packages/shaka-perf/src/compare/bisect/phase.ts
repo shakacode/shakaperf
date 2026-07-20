@@ -7,35 +7,36 @@
  * License in LICENSE.md.
  */
 
-import type { CandidateResult, RefreshMode } from './run-candidate';
+import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import { runCheckpointedAttempt } from './attempt';
 import {
-  applyCachedObservations,
-  applyObservations,
+  narrowTargetSearchRangesUsingRecordedEvaluations,
+  recordTargetEvaluationsAndNarrowSearchRanges,
   nextCandidate,
   type BisectSearchInput,
-  type CandidateWork,
+  type CandidateMeasurementPlan,
 } from './search';
 import type {
   BisectSearchPhase,
   CommitRun,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 
 export interface RunSearchPhaseOptions {
   phase: BisectSearchPhase;
-  preferredRefreshMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
   now(): string;
   /**
    * The session's commit runs as of *now*. Read through a getter because
-   * `measure` records a run mid-flight, and `applyObservations` must see the
-   * resulting `infrastructureError` to refuse the observations it produced.
+   * `measure` records a run mid-flight, and
+   * `recordTargetEvaluationsAndNarrowSearchRanges` must see the
+   * resulting `infrastructureError` to refuse the evaluations it produced.
    */
   commitRuns(): Record<string, CommitRun>;
   checkpoint(phase: BisectSearchPhase): void;
   afterCheckpoint?(phase: BisectSearchPhase): void;
-  measure(work: CandidateWork): Promise<CandidateResult>;
+  measure(work: CandidateMeasurementPlan): Promise<CandidateResult>;
 }
 
 export async function runSearchPhase(
@@ -46,12 +47,14 @@ export async function runSearchPhase(
     targets: phase.targets,
     commitRuns: options.commitRuns(),
   });
-  const normalizePhase = (phase: BisectSearchPhase): BisectSearchPhase => ({
+  const narrowPhaseSearchRangesUsingRecordedEvaluations = (
+    phase: BisectSearchPhase,
+  ): BisectSearchPhase => ({
     ...phase,
-    targets: applyCachedObservations(searchInput(phase)).targets,
+    targets: narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)).targets,
   });
 
-  let phase = normalizePhase({
+  let phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
     ...options.phase,
     status: 'running',
     startedAt: options.phase.startedAt ?? options.now(),
@@ -60,7 +63,9 @@ export async function runSearchPhase(
   options.afterCheckpoint?.(phase);
 
   while (true) {
-    const work = nextCandidate(applyCachedObservations(searchInput(phase)));
+    const work = nextCandidate(
+      narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)),
+    );
     if (!work) {
       phase = {
         ...phase,
@@ -76,7 +81,7 @@ export async function runSearchPhase(
     await runCheckpointedAttempt({
       attempts: phase.attempts,
       work,
-      preferredRefreshMode: options.preferredRefreshMode,
+      preferredExperimentReloadMode: options.preferredExperimentReloadMode,
       nextAttemptId: options.nextAttemptId,
       now: options.now,
       checkpointRunning(attempts) {
@@ -85,11 +90,15 @@ export async function runSearchPhase(
         options.checkpoint(phase);
       },
       checkpointComplete(attempts, result) {
-        const observations = new Map<string, TargetObservation>(
-          result.observations.map((observation) => [observation.targetId, observation]),
+        const targetEvaluations = new Map<string, TargetEvaluationAtCommit>(
+          result.targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]),
         );
-        const updated = applyObservations(searchInput(preMeasurePhase), work.sha, observations);
-        phase = normalizePhase({
+        const updated = recordTargetEvaluationsAndNarrowSearchRanges(
+          searchInput(preMeasurePhase),
+          work.sha,
+          targetEvaluations,
+        );
+        phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
           ...preMeasurePhase,
           targets: updated.targets,
           attempts,

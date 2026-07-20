@@ -10,8 +10,8 @@
 import type { PreparedChildGitRange } from './git';
 import { runCheckpointedAttempt } from './attempt';
 import { runSearchPhase } from './phase';
-import type { CandidateResult, RefreshMode } from './run-candidate';
-import { testsForTargets, type CandidateWork } from './search';
+import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
+import { testsForTargets, type CandidateMeasurementPlan } from './search';
 import type {
   BisectCategory,
   BisectSearchPhase,
@@ -56,14 +56,14 @@ export function buildMergeQueue(session: BisectSession): BisectSession {
 
 export interface RunMergeInvestigationsOptions {
   session: BisectSession;
-  preferredRefreshMode: RefreshMode;
+  preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
   now(): string;
   commitRuns(): Record<string, CommitRun>;
   checkpoint(session: BisectSession): void;
   afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
-  measure(work: CandidateWork, targets: readonly BisectTarget[]): Promise<CandidateResult>;
+  measure(work: CandidateMeasurementPlan, targets: readonly BisectTarget[]): Promise<CandidateResult>;
 }
 
 export async function runMergeInvestigations(
@@ -117,7 +117,7 @@ export async function runMergeInvestigations(
       await runCheckpointedAttempt({
         attempts: phaseBeforeValidation.attempts,
         work: validationWork,
-        preferredRefreshMode: options.preferredRefreshMode,
+        preferredExperimentReloadMode: options.preferredExperimentReloadMode,
         nextAttemptId: options.nextAttemptId,
         now: options.now,
         checkpointRunning(attempts) {
@@ -133,14 +133,14 @@ export async function runMergeInvestigations(
           options.checkpoint(session);
         },
         checkpointComplete(attempts, validation) {
-          const observations = new Map(
-            validation.observations.map((value) => [value.targetId, value]),
+          const targetEvaluations = new Map(
+            validation.targetEvaluations.map((value) => [value.targetId, value]),
           );
           const reproducing: BisectTarget[] = [];
           const targetResults = { ...preValidationInvestigation.targetResults };
           for (const target of primaryTargets) {
-            const observation = observations.get(target.id);
-            if (!observation?.present) {
+            const evaluation = targetEvaluations.get(target.id);
+            if (!evaluation?.regressionDetected) {
               targetResults[target.id] = { kind: 'merge-introduced' };
               continue;
             }
@@ -151,7 +151,7 @@ export async function runMergeInvestigations(
               badIndex: range.orderedCommits.length - 1,
               firstBadSha: undefined,
               invalidReason: undefined,
-              observations: { [range.secondParent]: observation },
+              recordedTargetEvaluations: { [range.secondParent]: evaluation },
             });
           }
           phase = {
@@ -203,7 +203,7 @@ export async function runMergeInvestigations(
     if (phase.targets.length > 0 && phase.status !== 'complete') {
       const completedPhase = await runSearchPhase({
         phase,
-        preferredRefreshMode: options.preferredRefreshMode,
+        preferredExperimentReloadMode: options.preferredExperimentReloadMode,
         nextAttemptId: options.nextAttemptId,
         now: options.now,
         commitRuns: options.commitRuns,
@@ -261,7 +261,7 @@ function childPhase(
   };
 }
 
-function workForTargets(sha: string, targets: readonly BisectTarget[]): CandidateWork {
+function workForTargets(sha: string, targets: readonly BisectTarget[]): CandidateMeasurementPlan {
   return {
     sha,
     targetIds: targets.map((target) => target.id),

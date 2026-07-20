@@ -13,7 +13,7 @@ import type {
   BisectSearchPhase,
   BisectTarget,
   CommitRun,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from '../types';
 
 function target(
@@ -32,7 +32,7 @@ function target(
     status: 'active',
     goodIndex: 0,
     badIndex: 4,
-    observations: {},
+    recordedTargetEvaluations: {},
   };
 }
 
@@ -55,17 +55,17 @@ function phase(): BisectSearchPhase {
   };
 }
 
-function observation(
+function evaluation(
   targetId: string,
   commitSha: string,
-  present: boolean,
-): TargetObservation {
-  return { targetId, commitSha, present, values: {}, artifacts: [] };
+  regressionDetected: boolean,
+): TargetEvaluationAtCommit {
+  return { targetId, commitSha, regressionDetected, evidence: {}, evidenceArtifacts: [] };
 }
 
 function result(
   sha: string,
-  observations: TargetObservation[],
+  targetEvaluations: TargetEvaluationAtCommit[],
 ): CandidateResult {
   return {
     commitRun: {
@@ -73,14 +73,14 @@ function result(
       compareCompleted: true,
       requestedCategories: [],
       requestedTests: [],
-      refreshMode: 'commands',
+      experimentReloadMode: 'commands',
       usedFallback: false,
       startedAt: '2026-07-13T00:00:00.000Z',
       finishedAt: '2026-07-13T00:00:01.000Z',
     },
     testResults: [],
-    observations,
-    refresh: { mode: 'commands', usedFallback: false },
+    targetEvaluations,
+    experimentReload: { mode: 'commands', usedFallback: false },
   };
 }
 
@@ -93,7 +93,7 @@ describe('runSearchPhase', () => {
     }> = [];
     const completed = await runSearchPhase({
       phase: phase(),
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       nextAttemptId: (() => {
         let id = 0;
@@ -109,12 +109,12 @@ describe('runSearchPhase', () => {
         });
         if (work.sha === 'b') {
           return result('b', [
-            observation('visual', 'b', true),
-            observation('perf', 'b', false),
+            evaluation('visual', 'b', true),
+            evaluation('perf', 'b', false),
           ]);
         }
-        if (work.sha === 'a') return result('a', [observation('visual', 'a', false)]);
-        return result('c', [observation('perf', 'c', true)]);
+        if (work.sha === 'a') return result('a', [evaluation('visual', 'a', false)]);
+        return result('c', [evaluation('perf', 'c', true)]);
       },
     });
 
@@ -153,7 +153,7 @@ describe('runSearchPhase', () => {
     let checkpoint = initial;
     let calls = 0;
     const options = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${calls + 1}`,
       now: () => '2026-07-13T00:00:00.000Z',
@@ -163,14 +163,14 @@ describe('runSearchPhase', () => {
       async measure(work: { sha: string }) {
         calls++;
         if (calls === 1) throw new Error('compare failed');
-        return result(work.sha, [observation('visual', work.sha, true)]);
+        return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
     };
 
     await expect(runSearchPhase({ ...options, phase: initial })).rejects.toThrow('compare failed');
 
     expect(checkpoint.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 4 });
-    expect(checkpoint.targets[0].observations.b).toBeUndefined();
+    expect(checkpoint.targets[0].recordedTargetEvaluations.b).toBeUndefined();
     expect(checkpoint.attempts).toMatchObject([{
       sha: 'b',
       status: 'incomplete',
@@ -195,7 +195,7 @@ describe('runSearchPhase', () => {
     const measured: string[] = [];
     let attemptId = 0;
     const common = {
-      preferredRefreshMode: 'commands' as const,
+      preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       nextAttemptId: () => `attempt-${++attemptId}`,
       now: () => '2026-07-13T00:00:00.000Z',
@@ -209,7 +209,7 @@ describe('runSearchPhase', () => {
       },
       async measure(work: { sha: string }) {
         measured.push(work.sha);
-        return result(work.sha, [observation('visual', work.sha, true)]);
+        return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
     };
 
@@ -217,7 +217,7 @@ describe('runSearchPhase', () => {
       .rejects.toThrow('session checkpoint failed');
 
     expect(persisted.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 4 });
-    expect(persisted.targets[0].observations.b).toBeUndefined();
+    expect(persisted.targets[0].recordedTargetEvaluations.b).toBeUndefined();
     expect(persisted.attempts).toMatchObject([{ sha: 'b', status: 'incomplete' }]);
 
     await runSearchPhase({ ...common, phase: persisted });
@@ -232,7 +232,7 @@ describe('runSearchPhase', () => {
 
     await expect(runSearchPhase({
       phase: initial,
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
       nextAttemptId: () => 'attempt-1',
       now: () => '2026-07-13T00:00:00.000Z',
@@ -245,34 +245,34 @@ describe('runSearchPhase', () => {
         }
       },
       async measure(work) {
-        return result(work.sha, [observation('visual', work.sha, true)]);
+        return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
     })).rejects.toThrow('report rendering failed');
 
     expect(persisted.targets[0]).toMatchObject({ goodIndex: 0, badIndex: 2 });
-    expect(persisted.targets[0].observations.b).toMatchObject({ present: true });
+    expect(persisted.targets[0].recordedTargetEvaluations.b).toMatchObject({ regressionDetected: true });
     expect(persisted.attempts).toMatchObject([{ sha: 'b', status: 'complete' }]);
   });
 
-  it('refuses observations from a commit whose run recorded an infrastructure error', async () => {
+  it('refuses target evaluations from a commit whose run recorded an infrastructure error', async () => {
     const commitRuns: Record<string, CommitRun> = {};
 
     await expect(runSearchPhase({
       phase: phase(),
-      preferredRefreshMode: 'commands',
+      preferredExperimentReloadMode: 'commands',
       commitRuns: () => commitRuns,
       nextAttemptId: () => 'attempt-1',
       now: () => '2026-07-13T00:00:00.000Z',
       checkpoint: () => undefined,
       async measure(work) {
-        // Mirrors run-candidate recording a failed refresh mid-measurement.
+        // Mirrors run-candidate recording a failed experiment reload mid-measurement.
         commitRuns[work.sha] = {
           ...result(work.sha, []).commitRun,
           compareCompleted: false,
-          infrastructureError: 'container refresh failed',
+          infrastructureError: 'container reload failed',
         };
-        return result(work.sha, [observation('visual', work.sha, true)]);
+        return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
-    })).rejects.toThrow('Cannot apply observations for b: container refresh failed');
+    })).rejects.toThrow('Cannot record target evaluations for b: container reload failed');
   });
 });

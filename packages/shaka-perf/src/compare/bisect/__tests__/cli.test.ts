@@ -288,7 +288,7 @@ describe('compare bisect command', () => {
         status: 'active',
         goodIndex: 0,
         badIndex: 2,
-        observations: {},
+        recordedTargetEvaluations: {},
           }],
         },
       };
@@ -329,7 +329,7 @@ describe('compare bisect command', () => {
     const target = {
       id: 'target', category: 'accessibility' as const, testFile: 'home.abtest.ts', testName: 'Home',
       viewport: 'desktop', subject: 'document', status: 'found' as const,
-      goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', observations: {},
+      goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', recordedTargetEvaluations: {},
     };
     try {
       await runCompareBisectFromCli('good', 'merge-sha', {

@@ -26,16 +26,16 @@ const testSelectionSchema = z.object({
   testName: z.string(),
 }).strict();
 
-const observationValueSchema = z.union([
+const evaluationEvidenceValueSchema = z.union([
   z.string(), z.number(), z.boolean(), z.null(),
 ]);
 
-const targetObservationSchema = z.object({
+const targetEvaluationAtCommitSchema = z.object({
   targetId: z.string(),
   commitSha: z.string(),
-  present: z.boolean(),
-  values: z.record(z.string(), observationValueSchema),
-  artifacts: z.array(z.string()),
+  regressionDetected: z.boolean(),
+  evidence: z.record(z.string(), evaluationEvidenceValueSchema),
+  evidenceArtifacts: z.array(z.string()),
 }).strict();
 
 const targetSchema = z.object({
@@ -50,7 +50,7 @@ const targetSchema = z.object({
   badIndex: z.number().int(),
   firstBadSha: z.string().optional(),
   invalidReason: z.string().optional(),
-  observations: z.record(z.string(), targetObservationSchema),
+  recordedTargetEvaluations: z.record(z.string(), targetEvaluationAtCommitSchema),
 }).strict();
 
 const attemptSchema = z.object({
@@ -59,7 +59,7 @@ const attemptSchema = z.object({
   status: z.enum(['running', 'complete', 'incomplete']),
   requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
   requestedTests: z.array(testSelectionSchema),
-  refreshMode: z.enum(['commands', 'container']),
+  experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
   startedAt: z.string(),
   finishedAt: z.string().optional(),
@@ -127,7 +127,7 @@ const commitRunSchema = z.object({
   requestedCategories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
   requestedTests: z.array(testSelectionSchema).optional(),
   requestedTestFiles: z.array(z.string()).optional(),
-  refreshMode: z.enum(['commands', 'container']),
+  experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
   compareResultsPath: z.string().optional(),
   startedAt: z.string(),
@@ -263,7 +263,9 @@ export function assertRepositoryCompatible(
 }
 
 function normalizeCrashedAttempts(session: BisectSession): BisectSession {
-  const normalizePhase = (phase: BisectSession['primary']): BisectSession['primary'] => ({
+  const markRunningAttemptsAsIncomplete = (
+    phase: BisectSession['primary'],
+  ): BisectSession['primary'] => ({
     ...phase,
     attempts: phase.attempts.map((attempt) => attempt.status === 'running'
       ? {
@@ -275,11 +277,13 @@ function normalizeCrashedAttempts(session: BisectSession): BisectSession {
   });
   return {
     ...session,
-    primary: normalizePhase(session.primary),
+    primary: markRunningAttemptsAsIncomplete(session.primary),
     mergeInvestigations: Object.fromEntries(Object.entries(session.mergeInvestigations)
       .map(([sha, investigation]) => [sha, {
         ...investigation,
-        ...(investigation.phase ? { phase: normalizePhase(investigation.phase) } : {}),
+        ...(investigation.phase
+          ? { phase: markRunningAttemptsAsIncomplete(investigation.phase) }
+          : {}),
       }])),
   };
 }

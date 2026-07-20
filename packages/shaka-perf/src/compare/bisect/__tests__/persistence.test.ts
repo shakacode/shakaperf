@@ -29,7 +29,7 @@ function target(
     goodIndex: 0,
     badIndex: 1,
     firstBadSha,
-    observations: {},
+    recordedTargetEvaluations: {},
   };
 }
 

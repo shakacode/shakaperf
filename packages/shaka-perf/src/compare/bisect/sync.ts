@@ -12,7 +12,7 @@ import * as path from 'path';
 import type { BuildManifest } from '../../twin-servers/helpers/rebuild-check';
 import { exec } from '../../twin-servers/helpers/shell';
 
-const MATERIALIZED_MARKER = '.shaka-bisect-materialized.json';
+const SYNCED_CANDIDATE_MARKER = '.shaka-bisect-synced-candidate.json';
 
 interface VolumeSyncOptions {
   sourceDir: string;
@@ -218,9 +218,9 @@ function assertParentWithin(rootDir: string, candidatePath: string): void {
   assertDestinationChain(rootDir, candidatePath, false);
 }
 
-function writeMaterializedMarker(volumeDir: string, sha: string): void {
+function writeSyncedCandidateMarker(volumeDir: string, sha: string): void {
   fs.mkdirSync(volumeDir, { recursive: true });
-  const markerPath = path.join(volumeDir, MATERIALIZED_MARKER);
+  const markerPath = path.join(volumeDir, SYNCED_CANDIDATE_MARKER);
   const temporaryPath = `${markerPath}.${process.pid}.${Date.now()}.tmp`;
   try {
     fs.writeFileSync(temporaryPath, JSON.stringify({ sha }), 'utf8');
@@ -242,7 +242,7 @@ export async function reconcileExperimentVolume(
       removeOwnedPath(options.volumeDir, relativePath);
     }
   }
-  writeMaterializedMarker(options.volumeDir, options.candidateSha);
+  writeSyncedCandidateMarker(options.volumeDir, options.candidateSha);
 }
 
 function nextToken(tokens: string[], index: number, status: string): string {
@@ -293,5 +293,5 @@ export async function syncCommitDelta(options: SyncCommitDeltaOptions): Promise<
     }
   }
 
-  writeMaterializedMarker(options.volumeDir, options.candidateSha);
+  writeSyncedCandidateMarker(options.volumeDir, options.candidateSha);
 }
