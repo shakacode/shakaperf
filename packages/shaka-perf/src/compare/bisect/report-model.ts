@@ -15,7 +15,7 @@ import type {
   CommitRun,
   MergeInvestigation,
   MergeTargetResult,
-  TargetObservation,
+  TargetEvaluationAtCommit,
   TargetStatus,
 } from './types';
 
@@ -66,7 +66,7 @@ export interface BisectReportTarget {
   status: TargetStatus;
   firstBadSha?: string;
   invalidReason?: string;
-  badRefObservation?: TargetObservation;
+  badRefEvaluation?: TargetEvaluationAtCommit;
   mainlineFirstBadSha?: string;
   mainlineIsMerge?: boolean;
   mergeInvestigationStatus?: MergeInvestigation['status'];
@@ -120,7 +120,7 @@ export function buildBisectReportModel(
       status: target.status,
       firstBadSha: target.firstBadSha,
       invalidReason: target.invalidReason,
-      badRefObservation: target.observations[primary.badSha],
+      badRefEvaluation: target.recordedTargetEvaluations[primary.badSha],
       mainlineFirstBadSha: target.firstBadSha,
       mainlineIsMerge: parents.length > 1,
       mergeInvestigationStatus: investigation?.status,

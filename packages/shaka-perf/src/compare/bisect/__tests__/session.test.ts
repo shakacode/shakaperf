@@ -380,12 +380,12 @@ describe('compare bisect session orchestration', () => {
       subject: 'document',
       status: 'found',
       firstBadSha: 'b',
-      observations: {
+      recordedTargetEvaluations: {
         bad: expect.objectContaining({
           commitSha: 'bad',
-          present: true,
-          values: expect.objectContaining({ diffPixels: 42 }),
-          artifacts: expect.arrayContaining(['control.png', 'experiment.png', 'diff.png']),
+          regressionDetected: true,
+          evidence: expect.objectContaining({ diffPixels: 42 }),
+          evidenceArtifacts: expect.arrayContaining(['control.png', 'experiment.png', 'diff.png']),
         }),
       },
     }]);
@@ -812,9 +812,9 @@ describe('compare bisect session orchestration', () => {
     expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
       invalidReason: 'target is already present at the good ref',
-      observations: {
-        bad: expect.objectContaining({ present: true }),
-        good: expect.objectContaining({ present: true }),
+      recordedTargetEvaluations: {
+        bad: expect.objectContaining({ regressionDetected: true }),
+        good: expect.objectContaining({ regressionDetected: true }),
       },
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
@@ -988,7 +988,7 @@ describe('compare bisect session orchestration', () => {
       status: 'failed',
       primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
     });
-    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
@@ -1007,7 +1007,7 @@ describe('compare bisect session orchestration', () => {
     }
     expect(harness.calls.checkpoints.some((checkpoint) => (
       checkpoint.afterEvent === 'compare:a'
-      && checkpoint.session.primary.targets[0]?.observations.a?.present === false
+      && checkpoint.session.primary.targets[0]?.recordedTargetEvaluations.a?.regressionDetected === false
     ))).toBe(true);
   });
 
@@ -1063,7 +1063,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'interrupted',
     });
-    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.observations.a).toBeUndefined();
+    expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.events.slice(-4)).toEqual([
       'checkout:original',
       'sync:original',

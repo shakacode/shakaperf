@@ -8,12 +8,12 @@
  */
 
 import type { CandidateResult, RefreshMode } from './run-candidate';
-import type { CandidateWork } from './search';
+import type { CandidateMeasurementPlan } from './search';
 import type { CommitAttempt } from './types';
 
 export interface RunCheckpointedAttemptOptions {
   attempts: readonly CommitAttempt[];
-  work: CandidateWork;
+  work: CandidateMeasurementPlan;
   preferredRefreshMode: RefreshMode;
   nextAttemptId(): string;
   now(): string;

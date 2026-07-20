@@ -9,10 +9,10 @@
 
 import { runCheckpointedAttempt } from '../attempt';
 import type { CandidateResult } from '../run-candidate';
-import type { CandidateWork } from '../search';
+import type { CandidateMeasurementPlan } from '../search';
 import type { CommitAttempt } from '../types';
 
-const work: CandidateWork = {
+const work: CandidateMeasurementPlan = {
   sha: 'candidate',
   targetIds: ['target'],
   categories: ['visreg'],
@@ -33,7 +33,7 @@ function result(): CandidateResult {
       finishedAt: 'run-finished',
     },
     testResults: [],
-    observations: [],
+    targetEvaluations: [],
     refresh: { mode: 'container', usedFallback: true },
   };
 }

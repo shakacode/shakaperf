@@ -87,7 +87,7 @@ function savedSession(): BisectSession {
     goodIndex: 0,
     badIndex: 1,
     firstBadSha: 'middle',
-    observations: {},
+    recordedTargetEvaluations: {},
   }];
   return {
     status: 'complete',

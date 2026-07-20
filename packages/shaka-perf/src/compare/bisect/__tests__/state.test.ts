@@ -87,6 +87,70 @@ describe('resumable bisect state', () => {
     }]);
   });
 
+  it('reads legacy evaluation vocabulary and returns only the current persisted shape', () => {
+    const currentSession = session();
+    const legacySession: unknown = {
+      ...currentSession,
+      primary: {
+        ...currentSession.primary,
+        targets: [{
+          id: 'visual',
+          category: 'visreg',
+          testFile: 'tests/home.abtest.ts',
+          testName: 'Homepage',
+          viewport: 'desktop',
+          subject: 'document',
+          status: 'active',
+          goodIndex: 0,
+          badIndex: 2,
+          observations: {
+            mid: {
+              targetId: 'visual',
+              commitSha: 'mid',
+              present: true,
+              values: { diffPixels: 42 },
+              artifacts: ['diff.png'],
+            },
+          },
+        }],
+      },
+    };
+
+    const parsed = parseBisectSession(legacySession);
+
+    expect(parsed.primary.targets[0]?.recordedTargetEvaluations.mid).toEqual({
+      targetId: 'visual',
+      commitSha: 'mid',
+      regressionDetected: true,
+      evidence: { diffPixels: 42 },
+      evidenceArtifacts: ['diff.png'],
+    });
+    expect(JSON.stringify(parsed)).not.toMatch(/"(?:observations|present|values|artifacts)"/);
+  });
+
+  it('does not hide an invalid current field behind a valid legacy field', () => {
+    const currentSession = session();
+    expect(() => parseBisectSession({
+      ...currentSession,
+      primary: {
+        ...currentSession.primary,
+        targets: [{
+          id: 'visual',
+          category: 'visreg',
+          testFile: 'tests/home.abtest.ts',
+          testName: 'Homepage',
+          viewport: 'desktop',
+          subject: 'document',
+          status: 'active',
+          goodIndex: 0,
+          badIndex: 2,
+          recordedTargetEvaluations: null,
+          observations: {},
+        }],
+      },
+    })).toThrow();
+  });
+
   it('rejects unknown persisted fields', () => {
     expect(() => parseBisectSession({ ...session(), unexpected: true })).toThrow(/unrecognized/i);
   });

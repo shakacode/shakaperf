@@ -16,7 +16,7 @@ import type {
   BisectCategory,
   BisectTarget,
   TargetKey,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 
 export interface AnalyzeInput {
@@ -29,10 +29,10 @@ interface DiscoveredTarget extends TargetKey {}
 interface CategoryAnalyzer {
   readonly category: BisectCategory;
   discover(input: AnalyzeInput): DiscoveredTarget[];
-  deriveTargetObservations(
+  evaluateTargetsAtCommit(
     input: AnalyzeInput,
     targets: readonly BisectTarget[],
-  ): TargetObservation[];
+  ): TargetEvaluationAtCommit[];
 }
 
 export function assertNoPipelineErrors(
@@ -68,20 +68,20 @@ export function discoverTargets(
         status: 'active',
         goodIndex: 0,
         badIndex,
-        observations: {},
+        recordedTargetEvaluations: {},
       });
     }
   }
   return [...targets.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-export function deriveTargetObservationsFromTestResults(
+export function evaluateTargetsAtCommitFromTestResults(
   testResults: readonly TestResult[],
   targets: readonly BisectTarget[],
   commitSha: string,
-): TargetObservation[] {
+): TargetEvaluationAtCommit[] {
   const input = { testResults, commitSha };
-  return categoryAnalyzers.flatMap((analyzer) => analyzer.deriveTargetObservations(
+  return categoryAnalyzers.flatMap((analyzer) => analyzer.evaluateTargetsAtCommit(
     input,
     targets.filter((target) => target.category === analyzer.category),
   )).sort((left, right) => left.targetId.localeCompare(right.targetId));
@@ -96,7 +96,7 @@ const visregAnalyzer: CategoryAnalyzer = {
         .filter((artifact) => artifact.diffImage !== null)
         .map((artifact) => targetKey('visreg', test, viewport, artifact.selector)));
   },
-  deriveTargetObservations(input, targets) {
+  evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
         .successfulMeasurementsForStage('visreg', isVisregResult)
@@ -105,7 +105,7 @@ const visregAnalyzer: CategoryAnalyzer = {
       const artifacts = results
         .flatMap((entry) => entry.measurement.filter((artifact) => artifact.selector === target.subject));
       const artifact = artifacts[0];
-      return createTargetObservation(
+      return createTargetEvaluationAtCommit(
         target,
         input.commitSha!,
         artifacts.some((item) => item.diffImage !== null),
@@ -130,7 +130,7 @@ const perfAnalyzer: CategoryAnalyzer = {
         .filter((metric) => metric.direction === 'regression')
         .map((metric) => targetKey('perf', test, viewport, metric.label)));
   },
-  deriveTargetObservations(input, targets) {
+  evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
         .successfulMeasurementsForStage('perf', isPerfArtifact)
@@ -139,7 +139,7 @@ const perfAnalyzer: CategoryAnalyzer = {
       const metrics = results
         .flatMap((entry) => (entry.measurement.metrics ?? []).filter((metric) => metric.label === target.subject));
       const metric = metrics[0];
-      return createTargetObservation(target, input.commitSha!, metrics.some((item) => (
+      return createTargetEvaluationAtCommit(target, input.commitSha!, metrics.some((item) => (
         item.direction === 'regression'
       )), metric ? {
         controlValue: metric.controlValue,
@@ -168,7 +168,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
           .map((finding) => finding.ruleId),
       ).map((ruleId) => targetKey('accessibility', test, viewport, ruleId)));
   },
-  deriveTargetObservations(input, targets) {
+  evaluateTargetsAtCommit(input, targets) {
     return targets.map((target) => {
       const results = new TestResultsModel(input.testResults)
         .successfulMeasurementsForStage('accessibility', isAccessibilityCompareResult)
@@ -176,7 +176,7 @@ const accessibilityAnalyzer: CategoryAnalyzer = {
       assertMeasurementsExistForTarget(results, target);
       const findings = results.flatMap(({ measurement }) => measurement.findings
         .filter((finding) => finding.ruleId === target.subject));
-      return createTargetObservation(target, input.commitSha!, findings.some((finding) => (
+      return createTargetEvaluationAtCommit(target, input.commitSha!, findings.some((finding) => (
         finding.status === 'new'
       )), {
         controlViolationCount: findings.filter((finding) => finding.control).length,
@@ -215,14 +215,14 @@ function targetKey(
   return { id: JSON.stringify([category, test.filePath, test.name, viewport, subject]), ...target };
 }
 
-function createTargetObservation(
+function createTargetEvaluationAtCommit(
   target: BisectTarget,
   commitSha: string,
-  present: boolean,
-  values: TargetObservation['values'],
-  artifacts: string[],
-): TargetObservation {
-  return { targetId: target.id, commitSha, present, values, artifacts };
+  regressionDetected: boolean,
+  evidence: TargetEvaluationAtCommit['evidence'],
+  evidenceArtifacts: string[],
+): TargetEvaluationAtCommit {
+  return { targetId: target.id, commitSha, regressionDetected, evidence, evidenceArtifacts };
 }
 
 function assertMeasurementsExistForTarget(

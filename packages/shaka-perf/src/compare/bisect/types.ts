@@ -25,12 +25,12 @@ export interface TargetKey {
   subject: string;
 }
 
-export interface TargetObservation {
+export interface TargetEvaluationAtCommit {
   targetId: string;
   commitSha: string;
-  present: boolean;
-  values: Record<string, string | number | boolean | null>;
-  artifacts: string[];
+  regressionDetected: boolean;
+  evidence: Record<string, string | number | boolean | null>;
+  evidenceArtifacts: string[];
 }
 
 export interface BisectTarget extends TargetKey {
@@ -39,7 +39,7 @@ export interface BisectTarget extends TargetKey {
   badIndex: number;
   firstBadSha?: string;
   invalidReason?: string;
-  observations: Record<string, TargetObservation>;
+  recordedTargetEvaluations: Record<string, TargetEvaluationAtCommit>;
 }
 
 export interface CommitRun {
@@ -88,14 +88,14 @@ export interface BisectSession {
   failure?: string;
 }
 
-declare const normalizedBisectSessionBrand: unique symbol;
+declare const searchStateWithCurrentBoundariesBrand: unique symbol;
 
 /**
- * Marks search input whose cached observations have already been folded into
+ * Marks search input whose recorded evaluations have already been folded into
  * each target's good/bad interval, which `nextCandidate` requires.
  */
-export type Normalized<T> = T & {
-  readonly [normalizedBisectSessionBrand]: true;
+export type SearchStateWithCurrentBoundaries<T> = T & {
+  readonly [searchStateWithCurrentBoundariesBrand]: true;
 };
 
 export type PersistedAttemptStatus = 'running' | 'complete' | 'incomplete';

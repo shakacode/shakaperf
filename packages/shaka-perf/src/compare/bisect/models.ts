@@ -8,7 +8,7 @@
  */
 
 import type { ReportOutcome, TestResult } from '../../pipeline/report';
-import type { BisectTarget, TargetObservation } from './types';
+import type { BisectTarget, TargetEvaluationAtCommit } from './types';
 
 type SuccessfulOutcome = ReportOutcome & { kind: 'ok'; measurement: unknown };
 
@@ -86,24 +86,24 @@ export class BisectTargetModel {
     return Math.floor((this.target.goodIndex + this.target.badIndex) / 2);
   }
 
-  needsObservationAt(commitSha: string, commitIndex: number): boolean {
+  needsEvaluationAt(commitSha: string, commitIndex: number): boolean {
     return this.isActive()
       && this.searchRangeContains(commitIndex)
-      && !this.hasObservationAt(commitSha);
+      && !this.hasRecordedEvaluationAt(commitSha);
   }
 
-  recalculateSearchRangeFromCachedObservations(
+  narrowSearchRangeUsingRecordedEvaluations(
     commitIndexes: ReadonlyMap<string, number>,
   ): BisectTargetModel {
     if (!this.isActive()) return this;
 
     let goodIndex = this.target.goodIndex;
     let badIndex = this.target.badIndex;
-    for (const observation of Object.values(this.target.observations)) {
-      const commitIndex = commitIndexes.get(observation.commitSha);
-      if (!this.cachedObservationCanNarrowSearchRange(commitIndex)) continue;
+    for (const evaluation of Object.values(this.target.recordedTargetEvaluations)) {
+      const commitIndex = commitIndexes.get(evaluation.commitSha);
+      if (!this.recordedEvaluationCanNarrowSearchRange(commitIndex)) continue;
 
-      if (observation.present) badIndex = Math.min(badIndex, commitIndex);
+      if (evaluation.regressionDetected) badIndex = Math.min(badIndex, commitIndex);
       else goodIndex = Math.max(goodIndex, commitIndex);
     }
 
@@ -111,19 +111,19 @@ export class BisectTargetModel {
     return this.markFirstBadCommitWhenLocated();
   }
 
-  recordObservationAndUpdateSearchBoundary(
-    observation: TargetObservation,
+  recordEvaluationAndNarrowSearchRange(
+    evaluation: TargetEvaluationAtCommit,
     commitIndex: number,
   ): BisectTargetModel {
     if (!this.isActive()) return this;
 
     this.target = {
       ...this.target,
-      observations: {
-        ...this.target.observations,
-        [observation.commitSha]: observation,
+      recordedTargetEvaluations: {
+        ...this.target.recordedTargetEvaluations,
+        [evaluation.commitSha]: evaluation,
       },
-      ...(observation.present ? { badIndex: commitIndex } : { goodIndex: commitIndex }),
+      ...(evaluation.regressionDetected ? { badIndex: commitIndex } : { goodIndex: commitIndex }),
     };
     return this.markFirstBadCommitWhenLocated();
   }
@@ -136,11 +136,11 @@ export class BisectTargetModel {
     return this.target.goodIndex <= commitIndex && commitIndex <= this.target.badIndex;
   }
 
-  private hasObservationAt(commitSha: string): boolean {
-    return this.target.observations[commitSha] !== undefined;
+  private hasRecordedEvaluationAt(commitSha: string): boolean {
+    return this.target.recordedTargetEvaluations[commitSha] !== undefined;
   }
 
-  private cachedObservationCanNarrowSearchRange(
+  private recordedEvaluationCanNarrowSearchRange(
     commitIndex: number | undefined,
   ): commitIndex is number {
     return commitIndex !== undefined && this.searchRangeContains(commitIndex);

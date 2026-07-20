@@ -1,11 +1,11 @@
 import type { TestResult } from '../../pipeline/report';
-import { assertNoPipelineErrors, deriveTargetObservationsFromTestResults } from './analyze';
+import { assertNoPipelineErrors, evaluateTargetsAtCommitFromTestResults } from './analyze';
 import type {
   BisectCategory,
   BisectTestSelection,
   BisectTarget,
   CommitRun,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 
 export type RefreshMode = CommitRun['refreshMode'];
@@ -66,7 +66,7 @@ export interface RunCandidateOptions {
 export interface CandidateResult {
   commitRun: CommitRun;
   testResults: readonly TestResult[];
-  observations: readonly TargetObservation[];
+  targetEvaluations: readonly TargetEvaluationAtCommit[];
   refresh: RefreshResult;
 }
 
@@ -128,13 +128,13 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
     options.checkCancellation();
     assertNoPipelineErrors(compare.testResults, options.sha);
 
-    const observations = options.targets.length === 0
+    const targetEvaluations = options.targets.length === 0
       ? []
-      : deriveTargetObservationsFromTestResults(compare.testResults, options.targets, options.sha);
+      : evaluateTargetsAtCommitFromTestResults(compare.testResults, options.targets, options.sha);
     return {
       commitRun,
       testResults: compare.testResults,
-      observations,
+      targetEvaluations,
       refresh,
     };
   } catch (error) {

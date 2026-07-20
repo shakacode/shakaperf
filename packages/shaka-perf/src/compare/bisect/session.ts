@@ -24,7 +24,7 @@ import {
 } from '../compare-pipeline';
 import {
   assertNoPipelineErrors,
-  deriveTargetObservationsFromTestResults,
+  evaluateTargetsAtCommitFromTestResults,
   discoverTargets,
 } from './analyze';
 import {
@@ -37,7 +37,7 @@ import {
   type PreparedGitRange,
 } from './git';
 import {
-  recalculateTargetBoundariesFromCachedObservations,
+  narrowTargetSearchRangesUsingRecordedEvaluations,
   nextCandidate,
   testsForTargets,
 } from './search';
@@ -66,7 +66,7 @@ import type {
   BisectTarget,
   CommitRun,
   PersistedRebuildStrategy,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 import { resolveConfig } from '../../twin-servers/config';
 import type { ResolvedConfig } from '../../twin-servers/types';
@@ -646,12 +646,12 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
     input.gitRange.badSha,
     input.selectedCategories,
   ));
-  const badObservations = deriveTargetObservationsFromTestResults(
+  const badRefTargetEvaluations = evaluateTargetsAtCommitFromTestResults(
     badRun.testResults,
     state.session.primary.targets,
     input.gitRange.badSha,
   );
-  state.session = recordEndpointObservations(state.session, badObservations);
+  state.session = recordEndpointTargetEvaluations(state.session, badRefTargetEvaluations);
   state.badRefTests = badRun.testResults;
   if (deps.writeBadRefTests) {
     state.session = {
@@ -751,7 +751,7 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       targetIds: targets.map((target) => target.id),
     };
   } else if (targets.length > 0) {
-    const normalized = recalculateTargetBoundariesFromCachedObservations(searchInput(state.session));
+    const normalized = narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(state.session));
     state.session = withPrimaryTargets(state.session, normalized.targets);
     targets = activeTargets(state.session);
     const work = nextCandidate(normalized);
@@ -838,12 +838,12 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
       });
       context.logDecision(
         'candidate-observed',
-        `Measured ${candidateRun.observations.length} observation(s) at ${shortSha(work.sha)}`,
+        `Measured ${candidateRun.targetEvaluations.length} evaluation(s) at ${shortSha(work.sha)}`,
         {
           sha: work.sha,
-          observations: candidateRun.observations.map((observation) => ({
-            targetId: observation.targetId,
-            present: observation.present,
+          targetEvaluations: candidateRun.targetEvaluations.map((evaluation) => ({
+            targetId: evaluation.targetId,
+            regressionDetected: evaluation.regressionDetected,
           })),
         },
       );
@@ -878,7 +878,7 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     tests: testsForTargets(goodTargets),
     targets: goodTargets,
   });
-  state.session = validateGoodEndpoint(state.session, goodRun.observations);
+  state.session = validateGoodEndpoint(state.session, goodRun.targetEvaluations);
   const invalidTargets = state.session.primary.targets.filter((target) => (
     target.status === 'invalid'
   ));
@@ -1400,46 +1400,46 @@ function frozenTestSelections(
 
 function validateGoodEndpoint(
   session: BisectSession,
-  observations: readonly TargetObservation[],
+  targetEvaluations: readonly TargetEvaluationAtCommit[],
 ): BisectSession {
-  const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
+  const byTarget = new Map(targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]));
   return withPrimaryTargets(session, session.primary.targets.map((target) => {
-    const observation = byTarget.get(target.id);
-    if (!observation) return target;
-    if (observation.present) {
+    const evaluation = byTarget.get(target.id);
+    if (!evaluation) return target;
+    if (evaluation.regressionDetected) {
       return {
         ...target,
         status: 'invalid',
         invalidReason: 'target is already present at the good ref',
-        observations: {
-          ...target.observations,
-          [observation.commitSha]: observation,
+        recordedTargetEvaluations: {
+          ...target.recordedTargetEvaluations,
+          [evaluation.commitSha]: evaluation,
         },
       };
     }
     return {
       ...target,
-      observations: {
-        ...target.observations,
-        [observation.commitSha]: observation,
+      recordedTargetEvaluations: {
+        ...target.recordedTargetEvaluations,
+        [evaluation.commitSha]: evaluation,
       },
     };
   }));
 }
 
-function recordEndpointObservations(
+function recordEndpointTargetEvaluations(
   session: BisectSession,
-  observations: readonly TargetObservation[],
+  targetEvaluations: readonly TargetEvaluationAtCommit[],
 ): BisectSession {
-  const byTarget = new Map(observations.map((observation) => [observation.targetId, observation]));
+  const byTarget = new Map(targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]));
   return withPrimaryTargets(session, session.primary.targets.map((target) => {
-    const observation = byTarget.get(target.id);
-    if (!observation) return target;
+    const evaluation = byTarget.get(target.id);
+    if (!evaluation) return target;
     return {
       ...target,
-      observations: {
-        ...target.observations,
-        [observation.commitSha]: observation,
+      recordedTargetEvaluations: {
+        ...target.recordedTargetEvaluations,
+        [evaluation.commitSha]: evaluation,
       },
     };
   }));
@@ -1713,7 +1713,7 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const work = nextCandidate(recalculateTargetBoundariesFromCachedObservations(searchInput(session)));
+  const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(session)));
   return work ? { kind: 'measure-candidate', ...work } : undefined;
 }
 

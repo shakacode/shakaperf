@@ -10,16 +10,16 @@
 import type { CandidateResult, RefreshMode } from './run-candidate';
 import { runCheckpointedAttempt } from './attempt';
 import {
-  recalculateTargetBoundariesFromCachedObservations,
-  recordCommitObservationsAndUpdateTargetBoundaries,
+  narrowTargetSearchRangesUsingRecordedEvaluations,
+  recordTargetEvaluationsAndNarrowSearchRanges,
   nextCandidate,
   type BisectSearchInput,
-  type CandidateWork,
+  type CandidateMeasurementPlan,
 } from './search';
 import type {
   BisectSearchPhase,
   CommitRun,
-  TargetObservation,
+  TargetEvaluationAtCommit,
 } from './types';
 
 export interface RunSearchPhaseOptions {
@@ -30,13 +30,13 @@ export interface RunSearchPhaseOptions {
   /**
    * The session's commit runs as of *now*. Read through a getter because
    * `measure` records a run mid-flight, and
-   * `recordCommitObservationsAndUpdateTargetBoundaries` must see the
-   * resulting `infrastructureError` to refuse the observations it produced.
+   * `recordTargetEvaluationsAndNarrowSearchRanges` must see the
+   * resulting `infrastructureError` to refuse the evaluations it produced.
    */
   commitRuns(): Record<string, CommitRun>;
   checkpoint(phase: BisectSearchPhase): void;
   afterCheckpoint?(phase: BisectSearchPhase): void;
-  measure(work: CandidateWork): Promise<CandidateResult>;
+  measure(work: CandidateMeasurementPlan): Promise<CandidateResult>;
 }
 
 export async function runSearchPhase(
@@ -49,7 +49,7 @@ export async function runSearchPhase(
   });
   const normalizePhase = (phase: BisectSearchPhase): BisectSearchPhase => ({
     ...phase,
-    targets: recalculateTargetBoundariesFromCachedObservations(searchInput(phase)).targets,
+    targets: narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)).targets,
   });
 
   let phase = normalizePhase({
@@ -62,7 +62,7 @@ export async function runSearchPhase(
 
   while (true) {
     const work = nextCandidate(
-      recalculateTargetBoundariesFromCachedObservations(searchInput(phase)),
+      narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)),
     );
     if (!work) {
       phase = {
@@ -88,13 +88,13 @@ export async function runSearchPhase(
         options.checkpoint(phase);
       },
       checkpointComplete(attempts, result) {
-        const observations = new Map<string, TargetObservation>(
-          result.observations.map((observation) => [observation.targetId, observation]),
+        const targetEvaluations = new Map<string, TargetEvaluationAtCommit>(
+          result.targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]),
         );
-        const updated = recordCommitObservationsAndUpdateTargetBoundaries(
+        const updated = recordTargetEvaluationsAndNarrowSearchRanges(
           searchInput(preMeasurePhase),
           work.sha,
-          observations,
+          targetEvaluations,
         );
         phase = normalizePhase({
           ...preMeasurePhase,

@@ -26,16 +26,16 @@ const testSelectionSchema = z.object({
   testName: z.string(),
 }).strict();
 
-const observationValueSchema = z.union([
+const evaluationEvidenceValueSchema = z.union([
   z.string(), z.number(), z.boolean(), z.null(),
 ]);
 
-const targetObservationSchema = z.object({
+const targetEvaluationAtCommitSchema = z.object({
   targetId: z.string(),
   commitSha: z.string(),
-  present: z.boolean(),
-  values: z.record(z.string(), observationValueSchema),
-  artifacts: z.array(z.string()),
+  regressionDetected: z.boolean(),
+  evidence: z.record(z.string(), evaluationEvidenceValueSchema),
+  evidenceArtifacts: z.array(z.string()),
 }).strict();
 
 const targetSchema = z.object({
@@ -50,7 +50,7 @@ const targetSchema = z.object({
   badIndex: z.number().int(),
   firstBadSha: z.string().optional(),
   invalidReason: z.string().optional(),
-  observations: z.record(z.string(), targetObservationSchema),
+  recordedTargetEvaluations: z.record(z.string(), targetEvaluationAtCommitSchema),
 }).strict();
 
 const attemptSchema = z.object({
@@ -284,8 +284,89 @@ function normalizeCrashedAttempts(session: BisectSession): BisectSession {
   };
 }
 
+/**
+ * Sessions are intentionally unversioned, so vocabulary-only schema changes
+ * are translated at the parse boundary. Strict Zod validation still runs on
+ * the translated value and newly persisted sessions use only the current keys.
+ */
+function normalizeLegacyEvaluationVocabulary(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+
+  return {
+    ...value,
+    primary: normalizeLegacyPhaseEvaluationVocabulary(value.primary),
+    mergeInvestigations: isRecord(value.mergeInvestigations)
+      ? Object.fromEntries(Object.entries(value.mergeInvestigations).map(([sha, investigation]) => (
+        [sha, normalizeLegacyMergeInvestigationEvaluationVocabulary(investigation)]
+      )))
+      : value.mergeInvestigations,
+  };
+}
+
+function normalizeLegacyMergeInvestigationEvaluationVocabulary(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    ...(value.phase === undefined
+      ? {}
+      : { phase: normalizeLegacyPhaseEvaluationVocabulary(value.phase) }),
+  };
+}
+
+function normalizeLegacyPhaseEvaluationVocabulary(value: unknown): unknown {
+  if (!isRecord(value) || !Array.isArray(value.targets)) return value;
+  return {
+    ...value,
+    targets: value.targets.map(normalizeLegacyTargetEvaluationVocabulary),
+  };
+}
+
+function normalizeLegacyTargetEvaluationVocabulary(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const {
+    observations: legacyEvaluations,
+    recordedTargetEvaluations: currentEvaluations,
+    ...target
+  } = value;
+  const evaluations = currentEvaluations === undefined
+    ? legacyEvaluations
+    : currentEvaluations;
+  return {
+    ...target,
+    recordedTargetEvaluations: isRecord(evaluations)
+      ? Object.fromEntries(Object.entries(evaluations).map(([sha, evaluation]) => (
+        [sha, normalizeLegacyTargetEvaluationAtCommit(evaluation)]
+      )))
+      : evaluations,
+  };
+}
+
+function normalizeLegacyTargetEvaluationAtCommit(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const {
+    present,
+    values,
+    artifacts,
+    regressionDetected,
+    evidence,
+    evidenceArtifacts,
+    ...evaluation
+  } = value;
+  return {
+    ...evaluation,
+    regressionDetected: regressionDetected === undefined ? present : regressionDetected,
+    evidence: evidence === undefined ? values : evidence,
+    evidenceArtifacts: evidenceArtifacts === undefined ? artifacts : evidenceArtifacts,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function parseBisectSession(value: unknown): BisectSession {
-  return normalizeCrashedAttempts(sessionSchema.parse(value) as BisectSession);
+  const normalized = normalizeLegacyEvaluationVocabulary(value);
+  return normalizeCrashedAttempts(sessionSchema.parse(normalized) as BisectSession);
 }
 
 export function readBisectSession(filePath: string): BisectSession {

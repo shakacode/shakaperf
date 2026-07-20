@@ -10,7 +10,7 @@
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import { buildBisectReportModel } from '../report-model';
 import type { TestResult } from '../../../pipeline/report';
-import type { BisectSession, BisectTarget, TargetObservation } from '../types';
+import type { BisectSession, BisectTarget, TargetEvaluationAtCommit } from '../types';
 
 const commits = ['good', 'visual', 'clean', 'bad'];
 
@@ -33,13 +33,13 @@ function testResult(id: string, filePath: string, name: string): TestResult {
   };
 }
 
-function observation(targetId: string, values: TargetObservation['values']): TargetObservation {
+function evaluation(targetId: string, evidence: TargetEvaluationAtCommit['evidence']): TargetEvaluationAtCommit {
   return {
     targetId,
     commitSha: 'bad',
-    present: true,
-    values,
-    artifacts: [`/tmp/${targetId}.json`],
+    regressionDetected: true,
+    evidence,
+    evidenceArtifacts: [`/tmp/${targetId}.json`],
   };
 }
 
@@ -61,16 +61,16 @@ function target(
     goodIndex: 0,
     badIndex: 3,
     firstBadSha: 'bad',
-    observations: {},
+    recordedTargetEvaluations: {},
     ...options,
   };
 }
 
 describe('buildBisectReportModel', () => {
   it('maps found targets to commits and keeps unresolved target details', () => {
-    const visualObservation = observation('visual-found', { diffPixels: 42 });
-    const midpointObservation = {
-      ...observation('visual-found', { diffPixels: 5 }),
+    const visualEvaluation = evaluation('visual-found', { diffPixels: 42 });
+    const midpointEvaluation = {
+      ...evaluation('visual-found', { diffPixels: 5 }),
       commitSha: 'visual',
     };
     const commitSubjects = {
@@ -82,7 +82,7 @@ describe('buildBisectReportModel', () => {
     const targets = [
       target('visual-found', 'visreg', 'tests/../tests/homepage.abtest.ts', 'Homepage', {
         firstBadSha: 'visual',
-        observations: { visual: midpointObservation, bad: visualObservation },
+        recordedTargetEvaluations: { visual: midpointEvaluation, bad: visualEvaluation },
       }),
       target('perf-found', 'perf', 'tests/product.abtest.ts', 'Product'),
       target('accessibility-found', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage'),
@@ -186,7 +186,7 @@ describe('buildBisectReportModel', () => {
     expect(model.views.invalid.targetIds).toEqual(['invalid-target']);
     expect(model.targetsById['missing-card'].testId).toBeNull();
     expect(model.targetsById['visual-found'].testId).toBe('homepage-card');
-    expect(model.targetsById['visual-found'].badRefObservation).toBe(visualObservation);
+    expect(model.targetsById['visual-found'].badRefEvaluation).toBe(visualEvaluation);
     expect(model.commits[1]).toMatchObject({
       isMerge: true,
       mergeInvestigationStatus: 'complete',

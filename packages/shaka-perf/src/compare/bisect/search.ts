@@ -12,8 +12,8 @@ import type {
   BisectTestSelection,
   BisectTarget,
   CommitRun,
-  Normalized,
-  TargetObservation,
+  SearchStateWithCurrentBoundaries,
+  TargetEvaluationAtCommit,
 } from './types';
 import { BisectTargetModel } from './models';
 
@@ -23,7 +23,7 @@ const categoryPriority: Record<BisectCategory, number> = {
   accessibility: 2,
 };
 
-export interface CandidateWork {
+export interface CandidateMeasurementPlan {
   sha: string;
   targetIds: string[];
   categories: BisectCategory[];
@@ -41,7 +41,7 @@ export interface BisectSearchInput {
   commitRuns: Record<string, CommitRun>;
 }
 
-export function nextCandidate(session: Normalized<BisectSearchInput>): CandidateWork | null {
+export function nextCandidate(session: SearchStateWithCurrentBoundaries<BisectSearchInput>): CandidateMeasurementPlan | null {
   const targetModels = session.targets.map((target) => (
     BisectTargetModel.from(target, session.orderedCommits)
   ));
@@ -69,11 +69,11 @@ export function nextCandidate(session: Normalized<BisectSearchInput>): Candidate
   if (!sha) return null;
 
   const targets = targetModels
-    .filter((target) => target.needsObservationAt(sha, candidateIndex))
+    .filter((target) => target.needsEvaluationAt(sha, candidateIndex))
     .map((target) => target.toTarget());
 
   if (targets.length === 0) {
-    throw new Error(`Bisect candidate ${sha} has no unobserved active targets`);
+    throw new Error(`Bisect candidate ${sha} has no active targets requiring evaluation`);
   }
 
   return {
@@ -96,28 +96,28 @@ export function testsForTargets(targets: readonly BisectTarget[]): BisectTestSel
   return [...selections.values()];
 }
 
-export function recalculateTargetBoundariesFromCachedObservations<T extends BisectSearchInput>(
+export function narrowTargetSearchRangesUsingRecordedEvaluations<T extends BisectSearchInput>(
   session: T,
-): Normalized<T> {
+): SearchStateWithCurrentBoundaries<T> {
   const commitIndexes = new Map(session.orderedCommits.map((sha, index) => [sha, index]));
 
   return {
     ...session,
     targets: session.targets.map((target) => BisectTargetModel
       .from(target, session.orderedCommits)
-      .recalculateSearchRangeFromCachedObservations(commitIndexes)
+      .narrowSearchRangeUsingRecordedEvaluations(commitIndexes)
       .toTarget()),
-  } as Normalized<T>;
+  } as SearchStateWithCurrentBoundaries<T>;
 }
 
-export function recordCommitObservationsAndUpdateTargetBoundaries<T extends BisectSearchInput>(
+export function recordTargetEvaluationsAndNarrowSearchRanges<T extends BisectSearchInput>(
   session: T,
   sha: string,
-  observations: Map<string, TargetObservation>,
+  targetEvaluations: Map<string, TargetEvaluationAtCommit>,
 ): T {
   const infrastructureError = session.commitRuns[sha]?.infrastructureError;
   if (infrastructureError) {
-    throw new Error(`Cannot record commit observations for ${sha}: ${infrastructureError}`);
+    throw new Error(`Cannot record target evaluations for ${sha}: ${infrastructureError}`);
   }
 
   const commitIndex = session.orderedCommits.indexOf(sha);
@@ -126,11 +126,11 @@ export function recordCommitObservationsAndUpdateTargetBoundaries<T extends Bise
   return {
     ...session,
     targets: session.targets.map((target) => {
-      const observation = observations.get(target.id);
-      if (!observation) return target;
+      const evaluation = targetEvaluations.get(target.id);
+      if (!evaluation) return target;
 
       return BisectTargetModel.from(target, session.orderedCommits)
-        .recordObservationAndUpdateSearchBoundary(observation, commitIndex)
+        .recordEvaluationAndNarrowSearchRange(evaluation, commitIndex)
         .toTarget();
     }),
   } as T;

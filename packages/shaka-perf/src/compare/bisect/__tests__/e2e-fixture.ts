@@ -220,7 +220,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       async beginSession() {},
       async endSession() {},
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
-      async materialize() {},
+      async syncCandidateFilesToExperimentVolume() {},
       async refresh(request) {
         refreshCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
@@ -286,12 +286,12 @@ export function visregTimeline(
   fixture: E2eRepositoryFixture,
   states: Record<string, boolean>,
 ): Record<string, readonly TestResult[]> {
-  return Object.fromEntries(Object.entries(states).map(([label, present]) => {
+  return Object.fromEntries(Object.entries(states).map(([label, regressionDetected]) => {
     const sha = fixture.shas[label];
     if (!sha) {
       throw new Error(`Unknown fixture label: ${label}`);
     }
-    return [sha, [visregResult(present)]];
+    return [sha, [visregResult(regressionDetected)]];
   }));
 }
 
@@ -333,13 +333,13 @@ export function regressionTimeline(
         throw new Error(`Unknown regression target: ${id}`);
       }
     }
-    const present = new Set(presentIds);
+    const targetsWithRegression = new Set(presentIds);
     const grouped = new Map<string, StubRegression[]>();
     for (const target of targets) {
       const key = JSON.stringify([target.testFile, target.testName]);
       grouped.set(key, [...(grouped.get(key) ?? []), target]);
     }
-    return [sha, [...grouped.values()].map((group) => regressionResult(group, present))];
+    return [sha, [...grouped.values()].map((group) => regressionResult(group, targetsWithRegression))];
   }));
 }
 
@@ -364,7 +364,7 @@ function filterCompareResults(
 
 function regressionResult(
   targets: readonly StubRegression[],
-  present: ReadonlySet<string>,
+  targetsWithRegression: ReadonlySet<string>,
 ): TestResult {
   const first = targets[0]!;
   const visualTargets = targets.filter((target) => target.category === 'visreg');
@@ -381,9 +381,9 @@ function regressionResult(
           selector: target.subject,
           controlImage: `${target.id}-control.png`,
           experimentImage: `${target.id}-experiment.png`,
-          diffImage: present.has(target.id) ? `${target.id}-diff.png` : null,
-          misMatchPercentage: present.has(target.id) ? 2.5 : 0,
-          diffPixels: present.has(target.id) ? 42 : 0,
+          diffImage: targetsWithRegression.has(target.id) ? `${target.id}-diff.png` : null,
+          misMatchPercentage: targetsWithRegression.has(target.id) ? 2.5 : 0,
+          diffPixels: targetsWithRegression.has(target.id) ? 42 : 0,
           threshold: 0.1,
           diffBbox: null,
           savedByRetries: false,
@@ -398,15 +398,15 @@ function regressionResult(
             label: target.subject,
             group: 'vitals',
             controlValue: 100,
-            experimentValue: present.has(target.id) ? 120 : 100,
-            deltaValue: present.has(target.id) ? 20 : 0,
+            experimentValue: targetsWithRegression.has(target.id) ? 120 : 100,
+            deltaValue: targetsWithRegression.has(target.id) ? 20 : 0,
             controlDisplay: '100ms',
-            experimentDisplay: present.has(target.id) ? '120ms' : '100ms',
-            deltaDisplay: present.has(target.id) ? '+20ms' : '0ms',
-            percentDisplay: present.has(target.id) ? '+20%' : '0%',
-            deltaPercent: present.has(target.id) ? 20 : 0,
-            pValue: present.has(target.id) ? 0.01 : 1,
-            direction: present.has(target.id) ? 'regression' as const : 'none' as const,
+            experimentDisplay: targetsWithRegression.has(target.id) ? '120ms' : '100ms',
+            deltaDisplay: targetsWithRegression.has(target.id) ? '+20ms' : '0ms',
+            percentDisplay: targetsWithRegression.has(target.id) ? '+20%' : '0%',
+            deltaPercent: targetsWithRegression.has(target.id) ? 20 : 0,
+            pValue: targetsWithRegression.has(target.id) ? 0.01 : 1,
+            direction: targetsWithRegression.has(target.id) ? 'regression' as const : 'none' as const,
           })),
         },
       }]),
@@ -414,7 +414,7 @@ function regressionResult(
         kind: 'ok' as const,
         stage: 'accessibility',
         viewport: DESKTOP_VIEWPORT,
-        measurement: accessibilityMeasurement(accessibilityTargets, present),
+        measurement: accessibilityMeasurement(accessibilityTargets, targetsWithRegression),
       }]),
     ],
   };
@@ -422,9 +422,9 @@ function regressionResult(
 
 function accessibilityMeasurement(
   targets: readonly StubRegression[],
-  present: ReadonlySet<string>,
+  targetsWithRegression: ReadonlySet<string>,
 ) {
-  const findings = targets.filter((target) => present.has(target.id)).map((target) => ({
+  const findings = targets.filter((target) => targetsWithRegression.has(target.id)).map((target) => ({
     status: 'new' as const,
     signature: `${target.subject}|[data-cy="${target.id}"]`,
     ruleId: target.subject,
@@ -492,7 +492,7 @@ function baseResult(testFile: string, testName: string): TestResult {
   };
 }
 
-function visregResult(present: boolean): TestResult {
+function visregResult(regressionDetected: boolean): TestResult {
   return {
     ...baseResult('tests/homepage.abtest.ts', 'Homepage'),
     outcomes: [{
@@ -503,9 +503,9 @@ function visregResult(present: boolean): TestResult {
         selector: 'document',
         controlImage: 'control.png',
         experimentImage: 'experiment.png',
-        diffImage: present ? 'diff.png' : null,
-        misMatchPercentage: present ? 2.5 : 0,
-        diffPixels: present ? 42 : 0,
+        diffImage: regressionDetected ? 'diff.png' : null,
+        misMatchPercentage: regressionDetected ? 2.5 : 0,
+        diffPixels: regressionDetected ? 42 : 0,
         threshold: 0.1,
         diffBbox: null,
         savedByRetries: false,
