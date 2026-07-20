@@ -79,10 +79,9 @@ function isPublicIpv6(address: string): boolean {
   const isIpv4Mapped = words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
   const isIpv4Compatible = words.slice(0, 6).every((word) => word === 0);
   const isIpv4Translated = words.slice(0, 4).every((word) => word === 0) && words[4] === 0xffff && words[5] === 0;
-  const isNat64 = words[0] === 0x0064 && words[1] === 0xff9b &&
-    (words.slice(2, 6).every((word) => word === 0) || words[2] === 1);
   if (isIpv4Mapped || isIpv4Compatible || isIpv4Translated) return isPublicIpv4(ipv4FromWords(words, 6));
-  if (isNat64) return isPublicIpv4(ipv4FromWords(words, 6));
+  if (words[0] === 0x0064 && words[1] === 0xff9b && words[2] === 1) return false;
+  if (words[0] === 0x0064 && words[1] === 0xff9b && words.slice(2, 6).every((word) => word === 0)) return isPublicIpv4(ipv4FromWords(words, 6));
   if (words[0] === 0x2002) return isPublicIpv4(ipv4FromWords(words, 1));
   return true;
 }

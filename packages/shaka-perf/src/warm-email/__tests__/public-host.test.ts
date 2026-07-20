@@ -23,8 +23,6 @@ describe('isPublicHost', () => {
       '2001:4860:4860::8888',
       '::ffff:8.8.8.8',
       '64:ff9b::808:808',
-      '64:ff9b:1::808:808',
-      '64:ff9b:1:abcd::808:808',
       '2002:808:808::',
       '::ffff:0:808:808',
     ]) {
@@ -75,6 +73,11 @@ describe('isPublicHost', () => {
     ]) {
       expect(isPublicHost(h)).toBe(false);
     }
+  });
+
+  it('rejects local-use NAT64 addresses', () => {
+    expect(isPublicHost('64:ff9b:1:abcd::808:808')).toBe(false);
+    expect(isPublicHost('64:ff9b:1:0:7f:0:100:0')).toBe(false);
   });
 
   it('rejects malformed IPv6 literals', () => {
