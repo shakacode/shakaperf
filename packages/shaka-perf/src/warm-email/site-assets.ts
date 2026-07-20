@@ -7,10 +7,8 @@
  * License in LICENSE.md.
  */
 
-import { isPublicHost } from './public-host';
+import { isPublicHost } from '../net/public-host';
 import { escapeHtml as esc } from './html-escape';
-
-export { isPublicHost } from './public-host';
 
 // The audited site's own favicon, inlined when it is a plausible icon so the
 // hosted report's browser tab shows the client's logo. Best-effort: rejected

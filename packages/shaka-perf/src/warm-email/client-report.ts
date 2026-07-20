@@ -115,7 +115,8 @@ export {
 export type { Problem, ProblemKind, ClientReportPagePerfStatusInput } from './client-report-model/perf';
 export { dashSafe };
 export { hasMajorA11yBarrier } from './client-report-model/a11y';
-export { faviconDataUri, faviconLinkTag, isPublicHost, parseIconHref } from './site-assets';
+export { faviconDataUri, faviconLinkTag, parseIconHref } from './site-assets';
+export { isPublicHost } from '../net/public-host';
 
 const execFileAsync = promisify(execFile);
 
