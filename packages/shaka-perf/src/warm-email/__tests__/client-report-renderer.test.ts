@@ -65,6 +65,7 @@ import {
   RECOVERY_BANDS,
   RECOVERY_CAP,
 } from '../client-report-model/cost';
+import { escapeHtml } from '../html-escape';
 import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type {
@@ -1278,7 +1279,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
   });
@@ -1320,7 +1321,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).not.toContain('87% of your page&#39;s text is missing');
     expect(agentPanelHtml).not.toContain('only 2 of 15 words present');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
@@ -2518,6 +2519,23 @@ describe('renderClientReportHtml', () => {
     expect(html).not.toContain('pages look fine:');
   });
 
+  it('uses the AI group verdict while keeping the existing good-page label by default', () => {
+    const html = renderClientReportHtml(model({
+      agentCost: {
+        tab: 'ai',
+        state: 'zero',
+        strongPageGroup: {
+          label: 'Strong pages',
+          verdict: '2 pages are readable, but only fair',
+          pages: [{ name: 'Services', score: 72 }, { name: 'Contact', score: 68 }],
+        },
+      },
+    }));
+
+    expect(renderedPanel(html, 'agent')).toContain('2 pages are readable, but only fair:');
+    expect(renderedPanel(html, 'agent')).not.toContain('2 pages look fine:');
+  });
+
   it('uses matrix flags to keep zero check lines and omit absent scales and calculators', () => {
     const html = renderClientReportHtml(model({
       perfCost: {
@@ -2749,7 +2767,7 @@ describe('renderClientReportHtml', () => {
     }));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY);
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Do not show this prompt.');
     expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');

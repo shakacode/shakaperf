@@ -12,7 +12,7 @@ import {
   pageLead as agentPageLead,
   type AgentPageView,
 } from '../agent-ready-report';
-import { scoreSite, type CategoryScore, type SiteAccessSignals } from '../agent-ready-score';
+import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessSignals } from '../agent-ready-score';
 import { AI_INDUSTRY_DATA_STATS, aiCheckLine, aiHeadline, aiHeadlineSub, aiSingleCountLine, aiSiteWideContextLine } from '../cost-strings';
 import { buildCopyPrompt } from '../copy-prompt';
 import type {
@@ -290,7 +290,7 @@ export function buildAgentSection(
       affectsProse: aiAffects,
       stakes: {
         kind: 'no-material-loss',
-        prose: 'When someone asks ChatGPT, Claude, or Perplexity about what you do, your pages can be read and quoted. Many sites fail this check outright.',
+        prose: `When someone asks ChatGPT, Claude, or Perplexity about what you do, your pages can be read and quoted. Many sites fail this check outright.${agentStatus !== 'good' ? ' Being readable is the pass/fail part; the page scores below show the labeling polish still left.' : ''}`,
         studies: AI_INDUSTRY_DATA_STATS,
         expanderIntro: 'These are the studies behind this check - they describe a risk your site is not exposed to.',
       },
@@ -307,9 +307,13 @@ export function buildAgentSection(
     status: scoreStatus(view.struct.score),
   }));
   if (agentFine.length > 0) {
+    const worstFineScore = Math.min(...agentFine.map(({ score }) => score));
     agentCost.strongPageGroup = {
       label: 'Strong pages',
       pages: agentFine.map(({ name, score }) => ({ name, score })),
+      ...(scoreBucket(worstFineScore) === 'fair'
+        ? { verdict: `${agentFine.length} ${agentFine.length === 1 ? 'page is' : 'pages are'} readable, but only fair` }
+        : {}),
     };
   }
   return {

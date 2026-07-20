@@ -1070,7 +1070,7 @@ function strongPageGroupList(group: StrongPageGroup): string {
     })
     .join('<span style="color:#d8d0c3"> &middot; </span>');
   const pageCount = group.pages.length;
-  const label = `${pageCount} ${pageCount === 1 ? 'page looks' : 'pages look'} fine`;
+  const label = group.verdict ?? `${pageCount} ${pageCount === 1 ? 'page looks' : 'pages look'} fine`;
   return `    <div style="font-size:14px; line-height:1.6; color:#6f665c; margin:4px 0 14px">${esc(label)}: ${pages}</div>`;
 }
 

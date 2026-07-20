@@ -47,6 +47,24 @@ function agentView(rawWords: number | null, renderedWords: number, blocked = fal
   return { page, result, struct: scorePageStructure(result) };
 }
 
+function fairStructureView(): AgentPageView {
+  const view = agentView(100, 100);
+  view.result.rendered = {
+    ...view.result.rendered,
+    title: '',
+    titlePresent: false,
+    metaDescription: '',
+    metaDescriptionPresent: false,
+    canonical: false,
+    lang: '',
+    og: { title: false, description: false, image: false, type: false, siteName: false },
+    twitterCard: false,
+    structuredData: { blocks: 0, valid: 0, invalid: 0, types: [], microdataItems: 0 },
+  };
+  view.struct = scorePageStructure(view.result);
+  return view;
+}
+
 const promptCtx: AgentPromptContext = {
   siteUrl: 'https://example.com', host: 'example.com', date: 'July 10, 2026', conditions: 'phone on Slow-4G',
 };
@@ -81,6 +99,23 @@ describe('buildAgentSection', () => {
     expect(result.agentCost).toMatchObject({ tab: 'ai', state: 'zero' });
     expect(result.agentCards).toHaveLength(0);
     expect(result.agentCost?.strongPageGroup?.pages).toEqual([{ name: 'Home', score: 90 }]);
+    expect(result.agentCost?.strongPageGroup?.verdict).toBeUndefined();
+  });
+
+  it('labels a readable group as only fair when its worst page is below the good bucket', () => {
+    const result = buildAgentSection([fairStructureView()], [], promptCtx, undefined);
+
+    expect(result.agentFine).toHaveLength(1);
+    expect(result.agentFine[0].score).toBeGreaterThanOrEqual(50);
+    expect(result.agentFine[0].score).toBeLessThan(80);
+    expect(result.agentCost?.strongPageGroup?.verdict).toBe('1 page is readable, but only fair');
+  });
+
+  it('adds score context to the green text-coverage proof when the site is not good', () => {
+    const result = buildAgentSection([fairStructureView()], [], promptCtx, undefined);
+
+    expect(result.agentStatus).toBe('fair');
+    expect(result.agentCost?.stakes?.prose).toContain('Being readable is the pass/fail part; the page scores below show the labeling polish still left.');
   });
 
   it('keeps a fully server-readable page card when its structural score is poor', () => {
