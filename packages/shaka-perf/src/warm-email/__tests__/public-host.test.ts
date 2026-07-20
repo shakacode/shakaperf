@@ -24,6 +24,7 @@ describe('isPublicHost', () => {
       '::ffff:8.8.8.8',
       '64:ff9b::808:808',
       '64:ff9b:1::808:808',
+      '64:ff9b:1:abcd::808:808',
       '2002:808:808::',
       '::ffff:0:808:808',
     ]) {
@@ -65,7 +66,13 @@ describe('isPublicHost', () => {
   });
 
   it('rejects IPv4 transition IPv6 addresses for non-public IPv4 ranges', () => {
-    for (const h of ['64:ff9b::a9fe:a9fe', '64:ff9b:1::a9fe:a9fe', '2002:a9fe:a9fe::', '::ffff:0:7f00:1']) {
+    for (const h of [
+      '64:ff9b::a9fe:a9fe',
+      '64:ff9b:1::a9fe:a9fe',
+      '64:ff9b:1:abcd::a9fe:a9fe',
+      '2002:a9fe:a9fe::',
+      '::ffff:0:7f00:1',
+    ]) {
       expect(isPublicHost(h)).toBe(false);
     }
   });
