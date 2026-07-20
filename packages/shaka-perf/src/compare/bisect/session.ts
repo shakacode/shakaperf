@@ -784,7 +784,7 @@ function planBisectDryRun(context: BisectExecutionContext): void {
 
 function completeEmptyPrimary(context: BisectExecutionContext): void {
   const { deps, state } = context;
-  deps.logProgress('No regression targets were present at the bad ref');
+  deps.logProgress('No regression targets were detected at the bad ref');
   const primary = state.session.primary;
   state.session = {
     ...state.session,
@@ -889,7 +889,7 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
   ));
   context.logDecision(
     'good-ref-validated',
-    `Good ref validated: ${invalidTargets.length} target(s) already present at good`,
+    `Good ref validated: ${invalidTargets.length} target(s) already detected at good`,
     {
       sha: input.gitRange.goodSha,
       invalidTargets: invalidTargets.map((target) => targetLogData(target)),
@@ -1022,7 +1022,7 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
       context.logDecision(
         'session-complete',
         state.session.primary.targets.length === 0
-          ? 'No regression targets were present at the bad ref'
+          ? 'No regression targets were detected at the bad ref'
           : 'Compare bisect session completed',
         {
           foundTargets: state.session.primary.targets
@@ -1415,7 +1415,7 @@ function validateGoodEndpoint(
       return {
         ...target,
         status: 'invalid',
-        invalidReason: 'target is already present at the good ref',
+        invalidReason: 'regression is already detected at the good ref',
         recordedTargetEvaluations: {
           ...target.recordedTargetEvaluations,
           [evaluation.commitSha]: evaluation,
@@ -1677,7 +1677,7 @@ function printBisectSummary(
   console.log(`Decision log: ${path.join(resultsDirectory, 'decision-log.md')}`);
   console.log(`Targets: ${found.length} found, ${invalid.length} invalid, ${unresolved.length} unresolved`);
   if (found.length === 0) {
-    if (targets.length === 0) console.log('No regression targets were present at the bad ref.');
+    if (targets.length === 0) console.log('No regression targets were detected at the bad ref.');
     return;
   }
   for (const target of found) {

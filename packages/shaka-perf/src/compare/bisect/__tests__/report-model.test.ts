@@ -94,7 +94,7 @@ describe('buildBisectReportModel', () => {
       target('invalid-target', 'accessibility', 'tests/homepage.abtest.ts', 'Homepage', {
         status: 'invalid',
         firstBadSha: undefined,
-        invalidReason: 'target is already present at the good ref',
+        invalidReason: 'regression is already detected at the good ref',
       }),
     ];
     const session = {

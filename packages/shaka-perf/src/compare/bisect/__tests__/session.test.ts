@@ -767,7 +767,7 @@ describe('compare bisect session orchestration', () => {
     });
   });
 
-  it('marks targets invalid when they are already present at the good ref', async () => {
+  it('marks targets invalid when regressions are already detected at the good ref', async () => {
     const harness = deps({
       good: [resultWithVisualDiff('diff.png')],
       bad: [resultWithVisualDiff('diff.png')],
@@ -781,7 +781,7 @@ describe('compare bisect session orchestration', () => {
     expect(session.status).toBe('complete');
     expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
-      invalidReason: 'target is already present at the good ref',
+      invalidReason: 'regression is already detected at the good ref',
     }]);
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'good']);
     expect(harness.calls.restored).toEqual([['good', 'bad']]);
@@ -811,7 +811,7 @@ describe('compare bisect session orchestration', () => {
 
     expect(session.primary.targets).toMatchObject([{
       status: 'invalid',
-      invalidReason: 'target is already present at the good ref',
+      invalidReason: 'regression is already detected at the good ref',
       recordedTargetEvaluations: {
         bad: expect.objectContaining({ regressionDetected: true }),
         good: expect.objectContaining({ regressionDetected: true }),

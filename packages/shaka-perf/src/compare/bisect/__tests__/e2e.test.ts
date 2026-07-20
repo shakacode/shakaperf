@@ -37,7 +37,7 @@ describe('compare bisect black-box E2E', () => {
    *    ^ first accessibility
    * -> good-unrelated-commit-one -> good-unrelated-commit-two
    *    ^ skipped                     ^ skipped
-   * -> regressions-still-present -> known-bad
+   * -> regressions-still-detected -> known-bad
    */
   it('finds different regression types at their independent first bad commits', async () => {
     const fixture = createLinearFixture([
@@ -48,7 +48,7 @@ describe('compare bisect black-box E2E', () => {
       'all-regressions-confirmed',
       'good-unrelated-commit-one',
       'good-unrelated-commit-two',
-      'regressions-still-present',
+      'regressions-still-detected',
       'known-bad',
     ]);
     try {
@@ -65,7 +65,7 @@ describe('compare bisect black-box E2E', () => {
           'all-regressions-confirmed': ['visual', 'performance', 'accessibility'],
           'good-unrelated-commit-one': ['visual', 'performance', 'accessibility'],
           'good-unrelated-commit-two': ['visual', 'performance', 'accessibility'],
-          'regressions-still-present': ['visual', 'performance', 'accessibility'],
+          'regressions-still-detected': ['visual', 'performance', 'accessibility'],
           'known-bad': ['visual', 'performance', 'accessibility'],
         }),
       });

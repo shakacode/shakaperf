@@ -12,8 +12,7 @@ import * as path from 'path';
 import type { BuildManifest } from '../../twin-servers/helpers/rebuild-check';
 import { exec } from '../../twin-servers/helpers/shell';
 
-// Keep the persisted filename compatible with existing bisect volumes.
-const SYNCED_CANDIDATE_MARKER = '.shaka-bisect-materialized.json';
+const SYNCED_CANDIDATE_MARKER = '.shaka-bisect-synced-candidate.json';
 
 interface VolumeSyncOptions {
   sourceDir: string;
