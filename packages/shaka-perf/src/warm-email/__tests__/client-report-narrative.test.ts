@@ -129,6 +129,6 @@ describe('narrative: verdict tiers', () => {
 
   it('asks the narrator to keep fair and poor verdicts from overselling', () => {
     expect(buildNarrativePrompt({ domain: 'x.com', worstDim: 'agent', agent: { status: 'fair', score: 68, accessBlocked: false } }))
-      .toContain('Each verdictWord must match its stated status. For fair and poor statuses');
+      .toContain('good, great, excellent, strong, solid, healthy, fine, ok, okay, well, mostly, largely, nearly, almost, already, ahead, readable');
   });
 });

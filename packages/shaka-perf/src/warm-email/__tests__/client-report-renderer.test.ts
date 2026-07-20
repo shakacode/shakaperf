@@ -65,6 +65,7 @@ import {
   RECOVERY_BANDS,
   RECOVERY_CAP,
 } from '../client-report-model/cost';
+import { escapeHtml } from '../html-escape';
 import { renderClientReportHtml, clientReportStatusWord, type ClientReportModel } from '../client-report-renderer';
 import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent_readiness/types';
 import type {
@@ -1278,7 +1279,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY.replace("'", '&#39;'));
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');
   });
@@ -1320,7 +1321,7 @@ describe('renderClientReport perf tile assembly', () => {
     ]));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY.replace("'", '&#39;'));
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).not.toContain('87% of your page&#39;s text is missing');
     expect(agentPanelHtml).not.toContain('only 2 of 15 words present');
     expect(agentPanelHtml).not.toContain('Copy prompt for your agent');
@@ -2766,7 +2767,7 @@ describe('renderClientReportHtml', () => {
     }));
     const agentPanelHtml = renderedPanel(html, 'agent');
 
-    expect(agentPanelHtml).toContain(AI_ZERO_COPY.replace("'", '&#39;'));
+    expect(agentPanelHtml).toContain(escapeHtml(AI_ZERO_COPY));
     expect(agentPanelHtml).toContain('>Measured</div>');
     expect(agentPanelHtml).not.toContain('Do not show this prompt.');
     expect(agentPanelHtml).not.toContain('Copy fix instructions - for your developer or AI agent');

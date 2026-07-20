@@ -7,7 +7,7 @@ with the weighting shown - NOT a guarantee of AI rankings or citations. This fil
 is the source of truth for what the report may and may not claim. Sourced from a
 verified research pass (2026-06-23); see citations inline.
 
-## Score weighting (v1)
+## Score components (v1)
 
 | Category | Weight | Why this weight |
 |---|---|---|
@@ -21,7 +21,7 @@ verified research pass (2026-06-23); see citations inline.
 1. Each page-card score adds SSR, machine-readable structure, and semantic HTML and content quality. The raw total is out of 75, then rescaled to 0-100. Crawler access is excluded because it is site-wide.
 2. Crawler access has a raw total out of 25, then rescaled to 0-100. It is shown once on its own site-wide card.
 3. The headline site score is the average of the per-page structure scores.
-4. A shell coverage below 20% or a robots.txt block for every AI answer crawler caps the headline at 49 in every case.
+4. When at least half the reachable pages have shell coverage below 20%, or robots.txt blocks every AI answer crawler, the headline is capped at 49 if it would otherwise be higher.
 
 Gating rules that keep the headline number honest:
 
