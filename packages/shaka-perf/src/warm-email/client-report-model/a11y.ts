@@ -16,7 +16,7 @@ import { NO_MATERIAL_LOSS, a11yNoNumberLine } from '../cost-strings';
 import type { ClientReportA11yCard, ClientReportBlockedPage, ClientReportCostBlock, ClientReportModel, ClientReportStatus } from '../client-report-renderer';
 import type { PagePerf } from '../synthesis';
 import { a11yContrastGap, a11yFixText, worstContrastRatio, type StrongPageGroup } from './cost';
-import { summarizeA11yRuleFamilies } from './a11y-rule-families';
+import { summarizeA11yRuleFamilies, type A11yRuleFamily } from './a11y-rule-families';
 import { buildCanonicalA11ySitePrompt } from './a11y-site-prompt';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
 import { dashSafe } from './shared';
@@ -30,6 +30,7 @@ export {
   type A11yRuleFamilyScan,
   type A11yRuleFamilySummary,
   type A11yRuleFamilyViolation,
+  type A11yRuleFamilyViolationNode,
 } from './a11y-rule-families';
 
 export interface A11yPromptRule {
@@ -255,13 +256,30 @@ export function prepareA11ySection(views: readonly A11ySectionView[]): PreparedA
 }
 
 function a11yFamilyReach(pageCount: number, pageTotal: number): string {
+  if (pageTotal === 1) return 'the only page';
   return pageCount === pageTotal
-    ? `all ${pageTotal} ${pageTotal === 1 ? 'page' : 'pages'}`
+    ? `all ${pageTotal} pages`
     : `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
 }
 
-function a11yFamilyLine(family: { label: string; pageCount: number }, pageTotal: number): string {
-  return `${family.label} - ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+function a11yFamilyLine(family: A11yRuleFamily, pageTotal: number): string {
+  return `${family.label} - ${family.defectCount} ${family.defectCount === 1 ? 'defect' : 'defects'} on ${a11yFamilyReach(family.pageCount, pageTotal)}`;
+}
+
+function a11ySharedComponentNote(
+  sharedDefectCount: number,
+  highImpactTotal: number,
+  pageReach: string,
+): string {
+  if (sharedDefectCount === 0) return '';
+  if (sharedDefectCount === 1) {
+    return highImpactTotal === 1
+      ? ` It repeats on ${pageReach} via a shared component.`
+      : ` One of them repeats on ${pageReach} via a shared component.`;
+  }
+  return sharedDefectCount === highImpactTotal
+    ? ` All ${highImpactTotal} repeat across multiple pages via shared components.`
+    : ` ${sharedDefectCount} of them repeat across multiple pages via shared components.`;
 }
 
 /** Builds the a11y family, cost, and site-prompt data from already-read scans. */
@@ -316,12 +334,18 @@ export function buildA11ySection(
   const a11yHeadlineScope = cardedA11y.length === a11yMeasurable.length
     ? `across your ${a11yMeasurable.length} ${a11yMeasurable.length === 1 ? 'page' : 'pages'}`
     : `on ${cardedA11y.length} of ${a11yMeasurable.length} pages checked`;
+  const a11ySharedDefects = a11yFamilySummary.sharedDefects;
+  const sharedComponentNote = a11ySharedComponentNote(
+    a11ySharedDefects.length,
+    highImpactTotal,
+    a11yFamilyReach(a11ySharedDefects[0]?.pageCount ?? 0, a11yMeasurable.length),
+  );
   const a11yFix = a11yFixText(a11yFindingScans);
   const a11yGap = a11yContrastGap(worstContrastRatio(a11yFindingScans));
   const a11yCountedFamilies = a11yFamilySummary.countedFamilies;
   const widestA11yFamily = a11yCountedFamilies[0];
   const a11yFixTextWithLead = widestA11yFamily
-    ? `Start with ${widestA11yFamily.label} - it reaches ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
+    ? `Start with ${widestA11yFamily.label} - ${widestA11yFamily.defectCount} ${widestA11yFamily.defectCount === 1 ? 'defect' : 'defects'} on ${a11yFamilyReach(widestA11yFamily.pageCount, a11yMeasurable.length)}. ${a11yFix ?? ''}`.trim()
     : a11yFix;
   const a11yWorstFamilyCount = a11yWorst
     ? summarizeA11yRuleFamilies([a11yWorst.scan]).headlineCount
@@ -331,7 +355,7 @@ export function buildA11ySection(
       `worst page: ${a11yWorst.page.name} - ${a11yWorstFamilyCount} high-impact`,
       ...a11yCountedFamilies.map((family) => a11yFamilyLine(family, a11yMeasurable.length)),
       ...(a11yFamilySummary.notCountedExtras.length > 0
-        ? [`also seen, not counted in the ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
+        ? [`lower-impact issues, not included in the high-impact total of ${highImpactTotal}: ${a11yFamilySummary.notCountedExtras.map((family) => a11yFamilyLine(family, a11yMeasurable.length)).join('; ')}`]
         : []),
       ...(a11yFamilySummary.smallerNotesCount > 0
         ? [`plus ${a11yFamilySummary.smallerNotesCount} smaller ${a11yFamilySummary.smallerNotesCount === 1 ? 'note' : 'notes'}`]
@@ -355,7 +379,7 @@ export function buildA11ySection(
       tab: 'a11y',
       state: 'measured',
       headline: `${highImpactTotal} high-impact ${highImpactTotal === 1 ? 'barrier keeps' : 'barriers keep'} some visitors from using the site.`,
-      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.`,
+      headlineSub: `The bar for any website is zero barriers that block someone. We found ${highImpactTotal} ${a11yHeadlineScope}.${sharedComponentNote}`,
       affectsProse: a11yAffects(a11yWorst.scan),
       ...(a11ySitePrompt ? { sitePrompts: { a11y: a11ySitePrompt } } : {}),
       gapSubLines: a11yFindingLines,

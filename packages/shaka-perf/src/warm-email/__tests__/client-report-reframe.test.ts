@@ -36,7 +36,7 @@ import type { AgentReadinessResult, PageSignals } from '../../audit/stages/agent
 interface A11yFixture {
   blocked?: boolean;
   score?: number;
-  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string; selector?: string }>;
+  violations: Array<{ ruleId: string; impact: AccessibilityViolation['impact']; failureSummary?: string; selector?: string; selectors?: string[] }>;
 }
 
 interface AgentFixture {
@@ -112,14 +112,16 @@ function agent(url: string, fixture: AgentFixture): AgentReadinessResult {
   };
 }
 
-function a11y(url: string, fixture: A11yFixture): AccessibilityResult {
+function a11y(url: string, fixture: A11yFixture, pageId: string): AccessibilityResult {
   const violations: AccessibilityViolation[] = fixture.violations.map((violation) => ({
     ruleId: violation.ruleId,
     impact: violation.impact,
     help: violation.ruleId,
     helpUrl: '',
     tags: [],
-    nodes: [{ target: [violation.selector ?? '.fixture'], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '' }],
+    nodes: (violation.selectors ?? [violation.selector ?? `.fixture-${pageId}`]).map((selector) => ({
+      target: [selector], html: '<p>fixture</p>', failureSummary: violation.failureSummary ?? '',
+    })),
   }));
   const scan: AccessibilityScan = {
     viewportLabel: 'phone',
@@ -164,7 +166,7 @@ function writeResults(pages: PageFixture[], siteUrl = 'http://localhost:1'): str
     const url = `${siteUrl}${page.startingPath}`;
     if (page.a11y) {
       fs.writeFileSync(path.join(pageDir, 'accessibility.json'), `${JSON.stringify({
-        kind: 'ok', stage: 'accessibility', measurement: a11y(url, page.a11y),
+        kind: 'ok', stage: 'accessibility', measurement: a11y(url, page.a11y, page.id),
       }, null, 2)}\n`);
       if (typeof page.a11y.score === 'number') {
         fs.writeFileSync(path.join(pageDir, 'accessibility-client.json'), `${JSON.stringify({ score: page.a11y.score })}\n`);
@@ -192,7 +194,7 @@ describe('cost-of-pain reframe model', () => {
     const result = await renderClientReport(writeResults([
       basePage({
         metrics: { LCP: 4200, FCP: 3030, CLS: 2, TBT: 80, js: 900, downloads: 1100, 'downloads-before-LCP': 900 },
-        a11y: { violations: [{ ruleId: 'target-size', impact: 'serious' }] },
+        a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.shared-nav' }] },
         agent: { rawWords: 615, renderedWords: 937 },
       }),
       basePage({
@@ -200,7 +202,7 @@ describe('cost-of-pain reframe model', () => {
         metrics: { LCP: 3200, FCP: 3421.7, CLS: 2, TBT: 80, js: 700, downloads: 2200, 'downloads-before-LCP': 1200 },
         a11y: {
           violations: [
-            { ruleId: 'target-size', impact: 'serious' },
+            { ruleId: 'target-size', impact: 'serious', selector: '.shared-nav' },
             { ruleId: 'image-alt', impact: 'serious' },
           ],
         },
@@ -238,8 +240,8 @@ describe('cost-of-pain reframe model', () => {
     const a11y = result.model.a11yCost;
     expect(a11y).toMatchObject({
       state: 'measured',
-      headline: '3 high-impact barriers keep some visitors from using the site.',
-      headlineSub: 'The bar for any website is zero barriers that block someone. We found 3 on 2 of 3 pages checked.',
+      headline: '2 high-impact barriers keep some visitors from using the site.',
+      headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 on 2 of 3 pages checked. One of them repeats on 2 pages via a shared component.',
       scoreBadgePolicy: 'score-status',
     });
     expect(result.model.a11yStrongPageGroup).toEqual({
@@ -248,12 +250,12 @@ describe('cost-of-pain reframe model', () => {
     });
     expect(a11y?.gapSubLines).toEqual(expect.arrayContaining([
       'worst page: Platform - 2 high-impact',
-      'touch targets too small to tap reliably - 2 pages',
-      'images with no text description - 1 page',
-      'also seen, not counted in the 3: text that is too hard to read - 1 page',
+      'touch targets too small to tap reliably - 1 defect on 2 pages',
+      'images with no text description - 1 defect on 1 page',
+      'lower-impact issues, not included in the high-impact total of 2: text that is too hard to read - 1 defect on 1 page',
       'WCAG - passes at zero critical barriers',
     ]));
-    expect(a11y?.sitePrompts?.a11y).toContain('Goal: all 3 high-impact issues pass');
+    expect(a11y?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
     expect(a11y?.sitePrompts?.a11y).toContain('largely a shared component');
 
     const ai = result.model.agentCost;
@@ -382,11 +384,11 @@ describe('cost-of-pain reframe model', () => {
     const cost = result.model.a11yCost;
 
     expect(cost).toMatchObject({
-      headline: '2 high-impact barriers keep some visitors from using the site.',
-      fix: { text: expect.stringContaining('Start with images with no text description - it reaches 1 page.') },
+      headline: '3 high-impact barriers keep some visitors from using the site.',
+      fix: { text: expect.stringContaining('Start with unlabeled controls - 2 defects on 1 page.') },
     });
-    expect(cost?.gapSubLines).toContain('worst page: Home - 2 high-impact');
-    expect(cost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+    expect(cost?.gapSubLines).toContain('worst page: Home - 3 high-impact');
+    expect(cost?.sitePrompts?.a11y).toContain('Goal: all 3 high-impact issues pass');
   });
 
   it('keeps the a11y site prompt when a repeated selector is not safe prompt evidence', async () => {
@@ -395,7 +397,32 @@ describe('cost-of-pain reframe model', () => {
       basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: 'a[href="https://example.com/contact"]' }] } }),
     ]));
 
-    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+    expect(result.model.a11yCost).toMatchObject({
+      headline: '1 high-impact barrier keeps some visitors from using the site.',
+      headlineSub: 'The bar for any website is zero barriers that block someone. We found 1 across your 2 pages. It repeats on all 2 pages via a shared component.',
+    });
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: the 1 high-impact issue passes');
+    expect(result.html).toContain('data-copy-prompt="cr-a11y-site-prompt"');
+  });
+
+  it('uses distinct defects for every severity chip on a card', async () => {
+    const result = await renderClientReport(writeResults([
+      basePage({
+        a11y: {
+          violations: [
+            { ruleId: 'target-size', impact: 'serious', selectors: ['.action-one', '.action-two', '.action-three'] },
+            { ruleId: 'region', impact: 'moderate', selectors: ['main', 'footer'] },
+            { ruleId: 'color-contrast', impact: 'minor', selectors: ['.promo', '.banner'] },
+          ],
+        },
+      }),
+    ]));
+
+    expect(result.model.a11yCards[0]?.sev).toEqual([
+      { num: 3, label: 'high-impact', status: 'poor' },
+      { num: 2, label: 'moderate', status: 'fair' },
+      { num: 2, label: 'low', status: 'good' },
+    ]);
   });
 
   it('keeps a shared user-card selector as a11y prompt evidence', async () => {
@@ -413,7 +440,7 @@ describe('cost-of-pain reframe model', () => {
       basePage({ id: 'about', name: 'About', startingPath: '/about', a11y: { violations: [{ ruleId: 'target-size', impact: 'serious', selector: '.reveal-token' }] } }),
     ]));
 
-    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 2 high-impact issues pass');
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: the 1 high-impact issue passes');
     expect(result.model.a11yCost?.sitePrompts?.a11y).not.toContain('largely a shared component');
   });
 
@@ -429,7 +456,7 @@ describe('cost-of-pain reframe model', () => {
       label: 'Strong pages',
       pages: [{ name: 'Home after scroll', score: 98 }],
     });
-    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: all 1 high-impact issues pass');
+    expect(result.model.a11yCost?.sitePrompts?.a11y).toContain('Goal: the 1 high-impact issue passes');
   });
 
   it('collapses a fully readable AI page even when its structural score is fair', async () => {

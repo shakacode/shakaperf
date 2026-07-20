@@ -196,7 +196,7 @@ export function assembleClientReportModel(
   if ([perf.perfCost, agent.agentCost, a11y.a11yCost].some((cost) => cost?.state === 'measured')) footnoteAddenda.push(FOOTER_GUARDRAIL);
   const botWalledPageCount = new Set([...a11y.a11yBlocked, ...agent.agentBlocked].map((page) => `${page.path}|${page.name}`)).size;
   if (botWalledPageCount > 0) footnoteAddenda.push(botWallFooterSentence(botWalledPageCount));
-  const footnoteBase = `Measured ${input.dateStr ? `${input.dateStr} ` : ''}on an emulated mid-range phone over ${input.footnoteThrottle} - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${a11y.hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale' : ''}. Put together by ShakaCode.`;
+  const footnoteBase = `Measured ${input.dateStr ? `${input.dateStr} ` : ''}on an emulated mid-range phone over ${input.footnoteThrottle} - the conditions a real mobile visitor faces, not a developer's laptop. Speed score is Google's 0-100 mobile scale (90+ is fast, under 50 is slow); layout shift is Google's CLS (above 0.25 is poor)${a11y.hasA11y ? '; accessibility score is the Google Lighthouse 0-100 scale - issue counts come from a deeper axe-core scan whose rules sit partly outside Lighthouse\'s scored set, so a high score can coexist with real issues' : ''}. Put together by ShakaCode.`;
   const footnote = footnoteAddenda.length ? `${footnoteBase} ${footnoteAddenda.map((sentence) => `${sentence}.`).join(' ')}` : footnoteBase;
   const tabOrder = ([
     ...(perf.hasPerf ? [{ dim: 'perf' as const, rank: dimSeverityRank(perf.perfStatus, perf.perfCouldNotMeasure) }] : []),

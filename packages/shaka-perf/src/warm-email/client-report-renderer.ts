@@ -141,6 +141,7 @@ export interface ClientReportA11yCard {
   name: string;
   path: string;
   score?: number;
+  highImpact: number;
   status: ClientReportStatus;
   sev: { num: number; label: string; status: ClientReportStatus }[];
   summary?: string;
@@ -776,9 +777,10 @@ function verdictHead(
   blocked?: boolean,
   score?: number,
   cost?: ClientReportCostBlock,
+  scoreLabel = 'score',
 ): string {
   const p = blocked ? NEUTRAL : PAL[status];
-  const badge = blocked ? '' : scoreBadge(score);
+  const badge = blocked ? '' : scoreBadge(score, scoreLabel);
   return `    <div style="margin-bottom:30px">
       <div style="font-size:13.5px; font-weight:600; letter-spacing:.01em; color:#9b9286; margin-bottom:6px">${esc(question)}</div>
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:10px">
@@ -982,12 +984,12 @@ function a11yShot(fr: ClientReportA11yFrame): string {
         </figure>`;
 }
 
-function scoreBadge(score: number | undefined): string {
+function scoreBadge(score: number | undefined, label = 'score'): string {
   if (typeof score !== 'number' || !Number.isFinite(score)) return '';
   const p = PAL[scoreStatus(score)];
   return `<div style="flex:none; text-align:center; border:1px solid ${p.line}; background:${p.bg}; border-radius:11px; padding:7px 13px; min-width:62px">
             <div style="font-size:24px; font-weight:800; color:${p.fg}; line-height:1">${score}</div>
-            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">score</div>
+            <div style="font-size:9.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#9b9286; margin-top:3px">${esc(label)}</div>
           </div>`;
 }
 
@@ -1008,6 +1010,9 @@ function a11yCard(c: ClientReportA11yCard, index: number): string {
   const sevHint = boxedLevels.size > 0
     ? `\n          <span style="font-size:12px; color:#9b9286; align-self:center">&larr; tap to highlight</span>`
     : '';
+  const lighthouseHint = typeof c.score === 'number' && c.score >= 90 && c.highImpact > 0
+    ? `        <div style="font-size:12px; color:#9b9286; margin:-6px 0 14px">The 90+ score is Lighthouse's scale; these counts come from a deeper scan.</div>`
+    : '';
   const shots = c.frames.length
     ? `        <div class="cr-strip" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px; align-items:flex-start">
 ${c.frames.map(a11yShot).join('\n')}
@@ -1026,9 +1031,10 @@ ${c.fixes.map((fix) => `          <li style="display:flex; gap:10px; font-size:1
             <div style="font-size:19px; font-weight:700; letter-spacing:-.01em; margin-bottom:3px">${esc(c.name)}</div>
             <div style="font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#9b9286">${esc(c.path)}</div>
           </div>
-          ${scoreBadge(c.score)}
+          ${scoreBadge(c.score, 'Lighthouse')}
         </div>
         ${sev ? `<div style="display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; align-items:center">\n${sev}${sevHint}\n        </div>` : ''}
+${lighthouseHint}
         ${c.summary ? `<p style="font-size:15.5px; line-height:1.55; color:#3a352e; margin:0 0 18px; max-width:64ch">${esc(c.summary)}</p>` : ''}
 ${shots}
 ${fixes}
@@ -1097,7 +1103,7 @@ ${items}
 
 function a11yPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
   const needs = m.a11yCards.length;
-  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost)}
+  const body = `${verdictHead('Can everyone use your site?', m.a11yStatus, m.narrative.a11y, m.a11yCouldNotMeasure, m.a11yScore, m.a11yCost, 'Lighthouse')}
 ${needs ? sectionKicker(`Needs attention &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.a11yCards.map(a11yCard).join('\n')}
 ${m.a11yStrongPageGroup ? strongPageGroupList(m.a11yStrongPageGroup) : ''}

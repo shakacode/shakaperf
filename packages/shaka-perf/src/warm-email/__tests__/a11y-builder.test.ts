@@ -96,9 +96,25 @@ describe('buildA11ySection', () => {
         headline: '1 high-impact barrier keeps some visitors from using the site.',
         gapSubLines: [
           'worst page: Home - 1 high-impact',
-          'touch targets too small to tap reliably - all 1 page',
+          'touch targets too small to tap reliably - 1 defect on the only page',
           'WCAG - passes at zero critical barriers',
         ],
+      },
+    });
+  });
+
+  it('names multiple shared components after the distinct-defect headline', () => {
+    const prepared = prepareA11ySection([
+      promptView('home', 'Home', '/', [promptViolation('target-size', 'serious'), promptViolation('image-alt', 'serious')]),
+      promptView('about', 'About', '/about', [promptViolation('target-size', 'serious'), promptViolation('image-alt', 'serious')]),
+    ]);
+    const result = buildA11ySection(prepared, [], 'https://example.com', promptCtx);
+
+    expect(result).toMatchObject({
+      highImpactTotal: 2,
+      a11yCost: {
+        headline: '2 high-impact barriers keep some visitors from using the site.',
+        headlineSub: 'The bar for any website is zero barriers that block someone. We found 2 across your 2 pages. All 2 repeat across multiple pages via shared components.',
       },
     });
   });
@@ -189,7 +205,7 @@ describe('buildA11ySection', () => {
 
     expect(result.cardedA11y).toHaveLength(3);
     expect(result.a11yCost?.headlineSub).toContain('across your 3 pages');
-    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain("2 high-impact issues across the site's 2 pages");
     expect(prompt).toContain('worst page: the homepage with 2');
   });
 });

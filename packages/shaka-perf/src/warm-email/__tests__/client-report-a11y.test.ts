@@ -117,7 +117,12 @@ describe('scoreBucket', () => {
 
 describe('compareA11yWorstFirst', () => {
   const counts = (critical: number, serious: number, moderate = 0, minor = 0) => ({ critical, serious, moderate, minor });
-  const rank = (c: ReturnType<typeof counts>, score?: number, startingPath = '/x/') => ({ counts: c, score, startingPath });
+  const rank = (c: ReturnType<typeof counts>, score?: number, startingPath = '/x/', highImpact?: number) => ({
+    counts: c,
+    score,
+    startingPath,
+    ...(highImpact === undefined ? {} : { highImpact }),
+  });
   const order = (rows: ReturnType<typeof rank>[]) => [...rows].sort(compareA11yWorstFirst).map((r) => r.startingPath);
 
   it('ranks by the worst Lighthouse score first - the number shown on the card', () => {
@@ -131,6 +136,13 @@ describe('compareA11yWorstFirst', () => {
 
   it('breaks an equal-score tie by the breadth of high-impact barriers', () => {
     expect(order([rank(counts(0, 2), 90, '/a/'), rank(counts(0, 4), 90, '/b/')])).toEqual(['/b/', '/a/']);
+  });
+
+  it('breaks an equal-score tie by distinct high-impact defects when supplied', () => {
+    expect(order([
+      rank(counts(0, 3), undefined, '/three-violations/', 3),
+      rank(counts(0, 1), undefined, '/forty-defects/', 40),
+    ])).toEqual(['/forty-defects/', '/three-violations/']);
   });
 
   it('within equal score and high-impact, a critical outranks a serious-only page', () => {
@@ -327,7 +339,7 @@ describe('client report a11y cost copy helpers', () => {
     const prompt = buildCanonicalA11ySitePrompt(input);
 
     expect(buildCanonicalA11ySitePrompt(input)).toBe(prompt);
-    expect(prompt).toContain("3 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain("2 high-impact issues across the site's 2 pages");
     expect(prompt).toContain('worst page: the homepage with 2');
     expect(prompt).toContain("npx @axe-core/cli 'https://example.com/#top' 'https://example.com/about'");
   });

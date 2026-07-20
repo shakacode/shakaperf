@@ -65,6 +65,9 @@ export interface A11ySitePromptFinding {
   /** Accepted for model compatibility; canonical copy is selected from familyId. */
   label: string;
   impact: string;
+  /** Distinct rule-selector defects in this family. */
+  defectCount: number;
+  /** Number of audited pages where the family appears. */
   pageCount: number;
   /** Same-origin audited URLs for named finding examples. */
   pageUrls?: readonly string[];
@@ -85,7 +88,7 @@ export interface A11ySitePromptData {
   host: string;
   date: string;
   pageCount: number;
-  /** Reconciled headline count: one critical or serious family per affected page. */
+  /** Reconciled distinct high-impact defect count. */
   highImpactCount: number;
   worstPage: { url: string; highImpactCount: number };
   pageUrls: readonly string[];
@@ -363,13 +366,13 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
   if (
     completeFindings.length === 0
     || completeFindings.some((finding) => finding.pageCount > pageCount)
-    || completeFindings.reduce((total, finding) => total + finding.pageCount, 0) !== highImpactCount
+    || completeFindings.reduce((total, finding) => total + finding.defectCount, 0) !== highImpactCount
   ) return undefined;
 
   const worstPageName = pageRouteLabel(worstPageUrl);
   const date = slot(input.date, 48, 5);
   const host = structuralSlot(input.host, 120, 3);
-  const orderedFindings = [...completeFindings].sort((a, b) => b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
+  const orderedFindings = [...completeFindings].sort((a, b) => b.defectCount - a.defectCount || b.pageCount - a.pageCount || a.familyId.localeCompare(b.familyId));
   const findingLines = orderedFindings.map((finding) => siteFindingLine(finding, pageCount));
   const rawExtras = input.lowerImpactFindings;
   if (rawExtras !== undefined && !Array.isArray(rawExtras)) return undefined;
@@ -386,21 +389,23 @@ export function buildA11ySitePrompt(data: A11ySitePromptData): string | undefine
     : undefined;
   const priority = orderedFindings.slice(0, 3).map((finding) => siteFixPriority(finding.familyId));
   const priorityLine = priority.length > 1
-    ? `${priority[0]} (widest reach), then ${joinNatural(priority.slice(1))}`
-    : `${priority[0]} (widest reach)`;
+    ? `${priority[0]} (most defects), then ${joinNatural(priority.slice(1))}`
+    : `${priority[0]} (most defects)`;
   const ruleIds = [...new Set(completeFindings.flatMap((finding) => finding.verificationRuleIds))];
   const verification = ruleIds.length > 0
     ? `confirm ${joinNatural(ruleIds)} report zero violations.`
     : 'confirm each listed high-impact family reports zero violations.';
 
   return finalizePrompt([
-    `Accessibility barriers are blocking some visitors: ${highImpactCount} high-impact issues across the site's ${pageCount} pages (worst page: the ${worstPageName} with ${worstCount}).`,
+    `Accessibility barriers are blocking some visitors: ${highImpactCount} high-impact ${highImpactCount === 1 ? 'issue' : 'issues'} across the site's ${pagePhrase(pageCount)} (worst page: the ${worstPageName} with ${worstCount}).`,
     '',
-    `Measured on ${url} (${date}, automated axe accessibility scan across ${pageCount} pages):`,
+    `Measured on ${url} (${date}, automated axe accessibility scan across ${pagePhrase(pageCount)}):`,
     ...findingLines,
     ...(extraLine ? [extraLine] : []),
     '',
-    `Goal: all ${highImpactCount} high-impact issues pass while the pages remain visually unchanged - start with the ${priorityLine}.`,
+    highImpactCount === 1
+      ? `Goal: the 1 high-impact issue passes while the pages remain visually unchanged - start with the ${priorityLine}.`
+      : `Goal: all ${highImpactCount} high-impact issues pass while the pages remain visually unchanged - start with the ${priorityLine}.`,
     '',
     'Constraints:',
     '- Do not assume a framework or language - inspect this codebase and work within its existing setup.',
@@ -612,6 +617,7 @@ interface SitePromptFinding {
   label: string;
   nodeNoun: string;
   impact: string;
+  defectCount: number;
   pageCount: number;
   pageNames: string[];
   nodeCount?: number;
@@ -800,12 +806,15 @@ function siteFinding(
   requireHighImpact = false,
 ): SitePromptFinding | undefined {
   if (!isRecord(finding)) return undefined;
+  const defectCount = wholeNumber(finding.defectCount);
   const pageCount = wholeNumber(finding.pageCount);
   const familyId = cleanIdentifier(finding.familyId);
   const impact = cleanIdentifier(finding.impact);
   const family = familyId && Object.hasOwn(A11Y_FAMILIES, familyId) ? A11Y_FAMILIES[familyId] : undefined;
   if (
-    pageCount === undefined
+    defectCount === undefined
+    || defectCount === 0
+    || pageCount === undefined
     || pageCount === 0
     || !familyId
     || !family
@@ -835,6 +844,7 @@ function siteFinding(
     label: family.label,
     nodeNoun: family.nodeNoun,
     impact,
+    defectCount,
     pageCount,
     pageNames: (pageUrls as string[]).map(pageRouteLabel),
     verificationRuleIds,

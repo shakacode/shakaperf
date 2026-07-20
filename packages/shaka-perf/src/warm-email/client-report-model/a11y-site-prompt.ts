@@ -134,6 +134,7 @@ function a11yFamilyPromptFindings(
       familyId: family.id,
       label: family.label,
       impact: critical ? 'critical' : serious ? 'serious' : 'moderate',
+      defectCount: family.defectCount,
       pageCount: family.pageCount,
       pageUrls: [...pageUrls],
       verificationRuleIds: [...ruleIds],
