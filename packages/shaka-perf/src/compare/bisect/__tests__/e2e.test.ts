@@ -584,6 +584,67 @@ describe('compare bisect black-box E2E', () => {
   });
 
   /*
+   * known-good -> good-unrelated-commit-one -> command-rebuild-fails
+   *                 ^ skipped                    ^ traversed; falls back to container rebuild
+   * -> visual-regression-introduced -> regression-confirmed -> known-bad
+   *    ^ first bad
+   */
+  it('falls back to a container rebuild when command rebuilding fails', async () => {
+    const fixture = createLinearFixture([
+      'known-good',
+      'good-unrelated-commit-one',
+      'command-rebuild-fails',
+      'visual-regression-introduced',
+      'regression-confirmed',
+      'known-bad',
+    ]);
+    const visual = stubRegression('visual', 'visreg');
+    try {
+      const harness = createE2eDependencies({
+        fixture,
+        resultsBySha: visregTimeline(fixture, {
+          'known-good': false,
+          'good-unrelated-commit-one': false,
+          'command-rebuild-fails': false,
+          'visual-regression-introduced': true,
+          'regression-confirmed': true,
+          'known-bad': true,
+        }),
+        containerFallbackAtSha: fixture.shas['command-rebuild-fails'],
+      });
+
+      const session = await runBisect({
+        ...fixture.runOptions,
+        dependencies: harness.dependencies,
+      });
+
+      expectFirstBadCommits(session, fixture, [
+        { regression: visual, commit: 'visual-regression-introduced' },
+      ]);
+      expectBinarySearchTraversal(harness, fixture, [
+        'known-bad',
+        'command-rebuild-fails',
+        'visual-regression-introduced',
+      ]);
+      expect(harness.refreshCalls).toContainEqual({
+        sha: fixture.shas['command-rebuild-fails'],
+        preferredMode: 'commands',
+      });
+      expect(session.commitRuns[fixture.shas['command-rebuild-fails']!]).toMatchObject({
+        compareCompleted: true,
+        refreshMode: 'container',
+        usedFallback: true,
+      });
+      expectCommitsSkippedByBinarySearch(harness, fixture, [
+        'good-unrelated-commit-one',
+      ]);
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  /*
    * known-good -> clean-midpoint-one -> good-unrelated-commit-one
    *                                      ^ skipped
    * -> clean-midpoint-two -> good-unrelated-commit-two -> known-bad-clean

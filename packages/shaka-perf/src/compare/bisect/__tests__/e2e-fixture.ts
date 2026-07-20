@@ -20,6 +20,7 @@ import { writeSessionAtomic, writeSummary } from '../persistence';
 import type {
   CompareRunRequest,
   ExecuteBisectDependencies,
+  RefreshRequest,
   RunBisectOptions,
 } from '../session';
 import { parseBisectSession, writeBadRefTestsAtomic } from '../state';
@@ -41,12 +42,14 @@ export interface E2eRepositoryFixture {
 export interface E2eDependencyHarness {
   dependencies: ExecuteBisectDependencies;
   compareCalls: CompareRunRequest[];
+  refreshCalls: RefreshRequest[];
 }
 
 interface E2eDependencyOptions {
   fixture: E2eRepositoryFixture;
   resultsBySha: Record<string, readonly TestResult[]>;
   failAtSha?: string;
+  containerFallbackAtSha?: string;
 }
 
 export interface StubRegression {
@@ -164,8 +167,10 @@ function finishFixture(
   const originalExperimentSha = git(experimentDir, ['rev-parse', 'HEAD']);
   const config = {
     bisect: {
-      rebuildCommands: [],
       rebuildContainer: false,
+    },
+    twinServers: {
+      rebuildCommands: [{ description: 'Build application', command: 'yarn build' }],
     },
   } as unknown as AbTestsConfig;
   const twinServers = {
@@ -202,10 +207,12 @@ function finishFixture(
 export function createE2eDependencies(options: E2eDependencyOptions): E2eDependencyHarness {
   const { fixture } = options;
   const compareCalls: CompareRunRequest[] = [];
+  const refreshCalls: RefreshRequest[] = [];
   let tick = 0;
 
   return {
     compareCalls,
+    refreshCalls,
     dependencies: {
       installSignalHandlers() {
         return () => undefined;
@@ -214,8 +221,12 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       async endSession() {},
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
       async materialize() {},
-      async refresh() {
-        return { mode: 'commands', usedFallback: false };
+      async refresh(request) {
+        refreshCalls.push({ ...request });
+        if (request.sha === options.containerFallbackAtSha) {
+          return { mode: 'container', usedFallback: true };
+        }
+        return { mode: request.preferredMode, usedFallback: false };
       },
       async compare(request) {
         compareCalls.push({
