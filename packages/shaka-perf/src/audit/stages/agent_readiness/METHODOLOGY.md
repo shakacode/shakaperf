@@ -7,6 +7,8 @@ with the raw point allocation shown - NOT a guarantee of AI rankings or citation
 is the source of truth for what the report may and may not claim. Sourced from a
 verified research pass (2026-06-23); see citations inline.
 
+The raw-HTML fetch uses `src/net/public-host.ts` as the shared SSRF host guard before requests and redirects.
+
 ## Score components (v1)
 
 | Category | Raw points | Why these points |
