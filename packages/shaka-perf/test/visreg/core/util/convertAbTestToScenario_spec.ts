@@ -175,21 +175,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.readyTimeout, 15000);
   });
 
-  it('should pass through cookiePath', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          cookiePath: 'cookies/admin.json',
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.cookiePath, 'cookies/admin.json');
-  });
-
   it('should set selectorExpansion when provided', function () {
     const def: AbTestDefinition = {
       ...baseDef,
@@ -271,7 +256,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.clickSelector, undefined);
     assert.strictEqual(scenario.misMatchThreshold, undefined);
     assert.strictEqual(scenario.readyEvent, undefined);
-    assert.strictEqual(scenario.cookiePath, undefined);
     assert.strictEqual(scenario.viewports, undefined);
   });
 

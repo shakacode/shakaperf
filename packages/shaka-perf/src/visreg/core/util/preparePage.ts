@@ -11,12 +11,10 @@ import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import _ from 'lodash';
 import injectVisregTools from '../../capture/visregTools';
-import { loadCookies } from '../../capture/helpers/loadCookies';
 import { waitUntilPageSettled } from 'shaka-shared';
 import { clickAndHoverHelper } from '../../capture/helpers/clickAndHoverHelper';
 import createLogger from './logger';
 import { createTestAnnotate, runWithTestAnnotationContext } from '../../../test-annotation';
-import { runBeforeNavigateHooks } from '../../../before-navigate';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { makeSafe } from './engineTools';
 import type { PlaywrightPage, Scenario, Viewport, DecoratedCompareConfig, BrowserContext, VisregTools } from '../types';
@@ -70,24 +68,9 @@ function failureScreenshotPath (config: DecoratedCompareConfig, scenario: Scenar
 async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: DecoratedCompareConfig, isControl: boolean, browserOrContext: BrowserContext) {
   const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
 
-  // --- BEFORE: LOAD COOKIES ---
-  if (scenario.cookiePath) {
-    await loadCookies(browserOrContext, scenario);
-  }
-
-  // --- BEFORE: PRE-NAVIGATION HOOKS (global shared.beforeNavigate + per-test) ---
-  // Context-level so subframes (e.g. reCAPTCHA's anchor/bframe) are covered.
-  await runBeforeNavigateHooks(
-    {
-      context: browserOrContext,
-      page,
-      url,
-      viewport,
-      isControl,
-      testType: 'visreg',
-    },
-    scenario._testDef?.options?.beforeNavigate,
-  );
+  // Cookie loading + the beforeNavigate hooks now run on the context BEFORE this
+  // page is created (see runCompareAttempts → createComparisonSide onContextReady),
+  // so by the time we're here the page's first navigation is already covered.
 
   // --- READY EVENT SETUP (before navigation to avoid missing early events) ---
   const readyEvent = scenario.readyEvent || config.readyEvent;

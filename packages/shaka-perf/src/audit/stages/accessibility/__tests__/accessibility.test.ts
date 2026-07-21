@@ -403,10 +403,9 @@ describe('accessibility browser launch', () => {
       fakeContext(
         {},
         {
-          beforeNavigate: jest.fn(async ({ context, page, testType, url }) => {
+          beforeNavigate: jest.fn(async ({ context, testType, url }) => {
             events.push('beforeNavigate');
             expect(context).toBeDefined();
-            expect(page).toBeDefined();
             expect(testType).toBe('accessibility');
             expect(url).toBe('http://localhost:3030/checkout');
           }),
@@ -419,13 +418,16 @@ describe('accessibility browser launch', () => {
       DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
     );
 
+    // Browser state is cleared BEFORE the beforeNavigate hooks (so a hook that
+    // seeds an auth cookie survives into the navigation), and all of it runs
+    // before the page is created — uniform with the perf/visreg engines.
     expect(events).toEqual([
       'clearCookies',
-      'beforeNavigate',
       'cdp:Network.clearBrowserCache',
       'cdp:Network.clearBrowserCookies',
       'cdp:Storage.clearDataForOrigin',
       'cdp:detach',
+      'beforeNavigate',
       'goto',
       'testFn',
     ]);
@@ -478,7 +480,6 @@ describe('accessibility browser launch', () => {
             readySelector: '#ready',
             readyTimeout: 123,
             delay: 500,
-            cookiePath: '/tmp/visreg-cookies.json',
             removeSelectors: ['.visreg-remove'],
             hideSelectors: ['.visreg-hide'],
           },
@@ -606,9 +607,12 @@ function fakeBrowser(options: { events?: string[] } = {}) {
     detach: jest.fn(async () => { events?.push('cdp:detach'); }),
   };
   const context = {
+    // clearBrowserData creates a throwaway page (before the real one, now that
+    // pre-nav setup runs before the page is created), so the first newPage is
+    // the reset page and the real page comes after.
     newPage: jest.fn()
-      .mockResolvedValueOnce(page)
-      .mockResolvedValue(resetPage),
+      .mockResolvedValueOnce(resetPage)
+      .mockResolvedValue(page),
     newCDPSession: jest.fn(async () => cdpSession),
     clearCookies: jest.fn(async () => { events?.push('clearCookies'); }),
     addCookies: jest.fn(async () => {}),

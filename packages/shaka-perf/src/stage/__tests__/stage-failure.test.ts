@@ -8,7 +8,7 @@
  */
 
 import { attachLatestTestAnnotation } from '../../test-annotation';
-import { findLastAnnotation, StageFailureError } from '../stage-failure';
+import { findFailureArtifacts, findLastAnnotation, StageFailureError } from '../stage-failure';
 
 describe('StageFailureError', () => {
   it('surfaces the underlying cause stack without wrapper frames', () => {
@@ -40,6 +40,33 @@ describe('StageFailureError', () => {
     expect(err.message).toBe('Failed while waiting for the validation result');
     expect(findLastAnnotation(err)).toBe('Submit cart');
     expect(err.stack).toContain('at waitForValidation (ab-tests/popmenu-order-cart.abtest.ts:101:9)');
+  });
+
+  it('finds the failure artifacts on a bare StageFailureError', () => {
+    const err = new StageFailureError(new Error('boom'), { media: 'data:image/png;base64,abc' });
+
+    expect(findFailureArtifacts(err)?.media).toBe('data:image/png;base64,abc');
+  });
+
+  it('finds the failure artifacts through the worker pool\'s poison wrapper', () => {
+    // A stage that throws from inside a pool task has its StageFailureError
+    // wrapped once the retry budget is spent. An `instanceof` check on the
+    // outer error drops the media — which is how visreg failures reached the
+    // report with no error screenshot.
+    const stageFailure = new StageFailureError(new Error('page.waitForSelector: Timeout'), {
+      media: 'data:image/png;base64,abc',
+    });
+    const poison = new Error('worker 0 exhausted 1 consecutive attempts; cancelling test+viewport', {
+      cause: stageFailure,
+    });
+
+    expect(poison instanceof StageFailureError).toBe(false);
+    expect(findFailureArtifacts(poison)?.media).toBe('data:image/png;base64,abc');
+  });
+
+  it('returns undefined when nothing in the chain carries artifacts', () => {
+    expect(findFailureArtifacts(new Error('plain'))).toBeUndefined();
+    expect(findFailureArtifacts(new Error('outer', { cause: new Error('inner') }))).toBeUndefined();
   });
 
   it('keeps multi-line Playwright call logs only in the cause stack', () => {

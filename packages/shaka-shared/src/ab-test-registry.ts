@@ -42,6 +42,17 @@ export const PHONE_VIEWPORT: Viewport = { label: 'phone', width: 375, height: 66
 export const TABLET_VIEWPORT: Viewport = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile', deviceScaleFactor: 3 };
 export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop', deviceScaleFactor: 1 };
 
+// Tall counterparts of the canonical devices. Visreg captures a CSS-selector
+// element clipped to its bounding box WITHIN the current viewport and no longer
+// resizes the page to fit it, so an element taller than the viewport runs at one
+// of these instead: add it to `shared.viewports` + the category's `viewports`,
+// then narrow per-test via `options.viewports`. The width matches the base
+// device; only the height grows. (formFactor/deviceScaleFactor only feed
+// perf/Lighthouse; visreg ignores them.)
+export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 9000, formFactor: 'desktop', deviceScaleFactor: 1 };
+
 export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit';
 
 export interface TestFnContext {
@@ -91,33 +102,26 @@ export interface AbTestVisregConfig {
   compareRetries?: number;
   compareRetryDelay?: number;
   comparePixelmatchThreshold?: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 
   // Ready state (from Scenario)
   readyEvent?: string;
   readySelector?: string;
   readyTimeout?: number;
   delay?: number;
-
-  // Cookies
-  cookiePath?: string;
 }
 
 /**
- * Context handed to a `beforeNavigate` hook. Runs BEFORE the engine navigates,
- * so the page may not exist yet — `context` (the Playwright `BrowserContext`)
- * is always present and is the right surface for pre-nav setup that must cover
- * the first navigation and any subframes: `installRequestBlocking(context, ...)`,
- * `addInitScript`, cookies, extra HTTP headers. Avoid Playwright `route()` for
- * perf request blocking because request interception disables Chromium's HTTP
- * cache. `page` is provided only by engines that have one pre-nav (visreg); it
- * is absent on the Lighthouse path (audit/perf), where Lighthouse owns page
- * creation.
+ * Context handed to a `beforeNavigate` hook. Runs BEFORE the page is created on
+ * every engine, so `context` (the Playwright `BrowserContext`) is the only
+ * surface — and the right one for pre-nav setup that must cover the first
+ * navigation and any subframes: `installRequestBlocking(context, ...)`,
+ * `context.addInitScript(...)`, cookies, extra HTTP headers. Init scripts and
+ * routes registered on the context apply to every page it opens next, so no
+ * pre-nav page is needed. Avoid Playwright `route()` for perf request blocking
+ * because request interception disables Chromium's HTTP cache.
  */
 export interface BeforeNavigateContext {
   context: BrowserContext;
-  /** Present only when the engine already has a page pre-nav (visreg). */
-  page?: Page;
   /** The URL about to be navigated for this side. */
   url: string;
   viewport: Viewport;
@@ -127,6 +131,13 @@ export interface BeforeNavigateContext {
 
 export type BeforeNavigateHook = (
   ctx: BeforeNavigateContext,
+  /**
+   * The global `shared.beforeNavigate` hook (a no-op if none is configured),
+   * handed ONLY to a per-test hook so it can decide whether/when to run the
+   * global pre-nav setup — call `runGlobalBeforeNavigate(ctx)`, or skip it to
+   * opt out. When a test has NO per-test hook, the global runs on its own.
+   */
+  runGlobalBeforeNavigate?: BeforeNavigateHook,
 ) => void | Promise<void>;
 
 export interface AbTestAccessibilityConfig {
@@ -145,8 +156,14 @@ export interface AbTestOptions {
    * Runs before this test's page is navigated, on every engine. Use for
    * per-page pre-nav setup — most commonly aborting third-party resources that
    * never resolve in the sandbox (e.g. `installRequestBlocking(context,
-   * ['/recaptcha/'])`), but also cookies, headers, or init scripts. Runs AFTER
-   * the global `shared.beforeNavigate` (if any). See `BeforeNavigateContext`.
+   * ['/recaptcha/'])`), but also cookies, headers, or init scripts.
+   *
+   * When present, this hook REPLACES the automatic run of the global
+   * `shared.beforeNavigate`: it receives the global as a second argument and
+   * decides whether to invoke it. To keep the global setup, call it — usually
+   * first — then do your own work:
+   * `async (ctx, runGlobal) => { await runGlobal(ctx); ... }`. Omit the call to
+   * opt out of the global for this test. See `BeforeNavigateContext`.
    */
   beforeNavigate?: BeforeNavigateHook;
   /**
@@ -177,6 +194,12 @@ export interface AbTestDefinition {
   options: AbTestOptions;
   testTypes: TestType[] | null;
   testFn: (context: TestFnContext) => Promise<void>;
+  /**
+   * `--burn <n>` instance number (1-based); set by the runner.
+   * Dynamic data is deliberately mixed in the static config to not
+   * complicate the code.
+   */
+  burnIndex?: number;
 }
 
 // Store the registry on `globalThis` under a versioned Symbol.for key so that

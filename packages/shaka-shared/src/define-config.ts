@@ -53,8 +53,10 @@ export interface SharedConfigInput {
    *   beforeNavigate: ({ context }) =>
    *     installRequestBlocking(context, ['/recaptcha/'])
    *
-   * A per-test `beforeNavigate` (on `abTest()` options) runs after this one.
-   * See `BeforeNavigateContext`.
+   * A per-test `beforeNavigate` (on `abTest()` options), if present, RECEIVES
+   * this hook as a second argument and decides whether to call it — so a test
+   * can extend, wrap, or opt out of the global setup. Tests with no per-test
+   * hook get this one automatically. See `BeforeNavigateContext`.
    */
   beforeNavigate?: BeforeNavigateHook;
 }

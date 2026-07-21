@@ -18,7 +18,6 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
 - [Advanced Scenarios](#advanced-scenarios)
   - [Click and Hover Interactions](#click-and-hover-interactions)
   - [Key Press Interactions](#key-press-interactions)
-  - [Setting Cookies](#setting-cookies)
   - [Targeting Elements](#targeting-elements)
   - [Testing SPAs and Ajax Content](#testing-spas-and-ajax-content)
   - [Dealing with Dynamic Content](#dealing-with-dynamic-content)
@@ -124,7 +123,6 @@ Per-test visreg options go under `options.visreg` on each `abTest(...)` call. Th
 | Property                | Description                                                                                                                                         |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `onBefore`              | Lifecycle hook — runs before page navigation. Use to set up cookies, auth state, etc.                                                               |
-| `cookiePath`            | Import cookies in JSON format (see [Setting Cookies](#setting-cookies))                                                                             |
 | `readyEvent`            | Wait until this string has been logged to the console                                                                                               |
 | `readySelector`         | Wait until this selector exists before continuing                                                                                                   |
 | `readyTimeout`          | Timeout for readyEvent and readySelector (default: 30000ms)                                                                                         |
@@ -188,14 +186,19 @@ keyPressSelectors: [
 
 ### Setting Cookies
 
-Use `cookiePath` to import a JSON cookie file before the page loads:
+Seed cookies (and localStorage/auth) before the page loads from a `beforeNavigate`
+hook — `shared.beforeNavigate` in the config for every test, or per-test
+`options.beforeNavigate`. It runs on the Playwright `BrowserContext` after the
+per-run state clear, so what you seed survives into the navigation:
 
 ```ts
-cookiePath: 'visreg_data/cookies/cookies.json'
+options: {
+  beforeNavigate: async ({ context, url }) => {
+    await context.addCookies([{ name: 'session', value: '…', url }]);
+    // localStorage/auth too, via context.addInitScript(...)
+  },
+},
 ```
-
-> [!NOTE]
-> Path is relative to your current working directory.
 
 ### Targeting Elements
 
@@ -293,14 +296,16 @@ Use the `onBefore` lifecycle hook on a scenario to run custom Playwright code (s
 
 ```ts
 import { abTest } from 'shaka-shared';
-import { waitUntilPageSettled, loadCookies } from 'shaka-perf/visreg/helpers';
+import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Authenticated dashboard', {
   startingPath: '/dashboard',
   options: {
     visreg: {
-      onBefore: async ({ page }) => {
-        await loadCookies(page, { cookiePath: 'visreg_data/cookies/cookies.json' });
+      onBefore: async ({ browserContext }) => {
+        await browserContext.addCookies([
+          { name: 'session', value: '…', url: 'https://example.com' },
+        ]);
       },
     },
   },
@@ -315,7 +320,6 @@ The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 - `waitUntilPageSettled` — Wait for the page to fully render before screenshotting
 - `clickAndHoverHelper` — Apply click/hover selectors from the scenario
-- `loadCookies` — Load cookies from a JSON file into the browser context
 - `interceptImages` — Stub out image requests for deterministic captures
 - `overrideCSS` — Inject CSS into the page
 
@@ -323,14 +327,10 @@ The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 `shaka-perf visreg` uses Playwright as its rendering engine. It supports `chromium`, `firefox`, and `webkit` browsers via `engineOptions.browser`.
 
-The [storageState](https://playwright.dev/docs/api/class-browsercontext#browser-context-storage-state) config property is supported via `engineOptions`. This sets cookies _and_ localStorage variables before tests are run — very useful for pages that require authentication.
-
-```ts
-engineOptions: {
-  browser: 'chromium',
-  storageState: '/path/to/cookies-and-local-storage-file.json',
-}
-```
+To seed cookies, localStorage, or a logged-in session before tests run, use a
+`beforeNavigate` hook (see [Setting Cookies](#setting-cookies)) — the Playwright
+`BrowserContext` it receives can `addCookies(...)`, `addInitScript(...)`, set
+extra headers, and more.
 
 ### Playwright Option Flags
 
@@ -353,34 +353,13 @@ engineOptions: {
 
 ## Reporting
 
-Use the `report` property to enable report types:
+Visreg has no report of its own. Each engine invocation measures one test at one
+viewport and writes a `report.json` into that unit's artifacts directory, which
+`shaka-perf compare` harvests into the single self-contained
+`compare-results/report.html`. The path is printed to the terminal at the end of
+a run — copy-paste it into your browser.
 
-```ts
-report: ['browser', 'CI']
-```
-
-Available report types:
-
-- `"browser"` — Interactive HTML report with visual diff UI, scrubber, and scenario filtering
-- `"CI"` — JUnit XML report for CI integration (Jenkins, GitLab CI, etc.)
-- `"json"` — Machine-readable JSON report
-
-After a compare run, the full path to the HTML report is printed to the terminal — copy-paste it into your browser to view.
-
-### CI Report Configuration
-
-Customize the JUnit report with:
-
-```ts
-paths: {
-  ciReport: 'visreg_data/ci_report',
-},
-ci: {
-  format: 'junit',
-  testReportFileName: 'myproject-xunit',
-  testSuiteName: 'shaka-perf-visreg',
-}
-```
+The compare runner pins where that `report.json` goes; the engine never chooses.
 
 ### Capturing Console Logs in Reports
 
@@ -445,7 +424,7 @@ This will also output your source payload to the terminal so you can verify the 
 For most projects, keeping reference files in source control is useful, but saving test screenshots is overkill. Add this to your `.gitignore`:
 
 ```
-visreg_data/html_report/
+compare-results/
 ```
 
 ## Programmatic Usage

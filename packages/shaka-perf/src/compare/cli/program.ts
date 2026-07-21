@@ -12,6 +12,7 @@ import { withAbTestsConfigPath } from '../../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
+import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
 import {
   comparePipelineConfigFromAbTests,
@@ -53,6 +54,7 @@ export async function createCompareCommand(): Promise<Command> {
     .option('--keep-old-results', 'Do not wipe compare-results/ before running. Engines still overwrite the files they produce, but unrelated artifacts from a prior run survive instead of being cleared.', false)
     .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
+    .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
     .option(
       '--filter <value>',
@@ -66,9 +68,14 @@ export async function createCompareCommand(): Promise<Command> {
       await withAbTestsConfigPath(configPath, async () => {
         const raw = configPath ? await loadAbTestsConfig(configPath) : {};
         const config = parseAbTestsConfig(raw);
-        const pipeline = createComparePipeline(comparePipelineConfigFromAbTests(config, {
-          testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
-        }));
+        const burn = parseBurnOption(opts.burn);
+        const pipeline = createComparePipeline({
+          ...comparePipelineConfigFromAbTests(config, {
+            testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
+          }),
+          // Burn replaces retries, visreg's best-of-N included.
+          ...(burn == null ? {} : { visregCompareRetries: 0 }),
+        });
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
         const result = await runPipeline(pipeline, {
           controlURL: opts.controlURL ?? config.shared.controlURL,
@@ -83,6 +90,7 @@ export async function createCompareCommand(): Promise<Command> {
           keepOldResults: opts.keepOldResults === true,
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
+          burn,
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,

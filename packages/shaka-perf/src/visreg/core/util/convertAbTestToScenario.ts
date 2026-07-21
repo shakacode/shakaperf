@@ -10,6 +10,7 @@
 import type { AbTestDefinition, Viewport as SharedViewport } from 'shaka-shared';
 import type { Scenario, Viewport } from '../types';
 import { resolveViewportsForTest } from '../../../pipeline/viewport-plan';
+import { resolveUrl } from '../../../pipeline/unit-urls';
 
 export interface ScenarioUrls {
   readonly controlURL: string;
@@ -30,8 +31,8 @@ export function convertAbTestToScenario(
   const experimentPath = testDef.experimentPathOverride ?? testDef.startingPath;
   const scenario: Scenario = {
     label: testDef.name,
-    url: urls?.experimentURL ?? new URL(experimentPath, experimentURL).href,
-    referenceUrl: urls?.controlURL ?? new URL(testDef.startingPath, controlURL).href,
+    url: urls?.experimentURL ?? resolveUrl(experimentPath, experimentURL),
+    referenceUrl: urls?.controlURL ?? resolveUrl(testDef.startingPath, controlURL),
     selectors: visreg.selectors ?? ['document'],
     _testFn: testDef.testFn,
     _testDef: testDef,
@@ -55,14 +56,11 @@ export function convertAbTestToScenario(
   if (visreg.compareRetries != null) scenario.compareRetries = visreg.compareRetries;
   if (visreg.compareRetryDelay != null) scenario.compareRetryDelay = visreg.compareRetryDelay;
   if (visreg.comparePixelmatchThreshold != null) scenario.comparePixelmatchThreshold = visreg.comparePixelmatchThreshold;
-  if (visreg.useBoundingBoxViewportForSelectors != null) scenario.useBoundingBoxViewportForSelectors = visreg.useBoundingBoxViewportForSelectors;
 
   if (visreg.readyEvent) scenario.readyEvent = visreg.readyEvent;
   if (visreg.readySelector) scenario.readySelector = visreg.readySelector;
   if (visreg.readyTimeout != null) scenario.readyTimeout = visreg.readyTimeout;
   if (visreg.delay != null) scenario.delay = visreg.delay;
-
-  if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
 
   const narrow = testDef.options.viewports;
   if (narrow && narrow.length > 0 && categoryViewports.length > 0) {

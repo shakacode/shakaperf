@@ -9,7 +9,6 @@
 
 import path from 'node:path';
 import temp from 'temp';
-import { getGitRunId } from './gitRunId';
 import type { RuntimeConfig, VisregConfig } from '../types';
 
 // At runtime this file is at dist/visreg/core/util/, package.json is 4 levels up
@@ -17,18 +16,12 @@ const packageJson = require('../../../../package.json');
 const { version } = packageJson;
 
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  const runId = userConfig.dynamicTestId || getGitRunId();
-  config._runBaseDir = path.join(config.projectPath!, 'visreg_data', runId);
-
+  artifactPaths(config, userConfig);
   ci(config, userConfig);
-  htmlReport(config, userConfig);
-  screenshotPaths(config, userConfig);
-  jsonReport(config, userConfig);
   tempCompareConfigPath(config);
 
   config.id = userConfig.id;
   config.engine = userConfig.engine || null;
-  config.report = userConfig.report || ['browser'];
   config.viewports = userConfig.viewports || [];
   config.defaultMisMatchThreshold = 0.1;
   config.debug = userConfig.debug || false;
@@ -45,23 +38,34 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   return config;
 }
 
-function screenshotPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  // The caller (e.g. the compare stage) can pin these to the per-unit dir so
-  // accumulated frames live under the unit's artifacts and are cleaned by the
-  // runner's generic per-test wipe. Otherwise they default to flat scratch dirs
-  // under the html-report root. Plural names: each dir holds MANY frames per
-  // comparison (the crash-resumable accumulation), not one.
-  config.controlScreenshotDir = userConfig.paths?.controlScreenshots
-    || path.join(config.htmlReportDir!, 'control_screenshots');
-  config.experimentScreenshotDir = userConfig.paths?.experimentScreenshots
-    || path.join(config.htmlReportDir!, 'experiment_screenshots');
+/**
+ * Everything this invocation writes lives under `paths.artifacts` — the dir the
+ * caller pinned. Derived here, not negotiated field by field: the caller says
+ * WHERE, the engine owns the layout beneath it.
+ *
+ * The config crosses a serialize boundary (the compare stage writes a temp .js
+ * module that's `require`d back and cast), so the type is a promise the
+ * compiler can't keep — hence the runtime check. It throws rather than
+ * defaulting: a fallback here silently scatters a unit's output somewhere the
+ * caller isn't reading, which reads as "produced no artifacts".
+ */
+function artifactPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
+  const artifacts = userConfig.paths?.artifacts;
+  if (typeof artifacts !== 'string' || artifacts.length === 0) {
+    throw new Error(
+      'visreg engine: no paths.artifacts provided. The unified compare runner ' +
+      '(shaka-perf compare) pins the dir to write into — call the engine ' +
+      'through that entry point.',
+    );
+  }
+  config.unitArtifactsDir = artifacts;
+  // Plural: each dir holds MANY frames per comparison (the crash-resumable
+  // accumulation), not one.
+  config.controlScreenshotDir = path.join(artifacts, 'control_screenshots');
+  config.experimentScreenshotDir = path.join(artifacts, 'experiment_screenshots');
 }
 
 function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.ciReportDir = path.join(config._runBaseDir!, 'ci_report');
-  if (userConfig.paths) {
-    config.ciReportDir = userConfig.paths.ciReport || config.ciReportDir;
-  }
   config.ciReport = {
     format: 'junit',
     testReportFileName: 'xunit',
@@ -75,30 +79,6 @@ function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<s
       testSuiteName: userConfig.ci.testSuiteName || config.ciReport.testSuiteName
     };
   }
-}
-
-// `htmlReportDir` is the scratch directory the visreg engine writes
-// `report.json` and screenshot PNGs into. The standalone visreg viewer
-// (its index.html template, JSONP shim, and reports archive) was removed
-// when the unified `shaka-perf compare` report took over display, so this
-// is no longer a user-facing report directory — just an intermediate
-// staging area the compare harvester reads from.
-function htmlReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  const baseDir = config._runBaseDir!;
-  config.htmlReportDir = path.join(baseDir, 'html_report');
-
-  if (userConfig.paths) {
-    config.htmlReportDir = userConfig.paths.htmlReport || config.htmlReportDir;
-  }
-}
-
-function jsonReport (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.jsonReportDir = path.join(config._runBaseDir!, 'json_report');
-  if (userConfig.paths) {
-    config.jsonReportDir = userConfig.paths.jsonReport || config.jsonReportDir;
-  }
-
-  config.compareJsonFileName = path.join(config.jsonReportDir!, 'jsonReport.json');
 }
 
 function tempCompareConfigPath (config: Partial<RuntimeConfig>) {

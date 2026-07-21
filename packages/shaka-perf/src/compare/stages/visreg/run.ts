@@ -46,9 +46,12 @@ export async function runVisregUnit(
       : {}),
   };
 
-  fs.mkdirSync(ctx.runtime.resultsRoot, { recursive: true });
-  const unitArtifactsDir = path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId, 'artifacts');
-  const configPath = writeTempVisregConfig(visregConfig, ctx.runtime.resultsRoot, unitArtifactsDir);
+  // Where this unit's artifacts go, straight from the framework — it already
+  // resolved the dir for this test, viewport and `--burn` instance. Never
+  // rebuild the path: doing so is what let burn drift the engine's output away
+  // from where we read it back.
+  const unitArtifactsDir = ctx.artifacts.dir;
+  const configPath = writeTempVisregConfig(visregConfig, unitArtifactsDir);
 
   const startedAt = Date.now();
   try {
@@ -61,8 +64,7 @@ export async function runVisregUnit(
       filter: exactTestNameFilter(ctx.test),
     });
     const artifactSet = await readVisregArtifacts({
-      resultsRoot: ctx.runtime.resultsRoot,
-      slug: ctx.testAndViewportId,
+      artifactsDir: unitArtifactsDir,
       viewport: ctx.viewport,
     });
     if (!artifactSet) {
@@ -78,7 +80,7 @@ export async function runVisregUnit(
     // approximation of "what the browser saw before tearing down." Pick
     // the newest PNG written since this unit started so we don't pull in
     // a stale screenshot from a previous test.
-    const captured = await captureVisregFailureScreenshot(ctx, startedAt);
+    const captured = await captureVisregFailureScreenshot(ctx, unitArtifactsDir, startedAt);
     if (captured) {
       throw new StageFailureError(err, { media: captured });
     }
@@ -90,11 +92,12 @@ export async function runVisregUnit(
 
 async function captureVisregFailureScreenshot(
   ctx: TestContext,
+  unitArtifactsDir: string,
   sinceMs: number,
 ): Promise<string | undefined> {
   const candidates = [
-    path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId, 'artifacts', 'experiment_screenshots'),
-    path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId, 'artifacts', 'control_screenshots'),
+    path.join(unitArtifactsDir, 'experiment_screenshots'),
+    path.join(unitArtifactsDir, 'control_screenshots'),
   ];
   let best: { path: string; mtimeMs: number } | undefined;
   for (const root of candidates) {
@@ -142,22 +145,18 @@ function walkPngs(root: string, visit: (filePath: string, mtimeMs: number) => vo
 
 function writeTempVisregConfig(
   visregConfig: VisregConfig,
-  htmlReportDir: string,
   unitArtifactsDir: string,
 ): string {
   const payload = {
     ...visregConfig,
     asyncCaptureLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
     asyncCompareLimit: SINGLE_UNIT_ENGINE_PARALLELISM,
-    paths: {
-      htmlReport: htmlReportDir,
-      // Accumulate screenshots under THIS unit's artifacts dir, so the runner's
-      // generic per-test wipe (rmSync of the unit dir) clears them — no
-      // visreg-specific cleanup anywhere. The report reads from these same dirs.
-      controlScreenshots: path.join(unitArtifactsDir, 'control_screenshots'),
-      experimentScreenshots: path.join(unitArtifactsDir, 'experiment_screenshots'),
-    },
-    report: ['browser'],
+    // The one output location the engine gets: everything it writes goes under
+    // this unit's artifacts dir, so the runner's generic per-test wipe (rmSync
+    // of the unit dir) clears it — no visreg-specific cleanup anywhere. We read
+    // the results back from here (readVisregArtifacts); the engine owns the
+    // layout beneath it.
+    paths: { artifacts: unitArtifactsDir },
   };
   const hash = crypto.randomBytes(6).toString('hex');
   const tempPath = path.join(os.tmpdir(), `shaka-perf-visreg-${hash}.js`);

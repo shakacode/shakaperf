@@ -152,8 +152,8 @@ function coerceNumber(value: unknown): number {
 }
 
 export interface ReadVisregArtifactsOptions {
-  resultsRoot: string;
-  slug: string;
+  /** The unit's artifacts dir, as handed to the stage by the framework. */
+  artifactsDir: string;
   viewport: Viewport;
 }
 
@@ -162,14 +162,21 @@ export interface VisregArtifactSet {
 }
 
 /**
- * Reads the per-test visreg report.json for a single (slug, viewport) and
- * returns stage artifacts. Returns null if no report.json exists for
- * that pair — typically means the test wasn't measured at this viewport
- * (either the shard didn't run it or visreg filtered it out).
+ * Harvests one unit's engine output into the stage's measurement: reads the
+ * report.json the engine wrote into `artifactsDir`, and turns each captured
+ * pair into a `VisregArtifact` with its images inlined as data URIs (the report
+ * shell is single-file HTML and can't resolve sibling files).
+ *
+ * The reader half of a pair whose writer is the visreg engine's report command.
+ * Both take this dir from the framework (`ctx.artifacts.dir`) rather than
+ * deriving it, so they cannot drift apart.
+ *
+ * Returns null when there is no report.json — the test wasn't measured here
+ * (the shard didn't run it, or visreg filtered it out). Throws if one exists
+ * but is unreadable, so a corrupt run can't masquerade as an unmeasured one.
  */
 export async function readVisregArtifacts(opts: ReadVisregArtifactsOptions): Promise<VisregArtifactSet | null> {
-  const { resultsRoot, slug, viewport } = opts;
-  const perTestDir = path.join(resultsRoot, slug, 'artifacts');
+  const { artifactsDir: perTestDir, viewport } = opts;
   const reportPath = path.join(perTestDir, 'report.json');
   if (!fs.existsSync(reportPath)) return null;
 

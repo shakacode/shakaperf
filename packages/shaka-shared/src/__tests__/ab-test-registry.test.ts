@@ -217,7 +217,6 @@ describe('ab-test-registry', () => {
               readySelector: '#root',
               readyTimeout: 10000,
               delay: 200,
-              cookiePath: 'cookies.json',
             },
             viewports: ['desktop'],
           },

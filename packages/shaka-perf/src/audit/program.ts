@@ -15,6 +15,7 @@ import { withAbTestsConfigPath } from '../before-navigate';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
 import { parseAbTestsConfig, viewportsByStageCategory } from '../config';
 import { runPipeline } from '../pipeline/runner';
+import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
 import { auditPipelineMetadata, createAuditPipeline } from './pipeline';
 
@@ -57,6 +58,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .option('--debug-show-all-frames', 'Diagnostics: also render the FULL, non-deduped screencast timeline alongside the normal (deduped) one. Every synced frame is shown, each annotated with the pixel diff vs the previous frame (the signal the dedupe uses to decide what to drop). Off by default — produces a much heavier report.', false)
     .option('--full-report-zip', 'After the run, bundle the full report and all its artifacts into full-report.zip. Off by default — the archive can be large.', false)
     .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
+    .option('--burn <number>', BURN_OPTION_DESCRIPTION)
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
@@ -91,6 +93,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           debugShowAllFrames: opts.debugShowAllFrames === true,
           fullReportZip: opts.fullReportZip === true,
           headed: opts.headed === true,
+          burn: parseBurnOption(opts.burn),
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,

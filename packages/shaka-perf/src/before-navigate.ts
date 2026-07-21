@@ -94,16 +94,25 @@ export async function withAbTestsConfigPath<T>(
 }
 
 /**
- * Run the global (`shared.beforeNavigate`) then the per-test
- * (`abTest()` options `beforeNavigate`) hooks, in that order. MUST be awaited
- * before the engine navigates. Throws if a hook throws — a setup hook that
- * fails should fail the test, not be silently swallowed.
+ * Run the `beforeNavigate` hooks. MUST be awaited before the engine navigates.
+ * Throws if a hook throws — a setup hook that fails should fail the test, not
+ * be silently swallowed.
+ *
+ * The per-test hook (`abTest()` options `beforeNavigate`) OWNS the global
+ * (`shared.beforeNavigate`): it receives it as a second argument and decides
+ * whether to run it (`await runGlobalBeforeNavigate(ctx)`), when, or not at all.
+ * When a test has no per-test hook, the global runs on its own — so the common
+ * case is unchanged.
  */
 export async function runBeforeNavigateHooks(
   ctx: BeforeNavigateContext,
   perTestHook: BeforeNavigateHook | undefined,
 ): Promise<void> {
   const globalHook = await resolveGlobalBeforeNavigate();
-  if (globalHook) await globalHook(ctx);
-  if (perTestHook) await perTestHook(ctx);
+  const runGlobal: BeforeNavigateHook = globalHook ?? (() => {});
+  if (perTestHook) {
+    await perTestHook(ctx, runGlobal);
+  } else {
+    await runGlobal(ctx);
+  }
 }

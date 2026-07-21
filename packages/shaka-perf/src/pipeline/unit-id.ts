@@ -14,6 +14,16 @@ export function slugifyForPath(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'test';
 }
 
+/**
+ * Appended, never hashed. The suffix alone makes burn instances unique, whereas
+ * adding the index to the hash source perturbs non-burn ids too (an extra `\0`
+ * in the join) — orphaning existing results dirs and silently breaking
+ * `--report-only` over them.
+ */
+function burnSuffix(test: AbTestDefinition): string {
+  return test.burnIndex == null ? '' : `-burn-${test.burnIndex}`;
+}
+
 export function unitIdForTest(test: AbTestDefinition, viewportLabel: string): string {
   const source = [
     test.file ?? '',
@@ -22,7 +32,7 @@ export function unitIdForTest(test: AbTestDefinition, viewportLabel: string): st
     viewportLabel,
   ].join('\0');
   const hash = crypto.createHash('sha256').update(source).digest('hex').slice(0, 8);
-  return `${slugifyForPath(test.name)}-${viewportLabel}-${hash}`;
+  return `${slugifyForPath(test.name)}-${viewportLabel}-${hash}${burnSuffix(test)}`;
 }
 
 export function testIdForTest(test: AbTestDefinition): string {
@@ -32,5 +42,5 @@ export function testIdForTest(test: AbTestDefinition): string {
     test.name,
   ].join('\0');
   const hash = crypto.createHash('sha256').update(source).digest('hex').slice(0, 8);
-  return `${slugifyForPath(test.name)}-${hash}`;
+  return `${slugifyForPath(test.name)}-${hash}${burnSuffix(test)}`;
 }

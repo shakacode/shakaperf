@@ -63,9 +63,6 @@ export interface Scenario {
   misMatchThreshold?: number;
   requireSameDimensions?: boolean;
 
-  // Cookies
-  cookiePath?: string;
-
   // Engine options override
   engineOptions?: Partial<EngineOptions>;
   gotoParameters?: Record<string, any>;
@@ -78,7 +75,6 @@ export interface Scenario {
   compareRetryDelay?: number;
   maxNumDiffPixels?: number;
   comparePixelmatchThreshold?: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 
   // Internal (set at runtime)
   sIndex?: number;
@@ -102,7 +98,6 @@ export interface EngineOptions {
   ignoreDefaultArgs?: string[];
   args?: string[];
   ignoreHTTPSErrors?: boolean;
-  storageState?: string | Record<string, unknown>;
   gotoParameters?: {
     waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
     timeout?: number;
@@ -129,13 +124,14 @@ export interface CIReport {
 
 // ── Paths ───────────────────────────────────────────────────────────
 export interface VisregPaths {
-  htmlReport?: string;
-  ciReport?: string;
-  jsonReport?: string;
-  /** Dir for accumulated control frames; defaults under htmlReport. */
-  controlScreenshots?: string;
-  /** Dir for accumulated experiment frames; defaults under htmlReport. */
-  experimentScreenshots?: string;
+  /**
+   * The one dir this invocation writes into — report.json, the moved PNGs, and
+   * the accumulated frame subdirs all live beneath it. Required: the caller
+   * (the compare stage) hands over the artifacts dir the framework resolved for
+   * this unit, and reads the results back from it. The caller says WHERE; the
+   * engine owns the layout underneath.
+   */
+  artifacts: string;
 }
 
 // ── User Config ───────────────────────────────────────────────────
@@ -179,8 +175,6 @@ export interface VisregConfig {
     testSuiteName?: string;
   };
 
-  useBoundingBoxViewportForSelectors?: boolean;
-
   // compare
   comparePixelmatchThreshold?: number;
 }
@@ -193,19 +187,18 @@ export interface RuntimeConfig {
   perf: Record<string, number>;
 
   configFileName: string;
+  /** `paths.artifacts` — the dir this invocation writes everything into. */
+  unitArtifactsDir: string;
+  /** `<unitArtifactsDir>/control_screenshots`. */
   controlScreenshotDir: string;
+  /** `<unitArtifactsDir>/experiment_screenshots`. */
   experimentScreenshotDir: string;
-  ciReportDir: string;
-  htmlReportDir: string;
-  jsonReportDir: string;
-  compareJsonFileName: string;
   tempCompareConfigFileName: string;
 
   ciReport: CIReport;
 
   id?: string;
   engine: string | null;
-  report: string[];
   defaultMisMatchThreshold: number;
   defaultRequireSameDimensions?: boolean;
   debug: boolean;
@@ -220,7 +213,6 @@ export interface RuntimeConfig {
   compareRetryDelay: number;
   maxNumDiffPixels: number;
 
-  _runBaseDir: string;
   isControl?: boolean;
 }
 
@@ -234,14 +226,12 @@ export interface DecoratedCompareConfig extends VisregConfig {
   env: RuntimeConfig;
   isControl: boolean;
   isCompare: boolean;
-  paths: VisregPaths;
   defaultMisMatchThreshold: number;
   configFileName: string;
   defaultRequireSameDimensions?: boolean;
   compareRetries: number;
   compareRetryDelay: number;
   maxNumDiffPixels: number;
-  useBoundingBoxViewportForSelectors?: boolean;
 }
 
 // ── Diff Result (from resemble.js comparison) ───────────────────────
@@ -299,19 +289,6 @@ export interface CompareConfig {
   testPairs: TestPair[];
 }
 
-// ── Cookie ──────────────────────────────────────────────────────────
-export interface VisregCookie {
-  name: string;
-  value: string;
-  domain?: string;
-  url?: string;
-  path?: string;
-  expires?: number;
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: 'Strict' | 'Lax' | 'None';
-}
-
 // ── Visreg Tools (injected into browser window) ──────────────────
 export interface VisregTools {
   expandSelectors: (selectors: string[] | string) => string[];
@@ -358,6 +335,4 @@ export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
     testReportFileName?: string;
     testSuiteName?: string;
   };
-
-  useBoundingBoxViewportForSelectors?: boolean;
 };

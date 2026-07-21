@@ -17,6 +17,9 @@ export {
   PHONE_VIEWPORT,
   TABLET_VIEWPORT,
   DESKTOP_VIEWPORT,
+  PHONE_TALL_VIEWPORT,
+  TABLET_TALL_VIEWPORT,
+  DESKTOP_TALL_VIEWPORT,
 } from './ab-test-registry';
 export type {
   AbTestDefinition,

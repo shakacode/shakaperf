@@ -7,6 +7,7 @@
  * License in LICENSE.md.
  */
 
+import { readFileSync } from 'node:fs';
 import { abTest } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
@@ -15,10 +16,18 @@ abTest('Admin Dashboard - Cookie Login', {
   testTypes: ['visreg'],
   options: {
     viewports: ['desktop'],
+    // Seed the admin auth cookie before navigation, on the context, so the
+    // first load is already authenticated. (Replaces the removed visreg
+    // `cookiePath` option; this config has no global `beforeNavigate` to chain.)
+    beforeNavigate: async ({ context }) => {
+      const cookies = JSON.parse(
+        readFileSync('visreg_data/cookies/admin-auth-cookie.json', 'utf-8'),
+      );
+      await context.addCookies(cookies);
+    },
     visreg: {
       delay: 50,
       misMatchThreshold: 0.1,
-      cookiePath: 'visreg_data/cookies/admin-auth-cookie.json',
     },
   },
 }, async ({ page, annotate, testType }) => {
@@ -29,12 +38,12 @@ abTest('Admin Dashboard - Cookie Login', {
   await page.waitForLoadState('networkidle');
 
   if (page.url().includes('/admin/login')) {
-    throw new Error('Expected admin auth from cookiePath, but user was redirected to /admin/login.');
+    throw new Error('Expected admin auth from the seeded cookie, but user was redirected to /admin/login.');
   }
 
   const loginFormVisible = await page.locator('[data-cy="admin-login-form"]').isVisible();
   if (loginFormVisible) {
-    throw new Error('Expected authenticated admin session from cookiePath, but login form is visible.');
+    throw new Error('Expected authenticated admin session from the seeded cookie, but login form is visible.');
   }
 
   annotate('Wait for admin dashboard to settle');

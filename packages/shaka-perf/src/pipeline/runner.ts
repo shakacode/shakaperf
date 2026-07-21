@@ -64,9 +64,10 @@ import type {
 import { WorkerPool, type WorkerTaskProgressSink } from './worker-pool';
 import type { StageSelection } from './pipeline';
 import { testIdForTest, unitIdForTest } from './unit-id';
+import { burnDisplayName, expandTestsForBurn } from './burn';
 import { ArtifactStore } from './artifact-store';
 import type { Outcome, ErrorInfo } from './outcome';
-import { StageFailureError, findLastAnnotation } from '../stage/stage-failure';
+import { findFailureArtifacts, findLastAnnotation } from '../stage/stage-failure';
 import { colorizedLogPrefix, testSourcePrefix } from '../visreg/core/util/testContext';
 import { attachStickyStatus, formatPoolProgress } from '../bench/cli/commands/compare/sticky-status';
 import { announceStage } from './announce-stage';
@@ -349,9 +350,18 @@ export interface RuntimeOptions {
    * Worker-pool crash retries — applied uniformly to every worker pool
    * the pipeline registers. Engine-level retries (e.g. visreg best-of-N
    * screenshot stability) are a stage knob and stay on pipeline config.
+   *
+   * Ignored under `burn`, which forces both to 0.
    */
   readonly retries: number;
   readonly retryDelay: number;
+  /**
+   * `--burn <n>`: run every test n times as independent instances, retries off
+   * (see `burn.ts`). Covers the framework's crash-retries, forced to 0 below;
+   * a stage's own retries are zeroed on the pipeline config by the CLI.
+   * Undefined = off.
+   */
+  readonly burn?: number | undefined;
   /**
    * Per-task wall-clock cap, applied uniformly to every worker pool.
    * Driven by `shared.timeoutMs`; stages never see this value — the pool
@@ -431,16 +441,28 @@ async function runConfiguredPipelineWithSelection(
   // full-suite assembly path: it runs no tests, deletes nothing, and rebuilds
   // from whatever per-test artifacts already exist on disk.
   const frozenTests = runtime.tests ? [...runtime.tests] : null;
-  const runTests = runtime.reportOnly
+  // `let`: burn expansion below reassigns these in place.
+  let runTests = runtime.reportOnly
     ? []
     : frozenTests ?? await loadTests({
         testPathPattern: runtime.testPathPattern,
         filter: runtime.filter,
         log: (msg) => console.log(msg),
       });
-  const reportTests = runtime.reportOnly
+  let reportTests = runtime.reportOnly
     ? frozenTests ?? await loadTests({ log: (msg) => console.log(msg) })
     : runTests;
+
+  // Fan each test into its burn instances once, at the only place tests enter
+  // the runner; everything downstream keys off the test object, so this single
+  // expansion separates units, dirs, outcomes, chips and cards alike.
+  if (runtime.burn != null) {
+    runTests = expandTestsForBurn(runTests, runtime.burn);
+    // Outside --report-only the two are the same instances; keep it that way.
+    reportTests = runtime.reportOnly
+      ? expandTestsForBurn(reportTests, runtime.burn)
+      : runTests;
+  }
 
   // Ensure the results root exists without wiping prior artifacts. CI shards
   // (`skipReport`) and the final assembly run (`reportOnly`) both rely on
@@ -458,6 +480,16 @@ async function runConfiguredPipelineWithSelection(
     // shard pass against the same dir.
     if (!runtime.skipReport) {
       wipePersistedEngineErrors(resultsRoot);
+      // Pipeline-declared run-level derived dirs (e.g. audit's `.nyc_output/`,
+      // accumulated into by every unit) follow the same rules as the unit-dir
+      // wipe below: cleared only on a fresh local measuring run. Shards
+      // (`--skip-report`) share these dirs, so they are excluded above, and
+      // --keep-old-results / restart layer onto prior artifacts on purpose.
+      if (!preserveOldResults) {
+        for (const dir of pipeline.derivedResultsDirs ?? []) {
+          fs.rmSync(path.join(resultsRoot, dir), { recursive: true, force: true });
+        }
+      }
     }
   }
 
@@ -539,7 +571,9 @@ async function runConfiguredPipelineWithSelection(
       if (runtimePool) return runtimePool;
       const pool = new WorkerPool(ref.parallelism, {
         currentTaskProgress: () => stageTaskProgressStorage.getStore(),
-        retries: runtime.retries,
+        // Burn replaces retries: 0 makes the pool terminal on the first
+        // throw, so an instance's raw outcome is the measurement.
+        retries: runtime.burn == null ? runtime.retries : 0,
         retryDelay: runtime.retryDelay,
         timeoutMs: runtime.timeoutMs,
       });
@@ -638,7 +672,7 @@ async function runConfiguredPipelineWithSelection(
       const idx = String(assembledCount).padStart(String(reportTests.length).length, ' ');
       const sizeMb = (resultBytes(partial.partialResult) / 1024 / 1024).toFixed(1);
       console.log(
-        `    [${idx}/${reportTests.length}] ${test.name} ` +
+        `    [${idx}/${reportTests.length}] ${burnDisplayName(test)} ` +
         `(${((Date.now() - t0) / 1000).toFixed(1)}s, ` +
         `${sizeMb} MB)`,
       );
@@ -994,11 +1028,15 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
       ...(failedAttempts > 0 ? { recoveredAfterRetries: true } : {}),
     };
   } catch (err) {
+    // Walk the cause chain, don't instanceof: a stage that throws from inside a
+    // pool task gets its StageFailureError wrapped in the pool's poison error,
+    // which would drop the failure media on the floor.
+    const failure = findFailureArtifacts(err);
     outcome = {
       kind: 'error',
       stage: stage.name,
       error: errorInfo(err),
-      ...(err instanceof StageFailureError ? { failure: err.failureArtifacts } : {}),
+      ...(failure ? { failure } : {}),
     };
   }
 
@@ -1333,7 +1371,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     hasError,
     partialResult: {
       id: testIdForTest(test),
-      name: test.name,
+      name: burnDisplayName(test),
       filePath: relFilePath,
       startingPath: test.startingPath,
       controlUrl: resolveUrl(test.startingPath, controlURL),

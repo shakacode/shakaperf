@@ -13,8 +13,7 @@ import type { AxeResults } from 'axe-core';
 import sharp from 'sharp';
 import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
-import { runBeforeNavigateHooks } from '../../../before-navigate';
-import { clearBrowserData } from '../../../bench/core/clear-browser-data';
+import { setUpContextForNavigation } from '../../../pre-navigation';
 import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { TestContext } from '../../../stage/stage';
@@ -107,12 +106,23 @@ export async function scanAccessibilityPage(
       // Real-Chrome only: serve the phone layout (no-op headless).
       ...realChromeMobileEmulation(ctx.viewport.formFactor),
     });
+    // Clear state and run the beforeNavigate hooks on the context BEFORE the page
+    // is created, uniform with the other engines — context init scripts/routes
+    // then cover the page's first navigation.
+    await setUpContextForNavigation({
+      context,
+      url: options.url,
+      viewport: ctx.viewport,
+      isControl: options.isControl,
+      testType: 'accessibility',
+      beforeNavigate: ctx.test.options.beforeNavigate,
+    });
     page = await context.newPage();
     if (config.engineOptions.waitTimeout) {
       page.setDefaultTimeout(config.engineOptions.waitTimeout);
       page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
     }
-    await prepareAccessibilityPage(page, context, ctx, config, options);
+    await navigateAccessibilityPage(page, context, ctx, config, options);
 
     let builder = new AxeBuilder({ page });
     if (effective.includeRules && effective.includeRules.length > 0) {
@@ -212,26 +222,13 @@ export async function captureAccessibilityFailureMedia(
   }
 }
 
-async function prepareAccessibilityPage(
+async function navigateAccessibilityPage(
   page: Page,
   context: BrowserContext,
   ctx: TestContext,
   config: AccessibilityStageConfig,
   options: AccessibilityPageScanOptions,
 ): Promise<void> {
-  await context.clearCookies();
-  await runBeforeNavigateHooks(
-    {
-      context,
-      page,
-      url: options.url,
-      viewport: ctx.viewport,
-      isControl: options.isControl,
-      testType: 'accessibility',
-    },
-    ctx.test.options.beforeNavigate,
-  );
-  await clearBrowserData(context, options.url);
   await page.goto(options.url, accessibilityGotoOptions(config));
   await waitForBotWallToClear(page);
   await runWithLastAnnotation((annotate) =>
