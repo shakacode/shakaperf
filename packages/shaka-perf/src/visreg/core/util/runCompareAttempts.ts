@@ -16,7 +16,9 @@ import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
-import type { Browser, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
+import { loadCookies } from '../../capture/helpers/loadCookies';
+import { runBeforeNavigateHooks } from '../../../before-navigate';
+import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
 
@@ -34,7 +36,7 @@ type PreparePageFn = (...args: unknown[]) => Promise<{
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
   captureScreenshot: CaptureScreenshotFn;
-  createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport) => Promise<ComparisonSide>;
+  createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -111,12 +113,23 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
+    // Pre-nav setup for a side: cookie loading then the beforeNavigate hooks,
+    // run on the context BEFORE its page is created (via createComparisonSide's
+    // onContextReady) so both are in place ahead of the page's first navigation.
+    const setUpSide = (url: string, isControl: boolean) => async (context: BrowserContext): Promise<void> => {
+      if (scenario.cookiePath) await loadCookies(context, scenario);
+      await runBeforeNavigateHooks(
+        { context, url, viewport, isControl, testType: 'visreg' },
+        scenario._testDef?.options?.beforeNavigate,
+      );
+    };
+
     // Two throwaway sides per attempt, torn down on every exit path.
     const sides: ComparisonSide[] = [];
     try {
-      const refSide = await createSide(browser, config, viewport);
+      const refSide = await createSide(browser, config, viewport, setUpSide(scenario.referenceUrl!, true));
       sides.push(refSide);
-      const testSide = await createSide(browser, config, viewport);
+      const testSide = await createSide(browser, config, viewport, setUpSide(scenario.url, false));
       sides.push(testSide);
 
       // Navigate + prepare both pages (runs the scenario's testFn), with

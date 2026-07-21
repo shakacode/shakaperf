@@ -33,11 +33,16 @@ export interface ComparisonSide {
  * identically. If they derived options independently they could drift (a new
  * `newContext` option added to one path but not the other), and retries would
  * render in a subtly different environment — reintroducing false diffs.
+ *
+ * `onContextReady` runs after the context is built but BEFORE the page is
+ * created — the hook point for pre-nav setup (cookie loading, beforeNavigate
+ * hooks) that must be in place before the page's first navigation.
  */
 export async function createComparisonSide(
   browser: Browser,
   config: DecoratedCompareConfig,
   viewport: Viewport,
+  onContextReady?: (context: BrowserContext) => Promise<void>,
 ): Promise<ComparisonSide> {
   const { engineOptions = {} } = config;
   const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
@@ -46,17 +51,26 @@ export async function createComparisonSide(
   const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', DEFAULT_NAV_TIMEOUT);
 
   const context = await browser.newContext({ ignoreHTTPSErrors, storageState });
-  const page = await context.newPage();
-  const VP_W = viewport.width || viewport.viewport!.width;
-  const VP_H = viewport.height || viewport.viewport!.height;
-  await page.setViewportSize({ width: VP_W, height: VP_H });
-  page.setDefaultNavigationTimeout(navTimeout);
+  // From here on, anything that throws (a beforeNavigate hook, cookie loading,
+  // newPage) must close the context we just created — the caller only tracks it
+  // for teardown once we hand back a `dispose`, so an early throw would leak it.
+  try {
+    if (onContextReady) await onContextReady(context);
+    const page = await context.newPage();
+    const VP_W = viewport.width || viewport.viewport!.width;
+    const VP_H = viewport.height || viewport.viewport!.height;
+    await page.setViewportSize({ width: VP_W, height: VP_H });
+    page.setDefaultNavigationTimeout(navTimeout);
 
-  return {
-    context,
-    page,
-    dispose: async () => {
-      try { await context.close(); } catch { /* context may already be gone */ }
-    },
-  };
+    return {
+      context,
+      page,
+      dispose: async () => {
+        try { await context.close(); } catch { /* context may already be gone */ }
+      },
+    };
+  } catch (err) {
+    await context.close().catch(() => undefined);
+    throw err;
+  }
 }

@@ -14,8 +14,8 @@ describe('beforeNavigate hooks', function () {
       [
         'module.exports = {',
         '  shared: {',
-        '    beforeNavigate: async ({ page }) => {',
-        `      page.loadedFromConfig = ${JSON.stringify(marker)};`,
+        '    beforeNavigate: async ({ context }) => {',
+        `      context.loadedFromConfig = ${JSON.stringify(marker)};`,
         '    },',
         '  },',
         '};',
@@ -36,12 +36,11 @@ describe('beforeNavigate hooks', function () {
     jest.resetModules();
 
     const { runBeforeNavigateHooks } = await import('../src/before-navigate');
-    const page = {};
+    const context = {};
 
     await runBeforeNavigateHooks(
       {
-        context: {},
-        page,
+        context,
         url: 'http://localhost:3012/',
         viewport: { label: 'desktop' },
         isControl: false,
@@ -50,7 +49,7 @@ describe('beforeNavigate hooks', function () {
       undefined,
     );
 
-    assert.equal((page as { loadedFromConfig?: string }).loadedFromConfig, 'explicit');
+    assert.equal((context as { loadedFromConfig?: string }).loadedFromConfig, 'explicit');
   });
 
   it('reloads the global hook when the explicit config path changes', async function () {
@@ -60,13 +59,12 @@ describe('beforeNavigate hooks', function () {
     jest.resetModules();
 
     const { runBeforeNavigateHooks } = await import('../src/before-navigate');
-    const firstPage = {};
-    const secondPage = {};
+    const firstContext = {};
+    const secondContext = {};
 
     await runBeforeNavigateHooks(
       {
-        context: {},
-        page: firstPage,
+        context: firstContext,
         url: 'http://localhost:3012/',
         viewport: { label: 'desktop' },
         isControl: false,
@@ -79,8 +77,7 @@ describe('beforeNavigate hooks', function () {
 
     await runBeforeNavigateHooks(
       {
-        context: {},
-        page: secondPage,
+        context: secondContext,
         url: 'http://localhost:3012/',
         viewport: { label: 'desktop' },
         isControl: false,
@@ -89,8 +86,8 @@ describe('beforeNavigate hooks', function () {
       undefined,
     );
 
-    assert.equal((firstPage as { loadedFromConfig?: string }).loadedFromConfig, 'first');
-    assert.equal((secondPage as { loadedFromConfig?: string }).loadedFromConfig, 'second');
+    assert.equal((firstContext as { loadedFromConfig?: string }).loadedFromConfig, 'first');
+    assert.equal((secondContext as { loadedFromConfig?: string }).loadedFromConfig, 'second');
   });
 
   it('restores the explicit config path after a scoped config run', async function () {
