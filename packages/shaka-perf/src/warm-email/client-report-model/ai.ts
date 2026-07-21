@@ -12,7 +12,7 @@ import {
   pageLead as agentPageLead,
   type AgentPageView,
 } from '../agent-ready-report';
-import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessSignals } from '../agent-ready-score';
+import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessScore, type SiteAccessSignals } from '../agent-ready-score';
 import { AI_INDUSTRY_DATA_STATS, aiCheckLine, aiHeadline, aiHeadlineSub, aiSingleCountLine, aiSiteWideContextLine } from '../cost-strings';
 import { buildCopyPrompt } from '../copy-prompt';
 import type {
@@ -23,6 +23,7 @@ import type {
   ClientReportStatus,
 } from '../client-report-renderer';
 import { MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO } from './cost';
+import { buildAgentUnderstanding } from './agent-understanding';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
 import { dashSafe, liveUrlFor } from './shared';
 
@@ -46,6 +47,8 @@ export interface AgentSection {
   agentSite?: ClientReportModel['agentSite'];
   agentCards: ClientReportAgentCard[];
   agentFine: ClientReportModel['agentFine'];
+  agentReading?: ClientReportModel['agentReading'];
+  agentUnderstanding?: ClientReportModel['agentUnderstanding'];
   agentStatus: ClientReportStatus;
   agentOverall: number;
   agentAccessBlocked: boolean;
@@ -150,6 +153,20 @@ function agentCardModel(view: AgentPageView, promptCtx: AgentPromptContext): Cli
   const copyPrompt = agentPromptForView(view, promptCtx, boundedCoveragePct(agentRawWords(view), agentRenderedWords(view)));
   if (copyPrompt) card.copyPrompt = copyPrompt;
   return card;
+}
+
+function agentReadingVerdict(
+  accessBlocked: boolean,
+  access: SiteAccessScore,
+  coveragePct: number | undefined,
+): NonNullable<ClientReportModel['agentReading']> {
+  const crawlerCheck = access.category.items.find((item) => item.label === 'AI answer crawlers allowed');
+  if (accessBlocked || crawlerCheck?.state === 'fail') return { status: 'poor', verdict: 'No - AI crawlers are blocked from your site.' };
+  if (coveragePct === undefined) return { status: 'poor', verdict: 'No - we could not confirm that AI can read the page the server sends.' };
+  if (coveragePct < 90) return { status: 'fair', verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.' };
+  if (crawlerCheck?.state === 'partial') return { status: 'fair', verdict: 'Only partly - some AI crawlers are not allowed in.' };
+  if (!crawlerCheck || crawlerCheck.state === 'na') return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
+  return { status: 'good', verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.' };
 }
 
 export function buildAgentSection(
@@ -299,6 +316,7 @@ export function buildAgentSection(
     };
   }
   const agentCards = cardViews.map((view) => agentCardModel(view, agentPromptCtx));
+  const agentUnderstanding = buildAgentUnderstanding(agentMeasurable);
   const firstGap = cardViews[0] ? agentPageFindings(cardViews[0].struct)[0] : undefined;
   const agentFine = fineViews.map((view) => ({
     name: view.page.name,
@@ -327,6 +345,8 @@ export function buildAgentSection(
     },
     agentCards,
     agentFine,
+    agentReading: agentReadingVerdict(overall.accessBlocked, overall.access, siteWideReadable),
+    agentUnderstanding,
     agentStatus,
     agentOverall: overall.overall,
     agentAccessBlocked: overall.accessBlocked,

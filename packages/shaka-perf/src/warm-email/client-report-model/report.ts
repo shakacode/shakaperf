@@ -232,6 +232,8 @@ export function assembleClientReportModel(
     ...(input.hasAgent && !agent.agentCouldNotMeasure ? { agentScore: agent.agentOverall } : {}),
     agentCards: agent.agentCards,
     agentFine: agent.agentFine,
+    ...(agent.agentReading ? { agentReading: agent.agentReading } : {}),
+    ...(agent.agentUnderstanding ? { agentUnderstanding: agent.agentUnderstanding } : {}),
     agentBlocked: agent.agentBlocked,
     agentCouldNotMeasure: agent.agentCouldNotMeasure,
     ...(perf.perfCost ? { perfCost: perf.perfCost } : {}),

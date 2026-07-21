@@ -2042,6 +2042,56 @@ describe('renderClientReportHtml', () => {
     expect(html).toContain('AI crawlers allowed');
   });
 
+  it('separates AI reading from machine understanding and escapes the new checklist data', () => {
+    const html = renderClientReportHtml(model({
+      agentCost: { tab: 'ai', state: 'zero', headlineSub: 'only 1614 of 1615 words present' },
+      agentReading: {
+        status: 'good',
+        verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+      },
+      agentUnderstanding: {
+        status: 'fair',
+        verdict: 'Only partly - the labels machines rely on are missing.',
+        items: [
+          {
+            label: 'Structured data',
+            status: 'fail',
+            coverage: 'on all 6 pages',
+            detail: 'No schema.org structured data, so machines must infer what the page is about.',
+            action: 'Add schema.org structured data to the HTML the server sends.',
+          },
+          {
+            label: '<main> heading',
+            status: 'partial',
+            coverage: 'Media & PR only',
+            detail: '<script>must stay text</script>',
+            action: 'Use exactly one h1.',
+          },
+        ],
+      },
+    }));
+    const panel = renderedPanel(html, 'agent');
+
+    expect(panel).toContain('Can AI read your site?');
+    expect(panel).toContain('Does AI understand what it reads?');
+    expect(panel).toContain('Reading is whether AI can fetch your text at all.');
+    expect(panel).toContain('Structured data - on all 6 pages');
+    expect(panel).toContain('Media &amp; PR only: &lt;main&gt; heading');
+    expect(panel).toContain('&lt;script&gt;must stay text&lt;/script&gt;');
+    expect(panel).not.toContain('<script>must stay text</script>');
+    expect(panel.indexOf('Can AI read your site?')).toBeLessThan(panel.indexOf('What this costs you'));
+    expect(panel.indexOf('What this costs you')).toBeLessThan(panel.indexOf('Can AI reach your site at all?'));
+    expect(panel.indexOf('Can AI reach your site at all?')).toBeLessThan(panel.indexOf('Does AI understand what it reads?'));
+  });
+
+  it('does not render an AI zone when the report has no agent-readiness data', async () => {
+    const { html } = await renderClientReport(writePerfResults({ LCP: 3700, FCP: 1200, 'LH Score': 76 }));
+
+    expect(html).not.toContain('id="cr-panel-agent"');
+    expect(html).not.toContain('Can AI read your site?');
+    expect(html).not.toContain('Does AI understand what it reads?');
+  });
+
   it('renders the measured AI cost block, copy prompt controls, and industry data expander', () => {
     const html = renderClientReportHtml(model({
       agentCost: {
