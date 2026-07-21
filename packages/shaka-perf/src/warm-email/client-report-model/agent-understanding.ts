@@ -8,6 +8,7 @@
  */
 
 import type { AgentPageView } from '../agent-ready-report';
+import { scoreBucket } from '../agent-ready-score';
 import type {
   ClientReportAgentUnderstanding,
   ClientReportAgentUnderstandingItem,
@@ -71,10 +72,25 @@ function coverageLabel(sources: readonly UnderstandingSource[], totalPages: numb
   return `on ${sources.length} of ${totalPages} ${totalPages === 1 ? 'page' : 'pages'}`;
 }
 
+function pageUnderstandingStatus(view: AgentPageView): ClientReportStatus {
+  let points = 0;
+  let max = 0;
+  for (const category of view.struct.categories) {
+    for (const item of category.items) {
+      max += item.max;
+      points += isUnderstandingItem(category.id, item.label) && item.state !== 'na'
+        ? item.points
+        : item.max;
+    }
+  }
+  return scoreBucket(max > 0 ? Math.round((points / max) * 100) : 100);
+}
+
 function understandingStatus(views: readonly AgentPageView[]): ClientReportStatus {
-  return views.reduce<ClientReportStatus>((worst, view) => (
-    STATUS_RANK[view.struct.bucket] > STATUS_RANK[worst] ? view.struct.bucket : worst
-  ), 'good');
+  return views.reduce<ClientReportStatus>((worst, view) => {
+    const status = pageUnderstandingStatus(view);
+    return STATUS_RANK[status] > STATUS_RANK[worst] ? status : worst;
+  }, 'good');
 }
 
 function verdictFor(status: ClientReportStatus): string {

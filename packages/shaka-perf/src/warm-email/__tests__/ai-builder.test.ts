@@ -118,6 +118,37 @@ describe('buildAgentSection', () => {
     });
   });
 
+  it('uses the worst page rather than average coverage for the reading verdict', () => {
+    const result = buildAgentSection([
+      agentView(2000, 2000),
+      agentView(0, 100),
+    ], [], promptCtx, noGuide);
+
+    expect(result.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.',
+    });
+  });
+
+  it('does not claim every page is readable when some results are unconfirmed', () => {
+    const failedFetch = buildAgentSection([
+      agentView(100, 100),
+      agentView(null, 100),
+    ], [], promptCtx, noGuide);
+    const blockedPage = buildAgentSection(
+      [agentView(100, 100)],
+      [{ name: 'Contact', path: '/contact' }],
+      promptCtx,
+      noGuide,
+    );
+
+    expect(failedFetch.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - we could not confirm that AI can read every page we checked.',
+    });
+    expect(blockedPage.agentReading).toEqual(failedFetch.agentReading);
+  });
+
   it('uses the zero state at the inclusive ten-percent missing-text floor', () => {
     const result = buildAgentSection([agentView(90, 100)], [], promptCtx, undefined);
 

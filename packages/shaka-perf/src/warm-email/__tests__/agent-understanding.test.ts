@@ -127,6 +127,20 @@ describe('buildAgentUnderstanding', () => {
     });
   });
 
+  it('does not let missing server-rendered text worsen the labeling verdict', () => {
+    const result = buildAgentUnderstanding([
+      view('Home', sharedLabelingGaps, { ...sharedLabelingGaps, textWords: 0 }),
+    ]);
+
+    expect(result.status).toBe('fair');
+    expect(result.verdict).toBe('Only partly - the labels machines rely on are missing.');
+    expect(result.items.map((item) => item.label)).not.toEqual(expect.arrayContaining([
+      'Content before JavaScript',
+      'Title before JavaScript',
+      'Main text before JavaScript',
+    ]));
+  });
+
   it('keeps the action paired with the displayed worst-case detail', () => {
     const result = buildAgentUnderstanding([
       view('Services', sharedLabelingGaps),
