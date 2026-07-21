@@ -79,8 +79,10 @@ export default defineConfig({
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
     parallelism: PARALLELISM,
-    // Runs before EVERY test's navigation, on every engine (a per-test
-    // `beforeNavigate` on `abTest()` options runs after this one). The
+    // Runs before EVERY test's navigation, on every engine. A per-test
+    // `beforeNavigate` on `abTest()` options, if present, receives this hook as
+    // a second arg and decides whether to call it (`await runGlobal(ctx)`) —
+    // so a test can wrap, extend, or opt out of this setup. The
     // `context` is a Playwright BrowserContext — use it for pre-nav setup:
     // request blocking, cookies, extra headers, init scripts. Prefer
     // `installRequestBlocking` over Playwright `route()` for perf request

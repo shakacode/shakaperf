@@ -131,6 +131,13 @@ export interface BeforeNavigateContext {
 
 export type BeforeNavigateHook = (
   ctx: BeforeNavigateContext,
+  /**
+   * The global `shared.beforeNavigate` hook (a no-op if none is configured),
+   * handed ONLY to a per-test hook so it can decide whether/when to run the
+   * global pre-nav setup — call `runGlobalBeforeNavigate(ctx)`, or skip it to
+   * opt out. When a test has NO per-test hook, the global runs on its own.
+   */
+  runGlobalBeforeNavigate?: BeforeNavigateHook,
 ) => void | Promise<void>;
 
 export interface AbTestAccessibilityConfig {
@@ -149,8 +156,14 @@ export interface AbTestOptions {
    * Runs before this test's page is navigated, on every engine. Use for
    * per-page pre-nav setup — most commonly aborting third-party resources that
    * never resolve in the sandbox (e.g. `installRequestBlocking(context,
-   * ['/recaptcha/'])`), but also cookies, headers, or init scripts. Runs AFTER
-   * the global `shared.beforeNavigate` (if any). See `BeforeNavigateContext`.
+   * ['/recaptcha/'])`), but also cookies, headers, or init scripts.
+   *
+   * When present, this hook REPLACES the automatic run of the global
+   * `shared.beforeNavigate`: it receives the global as a second argument and
+   * decides whether to invoke it. To keep the global setup, call it — usually
+   * first — then do your own work:
+   * `async (ctx, runGlobal) => { await runGlobal(ctx); ... }`. Omit the call to
+   * opt out of the global for this test. See `BeforeNavigateContext`.
    */
   beforeNavigate?: BeforeNavigateHook;
   /**
