@@ -61,9 +61,8 @@ function worstSource(sources: readonly UnderstandingSource[]): UnderstandingSour
 function aggregatedDetail(sources: readonly UnderstandingSource[]): string {
   const worst = worstSource(sources);
   const detailsVary = new Set(sources.map((source) => source.item.detail)).size > 1;
-  const hasPartialResult = sources.some((source) => source.item.state === 'partial');
-  if (!detailsVary || !hasPartialResult) return worst.item.detail;
-  return `Lowest coverage: ${worst.item.detail} on ${worst.page.name}.`;
+  if (!detailsVary) return worst.item.detail;
+  return `Lowest coverage on ${worst.page.name}: ${worst.item.detail.replace(/\.\s*$/, '')}.`;
 }
 
 function coverageLabel(sources: readonly UnderstandingSource[], totalPages: number): string {
@@ -111,8 +110,8 @@ function groupItem(group: UnderstandingGroup, totalPages: number): RankedUnderst
     lostPoints,
     order: group.order,
   };
-  const action = worst.item.action ?? group.sources.map((source) => source.item.action).find((candidate): candidate is string => !!candidate);
-  if (action) item.action = action;
+  const action = group.sources[0]?.item.action;
+  if (action && group.sources.every((source) => source.item.action === action)) item.action = action;
   return item;
 }
 

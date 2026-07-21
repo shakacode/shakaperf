@@ -94,7 +94,7 @@ describe('buildAgentUnderstanding', () => {
       coverage: 'on all 3 pages',
       action: 'Add descriptive alt text to the images that lack it.',
     });
-    expect(altText?.detail).toBe('Lowest coverage: 6 of 10 images have alt text describing them. on Home.');
+    expect(altText?.detail).toBe('Lowest coverage on Home: 6 of 10 images have alt text describing them.');
   });
 
   it('keeps page-only gaps separate and excludes text-reachability checks', () => {
@@ -141,7 +141,7 @@ describe('buildAgentUnderstanding', () => {
     ]));
   });
 
-  it('keeps the action paired with the displayed worst-case detail', () => {
+  it('does not apply one page reason and action to every failing page', () => {
     const result = buildAgentUnderstanding([
       view('Services', sharedLabelingGaps),
       view('Home', {
@@ -152,9 +152,9 @@ describe('buildAgentUnderstanding', () => {
     const structuredData = result.items.find((item) => item.label === 'Structured data');
 
     expect(structuredData).toMatchObject({
-      detail: '1 structured-data block on the page could not be parsed, so a machine cannot read it.',
-      action: 'Fix the broken structured-data block so a machine can parse it.',
+      detail: 'Lowest coverage on Home: 1 structured-data block on the page could not be parsed, so a machine cannot read it.',
     });
+    expect(structuredData?.action).toBeUndefined();
   });
 
   it('returns a green one-line verdict for good-bucket pages', () => {

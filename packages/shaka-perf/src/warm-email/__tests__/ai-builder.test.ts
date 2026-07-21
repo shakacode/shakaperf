@@ -88,9 +88,13 @@ describe('buildAgentSection', () => {
   });
 
   it('does not add the optional llms.txt fix without site-access data', () => {
-    const result = buildAgentSection([agentView(50, 100)], [], promptCtx, undefined);
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, undefined);
 
     expect(result.agentCost?.fix).toBeUndefined();
+    expect(result.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.',
+    });
   });
 
   it('does not mistake sitemap or indexing deductions for blocked AI crawlers', () => {
@@ -128,6 +132,47 @@ describe('buildAgentSection', () => {
       status: 'fair',
       verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.',
     });
+  });
+
+  it('uses the score coverage floor for pages with too little text to compare', () => {
+    const result = buildAgentSection([agentView(0, 5)], [], promptCtx, noGuide);
+
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+    expect(result.agentCost?.state).toBe('noclaim');
+  });
+
+  it('uses the unrounded coverage ratio at the reading threshold', () => {
+    const result = buildAgentSection([agentView(895, 1000)], [], promptCtx, noGuide);
+
+    expect(result.agentReading?.status).toBe('fair');
+    expect(result.agentCost?.state).toBe('measured');
+  });
+
+  it('does not show a readable-text cost claim when robots block every answer crawler', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      robots: {
+        fetched: true,
+        blocksAll: true,
+        blocksAiBots: [
+          'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User',
+          'ClaudeBot', 'Claude-User', 'Claude-SearchBot',
+        ],
+      },
+    });
+
+    expect(result.agentReading).toEqual({
+      status: 'poor',
+      verdict: 'No - AI crawlers are blocked from your site.',
+    });
+    expect(result.agentCost).toMatchObject({
+      state: 'blocked',
+      headline: 'AI crawlers are blocked by robots.txt, so text reachability is not actionable until access is restored.',
+    });
+    expect(result.agentCost?.stakes).toBeUndefined();
   });
 
   it('does not claim every page is readable when some results are unconfirmed', () => {

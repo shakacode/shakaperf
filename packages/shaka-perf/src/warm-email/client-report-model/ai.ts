@@ -158,16 +158,17 @@ function agentCardModel(view: AgentPageView, promptCtx: AgentPromptContext): Cli
 function agentReadingVerdict(
   accessBlocked: boolean,
   access: SiteAccessScore,
-  worstCoveragePct: number | undefined,
+  worstCoverage: number | undefined,
   hasUnconfirmedPages: boolean,
+  crawlerAccessConfirmed: boolean,
 ): NonNullable<ClientReportModel['agentReading']> {
   const crawlerCheck = access.category.items.find((item) => item.label === 'AI answer crawlers allowed');
   if (accessBlocked || crawlerCheck?.state === 'fail') return { status: 'poor', verdict: 'No - AI crawlers are blocked from your site.' };
-  if (worstCoveragePct === undefined) return { status: 'poor', verdict: 'No - we could not confirm that AI can read the page the server sends.' };
+  if (worstCoverage === undefined) return { status: 'poor', verdict: 'No - we could not confirm that AI can read the page the server sends.' };
   if (hasUnconfirmedPages) return { status: 'fair', verdict: 'Only partly - we could not confirm that AI can read every page we checked.' };
-  if (worstCoveragePct < 90) return { status: 'fair', verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.' };
+  if (worstCoverage < 0.9) return { status: 'fair', verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.' };
   if (crawlerCheck?.state === 'partial') return { status: 'fair', verdict: 'Only partly - some AI crawlers are not allowed in.' };
-  if (!crawlerCheck || crawlerCheck.state === 'na') return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
+  if (!crawlerCheck || !crawlerAccessConfirmed) return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
   return { status: 'good', verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.' };
 }
 
@@ -215,7 +216,7 @@ export function buildAgentSection(
     )
     : undefined;
   const worstReadable = reachableForCost.length > 0
-    ? Math.min(...reachableForCost.map((view) => boundedCoveragePct(agentRawWords(view), agentRenderedWords(view))))
+    ? Math.min(...reachableForCost.map((view) => view.struct.coverage))
     : undefined;
   const hasUnconfirmedPages = reachableForCost.length < agentMeasurable.length || agentBlocked.length > 0;
   const claimableForCost = reachableForCost.filter((view) => agentRenderedWords(view) >= MIN_AGENT_COST_WORDS);
@@ -244,7 +245,9 @@ export function buildAgentSection(
     }
     : undefined;
   let agentCostState: ClientReportCostBlock['state'];
-  if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
+  if (overall.accessBlocked) {
+    agentCostState = 'blocked';
+  } else if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
     agentCostState = 'noclaim';
   } else if (reachableForCost.length === 0) {
     agentCostState = 'blocked';
@@ -258,7 +261,9 @@ export function buildAgentSection(
     agentCost = {
       tab: 'ai',
       state: 'blocked',
-      headline: 'We could not read the page the server sends, so this text gap was not measured.',
+      headline: overall.accessBlocked
+        ? 'AI crawlers are blocked by robots.txt, so text reachability is not actionable until access is restored.'
+        : 'We could not read the page the server sends, so this text gap was not measured.',
     };
   }
   if (agentCostState === 'measured' && worstCostPage) {
@@ -351,7 +356,13 @@ export function buildAgentSection(
     },
     agentCards,
     agentFine,
-    agentReading: agentReadingVerdict(overall.accessBlocked, overall.access, worstReadable, hasUnconfirmedPages),
+    agentReading: agentReadingVerdict(
+      overall.accessBlocked,
+      overall.access,
+      worstReadable,
+      hasUnconfirmedPages,
+      siteSignals?.robots.fetched === true,
+    ),
     agentUnderstanding,
     agentStatus,
     agentOverall: overall.overall,

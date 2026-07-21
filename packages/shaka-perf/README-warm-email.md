@@ -109,6 +109,10 @@ semantic HTML (15 points) out of 75, then rescales to 0-100. Crawler access
 The headline site score averages the page structure scores; when at least half
 the reachable pages are near-empty no-JS shells, or robots.txt blocks every AI
 answer crawler, it is capped at "poor".
+The tab separates that evidence into two client-facing questions: whether AI can
+read the site's text and whether the page labels and structure explain what the
+text means. Each question has its own verdict, so a readable site can still show
+specific structure and semantics gaps without conflating them with text access.
 The site-level robots.txt / sitemap.xml / llms.txt are fetched once at report time
 (same bounded, SSRF-guarded pattern as the favicon).
 A report-time `claude` pass (model `sonnet`, cached, `--no-ai-agent` to skip)
