@@ -46,20 +46,26 @@ export async function createComparisonSide(
 ): Promise<ComparisonSide> {
   const { engineOptions = {} } = config;
   const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
-  // storageState shape comes from user config — cast to satisfy Playwright's newContext.
-  const storageState = (engineOptions.storageState || undefined) as string | undefined;
   const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', DEFAULT_NAV_TIMEOUT);
+  const VP_W = viewport.width || viewport.viewport!.width;
+  const VP_H = viewport.height || viewport.viewport!.height;
 
-  const context = await browser.newContext({ ignoreHTTPSErrors, storageState });
+  // Emulate the viewport's device at context creation — deviceScaleFactor and
+  // mobile form factor, uniform with the accessibility and perf engines (which
+  // have always emulated them). `isMobile` is Chromium/WebKit only; Firefox
+  // rejects it, so it's omitted there.
+  const context = await browser.newContext({
+    ignoreHTTPSErrors,
+    viewport: { width: VP_W, height: VP_H },
+    deviceScaleFactor: viewport.deviceScaleFactor,
+    isMobile: viewport.formFactor === 'mobile' && engineOptions.browser !== 'firefox',
+  });
   // From here on, anything that throws (a beforeNavigate hook, cookie loading,
   // newPage) must close the context we just created — the caller only tracks it
   // for teardown once we hand back a `dispose`, so an early throw would leak it.
   try {
     if (onContextReady) await onContextReady(context);
     const page = await context.newPage();
-    const VP_W = viewport.width || viewport.viewport!.width;
-    const VP_H = viewport.height || viewport.viewport!.height;
-    await page.setViewportSize({ width: VP_W, height: VP_H });
     page.setDefaultNavigationTimeout(navTimeout);
 
     return {

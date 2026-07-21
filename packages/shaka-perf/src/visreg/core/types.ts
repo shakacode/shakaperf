@@ -63,9 +63,6 @@ export interface Scenario {
   misMatchThreshold?: number;
   requireSameDimensions?: boolean;
 
-  // Cookies
-  cookiePath?: string;
-
   // Engine options override
   engineOptions?: Partial<EngineOptions>;
   gotoParameters?: Record<string, any>;
@@ -101,7 +98,6 @@ export interface EngineOptions {
   ignoreDefaultArgs?: string[];
   args?: string[];
   ignoreHTTPSErrors?: boolean;
-  storageState?: string | Record<string, unknown>;
   gotoParameters?: {
     waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
     timeout?: number;
@@ -291,19 +287,6 @@ export interface TestPair {
 // ── Compare Config ──────────────────────────────────────────────────
 export interface CompareConfig {
   testPairs: TestPair[];
-}
-
-// ── Cookie ──────────────────────────────────────────────────────────
-export interface VisregCookie {
-  name: string;
-  value: string;
-  domain?: string;
-  url?: string;
-  path?: string;
-  expires?: number;
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: 'Strict' | 'Lax' | 'None';
 }
 
 // ── Visreg Tools (injected into browser window) ──────────────────

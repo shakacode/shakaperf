@@ -480,7 +480,6 @@ describe('accessibility browser launch', () => {
             readySelector: '#ready',
             readyTimeout: 123,
             delay: 500,
-            cookiePath: '/tmp/visreg-cookies.json',
             removeSelectors: ['.visreg-remove'],
             hideSelectors: ['.visreg-hide'],
           },

@@ -62,8 +62,6 @@ export function convertAbTestToScenario(
   if (visreg.readyTimeout != null) scenario.readyTimeout = visreg.readyTimeout;
   if (visreg.delay != null) scenario.delay = visreg.delay;
 
-  if (visreg.cookiePath) scenario.cookiePath = visreg.cookiePath;
-
   const narrow = testDef.options.viewports;
   if (narrow && narrow.length > 0 && categoryViewports.length > 0) {
     const filtered = resolveViewportsForTest(testDef, categoryViewports);

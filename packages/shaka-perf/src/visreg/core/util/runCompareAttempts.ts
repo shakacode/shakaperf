@@ -16,8 +16,7 @@ import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
-import { loadCookies } from '../../capture/helpers/loadCookies';
-import { runBeforeNavigateHooks } from '../../../before-navigate';
+import { setUpContextForNavigation } from '../../../pre-navigation';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -113,16 +112,18 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
-    // Pre-nav setup for a side: cookie loading then the beforeNavigate hooks,
-    // run on the context BEFORE its page is created (via createComparisonSide's
-    // onContextReady) so both are in place ahead of the page's first navigation.
-    const setUpSide = (url: string, isControl: boolean) => async (context: BrowserContext): Promise<void> => {
-      if (scenario.cookiePath) await loadCookies(context, scenario);
-      await runBeforeNavigateHooks(
-        { context, url, viewport, isControl, testType: 'visreg' },
-        scenario._testDef?.options?.beforeNavigate,
-      );
-    };
+    // Pre-nav setup for a side, run on the context BEFORE its page is created
+    // (via createComparisonSide's onContextReady): the shared clear → beforeNavigate
+    // sequence, uniform with the other engines.
+    const setUpSide = (url: string, isControl: boolean) => (context: BrowserContext): Promise<void> =>
+      setUpContextForNavigation({
+        context,
+        url,
+        viewport,
+        isControl,
+        testType: 'visreg',
+        beforeNavigate: scenario._testDef?.options?.beforeNavigate,
+      });
 
     // Two throwaway sides per attempt, torn down on every exit path.
     const sides: ComparisonSide[] = [];

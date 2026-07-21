@@ -24,7 +24,7 @@ import {
   runWithTestAnnotationContext,
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
-import { runBeforeNavigateHooks } from '../../before-navigate';
+import { setUpContextForNavigation } from '../../pre-navigation';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
   DEFAULT_LH_CONFIG,
@@ -48,7 +48,6 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
-import { clearBrowserData } from './clear-browser-data';
 
 /**
  * Filename for the live-browser screenshot the worker captures on failure.
@@ -256,27 +255,18 @@ class LighthouseWorkerSampler {
 
     try {
       const context = browser.contexts()[0];
-      // Clear all browser state (cookies, cache, per-origin storage) BEFORE the
-      // pre-navigation hooks: `beforeNavigate` may seed an auth cookie (e.g.
-      // signInBeforeNavigate) that must survive into the measured navigation.
-      // Clearing after beforeNavigate would wipe that cookie and land the first
-      // render logged-out.
-      await context.clearCookies();
-      await clearBrowserData(context, url);
-      await attachInteractionOverlay(context);
-      // Pre-navigation hooks (global shared.beforeNavigate + per-test). Runs
-      // before Lighthouse navigates so route-blocking/init-scripts cover the
-      // first navigation and subframes. No page exists yet on this engine.
-      await runBeforeNavigateHooks(
-        {
-          context,
-          url,
-          viewport: options.viewport,
-          isControl: options.isControl ?? false,
-          testType: 'perf',
-        },
-        testDef.options.beforeNavigate,
-      );
+      // The shared clear → beforeNavigate sequence, run on the context before
+      // Lighthouse navigates so route-blocking/init-scripts cover the first
+      // navigation and subframes. This context is reused across samples, so the
+      // clear is what enforces per-sample isolation.
+      await setUpContextForNavigation({
+        context,
+        url,
+        viewport: options.viewport,
+        isControl: options.isControl ?? false,
+        testType: 'perf',
+        beforeNavigate: testDef.options.beforeNavigate,
+      });
 
       let releaseTracking: () => void = () => {};
       const canStopTracking = new Promise<void>((resolve) => {
@@ -300,6 +290,13 @@ class LighthouseWorkerSampler {
       // resetting state so nothing leaks into the next sample on this worker —
       // lives inside the recorder singleton.
       screencastRecorder.record(captureAuditArtifacts);
+
+      // The on-page interaction overlay annotates the screencast, so it's an
+      // audit-only artifact. `compare` (perf bench) skips it — an init script on
+      // the measured page would perturb perf fidelity, and there's no screencast
+      // to annotate anyway. It's unaffected by the clear above (init scripts
+      // survive it); it just has to be in place before navigation.
+      if (captureAuditArtifacts) await attachInteractionOverlay(context);
 
       const group = options.isControl ? 'control' : 'experiment';
       const lighthousePromise = runLighthouse(

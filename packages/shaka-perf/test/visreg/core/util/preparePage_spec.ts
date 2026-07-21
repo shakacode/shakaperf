@@ -75,10 +75,6 @@ describe('preparePage', function () {
       __esModule: true,
       default: jest.fn().mockResolvedValue(undefined),
     }));
-    jest.mock('../../../../src/visreg/capture/helpers/loadCookies', () => ({
-      __esModule: true,
-      loadCookies: jest.fn().mockResolvedValue(undefined),
-    }));
     waitUntilPageSettledSpy = jest
       .spyOn(require('shaka-shared'), 'waitUntilPageSettled')
       .mockResolvedValue(undefined);

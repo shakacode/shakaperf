@@ -13,8 +13,7 @@ import type { AxeResults } from 'axe-core';
 import sharp from 'sharp';
 import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
-import { runBeforeNavigateHooks } from '../../../before-navigate';
-import { clearBrowserData } from '../../../bench/core/clear-browser-data';
+import { setUpContextForNavigation } from '../../../pre-navigation';
 import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { TestContext } from '../../../stage/stage';
@@ -107,10 +106,17 @@ export async function scanAccessibilityPage(
       // Real-Chrome only: serve the phone layout (no-op headless).
       ...realChromeMobileEmulation(ctx.viewport.formFactor),
     });
-    // Clear state + run the beforeNavigate hooks on the context BEFORE the page
+    // Clear state and run the beforeNavigate hooks on the context BEFORE the page
     // is created, uniform with the other engines — context init scripts/routes
     // then cover the page's first navigation.
-    await prepareAccessibilityContext(context, ctx, options);
+    await setUpContextForNavigation({
+      context,
+      url: options.url,
+      viewport: ctx.viewport,
+      isControl: options.isControl,
+      testType: 'accessibility',
+      beforeNavigate: ctx.test.options.beforeNavigate,
+    });
     page = await context.newPage();
     if (config.engineOptions.waitTimeout) {
       page.setDefaultTimeout(config.engineOptions.waitTimeout);
@@ -214,29 +220,6 @@ export async function captureAccessibilityFailureMedia(
   } catch {
     return undefined;
   }
-}
-
-async function prepareAccessibilityContext(
-  context: BrowserContext,
-  ctx: TestContext,
-  options: AccessibilityPageScanOptions,
-): Promise<void> {
-  // Clear all browser state BEFORE the pre-navigation hooks: `beforeNavigate`
-  // may seed an auth cookie that must survive into the navigation. Clearing
-  // after beforeNavigate would wipe it and land the scan logged-out. Both run
-  // on the context before the page is created.
-  await context.clearCookies();
-  await clearBrowserData(context, options.url);
-  await runBeforeNavigateHooks(
-    {
-      context,
-      url: options.url,
-      viewport: ctx.viewport,
-      isControl: options.isControl,
-      testType: 'accessibility',
-    },
-    ctx.test.options.beforeNavigate,
-  );
 }
 
 async function navigateAccessibilityPage(

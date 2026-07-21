@@ -108,9 +108,6 @@ export interface AbTestVisregConfig {
   readySelector?: string;
   readyTimeout?: number;
   delay?: number;
-
-  // Cookies
-  cookiePath?: string;
 }
 
 /**

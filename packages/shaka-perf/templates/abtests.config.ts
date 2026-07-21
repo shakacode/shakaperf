@@ -9,6 +9,7 @@
 
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { BrowserContext } from 'playwright-core';
 import { defineConfig, assignPortsAutomatically, installRequestBlocking, DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT } from 'shaka-shared';
 
 // Control/experiment host ports. The same pair feeds the URLs and
@@ -91,7 +92,13 @@ export default defineConfig({
     // never fires and any test landing on a captcha page hangs until the pool
     // timeout. Harmless if your app has no reCAPTCHA (nothing matches). Add
     // more substring/regex patterns, or delete this if you don't need it.
-    beforeNavigate: ({ context }) => installRequestBlocking(context, ['/recaptcha/']),
+    beforeNavigate: async (options : {context: BrowserContext}) => {
+      await installRequestBlocking(options.context, ['/recaptcha/']);
+      // Seed cookies / an auth session here (optional):
+      //   await context.addCookies([{ name: 'session', value: '…', options.url }]);
+      // localStorage/auth too, via:
+      //   context.addInitScript(...)
+    },
   },
 
   visreg: {
