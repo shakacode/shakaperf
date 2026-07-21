@@ -188,6 +188,22 @@ export interface ClientReportAgentFineRow {
   score: number;
   status: ClientReportStatus;
 }
+export interface ClientReportAgentReading {
+  status: ClientReportStatus;
+  verdict: string;
+}
+export interface ClientReportAgentUnderstandingItem {
+  label: string;
+  status: 'partial' | 'fail';
+  coverage: string;
+  detail: string;
+  action?: string;
+}
+export interface ClientReportAgentUnderstanding {
+  status: ClientReportStatus;
+  verdict: string;
+  items: ClientReportAgentUnderstandingItem[];
+}
 export interface ClientReportTile {
   target: 'perf' | 'a11y' | 'agent';
   kicker: string;
@@ -278,6 +294,8 @@ export interface ClientReportModel {
   agentSite?: ClientReportAgentSite;
   agentCards: ClientReportAgentCard[];
   agentFine: ClientReportAgentFineRow[];
+  agentReading?: ClientReportAgentReading;
+  agentUnderstanding?: ClientReportAgentUnderstanding;
   agentBlocked: ClientReportBlockedPage[];
   agentCouldNotMeasure: boolean;
   // Wave 3 supplies this severity order. Keep the existing order when absent.
@@ -1204,10 +1222,57 @@ ${items}
     </div>`;
 }
 
+function agentZoneHead(title: string, status: ClientReportStatus, verdict: string): string {
+  const p = PAL[status];
+  return `      <div style="margin:26px 0 16px">
+        <div style="font-size:21px; font-weight:800; letter-spacing:-.015em; color:#26221d">${esc(title)}</div>
+        <div style="display:flex; gap:10px; align-items:flex-start; margin-top:7px">
+          <span style="width:9px; height:9px; border-radius:50%; background:${p.fg}; flex:none; margin-top:6px"></span>
+          <div style="font-size:15px; line-height:1.5; font-weight:600; color:${p.fg}">${esc(verdict)}</div>
+        </div>
+      </div>`;
+}
+
+function agentUnderstandingList(understanding: ClientReportAgentUnderstanding): string {
+  if (!understanding.items.length) return '';
+  const rows = understanding.items.map((item) => {
+    const p = PAL[item.status === 'fail' ? 'poor' : 'fair'];
+    const label = item.coverage.endsWith(' only')
+      ? `${item.coverage}: ${item.label}`
+      : `${item.label} - ${item.coverage}`;
+    return `        <div style="display:flex; gap:11px; align-items:flex-start; padding:15px 0; border-top:1px solid #efeae2">
+          <span style="width:8px; height:8px; border-radius:50%; background:${p.fg}; flex:none; margin-top:6px"></span>
+          <div style="min-width:0">
+            <div style="font-size:15px; font-weight:700; line-height:1.45; color:#26221d">${esc(label)}</div>
+            <div style="font-size:14.5px; line-height:1.5; color:#4a443c; margin-top:3px">${esc(item.detail)}</div>
+            ${item.action ? `<div style="font-size:14.5px; line-height:1.5; color:#4a443c; margin-top:6px"><strong style="font-weight:700; color:#26221d">What to change:</strong> ${esc(item.action)}</div>` : ''}
+          </div>
+        </div>`;
+  }).join('\n');
+  return `      <div style="background:#ffffff; border:1px solid #e7e1d8; border-radius:14px; padding:6px 22px; margin-bottom:18px">
+${rows}
+      </div>`;
+}
+
 function agentPanel(m: ClientReportModel, multi: boolean, first: boolean): string {
-  const needs = m.agentCards.length;
-  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentCouldNotMeasure, m.agentScore, m.agentCost)}
+  if (!m.agentReading || !m.agentUnderstanding) {
+    const needs = m.agentCards.length;
+    const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentCouldNotMeasure, m.agentScore, m.agentCost)}
 ${m.agentSite ? agentSiteCard(m.agentSite) : ''}
+${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
+${m.agentCards.map(agentCard).join('\n')}
+${m.agentCost?.strongPageGroup ? strongPageGroupList(m.agentCost.strongPageGroup) : agentFineList(m.agentFine)}
+${blockedSection(m.agentBlocked, !(m.agentCouldNotMeasure && m.agentCost?.state === 'blocked'))}`;
+    return panelWrap('agent', body, multi, first);
+  }
+  const needs = m.agentCards.length;
+  const body = `${verdictHead('Can AI read and recommend you?', m.agentStatus, m.narrative.agent, m.agentCouldNotMeasure, m.agentScore)}
+    <p style="font-size:14.5px; line-height:1.55; color:#6f665c; margin:0 0 4px; max-width:66ch">Reading is whether AI can fetch your text at all. Understanding is whether labels - descriptions, structured data, and previews - tell it what each page is.</p>
+${agentZoneHead('Can AI read your site?', m.agentReading.status, m.agentReading.verdict)}
+${costBlock(m.agentCost)}
+${m.agentSite ? agentSiteCard(m.agentSite) : ''}
+${agentZoneHead('Does AI understand what it reads?', m.agentUnderstanding.status, m.agentUnderstanding.verdict)}
+${agentUnderstandingList(m.agentUnderstanding)}
 ${needs ? sectionKicker(`Page-level gaps &middot; ${needs} ${needs === 1 ? 'page' : 'pages'}`) : ''}
 ${m.agentCards.map(agentCard).join('\n')}
 ${m.agentCost?.strongPageGroup ? strongPageGroupList(m.agentCost.strongPageGroup) : agentFineList(m.agentFine)}

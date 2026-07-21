@@ -93,6 +93,116 @@ describe('buildAgentSection', () => {
     expect(result.agentCost?.fix).toBeUndefined();
   });
 
+  it('does not mistake sitemap or indexing deductions for blocked AI crawlers', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      sitemap: false,
+    });
+
+    expect(result.agentSite?.status).toBe('fair');
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+  });
+
+  it('matches the access card default-open policy when robots.txt is absent', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      robots: { fetched: false, blocksAiBots: [], blocksAll: false },
+    });
+
+    expect(result.agentSite?.status).toBe('good');
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+  });
+
+  it('reports partial crawler permission only when the crawler check is partial', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      robots: { fetched: true, blocksAiBots: ['OAI-SearchBot'], blocksAll: false },
+    });
+
+    expect(result.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - some AI crawlers are not allowed in.',
+    });
+  });
+
+  it('uses the worst page rather than average coverage for the reading verdict', () => {
+    const result = buildAgentSection([
+      agentView(2000, 2000),
+      agentView(0, 100),
+    ], [], promptCtx, noGuide);
+
+    expect(result.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.',
+    });
+  });
+
+  it('uses the score coverage floor for pages with too little text to compare', () => {
+    const result = buildAgentSection([agentView(0, 5)], [], promptCtx, noGuide);
+
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+    expect(result.agentCost?.state).toBe('noclaim');
+  });
+
+  it('uses the unrounded coverage ratio at the reading threshold', () => {
+    const result = buildAgentSection([agentView(895, 1000)], [], promptCtx, noGuide);
+
+    expect(result.agentReading?.status).toBe('fair');
+    expect(result.agentCost?.state).toBe('measured');
+  });
+
+  it('does not show a readable-text cost claim when robots block every answer crawler', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      robots: {
+        fetched: true,
+        blocksAll: true,
+        blocksAiBots: [
+          'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User',
+          'ClaudeBot', 'Claude-User', 'Claude-SearchBot',
+        ],
+      },
+    });
+
+    expect(result.agentReading).toEqual({
+      status: 'poor',
+      verdict: 'No - AI crawlers are blocked from your site.',
+    });
+    expect(result.agentCost).toMatchObject({
+      state: 'blocked',
+      headline: 'AI crawlers are blocked by robots.txt, so text reachability is not actionable until access is restored.',
+    });
+    expect(result.agentCost?.stakes).toBeUndefined();
+  });
+
+  it('does not claim every page is readable when some results are unconfirmed', () => {
+    const failedFetch = buildAgentSection([
+      agentView(100, 100),
+      agentView(null, 100),
+    ], [], promptCtx, noGuide);
+    const blockedPage = buildAgentSection(
+      [agentView(100, 100)],
+      [{ name: 'Contact', path: '/contact' }],
+      promptCtx,
+      noGuide,
+    );
+
+    expect(failedFetch.agentReading).toEqual({
+      status: 'fair',
+      verdict: 'Only partly - we could not confirm that AI can read every page we checked.',
+    });
+    expect(blockedPage.agentReading).toEqual(failedFetch.agentReading);
+  });
+
   it('uses the zero state at the inclusive ten-percent missing-text floor', () => {
     const result = buildAgentSection([agentView(90, 100)], [], promptCtx, undefined);
 
@@ -103,12 +213,35 @@ describe('buildAgentSection', () => {
   });
 
   it('labels a readable group as only fair when its worst page is below the good bucket', () => {
-    const result = buildAgentSection([fairStructureView()], [], promptCtx, undefined);
+    const result = buildAgentSection([fairStructureView()], [], promptCtx, noGuide);
 
     expect(result.agentFine).toHaveLength(1);
     expect(result.agentFine[0].score).toBeGreaterThanOrEqual(50);
     expect(result.agentFine[0].score).toBeLessThan(80);
     expect(result.agentCost?.strongPageGroup?.verdict).toBe('1 page is readable, but only fair');
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+    expect(result.agentUnderstanding).toMatchObject({
+      status: 'fair',
+      verdict: 'Only partly - the labels machines rely on are missing.',
+    });
+    expect(result.agentUnderstanding?.items.map((item) => item.label)).toEqual(expect.arrayContaining([
+      'Structured data',
+      'Meta description',
+      'Social preview tags',
+    ]));
+  });
+
+  it('keeps a good understanding zone as a green one-line verdict', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, noGuide);
+
+    expect(result.agentUnderstanding).toEqual({
+      status: 'good',
+      verdict: 'Labeling is in place.',
+      items: [],
+    });
   });
 
   it('adds score context to the green text-coverage proof when the site is not good', () => {

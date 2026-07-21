@@ -12,7 +12,7 @@ import {
   pageLead as agentPageLead,
   type AgentPageView,
 } from '../agent-ready-report';
-import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessSignals } from '../agent-ready-score';
+import { scoreBucket, scoreSite, type CategoryScore, type SiteAccessScore, type SiteAccessSignals } from '../agent-ready-score';
 import { AI_INDUSTRY_DATA_STATS, aiCheckLine, aiHeadline, aiHeadlineSub, aiSingleCountLine, aiSiteWideContextLine } from '../cost-strings';
 import { buildCopyPrompt } from '../copy-prompt';
 import type {
@@ -23,6 +23,7 @@ import type {
   ClientReportStatus,
 } from '../client-report-renderer';
 import { MAX_MISSING_AI_TEXT_SHARE_FOR_ZERO } from './cost';
+import { buildAgentUnderstanding } from './agent-understanding';
 import { SCORE_BADGE_POLICY, scoreStatus } from './perf';
 import { dashSafe, liveUrlFor } from './shared';
 
@@ -46,6 +47,8 @@ export interface AgentSection {
   agentSite?: ClientReportModel['agentSite'];
   agentCards: ClientReportAgentCard[];
   agentFine: ClientReportModel['agentFine'];
+  agentReading?: ClientReportModel['agentReading'];
+  agentUnderstanding?: ClientReportModel['agentUnderstanding'];
   agentStatus: ClientReportStatus;
   agentOverall: number;
   agentAccessBlocked: boolean;
@@ -152,6 +155,22 @@ function agentCardModel(view: AgentPageView, promptCtx: AgentPromptContext): Cli
   return card;
 }
 
+function agentReadingVerdict(
+  accessBlocked: boolean,
+  access: SiteAccessScore,
+  worstCoverage: number | undefined,
+  hasUnconfirmedPages: boolean,
+): NonNullable<ClientReportModel['agentReading']> {
+  const crawlerCheck = access.category.items.find((item) => item.label === 'AI answer crawlers allowed');
+  if (accessBlocked || crawlerCheck?.state === 'fail') return { status: 'poor', verdict: 'No - AI crawlers are blocked from your site.' };
+  if (worstCoverage === undefined) return { status: 'poor', verdict: 'No - we could not confirm that AI can read the page the server sends.' };
+  if (hasUnconfirmedPages) return { status: 'fair', verdict: 'Only partly - we could not confirm that AI can read every page we checked.' };
+  if (worstCoverage < 0.9) return { status: 'fair', verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.' };
+  if (crawlerCheck?.state === 'partial') return { status: 'fair', verdict: 'Only partly - some AI crawlers are not allowed in.' };
+  if (!crawlerCheck) return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
+  return { status: 'good', verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.' };
+}
+
 export function buildAgentSection(
   agentViews: readonly AgentPageView[],
   agentBlocked: ClientReportBlockedPage[],
@@ -195,6 +214,10 @@ export function buildAgentSection(
       reachableForCost.reduce((sum, view) => sum + agentRenderedWords(view), 0),
     )
     : undefined;
+  const worstReadable = reachableForCost.length > 0
+    ? Math.min(...reachableForCost.map((view) => view.struct.coverage))
+    : undefined;
+  const hasUnconfirmedPages = reachableForCost.length < agentMeasurable.length || agentBlocked.length > 0;
   const claimableForCost = reachableForCost.filter((view) => agentRenderedWords(view) >= MIN_AGENT_COST_WORDS);
   const renderedWords = reachableForCost.reduce((sum, view) => sum + agentRenderedWords(view), 0);
   const allRenderedWords = agentMeasurable.reduce((sum, view) => sum + agentRenderedWords(view), 0);
@@ -221,7 +244,9 @@ export function buildAgentSection(
     }
     : undefined;
   let agentCostState: ClientReportCostBlock['state'];
-  if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
+  if (overall.accessBlocked) {
+    agentCostState = 'blocked';
+  } else if (allRenderedWords < MIN_AGENT_COST_WORDS || (reachableForCost.length > 0 && (renderedWords < MIN_AGENT_COST_WORDS || claimableForCost.length === 0))) {
     agentCostState = 'noclaim';
   } else if (reachableForCost.length === 0) {
     agentCostState = 'blocked';
@@ -235,7 +260,9 @@ export function buildAgentSection(
     agentCost = {
       tab: 'ai',
       state: 'blocked',
-      headline: 'We could not read the page the server sends, so this text gap was not measured.',
+      headline: overall.accessBlocked
+        ? 'AI crawlers are blocked by robots.txt, so text reachability is not actionable until access is restored.'
+        : 'We could not read the page the server sends, so this text gap was not measured.',
     };
   }
   if (agentCostState === 'measured' && worstCostPage) {
@@ -299,6 +326,7 @@ export function buildAgentSection(
     };
   }
   const agentCards = cardViews.map((view) => agentCardModel(view, agentPromptCtx));
+  const agentUnderstanding = buildAgentUnderstanding(agentMeasurable);
   const firstGap = cardViews[0] ? agentPageFindings(cardViews[0].struct)[0] : undefined;
   const agentFine = fineViews.map((view) => ({
     name: view.page.name,
@@ -327,6 +355,13 @@ export function buildAgentSection(
     },
     agentCards,
     agentFine,
+    agentReading: agentReadingVerdict(
+      overall.accessBlocked,
+      overall.access,
+      worstReadable,
+      hasUnconfirmedPages,
+    ),
+    agentUnderstanding,
     agentStatus,
     agentOverall: overall.overall,
     agentAccessBlocked: overall.accessBlocked,
