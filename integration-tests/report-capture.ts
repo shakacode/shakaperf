@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { expect, type Page } from '@playwright/test';
+import { expect, type Page, type Locator } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loud } from './helpers';
@@ -42,7 +42,9 @@ interface CaptureOptions {
  *   .stage-artifact button        preview buttons (lighthouse, timeline
  *                                 filmstrips, profile frames…) → ui-dialog
  *   .artifact-card--compare/.artifact-card--single .artifact-card__media-button
- *                                 visreg diff / no-diff dialogs (+ .scrubber)
+ *                                 visreg diff / no-diff dialogs (+ .scrubber). The
+ *                                 diff shot targets the Homepage [data-cy="hero-section"]
+ *                                 card specifically (the sabotaged, always-diffing one).
  *   .a11y-thumb-button            accessibility findings dialog
  *   .card__logs-button            per-card measurement logs dialog
  *   .search input[type=search]    text filter (asserted)
@@ -175,12 +177,20 @@ export async function captureReportScreenshots(opts: CaptureOptions): Promise<st
   // 06 — visreg dialogs: one diff card (control · experiment · diff +
   // scrubber) and one no-diff card. All cards within a bucket render the same
   // dialog shell, so one shot per bucket is enough signal.
-  const visregBuckets: Array<{ kind: string; selector: string }> = [
-    { kind: 'diff', selector: '.artifact-card--compare .artifact-card__media-button' },
-    { kind: 'nodiff', selector: '.artifact-card--single .artifact-card__media-button' },
+  const visregBuckets: Array<{ kind: string; button: Locator }> = [
+    {
+      kind: 'diff',
+      button: page
+        .locator('.card')
+        .filter({ has: page.locator('.card__title', { hasText: 'Homepage' }) })
+        .locator('.artifact-card--compare')
+        .filter({ has: page.locator('.artifact-card__subtitle', { hasText: '[data-cy="hero-section"]' }) })
+        .locator('.artifact-card__media-button'),
+    },
+    { kind: 'nodiff', button: page.locator('.artifact-card--single .artifact-card__media-button') },
   ];
-  for (const { kind, selector } of visregBuckets) {
-    const btn = page.locator(selector).first();
+  for (const { kind, button } of visregBuckets) {
+    const btn = button.first();
     if ((await btn.count()) === 0) continue;
     await btn.scrollIntoViewIfNeeded().catch(() => {});
     await btn.click().catch(() => {});
@@ -340,7 +350,7 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
   const taken: string[] = [];
   const shot = async (name: string) => {
     const file = path.join(shotDir, `${label}__${name}.png`);
-    const lightbox = page.locator('#v2-lb');
+    const lightbox = page.locator('#cr-lb');
     if ((await lightbox.count()) > 0 && (await lightbox.isVisible())) {
       await lightbox.screenshot({ path: file });
     } else {
@@ -353,7 +363,7 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
   // snapshot renders at the report's most common real viewing size.
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.goto(`file://${reportHtmlPath}`);
-  await page.waitForSelector('.v2-wrap', { timeout: 15_000 });
+  await page.waitForSelector('.cr-wrap', { timeout: 15_000 });
   await scrollAndSettle(page);
 
   // 01 — overview: bottom line, status tiles, tab bar (scores visible), first panel
@@ -363,7 +373,7 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
   // 02 — every tab panel except the initially-active one: the overview shot
   // above already shows it, so re-shooting would write a byte-identical
   // duplicate PNG.
-  const tabs = page.locator('.v2-tab');
+  const tabs = page.locator('.cr-tab');
   const nTabs = await tabs.count();
   for (let i = 0; i < nTabs; i++) {
     const tab = tabs.nth(i);
@@ -380,49 +390,49 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
   // target — assert that panel is revealed and its tab becomes selected. (The
   // old 03-tile-jump.png was pixel-identical to 01-overview: the first tile
   // targets the default Performance panel, which the overview already shows.)
-  const firstTile = page.locator('.v2-tile[data-jump]').first();
+  const firstTile = page.locator('.cr-tile[data-jump]').first();
   if ((await firstTile.count()) > 0) {
     const target = await firstTile.getAttribute('data-jump');
     await page.evaluate(() => window.scrollTo(0, 0));
     await firstTile.click();
-    await expect(page.locator(`#v2-panel-${target}`), 'clicking a status tile must reveal its target panel').toBeVisible();
-    await expect(page.locator(`.v2-tab[data-tab="${target}"]`), 'the tile jump must select the target tab').toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator(`#cr-panel-${target}`), 'clicking a status tile must reveal its target panel').toBeVisible();
+    await expect(page.locator(`.cr-tab[data-tab="${target}"]`), 'the tile jump must select the target tab').toHaveAttribute('aria-selected', 'true');
   }
 
   // 04/05 — lightbox: enlarge a frame, then use the next arrow to move along
-  // the strip. `.v2-shot` covers both filmstrip frames and a11y crops.
-  const firstFrame = page.locator('.v2-panel:not([hidden]) .v2-shot').first();
+  // the strip. `.cr-shot` covers both filmstrip frames and a11y crops.
+  const firstFrame = page.locator('.cr-panel:not([hidden]) .cr-shot').first();
   if ((await firstFrame.count()) > 0) {
     await firstFrame.scrollIntoViewIfNeeded().catch(() => {});
     await firstFrame.click().catch(() => {});
-    const lbOpen = await page.locator('#v2-lb').isVisible().catch(() => false);
+    const lbOpen = await page.locator('#cr-lb').isVisible().catch(() => false);
     if (lbOpen) {
       await page.waitForTimeout(300);
       await shot('04-lightbox');
-      const next = page.locator('.v2-lb-next');
+      const next = page.locator('.cr-lb-next');
       if ((await next.count()) > 0 && (await next.isVisible())) {
         await next.click().catch(() => {});
         await page.waitForTimeout(300);
         await shot('05-lightbox-next');
       }
-      await page.locator('.v2-lb-close').click().catch(() => {});
+      await page.locator('.cr-lb-close').click().catch(() => {});
       await page.waitForTimeout(200);
     }
   }
 
   // 06 — accessibility severity chip toggle. Asserted, not screenshotted:
   // toggling a severity chip off flips its aria-pressed to "false", marks it
-  // v2-sev-off, and hides that severity's problem boxes (.v2-box-<sev>) on the
+  // cr-sev-off, and hides that severity's problem boxes (.cr-box-<sev>) on the
   // frames; toggling back restores them. When the chip's severity has boxes on
   // screen we assert they hide/show; the aria-pressed round-trip is checked
   // regardless.
-  const a11yTab = page.locator('.v2-tab[data-tab="a11y"]');
-  const sevChip = page.locator('.v2-sev-chip').first();
+  const a11yTab = page.locator('.cr-tab[data-tab="a11y"]');
+  const sevChip = page.locator('.cr-sev-chip').first();
   if ((await a11yTab.count()) > 0 && (await sevChip.count()) > 0) {
     await a11yTab.click();
     await sevChip.scrollIntoViewIfNeeded().catch(() => {});
     const sev = await sevChip.getAttribute('data-sev');
-    const boxes = page.locator(`.v2-a11y-card .v2-box-${sev}`);
+    const boxes = page.locator(`.cr-a11y-card .cr-box-${sev}`);
     const hadBoxes = (await boxes.count()) > 0;
 
     await sevChip.click();

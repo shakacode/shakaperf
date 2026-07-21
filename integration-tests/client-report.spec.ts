@@ -158,8 +158,8 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // The audit ran all three categories, so the v2 report must have all three
   // status tiles and all three tab headers (Performance / Accessibility /
   // AI visibility). The capture pass leaves the page on the client report.
-  await expect(page.locator('.v2-tile[data-jump]'), 'v2 report must render 3 status tiles').toHaveCount(3);
-  await expect(page.locator('.v2-tab'), 'v2 report must render 3 tab headers').toHaveCount(3);
+  await expect(page.locator('.cr-tile[data-jump]'), 'v2 report must render 3 status tiles').toHaveCount(3);
+  await expect(page.locator('.cr-tab'), 'v2 report must render 3 tab headers').toHaveCount(3);
 
   // Every capture interaction is optional-locator by design; these manifest
   // checks are what make a silently-vanished evidence class fail the suite.
@@ -169,7 +169,9 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   for (const required of ['05-artifact-lighthouse', '05-artifact-timeline']) {
     expect(auditShots, `technical-report capture must include the ${required} shot`).toContain(required);
   }
-  for (const required of ['01-overview', '02-tab-a11y', '02-tab-agent', '04-lightbox']) {
+  // The report opens on the worst-issue tab (accessibility for this audit), so
+  // the tab-capture loop screenshots the two NON-active tabs — perf + agent.
+  for (const required of ['01-overview', '02-tab-perf', '02-tab-agent', '04-lightbox']) {
     expect(clientShots, `client-report capture must include the ${required} shot`).toContain(required);
   }
 });
