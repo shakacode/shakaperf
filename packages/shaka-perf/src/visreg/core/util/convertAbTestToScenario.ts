@@ -10,6 +10,7 @@
 import type { AbTestDefinition, Viewport as SharedViewport } from 'shaka-shared';
 import type { Scenario, Viewport } from '../types';
 import { resolveViewportsForTest } from '../../../pipeline/viewport-plan';
+import { resolveUrl } from '../../../pipeline/unit-urls';
 
 export interface ScenarioUrls {
   readonly controlURL: string;
@@ -30,8 +31,8 @@ export function convertAbTestToScenario(
   const experimentPath = testDef.experimentPathOverride ?? testDef.startingPath;
   const scenario: Scenario = {
     label: testDef.name,
-    url: urls?.experimentURL ?? new URL(experimentPath, experimentURL).href,
-    referenceUrl: urls?.controlURL ?? new URL(testDef.startingPath, controlURL).href,
+    url: urls?.experimentURL ?? resolveUrl(experimentPath, experimentURL),
+    referenceUrl: urls?.controlURL ?? resolveUrl(testDef.startingPath, controlURL),
     selectors: visreg.selectors ?? ['document'],
     _testFn: testDef.testFn,
     _testDef: testDef,
