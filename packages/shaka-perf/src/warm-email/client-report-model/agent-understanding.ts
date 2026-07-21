@@ -99,7 +99,6 @@ function verdictFor(status: ClientReportStatus): string {
 }
 
 function groupItem(group: UnderstandingGroup, totalPages: number): RankedUnderstandingItem {
-  const worst = worstSource(group.sources);
   const lostPoints = group.sources.reduce((sum, source) => sum + source.item.max - source.item.points, 0);
   const status = group.sources.some((source) => source.item.state === 'fail') ? 'fail' : 'partial';
   const item: RankedUnderstandingItem = {

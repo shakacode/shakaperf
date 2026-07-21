@@ -88,13 +88,9 @@ describe('buildAgentSection', () => {
   });
 
   it('does not add the optional llms.txt fix without site-access data', () => {
-    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, undefined);
+    const result = buildAgentSection([agentView(50, 100)], [], promptCtx, undefined);
 
     expect(result.agentCost?.fix).toBeUndefined();
-    expect(result.agentReading).toEqual({
-      status: 'fair',
-      verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.',
-    });
   });
 
   it('does not mistake sitemap or indexing deductions for blocked AI crawlers', () => {
@@ -104,6 +100,19 @@ describe('buildAgentSection', () => {
     });
 
     expect(result.agentSite?.status).toBe('fair');
+    expect(result.agentReading).toEqual({
+      status: 'good',
+      verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',
+    });
+  });
+
+  it('matches the access card default-open policy when robots.txt is absent', () => {
+    const result = buildAgentSection([agentView(100, 100)], [], promptCtx, {
+      ...noGuide,
+      robots: { fetched: false, blocksAiBots: [], blocksAll: false },
+    });
+
+    expect(result.agentSite?.status).toBe('good');
     expect(result.agentReading).toEqual({
       status: 'good',
       verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.',

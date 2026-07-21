@@ -160,7 +160,6 @@ function agentReadingVerdict(
   access: SiteAccessScore,
   worstCoverage: number | undefined,
   hasUnconfirmedPages: boolean,
-  crawlerAccessConfirmed: boolean,
 ): NonNullable<ClientReportModel['agentReading']> {
   const crawlerCheck = access.category.items.find((item) => item.label === 'AI answer crawlers allowed');
   if (accessBlocked || crawlerCheck?.state === 'fail') return { status: 'poor', verdict: 'No - AI crawlers are blocked from your site.' };
@@ -168,7 +167,7 @@ function agentReadingVerdict(
   if (hasUnconfirmedPages) return { status: 'fair', verdict: 'Only partly - we could not confirm that AI can read every page we checked.' };
   if (worstCoverage < 0.9) return { status: 'fair', verdict: 'Only partly - some of your text still needs JavaScript before AI can read it.' };
   if (crawlerCheck?.state === 'partial') return { status: 'fair', verdict: 'Only partly - some AI crawlers are not allowed in.' };
-  if (!crawlerCheck || !crawlerAccessConfirmed) return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
+  if (!crawlerCheck) return { status: 'fair', verdict: 'Only partly - we could not confirm whether AI crawlers are allowed in.' };
   return { status: 'good', verdict: 'Yes - your text is served before JavaScript and AI crawlers are allowed in.' };
 }
 
@@ -361,7 +360,6 @@ export function buildAgentSection(
       overall.access,
       worstReadable,
       hasUnconfirmedPages,
-      siteSignals?.robots.fetched === true,
     ),
     agentUnderstanding,
     agentStatus,
