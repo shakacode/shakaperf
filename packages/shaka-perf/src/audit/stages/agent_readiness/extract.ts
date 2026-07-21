@@ -122,12 +122,55 @@ export function extractPageSignals(): PageSignals {
   // word ratio is apples-to-apples.
   let textChars = 0;
   let textWords = 0;
+  let textSample: string | undefined;
   if (doc.body) {
     const clone = doc.body.cloneNode(true) as HTMLElement;
     clone.querySelectorAll('script,style,noscript,template,svg').forEach((e) => e.remove());
     const body = text(clone.textContent);
     textChars = body.length;
     textWords = body ? body.split(' ').filter(Boolean).length : 0;
+    const sentences: string[] = [];
+    let sentenceStart = 0;
+    const isDigit = (char: string): boolean => char >= '0' && char <= '9';
+    const isLower = (char: string): boolean => char >= 'a' && char <= 'z';
+    const isUpper = (char: string): boolean => char >= 'A' && char <= 'Z';
+    const isSentenceBoundary = (index: number): boolean => {
+      const mark = body[index];
+      if (mark !== '.') return true;
+      const prev = body[index - 1] || '';
+      const next = body[index + 1] || '';
+      if ((next === '.' || prev === '.') || (isDigit(prev) && isDigit(next))) return false;
+      const before = body.slice(Math.max(0, index - 16), index);
+      const word = before.match(/[A-Za-z]+$/)?.[0] || '';
+      const after = body.slice(index + 1).match(/^\s*([A-Za-z])/)?.[1] || '';
+      if (word.length === 1 && /[A-Za-z]/.test(next)) return false;
+      if (word.length === 1 && isUpper(word) && after && isUpper(after)) return false;
+      if (/([A-Za-z]\.)+[A-Za-z]$/.test(before)) return false;
+      if (/^(e|g|i|mr|mrs|ms|dr|prof|sr|jr|vs|etc|inc|ltd|co|corp|st|ave|no)$/i.test(word) && isLower(after)) {
+        return false;
+      }
+      return true;
+    };
+    for (let i = 0; i < body.length; i++) {
+      if (!/[.!?]/.test(body[i]) || !isSentenceBoundary(i)) continue;
+      let end = i + 1;
+      while (/[.!?]/.test(body[end] || '')) end++;
+      sentences.push(body.slice(sentenceStart, end));
+      sentenceStart = end;
+      i = end - 1;
+    }
+    if (sentenceStart < body.length) sentences.push(body.slice(sentenceStart));
+    for (const sentence of sentences) {
+      const clean = text(sentence);
+      if (!clean) continue;
+      const words = clean.split(' ').filter(Boolean);
+      if (words.length < 8) continue;
+      const short = words.length > 20 ? words.slice(0, 20).join(' ') : clean;
+      textSample = short.length > 200
+        ? short.slice(0, 200).replace(/\s+\S*$/, '').trim()
+        : short;
+      break;
+    }
   }
 
   return {
@@ -153,5 +196,6 @@ export function extractPageSignals(): PageSignals {
     images: { total: imgs.length, withAlt },
     textChars,
     textWords,
+    ...(textSample ? { textSample } : {}),
   };
 }

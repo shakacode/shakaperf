@@ -7,11 +7,55 @@
  * License in LICENSE.md.
  */
 
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { DESKTOP_VIEWPORT, type AbTestDefinition } from 'shaka-shared';
-import { comparePipelineMetadata, createComparePipeline } from '../compare-pipeline';
+import {
+  comparePipelineConfigFromAbTests,
+  comparePipelineMetadata,
+  createComparePipeline,
+} from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
+import { runPipeline } from '../../pipeline/runner';
+import type { AbTestsConfig } from '../../config';
 
 describe('compare accessibility pipeline integration', () => {
+  it('derives reusable pipeline construction options from parsed config', () => {
+    const parsed = {
+      shared: { parallelism: 6, testPathPattern: 'checkout' },
+      visreg: {
+        defaultMisMatchThreshold: 0.2,
+        maxNumDiffPixels: 12,
+        comparePixelmatchThreshold: 0.3,
+        engineOptions: { browser: 'chromium' },
+        resembleOutputOptions: { transparency: 0.4 },
+        compareRetries: 4,
+        compareRetryDelay: 50,
+      },
+      perf: {
+        numberOfMeasurements: 7,
+        regressionThreshold: 8,
+        pValueThreshold: 0.04,
+        regressionThresholdStat: 'ci-lower',
+        samplingMode: 'simultaneous',
+        lighthouseConfig: { maxWaitForLoad: 1000 },
+        plotTitle: 'Shared config',
+      },
+      accessibility: { tags: ['wcag2a'] },
+    } as AbTestsConfig;
+
+    expect(comparePipelineConfigFromAbTests(parsed, { artifactRoot: 'commits/abc' }))
+      .toMatchObject({
+        artifactRoot: 'commits/abc',
+        parallelism: 3,
+        testPathPattern: 'checkout',
+        visregDefaultMisMatchThreshold: 0.2,
+        perfNumberOfMeasurements: 7,
+        accessibility: { tags: ['wcag2a'] },
+      });
+  });
+
   it('registers accessibility as a first-class compare category and stage', () => {
     expect(comparePipelineMetadata.categories).toEqual(['visreg', 'perf', 'accessibility']);
     expect(comparePipelineMetadata.stages).toEqual([
@@ -24,6 +68,37 @@ describe('compare accessibility pipeline integration', () => {
 
     const pipeline = createComparePipeline(baseConfig());
     expect(pipeline.stages.map((stage) => stage.name)).toEqual(comparePipelineMetadata.stages);
+  });
+
+  it('uses the configured artifact root for compare results', async () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-compare-pipeline-test-'));
+    const pipeline = createComparePipeline({
+      ...baseConfig(),
+      artifactRoot: 'candidate-artifacts',
+    });
+
+    try {
+      const result = await runPipeline(pipeline, {
+        cwd,
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        skipReport: true,
+        retries: 0,
+        retryDelay: 0,
+        timeoutMs: 1_000,
+        viewports: {
+          visreg: [],
+          perf: [],
+          accessibility: [],
+          audit: [],
+        },
+        tests: [testDefinition()],
+      });
+
+      expect(result.resultsRoot).toBe(path.join(cwd, 'candidate-artifacts', 'compare-results'));
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it('emits failing accessibility regression chips and sort dimensions for new violations', () => {

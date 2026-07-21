@@ -266,6 +266,7 @@ function errorInfo(err: unknown): ErrorInfo {
 }
 
 export interface PipelineRunResult {
+  readonly testResults: readonly TestResult[];
   /**
    * Backward-compatible alias for the shareable report. Prefer
    * `shortReportPath`/`fullReportPath` for user-facing CLI output.
@@ -299,6 +300,7 @@ export interface PipelineRunResult {
 
 export interface RuntimeOptions {
   readonly cwd?: string | undefined;
+  readonly tests?: readonly AbTestDefinition[] | undefined;
   readonly controlURL: string;
   readonly experimentURL: string;
   readonly testPathPattern?: string | undefined;
@@ -438,15 +440,17 @@ async function runConfiguredPipelineWithSelection(
   // disk can reappear in a fresh local report. `--report-only` is the explicit
   // full-suite assembly path: it runs no tests, deletes nothing, and rebuilds
   // from whatever per-test artifacts already exist on disk.
+  const frozenTests = runtime.tests ? [...runtime.tests] : null;
+  // `let`: burn expansion below reassigns these in place.
   let runTests = runtime.reportOnly
-      ? []
-      : await loadTests({
+    ? []
+    : frozenTests ?? await loadTests({
         testPathPattern: runtime.testPathPattern,
         filter: runtime.filter,
         log: (msg) => console.log(msg),
       });
   let reportTests = runtime.reportOnly
-    ? await loadTests({ log: (msg) => console.log(msg) })
+    ? frozenTests ?? await loadTests({ log: (msg) => console.log(msg) })
     : runTests;
 
   // Fan each test into its burn instances once, at the only place tests enter
@@ -739,6 +743,7 @@ async function runConfiguredPipelineWithSelection(
       engineErrors,
     });
     return {
+      testResults: data.tests,
       reportPath: '',
       shortReportPath: '',
       fullReportPath: '',
@@ -786,6 +791,7 @@ async function runConfiguredPipelineWithSelection(
   }
 
   return {
+    testResults: data.tests,
     reportPath,
     shortReportPath: lightPath,
     fullReportPath: fullPath,

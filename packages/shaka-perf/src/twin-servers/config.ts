@@ -16,7 +16,12 @@ import {
   findAbTestsConfig,
   loadAbTestsConfig,
 } from '../config-loader';
-import { TwinServersConfigSchema, type TwinServersConfig, type TwinServersConfigInput, type ResolvedConfig } from './types';
+import {
+  TwinServersConfigSchema,
+  type ResolvedConfig,
+  type TwinServersConfig,
+  type TwinServersConfigInput,
+} from './types';
 
 const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
@@ -31,19 +36,29 @@ export function findConfigFile(cwd?: string): string | null {
   return findAbTestsConfig(cwd) ?? sharedFindConfigFile(LEGACY_CONFIG_FILENAMES, cwd);
 }
 
+function parseTwinServersConfig(config: unknown): TwinServersConfig {
+  const parseResult = TwinServersConfigSchema.safeParse(config);
+  if (!parseResult.success) {
+    const firstError = parseResult.error.errors[0];
+    const fieldPath = firstError.path.join('.');
+    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
+  }
+  return parseResult.data;
+}
+
 export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
   const basename = path.basename(configPath);
   if (basename.startsWith('abtests.config.')) {
     const raw = await loadAbTestsConfig(configPath);
-    const slice = (raw as { twinServers?: unknown }).twinServers;
+    const slice = raw.twinServers;
     if (!slice) {
       throw new Error(
         `${configPath} has no \`twinServers\` section. Add one or use a legacy twin-servers.config.ts.`,
       );
     }
-    return slice as TwinServersConfig;
+    return parseTwinServersConfig(slice);
   }
-  return loadConfigFile(configPath) as Promise<TwinServersConfig>;
+  return parseTwinServersConfig(await loadConfigFile(configPath));
 }
 
 function expandTilde(filePath: string): string {
@@ -92,13 +107,7 @@ export function projectPathSlug(absPath: string): string {
 
 export function resolveConfig(config: unknown, cwd: string = process.cwd()): ResolvedConfig {
   // Validate schema with Zod
-  const parseResult = TwinServersConfigSchema.safeParse(config);
-  if (!parseResult.success) {
-    const firstError = parseResult.error.errors[0];
-    const fieldPath = firstError.path.join('.');
-    throw new Error(fieldPath ? `${fieldPath}: ${firstError.message}` : firstError.message);
-  }
-  const validConfig = parseResult.data;
+  const validConfig = parseTwinServersConfig(config);
 
   // Resolve paths and validate existence.
   const projectDir = path.resolve(cwd);
@@ -143,6 +152,7 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     },
     ports: validConfig.ports,
     setupCommands: validConfig.setupCommands ?? [],
+    rebuildCommands: validConfig.rebuildCommands ?? [],
     projectSlug: slug,
   };
 }

@@ -61,3 +61,22 @@ describe('perf config', () => {
     expect(config.perf.regressionThreshold).toBe(50);
   });
 });
+
+describe('bisect config', () => {
+  it('defaults container rebuilding', () => {
+    expect(parseAbTestsConfig(baseConfig()).bisect).toEqual({
+      rebuildContainer: false,
+    });
+  });
+
+  it('preserves explicit container rebuilding', () => {
+    expect(parseAbTestsConfig(baseConfig({
+      bisect: {
+        rebuildContainer: true,
+      },
+    })).bisect).toEqual({
+      rebuildContainer: true,
+    });
+  });
+
+});

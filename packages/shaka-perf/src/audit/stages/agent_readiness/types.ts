@@ -94,6 +94,7 @@ export interface PageSignals {
   images: ImageSignals;
   textChars: number; // visible-ish text length (body minus script/style/etc.)
   textWords: number;
+  textSample?: string; // short rendered-content sample for later verification copy
 }
 
 // What a no-JS fetch returned, plus the parsed signals. `signals` is null when

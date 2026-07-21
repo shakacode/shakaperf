@@ -47,6 +47,11 @@ export const TwinServersConfigSchema = z.object({
    * need none.
    */
   setupCommands: z.array(SetupCommandSchema).optional(),
+  /**
+   * Commands that rebuild application state after experiment source changes.
+   * They run inside the experiment container before its processes restart.
+   */
+  rebuildCommands: z.array(SetupCommandSchema).optional(),
 });
 
 // Derive types from schemas
@@ -62,6 +67,8 @@ export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeF
   experimentDir: string;
   /** Setup commands to run (empty array if none provided) */
   setupCommands: SetupCommand[];
+  /** In-container rebuild commands available to the experiment server. */
+  rebuildCommands: SetupCommand[];
   /** Resolved compose file path (defaults to bundled template) */
   composeFile: string;
   /**

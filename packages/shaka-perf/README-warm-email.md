@@ -24,28 +24,25 @@ The same saved audit feeds two reports:
 
 ## client-report
 
-### Design: v2 (default) and v1
+### Design
 
-There are two designs, selectable with `--design` (default `v2`):
+`client-report` renders the current product-owner-first report: a one-line
+"bottom line", three status tiles (Mobile speed / Accessibility / AI
+visibility), and three tabs whose cards lead with a plain-language verdict before
+any numbers. It reuses the saved audit data (frames, video, a11y crops + scores,
+agent factors, and the per-page AI summaries) - no new metrics are collected.
 
-- **v2** (the redesign, default) - a product-owner-first report: a one-line
-  "bottom line", three status tiles (Mobile speed / Accessibility / AI
-  visibility), and three tabs whose cards lead with a plain-language verdict
-  before any numbers. It reuses the exact same measured data v1 does (frames,
-  video, a11y crops + scores, agent factors, the per-page AI summaries) - no new
-  metrics are collected, only re-laid-out. Its narrative copy (the bottom line +
-  each tab's verdict) is written by a `claude` pass (model `sonnet`, one call,
-  cached to `<results>/client-narrative-v2.json`; `--no-ai-narrative` to skip),
-  with a deterministic built-in fallback so the report always renders. The cache
-  stores only the plain AI text; the report is recomposed from the current data
-  each render, so a re-audit that adds a tab is reflected without stale copy.
-  Delete `client-narrative-v2.json` to refresh the AI verdict copy. v2 pulls the
-  Hanken Grotesk web font from Google Fonts (with a `system-ui` fallback if that
-  CDN is unreachable); the report is otherwise self-contained like v1.
-- **v1** (`--design v1`) - the original mobile-speed-led report described below.
-  Output is byte-for-byte what it always was.
-
-The video / filmstrip / a11y / agent behaviour below is shared by both designs.
+Narrative copy (the bottom line + each tab's verdict) is written by a `claude`
+pass (model `sonnet`, one call, cached to
+`<results>/client-narrative.json`; `--no-ai-narrative` to skip), with a
+deterministic built-in fallback so the report always renders. The cache stores
+only the plain AI text; the report is recomposed from the current data each
+render, so a re-audit that adds a tab is reflected without stale copy. Delete
+`client-narrative.json` (or `client-narrative-v2.json` for audits created before
+this rename) to refresh the AI verdict copy. Existing `client-narrative-v2.json`
+caches are still read during the transition. The report pulls the Hanken Grotesk
+web font from Google Fonts (with a `system-ui` fallback if that CDN is
+unreachable); it is otherwise self-contained.
 
 Renders one card per page (worst ~5 in full, the rest as a one-line list):
 
@@ -105,12 +102,19 @@ Overviews) - the data comes from the audit's `agent-readiness` stage (always on
 under the `audit` category), so a plain `shaka-perf audit` produces it; with no
 agent data on disk the bytes stay identical to before. The stage captures each
 page twice - the raw HTML the server sends (a no-JS fetch) and the rendered DOM -
-and writes `<id>/agent-readiness.json`. The report scores four categories
-(content reachable without JavaScript 40%, crawler access 25%, machine-readable
-structure 20%, semantic HTML 15%) into a 0-100 directional diagnostic, with two
-honesty gates: a near-empty no-JS shell or a robots.txt that blocks every crawler
-caps the score at "poor". The site-level robots.txt / sitemap.xml / llms.txt are
-fetched once at report time (same bounded, SSRF-guarded pattern as the favicon).
+and writes `<id>/agent-readiness.json`. Each page score adds content reachable
+without JavaScript (40 points), machine-readable structure (20 points), and
+semantic HTML (15 points) out of 75, then rescales to 0-100. Crawler access
+(25 points) is assessed separately and rescaled to its own site-wide 0-100 card.
+The headline site score averages the page structure scores; when at least half
+the reachable pages are near-empty no-JS shells, or robots.txt blocks every AI
+answer crawler, it is capped at "poor".
+The tab separates that evidence into two client-facing questions: whether AI can
+read the site's text and whether the page labels and structure explain what the
+text means. Each question has its own verdict, so a readable site can still show
+specific structure and semantics gaps without conflating them with text access.
+The site-level robots.txt / sitemap.xml / llms.txt are fetched once at report time
+(same bounded, SSRF-guarded pattern as the favicon).
 A report-time `claude` pass (model `sonnet`, cached, `--no-ai-agent` to skip)
 rewrites the findings into a plain-language summary + "what to change" list to
 `<id>/agent-ready-client.json` and a site `agent-ready-site.json`; without it the
@@ -158,11 +162,12 @@ link to from the draft.
 ## Module layout
 
 `src/warm-email/`: `synthesis.ts` (cross-page scorecard over the saved
-artifacts), `client-report.ts` (the client renderer, incl. `buildCaptionCues`
-for the on-video caption track, `enrichA11ySummaries` for the a11y sidecars, and
-`buildClientReportV2Model` which assembles the v2 model from the same data),
-`client-report-v2.ts` (the v2 design - a pure templating module over that model),
-`client-report-narrative.ts` (the v2 verdict copy: deterministic builder + AI
+artifacts), `client-report.ts` (report orchestration, artifact IO, frame and
+a11y crop preparation, and `buildClientReportModel`), `site-assets.ts`
+(favicon fetching and validation), `client-report-renderer.ts`
+(the pure templating module over that model), `client-report-model/` (pure
+model helpers such as performance problem/status policy),
+`client-report-narrative.ts` (the verdict copy: deterministic builder + AI
 overlay merge + prompt/parse), `client-report-narrative-ai.ts` (the optional
 `claude` narrator), `caption-ai.ts` (the optional `claude` caption rewriter),
 `a11y-summary-ai.ts` (the optional `claude` accessibility summary/fixes
@@ -172,8 +177,12 @@ commands). The per-page score/summary sidecar writers live in
 `src/audit/stages/accessibility/client-sidecar.ts`. The shared polish loop lives
 in `src/email-polish/polish.ts`. Pure logic is unit-tested in
 `src/warm-email/__tests__/client-report.test.ts`,
+`src/warm-email/__tests__/site-assets.test.ts`,
 `src/warm-email/__tests__/client-report-a11y.test.ts`,
 `src/warm-email/__tests__/caption-ai.test.ts`,
 `src/warm-email/__tests__/a11y-summary-ai.test.ts`,
-`src/warm-email/__tests__/client-report-v2.test.ts` (the v2 narrative builder +
-renderer), and `src/email-polish/__tests__/polish.test.ts`.
+`src/warm-email/__tests__/client-report-renderer.test.ts` (the narrative builder +
+renderer), and `src/email-polish/__tests__/polish.test.ts`. The neutral
+`src/net/public-host.ts` provides the shared SSRF host guard used by warm-email
+favicon and site-signal fetches and by the audit agent-readiness stage; its
+tests are in `src/net/__tests__/public-host.test.ts`.

@@ -264,12 +264,12 @@ export function writeReport(
   stages: readonly Stage[] = [],
 ): WriteReportResult {
   fs.mkdirSync(outDir, { recursive: true });
-  const fullData = stripDiagnosticsForMode(
+  const fullData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'full' } },
     'full',
     stages,
   );
-  const lightData = stripDiagnosticsForMode(
+  const lightData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'lightweight' } },
     'lightweight',
     stages,
@@ -287,7 +287,11 @@ export function writeReport(
  * needs in that mode (inlined data URIs for lightweight, relative-path
  * refs for full).
  */
-function stripDiagnosticsForMode(data: ReportData, mode: ReportMode, stages: readonly Stage[]): ReportData {
+export function reportDataForMode<T extends ReportData>(
+  data: T,
+  mode: ReportMode,
+  stages: readonly Stage[],
+): T {
   const strippers = new Map<StageName, (m: unknown) => unknown>();
   for (const stage of stages) {
     const fn = mode === 'lightweight' ? stage.stripMeasurementForLightweight : stage.stripMeasurementForFull;
@@ -305,7 +309,7 @@ function stripDiagnosticsForMode(data: ReportData, mode: ReportMode, stages: rea
         return { ...outcome, measurement: strip(outcome.measurement) };
       }),
     })),
-  };
+  } as T;
 }
 
 class ReportSummaryLogger implements StageLogger {
@@ -328,12 +332,22 @@ export function writeMachineReport(
   const stagesByName = new Map<StageName, Stage>(
     pipeline.stages.map((stage) => [stage.name, stage]),
   );
+  const rows = tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
+    test,
+    viewport,
+    outcomes: store.readOutcomesForViewport(test, viewport.label),
+  })));
+  const machineReportMeta = pipeline.machineReportMeta?.({
+    rows,
+    reportOnly: meta.reportOnly,
+  }) ?? {};
   const payload = {
     schemaVersion: 1,
     meta: {
       generatedAt: meta.generatedAt,
       pipelineName: meta.pipelineName,
       durationMs: meta.durationMs,
+      ...machineReportMeta,
       cwd: meta.cwd,
       controlUrl: meta.controlUrl,
       experimentUrl: meta.experimentUrl,
@@ -349,7 +363,7 @@ export function writeMachineReport(
     // (test, viewport) row per entry — so the same chip array rides every
     // row that shares a test. Lossless and trivially groupable downstream,
     // and the duplication is small next to the outcome payload.
-    tests: tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
+    tests: rows.map(({ test, viewport, outcomes }) => ({
       id: path.basename(store.unitDirForViewport(test, viewport.label)),
       name: test.name,
       filePath: test.file,
@@ -360,7 +374,7 @@ export function writeMachineReport(
         height: viewport.height,
       },
       chips: chipsByTest.get(test) ?? [],
-      outcomes: store.readOutcomesForViewport(test, viewport.label).map((outcome) => ({
+      outcomes: outcomes.map((outcome) => ({
         kind: outcome.kind,
         stage: outcome.stage,
         error: outcome.error,
@@ -377,7 +391,7 @@ export function writeMachineReport(
           experimentURL: resolveUrl(test.experimentPathOverride ?? test.startingPath, meta.experimentUrl),
         }),
       })),
-    }))),
+    })),
   };
   fs.writeFileSync(reportPath, JSON.stringify(payload, null, 2));
 }

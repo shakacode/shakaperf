@@ -99,7 +99,7 @@ export function OutcomeSlot({
   }
 
   return (
-    <section className="outcome-slot" data-stage={first.stage}>
+    <section className="outcome-slot" data-stage={first.stage} tabIndex={-1}>
       {errorOutcomes.map((outcome, index) => (
         <OutcomeError key={`error-${outcome.viewport.label}-${index}`} outcome={outcome} />
       ))}

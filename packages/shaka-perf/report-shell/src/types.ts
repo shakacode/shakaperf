@@ -9,11 +9,27 @@
 
 export type { TestType } from 'shaka-shared';
 
+import type { ReportData as PipelineReportData } from '../../src/pipeline/report';
+import type { BisectReportModel } from '../../src/compare/bisect/report-model';
+
 export type {
   ChipDescriptor,
-  ReportData,
   ReportMeta,
   ReportOutcome,
   SortDescriptor,
   TestResult,
 } from '../../src/pipeline/report';
+
+export type { BisectCategory } from '../../src/compare/bisect/types';
+export type {
+  BisectReportCommit,
+  BisectReportCounts,
+  BisectReportData,
+  BisectReportMergeInvestigation,
+  BisectReportMergeSourceCommit,
+  BisectReportModel,
+  BisectReportTarget,
+  BisectReportView,
+} from '../../src/compare/bisect/report-model';
+
+export type ReportData = PipelineReportData & { bisect?: BisectReportModel };

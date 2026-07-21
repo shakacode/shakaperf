@@ -10,7 +10,7 @@
 import type { ReactNode } from 'react';
 import { createAuditPipeline, type AuditPipelineConfig } from '../audit/pipeline';
 import { createComparePipeline, type ComparePipelineConfig } from '../compare/compare-pipeline';
-import type { StageName, StageRenderEntry } from '../stage/stage';
+import type { StageCategory, StageName, StageRenderEntry } from '../stage/stage';
 import {
   renderPipelineStageArtifacts,
   type Pipeline,
@@ -29,9 +29,10 @@ function pipelineForReport(pipelineName: string | undefined, config: unknown): P
   }
 }
 
-/** The report-relevant fields of a pipeline stage: its id and its chip label. */
+/** The report-relevant fields of a pipeline stage. */
 export interface ReportStage {
   readonly name: StageName;
+  readonly category: StageCategory;
   readonly label: string;
 }
 
@@ -46,6 +47,7 @@ export function pipelineStagesForReport(
 ): ReportStage[] {
   return pipelineForReport(pipelineName, config).stages.map((stage) => ({
     name: stage.name,
+    category: stage.category,
     label: stage.label,
   }));
 }

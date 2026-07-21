@@ -127,8 +127,10 @@ export function TestCard({
   return (
     <article
       className="card"
+      data-report-test-id={test.id}
       data-chip-color={chips[0]?.color ?? 'gray'}
       data-dimmed={dimmed ? 'true' : undefined}
+      tabIndex={-1}
       style={{ animationDelay: `${animationDelayMs}ms` }}
     >
       <div className="card__head">

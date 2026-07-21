@@ -245,6 +245,10 @@ export const AccessibilityConfigSchema = z
     failOnViolation: z.boolean().default(true),
   });
 
+export const BisectConfigSchema = z.object({
+  rebuildContainer: z.boolean().default(false),
+});
+
 export const AbTestsConfigSchema = z
   .object({
     shared: SharedConfigSchema,
@@ -253,6 +257,7 @@ export const AbTestsConfigSchema = z
     audit: AuditConfigSchema.optional().default({}),
     accessibility: AccessibilityConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),
+    bisect: BisectConfigSchema.optional().default({}),
   })
   .superRefine((cfg, ctx) => {
     // Cross-schema: every category's viewport label must be defined in
@@ -304,6 +309,7 @@ export type AuditConfig = Omit<z.infer<typeof AuditConfigSchema>, 'viewports'> &
 export type AccessibilityConfig = Omit<z.infer<typeof AccessibilityConfigSchema>, 'viewports'> & {
   viewports: Viewport[];
 };
+export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 export interface AbTestsConfig {
   shared: SharedConfig;
   visreg: VisregConfig;
@@ -311,6 +317,7 @@ export interface AbTestsConfig {
   audit: AuditConfig;
   accessibility: AccessibilityConfig;
   twinServers?: AbTestsConfigParsed['twinServers'];
+  bisect: BisectConfig;
 }
 
 /**
@@ -356,5 +363,6 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     audit: { ...parsed.audit, viewports: resolve(parsed.audit.viewports) },
     accessibility: { ...parsed.accessibility, viewports: resolve(parsed.accessibility.viewports) },
     twinServers: parsed.twinServers,
+    bisect: parsed.bisect,
   };
 }

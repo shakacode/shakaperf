@@ -11,10 +11,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { startProxyServer, type ProxyDispatcher } from '../server';
-import { tryProxy } from '../client';
+import { requireBisectProxy, tryProxy } from '../client';
 import { endpointPaths } from '../paths';
 import { PROTOCOL_VERSION } from '../protocol';
-import { MenuBusyError } from '../../commands/servers-menu';
+import { createDispatcher } from '../dispatch';
+import { MenuBusyError, type MenuController } from '../../commands/servers-menu';
+import type { BisectExperimentReloadResult } from '../../commands/bisect-session';
 import type { ResolvedConfig } from '../../types';
 
 /**
@@ -63,6 +65,45 @@ describe('ipc proxy', () => {
       } finally {
         await proxy.close();
       }
+    });
+  });
+
+  it('returns typed response data from a required bisect proxy', async () => {
+    await withHome(async () => {
+      const slug = 'bisect-data';
+      const result: BisectExperimentReloadResult = { mode: 'container', usedFallback: true };
+      const dispatch: ProxyDispatcher = async () => result;
+      const proxy = await startProxyServer({ config: fakeConfig(slug), dispatch });
+
+      try {
+        await expect(requireBisectProxy<BisectExperimentReloadResult>({
+          slug,
+          request: {
+            v: PROTOCOL_VERSION,
+            cmd: 'bisect-refresh',
+            sessionId: 'session-1',
+            mode: 'commands',
+            rebuildCommands: ['yarn build'],
+            noCache: false,
+          },
+        })).resolves.toEqual(result);
+      } finally {
+        await proxy.close();
+      }
+    });
+  });
+
+  it('requires a running proxy for compare bisect actions', async () => {
+    await withHome(async () => {
+      await expect(requireBisectProxy({
+        slug: 'missing-bisect-server',
+        request: {
+          v: PROTOCOL_VERSION,
+          cmd: 'bisect-begin',
+          sessionId: 'session-1',
+          ownerPid: process.pid,
+        },
+      })).rejects.toThrow(/requires a running shaka-perf servers session/);
     });
   });
 
@@ -233,5 +274,63 @@ describe('ipc proxy', () => {
         await proxy.close();
       }
     });
+  });
+});
+
+describe('ipc dispatcher', () => {
+  it('routes compare bisect lease and reload requests through the menu controller', async () => {
+    const calls: string[] = [];
+    const controller: MenuController = {
+      async rebuildAndRestart() {
+        calls.push('rebuild');
+      },
+      async restartContainersAndServers() {
+        calls.push('restart-containers');
+      },
+      async restartServers() {
+        calls.push('restart-servers');
+      },
+      async stopContainersAndExit() {
+        calls.push('stop-containers');
+      },
+      async runOneOff<T>(_verb: string, runner: () => Promise<T>): Promise<T> {
+        calls.push('run-one-off');
+        return runner();
+      },
+      async beginBisectSession(sessionId, ownerPid) {
+        calls.push(`begin:${sessionId}:${ownerPid}`);
+      },
+      async reloadBisectExperiment(request) {
+        calls.push(`refresh:${request.sessionId}:${request.mode}:${request.rebuildCommands.join('|')}`);
+        return { mode: 'container', usedFallback: true };
+      },
+      async endBisectSession(sessionId) {
+        calls.push(`end:${sessionId}`);
+      },
+    };
+    const dispatch = createDispatcher(fakeConfig('bisect-dispatch'), () => controller);
+
+    await dispatch({
+      v: PROTOCOL_VERSION,
+      cmd: 'bisect-begin',
+      sessionId: 't1',
+      ownerPid: process.pid,
+    });
+    const result = await dispatch({
+      v: PROTOCOL_VERSION,
+      cmd: 'bisect-refresh',
+      sessionId: 't1',
+      mode: 'commands',
+      rebuildCommands: ['yarn build'],
+      noCache: false,
+    });
+    await dispatch({ v: PROTOCOL_VERSION, cmd: 'bisect-end', sessionId: 't1' });
+
+    expect(calls).toEqual([
+      `begin:t1:${process.pid}`,
+      'refresh:t1:commands:yarn build',
+      'end:t1',
+    ]);
+    expect(result).toEqual({ mode: 'container', usedFallback: true });
   });
 });

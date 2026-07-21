@@ -17,7 +17,6 @@ import {
   a11yIssuesHtml,
   compareA11yWorstFirst,
   enrichA11ySummaries,
-  hasMajorA11yBarrier,
   pageHasCleanA11y,
   readA11yClient,
   scoreBucket,
@@ -31,6 +30,14 @@ import type {
   AccessibilityScan,
   AccessibilityViolation,
 } from '../../audit/stages/accessibility/types';
+import {
+  a11yAffectsProse,
+  a11yFixClause,
+  hasMajorA11yBarrier,
+  a11yPromptRules,
+  type A11ySectionView,
+} from '../client-report-model/a11y';
+import { buildCanonicalA11ySitePrompt } from '../client-report-model/a11y-site-prompt';
 
 function viol(impact: AccessibilityViolation['impact']): AccessibilityViolation {
   // One node so `places` (nodes.length) is a realistic 1, not 0, in enrich requests.
@@ -52,6 +59,19 @@ function result(scans: AccessibilityScan[]): AccessibilityResult {
 
 function page(a11y?: AccessibilityResult): PagePerf {
   return { id: 'p', name: 'P', startingPath: '/', chips: [], metrics: {}, ...(a11y ? { a11y } : {}) };
+}
+
+function promptSectionView(
+  id: string,
+  name: string,
+  startingPath: string,
+  violations: AccessibilityViolation[],
+): A11ySectionView {
+  return {
+    page: { id, name, startingPath, chips: [], metrics: {} },
+    scan: { ...scan(violations), url: `https://example.com${startingPath}` },
+    counts: tallyByImpact(violations),
+  };
 }
 
 describe('tallyByImpact', () => {
@@ -97,7 +117,12 @@ describe('scoreBucket', () => {
 
 describe('compareA11yWorstFirst', () => {
   const counts = (critical: number, serious: number, moderate = 0, minor = 0) => ({ critical, serious, moderate, minor });
-  const rank = (c: ReturnType<typeof counts>, score?: number, startingPath = '/x/') => ({ counts: c, score, startingPath });
+  const rank = (c: ReturnType<typeof counts>, score?: number, startingPath = '/x/', highImpact?: number) => ({
+    counts: c,
+    score,
+    startingPath,
+    ...(highImpact === undefined ? {} : { highImpact }),
+  });
   const order = (rows: ReturnType<typeof rank>[]) => [...rows].sort(compareA11yWorstFirst).map((r) => r.startingPath);
 
   it('ranks by the worst Lighthouse score first - the number shown on the card', () => {
@@ -111,6 +136,13 @@ describe('compareA11yWorstFirst', () => {
 
   it('breaks an equal-score tie by the breadth of high-impact barriers', () => {
     expect(order([rank(counts(0, 2), 90, '/a/'), rank(counts(0, 4), 90, '/b/')])).toEqual(['/b/', '/a/']);
+  });
+
+  it('breaks an equal-score tie by distinct high-impact defects when supplied', () => {
+    expect(order([
+      rank(counts(0, 3), undefined, '/three-violations/', 3),
+      rank(counts(0, 1), undefined, '/forty-defects/', 40),
+    ])).toEqual(['/forty-defects/', '/three-violations/']);
   });
 
   it('within equal score and high-impact, a critical outranks a serious-only page', () => {
@@ -223,6 +255,96 @@ describe('a11yIssueLabel', () => {
   });
 });
 
+describe('client report a11y cost copy helpers', () => {
+  const vRule = (
+    ruleId: string,
+    impact: AccessibilityViolation['impact'] = 'serious',
+    nodes: AccessibilityViolation['nodes'] = [{ target: ['#x'], html: '<x>', failureSummary: '' }],
+  ): AccessibilityViolation => ({
+    ruleId,
+    impact,
+    help: 'h',
+    helpUrl: '',
+    tags: [],
+    nodes,
+  });
+
+  it('builds affects copy from top high-impact rule families', () => {
+    const prose = a11yAffectsProse(scan([
+      vRule('button-name', 'critical'),
+      vRule('color-contrast', 'serious'),
+      vRule('link-name', 'serious'),
+    ]));
+
+    expect(prose).toBe(
+      'Screen-reader users are left guessing what buttons, links, or fields do when controls are not labeled. Low-vision users can miss key content or calls to action when text contrast is too low.',
+    );
+  });
+
+  it('falls back safely for an unknown high-impact axe rule', () => {
+    expect(a11yAffectsProse(scan([vRule('future-axe-rule', 'critical')]))).toBe(
+      'Screen-reader and keyboard users can lose the context or controls they need to understand and operate the page.',
+    );
+  });
+
+  it('builds start-here fix clauses from the same rule family table', () => {
+    expect(a11yFixClause('color-contrast')).toBe('raise its text contrast so low-vision visitors can read it');
+    expect(a11yFixClause('landmark-unique')).toBe('label its page areas clearly so screen reader visitors can reach the main content and tell sections apart');
+    expect(a11yFixClause('heading-order')).toBe('fix its heading order so screen reader visitors can move through it');
+    expect(a11yFixClause('aria-hidden-focus')).toBe('label its controls clearly so screen reader visitors know what they do');
+    expect(a11yFixClause('future-axe-rule')).toBe('fix its accessibility barriers so screen reader and keyboard visitors can use it');
+  });
+
+  it('builds prompt rules without trusting malformed node fields', () => {
+    const malformedNode = {
+      target: ['button.checkout', ['button.icon', 42], 10],
+      failureSummary: '',
+    } as unknown as AccessibilityViolation['nodes'][number];
+    const htmlNode = {
+      target: ['#cart button'],
+      html: '<button>\n  Checkout\n</button>',
+      failureSummary: '',
+    };
+
+    expect(a11yPromptRules(scan([vRule('button-name', 'critical', [malformedNode, htmlNode])]))).toEqual([
+      {
+        ruleId: 'button-name',
+        impact: 'critical',
+        selectors: ['button.checkout', 'button.icon', '#cart button'],
+        htmlExample: '<button> Checkout </button>',
+      },
+    ]);
+  });
+
+  it('selects the aggregated canonical page for the site prompt deterministically', () => {
+    const vRule = (ruleId: string, impact: AccessibilityViolation['impact']): AccessibilityViolation => ({
+      ruleId,
+      impact,
+      help: 'fixture',
+      helpUrl: '',
+      tags: [],
+      nodes: [{ target: ['.fixture'], html: '<button>Fixture</button>', failureSummary: '' }],
+    });
+    const input = {
+      views: [
+        promptSectionView('home-top', 'Home top', '/#top', [vRule('target-size', 'serious')]),
+        promptSectionView('home-footer', 'Home footer', '/#footer', [vRule('image-alt', 'critical')]),
+        promptSectionView('about', 'About', '/about', [vRule('target-size', 'serious')]),
+      ],
+      worstView: promptSectionView('home-top', 'Home top', '/#top', [vRule('target-size', 'serious')]),
+      siteUrl: 'https://example.com',
+      promptContext: { host: 'example.com', date: 'July 10, 2026' },
+    };
+
+    const prompt = buildCanonicalA11ySitePrompt(input);
+
+    expect(buildCanonicalA11ySitePrompt(input)).toBe(prompt);
+    expect(prompt).toContain("2 high-impact issues across the site's 2 pages");
+    expect(prompt).toContain('worst page: the homepage with 2');
+    expect(prompt).toContain("npx @axe-core/cli 'https://example.com/#top' 'https://example.com/about'");
+  });
+});
+
 describe('isStructuralA11yRule', () => {
   it('marks document-structure rules as structural (no client crop)', () => {
     for (const rule of [
@@ -317,7 +439,7 @@ describe('a11yCropFrames structural filter (integration)', () => {
     expect(frames.length).toBeGreaterThanOrEqual(1);
   }, 20000);
 
-  it('v2 blank-skip keeps the color-contrast band and skips a flat non-contrast band', async () => {
+  it('client report blank-skip keeps the color-contrast band and skips a flat non-contrast band', async () => {
     // Both bands are flat grey; color-contrast is exempt from blank-skip, so it (not the link-name fallback) survives.
     const img = await shotDataUri(400, 800);
     const scan: AccessibilityScan = {
@@ -330,7 +452,7 @@ describe('a11yCropFrames structural filter (integration)', () => {
         { ruleId: 'color-contrast', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#b'], html: '<b>', failureSummary: '', bounds: { x: 20, y: 420, width: 200, height: 24 } }] },
       ],
     };
-    const frames = await a11yCropFrames(scan, true); // v2 (dropEngulfing=true)
+    const frames = await a11yCropFrames(scan, true); // current report (dropEngulfing=true)
     expect(frames).toHaveLength(1);
     expect(frames[0].summary).toMatch(/contrast/i);
   }, 20000);

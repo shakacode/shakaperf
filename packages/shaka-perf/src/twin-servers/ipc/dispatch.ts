@@ -95,6 +95,19 @@ export function createDispatcher(
             'the menu auto-syncs the build context on every save. ' +
             'Just edit your files; the watcher mirrors them into the volume.',
         );
+      case 'bisect-begin':
+        await requireController().beginBisectSession(req.sessionId, req.ownerPid);
+        return;
+      case 'bisect-refresh':
+        return requireController().reloadBisectExperiment({
+          sessionId: req.sessionId,
+          mode: req.mode,
+          rebuildCommands: req.rebuildCommands,
+          noCache: req.noCache,
+        });
+      case 'bisect-end':
+        await requireController().endBisectSession(req.sessionId);
+        return;
       default: {
         // Exhaustive check: a newer client at the same PROTOCOL_VERSION
         // could send a `cmd` this server doesn't know. Without this branch

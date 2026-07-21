@@ -9,6 +9,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 import { loadTests } from '../load-tests';
 import { abTest, clearRegistry, getRegisteredTests, restoreRegistry, TestType } from 'shaka-shared';
 
@@ -102,6 +103,26 @@ describe('loadTests', () => {
     } finally {
       process.chdir(origCwd);
     }
+  });
+
+  it('normalizes file URL registrations to absolute filesystem paths', async () => {
+    const relPath = 'file-url-cached.abtest.js';
+    const absPath = path.join(tmpDir, relPath);
+    mkfile(relPath, '// already loaded through an ESM loader');
+    restoreRegistry([{
+      name: 'File URL test',
+      startingPath: '/file-url',
+      file: pathToFileURL(absPath).href,
+      line: 1,
+      options: {},
+      testTypes: null,
+      testFn: async () => {},
+    }]);
+
+    const tests = await loadTests({ filter: absPath });
+
+    expect(tests).toHaveLength(1);
+    expect(tests[0]?.file).toBe(absPath);
   });
 
   it('remembers a file\'s registrations across interleaved loads of other files', async () => {

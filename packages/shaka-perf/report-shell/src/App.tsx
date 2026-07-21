@@ -9,6 +9,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type {
+  BisectCategory,
   ChipDescriptor,
   ReportData,
   ReportMeta,
@@ -16,7 +17,15 @@ import type {
   SortDescriptor,
   TestResult,
 } from './types';
+import {
+  selectionCategories,
+  stageNamesForCategories,
+  selectionTestIds,
+  type BisectSelection,
+} from './bisect-selection';
 import { Header } from './components/Header';
+import { BisectNavigator } from './components/BisectNavigator';
+import { BisectSelectionSummary } from './components/BisectSelectionSummary';
 import { SearchBar } from './components/SearchBar';
 import { ChipFilter, type ChipFilterOption } from './components/ChipFilter';
 import { SortChips, type SortChipOption, type SortDirection } from './components/SortChips';
@@ -221,6 +230,12 @@ function outcomeRendersSection(outcome: ReportOutcome): boolean {
     (outcome.kind === 'ok' && outcome.measurement != null);
 }
 
+function hasReportableOutcomes(test: TestResult, includePersistedOutcomes: boolean): boolean {
+  return test.measuredAt != null || (
+    includePersistedOutcomes && test.outcomes.length > 0
+  );
+}
+
 export function buildStageFilterOptions(meta: ReportMeta, tests: readonly TestResult[]): StageFilterOption[] {
   const counts = new Map<string, number>();
   for (const test of tests) {
@@ -260,8 +275,17 @@ function normalizeStageSelection(
   return new Set([...selected].filter((stage) => valid.has(stage)));
 }
 
-export function App({ data }: { data: ReportData }) {
+export function App({
+  data,
+  initialBisectSelection,
+}: {
+  data: ReportData;
+  initialBisectSelection?: BisectSelection;
+}) {
   const [query, setQuery] = useState('');
+  const [bisectSelection, setBisectSelection] = useState<BisectSelection>(
+    initialBisectSelection ?? { kind: 'all' },
+  );
   // Visible-test-id set drives everything; null means "no override → use the
   // default of all measured tests". A chip's "selected" display state is
   // derived: it's active iff every test that carries the chip is visible.
@@ -274,10 +298,14 @@ export function App({ data }: { data: ReportData }) {
   const [visibleStageOverride, setVisibleStageOverride] = useState<Set<string> | null>(null);
   // Active sort dimension + direction. null → default (chip/run-recency) order.
   const [sort, setSort] = useState<{ tag: string; dir: SortDirection } | null>(null);
-  const measuredTests = useMemo(() => data.tests.filter((test) => test.measuredAt != null), [data.tests]);
-  const chipFilters = useMemo(() => buildChipFilters(measuredTests), [measuredTests]);
-  const chipTestSets = useMemo(() => buildChipTestSets(measuredTests), [measuredTests]);
-  const accessibilityResults = useMemo(() => accessibilityResultsForTests(measuredTests), [measuredTests]);
+  const isBisectReport = data.bisect != null;
+  const cardTests = useMemo(
+    () => data.tests.filter((test) => hasReportableOutcomes(test, isBisectReport)),
+    [data.tests, isBisectReport],
+  );
+  const chipFilters = useMemo(() => buildChipFilters(cardTests), [cardTests]);
+  const chipTestSets = useMemo(() => buildChipTestSets(cardTests), [cardTests]);
+  const accessibilityResults = useMemo(() => accessibilityResultsForTests(cardTests), [cardTests]);
   const accessibilityFilterOptions = useMemo(
     () => collectConfiguredFilterOptions(accessibilityResults),
     [accessibilityResults],
@@ -306,13 +334,29 @@ export function App({ data }: { data: ReportData }) {
     };
   }, [accessibilityFilterOptions, accessibilityFilterSelection, setAccessibilityFilterSelection]);
   const stageFilterOptions = useMemo(
-    () => buildStageFilterOptions(data.meta, measuredTests),
-    [data.meta, measuredTests],
+    () => buildStageFilterOptions(data.meta, cardTests),
+    [cardTests, data.meta],
   );
   const visibleStages = useMemo(
     () => normalizeStageSelection(visibleStageOverride, stageFilterOptions),
     [stageFilterOptions, visibleStageOverride],
   );
+  const bisectTestIds = useMemo(
+    () => data.bisect == null
+      ? new Set<string>()
+      : selectionTestIds(data.bisect, bisectSelection),
+    [bisectSelection, data.bisect],
+  );
+  const bisectCategories = useMemo(
+    () => data.bisect == null
+      ? new Set<BisectCategory>()
+      : selectionCategories(data.bisect, bisectSelection),
+    [bisectSelection, data.bisect],
+  );
+  const effectiveVisibleStages = useMemo(() => {
+    if (data.bisect == null || bisectSelection.kind === 'all') return visibleStages;
+    return stageNamesForCategories(reportStages(data.meta), visibleStages, bisectCategories);
+  }, [bisectCategories, bisectSelection.kind, data.bisect, data.meta, visibleStages]);
   const setVisibleStageSelection = useCallback((update: StageFilterSelectionUpdate) => {
     setVisibleStageOverride((previous) => {
       const current = normalizeStageSelection(previous, stageFilterOptions);
@@ -320,8 +364,8 @@ export function App({ data }: { data: ReportData }) {
       return normalizeStageSelection(next, stageFilterOptions);
     });
   }, [stageFilterOptions]);
-  const sortOptions = useMemo(() => buildSortOptions(measuredTests), [measuredTests]);
-  const sortValues = useMemo(() => buildSortValues(measuredTests), [measuredTests]);
+  const sortOptions = useMemo(() => buildSortOptions(cardTests), [cardTests]);
+  const sortValues = useMemo(() => buildSortValues(cardTests), [cardTests]);
   const allTestIds = useMemo(
     () => chipTestSets.get(ALL_FILTER_KEY) ?? new Set<string>(),
     [chipTestSets],
@@ -345,11 +389,13 @@ export function App({ data }: { data: ReportData }) {
     }
     return out;
   }, [chipTestSets, visibleTestIds]);
-  const latestRunKey = useMemo(() => newestRunKey(measuredTests), [measuredTests]);
-  const showRunChips = latestRunKey != null && measuredTests.some((test) => runKey(test) !== latestRunKey);
+  const latestRunKey = useMemo(() => newestRunKey(cardTests), [cardTests]);
+  const showRunChips = latestRunKey != null && cardTests.some((test) => runKey(test) !== latestRunKey);
   const missingTests = useMemo(
-    () => data.tests.filter((test) => test.measuredAt == null && matchesQuery(test, query)),
-    [data.tests, query],
+    () => data.tests.filter((test) => (
+      !hasReportableOutcomes(test, isBisectReport) && matchesQuery(test, query)
+    )),
+    [data.tests, isBisectReport, query],
   );
 
   // Newer run ids sort first so a filtered run can update a subset without
@@ -358,9 +404,12 @@ export function App({ data }: { data: ReportData }) {
   // tool, not a hard hide.
   const visibleTests = useMemo<{ test: TestResult; dimmed: boolean }[]>(() => {
     const out: { test: TestResult; dimmed: boolean }[] = [];
-    for (const t of measuredTests) {
+    for (const t of cardTests) {
       if (!matchesQuery(t, query)) continue;
-      out.push({ test: t, dimmed: !visibleTestIds.has(t.id) });
+      const excludedByBisect = data.bisect != null &&
+        bisectSelection.kind !== 'all' &&
+        !bisectTestIds.has(t.id);
+      out.push({ test: t, dimmed: !visibleTestIds.has(t.id) || excludedByBisect });
     }
     out.sort((a, b) => {
       const byDim = Number(a.dimmed) - Number(b.dimmed);
@@ -375,7 +424,7 @@ export function App({ data }: { data: ReportData }) {
       );
     });
     return out;
-  }, [measuredTests, visibleTestIds, query, sort, sortValues]);
+  }, [bisectSelection.kind, bisectTestIds, cardTests, data.bisect, visibleTestIds, query, sort, sortValues]);
 
   const selectChip = (key: string, additive: boolean) => {
     const chipTests = chipTestSets.get(key) ?? new Set<string>();
@@ -410,10 +459,18 @@ export function App({ data }: { data: ReportData }) {
 
   return (
     <AccessibilityReportFilterProvider value={accessibilityFilterState}>
-      <div className="app">
+      <div className={isBisectReport ? 'app app--bisect' : 'app'}>
         <Header meta={data.meta} total={data.tests.length} />
 
         <ErrorBanner errors={data.meta.errors ?? []} />
+
+        {data.bisect ? (
+          <BisectNavigator
+            model={data.bisect}
+            selection={bisectSelection}
+            onSelect={setBisectSelection}
+          />
+        ) : null}
 
         <div className="header__controls">
           <SearchBar value={query} onChange={setQuery} />
@@ -435,6 +492,10 @@ export function App({ data }: { data: ReportData }) {
             to match them. */}
         <SortChips options={sortOptions} active={sort} onSelect={selectSort} />
 
+        {data.bisect ? (
+          <BisectSelectionSummary model={data.bisect} selection={bisectSelection} />
+        ) : null}
+
         {visibleTests.length === 0 && missingTests.length === 0 ? (
           <div className="empty">no tests match current filter</div>
         ) : (
@@ -448,7 +509,7 @@ export function App({ data }: { data: ReportData }) {
                 runLabel={showRunChips ? (runKey(test) === latestRunKey ? 'latest' : 'old') : null}
                 animationDelayMs={Math.min(idx, 8) * 40}
                 dimmed={dimmed}
-                visibleStages={visibleStages}
+                visibleStages={effectiveVisibleStages}
               />
             ))}
           </div>

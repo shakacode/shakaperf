@@ -89,6 +89,21 @@ export interface PipelineReport {
   renderDialogMetaUrls(test: StageArtifactTestMeta): ReactNode;
 }
 
+export interface PipelineMachineReportMeta {
+  readonly throttleProfile?: string;
+  readonly viewport?: { width: number; height: number };
+}
+
+export interface PipelineMachineReportRow {
+  readonly viewport: Viewport;
+  readonly outcomes: readonly Outcome[];
+}
+
+export interface PipelineMachineReportMetaContext {
+  readonly rows: readonly PipelineMachineReportRow[];
+  readonly reportOnly: boolean;
+}
+
 interface PipelineOptions {
   readonly name: string;
   readonly description: string;
@@ -105,6 +120,7 @@ interface PipelineOptions {
    * runs. Stages must not wipe these themselves.
    */
   readonly derivedResultsDirs?: readonly string[];
+  readonly machineReportMeta?: (ctx: PipelineMachineReportMetaContext) => PipelineMachineReportMeta;
 }
 
 interface PipelineBuilder {

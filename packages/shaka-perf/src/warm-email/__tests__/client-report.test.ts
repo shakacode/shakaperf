@@ -12,12 +12,8 @@ import {
   buildStartHere,
   dashSafe,
   detectProblems,
-  faviconDataUri,
-  faviconLinkTag,
   framesToBoxes,
   isDuplicateStory,
-  isPublicHost,
-  parseIconHref,
   pickFrames,
   videoCaption,
   windowEndMs,
@@ -140,8 +136,8 @@ describe('buildCaptionCues', () => {
     // HOMEPAGE_LIKE: blank@0, first content ~1.5s, a visible shift @6519,
     // LCP@13923, window ends at LCP+1200.
     const cues = buildCaptionCues(HOMEPAGE_LIKE, 13923, 1531, 13923 + 1200);
-    expect(cues.map((c) => c.kind)).toEqual(['blank', 'first-content', 'jump', 'main', 'loaded']);
-    expect(cues.map((c) => c.atMs)).toEqual([0, 1517, 6519, 13923, 15123]);
+    expect(cues.map((c) => c.kind)).toEqual(['blank', 'first-content', 'google-good-line', 'jump', 'main', 'loaded']);
+    expect(cues.map((c) => c.atMs)).toEqual([0, 1517, 2500, 6519, 13923, 15123]);
     // The cue time is the video clock: it must equal the underlying frame time.
     expect(cues.find((c) => c.kind === 'main')!.atMs).toBe(13923);
   });
@@ -223,8 +219,18 @@ describe('buildCaptionCues', () => {
     expect(cues.some((c) => c.kind === 'main')).toBe(false);
   });
 
-  it('returns no cues for a frameless audit (nothing to sync to)', () => {
-    expect(buildCaptionCues([], 13900, 1500, 13900)).toEqual([]);
+  it('keeps the fixed good-line cue for a slow frameless video', () => {
+    expect(buildCaptionCues([], 13900, 1500, 13900)).toEqual([
+      { atMs: 2500, kind: 'google-good-line', text: "Google's good line passes here.", rewriteable: false },
+    ]);
+    expect(buildCaptionCues([], 2000, 1500, 2000)).toEqual([]);
+  });
+
+  it('deduplicates a good-line cue that lands beside another caption beat', () => {
+    const frames: Frame[] = [frame(0), frame(2100), frame(4100, { isLcp: true })];
+    const cues = buildCaptionCues(frames, 4100, 2100, 5300);
+    expect(cues.some((cue) => cue.kind === 'google-good-line')).toBe(false);
+    expect(cues.map((cue) => cue.kind)).toEqual(['blank', 'first-content', 'main', 'loaded']);
   });
 
   it('always opens on the blank beat', () => {
@@ -458,116 +464,5 @@ describe('isDuplicateStory', () => {
         { startingPath: '/', leadKind: 'slow-lcp' },
       ),
     ).toBe(false);
-  });
-});
-
-describe('faviconDataUri', () => {
-  it('inlines bytes with the response content-type', () => {
-    const bytes = new Uint8Array([1, 2, 3, 4]);
-    expect(faviconDataUri(bytes, 'image/png')).toBe(`data:image/png;base64,${Buffer.from(bytes).toString('base64')}`);
-  });
-
-  it('strips content-type parameters and lowercases the mime', () => {
-    const bytes = new Uint8Array([9]);
-    expect(faviconDataUri(bytes, 'image/X-Icon; charset=binary')).toBe(
-      `data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`,
-    );
-  });
-
-  it('defaults to image/x-icon when the type is missing or not an image', () => {
-    const bytes = new Uint8Array([7, 7]);
-    const expected = `data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`;
-    expect(faviconDataUri(bytes, null)).toBe(expected);
-    expect(faviconDataUri(bytes, 'text/html')).toBe(expected);
-  });
-
-  it('rejects empty bytes and files too large to inline (cap is inclusive)', () => {
-    expect(faviconDataUri(new Uint8Array(0), 'image/x-icon')).toBeNull();
-    expect(faviconDataUri(new Uint8Array(512 * 1024 + 1), 'image/x-icon')).toBeNull();
-    expect(faviconDataUri(new Uint8Array(512 * 1024), 'image/png')).not.toBeNull();
-  });
-
-  it('rejects a content-type that could break out of the href attribute', () => {
-    const bytes = new Uint8Array([1]);
-    // Attacker-controlled header with a quote + tag: must NOT reach the data URI.
-    const hostile = 'image/svg+xml"><script>alert(1)</script>';
-    expect(faviconDataUri(bytes, hostile)).toBe(`data:image/x-icon;base64,${Buffer.from(bytes).toString('base64')}`);
-    // A legitimate compound subtype is still preserved.
-    expect(faviconDataUri(bytes, 'image/svg+xml')).toBe(`data:image/svg+xml;base64,${Buffer.from(bytes).toString('base64')}`);
-  });
-});
-
-describe('faviconLinkTag', () => {
-  it('emits the inlined favicon when we have one', () => {
-    expect(faviconLinkTag('data:image/x-icon;base64,AAAA')).toBe(
-      '<link rel="icon" href="data:image/x-icon;base64,AAAA" />',
-    );
-  });
-
-  it('falls back to a blank icon that suppresses the default /favicon.ico request', () => {
-    expect(faviconLinkTag(null)).toBe('<link rel="icon" href="data:," />');
-  });
-
-  it('escapes any HTML-special char that reaches the href (defense in depth)', () => {
-    expect(faviconLinkTag('data:image/x-icon;base64,"><script>')).not.toContain('"><script>');
-  });
-});
-
-describe('isPublicHost', () => {
-  it('accepts public hostnames and public IPs', () => {
-    for (const h of ['example.com', 'www.sunhub.com', '8.8.8.8', '1.2.3.4', 'fcbarcelona.com']) {
-      expect(isPublicHost(h)).toBe(true);
-    }
-  });
-
-  it('rejects loopback, private, CGNAT, link-local and metadata addresses', () => {
-    for (const h of [
-      'localhost',
-      'foo.localhost',
-      '127.0.0.1',
-      '10.0.0.1',
-      '192.168.1.1',
-      '172.16.0.1',
-      '172.31.255.255',
-      '100.64.0.1',
-      '169.254.169.254',
-      '0.0.0.0',
-      '::1',
-      '[::1]',
-      'fc00::1',
-      'fd12::1',
-      'fe80::1',
-    ]) {
-      expect(isPublicHost(h)).toBe(false);
-    }
-  });
-
-  it('does not reject a public 172.x outside the private block', () => {
-    expect(isPublicHost('172.15.0.1')).toBe(true);
-    expect(isPublicHost('172.32.0.1')).toBe(true);
-  });
-});
-
-describe('parseIconHref', () => {
-  it('prefers a real icon rel over apple-touch-icon and mask-icon', () => {
-    const html =
-      '<link rel="apple-touch-icon" href="/apple.png">' +
-      '<link rel="mask-icon" href="/mask.svg">' +
-      '<link rel="icon" href="/real.ico">';
-    expect(parseIconHref(html)).toBe('/real.ico');
-  });
-
-  it('matches "shortcut icon" and tolerates href before rel', () => {
-    expect(parseIconHref('<link href="/f.ico" rel="shortcut icon">')).toBe('/f.ico');
-  });
-
-  it('returns null when no icon link is present', () => {
-    expect(parseIconHref('<link rel="stylesheet" href="/x.css"><meta charset="utf-8">')).toBeNull();
-  });
-
-  it('does not catastrophically backtrack on a hostile body', () => {
-    // A 300KB run of unterminated icon-like text used to hang the old regex.
-    const hostile = '<link rel="' + '"icon"'.repeat(50_000);
-    expect(parseIconHref(hostile)).toBeNull();
   });
 });
