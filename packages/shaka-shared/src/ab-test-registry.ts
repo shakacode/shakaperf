@@ -49,9 +49,9 @@ export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, heigh
 // of these added to `config.viewports`. The width matches the base device;
 // only the height grows. (formFactor/deviceScaleFactor only feed
 // perf/Lighthouse; visreg ignores them.)
-export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
-export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
-export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 9000, formFactor: 'desktop', deviceScaleFactor: 1 };
+export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 3000, formFactor: 'desktop', deviceScaleFactor: 1 };
 
 export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit';
 
