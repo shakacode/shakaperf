@@ -44,7 +44,7 @@ import {
   type TestResult,
 } from './report';
 import { writeFullReportArchive } from './report-archive';
-import { resolveViewportsForTest } from './viewport-plan';
+import { persistedOutcomeInScope, resolveViewportsForTest } from './viewport-plan';
 import { applyPerTestConfigOverrides } from '../effective-config';
 import { resolveViewports } from '../config';
 import type { AbTestsConfig } from '../config';
@@ -523,17 +523,45 @@ async function runConfiguredPipelineWithSelection(
     },
   );
 
-  // Single wipe authority: clear every applicable unit's artifact dir once
-  // before any stage runs. Engines no longer wipe internally — that was the
-  // source of the parallel-visreg race (one invocation rming another's
-  // pending PNGs mid-flight). Under --skip-report we still clear this shard's
-  // own unit dirs so reruns cannot read stale artifacts, but we leave the
-  // flat visreg scratch dirs alone because sibling shards may be using them.
+  // Single wipe authority: one cleanup per pipeline run, before any stage
+  // runs. Engines no longer wipe internally — that was the source of the
+  // parallel-visreg race (one invocation rming another's pending PNGs
+  // mid-flight). Two passes:
+  //
+  //  1. Run-scope sweep: delete every selected stage's outcome for this run's
+  //     tests at EVERY viewport the effective config defines — not just this
+  //     run's planned units. A per-test viewport override (or a config edit)
+  //     shrinks the plan, and the planned-unit wipe below never touches the
+  //     abandoned viewports' dirs, so their stale outcomes would survive every
+  //     subsequent run and keep feeding --report-only assemblies. Outcomes of
+  //     categories NOT selected this run are left alone — a --categories=visreg
+  //     rerun must not destroy the perf results it isn't remeasuring. A dir
+  //     left with no outcome at all is removed wholesale.
+  //
+  //  2. Planned-unit wipe: clear each executing unit's whole dir so its
+  //     stages start from an empty slate.
+  //
+  // Under --skip-report we still run both passes for this shard's own tests
+  // so reruns cannot read stale artifacts, but we leave the flat visreg
+  // scratch dirs alone because sibling shards may be using them.
   // --keep-old-results and --restart-from-stage opt out of the wipe entirely
   // (we still ensure the dirs exist) so a rerun layers onto a prior run's
   // artifacts — the retained earlier stages need their prior artifacts and
   // outcome JSONs intact.
   if (!runtime.reportOnly) {
+    if (!preserveOldResults) {
+      for (const test of runTests) {
+        // Per-test effective config: an override may swap the viewport
+        // definitions themselves, not just a category's label list.
+        const sharedViewports = applyPerTestConfigOverrides(runtime.config, test).shared.viewports;
+        for (const viewport of sharedViewports) {
+          for (const stage of executableStages) {
+            store.deleteOutcome(test, viewport.label, stage.name);
+          }
+          store.removeUnitDirWithoutOutcomes(test, viewport.label);
+        }
+      }
+    }
     for (const unit of units) {
       const unitDir = store.unitDirForViewport(unit.test, unit.viewport.label);
       if (!preserveOldResults) {
@@ -772,6 +800,7 @@ async function runConfiguredPipelineWithSelection(
     store,
     stageRuntime,
     finalChipsByTest,
+    runtime.config,
   );
 
   // Bundle the full report + its artifacts into full-report.zip when opted in
@@ -1344,7 +1373,12 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
   const viewportOutcomes = allViewportsForTest(test, pipeline.stages, config).flatMap((viewport) =>
-    store.readOutcomesForViewport(test, viewport.label).map((outcome) => ({ outcome, viewport })),
+    store.readOutcomesForViewport(test, viewport.label)
+      // Drop stale on-disk outcomes from earlier runs at viewports this test's
+      // effective config no longer runs the stage's category at.
+      .filter((outcome) =>
+        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage)?.stage, outcome, viewport.label))
+      .map((outcome) => ({ outcome, viewport })),
   ).sort((a, b) => {
     // Render order = DESCENDING renderingPriority (higher shows first), ties
     // broken by registration order. Decoupled from execution order so a stage

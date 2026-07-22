@@ -82,6 +82,25 @@ export class ArtifactStore {
     );
   }
 
+  /**
+   * Remove the unit dir when no `<stage>.json` outcome remains at its top
+   * level. The pre-run sweep deletes selected stages' outcomes individually
+   * (leaving other categories' results in place) and then uses this to drop
+   * dirs with nothing left to report — a leftover `artifacts/` subtree alone
+   * is referenced by no outcome.
+   */
+  removeUnitDirWithoutOutcomes(test: AbTestDefinition, viewportLabel: string): void {
+    const dir = this.unitDirForViewport(test, viewportLabel);
+    let entries: string[];
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      return; // dir doesn't exist
+    }
+    if (entries.some((entry) => entry.endsWith('.json'))) return;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {
     const p = path.join(this.unitDirForViewport(test, viewportLabel), `${stage}.json`);
     try {

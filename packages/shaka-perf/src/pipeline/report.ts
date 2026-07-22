@@ -10,7 +10,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { AbTestDefinition, Viewport } from 'shaka-shared';
+import type { AbTestsConfig } from '../config';
 import type { ArtifactStore } from './artifact-store';
+import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
 import type { Pipeline } from './pipeline';
 import type { Stage, StageLogger, StageName, StageRenderContext, StageRuntime } from '../stage/stage';
@@ -324,6 +326,7 @@ export function writeMachineReport(
   store: ArtifactStore,
   runtime: StageRuntime,
   chipsByTest: ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>,
+  config: AbTestsConfig,
 ): void {
   const stagesByName = new Map<StageName, Stage>(
     pipeline.stages.map((stage) => [stage.name, stage]),
@@ -331,7 +334,10 @@ export function writeMachineReport(
   const rows = tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
     test,
     viewport,
-    outcomes: store.readOutcomesForViewport(test, viewport.label),
+    // Same stale-outcome guard as the HTML report (see buildTestPartial).
+    outcomes: store.readOutcomesForViewport(test, viewport.label)
+      .filter((outcome) =>
+        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)),
   })));
   const machineReportMeta = pipeline.machineReportMeta?.({
     rows,

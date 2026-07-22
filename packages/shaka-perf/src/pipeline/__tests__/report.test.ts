@@ -14,6 +14,7 @@ import { ArtifactStore } from '../artifact-store';
 import { writeMachineReport, type ReportMeta } from '../report';
 import type { Pipeline, PipelineMachineReportMetaContext } from '../pipeline';
 import type { StageRuntime } from '../../stage/stage';
+import { parseAbTestsConfig } from '../../config';
 
 describe('writeMachineReport', () => {
   let dir: string;
@@ -59,6 +60,9 @@ describe('writeMachineReport', () => {
       new ArtifactStore(dir),
       { resultsRoot: dir } as StageRuntime,
       new Map(),
+      parseAbTestsConfig({
+        shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1 },
+      }),
     );
 
     const payload = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as {
