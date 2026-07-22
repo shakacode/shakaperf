@@ -152,39 +152,20 @@ export interface AbTestsConfigInput {
 /**
  * The per-test `config` override on `abTest()`, merged over the file config for
  * that test alone. It mirrors the `abtests.config.ts` section shape (same keys,
- * same types) but exposes ONLY the knobs the engines actually honour per-test —
- * so every field here takes effect, none is a silent no-op:
+ * same types) with every field optional, so a test overrides just what it needs.
  *
- *  - `shared`  — the pre-navigation hook (`beforeNavigate`); overriding it just
- *                replaces the global hook for this test, like any other setting.
- *  - `visreg`  — the per-comparison tuning the engine reads per scenario, plus
- *                per-category viewport narrowing.
- *  - `perf` / `audit` — viewport narrowing only (their tuning is resolved once
- *                for the whole run).
- *  - `accessibility` — axe rule sets, plus viewport narrowing.
- *
- * The rest of `shared` (connection, parallelism, viewport DEFINITIONS), browser
- * `engineOptions`, `resembleOutputOptions`, `compareRetries`/`compareRetryDelay`
- * (best-of-N is a run-level loop), and perf/audit measurement tuning are all
- * resolved once and cannot vary per test, so they are deliberately absent.
+ * It exposes every section EXCEPT the two that are inherently run/infra-level and
+ * make no sense scoped to a single test: `twinServers` (the Docker A/B servers
+ * are one pair for the whole run) and `bisect` (a run-level search). Everything
+ * else is fair game; settings the engines resolve once per run (e.g. shared
+ * `parallelism`) simply won't vary if overridden, but nothing is off-limits by
+ * type — the merge (`applyPerTestConfigOverrides`) applies whatever is set.
  */
-export interface PerTestConfig {
-  shared?: Pick<SharedConfigInput, 'beforeNavigate'>;
-  visreg?: Pick<
-    VisregConfigInput,
-    | 'mismatchThreshold'
-    | 'maxNumDiffPixels'
-    | 'comparePixelmatchThreshold'
-    | 'requireSameDimensions'
-    | 'viewports'
+export type PerTestConfig = {
+  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: Partial<
+    AbTestsConfigInput[K]
   >;
-  perf?: Pick<PerfConfigInput, 'viewports'>;
-  audit?: Pick<AuditConfigInput, 'viewports'>;
-  accessibility?: Pick<
-    AccessibilityConfigInput,
-    'tags' | 'disableRules' | 'includeRules' | 'viewports'
-  >;
-}
+};
 
 /**
  * Identity function whose only job is to give the user's config object the
