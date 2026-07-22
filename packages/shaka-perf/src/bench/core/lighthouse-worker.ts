@@ -190,7 +190,7 @@ class LighthouseWorkerSampler {
 
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
 
-    const markers = testDef.options.markers ?? msg.options.markers;
+    const markers = testDef.markers ?? msg.options.markers;
     const { phases, accessibilityScore } = await this.runLighthouseWithPlaywright(
       testDef,
       msg.options,
@@ -265,7 +265,7 @@ class LighthouseWorkerSampler {
         viewport: options.viewport,
         isControl: options.isControl ?? false,
         testType: 'perf',
-        beforeNavigate: testDef.options.beforeNavigate,
+        beforeNavigate: testDef.beforeNavigate,
       });
 
       let releaseTracking: () => void = () => {};

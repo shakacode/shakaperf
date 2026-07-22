@@ -20,8 +20,6 @@ yarn build      # Build all packages (tsc)
 
 ```bash
 shaka-perf compare              # Unified visreg + perf comparison + single-file HTML report
-shaka-perf perf-compare         # (legacy) Performance benchmarking
-shaka-perf visreg-compare       # (legacy) Visual regression testing
 shaka-perf servers              # Docker A/B testing infrastructure (auto build+start)
 shaka-perf client-report        # Client-facing mobile-speed report from a saved audit-results dir
 shaka-perf warm-email           # Warm outreach email draft + client report from a saved audit
@@ -56,6 +54,15 @@ fingerprinted and gets the un-auto-solvable interactive challenge. After each
 navigation the engine polls up to ~25s for the challenge to clear. It needs a
 display (a real desktop), `google-chrome` installed, and is opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - the default bundled Chromium is what CI uses.
+
+## Breaking changes
+
+Any change that can break an existing consumer's `.abtest.ts` files or
+`abtests.config.ts` — a removed/renamed `abTest()` option, a moved or
+renamed config field, a changed default — MUST be logged in
+[BREAKING_CHANGES.md](./BREAKING_CHANGES.md) under its **Unreleased** section,
+with the exact fix for affected tests. `/deploy` stamps that section with the
+version on publish.
 
 ## Code Conventions
 

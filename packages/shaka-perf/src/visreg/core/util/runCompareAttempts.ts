@@ -16,6 +16,7 @@ import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
+import { visregComparisonForTest } from './visreg-config-for-test';
 import { setUpContextForNavigation } from '../../../pre-navigation';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
@@ -97,9 +98,12 @@ export async function runCompareAttempts(
   const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
   const sleep = deps.sleep ?? defaultSleep;
 
-  const maxRetries = scenario.compareRetries ?? config.compareRetries ?? 0;
-  const retryDelayMs = scenario.compareRetryDelay ?? config.compareRetryDelay ?? 5000;
-  const maxNumDiffPixels = scenario.maxNumDiffPixels ?? config.maxNumDiffPixels ?? 0;
+  // Retries are a run-level loop and cannot vary per test — read straight off
+  // the file config. Pixel budget follows the same per-test effective config as
+  // the rest of the comparison tuning.
+  const maxRetries = config.compareRetries ?? 0;
+  const retryDelayMs = config.compareRetryDelay ?? 5000;
+  const maxNumDiffPixels = visregComparisonForTest(config, scenario._testDef).maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
   let runs: SelectorRun[] = [];
@@ -122,7 +126,7 @@ export async function runCompareAttempts(
         viewport,
         isControl,
         testType: 'visreg',
-        beforeNavigate: scenario._testDef?.options?.beforeNavigate,
+        beforeNavigate: scenario._testDef?.beforeNavigate,
       });
 
     // Two throwaway sides per attempt, torn down on every exit path.

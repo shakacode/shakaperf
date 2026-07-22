@@ -53,7 +53,6 @@ describe('preparePage', function () {
     startingPath: '/page',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async function () {},
   };

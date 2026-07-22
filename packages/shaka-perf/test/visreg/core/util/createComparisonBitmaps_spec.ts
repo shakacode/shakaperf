@@ -43,12 +43,10 @@ describe('createComparisonBitmaps', function () {
     const defaultTests = [{
       name: 'Test Scenario 1',
       startingPath: '/page1',
-      options: { visreg: {} },
       testFn: async function () {},
     }, {
       name: 'Test Scenario 2',
       startingPath: '/page2',
-      options: { visreg: {} },
       testFn: async function () {},
     }];
 
@@ -207,12 +205,7 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Test from registry',
         startingPath: '/page1',
-        options: {
-          visreg: {
-            selectors: ['[data-cy="hero"]'],
-            misMatchThreshold: 0.05,
-          },
-        },
+        visregSelectors: ['[data-cy="hero"]'],
         testFn: mockTestFn,
       }],
       runCompareScenario: {
@@ -234,7 +227,6 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/page1');
     assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/page1');
     assert.deepStrictEqual(capturedScenarios[0].selectors, ['[data-cy="hero"]']);
-    assert.strictEqual(capturedScenarios[0].misMatchThreshold, 0.05);
     assert.strictEqual(capturedScenarios[0]._testFn, mockTestFn, 'Should attach testFn');
   });
 
@@ -243,7 +235,6 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Missing URLs test',
         startingPath: '/products',
-        options: {},
         testFn: async function () {},
       }],
     });
@@ -276,7 +267,6 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Auto-discovered test',
         startingPath: '/auto',
-        options: {},
         testFn: async function () {},
       }],
       runCompareScenario: {

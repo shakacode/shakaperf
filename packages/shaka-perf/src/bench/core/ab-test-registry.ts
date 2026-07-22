@@ -17,7 +17,6 @@ export {
 } from 'shaka-shared';
 export type {
   AbTestDefinition,
-  AbTestOptions,
-  AbTestVisregConfig,
+  AbTestConfig,
   TestFnContext,
 } from 'shaka-shared';

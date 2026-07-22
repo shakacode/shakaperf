@@ -19,7 +19,7 @@ export interface ContextNavigationSetup {
   viewport: Viewport;
   isControl: boolean;
   testType: TestType;
-  /** Per-test `beforeNavigate` hook (runs after the global one). */
+  /** Per-test `beforeNavigate` hook; when set it fully replaces the global one. */
   beforeNavigate?: BeforeNavigateHook;
 }
 

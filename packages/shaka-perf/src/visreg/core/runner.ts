@@ -7,11 +7,18 @@
  * License in LICENSE.md.
  */
 
-import executeCommand from './command/index';
 import makeConfig from './util/makeConfig';
+import createComparisonBitmaps from './util/createComparisonBitmaps';
+import { execute as writeReport } from './report';
 import type { RuntimeConfig } from './types';
 
-export default async function (command: string, options?: Record<string, unknown>) {
-  const config = await makeConfig(command, options) as RuntimeConfig;
-  return executeCommand(command, config);
+/**
+ * Run one visreg comparison: resolve the runtime config, capture and diff the
+ * screenshots, then write the per-unit report. This is the engine's only entry
+ * point — the unified compare pipeline calls it once per work unit.
+ */
+export default async function runVisregCompare(options?: Record<string, unknown>) {
+  const config = await makeConfig(options) as RuntimeConfig;
+  await createComparisonBitmaps(config);
+  return writeReport(config);
 }

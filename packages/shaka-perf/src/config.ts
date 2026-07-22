@@ -138,8 +138,8 @@ export const SharedConfigSchema = z
     timeoutMs: z.number().int().positive().default(120000),
     // Global pre-navigation hook (see shaka-shared `SharedConfigInput`). Runs
     // before every test's navigation on every engine; a per-test
-    // `beforeNavigate` on `abTest()` options runs after it. Validated only as
-    // "a function" — its behaviour is the user's.
+    // `beforeNavigate` on the `abTest()` config fully replaces it for that
+    // test. Validated only as "a function" — its behaviour is the user's.
     beforeNavigate: z
       .custom<BeforeNavigateHook>((v) => typeof v === 'function')
       .optional(),
@@ -165,6 +165,10 @@ export const VisregConfigSchema = z
      */
     compareRetries: z.number().int().nonnegative().default(2),
     compareRetryDelay: z.number().int().nonnegative().default(5000),
+    // When true (default), any change in a capture's dimensions fails the
+    // compare outright. `config.visreg.requireSameDimensions: false` lets 
+    // one page tolerate size changes within `defaultMisMatchThreshold`.
+    requireSameDimensions: z.boolean().optional(),
     engineOptions: EngineOptionsSchema.default({
       browser: 'chromium',
       args: ['--no-sandbox'],

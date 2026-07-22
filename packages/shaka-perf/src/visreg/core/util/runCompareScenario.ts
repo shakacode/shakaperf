@@ -13,6 +13,7 @@ import ensureDirectoryPath from './ensureDirectoryPath';
 import * as engineTools from './engineTools';
 import { analyzeWhitePixels } from './compare/pixelmatch-inline';
 import { runCompareAttempts } from './runCompareAttempts';
+import { visregComparisonForTest } from './visreg-config-for-test';
 import type { PlaywrightPage, Scenario, Viewport, Browser, TestPair, DecoratedCompareConfig } from '../types';
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
@@ -97,9 +98,7 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   config._configId = config.id || engineTools.genHash(config.configFileName);
 
   const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
-  const pixelmatchThreshold = scenario.comparePixelmatchThreshold != null
-    ? scenario.comparePixelmatchThreshold
-    : (config.comparePixelmatchThreshold != null ? config.comparePixelmatchThreshold : 0.1);
+  const pixelmatchThreshold = visregComparisonForTest(config, scenario._testDef).comparePixelmatchThreshold;
   logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
 
   // A single attempt loop where attempt 0 IS the initial capture and every

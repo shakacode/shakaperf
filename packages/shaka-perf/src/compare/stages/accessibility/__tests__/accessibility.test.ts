@@ -58,15 +58,14 @@ import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
 
 describe('accessibility compare classification', () => {
-  it('honors per-test accessibility skip config', () => {
+  it('applies to every test — opting out is testTypes-owned', () => {
     const stage = new AccessibilityCompareStage();
 
     expect(stage.applies({
-      name: 'Skip me',
+      name: 'Any test',
       startingPath: '/',
       file: null,
       line: null,
-      options: { accessibility: { skip: true } },
       testTypes: null,
       testFn: async () => {},
     }, {
@@ -75,7 +74,7 @@ describe('accessibility compare classification', () => {
       height: 800,
       formFactor: 'desktop',
       deviceScaleFactor: 1,
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('classifies new, fixed, unchanged, and changed findings by rule and target', () => {
@@ -393,7 +392,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
   viewport = DESKTOP_VIEWPORT,
 ): TestContext {
@@ -404,7 +403,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {

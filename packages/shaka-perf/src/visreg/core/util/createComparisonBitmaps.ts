@@ -18,7 +18,6 @@ import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
 import createLogger from './logger';
-import { planTestViewports } from '../../../pipeline/viewport-plan';
 import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
@@ -65,19 +64,16 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   // engineOptions / etc. which aren't part of RuntimeConfig.
   const globalConfig = (config.args._loadedVisregConfig as Partial<VisregEngineInputConfig>) || {};
 
-  // Convert AbTestDefinitions to Scenarios — pass the resolved category
-  // viewports so per-test `options.viewports` can narrow `scenario.viewports`
-  // before the engine iterates. Without this, `options.viewports: ['phone']`
-  // would still run desktop/tablet and only get filtered at harvest time.
-  const categoryViewports = globalConfig.viewports ?? [];
-  const plannedTests = planTestViewports(tests, categoryViewports)
-    .filter(function (entry) { return entry.viewports.length > 0; });
-  const stageUnitUrls = plannedTests.length === 1
+  // Convert AbTestDefinitions to Scenarios. Per-test viewport narrowing is
+  // applied upstream by the runner (it only expands work units for a test's
+  // effective viewports), so the engine runs whatever single viewport this
+  // unit was handed — no narrowing needed here.
+  const stageUnitUrls = tests.length === 1
     ? config.args.stageUnitUrls as ScenarioUrls | undefined
     : undefined;
-  const scenarios = plannedTests
-    .map(function ({ test }) {
-      return convertAbTestToScenario(test, controlURL, experimentURL, categoryViewports, stageUnitUrls);
+  const scenarios = tests
+    .map(function (test) {
+      return convertAbTestToScenario(test, controlURL, experimentURL, stageUnitUrls);
     });
 
   const configJSON: Record<string, unknown> = {

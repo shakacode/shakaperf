@@ -14,21 +14,17 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    // Seed the admin auth cookie before navigation, on the context, so the
-    // first load is already authenticated. (Replaces the removed visreg
-    // `cookiePath` option; this config has no global `beforeNavigate` to chain.)
-    beforeNavigate: async ({ context }) => {
-      const cookies = JSON.parse(
-        readFileSync('visreg_data/cookies/admin-auth-cookie.json', 'utf-8'),
-      );
-      await context.addCookies(cookies);
-    },
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    visreg: { viewports: ['desktop'] },
+  },
+  // Seed the admin auth cookie before navigation, on the context, so the
+  // first load is already authenticated. (This config has no global
+  // `beforeNavigate` to chain.)
+  beforeNavigate: async ({ context }) => {
+    const cookies = JSON.parse(
+      readFileSync('visreg_data/cookies/admin-auth-cookie.json', 'utf-8'),
+    );
+    await context.addCookies(cookies);
   },
 }, async ({ page, annotate, testType }) => {
   if (testType !== 'visreg') {
@@ -53,12 +49,8 @@ abTest('Admin Dashboard - Cookie Login', {
 abTest('Admin Orders - Form Login Interaction', {
   startingPath: '/admin/login',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['phone'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    visreg: { viewports: ['phone'] },
   },
 }, async ({ page, scenario, annotate }) => {
   annotate('Wait for admin login form to appear');

@@ -53,10 +53,10 @@ export interface SharedConfigInput {
    *   beforeNavigate: ({ context }) =>
    *     installRequestBlocking(context, ['/recaptcha/'])
    *
-   * A per-test `beforeNavigate` (on `abTest()` options), if present, RECEIVES
-   * this hook as a second argument and decides whether to call it — so a test
-   * can extend, wrap, or opt out of the global setup. Tests with no per-test
-   * hook get this one automatically. See `BeforeNavigateContext`.
+   * A per-test `beforeNavigate` (on the `abTest()` config), if present, fully
+   * REPLACES this global for that test — the global does not also run. A test
+   * that wants this setup too calls a shared function itself (DRY). Tests with
+   * no per-test hook get this one. See `BeforeNavigateContext`.
    */
   beforeNavigate?: BeforeNavigateHook;
 }
@@ -68,6 +68,8 @@ export interface VisregConfigInput {
   comparePixelmatchThreshold?: number;
   compareRetries?: number;
   compareRetryDelay?: number;
+  /** When true (default), any change in captured dimensions fails the compare. */
+  requireSameDimensions?: boolean;
   engineOptions?: EngineOptionsInput;
   resembleOutputOptions?: ResembleOutputOptionsInput;
 }
@@ -149,6 +151,41 @@ export interface AbTestsConfigInput {
   accessibility?: AccessibilityConfigInput;
   twinServers?: TwinServersConfigInput;
   bisect?: BisectConfigInput;
+}
+
+/**
+ * The per-test `config` override on `abTest()`, merged over the file config for
+ * that test alone. It mirrors the `abtests.config.ts` section shape (same keys,
+ * same types) but exposes ONLY the knobs the engines actually honour per-test —
+ * so every field here takes effect, none is a silent no-op:
+ *
+ *  - `visreg`  — the per-comparison tuning the engine reads per scenario, plus
+ *                per-category viewport narrowing.
+ *  - `perf` / `audit` — viewport narrowing only (their tuning is resolved once
+ *                for the whole run).
+ *  - `accessibility` — axe rule sets, plus viewport narrowing.
+ *
+ * Whole-suite settings are deliberately absent: `shared` (connection,
+ * parallelism, viewport DEFINITIONS, the global `beforeNavigate`), browser
+ * `engineOptions`, `resembleOutputOptions`, `compareRetries`/`compareRetryDelay`
+ * (best-of-N is a run-level loop), and perf/audit measurement tuning are all
+ * resolved once and cannot vary per test.
+ */
+export interface PerTestConfig {
+  visreg?: Pick<
+    VisregConfigInput,
+    | 'defaultMisMatchThreshold'
+    | 'maxNumDiffPixels'
+    | 'comparePixelmatchThreshold'
+    | 'requireSameDimensions'
+    | 'viewports'
+  >;
+  perf?: Pick<PerfConfigInput, 'viewports'>;
+  audit?: Pick<AuditConfigInput, 'viewports'>;
+  accessibility?: Pick<
+    AccessibilityConfigInput,
+    'tags' | 'disableRules' | 'includeRules' | 'viewports'
+  >;
 }
 
 /**

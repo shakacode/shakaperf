@@ -59,9 +59,9 @@ export interface Scenario {
   // Viewport override
   viewports?: Viewport[];
 
-  // Comparison
-  misMatchThreshold?: number;
-  requireSameDimensions?: boolean;
+  // Comparison tuning is NOT carried on the scenario. It is resolved per test
+  // from the effective config (file defaults + `test.config.visreg`) by
+  // `visregComparisonForTest`, keyed off `_testDef` below.
 
   // Engine options override
   engineOptions?: Partial<EngineOptions>;
@@ -69,12 +69,6 @@ export interface Scenario {
 
   // Variants
   variants?: Variant[];
-
-  // compare overrides
-  compareRetries?: number;
-  compareRetryDelay?: number;
-  maxNumDiffPixels?: number;
-  comparePixelmatchThreshold?: number;
 
   // Internal (set at runtime)
   sIndex?: number;
@@ -184,7 +178,6 @@ export interface RuntimeConfig {
   args: Record<string, unknown>;
   visregRoot: string;
   projectPath: string;
-  perf: Record<string, number>;
 
   configFileName: string;
   /** `paths.artifacts` — the dir this invocation writes everything into. */

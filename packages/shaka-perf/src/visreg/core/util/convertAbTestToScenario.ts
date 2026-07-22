@@ -7,9 +7,8 @@
  * License in LICENSE.md.
  */
 
-import type { AbTestDefinition, Viewport as SharedViewport } from 'shaka-shared';
-import type { Scenario, Viewport } from '../types';
-import { resolveViewportsForTest } from '../../../pipeline/viewport-plan';
+import type { AbTestDefinition } from 'shaka-shared';
+import type { Scenario } from '../types';
 import { resolveUrl } from '../../../pipeline/unit-urls';
 
 export interface ScenarioUrls {
@@ -17,56 +16,34 @@ export interface ScenarioUrls {
   readonly experimentURL: string;
 }
 
+// The per-test surface is flat and small: capture targets (`selectors`,
+// `selectorExpansion`) at the top level. Interactions, ready-waits, and DOM
+// manipulation live in the test body. Comparison thresholds default from the
+// engine-bridge config; a test's `config.visreg` override wins per-scenario.
 export function convertAbTestToScenario(
   testDef: AbTestDefinition,
   controlURL: string,
   experimentURL: string,
-  categoryViewports: SharedViewport[] = [],
   urls?: ScenarioUrls,
 ): Scenario {
-  const visreg = testDef.options.visreg ?? {};
-
-  // Build scenario with only defined properties to avoid _.has() returning
-  // true for undefined values (which causes .map() crashes in preparePage).
   const experimentPath = testDef.experimentPathOverride ?? testDef.startingPath;
   const scenario: Scenario = {
     label: testDef.name,
     url: urls?.experimentURL ?? resolveUrl(experimentPath, experimentURL),
     referenceUrl: urls?.controlURL ?? resolveUrl(testDef.startingPath, controlURL),
-    selectors: visreg.selectors ?? ['document'],
+    selectors: testDef.visregSelectors ?? ['document'],
     _testFn: testDef.testFn,
     _testDef: testDef,
   };
 
-  // Only set optional properties when they have a value
-  if (visreg.selectorExpansion != null) scenario.selectorExpansion = visreg.selectorExpansion;
-  if (visreg.hideSelectors) scenario.hideSelectors = visreg.hideSelectors;
-  if (visreg.removeSelectors) scenario.removeSelectors = visreg.removeSelectors;
+  // Only set optional properties when they have a value to avoid _.has()
+  // returning true for undefined values (which causes .map() crashes in
+  // preparePage).
+  if (testDef.visregSelectorExpansion != null) scenario.selectorExpansion = testDef.visregSelectorExpansion;
 
-  if (visreg.hoverSelector) scenario.hoverSelector = visreg.hoverSelector;
-  if (visreg.hoverSelectors) scenario.hoverSelectors = visreg.hoverSelectors;
-  if (visreg.clickSelector) scenario.clickSelector = visreg.clickSelector;
-  if (visreg.clickSelectors) scenario.clickSelectors = visreg.clickSelectors;
-  if (visreg.scrollToSelector) scenario.scrollToSelector = visreg.scrollToSelector;
-  if (visreg.postInteractionWait != null) scenario.postInteractionWait = visreg.postInteractionWait;
-
-  if (visreg.misMatchThreshold != null) scenario.misMatchThreshold = visreg.misMatchThreshold;
-  if (visreg.requireSameDimensions != null) scenario.requireSameDimensions = visreg.requireSameDimensions;
-  if (visreg.maxNumDiffPixels != null) scenario.maxNumDiffPixels = visreg.maxNumDiffPixels;
-  if (visreg.compareRetries != null) scenario.compareRetries = visreg.compareRetries;
-  if (visreg.compareRetryDelay != null) scenario.compareRetryDelay = visreg.compareRetryDelay;
-  if (visreg.comparePixelmatchThreshold != null) scenario.comparePixelmatchThreshold = visreg.comparePixelmatchThreshold;
-
-  if (visreg.readyEvent) scenario.readyEvent = visreg.readyEvent;
-  if (visreg.readySelector) scenario.readySelector = visreg.readySelector;
-  if (visreg.readyTimeout != null) scenario.readyTimeout = visreg.readyTimeout;
-  if (visreg.delay != null) scenario.delay = visreg.delay;
-
-  const narrow = testDef.options.viewports;
-  if (narrow && narrow.length > 0 && categoryViewports.length > 0) {
-    const filtered = resolveViewportsForTest(testDef, categoryViewports);
-    if (filtered.length > 0) scenario.viewports = filtered as Viewport[];
-  }
-
+  // Per-test comparison tuning is NOT copied onto the scenario: the engine
+  // resolves it from the effective config (file defaults + `test.config.visreg`)
+  // via `visregConfigForTest`, reading `scenario._testDef` — the same per-test
+  // overlay accessibility uses. The scenario carries no tuning fields.
   return scenario;
 }

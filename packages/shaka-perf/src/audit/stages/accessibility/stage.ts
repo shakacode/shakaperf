@@ -22,7 +22,6 @@ import type { WorkerPool } from '../../../pipeline/worker-pool';
 import { AccessibilityArtifactView } from './report';
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  accessibilityConfigForTest,
   type AccessibilityStageConfig,
 } from './config';
 import type { AccessibilityResult } from './types';
@@ -45,8 +44,8 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
     };
   }
 
-  applies(test: AbTestDefinition, _viewport: Viewport): boolean {
-    return !accessibilityConfigForTest(this.config, test).skip;
+  applies(_test: AbTestDefinition, _viewport: Viewport): boolean {
+    return true;
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<AccessibilityResult> {

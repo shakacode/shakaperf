@@ -71,7 +71,7 @@ describe('accessibility config merging', () => {
     expect(DEFAULT_ACCESSIBILITY_STAGE_CONFIG.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
   });
 
-  it('merges per-test overrides with replace and additive semantics', () => {
+  it('replaces every per-test field wholesale (arrays are not unioned)', () => {
     const merged = mergeAccessibilityConfig({
       ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
       tags: ['wcag2a', 'wcag2aa'],
@@ -81,14 +81,14 @@ describe('accessibility config merging', () => {
       tags: ['wcag22aa'],
       disableRules: ['region', 'color-contrast'],
       includeRules: ['image-alt'],
-      skip: true,
     });
 
+    // Per-test disableRules is taken as given — the file's 'color-contrast' is
+    // NOT unioned in; the per-test list is the whole list.
     expect(merged).toEqual({
       tags: ['wcag22aa'],
-      disableRules: ['color-contrast', 'region'],
+      disableRules: ['region', 'color-contrast'],
       includeRules: ['image-alt'],
-      skip: true,
     });
   });
 
@@ -99,7 +99,6 @@ describe('accessibility config merging', () => {
     }, undefined);
 
     expect(merged.includeRules).toEqual(['button-name']);
-    expect(merged.skip).toBe(false);
   });
 });
 
@@ -467,39 +466,6 @@ describe('accessibility browser launch', () => {
     }
   });
 
-  it('does not read or apply visreg-only test options', async () => {
-    const browser = fakeBrowser();
-    mockChromiumLaunch.mockResolvedValue(browser);
-
-    await runAccessibilityStage(
-      fakeContext(
-        {},
-        {
-          visreg: {
-            readyEvent: 'app:ready',
-            readySelector: '#ready',
-            readyTimeout: 123,
-            delay: 500,
-            removeSelectors: ['.visreg-remove'],
-            hideSelectors: ['.visreg-hide'],
-          },
-        },
-      ),
-      fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-    );
-
-    expect(browser.context.addCookies).not.toHaveBeenCalled();
-    expect(browser.page.on).not.toHaveBeenCalled();
-    expect(browser.page.removeListener).not.toHaveBeenCalled();
-    expect(browser.page.waitForSelector).not.toHaveBeenCalled();
-    // Only the bot-wall probe reads the page; no visreg-driven evaluate runs.
-    expect(browser.page.evaluate).toHaveBeenCalledTimes(1);
-    expect(browser.page.goto).toHaveBeenCalledWith(
-      'http://localhost:3030/checkout',
-      { waitUntil: 'networkidle' },
-    );
-  });
 });
 
 function violation(ruleId: string, tags: string[]): AccessibilityViolation {
@@ -549,7 +515,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
 ): TestContext {
   const test = {
@@ -559,7 +525,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {

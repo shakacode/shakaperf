@@ -17,7 +17,6 @@ function testDef(name: string): AbTestDefinition {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };

@@ -66,6 +66,7 @@ export interface ComparePipelineConfig {
   readonly visregResembleOutputOptions?: VisregResembleOutputOptions;
   readonly visregCompareRetries: number;
   readonly visregCompareRetryDelay: number;
+  readonly visregRequireSameDimensions?: boolean | undefined;
   readonly perfNumberOfMeasurements: number;
   readonly perfRegressionThreshold: number;
   readonly perfPValueThreshold: number;
@@ -91,6 +92,7 @@ export function comparePipelineConfigFromAbTests(
     visregResembleOutputOptions: config.visreg.resembleOutputOptions,
     visregCompareRetries: config.visreg.compareRetries,
     visregCompareRetryDelay: config.visreg.compareRetryDelay,
+    visregRequireSameDimensions: config.visreg.requireSameDimensions,
     perfNumberOfMeasurements: config.perf.numberOfMeasurements,
     perfRegressionThreshold: config.perf.regressionThreshold,
     perfPValueThreshold: config.perf.pValueThreshold,
@@ -119,6 +121,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
       resembleOutputOptions: input.visregResembleOutputOptions,
       compareRetries: input.visregCompareRetries,
       compareRetryDelay: input.visregCompareRetryDelay,
+      requireSameDimensions: input.visregRequireSameDimensions,
       testPathPattern: input.testPathPattern,
     }));
 

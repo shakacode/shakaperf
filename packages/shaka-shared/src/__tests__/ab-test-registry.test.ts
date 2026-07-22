@@ -27,33 +27,42 @@ describe('ab-test-registry', () => {
       expect(tests[0].testFn).toBe(testFn);
     });
 
-    it('defaults options to empty object when not provided', () => {
-      abTest('No options', { startingPath: '/' }, async () => {});
-
-      const tests = getRegisteredTests();
-      expect(tests[0].options).toEqual({});
-    });
-
-    it('preserves options when provided', () => {
-      const options = {
+    it('preserves flat per-test config when provided', () => {
+      const beforeNavigate = async () => {};
+      abTest('With config', {
+        startingPath: '/page',
+        experimentPathOverride: '/page-new',
         markers: [{ end: 'marker-end', label: 'My Marker' }],
-        resultsFolder: './results',
-        visreg: {
-          selectors: ['.hero'],
-          misMatchThreshold: 0.05,
-        },
-      };
-
-      abTest('With options', { startingPath: '/page', options }, async () => {});
+        visregSelectors: ['.hero'],
+        visregSelectorExpansion: true,
+        beforeNavigate,
+      }, async () => {});
 
       const tests = getRegisteredTests();
-      expect(tests[0].options).toEqual(options);
+      expect(tests[0].experimentPathOverride).toBe('/page-new');
+      expect(tests[0].markers).toEqual([{ end: 'marker-end', label: 'My Marker' }]);
+      expect(tests[0].visregSelectors).toEqual(['.hero']);
+      expect(tests[0].visregSelectorExpansion).toBe(true);
+      expect(tests[0].beforeNavigate).toBe(beforeNavigate);
     });
 
     it('throws when name contains a comma', () => {
       expect(() =>
         abTest('Has, a comma', { startingPath: '/' }, async () => {}),
       ).toThrow(/must not contain commas/);
+      expect(getRegisteredTests()).toHaveLength(0);
+    });
+
+    it('rejects the pre-flattening options shape with a migration pointer', () => {
+      // Test files load via tsx without typechecking, so this is the only
+      // guard an un-migrated .abtest.ts actually hits.
+      const legacy = {
+        startingPath: '/',
+        options: { visreg: { misMatchThreshold: 0.01 } },
+      };
+      expect(() =>
+        abTest('Legacy', legacy as never, async () => {}),
+      ).toThrow(/'options' key was removed.*BREAKING_CHANGES\.md/);
       expect(getRegisteredTests()).toHaveLength(0);
     });
 
@@ -191,74 +200,21 @@ describe('ab-test-registry', () => {
     });
   });
 
-  describe('AbTestVisregConfig', () => {
-    it('stores all visreg config properties', () => {
+  describe('visreg capture config', () => {
+    it('stores visregSelectors and visregSelectorExpansion at the top level', () => {
       abTest(
-        'Full visreg config',
+        'Capture config',
         {
           startingPath: '/page',
-          options: {
-            visreg: {
-              selectors: ['[data-cy="hero"]'],
-              selectorExpansion: true,
-              hideSelectors: ['.cookie-banner'],
-              removeSelectors: ['.ad-slot'],
-              hoverSelector: '.menu-item',
-              clickSelector: '.button',
-              scrollToSelector: '#footer',
-              postInteractionWait: 500,
-              misMatchThreshold: 0.1,
-              requireSameDimensions: true,
-              maxNumDiffPixels: 50,
-              compareRetries: 3,
-              compareRetryDelay: 1000,
-              comparePixelmatchThreshold: 0.3,
-              readyEvent: 'app:ready',
-              readySelector: '#root',
-              readyTimeout: 10000,
-              delay: 200,
-            },
-            viewports: ['desktop'],
-          },
+          visregSelectors: ['[data-cy="hero"]'],
+          visregSelectorExpansion: 'true',
         },
         async () => {},
       );
 
       const tests = getRegisteredTests();
-      const stored = tests[0].options;
-      const visreg = stored.visreg!;
-      expect(visreg.selectors).toEqual(['[data-cy="hero"]']);
-      expect(visreg.misMatchThreshold).toBe(0.1);
-      expect(visreg.readyEvent).toBe('app:ready');
-      expect(stored.viewports).toEqual(['desktop']);
-    });
-  });
-
-  describe('AbTestAccessibilityConfig', () => {
-    it('stores accessibility config properties', () => {
-      abTest(
-        'Accessibility config',
-        {
-          startingPath: '/page',
-          options: {
-            accessibility: {
-              tags: ['wcag2aa'],
-              disableRules: ['color-contrast'],
-              includeRules: ['button-name'],
-              skip: true,
-            },
-          },
-        },
-        async () => {},
-      );
-
-      const tests = getRegisteredTests();
-      expect(tests[0].options.accessibility).toEqual({
-        tags: ['wcag2aa'],
-        disableRules: ['color-contrast'],
-        includeRules: ['button-name'],
-        skip: true,
-      });
+      expect(tests[0].visregSelectors).toEqual(['[data-cy="hero"]']);
+      expect(tests[0].visregSelectorExpansion).toBe('true');
     });
   });
 });

@@ -8,16 +8,15 @@
  */
 
 import type { TestPair, Scenario, Viewport, RuntimeConfig, EngineOptions, DecoratedCompareConfig } from "../types";
+import { visregComparisonForTest } from "./visreg-config-for-test";
 
 /**
- * @description Retrieves the mismatch threshold based on the given scenario and configuration.
- *
- * @param {Object} scenario - The scenario object, which may contain a misMatchThreshold property.
- * @param {Object} config - The configuration object, which includes misMatchThreshold and defaultMisMatchThreshold properties.
- * @returns {number} The mismatch threshold value.
+ * @description The effective mismatch threshold for a scenario's test — its
+ * `config.visreg` override merged over the file defaults (see
+ * `visregComparisonForTest`), never a scenario-level field.
  */
 function getMisMatchThreshHold (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { misMatchThreshold?: number }) {
-  return scenario?.misMatchThreshold ?? config?.misMatchThreshold ?? config?.defaultMisMatchThreshold ?? 0.1;
+  return visregComparisonForTest(config, scenario?._testDef).misMatchThreshold;
 }
 
 function ensureFileSuffix (filename: string, suffix: string) {
@@ -47,14 +46,12 @@ function genHash (str: unknown) {
 }
 
 /**
- * @description Determines whether the same dimensions are required based on the given scenario and configuration.
- *
- * @param {Object} scenario - The scenario object, which may contain a requireSameDimensions property.
- * @param {Object} config - The configuration object, which includes requireSameDimensions and defaultMisMatchThreshold properties.
- * @returns {boolean} True if the same dimensions are required, otherwise false.
+ * @description The effective same-dimensions requirement for a scenario's test —
+ * its `config.visreg` override merged over the file defaults (see
+ * `visregComparisonForTest`), never a scenario-level field.
  */
 function getRequireSameDimensions (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { requireSameDimensions?: boolean }) {
-  return scenario?.requireSameDimensions ?? config?.requireSameDimensions ?? config?.defaultRequireSameDimensions ?? true;
+  return visregComparisonForTest(config, scenario?._testDef).requireSameDimensions;
 }
 
 function getSelectorName (selector: string) {

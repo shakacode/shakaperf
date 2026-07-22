@@ -55,7 +55,7 @@ export async function runVisregUnit(
 
   const startedAt = Date.now();
   try {
-    await visregRunner('compare', {
+    await visregRunner({
       config: configPath,
       controlURL: ctx.controlURL,
       experimentURL: ctx.experimentURL,

@@ -929,7 +929,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // units for {desktop, phone}). Each stage must filter back down to its own
   // category's viewport list so visreg doesn't end up running at perf-only
   // viewports (or vice versa).
-  const stageViewports = resolveViewportsForTest(unit.test, viewportsByCategory[stage.category]);
+  const stageViewports = resolveViewportsForTest(unit.test, viewportsByCategory[stage.category], stage.category);
   const viewportApplies = stageViewports.some((vp) => vp.label === unit.viewport.label);
 
   let selected = false;
@@ -1125,7 +1125,7 @@ function viewportsForTestAndStages(
   const labels = new Map<string, Viewport>();
   for (const stage of stages) {
     if (!testDeclaresStageCategory(test, stage)) continue;
-    for (const viewport of resolveViewportsForTest(test, viewportsByCategory[stage.category])) {
+    for (const viewport of resolveViewportsForTest(test, viewportsByCategory[stage.category], stage.category)) {
       labels.set(viewport.label, viewport);
     }
   }
@@ -1329,13 +1329,13 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
         );
         continue;
       }
-      const narrowed = resolveViewportsForTest(test, categoryViewports);
+      const narrowed = resolveViewportsForTest(test, categoryViewports, testType);
       if (narrowed.length === 0) {
         persistSkippedOutcomesForStages(
           store,
           test,
           categoryStages,
-          viewportFilterSkipReason(testType, test.options.viewports),
+          viewportFilterSkipReason(testType, test.config?.[testType]?.viewports),
           viewportsByCategory,
         );
       }
@@ -1446,7 +1446,17 @@ function allViewportsForTest(
   stages: readonly Stage[],
   viewportsByCategory: RuntimeOptions['viewports'],
 ): Viewport[] {
-  return resolveViewportsForTest(test, viewportsForStages(stages, viewportsByCategory));
+  // Union across stages of each category's per-test-narrowed viewports, so the
+  // report renders exactly the viewports the test actually produced artifacts
+  // for (a test that narrowed visreg to desktop still shows phone if perf ran
+  // there).
+  const labels = new Map<string, Viewport>();
+  for (const stage of stages) {
+    for (const viewport of resolveViewportsForTest(test, viewportsByCategory[stage.category] ?? [], stage.category)) {
+      labels.set(viewport.label, viewport);
+    }
+  }
+  return [...labels.values()];
 }
 
 function viewportsForStages(

@@ -115,7 +115,7 @@ export async function scanAccessibilityPage(
       viewport: ctx.viewport,
       isControl: options.isControl,
       testType: 'accessibility',
-      beforeNavigate: ctx.test.options.beforeNavigate,
+      beforeNavigate: ctx.test.beforeNavigate,
     });
     page = await context.newPage();
     if (config.engineOptions.waitTimeout) {

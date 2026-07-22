@@ -12,12 +12,8 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click Shop Now on the homepage', {
   startingPath: '/',
-  options: {
-    viewports: ['phone'],
-    visreg: {
-      misMatchThreshold: 0.1,
-      maxNumDiffPixels: 5,
-    },
+  config: {
+    visreg: { viewports: ['phone'], maxNumDiffPixels: 5 },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for hero section to load');

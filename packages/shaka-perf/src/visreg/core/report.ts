@@ -10,11 +10,11 @@
 import path from 'node:path';
 import * as fs from 'node:fs';
 import chalk from 'chalk';
-import createLogger from '../util/logger';
-import compare from '../util/compare/index';
-import type { RuntimeConfig, TestPair } from '../types';
-import type Reporter from '../util/Reporter';
-import type { Test } from '../util/Reporter';
+import createLogger from './util/logger';
+import compare from './util/compare/index';
+import type { RuntimeConfig, TestPair } from './types';
+import type Reporter from './util/Reporter';
+import type { Test } from './util/Reporter';
 
 const logger = createLogger('report');
 

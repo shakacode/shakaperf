@@ -131,7 +131,6 @@ describe('runPipeline', () => {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };

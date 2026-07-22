@@ -66,13 +66,9 @@ export type Status =
   | 'improvement'
   | 'no_difference'
   /**
-   * Category was skipped for this test because the intersection of
-   * `options.viewports` (test narrow) and the category's own `viewports`
-   * is empty — e.g. a test tagged `viewports: ['desktop']` against
-   * `perf.viewports: ['phone']` produces no perf work. Rendered as a
-   * small "skipped by viewport filter" banner; does not propagate to the
-   * test-level status (a skipped perf category doesn't override a visreg
-   * change).
+   * Category produced no work for this test (e.g. its stage's `applies()`
+   * declined). Rendered as a small "skipped" banner; does not propagate to
+   * the test-level status.
    */
   | 'skipped';
 

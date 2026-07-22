@@ -25,7 +25,6 @@ describe('reusable compare results', () => {
       startingPath: '/',
       file: path.join(cwd, 'tests/homepage.abtest.ts'),
       line: 1,
-      options: {},
       testTypes: null,
       testFn: async () => undefined,
     };

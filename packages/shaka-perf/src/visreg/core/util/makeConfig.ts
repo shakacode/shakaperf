@@ -53,14 +53,13 @@ async function loadProjectConfig (options: Record<string, any> | undefined, conf
   return configWithoutScenarios;
 }
 
-async function makeConfig (_command: string, options?: Record<string, any>) {
+async function makeConfig (options?: Record<string, any>) {
   const config: Partial<RuntimeConfig> = {};
 
   config.args = options || {};
 
   config.visregRoot = path.join(__dirname, '../..');
   config.projectPath = projectPath(config);
-  config.perf = {};
 
   const userConfig = Object.assign({}, await loadProjectConfig(options, config));
 

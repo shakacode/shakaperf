@@ -344,7 +344,6 @@ function testDefinition(): AbTestDefinition {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };

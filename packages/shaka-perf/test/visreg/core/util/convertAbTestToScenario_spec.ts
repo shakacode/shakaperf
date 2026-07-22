@@ -17,7 +17,6 @@ describe('convertAbTestToScenario', function () {
     startingPath: '/products',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async function () {},
   };
@@ -36,61 +35,27 @@ describe('convertAbTestToScenario', function () {
     assert.deepStrictEqual(scenario.selectors, ['document']);
   });
 
-  it('should pass through visreg config properties', function () {
+  it('should pass through the flat capture config', function () {
     const def: AbTestDefinition = {
       ...baseDef,
-      options: {
-        visreg: {
-          selectors: ['[data-cy="hero"]', 'body'],
-          misMatchThreshold: 0.05,
-          maxNumDiffPixels: 10,
-          delay: 100,
-          hideSelectors: ['.cookie-banner'],
-        },
-      },
+      visregSelectors: ['[data-cy="hero"]', 'body'],
     };
 
     const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
 
     assert.deepStrictEqual(scenario.selectors, ['[data-cy="hero"]', 'body']);
-    assert.strictEqual(scenario.misMatchThreshold, 0.05);
-    assert.strictEqual(scenario.maxNumDiffPixels, 10);
-    assert.strictEqual(scenario.delay, 100);
-    assert.deepStrictEqual(scenario.hideSelectors, ['.cookie-banner']);
   });
 
-  it('should narrow scenario.viewports to the labels in options.viewports', function () {
-    const phone = { label: 'phone', width: 375, height: 667, formFactor: 'mobile' as const, deviceScaleFactor: 3 };
-    const tablet = { label: 'tablet', width: 768, height: 1024, formFactor: 'mobile' as const, deviceScaleFactor: 3 };
-    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
+  it('should route the experiment side through experimentPathOverride', function () {
     const def: AbTestDefinition = {
       ...baseDef,
-      options: { viewports: ['phone'] },
+      experimentPathOverride: '/basket',
     };
 
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment', [desktop, tablet, phone]);
+    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
 
-    assert.deepStrictEqual(scenario.viewports, [phone]);
-  });
-
-  it('should leave scenario.viewports unset when options.viewports is omitted', function () {
-    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
-
-    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment', [desktop]);
-
-    assert.strictEqual(scenario.viewports, undefined);
-  });
-
-  it('should leave scenario.viewports unset when the narrow matches no category viewports', function () {
-    const desktop = { label: 'desktop', width: 1280, height: 800, formFactor: 'desktop' as const, deviceScaleFactor: 1 };
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: { viewports: ['phone'] },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment', [desktop]);
-
-    assert.strictEqual(scenario.viewports, undefined);
+    assert.strictEqual(scenario.url, 'http://experiment/basket');
+    assert.strictEqual(scenario.referenceUrl, 'http://control/products');
   });
 
   it('should attach testFn as _testFn on the scenario', function () {
@@ -110,79 +75,10 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario._testDef!.startingPath, '/products');
   });
 
-  it('should pass through interaction properties', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          hoverSelector: '.nav-item',
-          hoverSelectors: ['.menu-a', '.menu-b'],
-          clickSelector: '.btn-submit',
-          clickSelectors: ['.tab-1', '.tab-2'],
-          scrollToSelector: '#footer',
-          postInteractionWait: 500,
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.hoverSelector, '.nav-item');
-    assert.deepStrictEqual(scenario.hoverSelectors, ['.menu-a', '.menu-b']);
-    assert.strictEqual(scenario.clickSelector, '.btn-submit');
-    assert.deepStrictEqual(scenario.clickSelectors, ['.tab-1', '.tab-2']);
-    assert.strictEqual(scenario.scrollToSelector, '#footer');
-    assert.strictEqual(scenario.postInteractionWait, 500);
-  });
-
-  it('should pass through comparison threshold properties', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          requireSameDimensions: false,
-          compareRetries: 3,
-          compareRetryDelay: 2000,
-          comparePixelmatchThreshold: 0.2,
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.requireSameDimensions, false);
-    assert.strictEqual(scenario.compareRetries, 3);
-    assert.strictEqual(scenario.compareRetryDelay, 2000);
-    assert.strictEqual(scenario.comparePixelmatchThreshold, 0.2);
-  });
-
-  it('should pass through ready state properties', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          readyEvent: 'app:loaded',
-          readySelector: '#main-content',
-          readyTimeout: 15000,
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.readyEvent, 'app:loaded');
-    assert.strictEqual(scenario.readySelector, '#main-content');
-    assert.strictEqual(scenario.readyTimeout, 15000);
-  });
-
   it('should set selectorExpansion when provided', function () {
     const def: AbTestDefinition = {
       ...baseDef,
-      options: {
-        visreg: {
-          selectorExpansion: true,
-        },
-      },
+      visregSelectorExpansion: true,
     };
 
     const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
@@ -190,57 +86,8 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario.selectorExpansion, true);
   });
 
-  it('should set removeSelectors when provided', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          removeSelectors: ['.ad-banner', '.tracking-pixel'],
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.deepStrictEqual(scenario.removeSelectors, ['.ad-banner', '.tracking-pixel']);
-  });
-
-  it('should preserve falsy numeric values (0) via != null check', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          misMatchThreshold: 0,
-          delay: 0,
-          readyTimeout: 0,
-          postInteractionWait: 0,
-          maxNumDiffPixels: 0,
-          compareRetries: 0,
-          compareRetryDelay: 0,
-          comparePixelmatchThreshold: 0,
-        },
-      },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.misMatchThreshold, 0);
-    assert.strictEqual(scenario.delay, 0);
-    assert.strictEqual(scenario.readyTimeout, 0);
-    assert.strictEqual(scenario.postInteractionWait, 0);
-    assert.strictEqual(scenario.maxNumDiffPixels, 0);
-    assert.strictEqual(scenario.compareRetries, 0);
-    assert.strictEqual(scenario.compareRetryDelay, 0);
-    assert.strictEqual(scenario.comparePixelmatchThreshold, 0);
-  });
-
-  it('should not set optional properties when visreg config is empty', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: { visreg: {} },
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
+  it('should not set optional properties when the per-test config is minimal', function () {
+    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment');
 
     // Only required properties should be set
     assert.strictEqual(scenario.label, 'Test scenario');
@@ -249,28 +96,24 @@ describe('convertAbTestToScenario', function () {
     assert.deepStrictEqual(scenario.selectors, ['document']);
     assert.ok(scenario._testFn);
 
-    // Optional properties should not be set
+    // Deleted per-test options never reach the scenario — interactions and
+    // waits live in the test body; thresholds are config-owned.
+    assert.strictEqual(scenario.selectorExpansion, undefined);
     assert.strictEqual(scenario.hideSelectors, undefined);
     assert.strictEqual(scenario.removeSelectors, undefined);
     assert.strictEqual(scenario.hoverSelector, undefined);
     assert.strictEqual(scenario.clickSelector, undefined);
-    assert.strictEqual(scenario.misMatchThreshold, undefined);
     assert.strictEqual(scenario.readyEvent, undefined);
     assert.strictEqual(scenario.viewports, undefined);
   });
 
-  it('should set requireSameDimensions to false when explicitly false', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      options: {
-        visreg: {
-          requireSameDimensions: false,
-        },
-      },
-    };
+  it('should use stage unit urls verbatim when provided', function () {
+    const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment', {
+      controlURL: 'http://control:1234/products?warm=1',
+      experimentURL: 'http://experiment:5678/products?warm=1',
+    });
 
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.requireSameDimensions, false);
+    assert.strictEqual(scenario.url, 'http://experiment:5678/products?warm=1');
+    assert.strictEqual(scenario.referenceUrl, 'http://control:1234/products?warm=1');
   });
 });
