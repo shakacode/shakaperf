@@ -9,6 +9,7 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
 3. **Wait for each publish workflow to succeed** before pushing tags for dependent packages. Use `gh run watch <id> --exit-status` to wait.
 4. **One version bump per package per deploy.** Don't re-bump a version that was already tagged — bump to a new version instead.
 5. **Stamp BREAKING_CHANGES.md.** If it has an **Unreleased** section with entries, this release ships breaking changes — record the released version there (see step 3).
+6. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with a summary of them so the change is visible at release time, not just in the file (see steps 5–6). Tag a release with no breaking changes as a lightweight tag as before.
 
 ## Steps
 
@@ -26,6 +27,14 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
    c. Only then proceed to the remaining packages
 
 6. Create and push tags for the remaining packages (these can be pushed together since they don't depend on each other).
+
+   When this release ships breaking changes (the package's Unreleased section had entries in step 3), make its tag an **annotated** tag whose message summarizes the breaking changes and their fixes, drawn from the section you just stamped:
+
+   ```bash
+   git tag -a shaka-perf@<version> -m "$(BREAKING CHANGES summary — what broke + how to fix, from BREAKING_CHANGES.md)"
+   ```
+
+   A release with no breaking changes stays a lightweight tag (`git tag <package>@<version>`).
 
 7. Watch all remaining publish workflows and report results.
 
