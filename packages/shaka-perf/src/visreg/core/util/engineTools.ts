@@ -8,16 +8,6 @@
  */
 
 import type { TestPair, Scenario, Viewport, RuntimeConfig, EngineOptions, DecoratedCompareConfig } from "../types";
-import { visregComparisonForTest } from "./visreg-config-for-test";
-
-/**
- * @description The effective mismatch threshold for a scenario's test — its
- * `config.visreg` override merged over the file defaults (see
- * `visregComparisonForTest`), never a scenario-level field.
- */
-function getMisMatchThreshHold (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { misMatchThreshold?: number }) {
-  return visregComparisonForTest(config, scenario?._testDef).misMatchThreshold;
-}
 
 function ensureFileSuffix (filename: string, suffix: string) {
   const re = new RegExp('\.' + suffix + '$', ''); // eslint-disable-line no-useless-escape
@@ -43,15 +33,6 @@ function genHash (str: unknown) {
   }
   // return a string and replace a negative sign with a zero
   return hash.toString().replace(/^-/, '0');
-}
-
-/**
- * @description The effective same-dimensions requirement for a scenario's test —
- * its `config.visreg` override merged over the file defaults (see
- * `visregComparisonForTest`), never a scenario-level field.
- */
-function getRequireSameDimensions (scenario: Partial<Scenario>, config: Partial<RuntimeConfig> & { requireSameDimensions?: boolean }) {
-  return visregComparisonForTest(config, scenario?._testDef).requireSameDimensions;
 }
 
 function getSelectorName (selector: string) {
@@ -153,8 +134,8 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     selector,
     fileName,
     label: scenario.label,
-    requireSameDimensions: getRequireSameDimensions(scenario, config),
-    misMatchThreshold: getMisMatchThreshHold(scenario, config),
+    requireSameDimensions: config.requireSameDimensions,
+    mismatchThreshold: config.mismatchThreshold,
     url: scenario.url,
     referenceUrl: scenario.referenceUrl,
     expect: getScenarioExpect(scenario),
@@ -171,8 +152,6 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
 
 export {
   generateTestPair,
-  getMisMatchThreshHold,
-  getRequireSameDimensions,
   ensureFileSuffix,
   glueStringsWithSlash,
   genHash,

@@ -59,7 +59,7 @@ export interface ComparePipelineConfig {
   readonly artifactRoot?: string | undefined;
   readonly parallelism: number;
   readonly testPathPattern?: string | undefined;
-  readonly visregDefaultMisMatchThreshold: number;
+  readonly visregMismatchThreshold: number;
   readonly visregMaxNumDiffPixels: number;
   readonly visregComparePixelmatchThreshold: number;
   readonly visregEngineOptions: VisregEngineOptions;
@@ -85,7 +85,7 @@ export function comparePipelineConfigFromAbTests(
     artifactRoot: overrides.artifactRoot,
     parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
     testPathPattern: overrides.testPathPattern ?? config.shared.testPathPattern,
-    visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
+    visregMismatchThreshold: config.visreg.mismatchThreshold,
     visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
     visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
     visregEngineOptions: config.visreg.engineOptions,
@@ -114,7 +114,7 @@ export function createComparePipeline(input: ComparePipelineConfig) {
   }, (pipeline) => {
     const parallelWorkerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(parallelWorkerPool, createVisregStage({
-      defaultMisMatchThreshold: input.visregDefaultMisMatchThreshold,
+      mismatchThreshold: input.visregMismatchThreshold,
       maxNumDiffPixels: input.visregMaxNumDiffPixels,
       comparePixelmatchThreshold: input.visregComparePixelmatchThreshold,
       engineOptions: input.visregEngineOptions,

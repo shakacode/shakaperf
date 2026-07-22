@@ -10,7 +10,7 @@
 import type { ReactNode } from 'react';
 import type { RaceCancellation } from 'race-cancellation';
 import type { AbTestDefinition, TestType } from 'shaka-shared';
-import type { Viewport } from '../config';
+import type { AbTestsConfig, Viewport } from '../config';
 import type { ArtifactScope } from '../pipeline/artifact-store';
 import type { Outcome } from '../pipeline/outcome';
 import type { WorkerPool } from '../pipeline/worker-pool';
@@ -27,6 +27,9 @@ export type JsonValue =
 
 export interface StageRuntime {
   readonly resultsRoot: string;
+  /** The parsed project config (file-level, run-wide). Per-test effective
+   *  config is on `TestContext.config`; this is its source. */
+  readonly config: AbTestsConfig;
   /**
    * Diagnostics flag (audit `--debug-show-all-frames`): when set, stages that
    * dedupe artifacts also emit the full, non-deduped form. Only
@@ -74,6 +77,13 @@ export interface StageRenderContext {
 
 export interface TestContext extends StageRenderContext {
   readonly testAndViewportId: string;
+  /**
+   * The effective config for THIS test: the project config with the test's
+   * `config` override merged in (via `applyPerTestConfigOverrides`). Produced once by
+   * the runner and handed to the stage — engines read their settings from here
+   * and never merge per-test overrides themselves.
+   */
+  readonly config: AbTestsConfig;
   /**
    * Read an earlier stage's full result (its `measurement`) for this same
    * test+viewport. Stages run sequentially per unit, so any stage registered

@@ -153,7 +153,7 @@ export const VisregConfigSchema = z
      * for all tests, or narrow per-test via `options.viewports`.
      */
     viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
-    defaultMisMatchThreshold: z.number().nonnegative().default(0.1),
+    mismatchThreshold: z.number().nonnegative().default(0.1),
     maxNumDiffPixels: z.number().int().nonnegative().default(50),
     comparePixelmatchThreshold: z.number().nonnegative().default(0.1),
     /**
@@ -167,7 +167,7 @@ export const VisregConfigSchema = z
     compareRetryDelay: z.number().int().nonnegative().default(5000),
     // When true (default), any change in a capture's dimensions fails the
     // compare outright. `config.visreg.requireSameDimensions: false` lets 
-    // one page tolerate size changes within `defaultMisMatchThreshold`.
+    // one page tolerate size changes within `mismatchThreshold`.
     requireSameDimensions: z.boolean().optional(),
     engineOptions: EngineOptionsSchema.default({
       browser: 'chromium',
@@ -301,19 +301,37 @@ const _zodInputSatisfiesShared: _ZodInput extends AbTestsConfigInput ? true : ne
 const _sharedSatisfiesZodInput: AbTestsConfigInput extends _ZodInput ? true : never = true;
 
 export type SharedConfig = z.infer<typeof SharedConfigSchema>;
-export type VisregConfig = Omit<z.infer<typeof VisregConfigSchema>, 'viewports'> & {
-  viewports: Viewport[];
-};
-export type PerfConfig = Omit<z.infer<typeof PerfConfigSchema>, 'viewports'> & {
-  viewports: Viewport[];
-};
-export type AuditConfig = Omit<z.infer<typeof AuditConfigSchema>, 'viewports'> & {
-  viewports: Viewport[];
-};
-export type AccessibilityConfig = Omit<z.infer<typeof AccessibilityConfigSchema>, 'viewports'> & {
-  viewports: Viewport[];
-};
+export type VisregConfig = z.infer<typeof VisregConfigSchema>;
+export type PerfConfig = z.infer<typeof PerfConfigSchema>;
+export type AuditConfig = z.infer<typeof AuditConfigSchema>;
+export type AccessibilityConfig = z.infer<typeof AccessibilityConfigSchema>;
 export type BisectConfig = z.infer<typeof BisectConfigSchema>;
+
+/**
+ * Resolve viewport LABELS into their full `Viewport` definitions from
+ * `shared.viewports`. Throws on a label with no definition — a typo'd per-test
+ * override must fail loudly, not silently skip the viewport (file-level labels
+ * are already schema-validated, so in practice this catches per-test lists).
+ * This is the single point where the label→object indirection is turned back
+ * into objects, run by whoever needs dimensions (the runner's expansion,
+ * `viewportsByStageCategory`).
+ */
+export function resolveViewports(
+  labels: readonly string[],
+  definitions: readonly Viewport[],
+): Viewport[] {
+  const byLabel = new Map(definitions.map((v) => [v.label, v]));
+  return labels.map((label) => {
+    const v = byLabel.get(label);
+    if (!v) {
+      throw new Error(
+        `Unknown viewport label '${label}' — defined in shared.viewports: ` +
+        `${[...byLabel.keys()].map((l) => `'${l}'`).join(', ')}.`,
+      );
+    }
+    return v;
+  });
+}
 export interface AbTestsConfig {
   shared: SharedConfig;
   visreg: VisregConfig;
@@ -334,15 +352,25 @@ export interface AbTestsConfig {
 export function viewportsByStageCategory(
   config: AbTestsConfig,
 ): Record<TestType, readonly Viewport[]> {
+  const defs = config.shared.viewports;
   return {
-    visreg: config.visreg.viewports,
-    perf: config.perf.viewports,
-    audit: config.audit.viewports,
-    accessibility: config.accessibility.viewports,
+    visreg: resolveViewports(config.visreg.viewports, defs),
+    perf: resolveViewports(config.perf.viewports, defs),
+    audit: resolveViewports(config.audit.viewports, defs),
+    accessibility: resolveViewports(config.accessibility.viewports, defs),
   };
 }
 
 export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
+  // Zod strips unknown keys silently; the old name would otherwise quietly
+  // fall back to the 0.1 default. Fail loudly instead.
+  const rawVisreg = (raw as { visreg?: Record<string, unknown> } | null | undefined)?.visreg;
+  if (rawVisreg && 'defaultMisMatchThreshold' in rawVisreg) {
+    throw new Error(
+      'visreg.defaultMisMatchThreshold was renamed — use visreg.mismatchThreshold ' +
+      '(see BREAKING_CHANGES.md).',
+    );
+  }
   const result = AbTestsConfigSchema.safeParse(raw ?? {});
   if (!result.success) {
     const first = result.error.errors[0];
@@ -357,15 +385,12 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
       'See NOISE_RESISTANT_PERF_TESTS_STUDY.md for why.'
     );
   }
-  const byLabel = new Map(parsed.shared.viewports.map((v) => [v.label, v]));
-  const resolve = (labels: string[]): Viewport[] =>
-    labels.map((l) => byLabel.get(l)!); // safe: root superRefine validated membership
   return {
     shared: parsed.shared,
-    visreg: { ...parsed.visreg, viewports: resolve(parsed.visreg.viewports) },
-    perf: { ...parsed.perf, viewports: resolve(parsed.perf.viewports) },
-    audit: { ...parsed.audit, viewports: resolve(parsed.audit.viewports) },
-    accessibility: { ...parsed.accessibility, viewports: resolve(parsed.accessibility.viewports) },
+    visreg: parsed.visreg,
+    perf: parsed.perf,
+    audit: parsed.audit,
+    accessibility: parsed.accessibility,
     twinServers: parsed.twinServers,
     bisect: parsed.bisect,
   };

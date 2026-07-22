@@ -105,7 +105,7 @@ export default defineConfig({
     compareRetries: 2,
     compareRetryDelay: 500,
     maxNumDiffPixels: 50,
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
   },
 });
 ```
@@ -141,7 +141,7 @@ alone. The visreg knobs (`config.visreg`):
 
 | Knob                         | Description                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------------------- |
-| `defaultMisMatchThreshold`   | Percentage of different pixels allowed to pass (default: 0.1)                            |
+| `mismatchThreshold`   | Percentage of different pixels allowed to pass (default: 0.1)                            |
 | `maxNumDiffPixels`           | Absolute cap on differing pixels before a comparison fails                               |
 | `comparePixelmatchThreshold` | Per-pixel color-distance sensitivity for the pixelmatch comparison                       |
 | `requireSameDimensions`      | If true, any change in captured dimensions triggers a test failure (default: true)       |
@@ -151,7 +151,7 @@ alone. The visreg knobs (`config.visreg`):
 abTest('Cart', {
   startingPath: '/cart',
   config: {
-    visreg: { defaultMisMatchThreshold: 0.01, viewports: ['desktop'] },
+    visreg: { mismatchThreshold: 0.01, viewports: ['desktop'] },
   },
 }, async ({ page }) => { /* ... */ });
 ```
@@ -212,8 +212,8 @@ The complete removed-option → body-recipe table lives in
 ### Setting Cookies
 
 Seed cookies (and localStorage/auth) before the page loads from a `beforeNavigate`
-hook — `shared.beforeNavigate` in the config for every test, or a top-level
-`beforeNavigate` on the `abTest()` config for one test (which fully replaces the
+hook — `shared.beforeNavigate` in the config for every test, or override it for
+one test via `config: { shared: { beforeNavigate } }` (which fully replaces the
 global for that test — call a shared function if you want both). It runs on the
 Playwright `BrowserContext` after the per-run state clear, so what you seed
 survives into the navigation:
@@ -221,9 +221,13 @@ survives into the navigation:
 ```ts
 abTest('Authenticated page', {
   startingPath: '/dashboard',
-  beforeNavigate: async ({ context, url }) => {
-    await context.addCookies([{ name: 'session', value: '…', url }]);
-    // localStorage/auth too, via context.addInitScript(...)
+  config: {
+    shared: {
+      beforeNavigate: async ({ context, url }) => {
+        await context.addCookies([{ name: 'session', value: '…', url }]);
+        // localStorage/auth too, via context.addInitScript(...)
+      },
+    },
   },
 }, async ({ page }) => { /* ... */ });
 ```
@@ -264,11 +268,11 @@ visregSelectors: ['document', 'viewport', '#myFeature']
 
 ### Changing Test Sensitivity
 
-`defaultMisMatchThreshold` (percentage 0.00%-100.00%) controls how much difference `shaka-perf visreg` will tolerate before marking a test as failed. The default is `0.1` — set it once in the config's `visreg` slice, or for one test via `config.visreg.defaultMisMatchThreshold`.
+`mismatchThreshold` (percentage 0.00%-100.00%) controls how much difference `shaka-perf visreg` will tolerate before marking a test as failed. The default is `0.1` — set it once in the config's `visreg` slice, or for one test via `config.visreg.mismatchThreshold`.
 
 `requireSameDimensions` (default: `true`) controls whether any change in dimensions causes a failure. Setting it to `false` allows dimension changes as long as pixel differences stay within the threshold.
 
-These settings work in conjunction — e.g. with a non-zero `defaultMisMatchThreshold` and a mismatch that causes a dimension change, `requireSameDimensions: false` allows the test to still pass.
+These settings work in conjunction — e.g. with a non-zero `mismatchThreshold` and a mismatch that causes a dimension change, `requireSameDimensions: false` allows the test to still pass.
 
 ## Running Custom Scripts
 
@@ -374,7 +378,7 @@ resembleOutputOptions: {
 }
 ```
 
-If you need a `defaultMisMatchThreshold` below `0.01` (e.g. for large screenshots or very small changes), set `usePreciseMatching` in `resembleOutputOptions`.
+If you need a `mismatchThreshold` below `0.01` (e.g. for large screenshots or very small changes), set `usePreciseMatching` in `resembleOutputOptions`.
 
 ## Debugging
 

@@ -43,7 +43,6 @@ jest.mock('../../../../pipeline/artifact-compression', () => ({
 
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  mergeAccessibilityConfig,
 } from '../config';
 import { normalizeViolation, projectAccessibilityRawArtifact } from '../artifacts';
 import {
@@ -64,41 +63,13 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { parseAbTestsConfig } from '../../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
 
-describe('accessibility config merging', () => {
+describe('accessibility config defaults', () => {
   it('uses the shared accessibility tag defaults', () => {
     expect(DEFAULT_ACCESSIBILITY_STAGE_CONFIG.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
-  });
-
-  it('replaces every per-test field wholesale (arrays are not unioned)', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      tags: ['wcag2a', 'wcag2aa'],
-      disableRules: ['color-contrast'],
-      includeRules: ['button-name'],
-    }, {
-      tags: ['wcag22aa'],
-      disableRules: ['region', 'color-contrast'],
-      includeRules: ['image-alt'],
-    });
-
-    // Per-test disableRules is taken as given — the file's 'color-contrast' is
-    // NOT unioned in; the per-test list is the whole list.
-    expect(merged).toEqual({
-      tags: ['wcag22aa'],
-      disableRules: ['region', 'color-contrast'],
-      includeRules: ['image-alt'],
-    });
-  });
-
-  it('uses global includeRules when the test does not replace them', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      includeRules: ['button-name'],
-    }, undefined);
-
-    expect(merged.includeRules).toEqual(['button-name']);
   });
 });
 
@@ -402,12 +373,16 @@ describe('accessibility browser launch', () => {
       fakeContext(
         {},
         {
-          beforeNavigate: jest.fn(async ({ context, testType, url }) => {
-            events.push('beforeNavigate');
-            expect(context).toBeDefined();
-            expect(testType).toBe('accessibility');
-            expect(url).toBe('http://localhost:3030/checkout');
-          }),
+          config: {
+            shared: {
+              beforeNavigate: jest.fn(async ({ context, testType, url }) => {
+                events.push('beforeNavigate');
+                expect(context).toBeDefined();
+                expect(testType).toBe('accessibility');
+                expect(url).toBe('http://localhost:3030/checkout');
+              }),
+            },
+          },
         },
         jest.fn(async () => {
           events.push('testFn');
@@ -550,6 +525,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1 } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

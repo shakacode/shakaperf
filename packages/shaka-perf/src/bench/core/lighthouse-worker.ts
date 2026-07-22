@@ -25,6 +25,7 @@ import {
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
 import { setUpContextForNavigation } from '../../pre-navigation';
+import { reconstructEffectiveConfig } from '../../effective-config';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
   DEFAULT_LH_CONFIG,
@@ -255,6 +256,9 @@ class LighthouseWorkerSampler {
 
     try {
       const context = browser.contexts()[0];
+      // Fork boundary: the parent's `ctx.config` (functions and all) can't cross,
+      // so rebuild this test's effective config here and read from it.
+      const config = await reconstructEffectiveConfig(testDef);
       // The shared clear → beforeNavigate sequence, run on the context before
       // Lighthouse navigates so route-blocking/init-scripts cover the first
       // navigation and subframes. This context is reused across samples, so the
@@ -265,7 +269,7 @@ class LighthouseWorkerSampler {
         viewport: options.viewport,
         isControl: options.isControl ?? false,
         testType: 'perf',
-        beforeNavigate: testDef.beforeNavigate,
+        beforeNavigate: config?.shared.beforeNavigate,
       });
 
       let releaseTracking: () => void = () => {};

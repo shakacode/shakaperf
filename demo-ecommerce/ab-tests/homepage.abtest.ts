@@ -18,7 +18,7 @@ abTest('Homepage', {
     'document',
   ],
   config: {
-    visreg: { defaultMisMatchThreshold: 0.01 },
+    visreg: { mismatchThreshold: 0.01 },
   },
 }, async ({ page, annotate, testType }) => {
   annotate('Wait for homepage to settle');

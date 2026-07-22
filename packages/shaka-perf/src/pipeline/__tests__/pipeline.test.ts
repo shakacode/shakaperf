@@ -18,6 +18,7 @@ import {
   type Pipeline,
 } from '../pipeline';
 import { runPipeline, type RuntimeOptions } from '../runner';
+import { parseAbTestsConfig } from '../../config';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
 
@@ -144,17 +145,12 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1 } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
         retryDelay: 0,
         timeoutMs: 1_000,
-        viewports: {
-          visreg: [],
-          perf: [],
-          accessibility: [],
-          audit: [],
-        },
         tests: [frozenTest],
         ...runtime,
       });

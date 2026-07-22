@@ -59,9 +59,9 @@ export interface Scenario {
   // Viewport override
   viewports?: Viewport[];
 
-  // Comparison tuning is NOT carried on the scenario. It is resolved per test
-  // from the effective config (file defaults + `test.config.visreg`) by
-  // `visregComparisonForTest`, keyed off `_testDef` below.
+  // Comparison tuning is NOT carried on the scenario — it lives on the effective
+  // `config.visreg` (file defaults + `test.config.visreg`), written into the
+  // engine's bridge config by the compare stage.
 
   // Engine options override
   engineOptions?: Partial<EngineOptions>;
@@ -148,7 +148,7 @@ export interface VisregConfig {
   asyncCaptureLimit?: number;
   asyncCompareLimit?: number;
 
-  defaultMisMatchThreshold?: number;
+  mismatchThreshold?: number;
   resembleOutputOptions?: ResembleOutputOptions;
 
   compareRetries?: number;
@@ -192,7 +192,7 @@ export interface RuntimeConfig {
 
   id?: string;
   engine: string | null;
-  defaultMisMatchThreshold: number;
+  mismatchThreshold: number;
   defaultRequireSameDimensions?: boolean;
   debug: boolean;
   resembleOutputOptions?: ResembleOutputOptions;
@@ -219,12 +219,17 @@ export interface DecoratedCompareConfig extends VisregConfig {
   env: RuntimeConfig;
   isControl: boolean;
   isCompare: boolean;
-  defaultMisMatchThreshold: number;
+  // The four comparison-tuning values the compare stage writes into the bridge
+  // config from the effective `config.visreg` (zod defaults + per-test merge
+  // already applied), so the engine reads them straight.
+  mismatchThreshold: number;
+  requireSameDimensions: boolean;
+  maxNumDiffPixels: number;
+  comparePixelmatchThreshold: number;
   configFileName: string;
   defaultRequireSameDimensions?: boolean;
   compareRetries: number;
   compareRetryDelay: number;
-  maxNumDiffPixels: number;
 }
 
 // ── Diff Result (from resemble.js comparison) ───────────────────────
@@ -246,7 +251,7 @@ export interface TestPair {
   fileName: string;
   label: string;
   requireSameDimensions: boolean;
-  misMatchThreshold: number;
+  mismatchThreshold: number;
   url: string;
   referenceUrl?: string;
   expect: number;

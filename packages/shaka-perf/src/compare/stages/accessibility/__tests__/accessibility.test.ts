@@ -56,6 +56,8 @@ import type { AccessibilityViolation } from '../../../../audit/stages/accessibil
 import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { parseAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
   it('applies to every test — opting out is testTypes-owned', () => {
@@ -428,6 +430,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1 } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

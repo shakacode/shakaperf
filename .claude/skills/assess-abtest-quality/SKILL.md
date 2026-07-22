@@ -25,7 +25,7 @@ A visreg test exists to **fail loudly** when the UI changes. Control flow that h
 
 5. **Prefer user-facing locators.** `getByRole`, `getByLabel`, `getByText` express intent and survive refactors better than brittle CSS/XPath; fall back to a stable selector (`[data-cy=…]`, a semantic class) when there's no accessible handle. (Section *captures* still use CSS selectors — see Selectors strategy in `patterns.md`.)
 
-6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `config.visreg.defaultMisMatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
+6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `config.visreg.mismatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
    - **Freeze it at the source** in `beforeNavigate`, before the page loads, so it renders identically every run and on both sides:
      ```typescript
      beforeNavigate: async ({ context }) => {

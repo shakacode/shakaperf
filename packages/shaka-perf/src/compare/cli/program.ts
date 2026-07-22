@@ -8,9 +8,9 @@
  */
 
 import { Command, Option } from 'commander';
-import { withAbTestsConfigPath } from '../../before-navigate';
+import { withAbTestsConfigPath } from '../../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
-import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
+import { parseAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
@@ -78,6 +78,7 @@ export async function createCompareCommand(): Promise<Command> {
         });
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
         const result = await runPipeline(pipeline, {
+          config,
           controlURL: opts.controlURL ?? config.shared.controlURL,
           experimentURL: opts.experimentURL ?? config.shared.experimentURL,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
@@ -94,7 +95,6 @@ export async function createCompareCommand(): Promise<Command> {
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,
-          viewports: viewportsByStageCategory(config),
         });
         printReportSummary(result);
         reportPipelineFailure(result);

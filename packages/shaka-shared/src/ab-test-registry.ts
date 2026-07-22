@@ -129,28 +129,12 @@ export interface AbTestConfig {
   /** Per-test perf phase definitions (`{start,end,label}`). */
   markers?: Marker[];
   /**
-   * Runs before this test's page is navigated, on every engine — BEFORE the
-   * page exists, so it is not reachable from the test body. Use for per-page
-   * pre-nav setup — most commonly aborting third-party resources that never
-   * resolve in the sandbox (e.g. `installRequestBlocking(context,
-   * ['/recaptcha/'])`), but also cookies, headers, or init scripts.
-   *
-   * When present, this hook fully REPLACES the global `shared.beforeNavigate`
-   * for this test — the global does NOT also run. If you want the global's
-   * setup too, don't reach for a special chaining argument: extract the shared
-   * setup into a plain function and call it from both places (DRY), e.g.
-   * `const seed = (ctx) => installRequestBlocking(ctx.context, ['/recaptcha/'])`
-   * used as `shared.beforeNavigate` and called first inside this hook. See
-   * `BeforeNavigateContext`.
-   */
-  beforeNavigate?: BeforeNavigateHook;
-  /**
    * Per-test override of the universal config, merged over the file config for
-   * this test alone — so one test can tighten `visreg.defaultMisMatchThreshold`,
-   * narrow `visreg.viewports`, or add an `accessibility.disableRules` entry
-   * while every other test keeps the file defaults. Exposes exactly the
-   * knobs the engines honour per-test; whole-suite settings (`shared`,
-   * connection, browser `engineOptions`) are not per-test. See `PerTestConfig`.
+   * this test alone — so one test can tighten `visreg.mismatchThreshold`,
+   * narrow `visreg.viewports`, add an `accessibility.disableRules` entry, or
+   * replace the pre-navigation hook via `shared.beforeNavigate`, while every
+   * other test keeps the file defaults. Exposes exactly the knobs the engines
+   * honour per-test. See `PerTestConfig`.
    */
   config?: PerTestConfig;
 }

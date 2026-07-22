@@ -59,6 +59,19 @@ describe('computeConfig_spec', function () {
       assert.strictEqual(actualConfig.maxNumDiffPixels, 100);
     });
 
+    it('should set default mismatchThreshold to 0.1', function () {
+      const actualConfig = extendConfig({ ...baseConfig }, userConfig());
+      assert.strictEqual(actualConfig.mismatchThreshold, 0.1);
+    });
+
+    it('should override mismatchThreshold from user config', function () {
+      // Regression: this used to be hardcoded to 0.1, silently ignoring the
+      // effective (file + per-test) tuning the compare stage wrote into the
+      // bridge config.
+      const actualConfig = extendConfig({ ...baseConfig }, userConfig({ mismatchThreshold: 0.01 }));
+      assert.strictEqual(actualConfig.mismatchThreshold, 0.01);
+    });
+
     it('should pass all compare options together', function () {
       const actualConfig = extendConfig({ ...baseConfig }, userConfig({
         compareRetries: 3,

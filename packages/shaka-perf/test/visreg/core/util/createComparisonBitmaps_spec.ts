@@ -16,7 +16,7 @@ describe('createComparisonBitmaps', function () {
   const mockConfig = {
     configFileName: '/tmp/dummy-config.json',
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
     defaultRequireSameDimensions: true,
     compareRetries: 3,
     compareRetryDelay: 5000,

@@ -18,14 +18,14 @@ import {
 } from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
 import { runPipeline } from '../../pipeline/runner';
-import type { AbTestsConfig } from '../../config';
+import { parseAbTestsConfig, type AbTestsConfig } from '../../config';
 
 describe('compare accessibility pipeline integration', () => {
   it('derives reusable pipeline construction options from parsed config', () => {
     const parsed = {
       shared: { parallelism: 6, testPathPattern: 'checkout' },
       visreg: {
-        defaultMisMatchThreshold: 0.2,
+        mismatchThreshold: 0.2,
         maxNumDiffPixels: 12,
         comparePixelmatchThreshold: 0.3,
         engineOptions: { browser: 'chromium' },
@@ -50,7 +50,7 @@ describe('compare accessibility pipeline integration', () => {
         artifactRoot: 'commits/abc',
         parallelism: 3,
         testPathPattern: 'checkout',
-        visregDefaultMisMatchThreshold: 0.2,
+        visregMismatchThreshold: 0.2,
         perfNumberOfMeasurements: 7,
         accessibility: { tags: ['wcag2a'] },
       });
@@ -80,18 +80,13 @@ describe('compare accessibility pipeline integration', () => {
     try {
       const result = await runPipeline(pipeline, {
         cwd,
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1 } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
         retries: 0,
         retryDelay: 0,
         timeoutMs: 1_000,
-        viewports: {
-          visreg: [],
-          perf: [],
-          accessibility: [],
-          audit: [],
-        },
         tests: [testDefinition()],
       });
 
@@ -285,7 +280,7 @@ describe('compare accessibility pipeline integration', () => {
 function baseConfig(): Parameters<typeof createComparePipeline>[0] {
   return {
     parallelism: 1,
-    visregDefaultMisMatchThreshold: 0.1,
+    visregMismatchThreshold: 0.1,
     visregMaxNumDiffPixels: 50,
     visregComparePixelmatchThreshold: 0.1,
     visregEngineOptions: {},

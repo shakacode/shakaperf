@@ -8,22 +8,19 @@
  */
 
 import type { AbTestDefinition, TestType } from 'shaka-shared';
-import type { Viewport } from '../config';
+import { resolveViewports, type AbTestsConfig, type Viewport } from '../config';
+import { applyPerTestConfigOverrides } from '../effective-config';
 
 /**
- * The viewports a test runs at for one stage category, honouring a per-test
- * `config.<category>.viewports` override. The override is a label allow-list
- * that narrows the category's configured viewports (it can drop labels, never
- * add ones the file config didn't define); absent, the test runs every
- * configured viewport for that category.
+ * The viewports a test runs at for one stage category: apply the test's `config`
+ * override, then resolve that category's viewport labels into `Viewport`
+ * definitions — resolution stays downstream of the merge.
  */
 export function resolveViewportsForTest(
   test: AbTestDefinition,
-  categoryViewports: readonly Viewport[],
+  fileConfig: AbTestsConfig,
   category: TestType,
-): Viewport[] {
-  const narrow = test.config?.[category]?.viewports;
-  if (!narrow || narrow.length === 0) return [...categoryViewports];
-  const narrowSet = new Set(narrow);
-  return categoryViewports.filter((v) => narrowSet.has(v.label));
+): readonly Viewport[] {
+  const effective = applyPerTestConfigOverrides(fileConfig, test);
+  return resolveViewports(effective[category].viewports, effective.shared.viewports);
 }

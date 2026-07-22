@@ -22,7 +22,7 @@ abTest('Product Detail - Desktop Actions', {
   testTypes: ['visreg'],
   visregSelectors: ['[data-cy="product-actions-desktop"]'],
   config: {
-    visreg: { viewports: ['tablet', 'desktop'], defaultMisMatchThreshold: 0.01 },
+    visreg: { viewports: ['tablet', 'desktop'], mismatchThreshold: 0.01 },
   },
 }, async ({ page }) => {
   await page.waitForSelector('[data-cy="product-actions-desktop"]');

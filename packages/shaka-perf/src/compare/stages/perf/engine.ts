@@ -39,10 +39,8 @@ export async function runPerfEngineStage(
   workerPool: WorkerPool,
   config: PerfStageConfig,
 ): Promise<PerfResult | PerfLowNoiseResult | PerfWarmupResult> {
-  const perfConfig: PerfConfig = {
-    ...config,
-    viewports: [ctx.viewport],
-  };
+  // The engine measures at ctx.viewport, so config.viewports is unused.
+  const perfConfig = config;
   const unitId = ctx.testAndViewportId;
   const artifactsDir = path.join(ctx.runtime.resultsRoot, unitId, 'artifacts');
   fs.mkdirSync(artifactsDir, { recursive: true });

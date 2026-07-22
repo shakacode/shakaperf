@@ -90,7 +90,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   configJSON.env = cloneDeep(config);
   configJSON.isControl = false;
   configJSON.isCompare = true;
-  configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
+  configJSON.mismatchThreshold = config.mismatchThreshold;
   configJSON.configFileName = config.configFileName;
   configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
@@ -184,7 +184,7 @@ function flatMapTestPairs (rawTestPairs: CompareResult[]) {
         fileName: '',
         label: '',
         requireSameDimensions: true,
-        misMatchThreshold: 0,
+        mismatchThreshold: 0,
         url: '',
         expect: 0,
         viewportLabel: result.viewport?.label ?? '',

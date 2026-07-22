@@ -10,7 +10,6 @@
 import type { BrowserContext } from 'playwright-core';
 import type { BeforeNavigateHook, TestType, Viewport } from 'shaka-shared';
 import { clearBrowserData } from './clear-browser-data';
-import { runBeforeNavigateHooks } from '../before-navigate';
 
 export interface ContextNavigationSetup {
   context: BrowserContext;
@@ -19,34 +18,30 @@ export interface ContextNavigationSetup {
   viewport: Viewport;
   isControl: boolean;
   testType: TestType;
-  /** Per-test `beforeNavigate` hook; when set it fully replaces the global one. */
+  /**
+   * The effective `beforeNavigate`, read from the caller's already-merged config
+   * (`config.shared.beforeNavigate`). Runs after the state clear.
+   */
   beforeNavigate?: BeforeNavigateHook;
 }
 
 /**
- * The single pre-navigation sequence shared by every engine (visreg, accessibility,
- * perf). Runs on the `BrowserContext` BEFORE any page is created, so init scripts,
- * routes, cookies, and storage cover the page's first navigation and its subframes.
- *
- * Order matters and is uniform across engines:
- *   1. Clear all state (cookies + HTTP cache + per-origin storage). This resets a
- *      reused context (perf runs many samples through one context) and is a near
- *      no-op on a fresh one.
- *   2. `beforeNavigate` hooks last, so a hook that seeds its own cookie/auth (via
- *      `context.addCookies` / `addInitScript`) lands AFTER the clear and survives
- *      into the navigation.
+ * The single pre-navigation sequence shared by every engine, run on the
+ * `BrowserContext` before any page is created. Order is uniform and matters:
+ * clear all state first (so a reused perf context is reset), then `beforeNavigate`
+ * last, so a hook that seeds its own cookie/auth survives the clear. Throws if the
+ * hook throws — a failed setup hook should fail the test.
  */
 export async function setUpContextForNavigation(setup: ContextNavigationSetup): Promise<void> {
   await setup.context.clearCookies();
   await clearBrowserData(setup.context, setup.url);
-  await runBeforeNavigateHooks(
-    {
+  if (setup.beforeNavigate) {
+    await setup.beforeNavigate({
       context: setup.context,
       url: setup.url,
       viewport: setup.viewport,
       isControl: setup.isControl,
       testType: setup.testType,
-    },
-    setup.beforeNavigate,
-  );
+    });
+  }
 }

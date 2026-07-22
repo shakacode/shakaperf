@@ -64,7 +64,7 @@ export default defineConfig({
       args: ['--no-sandbox'],
     },
     maxNumDiffPixels: 50,
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
   },
 
   accessibility: {

@@ -112,7 +112,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 
       if (data.status === 'fail') {
         pair.diffImage = data.diffImage;
-        logger.error('ERROR { requireSameDimensions: ' + (data.requireSameDimensions ? 'true' : 'false') + ', size: ' + (data.isSameDimensions ? 'ok' : 'isDifferent') + ', content: ' + data.diff.misMatchPercentage + '%, threshold: ' + pair.misMatchThreshold + '% }: ' + pair.label + ' ' + pair.fileName);
+        logger.error('ERROR { requireSameDimensions: ' + (data.requireSameDimensions ? 'true' : 'false') + ', size: ' + (data.isSameDimensions ? 'ok' : 'isDifferent') + ', content: ' + data.diff.misMatchPercentage + '%, threshold: ' + pair.mismatchThreshold + '% }: ' + pair.label + ' ' + pair.fileName);
       } else {
         logger.success('OK: ' + pair.label + ' ' + pair.fileName);
       }

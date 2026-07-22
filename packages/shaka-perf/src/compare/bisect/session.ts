@@ -16,7 +16,7 @@ import { parseAbTestsConfig, viewportsByStageCategory, type AbTestsConfig } from
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { runPipeline } from '../../pipeline/runner';
 import type { TestResult } from '../../pipeline/report';
-import { withAbTestsConfigPath } from '../../before-navigate';
+import { withAbTestsConfigPath } from '../../effective-config';
 import {
   comparePipelineConfigFromAbTests,
   createComparePipeline,
@@ -1233,7 +1233,7 @@ function createDefaultDependencies(options: {
       controlURL: options.controlURL,
       experimentURL: options.experimentURL,
       viewports: viewportsByStageCategory(options.config),
-    }),
+      }),
     writeSession: (session) => writeSessionAtomic(path.join(options.resultsDirectory, 'session.json'), session),
     writeReport: (session, badRefTests) => {
       const generatedAt = new Date().toISOString();
@@ -1289,6 +1289,7 @@ async function runCandidateComparisons(options: {
   const tests = filterFrozenTests(options.frozenTests, options.cwd, options.tests);
   const result = await runPipeline(pipeline, {
     cwd: options.cwd,
+    config: options.config,
     tests,
     controlURL: options.controlURL,
     experimentURL: options.experimentURL,
@@ -1298,7 +1299,6 @@ async function runCandidateComparisons(options: {
     retries: options.config.shared.retries,
     retryDelay: options.config.shared.retryDelay,
     timeoutMs: options.config.shared.timeoutMs,
-    viewports: viewportsByStageCategory(options.config),
   });
   return {
     testResults: result.testResults,

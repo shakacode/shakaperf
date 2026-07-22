@@ -38,7 +38,7 @@ abTest(name: string, {
   // per-test exist here:
   config?: {
     visreg?: {
-      defaultMisMatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
+      mismatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
       maxNumDiffPixels?: number,          // Max differing pixels allowed
       comparePixelmatchThreshold?: number,
       requireSameDimensions?: boolean,

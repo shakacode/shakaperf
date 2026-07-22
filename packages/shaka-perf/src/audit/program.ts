@@ -11,9 +11,9 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Command, Option } from 'commander';
-import { withAbTestsConfigPath } from '../before-navigate';
+import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
-import { parseAbTestsConfig, viewportsByStageCategory } from '../config';
+import { parseAbTestsConfig } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
@@ -80,6 +80,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
         });
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
         const result = await runPipeline(pipeline, {
+          config,
           controlURL: url,
           experimentURL: url,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
@@ -97,7 +98,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,
-          viewports: viewportsByStageCategory(config),
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);

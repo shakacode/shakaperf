@@ -16,8 +16,8 @@ import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
-import { visregComparisonForTest } from './visreg-config-for-test';
 import { setUpContextForNavigation } from '../../../pre-navigation';
+import { reconstructEffectiveConfig } from '../../../effective-config';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -98,15 +98,19 @@ export async function runCompareAttempts(
   const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
   const sleep = deps.sleep ?? defaultSleep;
 
-  // Retries are a run-level loop and cannot vary per test — read straight off
-  // the file config. Pixel budget follows the same per-test effective config as
-  // the rest of the comparison tuning.
+  // All comparison tuning is read straight off the effective config (the compare
+  // stage already merged `config.visreg` and wrote it into the bridge config).
   const maxRetries = config.compareRetries ?? 0;
   const retryDelayMs = config.compareRetryDelay ?? 5000;
-  const maxNumDiffPixels = visregComparisonForTest(config, scenario._testDef).maxNumDiffPixels;
+  const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
   let runs: SelectorRun[] = [];
+
+  // JSON-bridge boundary: the engine's config crosses as data (no functions), so
+  // rebuild this test's effective config here and read from it.
+  const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
+  const beforeNavigate = effectiveConfig?.shared.beforeNavigate;
 
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
@@ -116,9 +120,8 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
-    // Pre-nav setup for a side, run on the context BEFORE its page is created
-    // (via createComparisonSide's onContextReady): the shared clear → beforeNavigate
-    // sequence, uniform with the other engines.
+    // Pre-nav setup, run via createComparisonSide's onContextReady before the
+    // page is created — the shared clear → beforeNavigate sequence.
     const setUpSide = (url: string, isControl: boolean) => (context: BrowserContext): Promise<void> =>
       setUpContextForNavigation({
         context,
@@ -126,7 +129,7 @@ export async function runCompareAttempts(
         viewport,
         isControl,
         testType: 'visreg',
-        beforeNavigate: scenario._testDef?.beforeNavigate,
+        beforeNavigate,
       });
 
     // Two throwaway sides per attempt, torn down on every exit path.

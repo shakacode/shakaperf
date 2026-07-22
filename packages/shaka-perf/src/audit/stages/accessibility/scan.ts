@@ -106,16 +106,14 @@ export async function scanAccessibilityPage(
       // Real-Chrome only: serve the phone layout (no-op headless).
       ...realChromeMobileEmulation(ctx.viewport.formFactor),
     });
-    // Clear state and run the beforeNavigate hooks on the context BEFORE the page
-    // is created, uniform with the other engines — context init scripts/routes
-    // then cover the page's first navigation.
+    // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,
       url: options.url,
       viewport: ctx.viewport,
       isControl: options.isControl,
       testType: 'accessibility',
-      beforeNavigate: ctx.test.beforeNavigate,
+      beforeNavigate: ctx.config.shared.beforeNavigate,
     });
     page = await context.newPage();
     if (config.engineOptions.waitTimeout) {

@@ -194,7 +194,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 // TODO: Hero section snapshot
 // - selector: [data-cy="hero"] or .hero-section
 // - wait for: .skeleton (found in A2) to disappear
-// - threshold: 0.05 (dynamic hero image) via config.visreg.defaultMisMatchThreshold
+// - threshold: 0.05 (dynamic hero image) via config.visreg.mismatchThreshold
 abTest('Homepage Hero', { startingPath: '/' }, async () => {});
 
 // TODO: Click "Contact Us" button → modal opens
@@ -220,7 +220,7 @@ Before moving to Step C, verify every category below has at least one TODO stub 
 
 ### Threshold guidance
 
-The suite-wide default lives in `abtests.config.ts` (`visreg.defaultMisMatchThreshold`); override per test via `config: { visreg: { defaultMisMatchThreshold: ... } }`:
+The suite-wide default lives in `abtests.config.ts` (`visreg.mismatchThreshold`); override per test via `config: { visreg: { mismatchThreshold: ... } }`:
 
 - `0.01` — static content (legal pages, about text, documentation)
 - `0.05` — standard pages (hero images, structured layouts)

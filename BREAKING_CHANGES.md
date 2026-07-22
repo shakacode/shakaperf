@@ -20,9 +20,10 @@ The `abTest()` per-test surface changed. The old `options` object is gone:
 test-identity and capture directives are now flat top-level fields, anything the
 Playwright test body can already do is dropped (do it in the body), and every
 remaining per-test override lives under a single `config` key that is a partial
-of the same `abtests.config.ts` sections. `abtests.config.ts` itself is
-unchanged (still `shared` / `visreg` / `perf` / `audit` / `accessibility` /
-`twinServers` / `bisect`).
+of the same `abtests.config.ts` sections. `abtests.config.ts` keeps its
+sections (`shared` / `visreg` / `perf` / `audit` / `accessibility` /
+`twinServers` / `bisect`); its one field change is the
+`visreg.defaultMisMatchThreshold` rename in the table below.
 
 **Before → after:**
 
@@ -47,7 +48,7 @@ abTest('Homepage', {
   startingPath: '/',
   visregSelectors: ['[data-cy="hero"]'],
   config: {
-    visreg: { defaultMisMatchThreshold: 0.01, viewports: ['desktop'] },
+    visreg: { mismatchThreshold: 0.01, viewports: ['desktop'] },
     accessibility: { disableRules: ['color-contrast'] },
   },
 }, async ({ page }) => {
@@ -94,8 +95,9 @@ override moves under `config`, mirroring the `abtests.config.ts` section shape.
 | `options.visreg.selectors` | top-level **`visregSelectors`** |
 | `options.visreg.selectorExpansion` | top-level **`visregSelectorExpansion`** |
 | `options.markers` | top-level **`markers`** |
-| `options.beforeNavigate` | top-level **`beforeNavigate`** |
-| `options.visreg.misMatchThreshold` | `config.visreg.defaultMisMatchThreshold` |
+| `options.beforeNavigate` | `config.shared.beforeNavigate` (see below) |
+| `options.visreg.misMatchThreshold` | `config.visreg.mismatchThreshold` |
+| `visreg.defaultMisMatchThreshold` (in `abtests.config.ts`) | `visreg.mismatchThreshold` — old key fails config parsing loudly |
 | `options.visreg.maxNumDiffPixels` | `config.visreg.maxNumDiffPixels` |
 | `options.visreg.comparePixelmatchThreshold` | `config.visreg.comparePixelmatchThreshold` |
 | `options.visreg.requireSameDimensions` | `config.visreg.requireSameDimensions` |
@@ -125,33 +127,72 @@ the `shaka-perf` barrels (root, `bench/core`, `bench/cli`):
 `options` key, so an un-migrated `.abtest.ts` fails loudly instead of silently
 running with defaults.
 
-#### Per-test `beforeNavigate` no longer receives the global to chain
+#### Per-test `beforeNavigate` moved to `config.shared.beforeNavigate`
 
-A per-test `beforeNavigate` used to receive the global `shared.beforeNavigate`
-as a **second argument** and decide whether to run it. That argument is gone: a
-per-test hook now simply and fully **replaces** the global for that test. A hook
-written as `async (ctx, runGlobal) => { await runGlobal(ctx); … }` breaks —
-`runGlobal` is `undefined`.
+`beforeNavigate` is no longer a special per-test field. It is just the
+`shared.beforeNavigate` setting, overridden per-test through the same
+`config` merge as every other setting. Two things changed:
 
-Fix: if a test needs the global's setup too, extract it into a shared function
-and call it yourself (DRY) — the framework no longer wires it in for you.
+1. **Location.** A test's own hook moves from the top level onto
+   `config.shared.beforeNavigate`.
+2. **No chaining.** It used to receive the global hook as a **second argument**
+   to optionally run; that argument is gone. A per-test hook now fully
+   **replaces** the global for that test (the same replace-merge every `config`
+   override uses). A hook written as
+   `async (ctx, runGlobal) => { await runGlobal(ctx); … }` breaks — `runGlobal`
+   is `undefined`. If a test needs the global's setup too, extract it into a
+   shared function and call it yourself (DRY).
 
 ```ts
-// shared.ts
-export const blockRecaptcha = ({ context }) => installRequestBlocking(context, ['/recaptcha/']);
-
-// abtests.config.ts
-shared: { beforeNavigate: blockRecaptcha, /* … */ }
-
-// a test that wants the global setup AND its own
+// BEFORE
 abTest('Authed', {
   startingPath: '/dashboard',
-  beforeNavigate: async (ctx) => {
-    await blockRecaptcha(ctx);                 // was: await runGlobal(ctx)
+  beforeNavigate: async (ctx, runGlobal) => {
+    await runGlobal(ctx);
     await ctx.context.addCookies([/* … */]);
   },
 }, async ({ page }) => { /* … */ });
+
+// AFTER
+import { blockRecaptcha } from './shared';   // the same fn used as shared.beforeNavigate
+abTest('Authed', {
+  startingPath: '/dashboard',
+  config: {
+    shared: {
+      beforeNavigate: async (ctx) => {
+        await blockRecaptcha(ctx);            // DRY: call the shared setup yourself
+        await ctx.context.addCookies([/* … */]);
+      },
+    },
+  },
+}, async ({ page }) => { /* … */ });
 ```
+
+#### Per-test `viewports` now replaces instead of narrowing (bug fix)
+
+A per-test `config.<category>.viewports` used to be an allow-list *intersected*
+with the category's file list. It now goes through the same replace-merge as
+every other `config` override: a defined list **replaces** the file list
+wholesale, and its labels resolve against the `shared.viewports` definitions.
+Two behaviours flip:
+
+1. **Labels outside the category's file list now run.** Before, a per-test
+   label the category config didn't include was silently dropped — a bug: the
+   override looked like it took effect but didn't. E.g. with
+   `visreg: { viewports: ['desktop', 'phone'] }` in the file, a test's
+   `config: { visreg: { viewports: ['tablet'] } }` used to run at **zero**
+   viewports; it now actually runs at tablet (any label defined in
+   `shared.viewports` works). Audit per-test lists you may have "safely"
+   left in place because they did nothing will start taking effect.
+2. **`viewports: []` now means none, not all.** An explicit empty list used to
+   be treated as "no narrowing" (run every category viewport). It now replaces
+   the file list with nothing: the test is skipped for that category, with a
+   visible "viewport filter excluded all" outcome in the report. If you meant
+   "all viewports", delete the key.
+3. **A label with no `shared.viewports` definition now throws.** A typo'd
+   per-test label (e.g. `'phome'`) used to be silently dropped; it now fails
+   the run with `Unknown viewport label 'phome' — defined in shared.viewports:
+   …`. Fix the label or add the definition to `shared.viewports`.
 
 ---
 

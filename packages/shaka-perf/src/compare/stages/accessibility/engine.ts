@@ -17,7 +17,6 @@ import {
   messageWithLatestTestAnnotation,
 } from '../../../test-annotation';
 import {
-  accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
@@ -76,7 +75,8 @@ async function scanAccessibilityComparison(
   browser: Browser,
   config: AccessibilityStageConfig,
 ): Promise<AccessibilityCompareResult> {
-  const effective = accessibilityConfigForTest(config, ctx.test);
+  const acc = ctx.config.accessibility;
+  const effective = { tags: acc.tags, disableRules: acc.disableRules, includeRules: acc.includeRules ?? null };
   const [control, experiment] = await Promise.all([
     scanSide(ctx, browser, effective, config, 'control', ctx.controlURL),
     scanSide(ctx, browser, effective, config, 'experiment', ctx.experimentURL),

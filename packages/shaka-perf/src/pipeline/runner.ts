@@ -45,6 +45,9 @@ import {
 } from './report';
 import { writeFullReportArchive } from './report-archive';
 import { resolveViewportsForTest } from './viewport-plan';
+import { applyPerTestConfigOverrides } from '../effective-config';
+import { resolveViewports } from '../config';
+import type { AbTestsConfig } from '../config';
 import {
   type Pipeline,
   type PipelineWorkerPool,
@@ -301,6 +304,9 @@ export interface PipelineRunResult {
 export interface RuntimeOptions {
   readonly cwd?: string | undefined;
   readonly tests?: readonly AbTestDefinition[] | undefined;
+  /** The parsed project config. The runner merges each test's `config`
+   *  override over it and hands the result to stages on `TestContext.config`. */
+  readonly config: AbTestsConfig;
   readonly controlURL: string;
   readonly experimentURL: string;
   readonly testPathPattern?: string | undefined;
@@ -369,15 +375,6 @@ export interface RuntimeOptions {
    * race-cancellation so cooperative subsystems exit on time.
    */
   readonly timeoutMs: number;
-  /**
-   * Per-stage-category viewport sets. The runner expands `tests × viewports`
-   * against `viewports[stage.category]` and emits one TestUnit per pair,
-   * so pipelines/stages are viewport-agnostic at construction time.
-   * Categories the running pipeline doesn't use carry empty arrays — the
-   * caller (CLI) builds this via `viewportsByStageCategory(config)` so the
-   * record is always complete.
-   */
-  readonly viewports: Readonly<Record<StageCategory, readonly Viewport[]>>;
 }
 
 export async function runPipeline(
@@ -510,13 +507,14 @@ async function runConfiguredPipelineWithSelection(
 
   const stageRuntime: StageRuntime = {
     resultsRoot,
+    config: runtime.config,
     debugShowAllFrames: runtime.debugShowAllFrames ?? false,
     headed: runtime.headed ?? false,
   };
   const units = expandWorkUnits(
     runTests,
     executableStages,
-    runtime.viewports,
+    runtime.config,
     {
       store,
       hydratePriorStages: stageSelection.skippedStages
@@ -622,7 +620,7 @@ async function runConfiguredPipelineWithSelection(
             store,
             runtime: stageRuntime,
             unitUrlOptions: runtime,
-            viewportsByCategory: runtime.viewports,
+            config: runtime.config,
             stageIndex: executableStages.indexOf(step.stage) + 1,
             totalStages: executableStages.length,
             renderSticky,
@@ -643,7 +641,7 @@ async function runConfiguredPipelineWithSelection(
     }
   }
   if (!runtime.reportOnly) {
-    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, runtime.viewports);
+    persistCliSkippedStageOutcomes(store, reportTests, stageSelection, runtime.config);
   }
 
   console.log(
@@ -666,7 +664,7 @@ async function runConfiguredPipelineWithSelection(
         store,
         categories,
         reportOnly: runtime.reportOnly === true,
-        viewports: runtime.viewports,
+        config: runtime.config,
       });
       assembledCount += 1;
       const idx = String(assembledCount).padStart(String(reportTests.length).length, ' ');
@@ -768,7 +766,7 @@ async function runConfiguredPipelineWithSelection(
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
     reportTests,
-    (test) => allViewportsForTest(test, pipeline.stages, runtime.viewports),
+    (test) => allViewportsForTest(test, pipeline.stages, runtime.config),
     pipeline,
     data.meta,
     store,
@@ -811,7 +809,7 @@ interface ScheduleStageExecutionOptions {
     readonly controlURL: string;
     readonly experimentURL: string;
   };
-  viewportsByCategory: RuntimeOptions['viewports'];
+  config: AbTestsConfig;
   stageIndex: number;
   totalStages: number;
   renderSticky(): void;
@@ -825,7 +823,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
     store,
     runtime,
     unitUrlOptions,
-    viewportsByCategory,
+    config,
     stageIndex,
     totalStages,
     renderSticky,
@@ -868,7 +866,7 @@ function scheduleStageExecution(opts: ScheduleStageExecutionOptions): StageExecu
         store,
         runtime,
         unitUrlOptions,
-        viewportsByCategory,
+        config,
         progress,
         taskProgress,
         durations: execution.durations,
@@ -898,7 +896,7 @@ interface ExecuteStageForUnitOptions {
     readonly controlURL: string;
     readonly experimentURL: string;
   };
-  viewportsByCategory: RuntimeOptions['viewports'];
+  config: AbTestsConfig;
   progress: StageProgress;
   taskProgress: StageTaskProgress;
   durations: number[];
@@ -914,7 +912,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     store,
     runtime,
     unitUrlOptions,
-    viewportsByCategory,
+    config,
     progress,
     taskProgress,
     durations,
@@ -929,7 +927,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
   // units for {desktop, phone}). Each stage must filter back down to its own
   // category's viewport list so visreg doesn't end up running at perf-only
   // viewports (or vice versa).
-  const stageViewports = resolveViewportsForTest(unit.test, viewportsByCategory[stage.category], stage.category);
+  const stageViewports = resolveViewportsForTest(unit.test, config, stage.category);
   const viewportApplies = stageViewports.some((vp) => vp.label === unit.viewport.label);
 
   let selected = false;
@@ -983,6 +981,7 @@ async function executeStageForUnit(opts: ExecuteStageForUnitOptions): Promise<vo
     ),
     testAndViewportId,
     raceCancellation,
+    config: applyPerTestConfigOverrides(runtime.config, unit.test),
     // Lazy on-demand read of an earlier stage's persisted result. Earlier
     // stages have already written their `<stage>.json` (with full measurement)
     // to this unit's dir, so a consequent stage can pull their data even though
@@ -1072,12 +1071,12 @@ function persistCliSkippedStageOutcomes(
   store: ArtifactStore,
   tests: AbTestDefinition[],
   stageSelection: StageSelection,
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): void {
   const skippedStages = stageSelection.skippedStages.filter((entry) => entry.persistOutcome);
   if (skippedStages.length === 0) return;
   for (const test of tests) {
-    const viewports = viewportsForTestAndStages(test, skippedStages.map((entry) => entry.stage), viewportsByCategory);
+    const viewports = viewportsForTestAndStages(test, skippedStages.map((entry) => entry.stage), config);
     for (const { stage, reason } of skippedStages) {
       for (const viewport of viewports) {
         store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
@@ -1100,12 +1099,12 @@ interface ExpandWorkUnitsOptions {
 function expandWorkUnits(
   tests: readonly AbTestDefinition[],
   stages: readonly Stage[],
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
   options: ExpandWorkUnitsOptions = {},
 ): WorkUnit[] {
   const units: WorkUnit[] = [];
   for (const test of tests) {
-    for (const viewport of viewportsForTestAndStages(test, stages, viewportsByCategory)) {
+    for (const viewport of viewportsForTestAndStages(test, stages, config)) {
       const priorOutcomes = new Map<StageName, Outcome>();
       for (const stage of options.hydratePriorStages ?? []) {
         const outcome = options.store?.readOutcome(test, viewport.label, stage.name);
@@ -1120,12 +1119,12 @@ function expandWorkUnits(
 function viewportsForTestAndStages(
   test: AbTestDefinition,
   stages: readonly Stage[],
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): Viewport[] {
   const labels = new Map<string, Viewport>();
   for (const stage of stages) {
     if (!testDeclaresStageCategory(test, stage)) continue;
-    for (const viewport of resolveViewportsForTest(test, viewportsByCategory[stage.category], stage.category)) {
+    for (const viewport of resolveViewportsForTest(test, config, stage.category)) {
       labels.set(viewport.label, viewport);
     }
   }
@@ -1281,7 +1280,7 @@ interface BuildTestResultOpts {
   store: ArtifactStore;
   categories: StageCategory[];
   reportOnly: boolean;
-  viewports: RuntimeOptions['viewports'];
+  config: AbTestsConfig;
 }
 
 function viewportFilterSkipReason(category: StageCategory, narrow: string[] | undefined): string {
@@ -1307,7 +1306,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
     store,
     categories,
     reportOnly,
-    viewports: viewportsByCategory,
+    config,
   } = opts;
 
   // Pre-stage skip outcomes that the per-stage applies() can't express:
@@ -1317,7 +1316,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   if (!reportOnly) {
     for (const testType of categories) {
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
-      const categoryViewports = viewportsByCategory[testType] ?? [];
+      const categoryViewports = config[testType].viewports;
       if (categoryViewports.length === 0) continue;
       if (!testRunsForType(test, testType)) {
         persistSkippedOutcomesForStages(
@@ -1325,18 +1324,18 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
           test,
           categoryStages,
           `skipped: test opted out of ${testType} via testTypes`,
-          viewportsByCategory,
+          config,
         );
         continue;
       }
-      const narrowed = resolveViewportsForTest(test, categoryViewports, testType);
+      const narrowed = resolveViewportsForTest(test, config, testType);
       if (narrowed.length === 0) {
         persistSkippedOutcomesForStages(
           store,
           test,
           categoryStages,
           viewportFilterSkipReason(testType, test.config?.[testType]?.viewports),
-          viewportsByCategory,
+          config,
         );
       }
     }
@@ -1344,7 +1343,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
 
   const relFilePath = test.file ? path.relative(cwd, test.file) : '(unknown source)';
   const stagesByName = new Map(pipeline.stages.map((stage, index) => [stage.name, { stage, index }]));
-  const viewportOutcomes = allViewportsForTest(test, pipeline.stages, viewportsByCategory).flatMap((viewport) =>
+  const viewportOutcomes = allViewportsForTest(test, pipeline.stages, config).flatMap((viewport) =>
     store.readOutcomesForViewport(test, viewport.label).map((outcome) => ({ outcome, viewport })),
   ).sort((a, b) => {
     // Render order = DESCENDING renderingPriority (higher shows first), ties
@@ -1361,7 +1360,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   const hasError = outcomes.some((outcome) => outcome.kind === 'error');
   const chipResults = chipResultsForOutcomes(pipeline, outcomes);
   const runId = newestRunId(outcomes);
-  const viewportArtifactPaths = allViewportsForTest(test, pipeline.stages, viewportsByCategory).map((vp) => ({
+  const viewportArtifactPaths = allViewportsForTest(test, pipeline.stages, config).map((vp) => ({
     viewport: vp.label,
     path: store.unitDirForViewport(test, vp.label),
   }));
@@ -1378,7 +1377,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
       experimentUrl: resolveUrl(test.experimentPathOverride ?? test.startingPath, experimentURL),
       code: readTestSource(test.file, test.line),
       durationMs: 0,
-      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, viewportsByCategory),
+      measuredAt: freshestArtifactMtime(resultsRoot, test, pipeline.stages, config),
       runId,
       outcomes,
       viewportArtifactPaths,
@@ -1444,7 +1443,7 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
 function allViewportsForTest(
   test: AbTestDefinition,
   stages: readonly Stage[],
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): Viewport[] {
   // Union across stages of each category's per-test-narrowed viewports, so the
   // report renders exactly the viewports the test actually produced artifacts
@@ -1452,7 +1451,7 @@ function allViewportsForTest(
   // there).
   const labels = new Map<string, Viewport>();
   for (const stage of stages) {
-    for (const viewport of resolveViewportsForTest(test, viewportsByCategory[stage.category] ?? [], stage.category)) {
+    for (const viewport of resolveViewportsForTest(test, config, stage.category)) {
       labels.set(viewport.label, viewport);
     }
   }
@@ -1461,12 +1460,12 @@ function allViewportsForTest(
 
 function viewportsForStages(
   stages: readonly Stage[],
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): Viewport[] {
   const labels = new Set<string>();
   const viewports: Viewport[] = [];
   for (const stage of stages) {
-    for (const viewport of viewportsByCategory[stage.category] ?? []) {
+    for (const viewport of resolveViewports(config[stage.category].viewports, config.shared.viewports)) {
       if (labels.has(viewport.label)) continue;
       labels.add(viewport.label);
       viewports.push(viewport);
@@ -1484,10 +1483,10 @@ function persistSkippedOutcomesForStages(
   test: AbTestDefinition,
   stages: readonly Stage[],
   reason: string,
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): void {
   for (const stage of stages) {
-    for (const viewport of viewportsByCategory[stage.category] ?? []) {
+    for (const viewport of resolveViewports(config[stage.category].viewports, config.shared.viewports)) {
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
       store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
     }
@@ -1505,7 +1504,7 @@ function freshestArtifactMtime(
   resultsRoot: string,
   test: AbTestDefinition,
   stages: readonly Stage[],
-  viewportsByCategory: RuntimeOptions['viewports'],
+  config: AbTestsConfig,
 ): number | null {
   let freshest = 0;
   const consider = (absPath: string): void => {
@@ -1523,7 +1522,7 @@ function freshestArtifactMtime(
     }
     consider(absPath);
   };
-  for (const vp of viewportsForStages(stages, viewportsByCategory)) {
+  for (const vp of viewportsForStages(stages, config)) {
     const slug = unitIdForTest(test, vp.label);
     for (const stage of stages) {
       considerStageOutcome(path.join(resultsRoot, slug, `${stage.name}.json`));

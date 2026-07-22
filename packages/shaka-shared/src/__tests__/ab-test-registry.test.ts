@@ -35,7 +35,7 @@ describe('ab-test-registry', () => {
         markers: [{ end: 'marker-end', label: 'My Marker' }],
         visregSelectors: ['.hero'],
         visregSelectorExpansion: true,
-        beforeNavigate,
+        config: { shared: { beforeNavigate } },
       }, async () => {});
 
       const tests = getRegisteredTests();
@@ -43,7 +43,7 @@ describe('ab-test-registry', () => {
       expect(tests[0].markers).toEqual([{ end: 'marker-end', label: 'My Marker' }]);
       expect(tests[0].visregSelectors).toEqual(['.hero']);
       expect(tests[0].visregSelectorExpansion).toBe(true);
-      expect(tests[0].beforeNavigate).toBe(beforeNavigate);
+      expect(tests[0].config?.shared?.beforeNavigate).toBe(beforeNavigate);
     });
 
     it('throws when name contains a comma', () => {

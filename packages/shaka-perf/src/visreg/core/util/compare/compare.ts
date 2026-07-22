@@ -22,7 +22,7 @@ process.on('message', compare);
 function compare (data: { referencePath: string; testPath: string; resembleOutputSettings: ResembleOutputOptions; pair: TestPair }) {
   const { referencePath, testPath, resembleOutputSettings, pair } = data;
   const promise = compareHashes(referencePath, testPath)
-    .catch(() => compareResemble(referencePath, testPath, pair.misMatchThreshold, resembleOutputSettings, pair.requireSameDimensions));
+    .catch(() => compareResemble(referencePath, testPath, pair.mismatchThreshold, resembleOutputSettings, pair.requireSameDimensions));
   promise
     .then(function (result: unknown) {
       pair.diff = result as DiffResult;

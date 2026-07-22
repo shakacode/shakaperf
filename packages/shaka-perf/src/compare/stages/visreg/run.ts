@@ -13,7 +13,7 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import visregRunner from '../../../visreg/core/runner';
-import type { VisregConfig } from '../../../config';
+import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError } from '../../../stage/stage-failure';
 import {
@@ -37,6 +37,12 @@ export async function runVisregUnit(
 
   const { testPathPattern, ...visregConfig } = {
     ...stageConfig,
+    // Write the effective comparison tuning (already merged into ctx.config) into
+    // the temp config so the engine reads it straight, with no merge of its own.
+    mismatchThreshold: ctx.config.visreg.mismatchThreshold,
+    maxNumDiffPixels: ctx.config.visreg.maxNumDiffPixels,
+    comparePixelmatchThreshold: ctx.config.visreg.comparePixelmatchThreshold,
+    requireSameDimensions: ctx.config.visreg.requireSameDimensions,
     viewports: [ctx.viewport],
     // `--headed` overrides the configured visreg headless setting so the
     // Playwright browser is visible too — matching the Lighthouse stages, so
@@ -144,7 +150,7 @@ function walkPngs(root: string, visit: (filePath: string, mtimeMs: number) => vo
 }
 
 function writeTempVisregConfig(
-  visregConfig: VisregConfig,
+  visregConfig: Omit<VisregConfig, 'viewports'> & { viewports: Viewport[] },
   unitArtifactsDir: string,
 ): string {
   const payload = {

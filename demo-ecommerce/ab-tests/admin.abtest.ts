@@ -16,15 +16,17 @@ abTest('Admin Dashboard - Cookie Login', {
   testTypes: ['visreg'],
   config: {
     visreg: { viewports: ['desktop'] },
-  },
-  // Seed the admin auth cookie before navigation, on the context, so the
-  // first load is already authenticated. (This config has no global
-  // `beforeNavigate` to chain.)
-  beforeNavigate: async ({ context }) => {
-    const cookies = JSON.parse(
-      readFileSync('visreg_data/cookies/admin-auth-cookie.json', 'utf-8'),
-    );
-    await context.addCookies(cookies);
+    // Seed the admin auth cookie before navigation, on the context, so the
+    // first load is already authenticated. Overriding `shared.beforeNavigate`
+    // per-test replaces the global hook for this test (this config has none).
+    shared: {
+      beforeNavigate: async ({ context }) => {
+        const cookies = JSON.parse(
+          readFileSync('visreg_data/cookies/admin-auth-cookie.json', 'utf-8'),
+        );
+        await context.addCookies(cookies);
+      },
+    },
   },
 }, async ({ page, annotate, testType }) => {
   if (testType !== 'visreg') {

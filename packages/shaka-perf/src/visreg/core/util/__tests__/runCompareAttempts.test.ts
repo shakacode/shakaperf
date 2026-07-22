@@ -61,6 +61,9 @@ function makeConfig(overrides: Partial<Record<string, unknown>> = {}): Decorated
     compareRetries: 2,
     compareRetryDelay: 10,
     maxNumDiffPixels: 0,
+    mismatchThreshold: 0.1,
+    requireSameDimensions: true,
+    comparePixelmatchThreshold: 0.1,
     ...overrides,
   } as unknown as DecoratedCompareConfig;
 }

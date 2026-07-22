@@ -23,7 +23,10 @@ function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig 
   config.id = userConfig.id;
   config.engine = userConfig.engine || null;
   config.viewports = userConfig.viewports || [];
-  config.defaultMisMatchThreshold = 0.1;
+  // The effective value the compare stage wrote into the bridge config
+  // (`config.visreg` with the per-test override already merged) — never a
+  // hardcoded constant, or per-test/file tuning is silently ignored.
+  config.mismatchThreshold = userConfig.mismatchThreshold ?? 0.1;
   config.debug = userConfig.debug || false;
   config.resembleOutputOptions = userConfig.resembleOutputOptions;
   config.asyncCompareLimit = userConfig.asyncCompareLimit;

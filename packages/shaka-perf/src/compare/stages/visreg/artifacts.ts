@@ -127,7 +127,7 @@ interface VisregPair {
   selector?: string;
   label?: string;
   viewportLabel?: string;
-  misMatchThreshold?: number;
+  mismatchThreshold?: number;
   diff?: {
     misMatchPercentage?: number | string;
     isSameDimensions?: boolean;
@@ -196,7 +196,7 @@ export async function readVisregArtifacts(opts: ReadVisregArtifactsOptions): Pro
     // visreg serialises misMatchPercentage as a string ("0.00") — coerce to
     // number so the React renderer can format it.
     const misMatchPercentage = coerceNumber(pair.diff?.misMatchPercentage);
-    const threshold = pair.misMatchThreshold ?? 0.1;
+    const threshold = pair.mismatchThreshold ?? 0.1;
 
     // Prefer the pixelmatch diff (transparent BG, red changed pixels — clear
     // at thumbnail size). Fall back to resemble's failed_diff overlay.

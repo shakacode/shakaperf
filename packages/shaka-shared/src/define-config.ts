@@ -52,18 +52,14 @@ export interface SharedConfigInput {
    *
    *   beforeNavigate: ({ context }) =>
    *     installRequestBlocking(context, ['/recaptcha/'])
-   *
-   * A per-test `beforeNavigate` (on the `abTest()` config), if present, fully
-   * REPLACES this global for that test — the global does not also run. A test
-   * that wants this setup too calls a shared function itself (DRY). Tests with
-   * no per-test hook get this one. See `BeforeNavigateContext`.
+
    */
   beforeNavigate?: BeforeNavigateHook;
 }
 
 export interface VisregConfigInput {
   viewports?: [string, ...string[]];
-  defaultMisMatchThreshold?: number;
+  mismatchThreshold?: number;
   maxNumDiffPixels?: number;
   comparePixelmatchThreshold?: number;
   compareRetries?: number;
@@ -159,22 +155,24 @@ export interface AbTestsConfigInput {
  * same types) but exposes ONLY the knobs the engines actually honour per-test —
  * so every field here takes effect, none is a silent no-op:
  *
+ *  - `shared`  — the pre-navigation hook (`beforeNavigate`); overriding it just
+ *                replaces the global hook for this test, like any other setting.
  *  - `visreg`  — the per-comparison tuning the engine reads per scenario, plus
  *                per-category viewport narrowing.
  *  - `perf` / `audit` — viewport narrowing only (their tuning is resolved once
  *                for the whole run).
  *  - `accessibility` — axe rule sets, plus viewport narrowing.
  *
- * Whole-suite settings are deliberately absent: `shared` (connection,
- * parallelism, viewport DEFINITIONS, the global `beforeNavigate`), browser
+ * The rest of `shared` (connection, parallelism, viewport DEFINITIONS), browser
  * `engineOptions`, `resembleOutputOptions`, `compareRetries`/`compareRetryDelay`
  * (best-of-N is a run-level loop), and perf/audit measurement tuning are all
- * resolved once and cannot vary per test.
+ * resolved once and cannot vary per test, so they are deliberately absent.
  */
 export interface PerTestConfig {
+  shared?: Pick<SharedConfigInput, 'beforeNavigate'>;
   visreg?: Pick<
     VisregConfigInput,
-    | 'defaultMisMatchThreshold'
+    | 'mismatchThreshold'
     | 'maxNumDiffPixels'
     | 'comparePixelmatchThreshold'
     | 'requireSameDimensions'

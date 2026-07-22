@@ -79,22 +79,16 @@ export default defineConfig({
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
     parallelism: PARALLELISM,
-    // Runs before EVERY test's navigation, on every engine. A per-test
-    // `beforeNavigate` on the `abTest()` config, if present, fully replaces
-    // this global for that test (the global does not also run); a test that
-    // wants this setup too calls a shared function itself (DRY). The
+    // Runs before EVERY test's navigation, on every engine. A test can
+    // override it with `config: { shared: { beforeNavigate } }`, which fully
+    // replaces this global for that test (the global does not also run); a
+    // test that wants this setup too calls a shared function itself (DRY). The
     // `context` is a Playwright BrowserContext — use it for pre-nav setup:
     // request blocking, cookies, extra headers, init scripts. Prefer
     // `installRequestBlocking` over Playwright `route()` for perf request
     // blocking because request interception disables Chromium's HTTP cache.
-    //
-    // Default: abort Google reCAPTCHA. Its scripts load from www.google.com /
-    // www.gstatic.com, which the twin-server sandbox can't reach (no outbound
-    // internet) — those requests never connect, so Playwright's `networkidle`
-    // never fires and any test landing on a captcha page hangs until the pool
-    // timeout. Harmless if your app has no reCAPTCHA (nothing matches). Add
-    // more substring/regex patterns, or delete this if you don't need it.
     beforeNavigate: async (options : {context: BrowserContext}) => {
+      // Abort Google reCAPTCHA.
       await installRequestBlocking(options.context, ['/recaptcha/']);
       // Seed cookies / an auth session here (optional):
       //   await context.addCookies([{ name: 'session', value: '…', options.url }]);
@@ -105,7 +99,7 @@ export default defineConfig({
 
   visreg: {
     viewports: ['desktop', 'tablet', 'phone'],
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
     maxNumDiffPixels: 50,
     comparePixelmatchThreshold: 0.1,
     engineOptions: {
