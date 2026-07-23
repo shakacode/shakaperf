@@ -129,10 +129,12 @@ export interface AbTestConfig {
   /**
    * Per-test override of the universal config, merged over the file config for
    * this test alone — so one test can tighten `visreg.mismatchThreshold`,
-   * narrow `visreg.viewports`, add an `accessibility.disableRules` entry, or
-   * replace the pre-navigation hook via `shared.beforeNavigate`, while every
-   * other test keeps the file defaults. Exposes exactly the knobs the engines
-   * honour per-test. See `PerTestConfig`.
+   * replace `visreg.viewports`, replace the `accessibility.disableRules` list,
+   * or swap the pre-navigation hook via `shared.beforeNavigate`, while every
+   * other test keeps the file defaults. A defined array replaces the file's
+   * wholesale (no union or intersection). The type accepts every section
+   * except run-level ones (see `PerTestConfig`); knobs the engines resolve
+   * once per run simply won't vary if overridden.
    */
   config?: PerTestConfig;
 }
@@ -191,8 +193,19 @@ export function abTest(
     if ('options' in config) {
       throw new Error(
         `abTest(${JSON.stringify(name)}): the 'options' key was removed — ` +
-          `abTest() config is now flat (visregSelectors, markers, beforeNavigate, ` +
-          `config.<category>, ...). See BREAKING_CHANGES.md for the per-option migration.`,
+          `abTest() config is now flat (visregSelectors, markers, config.<category>, ...; ` +
+          `beforeNavigate moved to config.shared.beforeNavigate). ` +
+          `See BREAKING_CHANGES.md for the per-option migration.`,
+      );
+    }
+    // Same failure mode for a stale top-level beforeNavigate: it would spread
+    // onto the definition, nothing reads it, and auth/cookie setup silently
+    // stops running — a green suite screenshotting login walls on both sides.
+    if ('beforeNavigate' in config) {
+      throw new Error(
+        `abTest(${JSON.stringify(name)}): top-level 'beforeNavigate' moved to ` +
+          `config.shared.beforeNavigate — a hook here would be silently ignored. ` +
+          `See BREAKING_CHANGES.md.`,
       );
     }
     // Capture call-site file and line number from the stack trace

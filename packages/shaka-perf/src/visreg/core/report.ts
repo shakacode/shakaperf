@@ -23,9 +23,9 @@ type PngField = typeof PNG_FIELDS[number];
 
 /**
  * Writes this invocation's report.json into the unit artifacts dir the caller
- * pinned (`paths.unitArtifacts`), mirroring the unified compare per-unit layout.
+ * pinned (`paths.artifacts`), mirroring the unified compare per-unit layout.
  *
- * PNGs captured by the engine into the flat `{control,experiment}_screenshot/`
+ * PNGs captured by the engine into the flat `{control,experiment}_screenshots/`
  * dirs are moved in alongside it; no monolithic intermediate report.json is
  * produced. One invocation measures one unit (the compare stage pins a single
  * test and viewport), so every pair the reporter holds belongs in that one dir.

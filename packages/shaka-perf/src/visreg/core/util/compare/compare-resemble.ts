@@ -11,7 +11,7 @@
 import resemble from '@mirzazeyrek/node-resemble-js';
 import type { ResembleOutputOptions } from '../../types';
 
-export default function compareResemble (referencePath: string, testPath: string, mismatchThreshold: number, resembleOutputSettings: ResembleOutputOptions, requireSameDimensions?: boolean) {
+export default function compareResemble (referencePath: string, testPath: string, mismatchThreshold: number, resembleOutputSettings: ResembleOutputOptions) {
   return new Promise(function (resolve, reject) {
     const resembleSettings = resembleOutputSettings || {};
     resemble.outputSettings(resembleSettings);
@@ -23,7 +23,8 @@ export default function compareResemble (referencePath: string, testPath: string
 
     comparison.onComplete((data: { rawMisMatchPercentage: number; misMatchPercentage: number; isSameDimensions: boolean }) => {
       const misMatchPercentage = resembleSettings.usePreciseMatching ? data.rawMisMatchPercentage : data.misMatchPercentage;
-      if ((requireSameDimensions === false || data.isSameDimensions === true) && misMatchPercentage <= mismatchThreshold) {
+      // A dimension change always fails: a resize IS a visual difference.
+      if (data.isSameDimensions === true && misMatchPercentage <= mismatchThreshold) {
         return resolve(data);
       }
       reject(data);

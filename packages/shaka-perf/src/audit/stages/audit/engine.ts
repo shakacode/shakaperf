@@ -23,6 +23,7 @@ import {
   type PhaseSample,
 } from '../../../bench/core';
 import { lhConfigForViewport } from '../../../bench/core/lighthouse-config';
+import { resolvePlaywrightOptions } from '../../../config';
 import { ensureLighthousePatchRegistered } from '../../../bench/core/patched-lighthouse/register-patch';
 import { writeAccessibilityClientScore } from '../accessibility/client-sidecar';
 import { parseAccessibilityScoreStdout } from './accessibility-score';
@@ -96,7 +97,9 @@ export async function runAuditStage(
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
-  const lhConfig = lhConfigForViewport(ctx.viewport, config.lighthouseConfig);
+  // Per-test effective lighthouseConfig (config.audit.lighthouseConfig in an
+  // abTest() applies to that test), not the file-level stage config.
+  const lhConfig = lhConfigForViewport(ctx.viewport, ctx.config.audit.lighthouseConfig ?? config.lighthouseConfig);
   // Perf-only run: the a11y score comes from measureAccessibilityScore, not this
   // gather. Always keep `performance`; a user override may add categories, not drop it.
   const requestedCategories = lhConfig.onlyCategories?.length ? lhConfig.onlyCategories : [];
@@ -117,6 +120,9 @@ export async function runAuditStage(
     captureCoverage: true,
     targetUrl: ctx.experimentURL,
     headed: ctx.runtime.headed,
+    // Effective launch options (shared.playwrightOptions ← per-test config);
+    // the fork maps args/headless onto chrome flags.
+    playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
   });
   let sampleGroups;
   try {

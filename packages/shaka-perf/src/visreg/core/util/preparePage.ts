@@ -53,7 +53,7 @@ export function failureScreenshotPath (config: DecoratedCompareConfig, scenario:
  * the scenario carries no declarative fields for them.
  */
 async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: DecoratedCompareConfig, isControl: boolean, browserOrContext: BrowserContext) {
-  const gotoParameters = config?.engineOptions?.gotoParameters || {};
+  const gotoParameters = config?.playwrightOptions?.gotoParameters || {};
 
   // Cookie loading + the beforeNavigate hooks now run on the context BEFORE this
   // page is created (see runCompareAttempts → createComparisonSide onContextReady),

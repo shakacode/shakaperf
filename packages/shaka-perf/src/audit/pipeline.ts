@@ -52,8 +52,8 @@ export interface AuditPipelineConfig {
    * so the raw stream is evenly downsampled to this cap first.
    */
   readonly limitVideoFramesCount?: number;
-  readonly accessibility?: AccessibilityStageConfig;
-  readonly agentReadiness?: AgentReadinessStageConfig;
+  readonly accessibility: AccessibilityStageConfig;
+  readonly agentReadiness: AgentReadinessStageConfig;
 }
 
 export function createAuditPipeline(input: AuditPipelineConfig) {

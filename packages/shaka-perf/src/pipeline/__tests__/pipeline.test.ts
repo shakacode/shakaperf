@@ -150,7 +150,7 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1 } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -210,7 +210,7 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1 } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,

@@ -7,19 +7,24 @@
  * License in LICENSE.md.
  */
 
-import type { AccessibilityConfig } from '../../../config';
+import type { AccessibilityConfig, PlaywrightOptions } from '../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from './defaults';
 
-export interface AccessibilityStageConfig extends Omit<AccessibilityConfig, 'viewports'> {}
+export interface AccessibilityStageConfig extends Omit<AccessibilityConfig, 'viewports'> {
+  /**
+   * Effective launch options for this stage — `resolvePlaywrightOptions(config,
+   * 'accessibility')` (i.e. `shared.playwrightOptions`; accessibility has no
+   * category override), handed in by the pipeline builder.
+   */
+  playwrightOptions: PlaywrightOptions;
+}
 
-export const DEFAULT_ACCESSIBILITY_STAGE_CONFIG: AccessibilityStageConfig = {
+// No `playwrightOptions` here: launch options have no hidden defaults — the
+// pipeline builder always hands in the resolved `shared.playwrightOptions`.
+export const DEFAULT_ACCESSIBILITY_STAGE_CONFIG: Omit<AccessibilityStageConfig, 'playwrightOptions'> = {
   tags: [...DEFAULT_ACCESSIBILITY_TAGS],
   disableRules: [],
   includeRules: undefined,
-  engineOptions: {
-    browser: 'chromium',
-    args: ['--no-sandbox'],
-  },
   failOnViolation: true,
 };
 

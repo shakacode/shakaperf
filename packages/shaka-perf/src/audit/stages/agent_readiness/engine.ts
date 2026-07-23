@@ -8,14 +8,14 @@
  */
 
 import chalk from 'chalk';
-import { chromium, firefox, webkit } from 'playwright-core';
-import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
+import type { Browser, BrowserContext, Page } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
-import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
+import { waitForBotWallToClear } from '../../real-chrome';
+import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
+import { resolveAgentReadinessConfig, type AgentReadinessEngineOptions, type AgentReadinessStageConfig } from './config';
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
 
@@ -44,29 +44,19 @@ async function disposeAgentReadinessBrowser(state: Record<string, unknown>): Pro
 export async function runAgentReadinessStage(
   ctx: TestContext,
   workerPool: WorkerPool,
-  config: AgentReadinessStageConfig | undefined,
+  config: AgentReadinessStageConfig,
 ): Promise<AgentReadinessResult> {
   const resolved = resolveAgentReadinessConfig(config);
   return workerPool.submit(async (state) => {
     const slot = workerPool.getWorkerState<AgentReadinessSlotState>(state, disposeAgentReadinessBrowser);
     if (!slot.agentReadinessBrowser) {
-      slot.agentReadinessBrowser = await launchBrowser(resolved.engineOptions, ctx.runtime.headed);
+      slot.agentReadinessBrowser = await launchStageBrowser(
+        resolved.engineOptions.playwrightOptions,
+        ctx.runtime.headed,
+      );
     }
     return scanAgentReadiness(ctx, slot.agentReadinessBrowser, resolved.engineOptions);
   }, { key: ctx.testAndViewportId });
-}
-
-async function launchBrowser(
-  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
-  headed = false,
-): Promise<Browser> {
-  const launchOptions: LaunchOptions = {
-    headless: headed ? false : engineOptions.headless ?? true,
-    args: engineOptions.args,
-  };
-  if (engineOptions.browser === 'firefox') return firefox.launch(launchOptions);
-  if (engineOptions.browser === 'webkit') return webkit.launch(launchOptions);
-  return chromium.launch(applyRealChrome(launchOptions));
 }
 
 // A no-JS fetch of the page. Bounded by timeout + a hard size cap (the body is
@@ -147,19 +137,13 @@ export async function fetchRawHtml(
 async function readRenderedSignals(
   ctx: TestContext,
   browser: Browser,
-  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
+  engineOptions: AgentReadinessEngineOptions,
 ): Promise<{ signals: PageSignals; htmlBytes: number; blocked: boolean }> {
   let context: BrowserContext | undefined;
   try {
-    context = await browser.newContext({
-      viewport: { width: ctx.viewport.width, height: ctx.viewport.height },
-      deviceScaleFactor: ctx.viewport.deviceScaleFactor,
-      isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
-    });
+    context = await browser.newContext(stageContextOptions(ctx.viewport));
     const page = await context.newPage();
-    const timeout = engineOptions.navTimeoutMs ?? 45_000;
+    const timeout = engineOptions.navTimeoutMs;
     page.setDefaultTimeout(timeout);
     page.setDefaultNavigationTimeout(timeout);
     await context.clearCookies();
@@ -216,10 +200,10 @@ async function readRawSignals(
 async function scanAgentReadiness(
   ctx: TestContext,
   browser: Browser,
-  engineOptions: ReturnType<typeof resolveAgentReadinessConfig>['engineOptions'],
+  engineOptions: AgentReadinessEngineOptions,
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
-  const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
+  const rawFetchTimeout = engineOptions.rawFetchTimeoutMs;
 
   // Raw fetch + rendered render run together - they are independent.
   const [rawFetch, renderedOut] = await Promise.all([
@@ -229,7 +213,7 @@ async function scanAgentReadiness(
 
   const likelyBlocked = looksLikeBotWall({ status: rawFetch.status, html: rawFetch.html });
   const rawSignals = rawFetch.html
-    ? await readRawSignals(browser, ctx.viewport, rawFetch.html, engineOptions.navTimeoutMs ?? 45_000)
+    ? await readRawSignals(browser, ctx.viewport, rawFetch.html, engineOptions.navTimeoutMs)
     : null;
 
   const raw: RawFetchResult = {

@@ -18,8 +18,15 @@
 
 import type { BeforeNavigateHook, Viewport } from './ab-test-registry';
 
-export interface EngineOptionsInput {
-  browser?: string;
+/**
+ * Browser-launch options, one shape for every stage. REQUIRED on
+ * `shared.playwrightOptions` — no hidden launch defaults; what the config
+ * says is what every stage launches with. `visreg.playwrightOptions` and
+ * `perf.playwrightOptions` may override it per-category with a partial of
+ * this shape, merged per-key over shared.
+ */
+export interface PlaywrightOptionsInput {
+  browser: 'chromium' | 'firefox' | 'webkit';
   args?: string[];
   headless?: boolean;
   waitTimeout?: number;
@@ -55,6 +62,11 @@ export interface SharedConfigInput {
 
    */
   beforeNavigate?: BeforeNavigateHook;
+  /**
+   * Browser-launch options every stage respects (see PlaywrightOptionsInput).
+   * Required — there are no hidden launch defaults.
+   */
+  playwrightOptions: PlaywrightOptionsInput;
 }
 
 export interface VisregConfigInput {
@@ -64,9 +76,8 @@ export interface VisregConfigInput {
   comparePixelmatchThreshold?: number;
   compareRetries?: number;
   compareRetryDelay?: number;
-  /** When true (default), any change in captured dimensions fails the compare. */
-  requireSameDimensions?: boolean;
-  engineOptions?: EngineOptionsInput;
+  /** Category override of `shared.playwrightOptions` (partial, per-key). */
+  playwrightOptions?: Partial<PlaywrightOptionsInput>;
   resembleOutputOptions?: ResembleOutputOptionsInput;
 }
 
@@ -81,6 +92,12 @@ export interface PerfConfigInput {
   // wait before measuring; the engine layers in `formFactor` / `screenEmulation`.
   lighthouseConfig?: Record<string, unknown>;
   plotTitle?: string;
+  /**
+   * Category override of `shared.playwrightOptions` (partial, per-key).
+   * Lighthouse is chromium-only; `args`/`headless` map onto its
+   * chrome-launcher flags.
+   */
+  playwrightOptions?: Partial<PlaywrightOptionsInput>;
 }
 
 export interface AuditConfigInput {
@@ -90,20 +107,11 @@ export interface AuditConfigInput {
   limitVideoFramesCount?: number;
 }
 
-export interface AccessibilityEngineOptionsInput {
-  browser?: 'chromium' | 'firefox' | 'webkit';
-  args?: string[];
-  headless?: boolean;
-  waitTimeout?: number;
-  [key: string]: unknown;
-}
-
 export interface AccessibilityConfigInput {
   viewports?: [string, ...string[]];
   tags?: string[];
   disableRules?: string[];
   includeRules?: string[];
-  engineOptions?: AccessibilityEngineOptionsInput;
   failOnViolation?: boolean;
 }
 
@@ -162,9 +170,14 @@ export interface AbTestsConfigInput {
  * type — the merge (`applyPerTestConfigOverrides`) applies whatever is set.
  */
 export type PerTestConfig = {
-  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: Partial<
-    AbTestsConfigInput[K]
-  >;
+  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: K extends 'shared'
+    // `shared.playwrightOptions` is a required, browser-mandatory block at the
+    // file level, but a per-test override merges per-key — so here it is a
+    // partial like every other override.
+    ? Omit<Partial<SharedConfigInput>, 'playwrightOptions'> & {
+        playwrightOptions?: Partial<PlaywrightOptionsInput>;
+      }
+    : Partial<AbTestsConfigInput[K]>;
 };
 
 /**

@@ -16,7 +16,7 @@ import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
 import createLogger from './logger';
-import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
+import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, CompareConfig, Browser } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -26,9 +26,8 @@ interface ScenarioView {
   _playwrightBrowser?: Browser;
 }
 
-interface CompareResult {
-  testPairs: TestPair[];
-}
+/** One scenario invocation's output — the same shape `CompareConfig` persists. */
+type CompareResult = CompareConfig;
 
 const logger = createLogger('compare');
 
@@ -55,7 +54,7 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
 
   // Engine-input config was loaded in makeConfig and stashed on
   // `config.args._loadedVisregConfig`. Retrieve it for viewports /
-  // engineOptions / etc. which aren't part of RuntimeConfig.
+  // playwrightOptions / etc. which aren't part of RuntimeConfig.
   const globalConfig = (config.args._loadedVisregConfig as Partial<VisregEngineInputConfig>) || {};
 
   // Convert AbTestDefinitions to Scenarios. Per-test viewport narrowing is
@@ -73,7 +72,10 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
     viewports: globalConfig.viewports,
-    engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
+    // No default here: the compare bridge always writes the resolved options;
+    // a standalone config without them hits createPlaywrightBrowser's visible
+    // assume-chromium warning rather than a silent default.
+    playwrightOptions: globalConfig.playwrightOptions || {},
     scenarios,
   };
 
@@ -123,15 +125,15 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
       pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
         return runCompareScenario.playwright(view);
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
-        disposePlaywrightBrowser(browser!).then(function () { resolve(out); });
+        disposePlaywrightBrowser(browser).then(function () { resolve(out); });
       }, function (e: unknown) {
-        disposePlaywrightBrowser(browser!).then(function () { reject(e); });
+        disposePlaywrightBrowser(browser).then(function () { reject(e); });
       });
     }, function (e: unknown) { reject(e); });
   });
 }
 
-function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { compareConfig: { testPairs: TestPair[] } }) {
+function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { compareConfig: CompareConfig }) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
   return writeFile(comparePairsFileName, compareConfigJSON);

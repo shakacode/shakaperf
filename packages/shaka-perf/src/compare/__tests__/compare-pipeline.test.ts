@@ -28,7 +28,6 @@ describe('compare accessibility pipeline integration', () => {
         mismatchThreshold: 0.2,
         maxNumDiffPixels: 12,
         comparePixelmatchThreshold: 0.3,
-        engineOptions: { browser: 'chromium' },
         resembleOutputOptions: { transparency: 0.4 },
         compareRetries: 4,
         compareRetryDelay: 50,
@@ -77,10 +76,14 @@ describe('compare accessibility pipeline integration', () => {
       artifactRoot: 'candidate-artifacts',
     });
 
+    // Point the machine-wide measurement lock at a private tmpdir so the test
+    // doesn't queue behind a real shaka-perf run on this machine.
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
     try {
       const result = await runPipeline(pipeline, {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1 } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
@@ -92,6 +95,8 @@ describe('compare accessibility pipeline integration', () => {
 
       expect(result.resultsRoot).toBe(path.join(cwd, 'candidate-artifacts', 'compare-results'));
     } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
       fs.rmSync(cwd, { recursive: true, force: true });
     }
   });
@@ -283,7 +288,6 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
     visregMismatchThreshold: 0.1,
     visregMaxNumDiffPixels: 50,
     visregComparePixelmatchThreshold: 0.1,
-    visregEngineOptions: {},
     visregCompareRetries: 0,
     visregCompareRetryDelay: 0,
     perfNumberOfMeasurements: 1,
@@ -291,6 +295,12 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
     perfPValueThreshold: 0.05,
     perfRegressionThresholdStat: 'estimator',
     perfSamplingMode: 'simultaneous',
+    accessibility: {
+      tags: [],
+      disableRules: [],
+      failOnViolation: true,
+      playwrightOptions: { browser: 'chromium' },
+    },
   };
 }
 

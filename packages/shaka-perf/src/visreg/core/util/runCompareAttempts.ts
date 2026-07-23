@@ -191,10 +191,15 @@ export async function runCompareAttempts(
       // live full page into the dir the report's failure-screenshot scan reads,
       // so a crash — not just a pixel mismatch — has something to show. Best
       // effort; the original error still propagates.
-      await Promise.all(sides.map((side, i) =>
-        captureFailureScreenshot(side.page, failureScreenshotPath(config, scenario, viewport, i === 0))
-          .catch((captureErr) => logger.warn(`Could not capture ${i === 0 ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`)),
-      ));
+      await Promise.all(sides.map(async (side, i) => {
+        try {
+          // Path computation stays inside the guard too — a synchronous throw
+          // here must not replace the original `err` we're about to rethrow.
+          await captureFailureScreenshot(side.page, failureScreenshotPath(config, scenario, viewport, i === 0));
+        } catch (captureErr) {
+          logger.warn(`Could not capture ${i === 0 ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`);
+        }
+      }));
       throw err;
     } finally {
       for (const side of sides) await side.dispose();

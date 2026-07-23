@@ -35,14 +35,10 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   readonly description = 'Scan control and experiment with axe and classify accessibility changes.';
   private readonly config: AccessibilityStageConfig;
 
-  constructor(config?: AccessibilityStageConfig) {
+  constructor(config: AccessibilityStageConfig) {
     this.config = {
       ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
       ...config,
-      engineOptions: {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
-        ...config?.engineOptions,
-      },
     };
   }
 

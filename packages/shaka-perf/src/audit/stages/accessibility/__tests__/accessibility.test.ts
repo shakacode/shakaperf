@@ -43,6 +43,7 @@ jest.mock('../../../../pipeline/artifact-compression', () => ({
 
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  type AccessibilityStageConfig,
 } from '../config';
 import { normalizeViolation, projectAccessibilityRawArtifact } from '../artifacts';
 import {
@@ -66,6 +67,13 @@ import type { WorkerPool } from '../../../../pipeline/worker-pool';
 import { applyPerTestConfigOverrides } from '../../../../effective-config';
 import { parseAbTestsConfig } from '../../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
+
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium' },
+};
 
 describe('accessibility config defaults', () => {
   it('uses the shared accessibility tag defaults', () => {
@@ -295,7 +303,7 @@ describe('accessibility report filtering', () => {
 
 describe('accessibility report modes', () => {
   it('keeps linked screenshots for full reports and inline screenshots for lightweight reports', () => {
-    const stage = new AccessibilityStage();
+    const stage = new AccessibilityStage(TEST_STAGE_CONFIG);
     const raw: AccessibilityRawArtifact = {
       testName: 'Checkout',
       experimentURL: 'http://localhost:3030/checkout',
@@ -352,9 +360,9 @@ describe('accessibility browser launch', () => {
       fakeContext({ headed: true }),
       fakeWorkerPool(),
       {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-        engineOptions: {
-          ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
+        ...TEST_STAGE_CONFIG,
+        playwrightOptions: {
+          ...TEST_STAGE_CONFIG.playwrightOptions,
           headless: true,
         },
       },
@@ -389,7 +397,7 @@ describe('accessibility browser launch', () => {
         }),
       ),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     // Browser state is cleared BEFORE the beforeNavigate hooks (so a hook that
@@ -424,7 +432,7 @@ describe('accessibility browser launch', () => {
       const result = await runAccessibilityStage(
         fakeContext({}),
         fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+        TEST_STAGE_CONFIG,
       );
 
       // The PNG is on disk and the violations were computed before the
@@ -526,7 +534,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1 } }),
+      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
       test,
     ),
   } as unknown as TestContext;

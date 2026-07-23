@@ -89,23 +89,30 @@ function viewportLabelArray(defaults: [string, ...string[]]) {
 
 export type { Viewport };
 
-const EngineOptionsSchema = z
+/**
+ * The one browser-launch option shape, shared by every stage. REQUIRED on
+ * `shared.playwrightOptions` — there are no hidden launch defaults; what the
+ * config says is what every stage launches with (the starter template supplies
+ * `{ browser: 'chromium', args: ['--no-sandbox'] }`). `visreg.playwrightOptions`
+ * and `perf.playwrightOptions` may override it per-category with a PARTIAL of
+ * the same shape (resolved via {@link resolvePlaywrightOptions}). Extra keys
+ * pass through to Playwright's `launch()`. The perf (Lighthouse) engine is
+ * chromium-only and maps `args`/`headless` onto its chrome-launcher flags.
+ */
+export const PlaywrightOptionsSchema = z
   .object({
-    browser: z.string().optional(),
-    args: z.array(z.string()).optional(),
-    headless: z.boolean().optional(),
-    waitTimeout: z.number().optional(),
-  })
-  .passthrough();
-
-const AccessibilityEngineOptionsSchema = z
-  .object({
-    browser: z.enum(['chromium', 'firefox', 'webkit']).optional(),
+    browser: z.enum(['chromium', 'firefox', 'webkit']),
     args: z.array(z.string()).optional(),
     headless: z.boolean().optional(),
     waitTimeout: z.number().int().positive().optional(),
   })
   .passthrough();
+
+export type PlaywrightOptions = z.infer<typeof PlaywrightOptionsSchema>;
+
+// Category override: a partial of the base shape, merged per-key over
+// `shared.playwrightOptions` by `resolvePlaywrightOptions`.
+const PlaywrightOptionsOverrideSchema = PlaywrightOptionsSchema.partial();
 
 const ResembleOutputOptionsSchema = z
   .object({
@@ -124,8 +131,8 @@ export const SharedConfigSchema = z
     /**
      * Full-definition viewports (label + dimensions + formFactor + DPR).
      * Single source of truth; `visreg.viewports` and `perf.viewports`
-     * reference these by label, and per-test `options.viewports` narrows
-     * which labels a given test runs at.
+     * reference these by label, and a per-test `config.<category>.viewports`
+     * replaces which labels a given test runs at.
      */
     viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
     parallelism: z.number().int().positive(),
@@ -143,6 +150,11 @@ export const SharedConfigSchema = z
     beforeNavigate: z
       .custom<BeforeNavigateHook>((v) => typeof v === 'function')
       .optional(),
+    // Browser-launch options every stage respects. Required, no defaults —
+    // the config states its launch options explicitly (see the template).
+    // `visreg.playwrightOptions` and `perf.playwrightOptions` may override
+    // per-category (partial, merged per-key).
+    playwrightOptions: PlaywrightOptionsSchema,
   });
 
 export const VisregConfigSchema = z
@@ -150,7 +162,7 @@ export const VisregConfigSchema = z
     /**
      * Labels (from `shared.viewports`) that visreg runs at. Default matches
      * the three canonical devices; narrow here to skip specific breakpoints
-     * for all tests, or narrow per-test via `options.viewports`.
+     * for all tests, or replace per-test via `config.visreg.viewports`.
      */
     viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
     mismatchThreshold: z.number().nonnegative().default(0.1),
@@ -165,14 +177,8 @@ export const VisregConfigSchema = z
      */
     compareRetries: z.number().int().nonnegative().default(2),
     compareRetryDelay: z.number().int().nonnegative().default(5000),
-    // When true (default), any change in a capture's dimensions fails the
-    // compare outright. `config.visreg.requireSameDimensions: false` lets 
-    // one page tolerate size changes within `mismatchThreshold`.
-    requireSameDimensions: z.boolean().optional(),
-    engineOptions: EngineOptionsSchema.default({
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    }),
+    // Category override of `shared.playwrightOptions` (partial, per-key).
+    playwrightOptions: PlaywrightOptionsOverrideSchema.optional(),
     resembleOutputOptions: ResembleOutputOptionsSchema.optional(),
   });
 
@@ -191,8 +197,8 @@ export const PerfConfigSchema = z
     /**
      * Labels (from `shared.viewports`) that perf runs at. Default is
      * desktop + phone so device-specific regressions aren't missed.
-     * Narrow here to skip breakpoints for all tests, or per-test via
-     * `options.viewports`.
+     * Narrow here to skip breakpoints for all tests, or replace per-test
+     * via `config.perf.viewports`.
      */
     viewports: viewportLabelArray(['desktop', 'phone']),
     // Raw Lighthouse flags, passed straight through (the engine only layers in
@@ -210,6 +216,10 @@ export const PerfConfigSchema = z
       .record(z.unknown())
       .optional() as z.ZodType<PerfLighthouseConfig | undefined>,
     plotTitle: z.string().optional(),
+    // Category override of `shared.playwrightOptions` (partial, per-key).
+    // Lighthouse is chromium-only: `browser` must stay 'chromium';
+    // `args`/`headless` map onto its chrome-launcher flags.
+    playwrightOptions: PlaywrightOptionsOverrideSchema.optional(),
   });
 
 /**
@@ -242,10 +252,6 @@ export const AccessibilityConfigSchema = z
     tags: z.array(z.string()).default([...DEFAULT_ACCESSIBILITY_TAGS]),
     disableRules: z.array(z.string()).default([]),
     includeRules: z.array(z.string()).optional(),
-    engineOptions: AccessibilityEngineOptionsSchema.default({
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    }),
     failOnViolation: z.boolean().default(true),
   });
 
@@ -316,6 +322,12 @@ export type BisectConfig = z.infer<typeof BisectConfigSchema>;
  * into objects, run by whoever needs dimensions (the runner's expansion,
  * `viewportsByStageCategory`).
  */
+// Lives in the type-only-imports leaf `playwright-options.ts` so the
+// report-shell bundle (which value-imports it via compare-pipeline.ts) does
+// not drag this module's zod schemas in. Re-exported here for node-side
+// callers.
+export { resolvePlaywrightOptions } from './playwright-options';
+
 export function resolveViewports(
   labels: readonly string[],
   definitions: readonly Viewport[],
@@ -370,6 +382,32 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
       'visreg.defaultMisMatchThreshold was renamed — use visreg.mismatchThreshold ' +
       '(see BREAKING_CHANGES.md).',
     );
+  }
+  // engineOptions was renamed and moved: the base launch options live on
+  // shared.playwrightOptions; visreg/perf may override per-category.
+  for (const section of ['shared', 'visreg', 'perf', 'accessibility', 'audit'] as const) {
+    const rawSection = (raw as Record<string, Record<string, unknown>> | null | undefined)?.[section];
+    if (rawSection && 'engineOptions' in rawSection) {
+      throw new Error(
+        `${section}.engineOptions was renamed — set shared.playwrightOptions` +
+        (section === 'visreg' || section === 'perf'
+          ? ` (or override per-category via ${section}.playwrightOptions)`
+          : '') +
+        ' (see BREAKING_CHANGES.md).',
+      );
+    }
+    // Only visreg/perf have a category override; on accessibility/audit the
+    // key would be zod-stripped and silently ignored — the natural wrong
+    // guess after the engineOptions rename. Fail loudly instead.
+    if (
+      (section === 'accessibility' || section === 'audit') &&
+      rawSection && 'playwrightOptions' in rawSection
+    ) {
+      throw new Error(
+        `${section}.playwrightOptions is not supported — ${section} has no ` +
+        'category override; set shared.playwrightOptions (see BREAKING_CHANGES.md).',
+      );
+    }
   }
   const result = AbTestsConfigSchema.safeParse(raw ?? {});
   if (!result.success) {

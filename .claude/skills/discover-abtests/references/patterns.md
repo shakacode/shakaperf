@@ -64,7 +64,7 @@ Scroll through the page and identify natural visual sections a user would recogn
 After running each test, check `shaka-perf discover-abtests parse-report` output:
 - `whitePixelPercent > 90` → selector captures too much empty space. Try child or sibling.
 - `isBottomSeventyPercentWhite = true` → content concentrated at top
-- `hadEngineError` with `clip.width = 0` → the element has no box at that viewport — add a `config.visreg.viewports` restriction
+- a pair `error` with `clip.width = 0` → the element has no box at that viewport — add a `config.visreg.viewports` restriction
 - **Always read the first screenshot** of a new selector — whitespace metrics alone can miss "technically not blank but visually useless" captures
 
 When a locator might match multiple elements, use `.first()`:

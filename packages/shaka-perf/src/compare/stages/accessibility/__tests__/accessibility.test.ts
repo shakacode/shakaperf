@@ -47,7 +47,17 @@ import {
   runAccessibilityCompareStage,
   summarizeFindings,
 } from '../engine';
-import { DEFAULT_ACCESSIBILITY_STAGE_CONFIG } from '../../../../audit/stages/accessibility/config';
+import {
+  DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  type AccessibilityStageConfig,
+} from '../../../../audit/stages/accessibility/config';
+
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium' },
+};
 import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
@@ -61,7 +71,7 @@ import { parseAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
   it('applies to every test — opting out is testTypes-owned', () => {
-    const stage = new AccessibilityCompareStage();
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
 
     expect(stage.applies({
       name: 'Any test',
@@ -238,7 +248,7 @@ describe('accessibility compare engine', () => {
     await runAccessibilityCompareStage(
       fakeContext({ headed: false }, {}, jest.fn(async () => {}), mobileViewport()),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(mockChromiumLaunch).toHaveBeenCalledWith(expect.objectContaining({
@@ -279,7 +289,7 @@ describe('accessibility compare engine', () => {
     const result = await runAccessibilityCompareStage(
       fakeContext({}),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(result.experiment.blocked).toBe(true);
@@ -298,7 +308,7 @@ describe('accessibility compare engine', () => {
       const result = await runAccessibilityCompareStage(
         fakeContext({}),
         fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+        TEST_STAGE_CONFIG,
       );
 
       expect(result.summary.errors).toBe(0);
@@ -431,7 +441,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1 } }),
+      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
       test,
     ),
   } as unknown as TestContext;

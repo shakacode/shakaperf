@@ -465,7 +465,6 @@ function comparePipelineConfig() {
     visregMismatchThreshold: 0.1,
     visregMaxNumDiffPixels: 50,
     visregComparePixelmatchThreshold: 0.1,
-    visregEngineOptions: {},
     visregCompareRetries: 0,
     visregCompareRetryDelay: 0,
     perfNumberOfMeasurements: 1,
@@ -473,5 +472,11 @@ function comparePipelineConfig() {
     perfPValueThreshold: 0.05,
     perfRegressionThresholdStat: 'estimator' as const,
     perfSamplingMode: 'simultaneous' as const,
+    accessibility: {
+      tags: [],
+      disableRules: [],
+      failOnViolation: true,
+      playwrightOptions: { browser: 'chromium' as const },
+    },
   };
 }

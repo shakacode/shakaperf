@@ -28,21 +28,30 @@ abTest(name: string, {
   markers?: { start?: string, end: string, label: string }[],
                                      // Per-test perf phase definitions
 
-  beforeNavigate?: (ctx) => Promise<void>,  // Pre-navigation hook — see below
-
   // Per-test override of abtests.config.ts, merged over the file config for
-  // this test alone. Same section shape; only the knobs the engines honour
-  // per-test exist here:
+  // this test alone. Same section shape. The knobs the engines honour
+  // per-test:
   config?: {
+    shared?: {
+      beforeNavigate?: (ctx) => Promise<void>,  // Pre-navigation hook — see below
+      playwrightOptions?: { ... },       // Partial launch-options override (browser, args, headless)
+    },
     visreg?: {
       mismatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
       maxNumDiffPixels?: number,          // Max differing pixels allowed
       comparePixelmatchThreshold?: number,
-      requireSameDimensions?: boolean,
       viewports?: string[],               // Labels from shared.viewports, e.g. ['desktop']
+      playwrightOptions?: { ... },        // Visreg-only launch-options override
     },
-    perf?: { viewports?: string[] },
-    audit?: { viewports?: string[] },
+    perf?: {
+      viewports?: string[],
+      lighthouseConfig?: { ... },         // Raw Lighthouse flags for this test
+      playwrightOptions?: { ... },        // Perf-only launch-options override
+    },
+    audit?: {
+      viewports?: string[],
+      lighthouseConfig?: { ... },         // Raw Lighthouse flags for this test
+    },
     accessibility?: {
       tags?: string[],
       disableRules?: string[],
@@ -62,10 +71,15 @@ abTest(name: string, {
 **Per-test `config` merge rule:** every defined per-test key REPLACES the file
 value wholesale — arrays included. A per-test
 `accessibility: { disableRules: ['color-contrast'] }` does NOT union with the
-file's `disableRules`; re-list everything the test needs. Whole-suite settings
-(`shared`, browser `engineOptions`, `resembleOutputOptions`,
-`compareRetries`/`compareRetryDelay`, perf/audit measurement tuning) have no
-per-test override — set them once in `abtests.config.ts`.
+file's `disableRules`; re-list everything the test needs. Per-test
+`playwrightOptions` (`shared`/`visreg`/`perf`) and
+`perf.lighthouseConfig`/`audit.lighthouseConfig` ARE honoured on the engines
+that launch per unit (visreg, perf, audit); accessibility and agent-readiness
+reuse one browser per worker slot and resolve launch options once per run.
+Other whole-suite settings (`resembleOutputOptions`,
+`compareRetries`/`compareRetryDelay`, perf/audit measurement tuning) also
+resolve once per run — overriding them per-test has no effect; set them once
+in `abtests.config.ts`.
 
 ## Removed capture-time options — write the test body instead
 
@@ -97,16 +111,22 @@ that never resolve locally (analytics, reCAPTCHA) and would hang `networkidle`.
 
 Runs before the page is created, on every engine — the place for setup that
 must precede the first navigation: cookies, init scripts, request blocking.
-It receives `{ context, url, viewport, isControl, testType }` (`context` is the
-Playwright `BrowserContext`; there is no `page` yet). A per-test hook fully
-REPLACES the global `shared.beforeNavigate` for that test — if you want both,
-extract a shared function and call it from each.
+Set it globally as `shared.beforeNavigate` in `abtests.config.ts`, or per-test
+via `config.shared.beforeNavigate`. It receives
+`{ context, url, viewport, isControl, testType }` (`context` is the Playwright
+`BrowserContext`; there is no `page` yet). A per-test hook fully REPLACES the
+global `shared.beforeNavigate` for that test — if you want both, extract a
+shared function and call it from each.
 
 ```typescript
 abTest('Feature flag test', {
   startingPath: '/checkout',
-  beforeNavigate: async ({ context }) => {
-    await context.addCookies([{ name: 'flag_new_checkout', value: '1', domain: 'localhost', path: '/' }]);
+  config: {
+    shared: {
+      beforeNavigate: async ({ context }) => {
+        await context.addCookies([{ name: 'flag_new_checkout', value: '1', domain: 'localhost', path: '/' }]);
+      },
+    },
   },
 }, async ({ page }) => {
   await waitUntilPageSettled(page);

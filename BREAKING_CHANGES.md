@@ -95,16 +95,24 @@ moves under `config`, mirroring the `abtests.config.ts` section shape.
 | `visreg.defaultMisMatchThreshold` (in `abtests.config.ts`) | `visreg.mismatchThreshold` — old key fails config parsing loudly |
 | `options.visreg.maxNumDiffPixels` | `config.visreg.maxNumDiffPixels` |
 | `options.visreg.comparePixelmatchThreshold` | `config.visreg.comparePixelmatchThreshold` |
-| `options.visreg.requireSameDimensions` | `config.visreg.requireSameDimensions` |
+| `options.visreg.requireSameDimensions` / `visreg.requireSameDimensions` (in `abtests.config.ts`) | **removed** — a dimension change always fails the compare now (a resize IS a visual difference). Delete the key; there is no "tolerate resizes" mode. Note: unlike the keys above, a leftover key is **silently ignored** (no parse error) — if you relied on `requireSameDimensions: false`, previously-tolerated resizes will start failing. |
 | `options.viewports` (one list, all categories) | per-category: `config.visreg.viewports`, `config.perf.viewports`, `config.audit.viewports`, `config.accessibility.viewports` |
 | `options.accessibility.tags` | `config.accessibility.tags` |
 | `options.accessibility.disableRules` | `config.accessibility.disableRules` (see merge change below) |
 | `options.accessibility.includeRules` | `config.accessibility.includeRules` |
 
-`config` exposes **only** per-test-honoured knobs (visreg comparison tuning,
-per-category `viewports`, accessibility rule sets). Whole-suite settings —
-`shared`, browser `engineOptions`, `resembleOutputOptions`, perf/audit
-measurement tuning — are not per-test; set them in `abtests.config.ts`.
+The `config` **type** accepts every section except `twinServers`/`bisect`;
+what the engines actually honour per-test:
+
+| Per-test `config` knob | Honoured per-test? |
+| --- | --- |
+| `visreg` comparison tuning (`mismatchThreshold`, `maxNumDiffPixels`, `comparePixelmatchThreshold`) | Yes |
+| per-category `viewports` | Yes |
+| `accessibility` rule sets (`tags`, `disableRules`, `includeRules`) | Yes |
+| `shared.beforeNavigate` | Yes — replaces the global hook |
+| `playwrightOptions` (`shared` / `visreg` / `perf`) | Yes on engines that launch per unit (visreg, perf, audit); accessibility/agent-readiness reuse a browser per worker slot and resolve once per run |
+| `perf.lighthouseConfig` / `audit.lighthouseConfig` | Yes |
+| `resembleOutputOptions`, perf measurement counts/thresholds, other `shared` fields | No — resolve once per run; set them in `abtests.config.ts` |
 
 #### Removed type exports
 
@@ -121,7 +129,10 @@ Gone from `shaka-shared` and the `shaka-perf` barrels (root, `bench/core`,
 
 `beforeNavigate` is no longer a special per-test field — it's just the
 `shared.beforeNavigate` setting, overridden per-test through the same `config`
-merge as everything else. Two changes: it moves from the top level onto
+merge as everything else. `abTest()` **throws at load time** on a top-level
+`beforeNavigate` (like it does for `options`), because a stale hook would
+otherwise be silently ignored — auth/cookie setup quietly gone while the
+suite stays green. Two changes: it moves from the top level onto
 `config.shared.beforeNavigate`, and **it no longer chains**. It used to receive
 the global hook as a second argument to optionally run; that argument is gone, so
 a per-test hook now fully **replaces** the global. A hook written as
@@ -162,11 +173,70 @@ category's file list; it now replaces it, resolving labels against
   **zero** viewports (silently dropped — a bug); it now runs at tablet. Audit
   per-test lists you left in place because they did nothing will start taking effect.
 - **`viewports: []` now means none, not all.** An explicit empty list replaces
-  the file list with nothing (test skipped for that category, visible "viewport
-  filter excluded all" outcome). For "all viewports", delete the key.
+  the file list with nothing — the test is skipped for that category with a
+  visible `skipped: test's <category>.viewports override is []` outcome. For
+  "all viewports", delete the key.
 - **An unknown label now throws** instead of being silently dropped:
   `Unknown viewport label 'phome' — defined in shared.viewports: …`. Fix the
   label or add it to `shared.viewports`.
+
+### `engineOptions` → `shared.playwrightOptions`, required, respected by every stage
+
+Browser-launch options are now ONE setting with ONE shape, on
+`shared.playwrightOptions`, and every stage respects it — visreg, perf
+(Lighthouse), audit, agent-readiness, and accessibility. `visreg.playwrightOptions`
+and `perf.playwrightOptions` may override it per-category (a partial of the same
+shape, merged per-key over shared). The old keys fail config parsing loudly:
+
+| Old | New |
+|---|---|
+| `visreg.engineOptions` | `shared.playwrightOptions` — or `visreg.playwrightOptions` for a visreg-only override |
+| `accessibility.engineOptions` | `shared.playwrightOptions` (accessibility has no category override) |
+
+```ts
+// BEFORE
+visreg: { engineOptions: { browser: 'chromium', args: ['--no-sandbox'] } },
+accessibility: { engineOptions: { browser: 'chromium', args: ['--no-sandbox'] } },
+
+// AFTER
+shared: { playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'] } },
+```
+
+**`shared.playwrightOptions` is REQUIRED, with an explicit `browser`.** There
+are no hidden launch defaults anymore — the old engines' implicit
+`{ browser: 'chromium', args: ['--no-sandbox'] }` is gone; what the config says
+is what every stage launches with. A config without the block now fails parsing
+(`shared.playwrightOptions: Required`); add the line from the starter template:
+
+```ts
+shared: { playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'] } },
+```
+
+Because `args` now reach every stage, the perf/audit **Lighthouse Chrome also
+launches with your configured `args`** (e.g. the template's `--no-sandbox`),
+which the old worker never applied — absolute audit numbers can shift
+accordingly.
+
+**`accessibility.playwrightOptions` / `audit.playwrightOptions` fail loudly.**
+Those sections have no category override (they resolve `shared.playwrightOptions`
+once per run); the key used to be silently stripped, now config parsing rejects
+it with a pointer to `shared.playwrightOptions`.
+
+Notes:
+
+- The perf/audit Lighthouse engine is chromium-only: it maps `args` and
+  `headless` onto its Chrome flags and warns-and-ignores a non-chromium
+  `browser`.
+- Per-test overrides now reach the engines: `config.visreg.playwrightOptions`
+  (or `config.shared.playwrightOptions`, or `config.perf.playwrightOptions`)
+  in an `abTest()` applies to that test's launches on engines that launch per
+  unit (visreg, perf, audit). Accessibility and agent-readiness reuse one
+  browser per worker slot, so they resolve launch options once per run.
+- Type export rename: `EngineOptionsInput` / `AccessibilityEngineOptionsInput`
+  (shaka-shared) are replaced by `PlaywrightOptionsInput`; the visreg engine's
+  `EngineOptions` type (`shaka-perf/visreg/core/types`) is now
+  `EnginePlaywrightOptions` (named to stay distinct from the config-level
+  `PlaywrightOptions` in `shaka-perf/src/config`).
 
 ---
 

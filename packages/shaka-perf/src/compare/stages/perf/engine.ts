@@ -22,6 +22,7 @@ import {
   type NavigationSample,
 } from '../../../bench/core';
 import { lhConfigForViewport } from '../../../bench/core/lighthouse-config';
+import { resolvePlaywrightOptions } from '../../../config';
 import { ensureLighthousePatchRegistered } from '../../../bench/core/patched-lighthouse/register-patch';
 import { durationInSec, secondsToTime, timestamp, chalkScheme } from '../../../bench/cli/helpers/utils';
 import { runAnalyze } from '../../../bench/cli/commands/compare/analyze';
@@ -46,7 +47,9 @@ export async function runPerfEngineStage(
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
-  const lhConfig = lhConfigForViewport(ctx.viewport, perfConfig.lighthouseConfig);
+  // Per-test effective lighthouseConfig (config.perf.lighthouseConfig in an
+  // abTest() applies to that test), not the file-level stage config.
+  const lhConfig = lhConfigForViewport(ctx.viewport, ctx.config.perf.lighthouseConfig ?? perfConfig.lighthouseConfig);
   const pool = createWorkerLighthouseSamplingPool<NavigationSample>(workerPool, {
     samplingMode: perfConfig.samplingMode,
   });
@@ -63,6 +66,9 @@ export async function runPerfEngineStage(
     lhConfig,
     saveArtifacts: config.saveArtifacts,
     headed: ctx.runtime.headed,
+    // Effective launch options (shared.playwrightOptions ← perf override ←
+    // per-test config); the fork maps args/headless onto chrome flags.
+    playwrightOptions: resolvePlaywrightOptions(ctx.config, 'perf'),
   };
   const benchmarks = [
     createLighthouseBenchmark('control', ctx.test, {

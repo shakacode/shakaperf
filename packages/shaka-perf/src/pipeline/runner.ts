@@ -1312,9 +1312,10 @@ interface BuildTestResultOpts {
   config: AbTestsConfig;
 }
 
-function viewportFilterSkipReason(category: StageCategory, narrow: string[] | undefined): string {
-  const detail = narrow && narrow.length > 0 ? ` [${narrow.join(', ')}]` : '';
-  return `skipped by test viewport filter${detail} — no overlap with ${category}.viewports`;
+// Per-test viewports REPLACE the file list and unknown labels throw at config
+// load, so an empty effective list can only mean an explicit `[]` override.
+function viewportFilterSkipReason(category: StageCategory): string {
+  return `skipped: test's ${category}.viewports override is [] — no viewports to run at`;
 }
 
 interface TestPartial {
@@ -1339,9 +1340,9 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
   } = opts;
 
   // Pre-stage skip outcomes that the per-stage applies() can't express:
-  // "test opted out of this testType" and "no viewport overlap with category".
-  // These don't go through the stage loop because the runner pre-filters
-  // work units by viewport, so we persist them here.
+  // "test opted out of this testType" and "per-test viewports override is
+  // empty". These don't go through the stage loop because the runner
+  // pre-filters work units by viewport, so we persist them here.
   if (!reportOnly) {
     for (const testType of categories) {
       const categoryStages = pipeline.stages.filter((stage) => stage.category === testType);
@@ -1363,7 +1364,7 @@ async function buildTestPartial(opts: BuildTestResultOpts): Promise<TestPartial>
           store,
           test,
           categoryStages,
-          viewportFilterSkipReason(testType, test.config?.[testType]?.viewports),
+          viewportFilterSkipReason(testType),
           config,
         );
       }

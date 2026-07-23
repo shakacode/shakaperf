@@ -7,43 +7,43 @@
  * License in LICENSE.md.
  */
 
-// Config for the agent-readiness stage. Kept self-contained (not part of the
-// Zod abtests.config schema) so the stage can ship without touching the shared
-// config surface; the audit pipeline passes overrides through if it ever needs to.
-export interface AgentReadinessEngineOptions {
-  browser?: 'chromium' | 'firefox' | 'webkit';
-  headless?: boolean;
-  args?: string[];
-  // Per-navigation cap for goto / setContent. Defaults below.
-  navTimeoutMs?: number;
-  // Cap for the raw (no-JS) fetch of the server HTML.
-  rawFetchTimeoutMs?: number;
-}
+import type { PlaywrightOptions } from '../../../config';
 
 export interface AgentReadinessStageConfig {
   skip?: boolean;
-  engineOptions?: AgentReadinessEngineOptions;
+  /**
+   * Effective launch options for this stage — `resolvePlaywrightOptions(config,
+   * 'audit')`, handed in by the pipeline builder. Passed through to
+   * `launchStageBrowser` whole, so extra launch keys behave the same as on
+   * every other stage.
+   */
+  playwrightOptions: PlaywrightOptions;
 }
 
-export const DEFAULT_AGENT_READINESS_STAGE_CONFIG: Required<Omit<AgentReadinessStageConfig, 'skip'>> & { skip: boolean } = {
-  skip: false,
-  engineOptions: {
-    browser: 'chromium',
-    headless: true,
-    args: ['--no-sandbox'],
-    navTimeoutMs: 45_000,
-    rawFetchTimeoutMs: 15_000,
-  },
+// The launch + timeout bundle the engine threads through its scans. Launch
+// options come from the resolved `shared.playwrightOptions`; the timeout caps
+// are stage-internal defaults.
+export interface AgentReadinessEngineOptions {
+  playwrightOptions: PlaywrightOptions;
+  // Per-navigation cap for goto / setContent.
+  navTimeoutMs: number;
+  // Cap for the raw (no-JS) fetch of the server HTML.
+  rawFetchTimeoutMs: number;
+}
+
+const DEFAULT_TIMEOUTS = {
+  navTimeoutMs: 45_000,
+  rawFetchTimeoutMs: 15_000,
 };
 
 export function resolveAgentReadinessConfig(
-  config: AgentReadinessStageConfig | undefined,
-): Required<Omit<AgentReadinessStageConfig, 'skip'>> & { skip: boolean } {
+  config: AgentReadinessStageConfig,
+): { skip: boolean; engineOptions: AgentReadinessEngineOptions } {
   return {
-    skip: config?.skip ?? DEFAULT_AGENT_READINESS_STAGE_CONFIG.skip,
+    skip: config.skip ?? false,
     engineOptions: {
-      ...DEFAULT_AGENT_READINESS_STAGE_CONFIG.engineOptions,
-      ...config?.engineOptions,
+      playwrightOptions: config.playwrightOptions,
+      ...DEFAULT_TIMEOUTS,
     },
   };
 }

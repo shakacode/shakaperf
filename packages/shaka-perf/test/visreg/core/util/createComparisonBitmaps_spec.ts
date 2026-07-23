@@ -17,7 +17,6 @@ describe('createComparisonBitmaps', function () {
     configFileName: '/tmp/dummy-config.json',
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
     mismatchThreshold: 0.1,
-    defaultRequireSameDimensions: true,
     compareRetries: 3,
     compareRetryDelay: 5000,
     maxNumDiffPixels: 10,
@@ -55,6 +54,7 @@ describe('createComparisonBitmaps', function () {
 
   function createModule (overrides?: {
     runCompareScenario?: Record<string, unknown>;
+    runPlaywright?: Record<string, unknown>;
     registeredTests?: unknown[];
   }) {
     jest.resetModules();
@@ -88,11 +88,13 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);
-    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => ({
+    const runPlaywrightMock = overrides?.runPlaywright || {
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
-    }));
+    };
+
+    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);
+    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => runPlaywrightMock);
     jest.mock('../../../../src/visreg/core/util/ensureDirectoryPath', () => ({
       __esModule: true,
       default: function () {},
@@ -115,6 +117,25 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedConfig.compareRetries, 3, 'Should pass compareRetries');
     assert.strictEqual(capturedConfig.compareRetryDelay, 5000, 'Should pass compareRetryDelay');
     assert.strictEqual(capturedConfig.maxNumDiffPixels, 10, 'Should pass maxNumDiffPixels');
+  });
+
+  // Pins the invariant `flatMapTestPairs` relies on: a scenario that throws
+  // rejects the whole pMap (so no partial results reach flatMap), the original
+  // error propagates, and the browser is still disposed on that path.
+  it('should reject with the original error and dispose the browser when a scenario throws', async function () {
+    let disposed = false;
+    const createComparisonBitmaps = createModule({
+      runCompareScenario: {
+        playwright: function () { return Promise.reject(new Error('scenario blew up')); },
+      },
+      runPlaywright: {
+        createPlaywrightBrowser: function () { return Promise.resolve({}); },
+        disposePlaywrightBrowser: function () { disposed = true; return Promise.resolve(); },
+      },
+    });
+
+    await assert.rejects(() => createComparisonBitmaps(mockConfig), /scenario blew up/);
+    assert(disposed, 'Should dispose the browser after a scenario rejection');
   });
 
   it('should throw error when no tests registered', async function () {

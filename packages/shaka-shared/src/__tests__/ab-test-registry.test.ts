@@ -64,6 +64,19 @@ describe('ab-test-registry', () => {
       expect(getRegisteredTests()).toHaveLength(0);
     });
 
+    it('rejects a stale top-level beforeNavigate with a migration pointer', () => {
+      // Same tsx-no-typecheck failure mode: a top-level hook would spread onto
+      // the definition and silently never run (auth/cookies quietly gone).
+      const legacy = {
+        startingPath: '/',
+        beforeNavigate: async () => {},
+      };
+      expect(() =>
+        abTest('Legacy hook', legacy as never, async () => {}),
+      ).toThrow(/'beforeNavigate' moved to config\.shared\.beforeNavigate.*BREAKING_CHANGES\.md/);
+      expect(getRegisteredTests()).toHaveLength(0);
+    });
+
     it('registers multiple tests in order', () => {
       abTest('Test A', { startingPath: '/a' }, async () => {});
       abTest('Test B', { startingPath: '/b' }, async () => {});

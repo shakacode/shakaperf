@@ -13,7 +13,7 @@ import * as path from 'node:path';
 import { Command, Option } from 'commander';
 import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
-import { parseAbTestsConfig } from '../config';
+import { parseAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
@@ -74,8 +74,11 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
             tags: config.accessibility.tags,
             disableRules: config.accessibility.disableRules,
             includeRules: config.accessibility.includeRules,
-            engineOptions: config.accessibility.engineOptions,
+            playwrightOptions: resolvePlaywrightOptions(config, 'accessibility'),
             failOnViolation: config.accessibility.failOnViolation,
+          },
+          agentReadiness: {
+            playwrightOptions: resolvePlaywrightOptions(config, 'audit'),
           },
         });
         const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;

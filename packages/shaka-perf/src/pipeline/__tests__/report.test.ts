@@ -61,7 +61,7 @@ describe('writeMachineReport', () => {
       { resultsRoot: dir } as StageRuntime,
       new Map(),
       parseAbTestsConfig({
-        shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1 },
+        shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium' } },
       }),
     );
 

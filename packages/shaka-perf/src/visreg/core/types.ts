@@ -42,7 +42,10 @@ export interface Scenario {
 }
 
 // ── Engine Options (Playwright) ─────────────────────────────────────
-export interface EngineOptions {
+// The engine-side launch-options shape (bridge-config JSON). Named
+// `EnginePlaywrightOptions` to keep it distinct from the zod-inferred
+// `PlaywrightOptions` in `src/config.ts` — same field, different types.
+export interface EnginePlaywrightOptions {
   browser?: 'chromium' | 'firefox' | 'webkit';
   headless?: boolean;
   ignoreDefaultArgs?: string[];
@@ -78,16 +81,17 @@ export interface VisregPaths {
 }
 
 // ── User Config ───────────────────────────────────────────────────
-// Exactly what the compare stage's bridge config can carry: the zod `visreg`
-// slice of `abtests.config.ts` plus the engine-plumbing fields the runner
-// writes (`paths`, the async limits). Nothing else — the engine has no other
-// config source.
+// What the compare stage's bridge config carries: the zod `visreg` slice of
+// `abtests.config.ts` plus the engine-plumbing fields the runner writes
+// (`paths`, the async limits). The one exception is `scenarios`, which is
+// never in the bridge config — it's built engine-side from the loaded
+// `.abtest.ts` files (see `decorateConfigForTestFile`).
 export interface VisregConfig {
   viewports: Viewport[];
   scenarios: Scenario[];
   paths?: VisregPaths;
 
-  engineOptions?: EngineOptions;
+  playwrightOptions?: EnginePlaywrightOptions;
 
   asyncCaptureLimit?: number;
   asyncCompareLimit?: number;
@@ -130,11 +134,10 @@ export interface RuntimeConfig {
 // ── Decorated Compare Config (internal, used during compare) ─────
 export interface DecoratedCompareConfig extends VisregConfig {
   env: RuntimeConfig;
-  // The four comparison-tuning values the compare stage writes into the bridge
+  // The comparison-tuning values the compare stage writes into the bridge
   // config from the effective `config.visreg` (zod defaults + per-test merge
   // already applied), so the engine reads them straight.
   mismatchThreshold: number;
-  requireSameDimensions: boolean;
   maxNumDiffPixels: number;
   comparePixelmatchThreshold: number;
   configFileName: string;
@@ -158,7 +161,6 @@ export interface TestPair {
   selector: string;
   fileName: string;
   label: string;
-  requireSameDimensions: boolean;
   mismatchThreshold: number;
   url: string;
   referenceUrl?: string;
@@ -198,12 +200,17 @@ export interface VisregTools {
 // file for the visreg engine to pick up. Structurally the `visreg`
 // slice of the unified `abtests.config.ts` (from `shaka-perf/compare`)
 // plus the engine-plumbing fields the runner writes (`paths`, the async
-// limits on VisregConfig). This is an internal plumbing type — not a
-// user-authored config.
+// limits). The bridge resolves `viewports` from label strings to the
+// full definitions before writing, so the element type here is the
+// engine's `Viewport`, not the slice's labels. This is an internal
+// plumbing type — not a user-authored config.
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { VisregConfig as _VisregConfigSlice } from '../../config';
 
-export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
+export type VisregEngineInputConfig = Omit<Partial<_VisregConfigSlice>, 'viewports'> & {
+  viewports?: Viewport[];
   paths?: VisregPaths;
+  asyncCaptureLimit?: number;
+  asyncCompareLimit?: number;
 };

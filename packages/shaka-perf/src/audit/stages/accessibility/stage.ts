@@ -33,14 +33,10 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
   readonly description = 'Run accessibility checks on the target URL.';
   private readonly config: AccessibilityStageConfig;
 
-  constructor(config?: AccessibilityStageConfig) {
+  constructor(config: AccessibilityStageConfig) {
     this.config = {
       ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
       ...config,
-      engineOptions: {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
-        ...config?.engineOptions,
-      },
     };
   }
 

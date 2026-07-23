@@ -10,6 +10,7 @@
 import {
   DEFAULT_ACCESSIBILITY_TAGS,
   parseAbTestsConfig,
+  resolvePlaywrightOptions,
   resolveViewports,
   viewportsByStageCategory,
 } from '../config';
@@ -20,6 +21,7 @@ function baseConfig(extra: Record<string, unknown> = {}) {
       controlURL: 'http://localhost:3020',
       experimentURL: 'http://localhost:3030',
       parallelism: 2,
+      playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'] },
     },
     ...extra,
   };
@@ -34,7 +36,9 @@ describe('accessibility config', () => {
     expect(config.accessibility.disableRules).toEqual([]);
     expect(config.accessibility.includeRules).toBeUndefined();
     expect(config.accessibility.failOnViolation).toBe(true);
-    expect(config.accessibility.engineOptions).toMatchObject({
+    // Launch options live on shared.playwrightOptions now — accessibility
+    // resolves to them with no category override.
+    expect(resolvePlaywrightOptions(config, 'accessibility')).toMatchObject({
       browser: 'chromium',
       args: ['--no-sandbox'],
     });
@@ -115,4 +119,84 @@ describe('bisect config', () => {
     });
   });
 
+});
+
+describe('playwrightOptions', () => {
+  it('is required on shared — no hidden launch defaults', () => {
+    expect(() => parseAbTestsConfig({
+      shared: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
+        parallelism: 2,
+      },
+    })).toThrow(/shared\.playwrightOptions/);
+  });
+
+  it('requires an explicit browser', () => {
+    expect(() => parseAbTestsConfig(baseConfig({
+      shared: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
+        parallelism: 2,
+        playwrightOptions: { args: ['--no-sandbox'] },
+      },
+    }))).toThrow(/browser/);
+  });
+
+  it('resolves shared for every category exactly as written', () => {
+    const config = parseAbTestsConfig(baseConfig());
+
+    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
+      expect(resolvePlaywrightOptions(config, category)).toEqual({
+        browser: 'chromium',
+        args: ['--no-sandbox'],
+      });
+    }
+  });
+
+  it('overrides per-key for visreg and perf, leaving the rest of shared intact', () => {
+    const config = parseAbTestsConfig(baseConfig({
+      shared: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
+        parallelism: 1,
+        playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], headless: true },
+      },
+      visreg: { playwrightOptions: { headless: false } },
+      perf: { playwrightOptions: { args: ['--disable-gpu'] } },
+    }));
+
+    expect(resolvePlaywrightOptions(config, 'visreg')).toEqual({
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+      headless: false,
+    });
+    expect(resolvePlaywrightOptions(config, 'perf')).toEqual({
+      browser: 'chromium',
+      args: ['--disable-gpu'],
+      headless: true,
+    });
+    // audit / accessibility have no category override — pure shared.
+    expect(resolvePlaywrightOptions(config, 'audit')).toEqual({
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+      headless: true,
+    });
+  });
+
+  it('fails loudly on the legacy engineOptions key in any section', () => {
+    for (const section of ['shared', 'visreg', 'perf', 'accessibility', 'audit']) {
+      expect(() => parseAbTestsConfig(baseConfig({
+        [section]: { engineOptions: { browser: 'chromium' } },
+      }))).toThrow(`${section}.engineOptions was renamed`);
+    }
+  });
+
+  it('fails loudly on playwrightOptions in sections with no category override', () => {
+    for (const section of ['accessibility', 'audit']) {
+      expect(() => parseAbTestsConfig(baseConfig({
+        [section]: { playwrightOptions: { headless: false } },
+      }))).toThrow(`${section}.playwrightOptions is not supported`);
+    }
+  });
 });

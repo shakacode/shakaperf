@@ -44,8 +44,8 @@ export async function createComparisonSide(
   viewport: Viewport,
   onContextReady?: (context: BrowserContext) => Promise<void>,
 ): Promise<ComparisonSide> {
-  const { engineOptions = {} } = config;
-  const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
+  const { playwrightOptions = {} } = config;
+  const ignoreHTTPSErrors = playwrightOptions.ignoreHTTPSErrors !== undefined ? playwrightOptions.ignoreHTTPSErrors : true;
   const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', DEFAULT_NAV_TIMEOUT);
   const VP_W = viewport.width;
   const VP_H = viewport.height;
@@ -58,7 +58,7 @@ export async function createComparisonSide(
     ignoreHTTPSErrors,
     viewport: { width: VP_W, height: VP_H },
     deviceScaleFactor: viewport.deviceScaleFactor,
-    isMobile: viewport.formFactor === 'mobile' && engineOptions.browser !== 'firefox',
+    isMobile: viewport.formFactor === 'mobile' && playwrightOptions.browser !== 'firefox',
   });
   // From here on, anything that throws (a beforeNavigate hook, cookie loading,
   // newPage) must close the context we just created — the caller only tracks it

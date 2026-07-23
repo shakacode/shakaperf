@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import visregRunner from '../../../visreg/core/runner';
+import { resolvePlaywrightOptions } from '../../../config';
 import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError } from '../../../stage/stage-failure';
@@ -42,14 +43,15 @@ export async function runVisregUnit(
     mismatchThreshold: ctx.config.visreg.mismatchThreshold,
     maxNumDiffPixels: ctx.config.visreg.maxNumDiffPixels,
     comparePixelmatchThreshold: ctx.config.visreg.comparePixelmatchThreshold,
-    requireSameDimensions: ctx.config.visreg.requireSameDimensions,
     viewports: [ctx.viewport],
-    // `--headed` overrides the configured visreg headless setting so the
-    // Playwright browser is visible too — matching the Lighthouse stages, so
-    // `compare --headed` shows every measurement browser.
-    ...(ctx.runtime.headed
-      ? { engineOptions: { ...stageConfig.engineOptions, headless: false } }
-      : {}),
+    // Effective launch options (shared.playwrightOptions ← visreg override ←
+    // per-test config), resolved here so the engine reads them straight.
+    // `--headed` overrides headless on top so the Playwright browser is
+    // visible too — matching the Lighthouse stages.
+    playwrightOptions: {
+      ...resolvePlaywrightOptions(ctx.config, 'visreg'),
+      ...(ctx.runtime.headed ? { headless: false } : {}),
+    },
   };
 
   // Where this unit's artifacts go, straight from the framework — it already

@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import type { TestPair, Scenario, Viewport, EngineOptions, DecoratedCompareConfig } from "../types";
+import type { TestPair, Scenario, Viewport, EnginePlaywrightOptions, DecoratedCompareConfig } from "../types";
 
 // One fixed naming scheme — there is no user-facing template or output-format
 // knob. PNG only; the name is stable across invocations so the crash-resumable
@@ -35,9 +35,9 @@ function getFilename (scenarioLabelSafe: string, selectorIndex: number, selector
   return fileName + OUTPUT_FORMAT_SUFFIX;
 }
 
-function getEngineOption<T> (config: { engineOptions?: EngineOptions }, optionName: string, fallBack: T): T {
-  if (typeof config.engineOptions === 'object' && config.engineOptions[optionName]) {
-    return config.engineOptions[optionName] as T;
+function getEngineOption<T> (config: { playwrightOptions?: EnginePlaywrightOptions }, optionName: string, fallBack: T): T {
+  if (typeof config.playwrightOptions === 'object' && config.playwrightOptions[optionName]) {
+    return config.playwrightOptions[optionName] as T;
   }
   return fallBack;
 }
@@ -52,7 +52,6 @@ function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, v
     selector,
     fileName,
     label: scenario.label,
-    requireSameDimensions: config.requireSameDimensions,
     mismatchThreshold: config.mismatchThreshold,
     url: scenario.url,
     referenceUrl: scenario.referenceUrl,

@@ -14,7 +14,7 @@ import cp from 'node:child_process';
 import Reporter, { Test } from './../Reporter';
 import createLogger from './../logger';
 import storeFailedDiffStub from './store-failed-diff-stub';
-import type { RuntimeConfig, TestPair, ResembleOutputOptions } from '../../types';
+import type { RuntimeConfig, TestPair, ResembleOutputOptions, CompareConfig } from '../../types';
 
 const logger = createLogger('compare');
 
@@ -58,7 +58,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
       pair
     });
 
-    worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; requireSameDimensions?: boolean; isSameDimensions?: boolean }) {
+    worker.on('message', function (data: { status: string; diff: { misMatchPercentage: number }; diffImage?: string; isSameDimensions?: boolean }) {
       worker.kill();
       testInstance.status = data.status;
       // @ts-expect-error. Not sure why it's failing here. Keeping it as is for now. instead of using data.isSameDimensions
@@ -66,7 +66,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 
       if (data.status === 'fail') {
         pair.diffImage = data.diffImage;
-        logger.error('ERROR { requireSameDimensions: ' + (data.requireSameDimensions ? 'true' : 'false') + ', size: ' + (data.isSameDimensions ? 'ok' : 'isDifferent') + ', content: ' + data.diff.misMatchPercentage + '%, threshold: ' + pair.mismatchThreshold + '% }: ' + pair.label + ' ' + pair.fileName);
+        logger.error('ERROR { size: ' + (data.isSameDimensions ? 'ok' : 'isDifferent') + ', content: ' + data.diff.misMatchPercentage + '%, threshold: ' + pair.mismatchThreshold + '% }: ' + pair.label + ' ' + pair.fileName);
       } else {
         logger.success('OK: ' + pair.label + ' ' + pair.fileName);
       }
@@ -77,7 +77,7 @@ function compareImages (referencePath: string, testPath: string, pair: TestPair,
 }
 
 export default function compare (config: RuntimeConfig) {
-  const compareConfig = JSON.parse(fs.readFileSync(config.tempCompareConfigFileName, 'utf8')).compareConfig;
+  const compareConfig = JSON.parse(fs.readFileSync(config.tempCompareConfigFileName, 'utf8')).compareConfig as CompareConfig;
 
   const report = new Reporter('shaka-perf-visreg');
   const asyncCompareLimit = config.asyncCompareLimit || ASYNC_COMPARE_LIMIT;

@@ -95,6 +95,14 @@ export default defineConfig({
       // localStorage/auth too, via:
       //   context.addInitScript(...)
     },
+    // Browser-launch options every stage respects. REQUIRED — no hidden
+    // defaults; what's written here is what every stage (including the
+    // perf/audit Lighthouse Chrome) launches with. `visreg.playwrightOptions` /
+    // `perf.playwrightOptions` may override per-category (partial, per-key).
+    playwrightOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+    },
   },
 
   visreg: {
@@ -102,10 +110,6 @@ export default defineConfig({
     mismatchThreshold: 0.1,
     maxNumDiffPixels: 50,
     comparePixelmatchThreshold: 0.1,
-    engineOptions: {
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    },
   },
 
   perf: {

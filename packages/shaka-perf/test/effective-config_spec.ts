@@ -17,6 +17,7 @@ describe('reconstructEffectiveConfig', function () {
         "    controlURL: 'http://localhost:3011/',",
         "    experimentURL: 'http://localhost:3012/',",
         '    parallelism: 1,',
+        "    playwrightOptions: { browser: 'chromium' },",
         '    beforeNavigate: async ({ context }) => {',
         `      context.loadedFromConfig = ${JSON.stringify(marker)};`,
         '    },',

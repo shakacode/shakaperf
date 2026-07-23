@@ -95,13 +95,16 @@ Visreg has no standalone config file any more — visual-regression settings liv
 import { defineConfig } from 'shaka-perf/compare';
 
 export default defineConfig({
-  visreg: {
-    viewports: ['desktop', 'tablet', 'phone'],
-    engineOptions: {
+  shared: {
+    // Browser-launch options every stage respects; `visreg.playwrightOptions`
+    // and `perf.playwrightOptions` may override per-category (same type).
+    playwrightOptions: {
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
-    asyncCaptureLimit: 5,
+  },
+  visreg: {
+    viewports: ['desktop', 'tablet', 'phone'],
     compareRetries: 2,
     compareRetryDelay: 500,
     maxNumDiffPixels: 50,
@@ -143,7 +146,6 @@ alone. The visreg knobs (`config.visreg`):
 | `mismatchThreshold`   | Percentage of different pixels allowed to pass (default: 0.1)                            |
 | `maxNumDiffPixels`           | Absolute cap on differing pixels before a comparison fails                               |
 | `comparePixelmatchThreshold` | Per-pixel color-distance sensitivity for the pixelmatch comparison                       |
-| `requireSameDimensions`      | If true, any change in captured dimensions triggers a test failure (default: true)       |
 | `viewports`                  | Narrow which viewports this test's visreg runs at (names from `shared.viewports`)        |
 
 ```ts
@@ -168,13 +170,11 @@ Interactions, ready-waits, and hide/remove options are gone from the config —
 write them in the test body instead (see
 [Interactions and Waits: Do It in the Body](#interactions-and-waits-do-it-in-the-body)).
 
-### Changing Screenshot Filename Formats
+### Screenshot Filenames
 
-`shaka-perf visreg` uses a specific file-naming scheme to manage screenshot files. Changing this is NOT RECOMMENDED, but if you have an overwhelming need, you can modify it using the `fileNameTemplate` property:
-
-```ts
-fileNameTemplate: '{scenarioIndex}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}'
-```
+The screenshot naming scheme is fixed (scenario × selector × viewport) and not
+configurable — stable names are what make crash-resume and the frame pools
+work.
 
 ## Advanced Scenarios
 
@@ -258,13 +258,11 @@ visregSelectors: ['document', 'viewport', '#myFeature']
 
 `mismatchThreshold` (percentage 0.00%-100.00%) controls how much difference `shaka-perf visreg` will tolerate before marking a test as failed. The default is `0.1` — set it once in the config's `visreg` slice, or for one test via `config.visreg.mismatchThreshold`.
 
-`requireSameDimensions` (default: `true`) controls whether any change in dimensions causes a failure. Setting it to `false` allows dimension changes as long as pixel differences stay within the threshold.
-
-These settings work in conjunction — e.g. with a non-zero `mismatchThreshold` and a mismatch that causes a dimension change, `requireSameDimensions: false` allows the test to still pass.
+A change in a capture's dimensions always fails the compare — a resize IS a visual difference; there is no "tolerate resizes" mode.
 
 ## Running Custom Scripts
 
-There is no separate lifecycle hook for in-page scripting — the test body IS the custom script. It receives a `TestFnContext` with `page`, `browserContext`, `isControl`, `scenario`, `viewport`, `testType`, and `annotate`; anything you do there (log in, open a menu, dismiss a modal) happens before the screenshot. For setup that must run before the page exists — cookies, request blocking, init scripts — use a top-level `beforeNavigate` (see [Setting Cookies](#setting-cookies)).
+There is no separate lifecycle hook for in-page scripting — the test body IS the custom script. It receives a `TestFnContext` with `page`, `browserContext`, `isControl`, `scenario`, `viewport`, `testType`, and `annotate`; anything you do there (log in, open a menu, dismiss a modal) happens before the screenshot. For setup that must run before the page exists — cookies, request blocking, init scripts — use `config.shared.beforeNavigate` (see [Setting Cookies](#setting-cookies)).
 
 ```ts
 import { abTest } from 'shaka-shared';
@@ -272,8 +270,12 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Authenticated dashboard', {
   startingPath: '/dashboard',
-  beforeNavigate: async ({ context, url }) => {
-    await context.addCookies([{ name: 'session', value: '…', url }]);
+  config: {
+    shared: {
+      beforeNavigate: async ({ context, url }) => {
+        await context.addCookies([{ name: 'session', value: '…', url }]);
+      },
+    },
   },
 }, async ({ page }) => {
   await page.click('[data-cy="open-usage-panel"]');
@@ -289,7 +291,7 @@ The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 ## Playwright Engine Configuration
 
-`shaka-perf visreg` uses Playwright as its rendering engine. It supports `chromium`, `firefox`, and `webkit` browsers via `engineOptions.browser`.
+`shaka-perf visreg` uses Playwright as its rendering engine. It supports `chromium`, `firefox`, and `webkit` browsers via `shared.playwrightOptions.browser` (or the visreg-only `visreg.playwrightOptions.browser` override).
 
 To seed cookies, localStorage, or a logged-in session before tests run, use a
 `beforeNavigate` hook (see [Setting Cookies](#setting-cookies)) — the Playwright
@@ -302,16 +304,22 @@ extra headers, and more.
 
 ```
 ignoreHTTPSErrors: true
-headless: !config.debugWindow
+headless: true
 ```
 
-You can add more settings (or override the defaults) with `engineOptions`:
+You can add more settings (or override the defaults) with
+`shared.playwrightOptions` (all stages — required, with an explicit `browser`)
+or `visreg.playwrightOptions` (visreg only — a partial, merged per-key over
+shared):
 
 ```ts
-engineOptions: {
-  ignoreHTTPSErrors: false,
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  gotoParameters: { waitUntil: 'networkidle0' },
+shared: {
+  playwrightOptions: {
+    browser: 'chromium',
+    ignoreHTTPSErrors: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    gotoParameters: { waitUntil: 'networkidle0' },
+  },
 }
 ```
 
@@ -325,32 +333,12 @@ a run — copy-paste it into your browser.
 
 The compare runner pins where that `report.json` goes; the engine never chooses.
 
-### Capturing Console Logs in Reports
-
-Set `scenarioLogsInReports: true` at the config root to include browser console output in HTML reports.
-
-> [!NOTE]
-> To view the logs, you will need to serve the reports from an HTTP server.
-
 ## Performance Tuning
 
-`shaka-perf visreg` processes image capture and image comparisons in parallel. You can adjust concurrency to balance speed vs. RAM usage.
-
-### Capturing Screens in Parallel
-
-Default: 2 concurrent captures. Adjust with:
-
-```ts
-asyncCaptureLimit: 5
-```
-
-### Comparing Screens in Parallel
-
-Default: 4 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
-
-```ts
-asyncCompareLimit: 16
-```
+Concurrency is owned by the compare runner: each engine invocation measures one
+test at one viewport, and `shared.parallelism` in `abtests.config.ts` controls
+how many such units run at once. The engine's internal capture/compare limits
+are pinned per unit by the runner and are not user-configurable.
 
 ## Resemble.js Output Options
 
@@ -372,16 +360,10 @@ If you need a `mismatchThreshold` below `0.01` (e.g. for large screenshots or ve
 Display the browser window as tests run to visually see your app state at the time of the test:
 
 ```ts
-debugWindow: true
+visreg: {
+  playwrightOptions: { headless: false },
+}
 ```
-
-Enable verbose console output with:
-
-```ts
-debug: true
-```
-
-This will also output your source payload to the terminal so you can verify the server is sending what you expect.
 
 ## Git Integration
 

@@ -11,15 +11,15 @@ import * as path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import type { AxeResults } from 'axe-core';
 import sharp from 'sharp';
-import { chromium, firefox, webkit } from 'playwright-core';
-import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
+import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { setUpContextForNavigation } from '../../../pre-navigation';
 import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { TestContext } from '../../../stage/stage';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
+import { waitForBotWallToClear } from '../../real-chrome';
+import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
 import { normalizeViolation } from './artifacts';
 import type { AccessibilityEffectiveConfig, AccessibilityStageConfig } from './config';
 import type {
@@ -76,14 +76,7 @@ export async function launchAccessibilityBrowser(
   config: AccessibilityStageConfig,
   headed = false,
 ): Promise<Browser> {
-  const engine = config.engineOptions.browser ?? 'chromium';
-  const launchOptions: LaunchOptions = {
-    headless: headed ? false : config.engineOptions.headless ?? true,
-    args: config.engineOptions.args,
-  };
-  if (engine === 'firefox') return firefox.launch(launchOptions);
-  if (engine === 'webkit') return webkit.launch(launchOptions);
-  return chromium.launch(applyRealChrome(launchOptions));
+  return launchStageBrowser(config.playwrightOptions, headed);
 }
 
 export async function scanAccessibilityPage(
@@ -96,16 +89,7 @@ export async function scanAccessibilityPage(
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   try {
-    context = await browser.newContext({
-      viewport: {
-        width: ctx.viewport.width,
-        height: ctx.viewport.height,
-      },
-      deviceScaleFactor: ctx.viewport.deviceScaleFactor,
-      isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
-    });
+    context = await browser.newContext(stageContextOptions(ctx.viewport));
     // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,
@@ -116,9 +100,9 @@ export async function scanAccessibilityPage(
       beforeNavigate: ctx.config.shared.beforeNavigate,
     });
     page = await context.newPage();
-    if (config.engineOptions.waitTimeout) {
-      page.setDefaultTimeout(config.engineOptions.waitTimeout);
-      page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
+    if (config.playwrightOptions.waitTimeout) {
+      page.setDefaultTimeout(config.playwrightOptions.waitTimeout);
+      page.setDefaultNavigationTimeout(config.playwrightOptions.waitTimeout);
     }
     await navigateAccessibilityPage(page, context, ctx, config, options);
 
@@ -243,7 +227,7 @@ async function navigateAccessibilityPage(
 }
 
 function accessibilityGotoOptions(config: AccessibilityStageConfig): PageGotoOptions {
-  const candidate = config.engineOptions.gotoParameters;
+  const candidate = config.playwrightOptions.gotoParameters;
   if (candidate && typeof candidate === 'object') {
     return candidate as PageGotoOptions;
   }

@@ -53,16 +53,19 @@ export default defineConfig({
     controlURL: `http://localhost:${CONTROL_PORT}`,
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     parallelism: PARALLELISM,
-    retries: 1
+    retries: 1,
+    // Browser-launch options every stage respects. Required — no hidden
+    // defaults; visreg/perf may override per-category via
+    // <category>.playwrightOptions (partial, per-key).
+    playwrightOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+    },
   },
 
   visreg: {
     // viewports default to ['desktop', 'tablet', 'phone'] — full defs live
     // in shared.viewports (also defaulted).
-    engineOptions: {
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    },
     maxNumDiffPixels: 50,
     mismatchThreshold: 0.1,
   },

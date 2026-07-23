@@ -61,6 +61,10 @@ export const FAILURE_SCREENSHOT_FILENAME = 'failure-screenshot.png';
 
 interface SetupMessage {
   type: 'setup';
+  /** Launch Chrome headed (no `--headless`): `--headed` CLI flag or resolved `playwrightOptions.headless: false`. */
+  headed?: boolean;
+  /** Extra chrome flags from the resolved `playwrightOptions.args`. */
+  chromeArgs?: string[];
 }
 
 interface SampleMessage {
@@ -97,17 +101,21 @@ class LighthouseWorkerSampler {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
 
-  async setupBrowser(): Promise<void> {
+  async setupBrowser(options: { headed?: boolean; chromeArgs?: string[] } = {}): Promise<void> {
     const chromeFlags = [
       '--ignore-certificate-errors',
       '--enable-unsafe-swiftshader',
       '--disable-dev-shm-usage',
     ];
-    // Headless unless the run opted into --headed (SHAKA_PERF_HEADED=1, set in
-    // the fork env from LighthouseBenchmarkOptions.headed).
-    if (process.env.SHAKA_PERF_HEADED !== '1') {
+    // Headless unless the run opted into headed (the setup IPC message, set
+    // from LighthouseBenchmarkOptions.headed / the resolved
+    // playwrightOptions.headless).
+    if (!options.headed) {
       chromeFlags.unshift('--headless');
     }
+
+    // Extra flags from the resolved shared/perf playwrightOptions.args.
+    chromeFlags.push(...(options.chromeArgs ?? []));
 
     if (process.env.TRACERBENCH_PROXY_URL) {
       chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
@@ -626,7 +634,7 @@ process.on('message', async (msg: ParentMessage) => {
     try {
       const workerSampler = new LighthouseWorkerSampler();
       sampler = workerSampler;
-      await workerSampler.setupBrowser();
+      await workerSampler.setupBrowser({ headed: msg.headed, chromeArgs: msg.chromeArgs });
       if (shuttingDown) return;
       send({ type: 'ready' });
     } catch (err) {
