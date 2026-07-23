@@ -224,6 +224,12 @@ it with a pointer to `shared.playwrightOptions`.
 
 Notes:
 
+- The `SHAKA_PERF_CHROME_ARGS` / `SHAKA_PERF_HEADED` env vars are **removed**.
+  They briefly carried the resolved launch options into the forked Lighthouse
+  worker; that now travels over the worker's `setup` IPC message, so setting
+  either env var by hand has no effect. Extra Chrome flags belong in
+  `shared.playwrightOptions.args` (or `perf.playwrightOptions.args`); headed
+  runs use `--headed` or `playwrightOptions.headless: false`.
 - The perf/audit Lighthouse engine is chromium-only: it maps `args` and
   `headless` onto its Chrome flags and warns-and-ignores a non-chromium
   `browser`.
