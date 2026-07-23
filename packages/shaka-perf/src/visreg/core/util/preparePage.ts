@@ -45,13 +45,13 @@ function translateUrl (url: string) {
   return url;
 }
 
-async function captureFailureScreenshot (page: PlaywrightPage, filePath: string) {
+export async function captureFailureScreenshot (page: PlaywrightPage, filePath: string) {
   const screenshot = await page.screenshot({ fullPage: true });
   ensureDirectoryPath(filePath);
   await writeFile(filePath, screenshot);
 }
 
-function failureScreenshotPath (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, isControl: boolean) {
+export function failureScreenshotPath (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, isControl: boolean) {
   const dir = isControl
     ? (config._controlScreenshotPath || config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR)
     : (config._experimentScreenshotPath || config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR);
@@ -144,26 +144,18 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
 
   // --- ON READY / TEST FN ---
   if (scenario._testFn) {
-    // abTest flow: testFn replaces default onReady behavior.
-    try {
-      await runWithTestAnnotationContext(() => scenario._testFn!({
-        page,
-        browserContext: browserOrContext,
-        isControl,
-        scenario: scenario._testDef!,
-        viewport,
-        testType: 'visreg',
-        annotate: createTestAnnotate(),
-      }));
-    } catch (err) {
-      const filePath = failureScreenshotPath(config, scenario, viewport, isControl);
-      try {
-        await captureFailureScreenshot(page, filePath);
-      } catch (captureErr) {
-        logger.warn(`Could not capture ${isControl ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`);
-      }
-      throw err;
-    }
+    // abTest flow: testFn replaces default onReady behavior. A throw here (or
+    // later, at capture) is turned into a failure screenshot by the single
+    // handler in runCompareAttempts, while the page is still alive.
+    await runWithTestAnnotationContext(() => scenario._testFn!({
+      page,
+      browserContext: browserOrContext,
+      isControl,
+      scenario: scenario._testDef!,
+      viewport,
+      testType: 'visreg',
+      annotate: createTestAnnotate(),
+    }));
   } else {
     await waitUntilPageSettled(page);
     await clickAndHoverHelper(page, scenario);

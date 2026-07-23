@@ -10,7 +10,7 @@
 import * as path from 'node:path';
 
 import * as engineTools from './engineTools';
-import defaultPreparePage from './preparePage';
+import defaultPreparePage, { captureFailureScreenshot, failureScreenshotPath } from './preparePage';
 import createLogger from './logger';
 import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
@@ -185,6 +185,18 @@ export async function runCompareAttempts(
         const pixelStable = attempt > 0 && run.control.length + run.experiment.length === framesBefore;
         run.done = run.result.pass || budgetSpent || pixelStable;
       }
+    } catch (err) {
+      // Single failure-screenshot handler for the whole attempt: a testFn throw
+      // in preparePage or a "selector not found" at capture both land here with
+      // the pages still alive (the finally disposes them next). Grab each side's
+      // live full page into the dir the report's failure-screenshot scan reads,
+      // so a crash — not just a pixel mismatch — has something to show. Best
+      // effort; the original error still propagates.
+      await Promise.all(sides.map((side, i) =>
+        captureFailureScreenshot(side.page, failureScreenshotPath(config, scenario, viewport, i === 0))
+          .catch((captureErr) => logger.warn(`Could not capture ${i === 0 ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`)),
+      ));
+      throw err;
     } finally {
       for (const side of sides) await side.dispose();
     }

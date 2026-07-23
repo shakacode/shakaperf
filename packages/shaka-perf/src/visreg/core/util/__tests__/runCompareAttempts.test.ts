@@ -14,7 +14,14 @@ import { PNG } from 'pngjs';
 
 // The real implementations pull in Playwright; the loop takes them as injected
 // deps, so stub the module-load defaults out — every test passes its own fakes.
-jest.mock('../preparePage', () => ({ __esModule: true, default: jest.fn() }));
+jest.mock('../preparePage', () => ({
+  __esModule: true,
+  default: jest.fn(),
+  // The attempt-level failure-screenshot handler; capture is exercised through
+  // the real page mocks' screenshot() where a test cares, so keep these inert.
+  captureFailureScreenshot: jest.fn().mockResolvedValue(undefined),
+  failureScreenshotPath: jest.fn().mockReturnValue('/tmp/failure.png'),
+}));
 jest.mock('../createComparisonSide', () => ({ createComparisonSide: jest.fn() }));
 
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
