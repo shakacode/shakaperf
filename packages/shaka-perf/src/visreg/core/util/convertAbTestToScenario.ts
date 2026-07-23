@@ -16,10 +16,10 @@ export interface ScenarioUrls {
   readonly experimentURL: string;
 }
 
-// The per-test surface is flat and small: capture targets (`selectors`,
-// `selectorExpansion`) at the top level. Interactions, ready-waits, and DOM
-// manipulation live in the test body. Comparison thresholds default from the
-// engine-bridge config; a test's `config.visreg` override wins per-scenario.
+// The per-test surface is flat and small: the capture targets (`selectors`)
+// at the top level. Interactions, ready-waits, and DOM manipulation live in
+// the test body. Comparison thresholds default from the engine-bridge config;
+// a test's `config.visreg` override wins per-scenario.
 export function convertAbTestToScenario(
   testDef: AbTestDefinition,
   controlURL: string,
@@ -27,7 +27,10 @@ export function convertAbTestToScenario(
   urls?: ScenarioUrls,
 ): Scenario {
   const experimentPath = testDef.experimentPathOverride ?? testDef.startingPath;
-  const scenario: Scenario = {
+  // Per-test comparison tuning is NOT copied onto the scenario: the compare
+  // stage writes the effective values (file defaults + `test.config.visreg`)
+  // into the engine's bridge config. The scenario carries no tuning fields.
+  return {
     label: testDef.name,
     url: urls?.experimentURL ?? resolveUrl(experimentPath, experimentURL),
     referenceUrl: urls?.controlURL ?? resolveUrl(testDef.startingPath, controlURL),
@@ -35,14 +38,4 @@ export function convertAbTestToScenario(
     _testFn: testDef.testFn,
     _testDef: testDef,
   };
-
-  // Only set optional properties when they have a value to avoid _.has()
-  // returning true for undefined values (which causes .map() crashes in
-  // preparePage).
-  if (testDef.visregSelectorExpansion != null) scenario.selectorExpansion = testDef.visregSelectorExpansion;
-
-  // Per-test comparison tuning is NOT copied onto the scenario: the compare
-  // stage writes the effective values (file defaults + `test.config.visreg`)
-  // into the engine's bridge config. The scenario carries no tuning fields.
-  return scenario;
 }

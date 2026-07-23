@@ -119,12 +119,11 @@ Scenarios are defined as standalone `*.abtest.ts` files in an `ab-tests/` direct
 The `abTest()` config is flat — there is no nested `options` object (an
 un-migrated `options:` key throws at load time; see
 [BREAKING_CHANGES.md](../../BREAKING_CHANGES.md) for the per-option migration).
-Two flat fields drive what visreg captures:
+One flat field drives what visreg captures:
 
 | Property                  | Description                                                                                                                             |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `visregSelectors`         | CSS selectors to capture. Defaults to the whole document. Also accepts the magic `document` / `viewport` selectors — see [Targeting Elements](#targeting-elements) |
-| `visregSelectorExpansion` | Capture _all_ matches of each selector instead of just the first — see [Targeting Elements](#targeting-elements)                        |
 
 ```ts
 abTest('Homepage hero', {
@@ -234,18 +233,7 @@ abTest('Authenticated page', {
 
 ### Targeting Elements
 
-Screenshots can capture your entire layout or just parts of it, via the `visregSelectors` array on the `abTest()` config. Elements use standard CSS notation. By default, `shaka-perf visreg` takes a screenshot of the first occurrence of any selector found in your DOM.
-
-#### `visregSelectorExpansion`
-
-To capture _all_ matching selector instances, set `visregSelectorExpansion` to `true`:
-
-```ts
-visregSelectors: ['.aListOfStuff li'],
-visregSelectorExpansion: true,
-```
-
-With `visregSelectorExpansion` set to `false` (the default), only the first matching element is captured.
+Screenshots can capture your entire layout or just parts of it, via the `visregSelectors` array on the `abTest()` config. Elements use standard CSS notation. `shaka-perf visreg` takes a screenshot of the first occurrence of each selector found in your DOM — to capture several instances, list each one explicitly (`'.list li:nth-child(1)'`, `'.list li:nth-child(2)'`, …).
 
 ### Comparing Different Endpoints
 

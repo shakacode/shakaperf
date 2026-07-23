@@ -34,7 +34,6 @@ describe('ab-test-registry', () => {
         experimentPathOverride: '/page-new',
         markers: [{ end: 'marker-end', label: 'My Marker' }],
         visregSelectors: ['.hero'],
-        visregSelectorExpansion: true,
         config: { shared: { beforeNavigate } },
       }, async () => {});
 
@@ -42,7 +41,6 @@ describe('ab-test-registry', () => {
       expect(tests[0].experimentPathOverride).toBe('/page-new');
       expect(tests[0].markers).toEqual([{ end: 'marker-end', label: 'My Marker' }]);
       expect(tests[0].visregSelectors).toEqual(['.hero']);
-      expect(tests[0].visregSelectorExpansion).toBe(true);
       expect(tests[0].config?.shared?.beforeNavigate).toBe(beforeNavigate);
     });
 
@@ -201,20 +199,18 @@ describe('ab-test-registry', () => {
   });
 
   describe('visreg capture config', () => {
-    it('stores visregSelectors and visregSelectorExpansion at the top level', () => {
+    it('stores visregSelectors at the top level', () => {
       abTest(
         'Capture config',
         {
           startingPath: '/page',
           visregSelectors: ['[data-cy="hero"]'],
-          visregSelectorExpansion: true,
         },
         async () => {},
       );
 
       const tests = getRegisteredTests();
       expect(tests[0].visregSelectors).toEqual(['[data-cy="hero"]']);
-      expect(tests[0].visregSelectorExpansion).toBe(true);
     });
   });
 });

@@ -104,12 +104,12 @@ export type BeforeNavigateHook = (
 ) => void | Promise<void>;
 
 /**
- * The per-test configuration `abTest()` accepts. Test identity and the two
- * capture directives (`selectors`, `selectorExpansion`) sit flat at the top
- * level; anything the test body can already do (interactions, ready-waits,
- * hide/remove) is dropped — do it in the body. Everything the config file owns
- * (thresholds, viewports, axe rule sets, …) is overridable per-test through
- * `config`, a partial of the same `abtests.config.ts` shape.
+ * The per-test configuration `abTest()` accepts. Test identity and the capture
+ * directive (`visregSelectors`) sit flat at the top level; anything the test
+ * body can already do (interactions, ready-waits, hide/remove) is dropped — do
+ * it in the body. Everything the config file owns (thresholds, viewports, axe
+ * rule sets, …) is overridable per-test through `config`, a partial of the
+ * same `abtests.config.ts` shape.
  */
 export interface AbTestConfig {
   startingPath: string;
@@ -124,8 +124,6 @@ export interface AbTestConfig {
   testTypes?: TestType[];
   /** CSS selectors visreg captures. Default: the whole document. */
   visregSelectors?: string[];
-  /** Capture-expansion directive tied to `visregSelectors`. */
-  visregSelectorExpansion?: boolean;
   /** Per-test perf phase definitions (`{start,end,label}`). */
   markers?: Marker[];
   /**

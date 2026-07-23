@@ -25,9 +25,6 @@ abTest(name: string, {
                                      // viewport (the page is NOT resized to fit it) — if the element
                                      // is taller than the viewport, run at a tall viewport
                                      // (PHONE_TALL/TABLET_TALL/DESKTOP_TALL).
-  visregSelectorExpansion?: boolean, // true → a selector matching N elements captures
-                                     // N screenshots instead of just the first match
-
   markers?: { start?: string, end: string, label: string }[],
                                      // Per-test perf phase definitions
 

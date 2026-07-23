@@ -90,8 +90,8 @@ function makeDeps(produce: Produce) {
     return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
   });
   const preparePage = jest.fn(async () => ({
-    visregSelectorsExp: ['document'],
-    visregSelectorsExpMap: { document: {} as { filePath?: string } },
+    selectors: ['document'],
+    selectorMap: { document: {} as { filePath?: string } },
   }));
   const captureScreenshot = jest.fn(async () => {
     const idx = captureCalls++;

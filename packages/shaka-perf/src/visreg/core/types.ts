@@ -30,7 +30,6 @@ export interface Scenario {
 
   // Selectors to capture
   selectors?: string[];
-  selectorExpansion?: boolean;
 
   // Comparison tuning is NOT carried on the scenario — it lives on the effective
   // `config.visreg` (file defaults + `test.config.visreg`), written into the
@@ -190,7 +189,6 @@ export interface CompareConfig {
 
 // ── Visreg Tools (injected into browser window) ──────────────────
 export interface VisregTools {
-  expandSelectors: (selectors: string[] | string) => string[];
   exists: (selector: string) => number;
   isVisible: (selector: string) => boolean;
 }

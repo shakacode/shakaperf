@@ -29,8 +29,8 @@ export type CaptureScreenshotFn = (
 ) => Promise<Buffer | null>;
 
 type PreparePageFn = (...args: unknown[]) => Promise<{
-  visregSelectorsExp: string[];
-  visregSelectorsExpMap: Record<string, { filePath?: string }>;
+  selectors: string[];
+  selectorMap: Record<string, { filePath?: string }>;
 }>;
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
@@ -149,10 +149,10 @@ export async function runCompareAttempts(
       // Attempt 0 discovers the selector set (from the test/experiment page);
       // later attempts re-capture that fixed set so pool keys stay stable.
       if (attempt === 0) {
-        runs = testResult.visregSelectorsExp.map((selector, selectorIndex) => {
+        runs = testResult.selectors.map((selector, selectorIndex) => {
           const testPair = engineTools.generateTestPair(config, scenario, viewport, scenarioLabelSafe, selectorIndex, selector);
-          if (testResult.visregSelectorsExpMap[selector]) testResult.visregSelectorsExpMap[selector].filePath = testPair.test;
-          if (refResult.visregSelectorsExpMap[selector]) refResult.visregSelectorsExpMap[selector].filePath = testPair.reference;
+          if (testResult.selectorMap[selector]) testResult.selectorMap[selector].filePath = testPair.test;
+          if (refResult.selectorMap[selector]) refResult.selectorMap[selector].filePath = testPair.reference;
           const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX));
           return { selector, testPair, pool, control: pool.load('control'), experiment: pool.load('experiment'), result: null, done: false };
         });
@@ -162,8 +162,8 @@ export async function runCompareAttempts(
         if (run.done) continue;
 
         const [refBuffer, testBuffer] = await Promise.all([
-          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.visregSelectorsExpMap)),
-          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.visregSelectorsExpMap)),
+          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.selectorMap)),
+          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.selectorMap)),
         ]);
         if (!refBuffer || !testBuffer) {
           const where = !refBuffer && !testBuffer ? 'reference and test pages' : (!refBuffer ? 'reference page' : 'test page');

@@ -2,7 +2,7 @@
 
 Each pattern below corresponds to a scenario you confirmed during probing. Only use a pattern if the corresponding behavior was actually observed.
 
-The `abTest()` config is **flat** (no `options` nesting): `startingPath`, `experimentPathOverride`, `testTypes`, `visregSelectors`, `visregSelectorExpansion`, `markers`, `beforeNavigate`, plus a per-test `config` that overrides `abtests.config.ts` sections for this test alone (`config.visreg.mismatchThreshold`, `config.visreg.viewports`, `config.accessibility.disableRules`, …). Everything else (waits, clicks, hiding elements) is test-body Playwright code. See `api.md` for the full surface.
+The `abTest()` config is **flat** (no `options` nesting): `startingPath`, `experimentPathOverride`, `testTypes`, `visregSelectors`, `markers`, plus a per-test `config` that overrides `abtests.config.ts` sections for this test alone (`config.visreg.mismatchThreshold`, `config.visreg.viewports`, `config.accessibility.disableRules`, …). Everything else (waits, clicks, hiding elements) is test-body Playwright code. See `api.md` for the full surface.
 
 Per-test `config` values REPLACE the file value wholesale — arrays included (a per-test `disableRules` does not union with the global list; re-list what you need).
 

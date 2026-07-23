@@ -17,10 +17,7 @@ import type { PlaywrightPage, Scenario, Viewport, DecoratedCompareConfig, Browse
 
 declare global {
   interface Window {
-    _selectorExpansion: boolean;
     _visregSelectors: string[];
-    _visregSelectorsExp: string[];
-    _visregSelectorsExpMap: Record<string, { exists: number; isVisible: boolean; filePath?: string }>;
     _visregTools: VisregTools;
   }
 }
@@ -49,8 +46,8 @@ export function failureScreenshotPath (config: DecoratedCompareConfig, scenario:
 }
 
 /**
- * Prepare a page: navigate to url, inject tools, run the test body, expand
- * selectors. Returns the expanded selectors and selectorMap.
+ * Prepare a page: navigate to url, inject tools, run the test body. Returns
+ * the capture selectors and their in-page presence/visibility map.
  *
  * Ready-waits, interactions, and DOM manipulation are the test body's job —
  * the scenario carries no declarative fields for them.
@@ -82,32 +79,20 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   // reinstall tools in case testFn has loaded a new URL.
   await injectVisregTools(page);
 
-  // --- EXPAND SELECTORS ---
-  const selectorExpansion = scenario.selectorExpansion === true;
+  // --- SELECTOR PRESENCE MAP ---
   const selectors: string[] = scenario.selectors?.length ? scenario.selectors : [DOCUMENT_SELECTOR];
 
-  const result = await page.evaluate(function (args: { expand: boolean; sels: string[] }) {
-    var expand = args.expand;
-    var sels = args.sels;
-    window._selectorExpansion = expand;
+  const result = await page.evaluate(function (sels: string[]) {
     window._visregSelectors = sels;
-    if (expand) {
-      window._visregSelectorsExp = window._visregTools.expandSelectors(sels);
-    } else {
-      window._visregSelectorsExp = sels;
-    }
-    window._visregSelectorsExpMap = window._visregSelectorsExp.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
+    var selectorMap = sels.reduce(function (acc: Record<string, { exists: number; isVisible: boolean; filePath?: string }>, selector: string) {
       acc[selector] = {
         exists: window._visregTools.exists(selector),
         isVisible: window._visregTools.isVisible(selector)
       };
       return acc;
     }, {});
-    return {
-      visregSelectorsExp: window._visregSelectorsExp,
-      visregSelectorsExpMap: window._visregSelectorsExpMap
-    };
-  }, { expand: selectorExpansion, sels: selectors });
+    return { selectors: sels, selectorMap: selectorMap };
+  }, selectors);
 
   return result;
 }

@@ -75,17 +75,6 @@ describe('convertAbTestToScenario', function () {
     assert.strictEqual(scenario._testDef!.startingPath, '/products');
   });
 
-  it('should set selectorExpansion when provided', function () {
-    const def: AbTestDefinition = {
-      ...baseDef,
-      visregSelectorExpansion: true,
-    };
-
-    const scenario = convertAbTestToScenario(def, 'http://control', 'http://experiment');
-
-    assert.strictEqual(scenario.selectorExpansion, true);
-  });
-
   it('should not set optional properties when the per-test config is minimal', function () {
     const scenario = convertAbTestToScenario(baseDef, 'http://control', 'http://experiment');
 
@@ -98,7 +87,6 @@ describe('convertAbTestToScenario', function () {
 
     // Deleted per-test options never reach the scenario — interactions and
     // waits live in the test body; thresholds are config-owned.
-    assert.strictEqual(scenario.selectorExpansion, undefined);
     assert.deepStrictEqual(
       Object.keys(scenario).sort(),
       ['_testDef', '_testFn', 'label', 'referenceUrl', 'selectors', 'url'],

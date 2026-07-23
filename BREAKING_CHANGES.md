@@ -88,7 +88,7 @@ moves under `config`, mirroring the `abtests.config.ts` section shape.
 | Old (`options.…`) | New |
 |---|---|
 | `options.visreg.selectors` | top-level **`visregSelectors`** |
-| `options.visreg.selectorExpansion` | top-level **`visregSelectorExpansion`** — now strictly `boolean`; the legacy string form (`'true'`) is no longer accepted |
+| `options.visreg.selectorExpansion` / `visregSelectorExpansion` | **removed** — just use `visregSelectors`, listing each element to capture |
 | `options.markers` | top-level **`markers`** |
 | `options.beforeNavigate` | `config.shared.beforeNavigate` (see below) |
 | `options.visreg.misMatchThreshold` | `config.visreg.mismatchThreshold` |

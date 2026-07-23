@@ -34,8 +34,8 @@ describe('preparePage', function () {
     mockWaitForSelector.mockResolvedValue(undefined);
     mockAddInitScript.mockResolvedValue(undefined);
     mockEvaluate.mockResolvedValue({
-      visregSelectorsExp: ['document'],
-      visregSelectorsExpMap: { document: { exists: 1, isVisible: true } },
+      selectors: ['document'],
+      selectorMap: { document: { exists: 1, isVisible: true } },
     });
 
     return {
@@ -192,7 +192,7 @@ describe('preparePage', function () {
       // The expansion evaluate receives the document fallback (the scenario
       // itself is not mutated).
       const evalArgs = mockEvaluate.mock.calls.at(-1) as unknown[];
-      assert.deepStrictEqual((evalArgs[1] as { sels: string[] }).sels, ['document']);
+      assert.deepStrictEqual(evalArgs[1], ['document']);
     });
   });
 });
