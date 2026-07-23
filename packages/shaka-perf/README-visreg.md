@@ -296,7 +296,6 @@ abTest('Authenticated dashboard', {
 The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 - `waitUntilPageSettled` — Wait for the page to fully render before screenshotting
-- `clickAndHoverHelper` — Apply click/hover selectors from the scenario
 - `interceptImages` — Stub out image requests for deterministic captures
 - `overrideCSS` — Inject CSS into the page
 

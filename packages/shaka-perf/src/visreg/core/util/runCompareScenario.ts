@@ -87,9 +87,6 @@ function writeScenarioLogs (config: DecoratedCompareConfig, logFilePath: string,
  * Core comparison logic for live compare scenarios.
  */
 async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, browser: Browser, logger: CompareLogger) {
-  const { scenarioDefaults = {} } = config;
-  scenario = { ...scenarioDefaults, ...scenario };
-
   config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
   config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
   config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;

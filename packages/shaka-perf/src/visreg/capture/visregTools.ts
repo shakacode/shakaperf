@@ -24,19 +24,6 @@ export default (target: PlaywrightPage) => {
     }
 
     window._visregTools = {
-      hasLogged: function (str) {
-        return new RegExp(str).test(window._visregTools._consoleLogger || '');
-      },
-      startConsoleLogger: function () {
-        if (typeof window._visregTools._consoleLogger !== 'string') {
-          window._visregTools._consoleLogger = '';
-        }
-        const log = window.console.log.bind(console);
-        window.console.log = function (...args: unknown[]) {
-          window._visregTools._consoleLogger += args.join('\n');
-          log(...args);
-        };
-      },
       /**
        * Take an array of selector names and return and array of *all* matching selectors.
        * For each selector name, If more than 1 selector is matched, proceeding matches are
@@ -114,7 +101,6 @@ export default (target: PlaywrightPage) => {
       }
     };
 
-    window._visregTools.startConsoleLogger();
     console.info('VisregTools have been installed.');
     return true;
   });

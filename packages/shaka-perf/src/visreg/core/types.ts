@@ -22,35 +22,12 @@ export interface Viewport extends SharedViewport {
 }
 
 // ── Scenario ────────────────────────────────────────────────────────
-export interface KeypressSelector {
-  selector: string;
-  keyPress: string | string[];
-}
-
+// Ready-waits, interactions, and DOM manipulation are the test body's job —
+// the scenario carries no declarative fields for them.
 export interface Scenario {
   label: string;
   url: string;
   referenceUrl?: string;
-
-  // Ready state
-  readyEvent?: string;
-  readySelector?: string;
-  readyTimeout?: number;
-  delay?: number;
-
-  // DOM manipulation
-  hideSelectors?: string[];
-  removeSelectors?: string[];
-
-  // Interactions
-  hoverSelector?: string;
-  hoverSelectors?: string[];
-  clickSelector?: string;
-  clickSelectors?: string[];
-  keyPressSelectors?: KeypressSelector[];
-  keyPressSelector?: KeypressSelector | KeypressSelector[];
-  scrollToSelector?: string;
-  postInteractionWait?: number | string;
 
   // Selectors to capture
   selectors?: string[];
@@ -133,11 +110,7 @@ export interface VisregConfig {
   id?: string;
   viewports: Viewport[];
   scenarios: Scenario[];
-  scenarioDefaults?: Partial<Scenario>;
   paths?: VisregPaths;
-
-  readyEvent?: string;
-  readyTimeout?: number;
 
   engine?: 'playwright' | null;
   engineOptions?: EngineOptions;
@@ -292,9 +265,6 @@ export interface VisregTools {
   expandSelectors: (selectors: string[] | string) => string[];
   exists: (selector: string) => number;
   isVisible: (selector: string) => boolean;
-  hasLogged: (str: string) => boolean;
-  startConsoleLogger: () => void;
-  _consoleLogger?: string;
 }
 
 // ── Engine Input Config ─────────────────────────────────────────────
@@ -311,9 +281,6 @@ import type { VisregConfig as _VisregConfigSlice } from '../../config';
 export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
   id?: string;
   paths?: VisregPaths;
-
-  readyEvent?: string;
-  readyTimeout?: number;
 
   engine?: 'playwright' | null;
 

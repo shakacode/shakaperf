@@ -85,6 +85,12 @@ removed with no config equivalent; move the behaviour into the test body.
 | `resultsFolder` | Removed entirely — the output dir is framework-derived. |
 | `visreg.compareRetries` / `visreg.compareRetryDelay` | Set once in `abtests.config.ts` → `visreg.{compareRetries,compareRetryDelay}`. Best-of-N is a run-level loop; there is no per-test override. |
 
+The `clickAndHoverHelper` export of `shaka-perf/visreg/helpers` is removed with
+the options above — it only executed those deleted scenario fields. Use the
+Playwright calls from the table (`page.click` / `page.hover` / …) in the test
+body instead. The other helpers (`waitUntilPageSettled`, `interceptImages`,
+`overrideCSS`, …) are unchanged.
+
 #### Renamed / relocated
 
 Test-identity and capture fields move to the top level; every surviving

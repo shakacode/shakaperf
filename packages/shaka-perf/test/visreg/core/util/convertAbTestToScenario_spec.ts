@@ -99,12 +99,11 @@ describe('convertAbTestToScenario', function () {
     // Deleted per-test options never reach the scenario — interactions and
     // waits live in the test body; thresholds are config-owned.
     assert.strictEqual(scenario.selectorExpansion, undefined);
-    assert.strictEqual(scenario.hideSelectors, undefined);
-    assert.strictEqual(scenario.removeSelectors, undefined);
-    assert.strictEqual(scenario.hoverSelector, undefined);
-    assert.strictEqual(scenario.clickSelector, undefined);
-    assert.strictEqual(scenario.readyEvent, undefined);
     assert.strictEqual(scenario.viewports, undefined);
+    assert.deepStrictEqual(
+      Object.keys(scenario).sort(),
+      ['_testDef', '_testFn', 'label', 'referenceUrl', 'selectors', 'url'],
+    );
   });
 
   it('should use stage unit urls verbatim when provided', function () {
