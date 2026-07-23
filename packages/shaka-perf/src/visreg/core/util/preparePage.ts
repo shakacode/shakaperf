@@ -26,8 +26,6 @@ declare global {
 }
 
 const DOCUMENT_SELECTOR = 'document';
-const DEFAULT_EXPERIMENT_SCREENSHOT_DIR = 'experiment_screenshots';
-const DEFAULT_CONTROL_SCREENSHOT_DIR = 'control_screenshots';
 
 function translateUrl (url: string) {
   const RE = /^[./]/;
@@ -44,9 +42,8 @@ export async function captureFailureScreenshot (page: PlaywrightPage, filePath: 
 }
 
 export function failureScreenshotPath (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, isControl: boolean) {
-  const dir = isControl
-    ? (config._controlScreenshotPath || config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR)
-    : (config._experimentScreenshotPath || config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR);
+  // Always absolute under the unit artifacts dir (extendConfig derives both).
+  const dir = isControl ? config.env.controlScreenshotDir : config.env.experimentScreenshotDir;
   const side = isControl ? 'control' : 'experiment';
   return path.join(dir, `${makeSafe(scenario.label)}_failure_${side}_${makeSafe(viewport.label)}_${Date.now()}.png`);
 }
@@ -59,7 +56,7 @@ export function failureScreenshotPath (config: DecoratedCompareConfig, scenario:
  * the scenario carries no declarative fields for them.
  */
 async function preparePage (page: PlaywrightPage, url: string, scenario: Scenario, viewport: Viewport, config: DecoratedCompareConfig, isControl: boolean, browserOrContext: BrowserContext) {
-  const gotoParameters = scenario?.engineOptions?.gotoParameters || config?.engineOptions?.gotoParameters || {};
+  const gotoParameters = config?.engineOptions?.gotoParameters || {};
 
   // Cookie loading + the beforeNavigate hooks now run on the context BEFORE this
   // page is created (see runCompareAttempts → createComparisonSide onContextReady),
@@ -86,7 +83,7 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
   await injectVisregTools(page);
 
   // --- EXPAND SELECTORS ---
-  const selectorExpansion = scenario.selectorExpansion === true || scenario.selectorExpansion === 'true';
+  const selectorExpansion = scenario.selectorExpansion === true;
   const selectors: string[] = scenario.selectors?.length ? scenario.selectors : [DOCUMENT_SELECTOR];
 
   const result = await page.evaluate(function (args: { expand: boolean; sels: string[] }) {

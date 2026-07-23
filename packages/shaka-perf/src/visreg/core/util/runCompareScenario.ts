@@ -17,37 +17,28 @@ import type { PlaywrightPage, Scenario, Viewport, Browser, TestPair, DecoratedCo
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
 interface CompareLogger {
-  logged: string[][];
   error: (color: string, message: string, ...rest: unknown[]) => void;
   warn: (color: string, message: string, ...rest: unknown[]) => void;
   log: (color: string, message: string, ...rest: unknown[]) => void;
   info: (color: string, message: string, ...rest: unknown[]) => void;
 }
 
-const DEFAULT_FILENAME_TEMPLATE = '{configId}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}';
-const DEFAULT_EXPERIMENT_SCREENSHOT_DIR = 'experiment_screenshots';
-const DEFAULT_CONTROL_SCREENSHOT_DIR = 'control_screenshots';
 const BODY_SELECTOR = 'body';
 const DOCUMENT_SELECTOR = 'document';
 const NOCLIP_SELECTOR = 'body:noclip';
 const VIEWPORT_SELECTOR = 'viewport';
 
-function loggerAction (this: { logged: string[][] }, action: string, color: string, message: string, ...rest: unknown[]) {
-  this.logged.push([action, color, message.toString(), JSON.stringify(rest)]);
+function loggerAction (action: string, color: string, message: string, ...rest: unknown[]) {
   console[action as ConsoleMethod]((chalk as unknown as Record<string, (s: string) => string>)[color](message), ...rest);
 }
 
 function createLogger (): CompareLogger {
-  const logged: string[][] = [];
-  const base = { logged };
-  const logger: CompareLogger = {
-    logged,
-    error: loggerAction.bind(base, 'error'),
-    warn: loggerAction.bind(base, 'warn'),
-    log: loggerAction.bind(base, 'log'),
-    info: loggerAction.bind(base, 'info')
+  return {
+    error: loggerAction.bind(null, 'error'),
+    warn: loggerAction.bind(null, 'warn'),
+    log: loggerAction.bind(null, 'log'),
+    info: loggerAction.bind(null, 'info')
   };
-  return logger;
 }
 
 /**
@@ -76,23 +67,10 @@ async function captureScreenshot (page: PlaywrightPage, selector: string, _selec
   }
 }
 
-function writeScenarioLogs (config: DecoratedCompareConfig, logFilePath: string, logger: CompareLogger) {
-  if (config.scenarioLogsInReports) {
-    return writeFile(logFilePath, JSON.stringify(logger.logged));
-  }
-  return Promise.resolve(true);
-}
-
 /**
  * Core comparison logic for live compare scenarios.
  */
-async function processCompareView (scenario: Scenario, variantOrScenarioLabelSafe: string, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, browser: Browser, logger: CompareLogger) {
-  config._experimentScreenshotPath = config.env.experimentScreenshotDir || DEFAULT_EXPERIMENT_SCREENSHOT_DIR;
-  config._controlScreenshotPath = config.env.controlScreenshotDir || DEFAULT_CONTROL_SCREENSHOT_DIR;
-  config._fileNameTemplate = config.fileNameTemplate || DEFAULT_FILENAME_TEMPLATE;
-  config._outputFileFormatSuffix = '.' + ((config.outputFormat && config.outputFormat.match(/jpg|jpeg/)) || 'png');
-  config._configId = config.id || engineTools.genHash(config.configFileName);
-
+async function processCompareView (scenario: Scenario, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, browser: Browser, logger: CompareLogger) {
   const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const pixelmatchThreshold = config.comparePixelmatchThreshold;
   logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
@@ -103,9 +81,8 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
   // back one outcome per selector for us to turn into a report entry.
   const outcomes = await runCompareAttempts(
     { captureScreenshot },
-    { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold },
+    { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold },
   );
-  const selectors = outcomes.map((o) => o.selector);
 
   for (const outcome of outcomes) {
     const { selector, testPair, result, refFrame, testFrame } = outcome;
@@ -145,14 +122,6 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
     compareConfig.testPairs.push(testPair);
   }
 
-  // Write scenario logs
-  if (selectors.length > 0) {
-    const firstSelector = selectors[0];
-    const logTestPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, 0, firstSelector);
-    await writeScenarioLogs(config, logTestPair.testLog!, logger);
-    await writeScenarioLogs(config, logTestPair.referenceLog!, logger);
-  }
-
   return compareConfig;
 }
 
@@ -160,14 +129,13 @@ async function processCompareView (scenario: Scenario, variantOrScenarioLabelSaf
 
 export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }: { scenario: Scenario; viewport: Viewport; config: DecoratedCompareConfig; _playwrightBrowser: Browser }) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
-  const variantOrScenarioLabelSafe = scenario._parent ? engineTools.makeSafe(scenario._parent.label) : scenarioLabelSafe;
   const logger = createLogger();
 
   // The attempt loop (runCompareAttempts, via processCompareView) owns the
   // per-attempt context lifecycle now — including attempt 0 — so it builds and
   // tears down its own isolated sides. We just hand it the browser.
   return await processCompareView(
-    scenario, variantOrScenarioLabelSafe, scenarioLabelSafe,
+    scenario, scenarioLabelSafe,
     viewport, config, browser, logger
   );
 };

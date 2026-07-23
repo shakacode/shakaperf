@@ -133,7 +133,6 @@ interface VisregPair {
     isSameDimensions?: boolean;
   };
   error?: string | null;
-  engineErrorMsg?: string | null;
   savedByRetries?: boolean;
 }
 

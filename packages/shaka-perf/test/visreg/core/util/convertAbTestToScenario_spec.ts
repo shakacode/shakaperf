@@ -99,7 +99,6 @@ describe('convertAbTestToScenario', function () {
     // Deleted per-test options never reach the scenario — interactions and
     // waits live in the test body; thresholds are config-owned.
     assert.strictEqual(scenario.selectorExpansion, undefined);
-    assert.strictEqual(scenario.viewports, undefined);
     assert.deepStrictEqual(
       Object.keys(scenario).sort(),
       ['_testDef', '_testFn', 'label', 'referenceUrl', 'selectors', 'url'],

@@ -12,16 +12,11 @@ import path from 'node:path';
 import extendConfig from '../../../../src/visreg/core/util/extendConfig';
 
 describe('computeConfig_spec', function () {
-  const baseConfig = { projectPath: process.cwd(), visregRoot: process.cwd() };
+  const baseConfig = { projectPath: process.cwd() };
   // `paths.artifacts` is required: the compare stage always pins the dir this
   // invocation writes into, and the engine refuses to guess one.
   const ARTIFACTS = '/tmp/shaka-unit/artifacts';
   const userConfig = (extra: Record<string, unknown> = {}) => ({ paths: { artifacts: ARTIFACTS }, ...extra });
-
-  it('should override engine from config file', function () {
-    const actualConfig = extendConfig({ ...baseConfig }, userConfig({ engine: 'playwright' }));
-    assert.strictEqual(actualConfig.engine, 'playwright');
-  });
 
   it('should override resembleOutputOptions from config file', function () {
     const actualConfig = extendConfig({ ...baseConfig }, userConfig({ resembleOutputOptions: { transparency: 0.3 } }));

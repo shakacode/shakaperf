@@ -9,16 +9,14 @@
 
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
-import _ from 'lodash';
 import pMap from 'p-map';
-import { TestType } from 'shaka-shared';
 import { loadTests } from '../../../config-loader';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
 import createLogger from './logger';
-import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
+import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -29,11 +27,7 @@ interface ScenarioView {
 }
 
 interface CompareResult {
-  testPairs?: TestPair[];
-  scenario?: Scenario;
-  viewport?: Viewport;
-  msg?: string;
-  originalError?: Error;
+  testPairs: TestPair[];
 }
 
 const logger = createLogger('compare');
@@ -83,16 +77,9 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
     scenarios,
   };
 
-  if ((configJSON as Record<string, unknown>).dynamicTestId) {
-    console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-perf visreg will run in dynamic-test mode.');
-  }
-
   configJSON.env = cloneDeep(config);
-  configJSON.isControl = false;
-  configJSON.isCompare = true;
   configJSON.mismatchThreshold = config.mismatchThreshold;
   configJSON.configFileName = config.configFileName;
-  configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
   configJSON.compareRetries = config.compareRetries;
   configJSON.compareRetryDelay = config.compareRetryDelay;
@@ -106,36 +93,14 @@ function saveViewportIndexes (viewport: Viewport, index: number) {
 }
 
 function delegateCompareScenarios (config: DecoratedCompareConfig) {
-  const scenarios: Scenario[] = [];
   const scenarioViews: ScenarioView[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
 
+  let scenarioViewId = 0;
   config.scenarios.forEach(function (scenario: Scenario, i: number) {
     scenario.sIndex = i;
-    scenario.selectors = scenario.selectors || [];
-    if (scenario.viewports) {
-      scenario.viewports = scenario.viewports.map(saveViewportIndexes);
-    }
-    scenarios.push(scenario);
-
-    if (_.has(scenario, 'variants')) {
-      scenario.variants!.forEach(function (variant: Variant) {
-        variant._parent = scenario;
-        scenarios.push(variant as unknown as Scenario);
-      });
-    }
-  });
-
-  let scenarioViewId = 0;
-  scenarios.forEach(function (scenario: Scenario) {
-    let desiredViewportsForScenario = config.viewports;
-
-    if (scenario.viewports && scenario.viewports.length > 0) {
-      desiredViewportsForScenario = scenario.viewports;
-    }
-
-    desiredViewportsForScenario.forEach(function (viewport: Viewport) {
+    config.viewports.forEach(function (viewport: Viewport) {
       scenarioViews.push({
         scenario,
         viewport,
@@ -172,30 +137,12 @@ function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { 
   return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
+// A scenario that throws rejects the whole pMap (the framework's unit-level
+// retry/error reporting owns that path), so every result here has testPairs.
 function flatMapTestPairs (rawTestPairs: CompareResult[]) {
-  return rawTestPairs.reduce(function (acc: TestPair[], result: CompareResult) {
-    let testPairs: TestPair[] | TestPair | undefined = result.testPairs;
-    if (!testPairs) {
-      // Error fallback — create a stub test pair for reporting
-      testPairs = {
-        reference: '',
-        test: '',
-        selector: '',
-        fileName: '',
-        label: '',
-        requireSameDimensions: true,
-        mismatchThreshold: 0,
-        url: '',
-        expect: 0,
-        viewportLabel: result.viewport?.label ?? '',
-        scenario: result.scenario,
-        viewport: result.viewport,
-        msg: result.msg,
-        error: result.originalError?.name
-      } satisfies TestPair;
-    }
-    return acc.concat(testPairs);
-  }, []);
+  return rawTestPairs.flatMap(function (result: CompareResult) {
+    return result.testPairs;
+  });
 }
 
 export default async function createComparisonBitmaps (config: RuntimeConfig) {

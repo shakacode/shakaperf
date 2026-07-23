@@ -18,7 +18,6 @@ export type { PlaywrightPage, BrowserContext, Browser };
 // losing `formFactor` / `deviceScaleFactor`.
 export interface Viewport extends SharedViewport {
   vIndex?: number;
-  viewport?: { width: number; height: number };
 }
 
 // ── Scenario ────────────────────────────────────────────────────────
@@ -31,41 +30,22 @@ export interface Scenario {
 
   // Selectors to capture
   selectors?: string[];
-  selectorExpansion?: boolean | string;
-
-  // Viewport override
-  viewports?: Viewport[];
+  selectorExpansion?: boolean;
 
   // Comparison tuning is NOT carried on the scenario — it lives on the effective
   // `config.visreg` (file defaults + `test.config.visreg`), written into the
   // engine's bridge config by the compare stage.
 
-  // Engine options override
-  engineOptions?: Partial<EngineOptions>;
-  gotoParameters?: Record<string, any>;
-
-  // Variants
-  variants?: Variant[];
-
   // Internal (set at runtime)
   sIndex?: number;
-  _parent?: Scenario;
-  _playwrightBrowser?: Browser;
   _testFn?: (context: import('shaka-shared').TestFnContext) => Promise<void>;
   _testDef?: import('shaka-shared').AbTestDefinition;
-}
-
-// ── Variant ─────────────────────────────────────────────────────────
-export interface Variant {
-  label: string;
-  _parent?: Scenario;
-  [key: string]: any;
 }
 
 // ── Engine Options (Playwright) ─────────────────────────────────────
 export interface EngineOptions {
   browser?: 'chromium' | 'firefox' | 'webkit';
-  headless?: boolean | string;
+  headless?: boolean;
   ignoreDefaultArgs?: string[];
   args?: string[];
   ignoreHTTPSErrors?: boolean;
@@ -86,13 +66,6 @@ export interface ResembleOutputOptions {
   [key: string]: any;
 }
 
-// ── CI Report ───────────────────────────────────────────────────────
-export interface CIReport {
-  format: string;
-  testReportFileName: string;
-  testSuiteName: string;
-}
-
 // ── Paths ───────────────────────────────────────────────────────────
 export interface VisregPaths {
   /**
@@ -106,17 +79,16 @@ export interface VisregPaths {
 }
 
 // ── User Config ───────────────────────────────────────────────────
+// Exactly what the compare stage's bridge config can carry: the zod `visreg`
+// slice of `abtests.config.ts` plus the engine-plumbing fields the runner
+// writes (`paths`, the async limits). Nothing else — the engine has no other
+// config source.
 export interface VisregConfig {
-  id?: string;
   viewports: Viewport[];
   scenarios: Scenario[];
   paths?: VisregPaths;
 
-  engine?: 'playwright' | null;
   engineOptions?: EngineOptions;
-
-  report?: string[];
-  scenarioLogsInReports?: boolean;
 
   asyncCaptureLimit?: number;
   asyncCompareLimit?: number;
@@ -128,20 +100,6 @@ export interface VisregConfig {
   compareRetryDelay?: number;
   maxNumDiffPixels?: number;
 
-  fileNameTemplate?: string;
-  outputFormat?: string;
-
-  debug?: boolean;
-  debugWindow?: boolean;
-
-  dynamicTestId?: string;
-
-  ci?: {
-    format?: string;
-    testReportFileName?: string;
-    testSuiteName?: string;
-  };
-
   // compare
   comparePixelmatchThreshold?: number;
 }
@@ -149,7 +107,6 @@ export interface VisregConfig {
 // ── Runtime Config (internal, after makeConfig + extendConfig) ───────
 export interface RuntimeConfig {
   args: Record<string, unknown>;
-  visregRoot: string;
   projectPath: string;
 
   configFileName: string;
@@ -161,37 +118,19 @@ export interface RuntimeConfig {
   experimentScreenshotDir: string;
   tempCompareConfigFileName: string;
 
-  ciReport: CIReport;
-
-  id?: string;
-  engine: string | null;
   mismatchThreshold: number;
-  defaultRequireSameDimensions?: boolean;
-  debug: boolean;
   resembleOutputOptions?: ResembleOutputOptions;
   asyncCompareLimit?: number;
-  visregVersion: string;
-  scenarioLogsInReports?: boolean;
-  testReportFileName?: string;
   viewports: Viewport[];
 
   compareRetries: number;
   compareRetryDelay: number;
   maxNumDiffPixels: number;
-
-  isControl?: boolean;
 }
 
 // ── Decorated Compare Config (internal, used during compare) ─────
 export interface DecoratedCompareConfig extends VisregConfig {
-  _experimentScreenshotPath: string;
-  _controlScreenshotPath: string;
-  _fileNameTemplate: string;
-  _outputFileFormatSuffix: string;
-  _configId: string;
   env: RuntimeConfig;
-  isControl: boolean;
-  isCompare: boolean;
   // The four comparison-tuning values the compare stage writes into the bridge
   // config from the effective `config.visreg` (zod defaults + per-test merge
   // already applied), so the engine reads them straight.
@@ -200,7 +139,6 @@ export interface DecoratedCompareConfig extends VisregConfig {
   maxNumDiffPixels: number;
   comparePixelmatchThreshold: number;
   configFileName: string;
-  defaultRequireSameDimensions?: boolean;
   compareRetries: number;
   compareRetryDelay: number;
 }
@@ -217,9 +155,7 @@ export interface DiffResult {
 // ── Test Pair ───────────────────────────────────────────────────────
 export interface TestPair {
   reference: string;
-  referenceLog?: string;
   test: string;
-  testLog?: string;
   selector: string;
   fileName: string;
   label: string;
@@ -227,7 +163,6 @@ export interface TestPair {
   mismatchThreshold: number;
   url: string;
   referenceUrl?: string;
-  expect: number;
   viewportLabel: string;
   diff?: DiffResult;
   refWhitePixelPercent?: number;
@@ -237,10 +172,6 @@ export interface TestPair {
   diffImage?: string;
   pixelmatchDiffImage?: string;
   error?: string;
-  engineErrorMsg?: string;
-  errorScreenshot?: string;
-  annotationErrorMsg?: string;
-  hadEngineError?: boolean;
   /**
    * True when this comparison initially mismatched but a later retry matched —
    * i.e. the test was visually flaky yet recovered. Surfaced in the report as
@@ -248,9 +179,6 @@ export interface TestPair {
    */
   savedByRetries?: boolean;
   status?: string;
-  scenario?: Scenario;
-  viewport?: Viewport;
-  msg?: string;
   testFile?: string;
   testLine?: number;
 }
@@ -271,33 +199,13 @@ export interface VisregTools {
 // What the compare runner's engine-bridge writes into a temp `.js`
 // file for the visreg engine to pick up. Structurally the `visreg`
 // slice of the unified `abtests.config.ts` (from `shaka-perf/compare`)
-// plus a small set of visreg-engine-specific fields the engine still
-// reads (paths, ci, debug flags, …). This is an internal plumbing
-// type — not a user-authored config.
+// plus the engine-plumbing fields the runner writes (`paths`, the async
+// limits on VisregConfig). This is an internal plumbing type — not a
+// user-authored config.
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { VisregConfig as _VisregConfigSlice } from '../../config';
 
 export type VisregEngineInputConfig = Partial<_VisregConfigSlice> & {
-  id?: string;
   paths?: VisregPaths;
-
-  engine?: 'playwright' | null;
-
-  report?: string[];
-  scenarioLogsInReports?: boolean;
-
-  fileNameTemplate?: string;
-  outputFormat?: string;
-
-  debug?: boolean;
-  debugWindow?: boolean;
-
-  dynamicTestId?: string;
-
-  ci?: {
-    format?: string;
-    testReportFileName?: string;
-    testSuiteName?: string;
-  };
 };

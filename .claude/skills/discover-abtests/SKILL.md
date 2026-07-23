@@ -267,7 +267,7 @@ shaka-perf discover-abtests parse-report
 
 This prints status, diff%, whitespace%, and engine errors per test. Act on these flags:
 - `HIGH-WHITE` (whitePixelPercent > 90%) → selector likely captures empty space. Re-evaluate: try a child element, a sibling, or a different section entirely. **Always read the screenshot** to confirm — a 30px property-specs strip can be 94% white yet "pass" since both servers captured the same tiny fragment.
-- `ENGINE-ERR` → check `engineErrorMsg`. Common: `clip.width = 0` means element has no width at this viewport — add a `config: { visreg: { viewports: [...] } }` override to exclude that breakpoint.
+- `ENGINE-ERR` → check the pair's `error`. Common: `clip.width = 0` means element has no width at this viewport — add a `config: { visreg: { viewports: [...] } }` override to exclude that breakpoint.
 - `BOT70W = true` → content concentrated at top of element; bottom is empty. Consider a tighter selector.
 
 A test that passes (0 diff) can still be broken if both control and experiment captured blank/useless content. The `whitePixelPercent` field catches this — high whitespace on a passing test means the selector is wrong.

@@ -46,7 +46,6 @@ export interface CompareAttemptsParams {
   config: DecoratedCompareConfig;
   viewport: Viewport;
   scenario: Scenario;
-  variantOrScenarioLabelSafe: string;
   scenarioLabelSafe: string;
   pixelmatchThreshold: number;
 }
@@ -92,7 +91,7 @@ export async function runCompareAttempts(
   deps: CompareAttemptsDeps,
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
-  const { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold } = params;
+  const { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold } = params;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
   const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
@@ -151,10 +150,10 @@ export async function runCompareAttempts(
       // later attempts re-capture that fixed set so pool keys stay stable.
       if (attempt === 0) {
         runs = testResult.visregSelectorsExp.map((selector, selectorIndex) => {
-          const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector);
+          const testPair = engineTools.generateTestPair(config, scenario, viewport, scenarioLabelSafe, selectorIndex, selector);
           if (testResult.visregSelectorsExpMap[selector]) testResult.visregSelectorsExpMap[selector].filePath = testPair.test;
           if (refResult.visregSelectorsExpMap[selector]) refResult.visregSelectorsExpMap[selector].filePath = testPair.reference;
-          const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, config._outputFileFormatSuffix));
+          const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX));
           return { selector, testPair, pool, control: pool.load('control'), experiment: pool.load('experiment'), result: null, done: false };
         });
       }

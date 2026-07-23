@@ -125,7 +125,7 @@ export interface AbTestConfig {
   /** CSS selectors visreg captures. Default: the whole document. */
   visregSelectors?: string[];
   /** Capture-expansion directive tied to `visregSelectors`. */
-  visregSelectorExpansion?: boolean | string;
+  visregSelectorExpansion?: boolean;
   /** Per-test perf phase definitions (`{start,end,label}`). */
   markers?: Marker[];
   /**

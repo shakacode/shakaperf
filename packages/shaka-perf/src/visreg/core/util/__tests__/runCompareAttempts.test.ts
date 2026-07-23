@@ -60,11 +60,10 @@ afterEach(() => {
 
 function makeConfig(overrides: Partial<Record<string, unknown>> = {}): DecoratedCompareConfig {
   return {
-    _fileNameTemplate: 'frame_{selectorIndex}',
-    _outputFileFormatSuffix: '.png',
-    _configId: 'cfg',
-    _controlScreenshotPath: path.join(root, 'control_screenshots'),
-    _experimentScreenshotPath: path.join(root, 'experiment_screenshots'),
+    env: {
+      controlScreenshotDir: path.join(root, 'control_screenshots'),
+      experimentScreenshotDir: path.join(root, 'experiment_screenshots'),
+    },
     compareRetries: 2,
     compareRetryDelay: 10,
     maxNumDiffPixels: 0,
@@ -114,7 +113,7 @@ function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig): Promise
   return runCompareAttempts(deps, {
     browser: {} as unknown as Browser,
     config, viewport, scenario,
-    variantOrScenarioLabelSafe: 'S', scenarioLabelSafe: 'S',
+    scenarioLabelSafe: 'S',
     pixelmatchThreshold: 0.1,
   });
 }
@@ -170,13 +169,14 @@ it('stops early once no new frames are captured (pixel-stable mismatch)', async 
 });
 
 // Crash-resume: the loop derives its pool from the config's screenshot dirs and
-// the filename template ('frame_{selectorIndex}' → key 'frame_0'), so seeding
-// that pool is exactly what an earlier crashed attempt leaves behind.
+// the engine's fixed filename scheme (scenario 'S', selector 'document',
+// viewport 'desktop' → key 'S_0_document_0_desktop'), so seeding that pool is
+// exactly what an earlier crashed attempt leaves behind.
 function seedPoolFrame(side: 'control' | 'experiment', buffer: Buffer): void {
   new ScreenshotPool(
     path.join(root, 'control_screenshots'),
     path.join(root, 'experiment_screenshots'),
-    'frame_0',
+    'S_0_document_0_desktop',
   ).add(side, buffer);
 }
 

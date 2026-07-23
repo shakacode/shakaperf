@@ -117,15 +117,6 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedConfig.maxNumDiffPixels, 10, 'Should pass maxNumDiffPixels');
   });
 
-  it('should set isCompare flag', async function () {
-    const createComparisonBitmaps = createModule();
-    await createComparisonBitmaps(mockConfig);
-
-    assert(capturedConfig, 'Should have captured config');
-    assert.strictEqual(capturedConfig.isCompare, true, 'Should set isCompare to true');
-    assert.strictEqual(capturedConfig.isControl, false, 'Should set isControl to false');
-  });
-
   it('should throw error when no tests registered', async function () {
     jest.resetModules();
 

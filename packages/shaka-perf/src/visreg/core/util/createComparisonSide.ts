@@ -47,8 +47,8 @@ export async function createComparisonSide(
   const { engineOptions = {} } = config;
   const ignoreHTTPSErrors = engineOptions.ignoreHTTPSErrors !== undefined ? engineOptions.ignoreHTTPSErrors : true;
   const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', DEFAULT_NAV_TIMEOUT);
-  const VP_W = viewport.width || viewport.viewport!.width;
-  const VP_H = viewport.height || viewport.viewport!.height;
+  const VP_W = viewport.width;
+  const VP_H = viewport.height;
 
   // Emulate the viewport's device at context creation — deviceScaleFactor and
   // mobile form factor, uniform with the accessibility and perf engines (which

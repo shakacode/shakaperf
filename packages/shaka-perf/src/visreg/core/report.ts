@@ -18,7 +18,7 @@ import type { Test } from './util/Reporter';
 
 const logger = createLogger('report');
 
-const PNG_FIELDS = ['reference', 'test', 'pixelmatchDiffImage', 'diffImage', 'errorScreenshot'] as const;
+const PNG_FIELDS = ['reference', 'test', 'pixelmatchDiffImage', 'diffImage'] as const;
 type PngField = typeof PNG_FIELDS[number];
 
 /**
@@ -37,7 +37,7 @@ async function writePerTestReports(config: RuntimeConfig, reporter: Reporter): P
   const engineErrors: Array<{ viewport: string; selector: string; msg: string }> = [];
   const movedTests = reporter.tests.map((t) => moveAndRewritePngs(t, destDir));
   for (const t of movedTests) {
-    const msg = (t.pair.error as string | undefined) ?? (t.pair.engineErrorMsg as string | undefined);
+    const msg = t.pair.error as string | undefined;
     if (msg) {
       engineErrors.push({
         viewport: String(t.pair.viewportLabel ?? '(unknown viewport)'),

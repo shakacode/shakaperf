@@ -16,16 +16,13 @@ type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
 export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
   console.log('Creating Browser');
 
-  let { engineOptions: sanitizedEngineOptions } = JSON.parse(JSON.stringify(config));
-  let { browser: browserChoice, headless } = sanitizedEngineOptions;
+  const { engineOptions: sanitizedEngineOptions } = JSON.parse(JSON.stringify(config));
+  let { browser: browserChoice } = sanitizedEngineOptions;
+  const { headless } = sanitizedEngineOptions;
 
   if (!browserChoice) {
     console.warn(chalk.yellow('No Playwright browser specified, assuming Chromium.'));
     browserChoice = 'chromium';
-  }
-
-  if (typeof headless === 'string' && headless !== 'new') {
-    console.warn(chalk.yellow(`The headless mode, "${headless}", may not be supported by Playwright.`));
   }
 
   // Error when using unknown `browserChoice`
@@ -34,25 +31,10 @@ export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
     return;
   }
 
-  // If headless is a string (e.g. 'new'), suppress Playwright's built-in --headless flag
-  // via ignoreDefaultArgs and pass the custom --headless=<value> flag instead.
-  // This allows forward-compatible headless modes that Playwright doesn't natively support yet.
-  if (typeof headless !== 'undefined' && typeof headless !== 'boolean') {
-    sanitizedEngineOptions = {
-      ...sanitizedEngineOptions,
-      ignoreDefaultArgs: sanitizedEngineOptions.ignoreDefaultArgs ? [...sanitizedEngineOptions.ignoredDefaultArgs, '--headless'] : ['--headless']
-    };
-    sanitizedEngineOptions.args.push(`--headless=${headless}`);
-  }
-
   const playwrightArgs = Object.assign(
     {},
     sanitizedEngineOptions,
-    {
-      headless: config.debugWindow
-        ? false
-        : typeof headless === 'boolean' ? headless : typeof headless === 'string' ? headless === 'new' ? true : headless : true
-    }
+    { headless: typeof headless === 'boolean' ? headless : true }
   );
   return await playwright[browserChoice as PlaywrightBrowserType].launch(playwrightArgs);
 };

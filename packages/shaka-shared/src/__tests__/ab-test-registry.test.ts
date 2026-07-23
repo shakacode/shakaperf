@@ -207,14 +207,14 @@ describe('ab-test-registry', () => {
         {
           startingPath: '/page',
           visregSelectors: ['[data-cy="hero"]'],
-          visregSelectorExpansion: 'true',
+          visregSelectorExpansion: true,
         },
         async () => {},
       );
 
       const tests = getRegisteredTests();
       expect(tests[0].visregSelectors).toEqual(['[data-cy="hero"]']);
-      expect(tests[0].visregSelectorExpansion).toBe('true');
+      expect(tests[0].visregSelectorExpansion).toBe(true);
     });
   });
 });

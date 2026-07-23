@@ -41,9 +41,8 @@ export function convertAbTestToScenario(
   // preparePage).
   if (testDef.visregSelectorExpansion != null) scenario.selectorExpansion = testDef.visregSelectorExpansion;
 
-  // Per-test comparison tuning is NOT copied onto the scenario: the engine
-  // resolves it from the effective config (file defaults + `test.config.visreg`)
-  // via `visregConfigForTest`, reading `scenario._testDef` — the same per-test
-  // overlay accessibility uses. The scenario carries no tuning fields.
+  // Per-test comparison tuning is NOT copied onto the scenario: the compare
+  // stage writes the effective values (file defaults + `test.config.visreg`)
+  // into the engine's bridge config. The scenario carries no tuning fields.
   return scenario;
 }
