@@ -109,7 +109,7 @@ export async function runCompareAttempts(
   // JSON-bridge boundary: the engine's config crosses as data (no functions), so
   // rebuild this test's effective config here and read from it.
   const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
-  const beforeNavigate = effectiveConfig?.shared.beforeNavigate;
+  const beforeNavigate = effectiveConfig.shared.beforeNavigate;
 
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {

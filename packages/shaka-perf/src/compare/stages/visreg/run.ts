@@ -43,6 +43,12 @@ export async function runVisregUnit(
     mismatchThreshold: ctx.config.visreg.mismatchThreshold,
     maxNumDiffPixels: ctx.config.visreg.maxNumDiffPixels,
     comparePixelmatchThreshold: ctx.config.visreg.comparePixelmatchThreshold,
+    resembleOutputOptions: ctx.config.visreg.resembleOutputOptions,
+    // Best-of-N is per-unit work, so the per-test effective values apply —
+    // except under --burn, which replaces retries everywhere: a burn
+    // instance's raw outcome IS the measurement, so best-of-N is zeroed.
+    compareRetries: ctx.runtime.burn != null ? 0 : ctx.config.visreg.compareRetries,
+    compareRetryDelay: ctx.config.visreg.compareRetryDelay,
     viewports: [ctx.viewport],
     // Effective launch options (shared.playwrightOptions ← visreg override ←
     // per-test config), resolved here so the engine reads them straight.

@@ -316,6 +316,8 @@ export default function createLighthouseBenchmark(
             headed: options.headed === true || playwrightOptions.headless === false,
             // Extra chrome flags from the resolved playwrightOptions.args.
             chromeArgs: playwrightOptions.args ?? [],
+            // Lax certs unless explicitly false — same default as every engine.
+            ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
           })) {
             throw new Error('lighthouse worker died before setup could be sent');
           }

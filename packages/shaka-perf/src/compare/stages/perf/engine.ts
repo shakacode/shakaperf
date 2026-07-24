@@ -117,8 +117,10 @@ export async function runPerfEngineStage(
   const artifact = await readPerfArtifact({
     perTestDir: artifactsDir,
     reportRoot: ctx.runtime.resultsRoot,
-    regressionThreshold: config.regressionThreshold,
-    regressionThresholdStat: config.regressionThresholdStat,
+    // Per-test effective thresholds (config.perf.* in an abTest() applies to
+    // that test), same as lighthouseConfig above.
+    regressionThreshold: ctx.config.perf.regressionThreshold,
+    regressionThresholdStat: ctx.config.perf.regressionThresholdStat,
     saveArtifacts: config.saveArtifacts,
     statisticalAnalysis: config.statisticalAnalysis,
   });
@@ -133,9 +135,15 @@ async function runPerfPhase(
   config: PerfStageConfig,
 ): Promise<void> {
   const startTime = config.statisticalAnalysis ? timestamp() : null;
+  // The statistical stage samples the per-test effective count
+  // (config.perf.numberOfMeasurements in an abTest() applies to that test);
+  // warmup / low-noise stages keep their fixed stage-defined count (1).
+  const numberOfMeasurements = config.statisticalAnalysis
+    ? ctx.config.perf.numberOfMeasurements
+    : config.numberOfMeasurements;
   const sampleGroups = await measureTest(
     benchmarks,
-    config.numberOfMeasurements,
+    numberOfMeasurements,
     pool,
     { testKey: perfSamplerKey(ctx.testAndViewportId, config) },
   );
@@ -163,9 +171,10 @@ async function runPerfPhase(
     const actualMeasurements = results[0]?.samples.length ?? 0;
     await runAnalyze(abMeasurementsPath, {
       numberOfMeasurements: actualMeasurements,
-      regressionThreshold: config.regressionThreshold,
-      regressionThresholdStat: config.regressionThresholdStat,
-      pValueThreshold: config.pValueThreshold,
+      // Per-test effective thresholds, same as the sampling count above.
+      regressionThreshold: ctx.config.perf.regressionThreshold,
+      regressionThresholdStat: ctx.config.perf.regressionThresholdStat,
+      pValueThreshold: ctx.config.perf.pValueThreshold,
       jsonReport: true,
       summaryMetadata: {
         testName: ctx.test.name,
@@ -178,7 +187,7 @@ async function runPerfPhase(
       try {
         await runReport({
           resultsFolder: artifactsDir,
-          pValueThreshold: config.pValueThreshold,
+          pValueThreshold: ctx.config.perf.pValueThreshold,
         });
       } catch (err) {
         console.error(chalk.red(`Failed to generate bench HTML report for ${ctx.test.name}:`), err);

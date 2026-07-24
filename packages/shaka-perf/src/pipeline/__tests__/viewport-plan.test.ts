@@ -35,7 +35,7 @@ const skippedOutcome = (stage: string): Outcome => ({ kind: 'skipped', stage, re
 // Default config: shared viewports desktop/tablet/phone; visreg at all three,
 // accessibility at desktop/phone.
 const config = parseAbTestsConfig({
-  shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium' } },
+  shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
 });
 const visregStage = makeStage('visreg', 'visreg');
 const a11yStage = makeStage('accessibility', 'accessibility');

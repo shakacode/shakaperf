@@ -150,7 +150,7 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -210,7 +210,7 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -258,6 +258,28 @@ describe('pre-run wipe', () => {
 
     expect(fs.existsSync(staleVisreg)).toBe(false);
     expect(fs.existsSync(keptPerf)).toBe(true);
+  });
+
+  it('preserves other categories\' outcomes at IN-PLAN viewports too', async () => {
+    // tablet is the narrowed test's planned visreg viewport: the planned-unit
+    // slate must not destroy the perf outcome (or the artifacts it references)
+    // sharing the same unit dir — only a dir with no outcome left is removed.
+    const store = new ArtifactStore(path.join(cwd, 'test-results'));
+    store.writeOutcome(narrowedTest, 'tablet', {
+      kind: 'error', stage: 'visreg', error: 'stale from previous run',
+    } as never);
+    const staleVisreg = path.join(store.unitDirForViewport(narrowedTest, 'tablet'), 'visreg.json');
+    const keptPerf = seedOutcome('tablet', 'perf');
+
+    await run({ categories: 'visreg' });
+
+    expect(fs.existsSync(keptPerf)).toBe(true);
+    const kept = JSON.parse(fs.readFileSync(keptPerf, 'utf8')) as { kind: string };
+    expect(kept.kind).toBe('ok');
+    // The stale visreg outcome was swept; whatever visreg.json exists now came
+    // from THIS run's stage (the mock stage succeeds), not the stale error.
+    const rewritten = JSON.parse(fs.readFileSync(staleVisreg, 'utf8')) as { kind: string };
+    expect(rewritten.kind).toBe('ok');
   });
 
   it('leaves stale outcomes alone under --keep-old-results', async () => {

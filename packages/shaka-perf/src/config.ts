@@ -93,18 +93,32 @@ export type { Viewport };
  * The one browser-launch option shape, shared by every stage. REQUIRED on
  * `shared.playwrightOptions` — there are no hidden launch defaults; what the
  * config says is what every stage launches with (the starter template supplies
- * `{ browser: 'chromium', args: ['--no-sandbox'] }`). `visreg.playwrightOptions`
- * and `perf.playwrightOptions` may override it per-category with a PARTIAL of
- * the same shape (resolved via {@link resolvePlaywrightOptions}). Extra keys
- * pass through to Playwright's `launch()`. The perf (Lighthouse) engine is
- * chromium-only and maps `args`/`headless` onto its chrome-launcher flags.
+ * `{ browser: 'chromium', args: ['--no-sandbox'], waitTimeout: 60_000 }`).
+ * `visreg.playwrightOptions` and `perf.playwrightOptions` may override it
+ * per-category with a PARTIAL of the same shape (resolved via
+ * {@link resolvePlaywrightOptions}). Extra keys pass through to Playwright's
+ * `launch()`. The perf (Lighthouse) engine is chromium-only and maps
+ * `args`/`headless` onto its chrome-launcher flags.
+ *
+ * `waitTimeout` (ms) is respected by every Playwright engine (visreg,
+ * accessibility, agent-readiness) the same way: the default action +
+ * navigation timeout. One default (60s), set here — no per-engine fallback
+ * constants; the template states it explicitly. It deliberately does NOT
+ * touch the perf/audit Lighthouse engine: LH's page-load wait is a different
+ * thing, configured via `lighthouseConfig.maxWaitForLoad`.
+ *
+ * `ignoreHTTPSErrors` defaults to TRUE on every engine (self-signed twin-server
+ * certs must not fail a run): a Playwright context option on the Playwright
+ * engines, `--ignore-certificate-errors` on the Lighthouse Chrome. Set `false`
+ * to make every engine enforce strict certificate checking.
  */
 export const PlaywrightOptionsSchema = z
   .object({
     browser: z.enum(['chromium', 'firefox', 'webkit']),
     args: z.array(z.string()).optional(),
     headless: z.boolean().optional(),
-    waitTimeout: z.number().int().positive().optional(),
+    waitTimeout: z.number().int().positive().default(60_000),
+    ignoreHTTPSErrors: z.boolean().optional(),
   })
   .passthrough();
 
@@ -380,6 +394,13 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
   if (rawVisreg && 'defaultMisMatchThreshold' in rawVisreg) {
     throw new Error(
       'visreg.defaultMisMatchThreshold was renamed — use visreg.mismatchThreshold ' +
+      '(see BREAKING_CHANGES.md).',
+    );
+  }
+  if (rawVisreg && 'requireSameDimensions' in rawVisreg) {
+    throw new Error(
+      'visreg.requireSameDimensions was removed — a dimension change always fails ' +
+      'the compare now (a resize IS a visual difference). Delete the key ' +
       '(see BREAKING_CHANGES.md).',
     );
   }

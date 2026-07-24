@@ -62,14 +62,19 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
+      if (!configPath) {
+        throw new Error(
+          'No abtests.config.ts found — it is required (audit reads its viewports, ' +
+          'parallelism, and launch options from it). ' +
+          'Run `shaka-perf init` to create one, or pass --config <path>.',
+        );
+      }
       await withAbTestsConfigPath(configPath, async () => {
-        const raw = configPath ? await loadAbTestsConfig(configPath) : {};
-        const config = parseAbTestsConfig(raw);
+        const config = parseAbTestsConfig(await loadAbTestsConfig(configPath));
         const url = opts.url ?? config.shared.experimentURL;
         const pipeline = createAuditPipeline({
           parallelism: config.shared.parallelism,
           lighthouseConfig: config.audit.lighthouseConfig,
-          limitVideoFramesCount: config.audit.limitVideoFramesCount,
           accessibility: {
             tags: config.accessibility.tags,
             disableRules: config.accessibility.disableRules,

@@ -65,6 +65,12 @@ interface SetupMessage {
   headed?: boolean;
   /** Extra chrome flags from the resolved `playwrightOptions.args`. */
   chromeArgs?: string[];
+  /**
+   * From the resolved `playwrightOptions.ignoreHTTPSErrors`. Defaults to true
+   * (like every other engine): `--ignore-certificate-errors` is passed unless
+   * this is explicitly false.
+   */
+  ignoreHTTPSErrors?: boolean;
 }
 
 interface SampleMessage {
@@ -101,12 +107,16 @@ class LighthouseWorkerSampler {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
 
-  async setupBrowser(options: { headed?: boolean; chromeArgs?: string[] } = {}): Promise<void> {
+  async setupBrowser(options: { headed?: boolean; chromeArgs?: string[]; ignoreHTTPSErrors?: boolean } = {}): Promise<void> {
     const chromeFlags = [
-      '--ignore-certificate-errors',
       '--enable-unsafe-swiftshader',
       '--disable-dev-shm-usage',
     ];
+    // Same default as every other engine's `ignoreHTTPSErrors`: lax unless the
+    // config explicitly asks for strict certificate checking.
+    if (options.ignoreHTTPSErrors !== false) {
+      chromeFlags.unshift('--ignore-certificate-errors');
+    }
     // Headless unless the run opted into headed (the setup IPC message, set
     // from LighthouseBenchmarkOptions.headed / the resolved
     // playwrightOptions.headless).
@@ -277,7 +287,7 @@ class LighthouseWorkerSampler {
         viewport: options.viewport,
         isControl: options.isControl ?? false,
         testType: 'perf',
-        beforeNavigate: config?.shared.beforeNavigate,
+        beforeNavigate: config.shared.beforeNavigate,
       });
 
       let releaseTracking: () => void = () => {};

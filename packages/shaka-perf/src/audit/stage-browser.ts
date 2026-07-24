@@ -25,7 +25,17 @@ export function launchStageBrowser(
   options: PlaywrightOptions,
   headed = false,
 ): Promise<Browser> {
-  const { browser, ...passthrough } = options;
+  // Strip the keys that are NOT Playwright launch options: `browser` selects
+  // the engine, and `waitTimeout` / `ignoreHTTPSErrors` / `gotoParameters`
+  // apply at the context/navigation layer (Playwright would silently drop
+  // them from `launch()`).
+  const {
+    browser,
+    waitTimeout: _waitTimeout,
+    ignoreHTTPSErrors: _ignoreHTTPSErrors,
+    gotoParameters: _gotoParameters,
+    ...passthrough
+  } = options;
   const launchOptions: LaunchOptions = {
     ...passthrough,
     headless: headed ? false : options.headless ?? true,
@@ -49,15 +59,19 @@ export interface StageContextViewport {
 }
 
 // The shared `newContext` options for a stage's measured page: viewport, device
-// scale, the mobile flag, and the real-Chrome mobile emulation. Keeps the
-// accessibility and agent-readiness rendered contexts identical.
+// scale, the mobile flag, cert handling, and the real-Chrome mobile emulation.
+// Keeps the accessibility and agent-readiness rendered contexts identical.
 export function stageContextOptions(
   viewport: StageContextViewport,
+  playwrightOptions: PlaywrightOptions,
 ): BrowserContextOptions {
   return {
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: viewport.deviceScaleFactor,
     isMobile: viewport.formFactor === 'mobile',
+    // Default true on every engine (visreg does the same); `false` opts into
+    // strict certificate checking.
+    ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
     // Real-Chrome only: serve the phone layout (no-op headless).
     ...realChromeMobileEmulation(viewport.formFactor),
   };

@@ -55,9 +55,9 @@ describe('auditMachineReportMeta', () => {
         tags: [],
         disableRules: [],
         failOnViolation: true,
-        playwrightOptions: { browser: 'chromium' },
+        playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
       },
-      agentReadiness: { playwrightOptions: { browser: 'chromium' } },
+      agentReadiness: { playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
     });
 
     expect(pipeline.machineReportMeta?.({ rows: [row(PHONE_VIEWPORT)], reportOnly: true })).toEqual({

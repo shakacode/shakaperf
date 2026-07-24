@@ -42,6 +42,14 @@ export interface StageRuntime {
    * browsers.
    */
   readonly headed?: boolean;
+  /**
+   * `--burn <n>` instance count when burning, else null/undefined. Burn
+   * replaces retries everywhere — the runner zeroes pool retries, and stages
+   * with their own retry loops (visreg's best-of-N `compareRetries`) read
+   * this to zero theirs too, so a burn instance's raw outcome IS the
+   * measurement.
+   */
+  readonly burn?: number | null;
 }
 
 export interface StageLogger {

@@ -7,7 +7,6 @@
  * License in LICENSE.md.
  */
 
-import chalk from 'chalk';
 import path from 'node:path';
 import mergeWith from 'lodash/mergeWith.js';
 import type { AbTestDefinition } from 'shaka-shared';
@@ -49,45 +48,51 @@ export function applyPerTestConfigOverrides(
 // load; keyed on the Promise, not the value, so a late caller can't observe a
 // half-loaded state.
 let cachedFileConfig: {
-  configPath: string | null;
-  config: Promise<AbTestsConfig | null>;
+  configPath: string;
+  config: Promise<AbTestsConfig>;
 } | undefined;
 
 /**
  * The effective config for a test — the file config with the test's `config`
  * override merged in (the one canonical merge). For the fork / bridge consumers
  * that can't be handed the runner's `ctx.config`; they call this once and read
- * whatever they need off it. `null` when no config file resolves.
+ * whatever they need off it. THROWS when no config file resolves or the file
+ * fails to load/parse — `abtests.config.ts` is mandatory, and running a unit
+ * without it would silently drop the config's setup (`beforeNavigate`
+ * auth/cookie hooks above all): both sides would screenshot the same login
+ * wall and pass, or perf would measure the wrong page. A missing config must
+ * fail the unit, not degrade it.
  */
 export async function reconstructEffectiveConfig(
   test: AbTestDefinition | undefined,
-): Promise<AbTestsConfig | null> {
-  const fileConfig = await loadParsedFileConfig();
-  return fileConfig ? applyPerTestConfigOverrides(fileConfig, test) : null;
+): Promise<AbTestsConfig> {
+  return applyPerTestConfigOverrides(await loadParsedFileConfig(), test);
 }
 
-function loadParsedFileConfig(): Promise<AbTestsConfig | null> {
+function loadParsedFileConfig(): Promise<AbTestsConfig> {
   const configPath = resolveGlobalConfigPath();
   if (cachedFileConfig?.configPath === configPath) return cachedFileConfig.config;
   // Don't cache a failure — clear the memo so a later call retries.
   const pending = parseFileConfig(configPath).catch((err: unknown) => {
     cachedFileConfig = undefined;
-    console.warn(
-      chalk.yellow(`${LOG_PREFIX} failed to load config: ${(err as Error).message}`),
-    );
-    return null;
+    throw err;
   });
   cachedFileConfig = { configPath, config: pending };
   return pending;
 }
 
-function resolveGlobalConfigPath(): string | null {
+function resolveGlobalConfigPath(): string {
   const configPath = process.env[ABTESTS_CONFIG_PATH_ENV] || findAbTestsConfig();
-  return configPath ? path.resolve(configPath) : null;
+  if (!configPath) {
+    throw new Error(
+      `${LOG_PREFIX} no abtests.config.ts found — it is required. ` +
+      'Run `shaka-perf init` to create one, or pass --config <path>.',
+    );
+  }
+  return path.resolve(configPath);
 }
 
-async function parseFileConfig(configPath: string | null): Promise<AbTestsConfig | null> {
-  if (!configPath) return null;
+async function parseFileConfig(configPath: string): Promise<AbTestsConfig> {
   return parseAbTestsConfig(await loadAbTestsConfig(configPath));
 }
 

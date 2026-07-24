@@ -72,7 +72,7 @@ import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
 // them; tests do the same.
 const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
   ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  playwrightOptions: { browser: 'chromium' },
+  playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
 };
 
 describe('accessibility config defaults', () => {
@@ -534,7 +534,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
+      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
       test,
     ),
   } as unknown as TestContext;

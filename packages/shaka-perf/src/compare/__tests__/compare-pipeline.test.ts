@@ -83,7 +83,7 @@ describe('compare accessibility pipeline integration', () => {
     try {
       const result = await runPipeline(pipeline, {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium' } } }),
+        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
@@ -299,7 +299,7 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
       tags: [],
       disableRules: [],
       failOnViolation: true,
-      playwrightOptions: { browser: 'chromium' },
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
     },
   };
 }

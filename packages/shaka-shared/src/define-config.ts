@@ -24,12 +24,22 @@ import type { BeforeNavigateHook, Viewport } from './ab-test-registry';
  * says is what every stage launches with. `visreg.playwrightOptions` and
  * `perf.playwrightOptions` may override it per-category with a partial of
  * this shape, merged per-key over shared.
+ *
+ * `waitTimeout` (ms) is respected identically by every Playwright engine
+ * (visreg, accessibility, agent-readiness): the default action + navigation
+ * timeout. Defaults to 60_000. The perf/audit Lighthouse page-load wait is a
+ * different concern, configured via `lighthouseConfig.maxWaitForLoad`.
+ *
+ * `ignoreHTTPSErrors` defaults to true on every engine (Playwright context
+ * option / Lighthouse `--ignore-certificate-errors`); set `false` for strict
+ * certificate checking everywhere.
  */
 export interface PlaywrightOptionsInput {
   browser: 'chromium' | 'firefox' | 'webkit';
   args?: string[];
   headless?: boolean;
   waitTimeout?: number;
+  ignoreHTTPSErrors?: boolean;
   [key: string]: unknown;
 }
 

@@ -55,11 +55,11 @@ function chipsFor(result: AccessibilityResult) {
       tags: ['wcag2aa'],
       disableRules: [],
       includeRules: undefined,
-      playwrightOptions: { browser: 'chromium' },
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
       failOnViolation: result.failOnViolation,
     },
     agentReadiness: {
-      playwrightOptions: { browser: 'chromium' },
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
     },
   });
   const chips = pipeline.chipsForAllTests([{

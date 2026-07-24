@@ -7,10 +7,11 @@
  * License in LICENSE.md.
  */
 
-import * as engineTools from './engineTools';
 import type { Browser, BrowserContext, PlaywrightPage, Viewport, DecoratedCompareConfig } from '../types';
 
-// Fallback navigation timeout when the config doesn't set `waitTimeout`.
+// JSON-bridge safety net only: the compare runner always writes the resolved
+// `waitTimeout` (required on `shared.playwrightOptions`) into the temp config,
+// so this fires only for a hand-built engine config that bypassed zod.
 const DEFAULT_NAV_TIMEOUT = 60000;
 
 export interface ComparisonSide {
@@ -45,8 +46,9 @@ export async function createComparisonSide(
   onContextReady?: (context: BrowserContext) => Promise<void>,
 ): Promise<ComparisonSide> {
   const { playwrightOptions = {} } = config;
-  const ignoreHTTPSErrors = playwrightOptions.ignoreHTTPSErrors !== undefined ? playwrightOptions.ignoreHTTPSErrors : true;
-  const navTimeout = engineTools.getEngineOption(config, 'waitTimeout', DEFAULT_NAV_TIMEOUT);
+  // Default true on every engine; `false` opts into strict cert checking.
+  const ignoreHTTPSErrors = playwrightOptions.ignoreHTTPSErrors !== false;
+  const waitTimeout = playwrightOptions.waitTimeout ?? DEFAULT_NAV_TIMEOUT;
   const VP_W = viewport.width;
   const VP_H = viewport.height;
 
@@ -66,7 +68,10 @@ export async function createComparisonSide(
   try {
     if (onContextReady) await onContextReady(context);
     const page = await context.newPage();
-    page.setDefaultNavigationTimeout(navTimeout);
+    // The one wait cap every Playwright engine respects: default action + navigation
+    // timeout, uniform with the accessibility and agent-readiness engines.
+    page.setDefaultTimeout(waitTimeout);
+    page.setDefaultNavigationTimeout(waitTimeout);
 
     return {
       context,

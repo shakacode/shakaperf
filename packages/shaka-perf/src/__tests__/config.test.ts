@@ -21,7 +21,7 @@ function baseConfig(extra: Record<string, unknown> = {}) {
       controlURL: 'http://localhost:3020',
       experimentURL: 'http://localhost:3030',
       parallelism: 2,
-      playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'] },
+      playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], waitTimeout: 60_000 },
     },
     ...extra,
   };
@@ -100,6 +100,15 @@ describe('visreg config', () => {
       visreg: { defaultMisMatchThreshold: 0.01 },
     }))).toThrow(/defaultMisMatchThreshold was renamed/);
   });
+
+  // Removed key: zod would strip it silently, and a user who relied on
+  // `requireSameDimensions: false` would see previously-tolerated resizes fail
+  // with an undiscoverable cause. Fail loudly instead, like its siblings.
+  it('fails loudly on the removed requireSameDimensions key', () => {
+    expect(() => parseAbTestsConfig(baseConfig({
+      visreg: { requireSameDimensions: false },
+    }))).toThrow(/requireSameDimensions was removed/);
+  });
 });
 
 describe('bisect config', () => {
@@ -138,9 +147,21 @@ describe('playwrightOptions', () => {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
         parallelism: 2,
-        playwrightOptions: { args: ['--no-sandbox'] },
+        playwrightOptions: { args: ['--no-sandbox'], waitTimeout: 60_000 },
       },
     }))).toThrow(/browser/);
+  });
+
+  it('defaults waitTimeout to 60s — the one wait cap every Playwright engine respects', () => {
+    const config = parseAbTestsConfig(baseConfig({
+      shared: {
+        controlURL: 'http://localhost:3020',
+        experimentURL: 'http://localhost:3030',
+        parallelism: 2,
+        playwrightOptions: { browser: 'chromium' },
+      },
+    }));
+    expect(config.shared.playwrightOptions.waitTimeout).toBe(60_000);
   });
 
   it('resolves shared for every category exactly as written', () => {
@@ -150,6 +171,7 @@ describe('playwrightOptions', () => {
       expect(resolvePlaywrightOptions(config, category)).toEqual({
         browser: 'chromium',
         args: ['--no-sandbox'],
+        waitTimeout: 60_000,
       });
     }
   });
@@ -160,7 +182,7 @@ describe('playwrightOptions', () => {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
         parallelism: 1,
-        playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], headless: true },
+        playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], headless: true, waitTimeout: 60_000 },
       },
       visreg: { playwrightOptions: { headless: false } },
       perf: { playwrightOptions: { args: ['--disable-gpu'] } },
@@ -170,17 +192,20 @@ describe('playwrightOptions', () => {
       browser: 'chromium',
       args: ['--no-sandbox'],
       headless: false,
+      waitTimeout: 60_000,
     });
     expect(resolvePlaywrightOptions(config, 'perf')).toEqual({
       browser: 'chromium',
       args: ['--disable-gpu'],
       headless: true,
+      waitTimeout: 60_000,
     });
     // audit / accessibility have no category override — pure shared.
     expect(resolvePlaywrightOptions(config, 'audit')).toEqual({
       browser: 'chromium',
       args: ['--no-sandbox'],
       headless: true,
+      waitTimeout: 60_000,
     });
   });
 

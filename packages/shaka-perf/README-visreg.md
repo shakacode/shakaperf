@@ -291,7 +291,7 @@ The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 ## Playwright Engine Configuration
 
-`shaka-perf visreg` uses Playwright as its rendering engine. It supports `chromium`, `firefox`, and `webkit` browsers via `shared.playwrightOptions.browser` (or the visreg-only `visreg.playwrightOptions.browser` override).
+`shaka-perf visreg` uses Playwright as its rendering engine, driving `chromium` via `shared.playwrightOptions.browser` (or the visreg-only `visreg.playwrightOptions.browser` override). The `firefox` and `webkit` values are accepted but not yet supported end-to-end — the audit-side stages (accessibility, agent-readiness) and the perf/audit Lighthouse engine are chromium-only.
 
 To seed cookies, localStorage, or a logged-in session before tests run, use a
 `beforeNavigate` hook (see [Setting Cookies](#setting-cookies)) — the Playwright
@@ -300,7 +300,7 @@ extra headers, and more.
 
 ### Playwright Option Flags
 
-`shaka-perf visreg` sets two defaults for Playwright:
+Every engine defaults to:
 
 ```
 ignoreHTTPSErrors: true
@@ -316,9 +316,14 @@ shared):
 shared: {
   playwrightOptions: {
     browser: 'chromium',
+    // Default action + navigation timeout (ms) on every Playwright engine
+    // (visreg, accessibility, agent-readiness).
+    waitTimeout: 60_000,
+    // Set false for strict certificate checking on every engine.
     ignoreHTTPSErrors: false,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    gotoParameters: { waitUntil: 'networkidle0' },
+    // Playwright waitUntil values: load | domcontentloaded | networkidle | commit
+    gotoParameters: { waitUntil: 'networkidle' },
   },
 }
 ```

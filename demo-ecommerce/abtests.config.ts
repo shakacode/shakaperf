@@ -60,6 +60,10 @@ export default defineConfig({
     playwrightOptions: {
       browser: 'chromium',
       args: ['--no-sandbox'],
+      // Default action + navigation timeout (ms) on every Playwright engine
+      // (visreg, accessibility, agent-readiness). Lighthouse's page-load wait
+      // is separate: lighthouseConfig.maxWaitForLoad.
+      waitTimeout: 60_000,
     },
   },
 

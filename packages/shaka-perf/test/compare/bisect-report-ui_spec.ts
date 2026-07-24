@@ -476,7 +476,7 @@ function comparePipelineConfig() {
       tags: [],
       disableRules: [],
       failOnViolation: true,
-      playwrightOptions: { browser: 'chromium' as const },
+      playwrightOptions: { browser: 'chromium' as const, waitTimeout: 60_000 },
     },
   };
 }

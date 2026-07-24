@@ -89,7 +89,7 @@ export async function scanAccessibilityPage(
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   try {
-    context = await browser.newContext(stageContextOptions(ctx.viewport));
+    context = await browser.newContext(stageContextOptions(ctx.viewport, config.playwrightOptions));
     // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,
@@ -100,10 +100,9 @@ export async function scanAccessibilityPage(
       beforeNavigate: ctx.config.shared.beforeNavigate,
     });
     page = await context.newPage();
-    if (config.playwrightOptions.waitTimeout) {
-      page.setDefaultTimeout(config.playwrightOptions.waitTimeout);
-      page.setDefaultNavigationTimeout(config.playwrightOptions.waitTimeout);
-    }
+    // The one wait cap every Playwright engine respects (required on the config).
+    page.setDefaultTimeout(config.playwrightOptions.waitTimeout);
+    page.setDefaultNavigationTimeout(config.playwrightOptions.waitTimeout);
     await navigateAccessibilityPage(page, context, ctx, config, options);
 
     let builder = new AxeBuilder({ page });

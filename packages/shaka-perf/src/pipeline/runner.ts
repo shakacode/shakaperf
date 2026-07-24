@@ -510,6 +510,7 @@ async function runConfiguredPipelineWithSelection(
     config: runtime.config,
     debugShowAllFrames: runtime.debugShowAllFrames ?? false,
     headed: runtime.headed ?? false,
+    burn: runtime.burn ?? null,
   };
   const units = expandWorkUnits(
     runTests,
@@ -526,28 +527,28 @@ async function runConfiguredPipelineWithSelection(
   // Single wipe authority: one cleanup per pipeline run, before any stage
   // runs. Engines no longer wipe internally — that was the source of the
   // parallel-visreg race (one invocation rming another's pending PNGs
-  // mid-flight). Two passes:
+  // mid-flight).
   //
-  //  1. Run-scope sweep: delete every selected stage's outcome for this run's
-  //     tests at EVERY viewport the effective config defines — not just this
-  //     run's planned units. A per-test viewport override (or a config edit)
-  //     shrinks the plan, and the planned-unit wipe below never touches the
-  //     abandoned viewports' dirs, so their stale outcomes would survive every
-  //     subsequent run and keep feeding --report-only assemblies. Outcomes of
-  //     categories NOT selected this run are left alone — a --categories=visreg
-  //     rerun must not destroy the perf results it isn't remeasuring. A dir
-  //     left with no outcome at all is removed wholesale.
+  // Run-scope sweep: delete every selected stage's outcome for this run's
+  // tests at EVERY viewport the effective config defines — not just this
+  // run's planned units. A per-test viewport override (or a config edit)
+  // shrinks the plan, so abandoned viewports' stale outcomes would otherwise
+  // survive every subsequent run and keep feeding --report-only assemblies.
+  // Outcomes of categories NOT selected this run are left alone — a
+  // --categories=visreg rerun must not destroy the perf results it isn't
+  // remeasuring, and the artifacts they reference share the unit's single
+  // `artifacts/` dir, so the dir is removed wholesale (the empty slate) ONLY
+  // when no outcome at all remains in it. A unit whose dir survives because
+  // another category's outcome lives there runs in keep-old-results mode:
+  // its engines overwrite the files they produce.
   //
-  //  2. Planned-unit wipe: clear each executing unit's whole dir so its
-  //     stages start from an empty slate.
-  //
-  // Under --skip-report we still run both passes for this shard's own tests
-  // so reruns cannot read stale artifacts, but we leave the flat visreg
-  // scratch dirs alone because sibling shards may be using them.
-  // --keep-old-results and --restart-from-stage opt out of the wipe entirely
-  // (we still ensure the dirs exist) so a rerun layers onto a prior run's
-  // artifacts — the retained earlier stages need their prior artifacts and
-  // outcome JSONs intact.
+  // Under --skip-report we still sweep this shard's own tests so reruns
+  // cannot read stale artifacts, but we leave the flat visreg scratch dirs
+  // alone because sibling shards may be using them. --keep-old-results and
+  // --restart-from-stage opt out of the wipe entirely (we still ensure the
+  // dirs exist) so a rerun layers onto a prior run's artifacts — the
+  // retained earlier stages need their prior artifacts and outcome JSONs
+  // intact.
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
       for (const test of runTests) {
@@ -563,10 +564,6 @@ async function runConfiguredPipelineWithSelection(
       }
     }
     for (const unit of units) {
-      const unitDir = store.unitDirForViewport(unit.test, unit.viewport.label);
-      if (!preserveOldResults) {
-        fs.rmSync(unitDir, { recursive: true, force: true });
-      }
       fs.mkdirSync(store.artifactsDirForViewport(unit.test, unit.viewport.label), { recursive: true });
     }
     // Restart discards the redone stages' prior results before they re-run.

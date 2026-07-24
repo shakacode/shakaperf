@@ -84,7 +84,8 @@ async function scanAccessibility(
     path.join(ctx.artifacts.dir, ACCESSIBILITY_RAW_REPORT_FILENAME),
   );
   return projectAccessibilityRawArtifact(raw, {
-    failOnViolation: config.failOnViolation,
+    // Per-test effective, like tags/disableRules/includeRules above.
+    failOnViolation: acc.failOnViolation,
     rawArtifactHref,
   });
 }

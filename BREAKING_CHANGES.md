@@ -14,6 +14,36 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### `abtests.config.ts` is now REQUIRED for every command
+
+`shaka-perf compare`, `shaka-perf audit` (and `compare bisect`, which always
+required it) now fail up front when no `abtests.config.ts` resolves:
+`No abtests.config.ts found — it is required. Run 'shaka-perf init' to create
+one, or pass --config <path>.` Previously `audit --url …` could limp along on
+an empty config (and would then fail on the now-required fields anyway, with a
+less helpful error).
+
+The same applies inside the engines: the perf Lighthouse fork and the visreg
+bridge rebuild the effective config in their own process, and a config that
+fails to **load or parse** there now **fails the unit** instead of printing a
+yellow warning and running without your config. The old degrade-and-continue
+path silently dropped `shared.beforeNavigate` — auth/cookie setup quietly
+gone, both visreg sides screenshotting the same login wall and passing.
+
+### `*_TALL_VIEWPORT` heights changed 9000 → 3000
+
+`PHONE_TALL_VIEWPORT`, `TABLET_TALL_VIEWPORT`, and `DESKTOP_TALL_VIEWPORT`
+(shaka-shared) are now 3000px tall instead of 9000px — 9000px captures were
+extremely slow and heavy for little extra signal. If you use them in
+`shared.viewports`:
+
+- **Visreg baselines change dimensions**, and a dimension mismatch now always
+  fails the compare — expect every `*-tall` unit to fail once; re-baseline.
+- **Content between 3000px and 9000px is no longer captured.** If you added a
+  tall viewport specifically for an element deeper than 3000px, define your own
+  viewport instead of the constant, e.g.
+  `{ label: 'phone-tall', width: 375, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 }`.
+
 ### AB-test options flattened; per-test overrides moved to `config`
 
 `abTest()`'s `options` object is gone. Test-identity and capture directives are
@@ -78,7 +108,6 @@ instead.
 | Removed per-test option | Fix |
 |---|---|
 | `resultsFolder` | Removed entirely — the output dir is framework-derived. |
-| `visreg.compareRetries` / `visreg.compareRetryDelay` | Set once in `abtests.config.ts` → `visreg.{compareRetries,compareRetryDelay}`. Best-of-N is a run-level loop; no per-test override. |
 
 #### Renamed / relocated
 
@@ -95,7 +124,8 @@ moves under `config`, mirroring the `abtests.config.ts` section shape.
 | `visreg.defaultMisMatchThreshold` (in `abtests.config.ts`) | `visreg.mismatchThreshold` — old key fails config parsing loudly |
 | `options.visreg.maxNumDiffPixels` | `config.visreg.maxNumDiffPixels` |
 | `options.visreg.comparePixelmatchThreshold` | `config.visreg.comparePixelmatchThreshold` |
-| `options.visreg.requireSameDimensions` / `visreg.requireSameDimensions` (in `abtests.config.ts`) | **removed** — a dimension change always fails the compare now (a resize IS a visual difference). Delete the key; there is no "tolerate resizes" mode. Note: unlike the keys above, a leftover key is **silently ignored** (no parse error) — if you relied on `requireSameDimensions: false`, previously-tolerated resizes will start failing. |
+| `options.visreg.compareRetries` / `options.visreg.compareRetryDelay` | `config.visreg.{compareRetries,compareRetryDelay}` — honoured per-test (`--burn` still forces `compareRetries` to 0, like every other retry) |
+| `options.visreg.requireSameDimensions` / `visreg.requireSameDimensions` (in `abtests.config.ts`) | **removed** — a dimension change always fails the compare now (a resize IS a visual difference). A leftover key fails config parsing loudly; delete it. There is no "tolerate resizes" mode — if you relied on `requireSameDimensions: false`, previously-tolerated resizes will start failing. |
 | `options.viewports` (one list, all categories) | per-category: `config.visreg.viewports`, `config.perf.viewports`, `config.audit.viewports`, `config.accessibility.viewports` |
 | `options.accessibility.tags` | `config.accessibility.tags` |
 | `options.accessibility.disableRules` | `config.accessibility.disableRules` (see merge change below) |
@@ -106,13 +136,15 @@ what the engines actually honour per-test:
 
 | Per-test `config` knob | Honoured per-test? |
 | --- | --- |
-| `visreg` comparison tuning (`mismatchThreshold`, `maxNumDiffPixels`, `comparePixelmatchThreshold`) | Yes |
+| `visreg` comparison tuning (`mismatchThreshold`, `maxNumDiffPixels`, `comparePixelmatchThreshold`, `resembleOutputOptions`, `compareRetries`, `compareRetryDelay`) | Yes (`--burn` still forces `compareRetries` to 0) |
 | per-category `viewports` | Yes |
-| `accessibility` rule sets (`tags`, `disableRules`, `includeRules`) | Yes |
+| `accessibility` rule sets + verdict (`tags`, `disableRules`, `includeRules`, `failOnViolation`) | Yes |
+| `perf` measurement counts/thresholds (`numberOfMeasurements`, `regressionThreshold`, `pValueThreshold`, `regressionThresholdStat`) | Yes (warmup/low-noise stages keep their fixed 1-sample runs) |
+| `audit.limitVideoFramesCount` | Yes |
 | `shared.beforeNavigate` | Yes — replaces the global hook |
 | `playwrightOptions` (`shared` / `visreg` / `perf`) | Yes on engines that launch per unit (visreg, perf, audit); accessibility/agent-readiness reuse a browser per worker slot and resolve once per run |
 | `perf.lighthouseConfig` / `audit.lighthouseConfig` | Yes |
-| `resembleOutputOptions`, perf measurement counts/thresholds, other `shared` fields | No — resolve once per run; set them in `abtests.config.ts` |
+| run-level pool/infra fields (`shared.parallelism`, `retries`, `timeoutMs`, `perf.samplingMode`, …) | No — resolve once per run; set them in `abtests.config.ts` |
 
 #### Removed type exports
 
@@ -209,8 +241,30 @@ is what every stage launches with. A config without the block now fails parsing
 (`shared.playwrightOptions: Required`); add the line from the starter template:
 
 ```ts
-shared: { playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'] } },
+shared: { playwrightOptions: { browser: 'chromium', args: ['--no-sandbox'], waitTimeout: 60_000 } },
 ```
+
+**`waitTimeout` is respected by every Playwright engine, identically.** It
+used to be three different things: visreg's navigation timeout (fallback 60s),
+accessibility's default+navigation timeout (fallback 30s), and ignored by
+agent-readiness (hardcoded 45s). Now it is the default action + navigation
+timeout on every Playwright engine (visreg, accessibility, agent-readiness),
+with ONE default — 60_000 ms — instead of per-engine fallback constants.
+Accessibility scans that relied on the implicit 30s and agent-readiness scans
+on the hardcoded 45s now wait up to 60s unless you set `waitTimeout`. It
+deliberately does not affect the perf/audit Lighthouse engine: LH's page-load
+wait is a different concern, configured via `lighthouseConfig.maxWaitForLoad`
+as before.
+
+**`ignoreHTTPSErrors` is respected by EVERY engine, identically.** Previously
+only visreg honoured it (context option, default true); accessibility and
+agent-readiness dropped it (it was passed to `launch()`, which ignores it) and
+always enforced strict certs; Lighthouse always passed
+`--ignore-certificate-errors` regardless. Now every engine defaults to lax
+(self-signed twin-server certs work everywhere, including accessibility and
+agent-readiness, which previously failed on them) and `ignoreHTTPSErrors:
+false` makes every engine — Lighthouse included — enforce strict certificate
+checking.
 
 Because `args` now reach every stage, the perf/audit **Lighthouse Chrome also
 launches with your configured `args`** (e.g. the template's `--no-sandbox`),

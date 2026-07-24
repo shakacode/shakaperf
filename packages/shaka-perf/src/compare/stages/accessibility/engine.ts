@@ -92,7 +92,8 @@ async function scanAccessibilityComparison(
       disableRules: effective.disableRules,
       includeRules: effective.includeRules,
     },
-    failOnViolation: config.failOnViolation,
+    // Per-test effective, like tags/disableRules/includeRules above.
+    failOnViolation: acc.failOnViolation,
     findings,
     summary: summarizeFindings(findings, control, experiment),
   });

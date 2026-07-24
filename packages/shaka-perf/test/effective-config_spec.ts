@@ -17,7 +17,7 @@ describe('reconstructEffectiveConfig', function () {
         "    controlURL: 'http://localhost:3011/',",
         "    experimentURL: 'http://localhost:3012/',",
         '    parallelism: 1,',
-        "    playwrightOptions: { browser: 'chromium' },",
+        "    playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },",
         '    beforeNavigate: async ({ context }) => {',
         `      context.loadedFromConfig = ${JSON.stringify(marker)};`,
         '    },',
@@ -116,6 +116,42 @@ describe('reconstructEffectiveConfig', function () {
     } as any);
 
     assert.equal((context as { loadedFromConfig?: string }).loadedFromConfig, 'per-test');
+  });
+
+  it('throws when no config file resolves — abtests.config.ts is mandatory', async function () {
+    // No env path; run from a dir with no abtests.config.* anywhere above it.
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-noconfig-'));
+    const savedCwd = process.cwd();
+    process.chdir(emptyDir);
+    jest.resetModules();
+    try {
+      const { reconstructEffectiveConfig } = await import('../src/effective-config');
+      await assert.rejects(
+        () => reconstructEffectiveConfig(undefined),
+        /no abtests\.config\.ts found/,
+      );
+    } finally {
+      process.chdir(savedCwd);
+    }
+  });
+
+  it('throws (not warns) when the config file fails to parse', async function () {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-badconfig-'));
+    const configPath = path.join(tmpDir, 'abtests.config.js');
+    // Stale key → parseAbTestsConfig throws its migration error; a unit that
+    // rebuilds the effective config must FAIL, not degrade to no-config.
+    fs.writeFileSync(
+      configPath,
+      "module.exports = { shared: { controlURL: 'http://localhost:1/', experimentURL: 'http://localhost:2/', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } }, visreg: { defaultMisMatchThreshold: 0.1 } };\n",
+    );
+    process.env[envKey] = configPath;
+    jest.resetModules();
+
+    const { reconstructEffectiveConfig } = await import('../src/effective-config');
+    await assert.rejects(
+      () => reconstructEffectiveConfig(undefined),
+      /defaultMisMatchThreshold was renamed/,
+    );
   });
 
   it('restores the explicit config path after a scoped config run', async function () {

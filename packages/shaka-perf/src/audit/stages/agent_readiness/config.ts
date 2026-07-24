@@ -21,20 +21,18 @@ export interface AgentReadinessStageConfig {
 }
 
 // The launch + timeout bundle the engine threads through its scans. Launch
-// options come from the resolved `shared.playwrightOptions`; the timeout caps
-// are stage-internal defaults.
+// options come from the resolved `shared.playwrightOptions`; the navigation
+// cap is its `waitTimeout` (the one wait cap every Playwright engine respects); only the
+// raw-fetch cap is stage-internal (it is an HTTP fetch, not a browser wait).
 export interface AgentReadinessEngineOptions {
   playwrightOptions: PlaywrightOptions;
-  // Per-navigation cap for goto / setContent.
+  // Per-navigation cap for goto / setContent — `playwrightOptions.waitTimeout`.
   navTimeoutMs: number;
   // Cap for the raw (no-JS) fetch of the server HTML.
   rawFetchTimeoutMs: number;
 }
 
-const DEFAULT_TIMEOUTS = {
-  navTimeoutMs: 45_000,
-  rawFetchTimeoutMs: 15_000,
-};
+const RAW_FETCH_TIMEOUT_MS = 15_000;
 
 export function resolveAgentReadinessConfig(
   config: AgentReadinessStageConfig,
@@ -43,7 +41,8 @@ export function resolveAgentReadinessConfig(
     skip: config.skip ?? false,
     engineOptions: {
       playwrightOptions: config.playwrightOptions,
-      ...DEFAULT_TIMEOUTS,
+      navTimeoutMs: config.playwrightOptions.waitTimeout,
+      rawFetchTimeoutMs: RAW_FETCH_TIMEOUT_MS,
     },
   };
 }

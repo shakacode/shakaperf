@@ -141,7 +141,7 @@ async function readRenderedSignals(
 ): Promise<{ signals: PageSignals; htmlBytes: number; blocked: boolean }> {
   let context: BrowserContext | undefined;
   try {
-    context = await browser.newContext(stageContextOptions(ctx.viewport));
+    context = await browser.newContext(stageContextOptions(ctx.viewport, engineOptions.playwrightOptions));
     const page = await context.newPage();
     const timeout = engineOptions.navTimeoutMs;
     page.setDefaultTimeout(timeout);

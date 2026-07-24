@@ -22,17 +22,6 @@ import {
 } from '../../../stage/stage';
 import { BuildAnnotatedTimelineArtifactView } from './report';
 
-// Hard cap on raw screencast frames fed into the timeline dedupe. A long /
-// slow page can emit thousands of screencast frames; deduping is O(frames) of
-// pixel work, so an unbounded count can blow the per-task timeout. Before
-// dedupe the raw stream is evenly downsampled to this many frames.
-export const DEFAULT_LIMIT_VIDEO_FRAMES_COUNT = 700;
-
-export interface BuildAnnotatedTimelineConfig {
-  /** Pre-dedupe hard cap on raw screencast frames. Defaults to 700. */
-  readonly limitVideoFramesCount?: number;
-}
-
 export interface AnnotatedFrame {
   timeMs: number;
   imgW: number;
@@ -143,12 +132,6 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   readonly label = 'Annotated Timeline';
   readonly description = 'Prepare Lighthouse trace screenshots for the annotated timeline.';
 
-  private readonly limitVideoFramesCount: number;
-
-  constructor(config: BuildAnnotatedTimelineConfig = {}) {
-    this.limitVideoFramesCount = config.limitVideoFramesCount ?? DEFAULT_LIMIT_VIDEO_FRAMES_COUNT;
-  }
-
   applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
     return priorOutcomes.get('audit')?.kind === 'ok';
   }
@@ -156,7 +139,9 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   async run(ctx: TestContext, pool: WorkerPool): Promise<BuildAnnotatedTimelineResult> {
     const runImpl = './engine';
     const { runBuildAnnotatedTimelineStage } = await import(/* @vite-ignore */ runImpl) as typeof import('./engine');
-    return runBuildAnnotatedTimelineStage(ctx, pool, this.limitVideoFramesCount);
+    // Per-test effective cap (config.audit.limitVideoFramesCount in an
+    // abTest() applies to that test); the zod schema defaults it to 700.
+    return runBuildAnnotatedTimelineStage(ctx, pool, ctx.config.audit.limitVideoFramesCount);
   }
 
   renderArtifacts(measurements: readonly StageRenderEntry<BuildAnnotatedTimelineResult>[]) {

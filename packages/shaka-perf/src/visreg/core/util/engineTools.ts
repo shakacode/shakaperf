@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import type { TestPair, Scenario, Viewport, EnginePlaywrightOptions, DecoratedCompareConfig } from "../types";
+import type { TestPair, Scenario, Viewport, DecoratedCompareConfig } from "../types";
 
 // One fixed naming scheme — there is no user-facing template or output-format
 // knob. PNG only; the name is stable across invocations so the crash-resumable
@@ -33,13 +33,6 @@ function getFilename (scenarioLabelSafe: string, selectorIndex: number, selector
     .replace(/[^a-z0-9_-]/gi, ''); // remove anything that's not a letter or a number or dash or underscore.
 
   return fileName + OUTPUT_FORMAT_SUFFIX;
-}
-
-function getEngineOption<T> (config: { playwrightOptions?: EnginePlaywrightOptions }, optionName: string, fallBack: T): T {
-  if (typeof config.playwrightOptions === 'object' && config.playwrightOptions[optionName]) {
-    return config.playwrightOptions[optionName] as T;
-  }
-  return fallBack;
 }
 
 function generateTestPair (config: DecoratedCompareConfig, scenario: Scenario, viewport: Viewport, scenarioLabelSafe: string, selectorIndex: number, selector: string): TestPair {
@@ -70,6 +63,5 @@ export {
   generateTestPair,
   makeSafe,
   getFilename,
-  getEngineOption,
   getSelectorName
 };

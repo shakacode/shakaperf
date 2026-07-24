@@ -23,6 +23,12 @@ jest.mock('../preparePage', () => ({
   failureScreenshotPath: jest.fn().mockReturnValue('/tmp/failure.png'),
 }));
 jest.mock('../createComparisonSide', () => ({ createComparisonSide: jest.fn() }));
+// The attempt loop rebuilds the test's effective config for `beforeNavigate`
+// (mandatory abtests.config.ts — the real loader THROWS without one, and these
+// tests run configless by design). The loop only reads `shared.beforeNavigate`.
+jest.mock('../../../../effective-config', () => ({
+  reconstructEffectiveConfig: jest.fn().mockResolvedValue({ shared: {} }),
+}));
 
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
 import { ScreenshotPool } from '../screenshotPool';
