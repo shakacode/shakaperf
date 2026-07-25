@@ -63,8 +63,8 @@ async function preparePage (page: PlaywrightPage, url: string, scenario: Scenari
 
   // --- TEST FN ---
   if (scenario._testFn) {
-    // A throw here (or later, at capture) is turned into a failure screenshot
-    // by the single handler in runCompareAttempts, while the page is still alive.
+    // A throw here is turned into a per-side failure screenshot by
+    // runCompareAttempts while this page is still alive.
     await runWithTestAnnotationContext(() => scenario._testFn!({
       page,
       browserContext: browserOrContext,

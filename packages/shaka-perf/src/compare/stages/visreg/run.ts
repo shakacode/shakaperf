@@ -89,12 +89,14 @@ export async function runVisregUnit(
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`visreg engine error: ${message}`));
     // Visreg writes per-scenario screenshots into `{control,experiment}_
-    // screenshot/` under the results root as it runs. If the engine threw
-    // before producing artifacts, the most recent of those is the closest
-    // approximation of "what the browser saw before tearing down." Pick
-    // the newest PNG written since this unit started so we don't pull in
-    // a stale screenshot from a previous test.
-    const captured = await captureVisregFailureScreenshot(ctx, unitArtifactsDir, startedAt);
+    // screenshot/` under the results root as it runs. Prefer a path carried by
+    // the originating error; unattributed errors fall back to the newest PNG
+    // written since this unit started so we don't pull in a stale screenshot
+    // from a previous test.
+    const attributedPath = attributedFailureScreenshotPath(err);
+    const captured = attributedPath
+      ? await inlineFailureScreenshot(ctx, attributedPath)
+      : await captureVisregFailureScreenshot(ctx, unitArtifactsDir, startedAt);
     if (captured) {
       throw new StageFailureError(err, { media: captured });
     }
@@ -122,15 +124,29 @@ async function captureVisregFailureScreenshot(
     });
   }
   if (!best) return undefined;
+  return inlineFailureScreenshot(ctx, best.path);
+}
+
+function attributedFailureScreenshotPath(err: unknown): string | undefined {
+  const screenshotPath = (err as { failureScreenshotPath?: unknown })?.failureScreenshotPath;
+  return typeof screenshotPath === 'string' && fs.existsSync(screenshotPath)
+    ? screenshotPath
+    : undefined;
+}
+
+async function inlineFailureScreenshot(
+  ctx: TestContext,
+  screenshotPath: string,
+): Promise<string | undefined> {
   try {
     const filename = 'failure-screenshot.png';
-    await ctx.artifacts.writeFile(filename, fs.readFileSync(best.path));
+    await ctx.artifacts.writeFile(filename, fs.readFileSync(screenshotPath));
     // Inline as base64 data URI — the report shell is a self-contained
     // HTML and can't resolve relative artifact paths.
     return ctx.artifacts.inlineDataUri(filename);
   } catch (copyErr) {
     console.warn(
-      chalk.yellow(`failed to copy visreg failure screenshot ${best.path}: ${(copyErr as Error).message}`),
+      chalk.yellow(`failed to copy visreg failure screenshot ${screenshotPath}: ${(copyErr as Error).message}`),
     );
     return undefined;
   }

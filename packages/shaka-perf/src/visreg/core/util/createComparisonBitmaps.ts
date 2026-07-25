@@ -127,7 +127,7 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
         disposePlaywrightBrowser(browser).then(function () { resolve(out); });
       }, function (e: unknown) {
-        disposePlaywrightBrowser(browser).then(function () { reject(e); });
+        disposePlaywrightBrowser(browser).then(function () { reject(e); }).catch(function () { reject(e); });
       });
     }, function (e: unknown) { reject(e); });
   });

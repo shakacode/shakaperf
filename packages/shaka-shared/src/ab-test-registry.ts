@@ -74,8 +74,10 @@ export interface TestFnContext {
    * is logged and the only visible effect is the missing chip. Awaiting
    * still matters for ORDERING (annotate then click vs. click then annotate).
    *
-   * Under visreg this is a no-op for the timeline (visreg has no trace) but
-   * the last label is still tracked for error-message decoration.
+   * Under visreg this is a no-op for the timeline (visreg has no trace), but a
+   * label reached before a test-body throw is still attached to that error for
+   * report/log decoration. Engine errors thrown after the test body returns are
+   * not decorated by this label.
    */
   annotate: (label: string) => Promise<void>;
 }

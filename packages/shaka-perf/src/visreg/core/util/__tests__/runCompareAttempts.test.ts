@@ -17,8 +17,8 @@ import { PNG } from 'pngjs';
 jest.mock('../preparePage', () => ({
   __esModule: true,
   default: jest.fn(),
-  // The attempt-level failure-screenshot handler; capture is exercised through
-  // the real page mocks' screenshot() where a test cares, so keep these inert.
+  // Failure capture is tested through these injected collaborators so the
+  // attempt loop can assert side choice and error metadata without Playwright.
   captureFailureScreenshot: jest.fn().mockResolvedValue(undefined),
   failureScreenshotPath: jest.fn().mockReturnValue('/tmp/failure.png'),
 }));
@@ -31,8 +31,9 @@ jest.mock('../../../../effective-config', () => ({
 }));
 
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
+import { captureFailureScreenshot, failureScreenshotPath } from '../preparePage';
 import { ScreenshotPool } from '../screenshotPool';
-import type { DecoratedCompareConfig, Scenario, Viewport, Browser } from '../../types';
+import type { BrowserContext, DecoratedCompareConfig, Scenario, Viewport, Browser, PlaywrightPage } from '../../types';
 
 // Solid-colour PNG; `dirtyPixels` flips the first N pixels to white so two
 // otherwise-identical frames differ by a controllable number of pixels.
@@ -53,12 +54,19 @@ const RED: [number, number, number] = [255, 0, 0];
 const BLUE: [number, number, number] = [0, 0, 255];
 const GREEN: [number, number, number] = [0, 255, 0];
 
-type Produce = (attempt: number, side: 'ref' | 'test') => Buffer | null;
+type TestSideName = 'control' | 'experiment';
+type Produce = (attempt: number, side: 'ref' | 'test') => Buffer | null | Promise<Buffer | null>;
+type PreparePageFn = NonNullable<CompareAttemptsDeps['preparePage']>;
+type PreparePageResult = Awaited<ReturnType<PreparePageFn>>;
 
 let root: string;
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'visreg-attempts-'));
+  jest.mocked(captureFailureScreenshot).mockClear();
+  jest.mocked(failureScreenshotPath).mockReset();
+  jest.mocked(failureScreenshotPath).mockImplementation((_config, _scenario, _viewport, isControl) =>
+    `/tmp/failure-${isControl ? 'control' : 'experiment'}.png`);
 });
 afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
@@ -79,6 +87,13 @@ function makeConfig(overrides: Partial<Record<string, unknown>> = {}): Decorated
   } as unknown as DecoratedCompareConfig;
 }
 
+function preparedPage(): PreparePageResult {
+  return {
+    selectors: ['document'],
+    selectorMap: { document: {} as { filePath?: string } },
+  };
+}
+
 /**
  * Fakes for the injected deps. `captureScreenshot` is called ref-then-test per
  * attempt for the single 'document' selector, so call index N maps to
@@ -89,19 +104,37 @@ function makeDeps(produce: Produce) {
   let created = 0;
   let disposed = 0;
   const sleeps: number[] = [];
+  const pages = {
+    control: { side: 'control' } as unknown as PlaywrightPage,
+    experiment: { side: 'experiment' } as unknown as PlaywrightPage,
+  };
+  const contexts = {
+    control: { side: 'control' } as unknown as BrowserContext,
+    experiment: { side: 'experiment' } as unknown as BrowserContext,
+  };
 
-  const createSide = jest.fn(async () => {
+  const createSide = jest.fn(async (...args: unknown[]) => {
+    const requestedSide = args[3] === 'control' || args[3] === 'experiment'
+      ? args[3] as TestSideName
+      : (created % 2 === 0 ? 'control' : 'experiment');
     created++;
-    return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
+    return {
+      side: requestedSide,
+      page: pages[requestedSide],
+      context: contexts[requestedSide],
+      dispose: async () => { disposed++; },
+    };
   });
-  const preparePage = jest.fn(async () => ({
-    selectors: ['document'],
-    selectorMap: { document: {} as { filePath?: string } },
-  }));
-  const captureScreenshot = jest.fn(async () => {
+  const preparePage = jest.fn(async () => preparedPage()) as jest.MockedFunction<PreparePageFn>;
+  const captureScreenshot = jest.fn(async (
+    page: PlaywrightPage,
+    _selector: string,
+    _selectorMap: Record<string, { filePath?: string }>,
+  ) => {
     const idx = captureCalls++;
-    return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
-  });
+    const side = page === pages.control ? 'ref' : 'test';
+    return produce(Math.floor(idx / 2), side);
+  }) as jest.MockedFunction<CompareAttemptsDeps['captureScreenshot']>;
 
   const deps: CompareAttemptsDeps = {
     captureScreenshot,
@@ -109,7 +142,7 @@ function makeDeps(produce: Produce) {
     preparePage: preparePage as unknown as CompareAttemptsDeps['preparePage'],
     sleep: async (ms: number) => { sleeps.push(ms); },
   };
-  return { deps, sleeps, createSide, counts: () => ({ created, disposed, captureCalls }) };
+  return { deps, sleeps, createSide, preparePage, pages, counts: () => ({ created, disposed, captureCalls }) };
 }
 
 function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig): Promise<CompareSelectorOutcome[]> {
@@ -205,4 +238,75 @@ it('missing selector throws, with the attempt sides still disposed', async () =>
 
   await expect(run(deps, makeConfig())).rejects.toThrow('Selector "document" not found on reference page');
   expect(counts()).toMatchObject({ created: 2, disposed: 2 });
+});
+
+it('captures only the side whose preparePage throws', async () => {
+  const prepareError = new Error('experiment prepare failed');
+  const { deps, preparePage, pages } = makeDeps(() => png(BLUE));
+  preparePage.mockImplementation(async (page) => {
+    if (page === pages.experiment) throw prepareError;
+    return {
+      selectors: ['document'],
+      selectorMap: { document: {} as { filePath?: string } },
+    };
+  });
+
+  await expect(run(deps, makeConfig())).rejects.toBe(prepareError);
+
+  expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
+  expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
+  expect(captureFailureScreenshot).not.toHaveBeenCalledWith(pages.control, expect.any(String));
+});
+
+it('does not let a throwing failureScreenshotPath mask the original prepare error', async () => {
+  const prepareError = new Error('original prepare error');
+  jest.mocked(failureScreenshotPath).mockImplementation(() => {
+    throw new Error('path builder exploded');
+  });
+  const warn = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  const { deps, preparePage, pages } = makeDeps(() => png(BLUE));
+  preparePage.mockImplementation(async (page) => {
+    if (page === pages.experiment) throw prepareError;
+    return {
+      selectors: ['document'],
+      selectorMap: { document: {} as { filePath?: string } },
+    };
+  });
+
+  await expect(run(deps, makeConfig())).rejects.toBe(prepareError);
+
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('path builder exploded'));
+  warn.mockRestore();
+});
+
+it('throws the experiment prepare error when both sides fail and logs the control error', async () => {
+  const controlError = new Error('control prepare failed');
+  const experimentError = new Error('experiment prepare failed');
+  const warn = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  const { deps, preparePage, pages } = makeDeps(() => png(BLUE));
+  preparePage.mockImplementation(async (page) => {
+    throw page === pages.control ? controlError : experimentError;
+  });
+
+  await expect(run(deps, makeConfig())).rejects.toBe(experimentError);
+
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('control prepare failed'));
+  expect(captureFailureScreenshot).toHaveBeenCalledTimes(2);
+  expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.control, '/tmp/failure-control.png');
+  expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
+  warn.mockRestore();
+});
+
+it('captures the side whose screenshot capture rejects and attaches the failure path', async () => {
+  const captureError = new Error('experiment screenshot failed');
+  const { deps, pages } = makeDeps((_attempt, side) => {
+    if (side === 'test') throw captureError;
+    return png(BLUE);
+  });
+
+  await expect(run(deps, makeConfig())).rejects.toBe(captureError);
+
+  expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
+  expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
+  expect((captureError as { failureScreenshotPath?: string }).failureScreenshotPath).toBe('/tmp/failure-experiment.png');
 });

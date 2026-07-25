@@ -14,7 +14,10 @@ import type { Browser, BrowserContext, PlaywrightPage, Viewport, DecoratedCompar
 // so this fires only for a hand-built engine config that bypassed zod.
 const DEFAULT_NAV_TIMEOUT = 60000;
 
+export type ComparisonSideName = 'control' | 'experiment';
+
 export interface ComparisonSide {
+  side: ComparisonSideName;
   context: BrowserContext;
   page: PlaywrightPage;
   /** Close this side's context. Best-effort; safe if it's already gone. */
@@ -43,6 +46,7 @@ export async function createComparisonSide(
   browser: Browser,
   config: DecoratedCompareConfig,
   viewport: Viewport,
+  side: ComparisonSideName,
   onContextReady?: (context: BrowserContext) => Promise<void>,
 ): Promise<ComparisonSide> {
   const { playwrightOptions = {} } = config;
@@ -74,6 +78,7 @@ export async function createComparisonSide(
     page.setDefaultNavigationTimeout(waitTimeout);
 
     return {
+      side,
       context,
       page,
       dispose: async () => {

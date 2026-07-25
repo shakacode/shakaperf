@@ -19,18 +19,28 @@ const annotationStorage = new AsyncLocalStorage<{ lastAnnotation?: string }>();
  */
 export const MAX_ANNOTATION_LENGTH = 50;
 
+/**
+ * Run `body` in its own isolated annotation scope. Each call gets a fresh
+ * single-slot store, so concurrent bodies never share a `lastAnnotation` - the
+ * visreg engine prepares the control and experiment pages side by side under a
+ * common stage-level context, and the accessibility engine scans each side in
+ * sibling scopes too. A shared slot would let whichever side ran `annotate()`
+ * last stamp the other side's failure. On a throw the label is attached to the
+ * error itself, so normal wrapper errors can find it via the cause chain; the
+ * Lighthouse worker process forwards the plain `lastAnnotation` field
+ * explicitly over IPC. The trade-off is deliberate: labels decorate errors
+ * thrown inside the test body, not engine errors thrown after the body returns.
+ */
 export function runWithTestAnnotationContext<T>(
   body: () => Promise<T>,
 ): Promise<T> {
-  const run = async (): Promise<T> => {
+  return annotationStorage.run({}, async () => {
     try {
       return await body();
     } catch (err: unknown) {
       throw attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
     }
-  };
-  if (annotationStorage.getStore()) return run();
-  return annotationStorage.run({}, run);
+  });
 }
 
 export function createTestAnnotate(

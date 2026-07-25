@@ -8,9 +8,11 @@
  */
 
 import {
+  createTestAnnotate,
   getLatestTestAnnotation,
   messageWithLatestTestAnnotation,
   runWithLastAnnotation,
+  runWithTestAnnotationContext,
   MAX_ANNOTATION_LENGTH,
   stackWithLatestTestAnnotation,
 } from '../index';
@@ -78,6 +80,64 @@ describe('runWithLastAnnotation', () => {
       return 42;
     });
     expect(result).toBe(42);
+  });
+});
+
+describe('runWithTestAnnotationContext isolation', () => {
+  // Mirrors the visreg engine: a stage-level context wraps two sibling bodies
+  // (control + experiment) prepared concurrently, each with its own annotate.
+  // A shared single-slot store would let the side that runs its annotate() last
+  // stamp the other side's failure — the exact cross-side bleed this guards.
+  const runSide = (steps: string[], shouldThrow: boolean): Promise<void> =>
+    runWithTestAnnotationContext(async () => {
+      const annotate = createTestAnnotate();
+      for (const step of steps) {
+        await annotate(step);
+        await Promise.resolve(); // yield so the sibling interleaves
+      }
+      if (shouldThrow) throw new Error('experiment side failed');
+    });
+
+  it('attaches each concurrent body its own last annotation, not its sibling’s', async () => {
+    const [failing] = await runWithTestAnnotationContext(() =>
+      Promise.allSettled([
+        runSide(['adding Curly Fries', 'clicking Add to order'], true),
+        runSide(['edit special request', 'clicking Update to write back'], false),
+      ]),
+    );
+
+    expect(failing.status).toBe('rejected');
+    const { reason } = failing as PromiseRejectedResult;
+    expect(getLatestTestAnnotation(reason)).toBe('clicking Add to order');
+  });
+
+  it('attaches the right last annotation when both concurrent bodies throw', async () => {
+    let annotated = 0;
+    let releaseBothAnnotated!: () => void;
+    const bothAnnotated = new Promise<void>((resolve) => {
+      releaseBothAnnotated = resolve;
+    });
+    const runThrowingSide = (label: string, message: string): Promise<void> =>
+      runWithTestAnnotationContext(async () => {
+        const annotate = createTestAnnotate();
+        await annotate(label);
+        annotated++;
+        if (annotated === 2) releaseBothAnnotated();
+        await bothAnnotated;
+        throw new Error(message);
+      });
+
+    const [control, experiment] = await runWithTestAnnotationContext(() =>
+      Promise.allSettled([
+        runThrowingSide('control final step', 'control side failed'),
+        runThrowingSide('experiment final step', 'experiment side failed'),
+      ]),
+    );
+
+    expect(control.status).toBe('rejected');
+    expect(experiment.status).toBe('rejected');
+    expect(getLatestTestAnnotation((control as PromiseRejectedResult).reason)).toBe('control final step');
+    expect(getLatestTestAnnotation((experiment as PromiseRejectedResult).reason)).toBe('experiment final step');
   });
 });
 

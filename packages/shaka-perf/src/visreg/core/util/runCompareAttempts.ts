@@ -14,7 +14,7 @@ import defaultPreparePage, { captureFailureScreenshot, failureScreenshotPath } f
 import createLogger from './logger';
 import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
-import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
+import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide, type ComparisonSideName } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { setUpContextForNavigation } from '../../../pre-navigation';
 import { reconstructEffectiveConfig } from '../../../effective-config';
@@ -36,7 +36,7 @@ type PreparePageFn = (...args: unknown[]) => Promise<{
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
   captureScreenshot: CaptureScreenshotFn;
-  createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
+  createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, side: ComparisonSideName, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -73,6 +73,24 @@ interface SelectorRun {
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+function attachFailureScreenshotPath<T>(err: T, screenshotPath: string | null): T {
+  if (!screenshotPath || !err || typeof err !== 'object') return err;
+  try {
+    Object.defineProperty(err, 'failureScreenshotPath', {
+      value: screenshotPath,
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    // Never let metadata attachment mask the user's original failure.
+  }
+  return err;
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 /**
  * Drive one compare unit (scenario × viewport, across its selectors) through a
@@ -111,6 +129,20 @@ export async function runCompareAttempts(
   const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
   const beforeNavigate = effectiveConfig.shared.beforeNavigate;
 
+  // Grab a side's live full page into the dir the report reads. Best effort:
+  // path generation and page capture are both inside the guard so neither can
+  // mask the original scenario error.
+  const captureFailure = async (side: ComparisonSide): Promise<string | null> => {
+    try {
+      const screenshotPath = failureScreenshotPath(config, scenario, viewport, side.side === 'control');
+      await captureFailureScreenshot(side.page, screenshotPath);
+      return screenshotPath;
+    } catch (captureErr) {
+      logger.warn(`Could not capture ${side.side} failure screenshot: ${errorMessage(captureErr)}`);
+      return null;
+    }
+  };
+
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
       // Linear backoff: 5s, 10s, 15s, ...
@@ -133,18 +165,65 @@ export async function runCompareAttempts(
 
     // Two throwaway sides per attempt, torn down on every exit path.
     const sides: ComparisonSide[] = [];
+    const capturedFailurePaths = new Map<ComparisonSide, string | null>();
+    let sideSpecificFailure = false;
+
+    const captureFailureOnce = async (side: ComparisonSide): Promise<string | null> => {
+      if (capturedFailurePaths.has(side)) return capturedFailurePaths.get(side) ?? null;
+      const screenshotPath = await captureFailure(side);
+      capturedFailurePaths.set(side, screenshotPath);
+      return screenshotPath;
+    };
+
+    const captureFailures = async (failedSides: ComparisonSide[]): Promise<Map<ComparisonSideName, string | null>> => {
+      const entries = await Promise.all(failedSides.map(async (side) => [
+        side.side,
+        await captureFailureOnce(side),
+      ] as const));
+      return new Map(entries);
+    };
+
+    // Prepare one side (navigate + run the scenario's testFn) under its
+    // side-scoped log label. On a throw, screenshot THIS side at its true
+    // failure point before teardown.
+    const prepareSide = (side: ComparisonSide, url: string) =>
+      withLogPrefix(formatLogPrefix(side.side), async () => {
+        try {
+          return await preparePage(side.page, url, scenario, viewport, config, side.side === 'control', side.context);
+        } catch (err) {
+          const screenshotPath = await captureFailureOnce(side);
+          throw attachFailureScreenshotPath(err, screenshotPath);
+        }
+      });
+
     try {
-      const refSide = await createSide(browser, config, viewport, setUpSide(scenario.referenceUrl!, true));
+      const refSide = await createSide(browser, config, viewport, 'control', setUpSide(scenario.referenceUrl!, true));
       sides.push(refSide);
-      const testSide = await createSide(browser, config, viewport, setUpSide(scenario.url, false));
+      const testSide = await createSide(browser, config, viewport, 'experiment', setUpSide(scenario.url, false));
       sides.push(testSide);
 
-      // Navigate + prepare both pages (runs the scenario's testFn), with
-      // side-scoped [control] / [experiment] log labels.
-      const [refResult, testResult] = await Promise.all([
-        withLogPrefix(formatLogPrefix('control'), () => preparePage(refSide.page, scenario.referenceUrl!, scenario, viewport, config, true, refSide.context)),
-        withLogPrefix(formatLogPrefix('experiment'), () => preparePage(testSide.page, scenario.url, scenario, viewport, config, false, testSide.context)),
+      // Navigate + prepare both pages concurrently. allSettled (not all) so a
+      // throw on one side lets the other reach a terminal state before the
+      // finally disposes it. That trades off latency when the surviving side is
+      // slow, but it keeps failure screenshots anchored to completed side state.
+      const [refPrep, testPrep] = await Promise.allSettled([
+        prepareSide(refSide, scenario.referenceUrl!),
+        prepareSide(testSide, scenario.url),
       ]);
+      // Surface the experiment side's failure first — it's the side under test.
+      if (testPrep.status === 'rejected') {
+        sideSpecificFailure = true;
+        if (refPrep.status === 'rejected') {
+          logger.warn(`Control side prepare failed while experiment also failed: ${errorMessage(refPrep.reason)}`);
+        }
+        throw testPrep.reason;
+      }
+      if (refPrep.status === 'rejected') {
+        sideSpecificFailure = true;
+        throw refPrep.reason;
+      }
+      const refResult = refPrep.value;
+      const testResult = testPrep.value;
 
       // Attempt 0 discovers the selector set (from the test/experiment page);
       // later attempts re-capture that fixed set so pool keys stay stable.
@@ -161,13 +240,45 @@ export async function runCompareAttempts(
       for (const run of runs) {
         if (run.done) continue;
 
-        const [refBuffer, testBuffer] = await Promise.all([
+        const [refCapture, testCapture] = await Promise.allSettled([
           withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.selectorMap)),
           withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.selectorMap)),
         ]);
+        if (refCapture.status === 'rejected' || testCapture.status === 'rejected') {
+          sideSpecificFailure = true;
+          const failedSides: ComparisonSide[] = [];
+          if (refCapture.status === 'rejected') failedSides.push(refSide);
+          if (testCapture.status === 'rejected') failedSides.push(testSide);
+          const pathsBySide = await captureFailures(failedSides);
+          if (refCapture.status === 'rejected') {
+            attachFailureScreenshotPath(refCapture.reason, pathsBySide.get('control') ?? null);
+          }
+          if (testCapture.status === 'rejected') {
+            attachFailureScreenshotPath(testCapture.reason, pathsBySide.get('experiment') ?? null);
+          }
+          if (refCapture.status === 'rejected' && testCapture.status === 'rejected') {
+            logger.warn(`Control side screenshot capture failed while experiment also failed: ${errorMessage(refCapture.reason)}`);
+          }
+          if (testCapture.status === 'rejected') throw testCapture.reason;
+          if (refCapture.status === 'rejected') throw refCapture.reason;
+        }
+
+        const refBuffer = refCapture.value;
+        const testBuffer = testCapture.value;
         if (!refBuffer || !testBuffer) {
+          sideSpecificFailure = true;
+          // Both pages prepared successfully and are still alive here, so
+          // screenshot the side(s) actually missing the selector.
+          const missingSides: ComparisonSide[] = [];
+          if (!refBuffer) missingSides.push(refSide);
+          if (!testBuffer) missingSides.push(testSide);
+          const pathsBySide = await captureFailures(missingSides);
           const where = !refBuffer && !testBuffer ? 'reference and test pages' : (!refBuffer ? 'reference page' : 'test page');
-          throw new Error(`Selector "${run.selector}" not found on ${where} for "${scenario.label}"`);
+          const err = new Error(`Selector "${run.selector}" not found on ${where} for "${scenario.label}"`);
+          const screenshotPath = !testBuffer
+            ? pathsBySide.get('experiment') ?? null
+            : pathsBySide.get('control') ?? null;
+          throw attachFailureScreenshotPath(err, screenshotPath);
         }
 
         // Frames are content-addressed, so identical re-captures are no-ops and
@@ -185,21 +296,13 @@ export async function runCompareAttempts(
         run.done = run.result.pass || budgetSpent || pixelStable;
       }
     } catch (err) {
-      // Single failure-screenshot handler for the whole attempt: a testFn throw
-      // in preparePage or a "selector not found" at capture both land here with
-      // the pages still alive (the finally disposes them next). Grab each side's
-      // live full page into the dir the report's failure-screenshot scan reads,
-      // so a crash — not just a pixel mismatch — has something to show. Best
-      // effort; the original error still propagates.
-      await Promise.all(sides.map(async (side, i) => {
-        try {
-          // Path computation stays inside the guard too — a synchronous throw
-          // here must not replace the original `err` we're about to rethrow.
-          await captureFailureScreenshot(side.page, failureScreenshotPath(config, scenario, viewport, i === 0));
-        } catch (captureErr) {
-          logger.warn(`Could not capture ${i === 0 ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`);
-        }
-      }));
+      if (!sideSpecificFailure && sides.length > 0) {
+        const pathsBySide = await captureFailures(sides);
+        attachFailureScreenshotPath(
+          err,
+          pathsBySide.get('experiment') ?? pathsBySide.get('control') ?? null,
+        );
+      }
       throw err;
     } finally {
       for (const side of sides) await side.dispose();
