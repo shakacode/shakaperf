@@ -264,6 +264,12 @@ async function encodeScreencastVideo(
   }
 }
 
+// A cross-origin renderer swap can leave the CDP session unattached for a few
+// hundred ms, so the post-navigation re-subscribe is retried across that window
+// (~3s) rather than abandoned on the first "Not attached to an active page".
+const SUBSCRIBE_MAX_ATTEMPTS = 12;
+const SUBSCRIBE_RETRY_DELAY_MS = 250;
+
 /**
  * Start the screencast on Lighthouse's own ProtocolSession (handed to us via
  * the navigation-start patch). This runs *before* Page.navigate fires, so the
@@ -332,16 +338,44 @@ async function startScreencastOnLighthouseSession(
       // hit the height constraint and end up < 500 wide. With maxHeight
       // raised, every viewport — desktop/tablet/phone — produces a
       // 500-wide frame, just with varying height.
-      await lhSession.sendCommand('Page.startScreencast', {
-        format: 'jpeg',
-        quality: 60,
-        maxWidth: 500,
-        maxHeight: 4096,
-        everyNthFrame: 1,
-      });
+      await startWithRetry(label);
     } catch (err) {
       console.warn(`[shaka-perf screencast] subscribe (${label}) failed:`, err);
     }
+  };
+
+  /**
+   * A cross-origin renderer swap leaves the session briefly unattached, so the
+   * re-subscribe fired from `Page.frameNavigated` can land while Chrome still
+   * reports "Not attached to an active page". Giving up on that first error
+   * kills the stream at the navigation, leaving the timeline with only the blank
+   * pre-navigation frames (the whole load goes uncaptured). Retry across the
+   * swap window instead — the new renderer attaches within a few hundred ms.
+   */
+  const startWithRetry = async (label: string): Promise<void> => {
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= SUBSCRIBE_MAX_ATTEMPTS; attempt++) {
+      if (stopped) return;
+      try {
+        await lhSession.sendCommand('Page.startScreencast', {
+          format: 'jpeg',
+          quality: 60,
+          maxWidth: 500,
+          maxHeight: 4096,
+          everyNthFrame: 1,
+        });
+        if (attempt > 1) {
+          console.log(
+            `[shaka-perf screencast] subscribe (${label}) recovered on attempt ${attempt}`,
+          );
+        }
+        return;
+      } catch (err) {
+        lastErr = err;
+        await new Promise((resolve) => setTimeout(resolve, SUBSCRIBE_RETRY_DELAY_MS));
+      }
+    }
+    throw lastErr;
   };
 
   lhSession.on('Page.screencastFrame', onScreencastFrame);
