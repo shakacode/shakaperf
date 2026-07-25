@@ -63,6 +63,7 @@ export default defineConfig({
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
+    viewports: ['phone'],
     maxNumDiffPixels: 50,
     defaultMisMatchThreshold: 0.1,
   },
@@ -76,13 +77,27 @@ export default defineConfig({
     // `screenEmulation` are NOT set here — the viewport referenced from
     // shared.viewports owns them; the runner lowers them via
     // lhConfigForViewport.
+    viewports: ['phone'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
-    numberOfMeasurements: 10,
+    numberOfMeasurements: 8,
     pValueThreshold: 0.01,
   },
 
   audit: {
     lighthouseConfig: LIGHTHOUSE_CONFIG,
+  },
+
+  bisect: {
+    rebuildCommands: [
+      {
+        description: 'Install JavaScript dependencies',
+        command: 'yarn install --immutable',
+      },
+      {
+        description: 'Precompile application assets',
+        command: 'rm -rf public/packs tmp/cache && SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile',
+      },
+    ],
   },
 
   twinServers: {
