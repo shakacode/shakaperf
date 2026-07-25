@@ -38,23 +38,36 @@ describe('realChromeMobileEmulation', () => {
 
 describe('applyRealChrome', () => {
   const orig = process.env.SHAKAPERF_REAL_CHROME;
+  const origHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
   afterEach(() => {
     if (orig === undefined) delete process.env.SHAKAPERF_REAL_CHROME;
     else process.env.SHAKAPERF_REAL_CHROME = orig;
+    if (origHeadless === undefined) delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+    else process.env.SHAKAPERF_REAL_CHROME_HEADLESS = origHeadless;
   });
 
   it('is a no-op when the env flag is off', () => {
     delete process.env.SHAKAPERF_REAL_CHROME;
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
     const opts = { headless: true, args: ['--no-sandbox'] };
     expect(applyRealChrome(opts)).toEqual(opts);
   });
 
   it('forces real Chrome, headed, and strips automation when enabled', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
     const out = applyRealChrome({ headless: true, args: ['--no-sandbox'] });
     expect(out.channel).toBe('chrome');
     expect(out.headless).toBe(false);
     expect(out.args).toEqual(['--no-sandbox', '--disable-blink-features=AutomationControlled']);
+  });
+
+  it('uses headless real Chrome only when explicitly enabled', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+    const out = applyRealChrome({ headless: false });
+    expect(out.channel).toBe('chrome');
+    expect(out.headless).toBe(true);
   });
 });
 
