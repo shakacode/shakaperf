@@ -529,18 +529,24 @@ async function runConfiguredPipelineWithSelection(
   // parallel-visreg race (one invocation rming another's pending PNGs
   // mid-flight).
   //
-  // Run-scope sweep: delete every selected stage's outcome for this run's
-  // tests at EVERY viewport the effective config defines — not just this
-  // run's planned units. A per-test viewport override (or a config edit)
-  // shrinks the plan, so abandoned viewports' stale outcomes would otherwise
-  // survive every subsequent run and keep feeding --report-only assemblies.
-  // Outcomes of categories NOT selected this run are left alone — a
-  // --categories=visreg rerun must not destroy the perf results it isn't
-  // remeasuring, and the artifacts they reference share the unit's single
-  // `artifacts/` dir, so the dir is removed wholesale (the empty slate) ONLY
-  // when no outcome at all remains in it. A unit whose dir survives because
-  // another category's outcome lives there runs in keep-old-results mode:
-  // its engines overwrite the files they produce.
+  // Run-scope sweep: for this run's tests, at EVERY viewport the effective
+  // config defines — not just this run's planned units — delete the selected
+  // stages' outcomes and then remove the unit dir wholesale. A per-test
+  // viewport override (or a config edit) shrinks the plan, so abandoned
+  // viewports' stale outcomes would otherwise survive every subsequent run and
+  // keep feeding --report-only assemblies.
+  //
+  // The dir goes wholesale because a unit's categories SHARE one `artifacts/`
+  // dir, and not every engine overwrites what it produced last time: visreg's
+  // screenshot pool accumulates content-addressed frames, so a surviving frame
+  // from a previous run re-enters this run's best-of-N match and can pass on
+  // stale pixels. An empty slate is the only way to rule that out.
+  //
+  // The cost is that a --categories=visreg rerun also drops the perf outcomes
+  // it isn't remeasuring (they reappear as `--categories` skip markers). That
+  // is the intended contract: a default run means "this run's results only".
+  // To combine categories, run them in sequence with --keep-old-results on the
+  // later ones, which skips this sweep entirely.
   //
   // Under --skip-report we still sweep this shard's own tests so reruns
   // cannot read stale artifacts, but we leave the flat visreg scratch dirs
@@ -559,7 +565,7 @@ async function runConfiguredPipelineWithSelection(
           for (const stage of executableStages) {
             store.deleteOutcome(test, viewport.label, stage.name);
           }
-          store.removeUnitDirWithoutOutcomes(test, viewport.label);
+          store.removeUnitDir(test, viewport.label);
         }
       }
     }
