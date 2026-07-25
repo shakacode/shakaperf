@@ -25,6 +25,7 @@ import {
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
 import { setUpContextForNavigation } from '../../pre-navigation';
+import { MOBILE_USER_AGENT } from '../../audit/real-chrome';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
   DEFAULT_LH_CONFIG,
@@ -106,6 +107,14 @@ class LighthouseWorkerSampler {
     // the fork env from LighthouseBenchmarkOptions.headed).
     if (process.env.SHAKA_PERF_HEADED !== '1') {
       chromeFlags.unshift('--headless');
+    }
+    // Bot walls (e.g. academia.edu's Cloudflare) gate purely on User-Agent: a
+    // mobile UA passes, a desktop UA is walled. Real-Chrome audits are mobile/
+    // phone-focused, and the challenge fires on the FIRST navigation — before
+    // Lighthouse's own emulated UA would apply — so pin the mobile UA browser-wide
+    // at launch. Matches the UA the Playwright stages use via realChromeMobileEmulation.
+    if (process.env.SHAKAPERF_REAL_CHROME === '1') {
+      chromeFlags.push(`--user-agent=${MOBILE_USER_AGENT}`);
     }
 
     if (process.env.TRACERBENCH_PROXY_URL) {
