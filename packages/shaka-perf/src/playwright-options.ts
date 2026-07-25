@@ -21,9 +21,16 @@ import type { AbTestsConfig, PlaywrightOptions } from './config';
  * over `shared.playwrightOptions`. Per-key override — an override that only
  * sets `headless` keeps the shared `browser`/`args`. Pass the per-test
  * EFFECTIVE config (ctx.config / applyPerTestConfigOverrides) so per-test
- * overrides are honoured — the per-unit engines (visreg, perf, audit) do;
- * the once-per-run stages (accessibility, agent-readiness) deliberately pass
- * the file-level config because they reuse one browser per worker slot.
+ * overrides are honoured — the per-unit engines (visreg, perf, audit) do.
+ *
+ * The stages that reuse one browser per worker slot (accessibility,
+ * agent-readiness) launch that browser from the FILE-level config — launch
+ * options (`browser`/`args`/`headless`) can't vary once the browser is up.
+ * Accessibility runs the per-test `beforeNavigate` + test body on the measured
+ * page, so its per-scan context re-resolves this with the per-test `ctx.config`
+ * for the context/navigation/timeout options (`ignoreHTTPSErrors`, `waitTimeout`,
+ * `gotoParameters`). Agent-readiness is the exception: it models an anonymous
+ * crawler and runs NO hook or test body, so it stays fully file-level.
  */
 export function resolvePlaywrightOptions(
   config: AbTestsConfig,

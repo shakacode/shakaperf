@@ -83,6 +83,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
             failOnViolation: config.accessibility.failOnViolation,
           },
           agentReadiness: {
+            enabled: config.agentReadiness.enabled,
             playwrightOptions: resolvePlaywrightOptions(config, 'audit'),
           },
         });

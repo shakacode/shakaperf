@@ -10,12 +10,19 @@
 import type { PlaywrightOptions } from '../../../config';
 
 export interface AgentReadinessStageConfig {
-  skip?: boolean;
+  /**
+   * File-level default for whether agent-readiness runs at all. Off by default —
+   * it's an opt-in AI-legibility scan. A per-test `config.agentReadiness.enabled`
+   * overrides this in the stage's `applies`.
+   */
+  enabled: boolean;
   /**
    * Effective launch options for this stage — `resolvePlaywrightOptions(config,
    * 'audit')`, handed in by the pipeline builder. Passed through to
    * `launchStageBrowser` whole, so extra launch keys behave the same as on
-   * every other stage.
+   * every other stage. Agent-readiness is fully file-level: it models an
+   * anonymous crawler and runs no per-test hook or test body, so there is
+   * nothing to re-resolve per-test.
    */
   playwrightOptions: PlaywrightOptions;
 }
@@ -36,9 +43,8 @@ const RAW_FETCH_TIMEOUT_MS = 15_000;
 
 export function resolveAgentReadinessConfig(
   config: AgentReadinessStageConfig,
-): { skip: boolean; engineOptions: AgentReadinessEngineOptions } {
+): { engineOptions: AgentReadinessEngineOptions } {
   return {
-    skip: config.skip ?? false,
     engineOptions: {
       playwrightOptions: config.playwrightOptions,
       navTimeoutMs: config.playwrightOptions.waitTimeout,

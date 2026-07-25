@@ -59,6 +59,7 @@ function chipsFor(result: AccessibilityResult) {
       failOnViolation: result.failOnViolation,
     },
     agentReadiness: {
+      enabled: false,
       playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
     },
   });

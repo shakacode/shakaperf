@@ -141,6 +141,11 @@ async function readRenderedSignals(
 ): Promise<{ signals: PageSignals; htmlBytes: number; blocked: boolean }> {
   let context: BrowserContext | undefined;
   try {
+    // Deliberately anonymous and body-free: agent-readiness models what an AI
+    // crawler sees when it lands on the URL cold — no cookies, no auth, no
+    // beforeNavigate hook, and NOT the test body. Running any of those would
+    // measure a page state (post-login, post-consent, post-interaction) that no
+    // crawler ever reaches, which is the opposite of what this metric means.
     context = await browser.newContext(stageContextOptions(ctx.viewport, engineOptions.playwrightOptions));
     const page = await context.newPage();
     const timeout = engineOptions.navTimeoutMs;

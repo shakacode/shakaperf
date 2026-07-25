@@ -98,11 +98,13 @@ problem-spot frames - the rest of the card is unaffected.
 
 The report also grows a third **Agent Ready** tab measuring how legible the site
 is to AI agents and answer engines (ChatGPT, Claude, Perplexity, Google AI
-Overviews) - the data comes from the audit's `agent-readiness` stage (always on
-under the `audit` category), so a plain `shaka-perf audit` produces it; with no
-agent data on disk the bytes stay identical to before. The stage captures each
-page twice - the raw HTML the server sends (a no-JS fetch) and the rendered DOM -
-and writes `<id>/agent-readiness.json`. Each page score adds content reachable
+Overviews) - the data comes from the audit's `agent-readiness` stage, which is
+OFF by default and opt-in per test via `config.agentReadiness.enabled` (see
+BREAKING_CHANGES.md); it only produces data for the pages that enabled it, and
+with no agent data on disk the bytes stay identical to a run without it. The
+stage captures each page twice, anonymously - the raw HTML the server sends (a
+no-JS fetch) and the rendered DOM, never the test body - and writes
+`<id>/agent-readiness.json`. Each page score adds content reachable
 without JavaScript (40 points), machine-readable structure (20 points), and
 semantic HTML (15 points) out of 75, then rescales to 0-100. Crawler access
 (25 points) is assessed separately and rescaled to its own site-wide 0-100 card.

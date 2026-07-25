@@ -269,6 +269,16 @@ export const AccessibilityConfigSchema = z
     failOnViolation: z.boolean().default(true),
   });
 
+export const AgentReadinessConfigSchema = z
+  .object({
+    // Opt-in: the AI-legibility scan is OFF unless a test (or the file) turns it
+    // on. It measures a URL as an anonymous crawler would — no cookies/auth, and
+    // it never runs the test body — so blanket-enabling it on interaction tests
+    // just scores their `startingPath` cold. Recommended usage: enable per-test
+    // (`config.agentReadiness.enabled`) on the landing pages that matter.
+    enabled: z.boolean().default(false),
+  });
+
 export const BisectConfigSchema = z.object({
   rebuildContainer: z.boolean().default(false),
 });
@@ -280,6 +290,7 @@ export const AbTestsConfigSchema = z
     perf: PerfConfigSchema.optional().default({}),
     audit: AuditConfigSchema.optional().default({}),
     accessibility: AccessibilityConfigSchema.optional().default({}),
+    agentReadiness: AgentReadinessConfigSchema.optional().default({}),
     twinServers: TwinServersConfigSchema.optional(),
     bisect: BisectConfigSchema.optional().default({}),
   })
@@ -325,6 +336,7 @@ export type VisregConfig = z.infer<typeof VisregConfigSchema>;
 export type PerfConfig = z.infer<typeof PerfConfigSchema>;
 export type AuditConfig = z.infer<typeof AuditConfigSchema>;
 export type AccessibilityConfig = z.infer<typeof AccessibilityConfigSchema>;
+export type AgentReadinessConfig = z.infer<typeof AgentReadinessConfigSchema>;
 export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 
 /**
@@ -364,6 +376,7 @@ export interface AbTestsConfig {
   perf: PerfConfig;
   audit: AuditConfig;
   accessibility: AccessibilityConfig;
+  agentReadiness: AgentReadinessConfig;
   twinServers?: AbTestsConfigParsed['twinServers'];
   bisect: BisectConfig;
 }
@@ -450,6 +463,7 @@ export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
     perf: parsed.perf,
     audit: parsed.audit,
     accessibility: parsed.accessibility,
+    agentReadiness: parsed.agentReadiness,
     twinServers: parsed.twinServers,
     bisect: parsed.bisect,
   };

@@ -14,6 +14,40 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### Agent-readiness is now OFF by default (opt in with `agentReadiness.enabled`)
+
+The `agent-readiness` stage (the AI-legibility scan behind the client report's
+"Agent Ready" tab) used to run for every page of every `shaka-perf audit`. It is
+now **off by default** and gated by a new config option:
+
+```ts
+// abtests.config.ts — new section (defaults to { enabled: false })
+agentReadiness: { enabled: true },   // enable for EVERY test (rarely what you want)
+```
+
+**Recommended: enable it per-test**, on the specific landing pages where a
+crawler's-eye view actually matters — because agent-readiness measures each URL
+*anonymously* (no cookies, no auth, and it never runs your test body), so it only
+ever scores a test's `startingPath` as a cold, non-rendering/rendering crawler
+would see it. Turning it on for interaction/authed tests just scores their
+landing URL cold, which is rarely useful:
+
+```ts
+abTest('Homepage', {
+  startingPath: '/',
+  config: { agentReadiness: { enabled: true } },   // opt THIS page in
+}, async ({ page }) => { /* ... */ });
+```
+
+If you relied on the old always-on behaviour, add `agentReadiness: { enabled:
+true }` to `abtests.config.ts` to restore it for all tests. With nothing enabled,
+no `agent-readiness.json` is written and the client report simply omits the
+"Agent Ready" tab (byte-identical to a run without agent data).
+
+The reason is pipeline performance. shaka-perf is playwright first, so a lot of 
+tests start from the same path and lead to duplication. Before the change it could 
+be disabled with skip: true, however such setting leads to clutter in test definitions. 
+
 ### `abtests.config.ts` is now REQUIRED for every command
 
 `shaka-perf compare`, `shaka-perf audit` (and `compare bisect`, which always

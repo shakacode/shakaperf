@@ -67,8 +67,9 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     }));
     pipeline.runStage(workerPool, new AccessibilityStage(input.accessibility));
     // A second lens beside accessibility: how legible the page is to AI agents /
-    // answer engines. Runs under the `audit` category so a plain `shaka-perf
-    // audit` produces the data; the client report renders the "Agent Ready" tab.
+    // answer engines. OFF by default (opt-in via `config.agentReadiness.enabled`,
+    // ideally per-test); when enabled the client report renders the "Agent Ready"
+    // tab. Its `applies()` skips units for tests that didn't turn it on.
     pipeline.runStage(workerPool, new AgentReadinessStage(input.agentReadiness));
     // Reads its frame cap (audit.limitVideoFramesCount) off the per-test
     // effective config at run time — no stage-level config.

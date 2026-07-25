@@ -125,6 +125,18 @@ export interface AccessibilityConfigInput {
   failOnViolation?: boolean;
 }
 
+export interface AgentReadinessConfigInput {
+  /**
+   * Opt-in: the agent-readiness (AI-legibility) scan is OFF by default. Set to
+   * `true` — ideally per-test, on the specific landing pages where a crawler's
+   * cold view actually matters — to run it. It measures each URL anonymously
+   * (no cookies/auth, and it never runs your test body), so enabling it on
+   * every interaction test just scores their `startingPath` cold. See
+   * BREAKING_CHANGES.md.
+   */
+  enabled?: boolean;
+}
+
 export interface SetupCommandInput {
   command: string;
   description: string;
@@ -163,6 +175,7 @@ export interface AbTestsConfigInput {
   perf?: PerfConfigInput;
   audit?: AuditConfigInput;
   accessibility?: AccessibilityConfigInput;
+  agentReadiness?: AgentReadinessConfigInput;
   twinServers?: TwinServersConfigInput;
   bisect?: BisectConfigInput;
 }

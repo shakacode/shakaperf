@@ -19,14 +19,15 @@ import {
   type TestContext,
 } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
-import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
+import { type AgentReadinessStageConfig } from './config';
 import { AgentReadinessArtifactView } from './report';
 import type { AgentReadinessResult } from './types';
 
 // Reads how legible each page is to AI agents / answer engines (see ./types).
-// Runs under the `audit` category, so a plain `shaka-perf audit` produces the
-// data with no extra flags; the client report turns it into the "Agent Ready"
-// tab.
+// Runs under the `audit` category, but OFF by default: a test opts in via
+// `config.agentReadiness.enabled` (or the file enables it for all). When it
+// runs, the client report turns its data into the "Agent Ready" tab; with no
+// test enabled, the tab is simply absent.
 export class AgentReadinessStage implements Stage<AgentReadinessResult> {
   readonly category = 'audit';
   readonly name: StageName = 'agent-readiness';
@@ -38,8 +39,10 @@ export class AgentReadinessStage implements Stage<AgentReadinessResult> {
     this.config = config;
   }
 
-  applies(_test: AbTestDefinition, _viewport: Viewport): boolean {
-    return !resolveAgentReadinessConfig(this.config).skip;
+  applies(test: AbTestDefinition, _viewport: Viewport): boolean {
+    // Per-test `config.agentReadiness.enabled` wins over the file-level default;
+    // when neither turns it on the runner records a skip outcome for the unit.
+    return test.config?.agentReadiness?.enabled ?? this.config.enabled;
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<AgentReadinessResult> {

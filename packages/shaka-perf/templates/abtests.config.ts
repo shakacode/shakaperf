@@ -132,6 +132,13 @@ export default defineConfig({
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
 
+  // Agent-readiness (AI-legibility scan → the client report's "Agent Ready"
+  // tab) is OFF by default. It measures each URL anonymously — no cookies/auth,
+  // never your test body — so it only makes sense on the landing pages a crawler
+  // would hit. Prefer enabling it per-test on those pages
+  // (`config: { agentReadiness: { enabled: true } }`) rather than globally here.
+  // agentReadiness: { enabled: true },
+
   // Twin-servers (Docker A/B testing infra). `ports` reuses the constants
   // above so the host-port mapping, the URLs visreg/perf hit, and
   // `servers notify-server-started` all stay in sync. Run `shaka-perf servers`

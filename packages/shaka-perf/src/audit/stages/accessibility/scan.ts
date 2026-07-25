@@ -20,6 +20,7 @@ import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
 import { waitForBotWallToClear } from '../../real-chrome';
 import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
+import { resolvePlaywrightOptions, type PlaywrightOptions } from '../../../config';
 import { normalizeViolation } from './artifacts';
 import type { AccessibilityEffectiveConfig, AccessibilityStageConfig } from './config';
 import type {
@@ -89,7 +90,14 @@ export async function scanAccessibilityPage(
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   try {
-    context = await browser.newContext(stageContextOptions(ctx.viewport, config.playwrightOptions));
+    // The shared per-worker browser is LAUNCHED with the file-level options
+    // (browser/args/headless can't vary once it's up), but every context here is
+    // fresh per scan — so the context/navigation/timeout options honour the
+    // per-test effective config, consistent with beforeNavigate below. A test
+    // that raises `shared.playwrightOptions.waitTimeout` or flips
+    // `ignoreHTTPSErrors` therefore takes effect on its own a11y scan.
+    const effectivePwOptions = resolvePlaywrightOptions(ctx.config, 'accessibility');
+    context = await browser.newContext(stageContextOptions(ctx.viewport, effectivePwOptions));
     // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,
@@ -100,10 +108,10 @@ export async function scanAccessibilityPage(
       beforeNavigate: ctx.config.shared.beforeNavigate,
     });
     page = await context.newPage();
-    // The one wait cap every Playwright engine respects (required on the config).
-    page.setDefaultTimeout(config.playwrightOptions.waitTimeout);
-    page.setDefaultNavigationTimeout(config.playwrightOptions.waitTimeout);
-    await navigateAccessibilityPage(page, context, ctx, config, options);
+    // The one wait cap every Playwright engine respects (per-test effective).
+    page.setDefaultTimeout(effectivePwOptions.waitTimeout);
+    page.setDefaultNavigationTimeout(effectivePwOptions.waitTimeout);
+    await navigateAccessibilityPage(page, context, ctx, effectivePwOptions, options);
 
     let builder = new AxeBuilder({ page });
     if (effective.includeRules && effective.includeRules.length > 0) {
@@ -207,10 +215,10 @@ async function navigateAccessibilityPage(
   page: Page,
   context: BrowserContext,
   ctx: TestContext,
-  config: AccessibilityStageConfig,
+  playwrightOptions: PlaywrightOptions,
   options: AccessibilityPageScanOptions,
 ): Promise<void> {
-  await page.goto(options.url, accessibilityGotoOptions(config));
+  await page.goto(options.url, accessibilityGotoOptions(playwrightOptions));
   await waitForBotWallToClear(page);
   await runWithLastAnnotation((annotate) =>
     ctx.test.testFn({
@@ -225,8 +233,8 @@ async function navigateAccessibilityPage(
   );
 }
 
-function accessibilityGotoOptions(config: AccessibilityStageConfig): PageGotoOptions {
-  const candidate = config.playwrightOptions.gotoParameters;
+function accessibilityGotoOptions(playwrightOptions: PlaywrightOptions): PageGotoOptions {
+  const candidate = playwrightOptions.gotoParameters;
   if (candidate && typeof candidate === 'object') {
     return candidate as PageGotoOptions;
   }

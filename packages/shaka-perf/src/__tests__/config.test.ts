@@ -130,6 +130,18 @@ describe('bisect config', () => {
 
 });
 
+describe('agentReadiness config', () => {
+  it('defaults agent-readiness to disabled', () => {
+    expect(parseAbTestsConfig(baseConfig()).agentReadiness).toEqual({ enabled: false });
+  });
+
+  it('preserves an explicit enable', () => {
+    expect(parseAbTestsConfig(baseConfig({
+      agentReadiness: { enabled: true },
+    })).agentReadiness).toEqual({ enabled: true });
+  });
+});
+
 describe('playwrightOptions', () => {
   it('is required on shared — no hidden launch defaults', () => {
     expect(() => parseAbTestsConfig({
