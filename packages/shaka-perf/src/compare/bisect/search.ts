@@ -75,7 +75,7 @@ export function partitionTargetGroup(options: {
   targets: readonly BisectTarget[];
   sha: string;
   evaluations: readonly TargetEvaluationAtCommit[];
-  nextGroupId(): string;
+  queuedGroupId: string;
 }): PartitionTargetGroupResult {
   const incoming = new Map(options.evaluations.map((evaluation) => [evaluation.targetId, evaluation]));
   const targets = options.targets.map((target) => {
@@ -127,7 +127,7 @@ export function partitionTargetGroup(options: {
   return {
     continuingGroup: groupFor(options.group.id, 'running', verdict, continuingTargets),
     queuedGroups: rankedPartitions.slice(1).map(([partitionVerdict, partitionTargets]) => (
-      groupFor(options.nextGroupId(), 'pending', partitionVerdict, partitionTargets)
+      groupFor(options.queuedGroupId, 'pending', partitionVerdict, partitionTargets)
     )),
     targets,
     verdict,

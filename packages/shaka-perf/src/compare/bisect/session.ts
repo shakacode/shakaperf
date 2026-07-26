@@ -64,6 +64,7 @@ import {
   CandidateEvaluator,
   containsBisectInterruption,
   findCandidateEvaluationError,
+  type CandidateResult,
   type CompareRunRequest,
   type CompareRunResult,
   type ExperimentReloadRequest,
@@ -382,22 +383,7 @@ export async function executeBisect(
   input: ExecuteBisectInput,
   deps: ExecuteBisectDependencies,
 ): Promise<BisectSession> {
-  const context = createBisectExecutionContext(input, deps);
-
-  try {
-    startBisectExecution(context);
-    await acquireBisectLease(context);
-    await initializeBisectTargets(context);
-    await runPrimaryBisectWorkflow(context);
-    await runMergeBisectWorkflow(context);
-    context.checkCancellation();
-  } catch (error) {
-    context.state.primaryError = error;
-  } finally {
-    await finalizeBisectExecution(context);
-  }
-
-  return bisectExecutionResult(context);
+  return new CompareBisectOrchestrator(input, deps).run();
 }
 
 interface CandidateMeasureOptions {
@@ -423,159 +409,151 @@ interface BisectExecutionState {
   nextAction: BisectNextAction | undefined;
 }
 
-interface BisectExecutionContext {
-  input: ExecuteBisectInput;
-  deps: ExecuteBisectDependencies;
-  state: BisectExecutionState;
-  persistSession(): void;
-  writeCurrentReport(): void;
-  persistSessionAndReport(): void;
-  checkCancellation(): void;
-  logDecision(event: string, message: string, data?: Record<string, unknown>): void;
-  measureEndpoint(options: CandidateMeasureOptions): Promise<import('./run-candidate').CandidateResult>;
-  throwEndpointRestoreError(): void;
-}
+/** Owns the complete compare-bisect command lifecycle and its live object graph. */
+class CompareBisectOrchestrator {
+  readonly state: BisectExecutionState;
 
-function createBisectExecutionContext(
-  input: ExecuteBisectInput,
-  deps: ExecuteBisectDependencies,
-): BisectExecutionContext {
-  fs.mkdirSync(input.resultsDirectory, { recursive: true });
-  if (!input.resumeSession) {
-    deps.artifacts.clearPrevious();
-  }
-  const initial = input.resumeSession
-    ? resumedSession(input.resumeSession)
-    : initialSession(input, deps.clock.now());
-  let state!: BisectExecutionState;
-  let context!: BisectExecutionContext;
-  const owner = new CompareBisectSession(initial, {
-    persistence: {
-      async write(session) {
-        deps.artifacts.writeSession(session);
+  constructor(
+    readonly input: ExecuteBisectInput,
+    readonly deps: ExecuteBisectDependencies,
+  ) {
+    fs.mkdirSync(input.resultsDirectory, { recursive: true });
+    if (!input.resumeSession) deps.artifacts.clearPrevious();
+    const initial = input.resumeSession
+      ? resumedSession(input.resumeSession)
+      : initialSession(input, deps.clock.now());
+    const environment = new BisectRunEnvironment(() => deps.clock.now());
+    const owner = new CompareBisectSession(initial, {
+      persistence: {
+        async write(session) {
+          deps.artifacts.writeSession(session);
+        },
       },
-    },
-    transitions: {
-      async record(transition, session) {
-        recordPhaseDecision(context, transition, session);
+      transitions: {
+        record: async (transition, session) => recordPhaseDecision(this, transition, session),
       },
-    },
-    reports: {
-      async write(session) {
-        if (state.badRefTests) deps.artifacts.writeReport(session, state.badRefTests);
-      },
-    },
-  });
-  const environment = new BisectRunEnvironment(() => deps.clock.now());
-  const endpointValidator = new EndpointValidator(
-    deps.exactCheckout,
-    new EndpointMeasurementRunner(
-      deps.server,
-      deps.comparison,
-      environment,
-      preferredExperimentReloadMode(input.config),
-    ),
-  );
-  const candidateEvaluator = new CandidateEvaluator(
-    deps.nativeGit,
-    deps.server,
-    deps.comparison,
-    environment,
-    preferredExperimentReloadMode(input.config),
-  );
-  state = {
-    get session() {
-      return owner.current();
-    },
-    set session(next: BisectSession) {
-      owner.replace(next);
-    },
-    owner,
-    badRefTests: input.resumeBadRefTests ?? null,
-    endpointValidator,
-    candidateEvaluator,
-    endpointRestoreError: null,
-    requiresExperimentRestore: false,
-    leaseAcquired: false,
-    primaryError: null,
-    cleanupErrors: [],
-    environment,
-    disposeSignalHandlers: null,
-    nextAction: undefined,
-  };
-  context = {
-    input,
-    deps,
-    state,
-    persistSession() {
-      deps.artifacts.writeSession(state.session);
-    },
-    writeCurrentReport() {
-      if (state.badRefTests) deps.artifacts.writeReport(state.session, state.badRefTests);
-    },
-    persistSessionAndReport() {
-      context.persistSession();
-      context.writeCurrentReport();
-    },
-    checkCancellation() {
-      state.environment.checkCancellation();
-    },
-    logDecision(event, message, data) {
-      deps.decisions.progress(message);
-      deps.decisions.record({
-        timestamp: state.environment.now(),
-        event,
-        message,
-        data,
-      });
-    },
-    async measureEndpoint(options) {
-      state.requiresExperimentRestore = true;
-      try {
-        const result = await state.endpointValidator.validate({
-          sha: options.sha,
-          categories: [...options.categories],
-          tests: [...options.tests],
-          targetIds: options.targets.map((target) => target.id),
-          targets: [...options.targets],
-        });
-        state.session = recordCommitRun(state.session, result.commitRun);
-        context.persistSessionAndReport();
-        return result;
-      } catch (error) {
-        if (error instanceof EndpointRestoreError) {
-          state.session = recordCommitRun(state.session, error.result.commitRun);
-          state.endpointRestoreError = error;
-          context.persistSessionAndReport();
-          return error.result;
-        }
-        const evaluationError = findCandidateEvaluationError(error);
-        if (evaluationError) {
-          state.session = recordCommitRun(state.session, evaluationError.commitRun);
-          context.persistSessionAndReport();
-          if (error === evaluationError
-            && evaluationError.originalError instanceof BisectInterruptedError) {
-            throw evaluationError.originalError;
+      reports: {
+        write: async (session) => {
+          if (this.state.badRefTests) {
+            deps.artifacts.writeReport(session, this.state.badRefTests);
           }
-        }
-        throw error;
+        },
+      },
+    });
+    const endpointValidator = new EndpointValidator(
+      deps.exactCheckout,
+      new EndpointMeasurementRunner(
+        deps.server,
+        deps.comparison,
+        environment,
+        preferredExperimentReloadMode(input.config),
+      ),
+    );
+    this.state = {
+      get session() {
+        return owner.current();
+      },
+      set session(next: BisectSession) {
+        owner.replace(next);
+      },
+      owner,
+      badRefTests: input.resumeBadRefTests ?? null,
+      endpointValidator,
+      candidateEvaluator: new CandidateEvaluator(
+        deps.nativeGit,
+        deps.server,
+        deps.comparison,
+        environment,
+        preferredExperimentReloadMode(input.config),
+      ),
+      endpointRestoreError: null,
+      requiresExperimentRestore: false,
+      leaseAcquired: false,
+      primaryError: null,
+      cleanupErrors: [],
+      environment,
+      disposeSignalHandlers: null,
+      nextAction: undefined,
+    };
+  }
+
+  async run(): Promise<BisectSession> {
+    try {
+      await startBisectExecution(this);
+      await acquireBisectLease(this);
+      await initializeBisectTargets(this);
+      await runPrimaryBisectWorkflow(this);
+      await runMergeBisectWorkflow(this);
+      this.checkCancellation();
+    } catch (error) {
+      this.state.primaryError = error;
+    } finally {
+      await finalizeBisectExecution(this);
+    }
+    return bisectExecutionResult(this);
+  }
+
+  save(): Promise<void> {
+    return this.state.owner.save(this.state.session);
+  }
+
+  checkCancellation(): void {
+    this.state.environment.checkCancellation();
+  }
+
+  logDecision(event: string, message: string, data?: Record<string, unknown>): void {
+    this.deps.decisions.progress(message);
+    this.deps.decisions.record({
+      timestamp: this.state.environment.now(),
+      event,
+      message,
+      data,
+    });
+  }
+
+  async measureEndpoint(options: CandidateMeasureOptions): Promise<CandidateResult> {
+    this.state.requiresExperimentRestore = true;
+    try {
+      return await this.state.endpointValidator.validate({
+        sha: options.sha,
+        categories: [...options.categories],
+        tests: [...options.tests],
+        targetIds: options.targets.map((target) => target.id),
+        targets: [...options.targets],
+      });
+    } catch (error) {
+      if (error instanceof EndpointRestoreError) {
+        this.state.endpointRestoreError = error;
+        return error.result;
       }
-    },
-    throwEndpointRestoreError() {
-      const error = state.endpointRestoreError;
-      state.endpointRestoreError = null;
-      if (error) throw error;
-    },
-  };
-  return context;
+      const evaluationError = findCandidateEvaluationError(error);
+      if (evaluationError) {
+        this.state.session = recordCommitRun(this.state.session, evaluationError.commitRun);
+        await this.save();
+        if (error === evaluationError
+          && evaluationError.originalError instanceof BisectInterruptedError) {
+          throw evaluationError.originalError;
+        }
+      }
+      throw error;
+    }
+  }
+
+  throwEndpointRestoreError(): void {
+    const error = this.state.endpointRestoreError;
+    this.state.endpointRestoreError = null;
+    if (error) throw error;
+  }
 }
 
-function startBisectExecution(context: BisectExecutionContext): void {
+type BisectExecutionContext = CompareBisectOrchestrator;
+
+async function startBisectExecution(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
   state.disposeSignalHandlers = deps.signals.install((signal) => {
     state.environment.cancel(signal);
   });
-  context.persistSessionAndReport();
+  await context.save();
   context.logDecision('session-start', 'Starting compare bisect session', {
     goodSha: input.gitRange.goodSha,
     badSha: input.gitRange.badSha,
@@ -600,7 +578,7 @@ async function acquireBisectLease(context: BisectExecutionContext): Promise<void
     'lease-acquired',
     'Acquired twin-server bisect lease; unrelated lifecycle actions are paused',
   );
-  context.persistSessionAndReport();
+  await context.save();
   context.checkCancellation();
 }
 
@@ -633,6 +611,7 @@ function logBisectResume(context: BisectExecutionContext): void {
 async function discoverBadRefTargets(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
   const badRun = await measureOrReuseBadRef(context);
+  state.session = recordCommitRun(state.session, badRun.commitRun);
   state.session = withPrimaryTargets(state.session, discoverTargets(
     badRun.testResults,
     input.selectedCategories,
@@ -660,13 +639,13 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
       targets: state.session.primary.targets.map((target) => targetLogData(target)),
     },
   );
-  context.persistSessionAndReport();
+  await context.save();
   context.throwEndpointRestoreError();
 }
 
 async function measureOrReuseBadRef(
   context: BisectExecutionContext,
-): Promise<CompareRunResult> {
+): Promise<CompareRunResult & { commitRun: CommitRun }> {
   const { input, deps, state } = context;
   if (input.reuseCurrentResults) {
     context.logDecision(
@@ -684,7 +663,7 @@ async function measureOrReuseBadRef(
       categories: input.selectedCategories,
     });
     assertNoPipelineErrors(badRun.testResults, input.gitRange.badSha);
-    state.session = recordCommitRun(state.session, {
+    const commitRun: CommitRun = {
       sha: input.gitRange.badSha,
       compareCompleted: true,
       requestedCategories: [...input.selectedCategories],
@@ -695,9 +674,8 @@ async function measureOrReuseBadRef(
       startedAt,
       finishedAt: state.environment.now(),
       reusedResults: true,
-    });
-    context.persistSessionAndReport();
-    return badRun;
+    };
+    return { ...badRun, commitRun };
   }
   context.logDecision(
     'bad-ref-start',
@@ -707,12 +685,17 @@ async function measureOrReuseBadRef(
       categories: input.selectedCategories,
     },
   );
-  return context.measureEndpoint({
+  const result = await context.measureEndpoint({
     sha: input.gitRange.badSha,
     categories: input.selectedCategories,
     tests: [],
     targets: [],
   });
+  return {
+    testResults: result.testResults,
+    compareResultsPath: result.commitRun.compareResultsPath,
+    commitRun: result.commitRun,
+  };
 }
 
 async function runPrimaryBisectWorkflow(
@@ -723,7 +706,7 @@ async function runPrimaryBisectWorkflow(
     return;
   }
   if (context.state.session.primary.targets.length === 0) {
-    completeEmptyPrimary(context);
+    await completeEmptyPrimary(context);
     return;
   }
   await runPrimaryBisectSearch(context);
@@ -773,10 +756,10 @@ async function planBisectDryRun(context: BisectExecutionContext): Promise<void> 
       : 'Dry run found no regression targets and has no next action',
     state.nextAction ? { nextAction: state.nextAction } : { targetCount: 0 },
   );
-  context.persistSessionAndReport();
+  await context.save();
 }
 
-function completeEmptyPrimary(context: BisectExecutionContext): void {
+async function completeEmptyPrimary(context: BisectExecutionContext): Promise<void> {
   const { deps, state } = context;
   deps.decisions.progress('No regression targets were detected at the bad ref');
   const primary = state.session.primary;
@@ -790,7 +773,7 @@ function completeEmptyPrimary(context: BisectExecutionContext): void {
       finishedAt: state.environment.now(),
     },
   };
-  context.persistSessionAndReport();
+  await context.save();
 }
 
 async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<void> {
@@ -866,6 +849,21 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     });
     return;
   }
+  const goodSha = input.gitRange.goodSha;
+  const savedGoodRun = state.session.commitRuns[goodSha];
+  const completedGoodRun = savedGoodRun?.compareCompleted === true
+    && savedGoodRun.infrastructureError === undefined;
+  const allTargetsRecorded = state.session.primary.targets.every((target) => (
+    target.recordedTargetEvaluations[goodSha]?.commitSha === goodSha
+  ));
+  if (completedGoodRun && allTargetsRecorded) {
+    context.logDecision(
+      'good-ref-validation-reused',
+      `Reusing completed good-ref validation at ${shortSha(goodSha)}`,
+      { sha: goodSha, targetCount: state.session.primary.targets.length },
+    );
+    return;
+  }
   const goodTargets = activeTargets(state.session);
   context.logDecision(
     'good-ref-start',
@@ -883,7 +881,10 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     tests: testsForTargets(goodTargets),
     targets: goodTargets,
   });
-  state.session = validateGoodEndpoint(state.session, goodRun.targetEvaluations);
+  state.session = recordCommitRun(
+    validateGoodEndpoint(state.session, goodRun.targetEvaluations),
+    goodRun.commitRun,
+  );
   const invalidTargets = state.session.primary.targets.filter((target) => (
     target.status === 'invalid'
   ));
@@ -896,14 +897,14 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
       activeTargets: activeTargets(state.session).map((target) => targetLogData(target)),
     },
   );
-  context.persistSessionAndReport();
+  await context.save();
   context.throwEndpointRestoreError();
 }
 
 async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
   state.session = buildMergeQueue(state.session);
-  context.persistSessionAndReport();
+  await context.save();
   if (!input.investigateMerges || (state.session.mergeQueue?.length ?? 0) === 0) return;
   if (state.badRefTests) deps.artifacts.writeSummary(state.session);
   state.session = { ...state.session, mode: 'merge-investigation' };
@@ -925,14 +926,22 @@ async function finalizeBisectExecution(context: BisectExecutionContext): Promise
   disposeBisectSignalHandlers(context);
   setTerminalBisectSession(context);
   logTerminalBisectStatus(context);
-  const terminalPersisted = persistTerminalBisectState(context);
+  const terminalPersisted = await persistTerminalBisectState(context);
   if (terminalPersisted && context.state.cleanupErrors.length === 0) {
-    writeTerminalBisectSummary(context);
+    await writeTerminalBisectSummary(context);
   }
 }
 
 async function restoreExperimentAfterBisect(context: BisectExecutionContext): Promise<void> {
   const { deps, state } = context;
+  try {
+    await deps.nativeGit.reset();
+  } catch (error) {
+    state.cleanupErrors.push(new Error(
+      `native Git bisect reset failed: ${errorMessage(error)}`,
+      { cause: error },
+    ));
+  }
   if (!state.requiresExperimentRestore) return;
   try {
     await deps.restoration.restore();
@@ -1034,11 +1043,11 @@ function logTerminalBisectStatus(context: BisectExecutionContext): void {
   }
 }
 
-function persistTerminalBisectState(context: BisectExecutionContext): boolean {
+async function persistTerminalBisectState(context: BisectExecutionContext): Promise<boolean> {
   const { deps, state } = context;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      context.persistSessionAndReport();
+      await context.save();
       return true;
     } catch (error) {
       state.cleanupErrors.push(new Error(
@@ -1056,7 +1065,7 @@ function persistTerminalBisectState(context: BisectExecutionContext): boolean {
   return false;
 }
 
-function writeTerminalBisectSummary(context: BisectExecutionContext): void {
+async function writeTerminalBisectSummary(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
   try {
     deps.artifacts.writeSummary(state.session, {
@@ -1075,7 +1084,7 @@ function writeTerminalBisectSummary(context: BisectExecutionContext): void {
       state.cleanupErrors,
       state.environment.now(),
     );
-    persistTerminalBisectState(context);
+    await persistTerminalBisectState(context);
   }
 }
 

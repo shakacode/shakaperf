@@ -115,7 +115,7 @@ describe('native bisect target groups', () => {
         evaluation('layout', true),
         evaluation('tbt', false),
       ],
-      nextGroupId: () => 'group-2',
+      queuedGroupId: 'group-2',
     });
 
     expect(result.verdict).toBe('bad');
@@ -143,7 +143,7 @@ describe('native bisect target groups', () => {
       targets,
       sha: 'candidate',
       evaluations: [evaluation('visual', false), evaluation('tbt', true)],
-      nextGroupId: () => 'group-2',
+      queuedGroupId: 'group-2',
     });
 
     expect(result.continuingGroup.targetIds).toEqual(['visual']);
@@ -166,7 +166,7 @@ describe('native bisect target groups', () => {
         evaluation('layout', true, 'middle'),
         evaluation('tbt', false, 'middle'),
       ],
-      nextGroupId: () => 'group-2',
+      queuedGroupId: 'group-2',
     });
     const second = partitionTargetGroup({
       group: first.continuingGroup,
@@ -176,7 +176,7 @@ describe('native bisect target groups', () => {
         evaluation('visual', true, 'earlier'),
         evaluation('layout', false, 'earlier'),
       ],
-      nextGroupId: () => 'group-3',
+      queuedGroupId: 'group-3',
     });
 
     expect(second.continuingGroup).toMatchObject({
