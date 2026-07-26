@@ -58,7 +58,6 @@ import {
 } from './report';
 import { buildBisectReportModel } from './report-model';
 import { regenerateBisectReport } from './report-only';
-import { reconcileExperimentVolume, syncCommitDelta } from './sync';
 import type {
   BisectCategory,
   BisectCompatibility,
@@ -74,7 +73,6 @@ import type {
 } from './types';
 import { resolveConfig } from '../../twin-servers/config';
 import type { ResolvedConfig } from '../../twin-servers/types';
-import { readBuildManifest, type BuildManifest } from '../../twin-servers/helpers/rebuild-check';
 import { requireBisectProxy } from '../../twin-servers/ipc/client';
 import { PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/ipc/protocol';
 import type { BisectExperimentReloadResult } from '../../twin-servers/commands/bisect-session';
@@ -85,7 +83,6 @@ import {
   type CandidateDependencies,
   type CompareRunRequest,
   type CompareRunResult,
-  type SyncCandidateFilesRequest,
   type ExperimentReloadRequest,
   type ExperimentReloadResult,
 } from './run-candidate';
@@ -118,19 +115,16 @@ export interface BisectCliOptions {
 export type {
   CompareRunRequest,
   CompareRunResult,
-  SyncCandidateFilesRequest,
   ExperimentReloadRequest,
   ExperimentReloadResult,
 } from './run-candidate';
 
 export interface RestoreRequest {
-  previouslySyncedSha: string | null;
   originalSha: string;
 }
 
 export interface RestoreExperimentStateDependencies {
   restoreCheckout(): Promise<void>;
-  syncVolume(): Promise<void>;
   reloadExperiment(): Promise<void>;
 }
 
@@ -138,19 +132,10 @@ export async function restoreExperimentState(
   dependencies: RestoreExperimentStateDependencies,
 ): Promise<void> {
   const errors: Error[] = [];
-  let checkoutRestored = false;
   try {
     await dependencies.restoreCheckout();
-    checkoutRestored = true;
   } catch (error) {
     errors.push(asError(error));
-  }
-  if (checkoutRestored) {
-    try {
-      await dependencies.syncVolume();
-    } catch (error) {
-      errors.push(asError(error));
-    }
   }
   try {
     await dependencies.reloadExperiment();
@@ -395,9 +380,6 @@ async function prepareBisectExecution(
     twinServers: options.twinServers,
     frozenTests: options.frozenTests,
     resultsDirectory,
-    manifest: resumed && !resumeRequiresWork(resumed.session, options.investigateMerges === true)
-      ? undefined
-      : readRequiredBuildManifest(options.twinServers),
     gitRange,
     headed: options.headed,
     controlURL: input.controlURL,
@@ -482,8 +464,6 @@ interface CandidateMeasureOptions {
 interface BisectExecutionState {
   session: BisectSession;
   badRefTests: readonly TestResult[] | null;
-  volumeSyncedSha: string | null;
-  volumeStateUncertain: boolean;
   checkoutAttempted: boolean;
   leaseAcquired: boolean;
   primaryError: unknown;
@@ -519,8 +499,6 @@ function createBisectExecutionContext(
       ? resumedSession(input.resumeSession)
       : initialSession(input, deps.now()),
     badRefTests: input.resumeBadRefTests ?? null,
-    volumeSyncedSha: null,
-    volumeStateUncertain: false,
     checkoutAttempted: false,
     leaseAcquired: false,
     primaryError: null,
@@ -560,7 +538,6 @@ function createBisectExecutionContext(
     measure(options) {
       return runCandidate({
         ...options,
-        previouslySyncedSha: state.volumeSyncedSha,
         preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
         dependencies: {
           ...deps,
@@ -568,15 +545,9 @@ function createBisectExecutionContext(
             state.checkoutAttempted = true;
             if (options.checkout !== false) await deps.checkout(sha);
           },
-          async syncCandidateFilesToExperimentVolume(request) {
-            state.volumeStateUncertain = true;
-            await deps.syncCandidateFilesToExperimentVolume(request);
-            state.volumeStateUncertain = false;
-          },
         },
         checkCancellation: context.checkCancellation,
         recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun) {
-          if (event === 'candidate-files-synced') state.volumeSyncedSha = options.sha;
           state.session = recordCommitRun(state.session, commitRun);
           context.persistSessionAndReport();
         },
@@ -614,7 +585,7 @@ async function acquireBisectLease(context: BisectExecutionContext): Promise<void
   context.state.leaseAcquired = true;
   context.logDecision(
     'lease-acquired',
-    'Acquired twin-server bisect lease; experiment auto-sync is paused',
+    'Acquired twin-server bisect lease; unrelated lifecycle actions are paused',
   );
   context.persistSessionAndReport();
   context.checkCancellation();
@@ -1015,7 +986,6 @@ async function restoreExperimentAfterBisect(context: BisectExecutionContext): Pr
   if (!state.checkoutAttempted) return;
   try {
     await deps.restore({
-      previouslySyncedSha: state.volumeStateUncertain ? null : state.volumeSyncedSha,
       originalSha: input.gitRange.originalExperiment.sha,
     });
   } catch (error) {
@@ -1180,7 +1150,6 @@ function createDefaultDependencies(options: {
   twinServers: ResolvedConfig;
   frozenTests: readonly AbTestDefinition[];
   resultsDirectory: string;
-  manifest?: BuildManifest;
   gitRange: PreparedGitRange;
   headed: boolean;
   controlURL: string;
@@ -1235,30 +1204,12 @@ function createDefaultDependencies(options: {
         await resetNativeBisect(options.twinServers.experimentDir);
       }
     },
-    restore: ({ previouslySyncedSha, originalSha }) => restoreExperimentState({
+    restore: () => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,
         options.gitRange.originalExperiment,
         { allowedPaths: [options.resultsDirectory] },
       ),
-      syncVolume: async () => {
-        if (previouslySyncedSha === null) {
-          await reconcileExperimentVolume({
-            sourceDir: options.twinServers.dockerBuildDir,
-            volumeDir: options.twinServers.volumes.experiment,
-            manifest: requireManifest(options.manifest),
-            candidateSha: originalSha,
-          });
-          return;
-        }
-        await syncCommitDelta({
-          sourceDir: options.twinServers.dockerBuildDir,
-          volumeDir: options.twinServers.volumes.experiment,
-          manifest: requireManifest(options.manifest),
-          previousSha: previouslySyncedSha,
-          candidateSha: originalSha,
-        });
-      },
       reloadExperiment: async () => {
         await reloadExperimentViaMenu(
           options.twinServers,
@@ -1273,24 +1224,6 @@ function createDefaultDependencies(options: {
     },
     clearPriorReportOutput: () => {
       clearPriorBisectReportOutput(options.resultsDirectory);
-    },
-    syncCandidateFilesToExperimentVolume: async ({ previouslySyncedSha, candidateSha }) => {
-      if (previouslySyncedSha === null) {
-        await reconcileExperimentVolume({
-          sourceDir: options.twinServers.dockerBuildDir,
-          volumeDir: options.twinServers.volumes.experiment,
-          manifest: requireManifest(options.manifest),
-          candidateSha,
-        });
-        return;
-      }
-      await syncCommitDelta({
-        sourceDir: options.twinServers.dockerBuildDir,
-        volumeDir: options.twinServers.volumes.experiment,
-        manifest: requireManifest(options.manifest),
-        previousSha: previouslySyncedSha,
-        candidateSha,
-      });
     },
     reloadExperiment: (request) => reloadExperimentViaMenu(
       options.twinServers,
@@ -1678,31 +1611,6 @@ function testSelectionKey(cwd: string, selection: BisectTestSelection): string {
 function normalizeRelativeTestFile(cwd: string, testFile: string): string {
   const relative = path.isAbsolute(testFile) ? path.relative(cwd, testFile) : testFile;
   return path.posix.normalize(relative.replace(/\\/g, '/')).replace(/^\.\//, '');
-}
-
-function readRequiredBuildManifest(twinServers: ResolvedConfig): BuildManifest {
-  const manifest = readBuildManifest(twinServers.volumes.experiment);
-  if (!manifest) {
-    throw new Error(
-      'compare bisect requires an experiment build manifest. ' +
-        'Run `shaka-perf servers build --target experiment` first.',
-    );
-  }
-  return manifest;
-}
-
-function requireManifest(manifest: BuildManifest | undefined): BuildManifest {
-  if (!manifest) throw new Error('compare bisect work requires an experiment build manifest');
-  return manifest;
-}
-
-function resumeRequiresWork(session: BisectSession, investigateMerges: boolean): boolean {
-  if (session.primary.status !== 'complete') return true;
-  if (!investigateMerges) return false;
-  return session.mergeQueue.some((sha) => {
-    const status = session.mergeInvestigations[sha]?.status;
-    return status !== 'complete' && status !== 'octopus-unsupported';
-  });
 }
 
 function printBisectSummary(

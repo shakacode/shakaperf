@@ -243,7 +243,6 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
         }
       },
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
-      async syncCandidateFilesToExperimentVolume() {},
       async reloadExperiment(request) {
         experimentReloadCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
