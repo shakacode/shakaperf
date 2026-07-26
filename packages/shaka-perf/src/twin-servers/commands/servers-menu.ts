@@ -101,16 +101,16 @@ export interface MenuController {
    * (75) exit on the client side.
    */
   runOneOff<T>(verb: string, runner: () => Promise<T>): Promise<T>;
-  /** Reject unrelated lifecycle actions while compare bisect owns the session. */
+  /** Reject unrelated lifecycle actions while bisect owns the session. */
   beginBisectSession(sessionId: string, ownerPid: number): Promise<void>;
-  /** Reload the experiment side for the currently active compare bisect session. */
+  /** Reload the experiment side for the currently active bisect session. */
   reloadBisectExperiment(request: {
     sessionId: string;
     mode: 'commands' | 'container';
     rebuildCommands: string[];
     noCache: boolean;
   }): Promise<BisectExperimentReloadResult>;
-  /** End the compare bisect session and allow normal menu auto-sync/actions again. */
+  /** End the bisect session and allow normal menu auto-sync/actions again. */
   endBisectSession(sessionId: string): Promise<void>;
 }
 
@@ -676,7 +676,7 @@ export async function runServersMenu(
     if (!state.menuReady) throw new MenuBusyError('menu is still starting up');
     if (stopping) throw new MenuBusyError('menu is shutting down');
     if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
-      throw new MenuBusyError('compare bisect session is active');
+      throw new MenuBusyError('bisect session is active');
     }
     const release = await acquireLock();
     // Recheck after the wait: the menu may have transitioned to a terminal
@@ -688,7 +688,7 @@ export async function runServersMenu(
     }
     if (state.bisectSession.activeSessionId !== null && !actionOptions.allowDuringBisect) {
       release();
-      throw new MenuBusyError('compare bisect session is active');
+      throw new MenuBusyError('bisect session is active');
     }
     state.busy = true;
     const previousActivity = state.activity;
@@ -726,30 +726,30 @@ export async function runServersMenu(
     stopContainersAndExit: () => runProxiedAction('stopping containers', runStopContainersAndExit),
     runOneOff: (verb, runner) => runProxiedAction(verb, runner),
     beginBisectSession: (sessionId, ownerPid) => runProxiedAction(
-      'beginning compare bisect session',
+      'beginning bisect session',
       async () => {
         state.bisectSession.beginSession(sessionId, ownerPid);
-        state.lastMessage = 'Compare bisect owns experiment reload; auto-sync remains active.';
+        state.lastMessage = 'Bisect owns experiment reload; auto-sync remains active.';
       },
       { allowDuringBisect: true },
     ),
     reloadBisectExperiment: (request) => runProxiedAction(
-      `reloading compare bisect experiment (${request.mode})`,
+      `reloading bisect experiment (${request.mode})`,
       async () => {
         await settleExperimentAutoSync();
         const result = await state.bisectSession.reloadExperiment(request.sessionId, request);
         state.lastMessage = result.usedFallback
-          ? 'Compare bisect command reload failed; rebuilt experiment container.'
-          : `Compare bisect reloaded experiment using ${result.mode} mode.`;
+          ? 'Bisect command reload failed; rebuilt experiment container.'
+          : `Bisect reloaded experiment using ${result.mode} mode.`;
         return result;
       },
       { allowDuringBisect: true },
     ),
     endBisectSession: (sessionId) => runProxiedAction(
-      'ending compare bisect session',
+      'ending bisect session',
       async () => {
         state.bisectSession.endSession(sessionId);
-        state.lastMessage = 'Compare bisect finished; auto-sync resumed.';
+        state.lastMessage = 'Bisect finished; auto-sync resumed.';
       },
       { allowDuringBisect: true },
     ),

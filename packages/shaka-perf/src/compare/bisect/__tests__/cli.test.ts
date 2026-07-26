@@ -12,39 +12,58 @@ import { runCompareBisectFromCli } from '../session';
 import { buildAbTestsConfig, type AbTestsConfig } from '../../../config';
 import type { BisectSession } from '../types';
 
-describe('compare bisect command', () => {
-  it('registers optional refs without replacing the compare action', async () => {
+describe('bisect command', () => {
+  it('registers at the top level with optional refs and not under compare', async () => {
+    const program = new Command().name('shaka-perf');
     const compare = await createCompareCommand();
+    const bisect = createBisectCommand();
+    program.addCommand(compare);
+    program.addCommand(bisect);
 
-    expect(compare.commands.map((command) => command.name())).toContain('bisect');
+    expect(program.commands.map((command) => command.name())).toContain('bisect');
+    expect(compare.commands.map((command) => command.name())).not.toContain('bisect');
     expect(compare.registeredArguments).toHaveLength(0);
     expect((compare as unknown as { _actionHandler?: unknown })._actionHandler).toEqual(expect.any(Function));
-
-    const bisect = compare.commands.find((command) => command.name() === 'bisect')!;
     expect(bisect.registeredArguments.map((argument) => argument.name())).toEqual([
       'good-ref',
       'bad-ref',
     ]);
   });
 
-  it('passes inherited compare options including endpoint overrides', async () => {
+  it('rejects the removed nested command form', async () => {
+    const program = new Command().exitOverride().name('shaka-perf');
+    const compare = await createCompareCommand();
+    compare.exitOverride();
+    program.addCommand(compare);
+    program.addCommand(createBisectCommand({ run: jest.fn() }));
+
+    await expect(program.parseAsync(['compare', 'bisect'], { from: 'user' }))
+      .rejects.toThrow(/too many arguments|unknown command/i);
+  });
+
+  it('shows the top-level invocation and standalone options in help', () => {
+    const program = new Command().name('shaka-perf');
+    const bisect = createBisectCommand();
+    program.addCommand(bisect);
+
+    const help = bisect.helpInformation();
+    expect(help).toContain('Usage: shaka-perf bisect [options] [good-ref] [bad-ref]');
+    expect(help).toContain('--config <path>');
+    expect(help).toContain('--filter <value>');
+    expect(help).toContain('--testPathPattern <regex>');
+    expect(help).toContain('--controlURL <url>');
+    expect(help).toContain('--experimentURL <url>');
+  });
+
+  it('passes standalone options including endpoint overrides', async () => {
     const run = jest.fn(async () => undefined);
     const program = new Command()
       .exitOverride()
       .name('shaka-perf');
-    const compare = new Command('compare')
-      .option('--config <path>')
-      .option('--categories <list>')
-      .option('--filter <value>')
-      .option('--testPathPattern <regex>')
-      .option('--headed')
-      .option('--controlURL <url>')
-      .option('--experimentURL <url>');
-    compare.addCommand(createBisectCommand({ run }));
-    program.addCommand(compare);
+    program.addCommand(createBisectCommand({ run }));
 
     await program.parseAsync([
-      'compare',
+      'bisect',
       '--config', '/tmp/abtests.config.ts',
       '--categories', 'visreg,perf',
       '--filter', 'checkout',
@@ -52,7 +71,6 @@ describe('compare bisect command', () => {
       '--headed',
       '--controlURL', 'http://control.override',
       '--experimentURL', 'http://experiment.override',
-      'bisect',
       'good-ref',
       'bad-ref',
     ], { from: 'user' });
@@ -74,28 +92,12 @@ describe('compare bisect command', () => {
     });
   });
 
-  it('passes report-only from the bisect subcommand', async () => {
+  it('passes report-only from the top-level command', async () => {
     const run = jest.fn(async () => undefined);
     const program = new Command().exitOverride().name('shaka-perf');
-    const compare = new Command('compare');
-    compare.addCommand(createBisectCommand({ run }));
-    program.addCommand(compare);
+    program.addCommand(createBisectCommand({ run }));
 
-    await program.parseAsync(['compare', 'bisect', '--report-only'], { from: 'user' });
-
-    expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
-      reportOnly: true,
-    }));
-  });
-
-  it('keeps report-only enabled when the compare parent defines the same option', async () => {
-    const run = jest.fn(async () => undefined);
-    const program = new Command().exitOverride().name('shaka-perf');
-    const compare = new Command('compare').option('--report-only', 'parent report mode', false);
-    compare.addCommand(createBisectCommand({ run }));
-    program.addCommand(compare);
-
-    await program.parseAsync(['compare', 'bisect', '--report-only'], { from: 'user' });
+    await program.parseAsync(['bisect', '--report-only'], { from: 'user' });
 
     expect(run).toHaveBeenCalledWith(undefined, undefined, expect.objectContaining({
       reportOnly: true,
@@ -128,13 +130,9 @@ describe('compare bisect command', () => {
     const program = new Command()
       .exitOverride()
       .name('shaka-perf');
-    const compare = new Command('compare')
-      .option('--categories <list>', 'parent category option', 'visreg,perf,accessibility');
-    compare.addCommand(createBisectCommand({ run }));
-    program.addCommand(compare);
+    program.addCommand(createBisectCommand({ run }));
 
     await program.parseAsync([
-      'compare',
       'bisect',
       'good-ref',
       'bad-ref',
@@ -244,7 +242,7 @@ describe('compare bisect command', () => {
     }, {
       loadConfig: async () => ({}),
       parseConfig: () => reportOnlyConfig(),
-    })).rejects.toThrow('compare bisect --report-only does not accept good-ref or bad-ref');
+    })).rejects.toThrow('bisect --report-only does not accept good-ref or bad-ref');
   });
 
   it('prints discovered targets and the next action for a dry run', async () => {
@@ -316,7 +314,7 @@ describe('compare bisect command', () => {
     }
 
     expect(output).toEqual(expect.arrayContaining([
-      'Compare bisect dry run complete.',
+      'Bisect dry run complete.',
       'Range: good-sha..bad-sha',
       'Targets discovered: 1',
       '  visreg Homepage desktop document',
@@ -397,7 +395,7 @@ describe('compare bisect command', () => {
     }
 
     expect(output).toContain(
-      'shaka-perf compare bisect --categories accessibility --resume --investigate-merges',
+      'shaka-perf bisect --categories accessibility --resume --investigate-merges',
     );
     expect(output).toEqual(expect.arrayContaining([
       'Regressions by commit:',

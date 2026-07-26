@@ -160,7 +160,7 @@ export class CandidateEvaluator {
 
 export class BisectInterruptedError extends Error {
   constructor(readonly signal: NodeJS.Signals) {
-    super(`Compare bisect interrupted by ${signal}`);
+    super(`Bisect interrupted by ${signal}`);
     this.name = 'BisectInterruptedError';
   }
 }

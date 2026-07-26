@@ -30,7 +30,7 @@ const SOURCE_BASE_SHA = '5555555555555555555555555555555555555555';
 const SOURCE_CLEAN_SHA = '6666666666666666666666666666666666666666';
 const SOURCE_BAD_SHA = '7777777777777777777777777777777777777777';
 
-describe('compare bisect report browser acceptance', () => {
+describe('bisect report browser acceptance', () => {
   let browser: Browser;
   let page: Page;
   let resultsDirectory: string;
@@ -317,7 +317,7 @@ function reportData(): BisectReportData {
 
   return {
     meta: {
-      title: 'Synthetic compare bisect',
+      title: 'Synthetic bisect',
       pipelineName: 'compare',
       generatedAt: '2026-07-13T00:00:00.000Z',
       controlUrl: 'http://control.test',

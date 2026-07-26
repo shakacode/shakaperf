@@ -167,7 +167,7 @@ export async function tryProxy(opts: TryProxyOptions): Promise<ProxyAttemptOutco
 export async function requireBisectProxy<T>(options: TryProxyOptions): Promise<T> {
   const outcome = await tryProxy(options);
   if (!outcome.proxied) {
-    throw new Error('compare bisect requires a running shaka-perf servers session');
+    throw new Error('bisect requires a running shaka-perf servers session');
   }
   if (outcome.code !== 0) {
     throw new Error(outcome.error ?? `Twin-server action exited ${outcome.code}`);

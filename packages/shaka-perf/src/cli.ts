@@ -11,6 +11,7 @@ import { Command } from 'commander';
 import { createAuditCommand } from './audit/program';
 import { createServersCommand } from './twin-servers/program';
 import { createCompareCommand } from './compare/cli/program';
+import { createBisectCommand } from './compare/bisect/cli';
 import { createInitCommand } from './compare/cli/init';
 import { getCLIDefaultsFromConfig } from './cli-defaults';
 import { createDiscoverAbtestsCommand } from './discover-abtests/cli/program';
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
   for (const cmd of [
     createInitCommand(),
     compareCmd,
+    createBisectCommand(),
     auditCmd,
     createDiscoverAbtestsCommand(),
     createServersCommand(),

@@ -26,6 +26,15 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
       '--categories <list>',
       `Comma-separated categories to bisect (${comparePipelineMetadata.categories.join(', ')})`,
     )
+    .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
+    .option(
+      '--filter <value>',
+      'Regex/substring to filter tests by name (comma-separated for multiple), OR a path to a single .abtest.ts/.abtest.js file',
+    )
+    .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
+    .option('--headed', 'Launch the measurement browser headed (visible window) instead of headless. Off by default.', false)
+    .option('--controlURL <url>', 'Control server URL')
+    .option('--experimentURL <url>', 'Experiment server URL')
     .option(
       '--reuse-current-results',
       'Use cwd/compare-results for bad-ref discovery instead of measuring the bad ref again',
@@ -54,8 +63,7 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
     )
     .action(async function (goodRef?: string, badRef?: string) {
       const local = this.opts();
-      const inherited = this.optsWithGlobals();
-      const reportOnly = local.reportOnly === true || inherited.reportOnly === true;
+      const reportOnly = local.reportOnly === true;
       if (local.resume && (goodRef || badRef)) {
         throw new Error('--resume does not accept positional good-ref or bad-ref values');
       }
@@ -72,13 +80,13 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
         throw new Error('--report-only cannot be combined with resume or merge investigation');
       }
       await (deps.run ?? runCompareBisectFromCli)(goodRef, badRef, {
-        configPath: inherited.config,
-        categories: local.categories ?? inherited.categories,
-        filter: inherited.filter,
-        testPathPattern: inherited.testPathPattern,
-        headed: inherited.headed === true,
-        controlURL: inherited.controlURL,
-        experimentURL: inherited.experimentURL,
+        configPath: local.config,
+        categories: local.categories,
+        filter: local.filter,
+        testPathPattern: local.testPathPattern,
+        headed: local.headed === true,
+        controlURL: local.controlURL,
+        experimentURL: local.experimentURL,
         reuseCurrentResults: local.reuseCurrentResults === true,
         dryRun: local.dryRun === true,
         validateGoodRef: local.validateGoodRef === true,

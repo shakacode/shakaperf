@@ -196,7 +196,7 @@ interface ArtifactStoreOptions {
   experimentURL: string;
 }
 
-/** Owns all compare-bisect files and report rendering under one result root. */
+/** Owns all bisect files and report rendering under one result root. */
 class FileBisectArtifactStore implements BisectArtifactStore {
   private readonly reportPipeline;
 
@@ -221,7 +221,7 @@ class FileBisectArtifactStore implements BisectArtifactStore {
       resultsDirectory: this.options.resultsDirectory,
       data: {
         meta: {
-          title: `${path.basename(this.options.cwd)} · compare bisect`,
+          title: `${path.basename(this.options.cwd)} · bisect`,
           pipelineName: this.reportPipeline.name,
           generatedAt,
           controlUrl: this.options.controlURL,
@@ -311,7 +311,7 @@ function createReusableCompareResults(options: {
 export function createFileBisectDecisionLogger(resultsDirectory: string): BisectDecisionLogger {
   return {
     progress(message) {
-      console.log(`[compare bisect] ${message}`);
+      console.log(`[bisect] ${message}`);
     },
     record(entry) {
       const jsonlPath = path.join(resultsDirectory, 'decision-log.jsonl');

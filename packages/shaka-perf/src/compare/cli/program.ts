@@ -17,7 +17,6 @@ import {
   createComparePipeline,
   comparePipelineMetadata,
 } from '../compare-pipeline';
-import { createBisectCommand } from '../bisect/cli';
 import { getCLIDefaultsFromConfig } from '../../cli-defaults';
 
 export async function createCompareCommand(): Promise<Command> {
@@ -99,6 +98,5 @@ export async function createCompareCommand(): Promise<Command> {
         reportPipelineFailure(result);
       });
     });
-  compare.addCommand(createBisectCommand());
   return compare;
 }

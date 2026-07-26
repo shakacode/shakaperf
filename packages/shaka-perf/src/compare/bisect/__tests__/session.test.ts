@@ -454,7 +454,7 @@ function deps(
   };
 }
 
-describe('compare bisect session orchestration', () => {
+describe('bisect session orchestration', () => {
   let rootDir: string;
 
   beforeEach(() => {
@@ -539,11 +539,11 @@ describe('compare bisect session orchestration', () => {
       'lease:end',
     ]);
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
-      'Starting compare bisect session',
+      'Starting bisect session',
       'Measuring bad ref bad to discover regression targets',
       'Selected Git candidate a for 1 active target(s)',
       'Selected Git candidate b for 1 active target(s)',
-      'Compare bisect session completed',
+      'Bisect session completed',
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
       'session-start',
