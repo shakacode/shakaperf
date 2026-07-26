@@ -232,6 +232,18 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       }),
       markNativeBisect: (verdict) => markNativeBisect(fixture.experimentDir, verdict),
       resetNativeBisect: () => resetNativeBisect(fixture.experimentDir),
+      previewNativeBisect: async (group) => {
+        try {
+          return await startNativeBisect({
+            repoDir: fixture.experimentDir,
+            goodSha: group.goodSha,
+            badSha: group.badSha,
+            noCheckout: true,
+          });
+        } finally {
+          await resetNativeBisect(fixture.experimentDir);
+        }
+      },
       checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
       async syncCandidateFilesToExperimentVolume() {},
       async reloadExperiment(request) {

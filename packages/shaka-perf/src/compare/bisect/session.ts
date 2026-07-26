@@ -42,6 +42,8 @@ import {
   type NativeBisectVerdict,
 } from './git';
 import {
+  candidatePlanForGroup,
+  createInitialTargetGroup,
   narrowTargetSearchRangesUsingRecordedEvaluations,
   nextCandidate,
   testsForTargets,
@@ -211,6 +213,7 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   startNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
   markNativeBisect?(verdict: NativeBisectVerdict): Promise<NativeBisectStep>;
   resetNativeBisect?(): Promise<void>;
+  previewNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
 }
 
 export interface RunBisectOptions {
@@ -739,7 +742,7 @@ async function runPrimaryBisectWorkflow(
   context: BisectExecutionContext,
 ): Promise<void> {
   if (context.input.dryRun) {
-    planBisectDryRun(context);
+    await planBisectDryRun(context);
     return;
   }
   if (context.state.session.primary.targets.length === 0) {
@@ -749,9 +752,9 @@ async function runPrimaryBisectWorkflow(
   await runPrimaryBisectSearch(context);
 }
 
-function planBisectDryRun(context: BisectExecutionContext): void {
-  const { input, state } = context;
-  let targets = activeTargets(state.session);
+async function planBisectDryRun(context: BisectExecutionContext): Promise<void> {
+  const { input, deps, state } = context;
+  const targets = activeTargets(state.session);
   if (targets.length > 0 && input.validateGoodRef) {
     state.nextAction = {
       kind: 'validate-good-ref' as const,
@@ -761,16 +764,22 @@ function planBisectDryRun(context: BisectExecutionContext): void {
       targetIds: targets.map((target) => target.id),
     };
   } else if (targets.length > 0) {
-    const searchStateWithCurrentBoundaries = narrowTargetSearchRangesUsingRecordedEvaluations(
-      searchInput(state.session),
+    const group = createInitialTargetGroup(
+      'primary-group-1',
+      state.session.primary.goodSha,
+      state.session.primary.badSha,
+      targets,
     );
-    state.session = withPrimaryTargets(
-      state.session,
-      searchStateWithCurrentBoundaries.targets,
-    );
-    targets = activeTargets(state.session);
-    const work = nextCandidate(searchStateWithCurrentBoundaries);
-    if (work) {
+    const preview = deps.previewNativeBisect;
+    if (!preview) throw new Error('compare bisect dry run requires native Git preview support');
+    const step = await preview(group);
+    if (!step.complete && step.candidateSha) {
+      const plannedGroup = { ...group, previewCandidateSha: step.candidateSha };
+      state.session = {
+        ...state.session,
+        primary: { ...state.session.primary, groups: [plannedGroup] },
+      };
+      const work = candidatePlanForGroup(plannedGroup, targets, step.candidateSha);
       state.nextAction = {
         kind: 'measure-candidate' as const,
         sha: work.sha,
@@ -1218,6 +1227,20 @@ function createDefaultDependencies(options: {
       verdict,
     ),
     resetNativeBisect: () => resetNativeBisect(options.twinServers.experimentDir),
+    previewNativeBisect: async (group) => {
+      try {
+        return await startNativeBisect({
+          repoDir: options.twinServers.experimentDir,
+          goodSha: group.goodSha,
+          badSha: group.badSha,
+          firstParent: true,
+          noCheckout: true,
+          allowedPaths: [options.resultsDirectory],
+        });
+      } finally {
+        await resetNativeBisect(options.twinServers.experimentDir);
+      }
+    },
     restore: ({ previouslySyncedSha, originalSha }) => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,
@@ -1785,8 +1808,12 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const work = nextCandidate(narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(session)));
-  return work ? { kind: 'measure-candidate', ...work } : undefined;
+  const group = session.primary.groups?.find((candidate) => candidate.previewCandidateSha);
+  if (!group?.previewCandidateSha) return undefined;
+  return {
+    kind: 'measure-candidate',
+    ...candidatePlanForGroup(group, session.primary.targets, group.previewCandidateSha),
+  };
 }
 
 function shortSha(sha: string): string {

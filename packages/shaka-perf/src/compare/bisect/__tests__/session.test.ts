@@ -224,7 +224,9 @@ function deps(
     summaryAfterEvents: [] as string[][],
     signalHandlers: new Set<(signal: NodeJS.Signals) => void>(),
   };
-  const nativeHistory = options.nativeHistory ?? ['good', 'a', 'b', 'bad'];
+  const primaryNativeHistory = options.nativeHistory ?? ['good', 'a', 'b', 'bad'];
+  const nativeHistories = [primaryNativeHistory, ['base', 'source', 'topic']];
+  let nativeHistory = primaryNativeHistory;
   let nativeGood = 'good';
   let nativeBad = 'bad';
   let nativeCandidate: string | null = null;
@@ -267,6 +269,9 @@ function deps(
         calls.events.push('lease:end');
       },
       async startNativeBisect(group) {
+        nativeHistory = nativeHistories.find((history) => (
+          history.includes(group.goodSha) && history.includes(group.badSha)
+        )) ?? primaryNativeHistory;
         nativeGood = group.goodSha;
         nativeBad = group.badSha;
         return nativeStep();
@@ -278,6 +283,22 @@ function deps(
         return nativeStep();
       },
       async resetNativeBisect() {},
+      async previewNativeBisect(group) {
+        const previewHistory = nativeHistories.find((history) => (
+          history.includes(group.goodSha) && history.includes(group.badSha)
+        )) ?? primaryNativeHistory;
+        const goodIndex = previewHistory.indexOf(group.goodSha);
+        const badIndex = previewHistory.indexOf(group.badSha);
+        if (badIndex - goodIndex === 1) {
+          return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
+        }
+        return {
+          candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
+          firstBadSha: null,
+          complete: false,
+          output: '',
+        };
+      },
       async checkout(sha) {
         calls.checkouts.push(sha);
         calls.events.push(`checkout:${sha}`);
