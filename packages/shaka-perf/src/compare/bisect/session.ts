@@ -26,7 +26,7 @@ import {
   discoverTargets,
 } from './analyze';
 import {
-  checkoutDetached,
+  ExactCheckout,
   inspectBisectRepositories,
   prepareChildGitRange,
   prepareGitRange,
@@ -84,15 +84,14 @@ import { PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/i
 import type { BisectExperimentReloadResult } from '../../twin-servers/commands/bisect-session';
 import {
   BisectInterruptedError,
+  CandidateEvaluationError,
   CandidateEvaluator,
-  runCandidate,
-  type CandidateRunProgressEvent,
-  type CandidateDependencies,
   type CompareRunRequest,
   type CompareRunResult,
   type ExperimentReloadRequest,
   type ExperimentReloadResult,
 } from './run-candidate';
+import { EndpointMeasurementRunner, EndpointValidator } from './endpoint-validator';
 import { BisectRunEnvironment } from './run-environment';
 import { loadReusableCompareResults } from './reuse-results';
 import {
@@ -183,7 +182,7 @@ export interface ReuseCurrentResultsRequest {
   categories: readonly BisectCategory[];
 }
 
-export interface ExecuteBisectDependencies extends CandidateDependencies {
+export interface ExecuteBisectDependencies {
   installSignalHandlers(handler: (signal: NodeJS.Signals) => void): () => void;
   beginSession(): Promise<void>;
   endSession(): Promise<void>;
@@ -200,6 +199,9 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   now(): string;
   reuseCurrentResults(request: ReuseCurrentResultsRequest): Promise<CompareRunResult>;
   nativeGit: NativeGitBisectDriver;
+  exactCheckout: ExactCheckout;
+  reloadExperiment(request: ExperimentReloadRequest): Promise<ExperimentReloadResult>;
+  runCandidateComparisons(request: CompareRunRequest): Promise<CompareRunResult>;
   startNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
   markNativeBisect?(verdict: NativeBisectVerdict): Promise<NativeBisectStep>;
   resetNativeBisect?(): Promise<void>;
@@ -467,14 +469,14 @@ interface CandidateMeasureOptions {
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
-  checkout?: boolean;
 }
 
 interface BisectExecutionState {
   session: BisectSession;
   owner: CompareBisectSession;
   badRefTests: readonly TestResult[] | null;
-  checkoutAttempted: boolean;
+  endpointValidator: EndpointValidator;
+  requiresExperimentRestore: boolean;
   leaseAcquired: boolean;
   primaryError: unknown;
   cleanupErrors: Error[];
@@ -492,7 +494,7 @@ interface BisectExecutionContext {
   persistSessionAndReport(): void;
   checkCancellation(): void;
   logDecision(event: string, message: string, data?: Record<string, unknown>): void;
-  measure(options: CandidateMeasureOptions): ReturnType<typeof runCandidate>;
+  measureEndpoint(options: CandidateMeasureOptions): Promise<import('./run-candidate').CandidateResult>;
 }
 
 function createBisectExecutionContext(
@@ -526,6 +528,16 @@ function createBisectExecutionContext(
       },
     },
   });
+  const environment = new BisectRunEnvironment(deps.now);
+  const endpointValidator = new EndpointValidator(
+    deps.exactCheckout,
+    new EndpointMeasurementRunner(
+      { refreshExperiment: (request) => deps.reloadExperiment(request) },
+      { run: (request) => deps.runCandidateComparisons(request) },
+      environment,
+      preferredExperimentReloadMode(input.config),
+    ),
+  );
   state = {
     get session() {
       return owner.current();
@@ -535,11 +547,12 @@ function createBisectExecutionContext(
     },
     owner,
     badRefTests: input.resumeBadRefTests ?? null,
-    checkoutAttempted: false,
+    endpointValidator,
+    requiresExperimentRestore: false,
     leaseAcquired: false,
     primaryError: null,
     cleanupErrors: [],
-    environment: new BisectRunEnvironment(deps.now),
+    environment,
     disposeSignalHandlers: null,
     nextAction: undefined,
   };
@@ -569,23 +582,27 @@ function createBisectExecutionContext(
         data,
       });
     },
-    measure(options) {
-      return runCandidate({
-        ...options,
-        preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
-        dependencies: {
-          ...deps,
-          async checkout(sha) {
-            state.checkoutAttempted = true;
-            if (options.checkout !== false) await deps.checkout(sha);
-          },
-        },
-        checkCancellation: context.checkCancellation,
-        recordCandidateRunProgress(event: CandidateRunProgressEvent, commitRun: CommitRun) {
-          state.session = recordCommitRun(state.session, commitRun);
+    async measureEndpoint(options) {
+      state.requiresExperimentRestore = true;
+      try {
+        const result = await state.endpointValidator.validate({
+          sha: options.sha,
+          categories: [...options.categories],
+          tests: [...options.tests],
+          targetIds: options.targets.map((target) => target.id),
+          targets: [...options.targets],
+        });
+        state.session = recordCommitRun(state.session, result.commitRun);
+        context.persistSessionAndReport();
+        return result;
+      } catch (error) {
+        if (error instanceof CandidateEvaluationError) {
+          state.session = recordCommitRun(state.session, error.commitRun);
           context.persistSessionAndReport();
-        },
-      });
+          if (error.originalError instanceof BisectInterruptedError) throw error.originalError;
+        }
+        throw error;
+      }
     },
   };
   return context;
@@ -729,7 +746,7 @@ async function measureOrReuseBadRef(
       categories: input.selectedCategories,
     },
   );
-  return context.measure({
+  return context.measureEndpoint({
     sha: input.gitRange.badSha,
     categories: input.selectedCategories,
     tests: [],
@@ -826,7 +843,7 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
     state.environment,
     preferredExperimentReloadMode(input.config),
   );
-  state.checkoutAttempted = true;
+  state.requiresExperimentRestore = true;
   try {
     await new NativeBisectPhaseRunner(
       new PrimaryPhaseStore(owner),
@@ -906,7 +923,7 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
       tests: testsForTargets(goodTargets),
     },
   );
-  const goodRun = await context.measure({
+  const goodRun = await context.measureEndpoint({
     sha: input.gitRange.goodSha,
     categories: categoriesForTargets(goodTargets),
     tests: testsForTargets(goodTargets),
@@ -944,7 +961,7 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
     state.environment,
     preferredExperimentReloadMode(input.config),
   );
-  state.checkoutAttempted = true;
+  state.requiresExperimentRestore = true;
   state.session = await runMergeInvestigations({
     session: state.session,
     preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
@@ -970,12 +987,11 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
         secondParent: investigation.parents[1],
       });
     },
-    measure: (work, targets, checkout) => context.measure({
+    measure: (work, targets) => context.measureEndpoint({
       sha: work.sha,
       categories: work.categories,
       tests: work.tests,
       targets,
-      checkout,
     }),
   });
 }
@@ -995,7 +1011,7 @@ async function finalizeBisectExecution(context: BisectExecutionContext): Promise
 
 async function restoreExperimentAfterBisect(context: BisectExecutionContext): Promise<void> {
   const { input, deps, state } = context;
-  if (!state.checkoutAttempted) return;
+  if (!state.requiresExperimentRestore) return;
   try {
     await deps.restore({
       originalSha: input.gitRange.originalExperiment.sha,
@@ -1174,8 +1190,13 @@ function createDefaultDependencies(options: {
     repoDir: options.twinServers.experimentDir,
     allowedPaths: [options.resultsDirectory],
   });
+  const exactCheckout = new ExactCheckout({
+    repoDir: options.twinServers.experimentDir,
+    allowedPaths: [options.resultsDirectory],
+  });
   return {
     nativeGit,
+    exactCheckout,
     installSignalHandlers(handler) {
       process.on('SIGINT', handler);
       process.on('SIGTERM', handler);
@@ -1192,9 +1213,6 @@ function createDefaultDependencies(options: {
     endSession: () => proxyBisect<void>(options.twinServers, {
       cmd: 'bisect-end',
       sessionId: bisectSessionId,
-    }),
-    checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
-      allowedPaths: [options.resultsDirectory],
     }),
     startNativeBisect: (group) => nativeGit.start(group),
     markNativeBisect: (verdict) => nativeGit.mark(verdict),

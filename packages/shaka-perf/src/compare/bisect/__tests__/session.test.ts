@@ -224,7 +224,7 @@ function deps(
   let nativeGood = 'good';
   let nativeBad = 'bad';
   let nativeCandidate: string | null = null;
-  const nativeStep = (): Awaited<ReturnType<NonNullable<ExecuteBisectDependencies['startNativeBisect']>>> => {
+  const nativeStep = (): bisectGit.NativeBisectStep => {
     const goodIndex = nativeHistory.indexOf(nativeGood);
     const badIndex = nativeHistory.indexOf(nativeBad);
     if (goodIndex === -1 || badIndex === -1 || goodIndex >= badIndex) {
@@ -287,6 +287,26 @@ function deps(
       };
     }
   }();
+  const exactCheckout = new class extends bisectGit.ExactCheckout {
+    constructor() {
+      super({ repoDir: '/unused' });
+    }
+
+    override async current() {
+      return { branch: 'feature', sha: 'bad' };
+    }
+
+    override async position(sha: string) {
+      calls.checkouts.push(sha);
+      calls.events.push(`checkout:${sha}`);
+      const checkoutError = options.checkoutErrorBySha?.[sha];
+      if (checkoutError) throw checkoutError;
+    }
+
+    override async assertAt() {}
+
+    override async restore() {}
+  }();
   return {
     calls,
     emitSignal(signal) {
@@ -294,6 +314,7 @@ function deps(
     },
     deps: {
       nativeGit,
+      exactCheckout,
       installSignalHandlers(handler) {
         calls.signalHandlers.add(handler);
         return () => {
@@ -313,12 +334,6 @@ function deps(
       markNativeBisect: (verdict) => nativeGit.mark(verdict),
       resetNativeBisect: () => nativeGit.reset(),
       previewNativeBisect: (group) => nativeGit.preview(group),
-      async checkout(sha) {
-        calls.checkouts.push(sha);
-        calls.events.push(`checkout:${sha}`);
-        const checkoutError = options.checkoutErrorBySha?.[sha];
-        if (checkoutError) throw checkoutError;
-      },
       async restore(request) {
         calls.restored.push(request.originalSha);
         calls.events.push('checkout:original');
@@ -1023,7 +1038,7 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);
   });
 
-  it('persists checkout, experiment reload, comparisons, and boundary checkpoints', async () => {
+  it('persists endpoint results and candidate classifications after comparison', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
       a: [resultWithVisualDiff(null)],
@@ -1033,9 +1048,14 @@ describe('compare bisect session orchestration', () => {
 
     await executeBisect(input(rootDir), harness.deps);
 
-    for (const event of ['checkout:bad', 'reload-experiment:bad', 'run-candidate-comparisons:bad']) {
-      expect(harness.calls.checkpoints.some((checkpoint) => checkpoint.afterEvent === event)).toBe(true);
-    }
+    expect(harness.calls.checkpoints.some((checkpoint) => (
+      checkpoint.afterEvent === 'run-candidate-comparisons:bad'
+      && checkpoint.session.commitRuns.bad?.compareCompleted === true
+    ))).toBe(true);
+    expect(harness.calls.checkpoints.some((checkpoint) => (
+      checkpoint.afterEvent === 'checkout:bad'
+      || checkpoint.afterEvent === 'reload-experiment:bad'
+    ))).toBe(false);
     expect(harness.calls.checkpoints.some((checkpoint) => (
       checkpoint.afterEvent === 'run-candidate-comparisons:a'
       && checkpoint.session.primary.targets[0]?.recordedTargetEvaluations.a?.regressionDetected === false
