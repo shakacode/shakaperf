@@ -470,6 +470,7 @@ interface CandidateMeasureOptions {
 
 interface BisectExecutionState {
   session: BisectSession;
+  owner: CompareBisectSession;
   badRefTests: readonly TestResult[] | null;
   checkoutAttempted: boolean;
   leaseAcquired: boolean;
@@ -501,10 +502,36 @@ function createBisectExecutionContext(
     deps.clearSummary();
     deps.clearPriorReportOutput();
   }
-  const state: BisectExecutionState = {
-    session: input.resumeSession
-      ? resumedSession(input.resumeSession)
-      : initialSession(input, deps.now()),
+  const initial = input.resumeSession
+    ? resumedSession(input.resumeSession)
+    : initialSession(input, deps.now());
+  let state!: BisectExecutionState;
+  let context!: BisectExecutionContext;
+  const owner = new CompareBisectSession(initial, {
+    persistence: {
+      async write(session) {
+        deps.writeSession(session);
+      },
+    },
+    transitions: {
+      async record(transition, session) {
+        recordPhaseDecision(context, transition, session);
+      },
+    },
+    reports: {
+      async write(session) {
+        if (state.badRefTests) deps.writeReport(session, state.badRefTests);
+      },
+    },
+  });
+  state = {
+    get session() {
+      return owner.current();
+    },
+    set session(next: BisectSession) {
+      owner.replace(next);
+    },
+    owner,
     badRefTests: input.resumeBadRefTests ?? null,
     checkoutAttempted: false,
     leaseAcquired: false,
@@ -514,7 +541,7 @@ function createBisectExecutionContext(
     disposeSignalHandlers: null,
     nextAction: undefined,
   };
-  const context: BisectExecutionContext = {
+  context = {
     input,
     deps,
     state,
@@ -811,24 +838,7 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
 }
 
 function phaseSessionOwner(context: BisectExecutionContext): CompareBisectSession {
-  const { deps, state } = context;
-  return new CompareBisectSession(state.session, {
-    persistence: {
-      async write(session) {
-        deps.writeSession(session);
-      },
-    },
-    transitions: {
-      async record(transition, session) {
-        recordPhaseDecision(context, transition, session);
-      },
-    },
-    reports: {
-      async write(session) {
-        if (state.badRefTests) deps.writeReport(session, state.badRefTests);
-      },
-    },
-  });
+  return context.state.owner;
 }
 
 function recordPhaseDecision(
