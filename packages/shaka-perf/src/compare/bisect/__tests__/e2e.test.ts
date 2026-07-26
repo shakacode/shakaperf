@@ -81,6 +81,27 @@ describe('compare bisect black-box E2E', () => {
         { regression: performance, commit: 'performance-regression-introduced' },
         { regression: accessibility, commit: 'accessibility-regression-introduced' },
       ]);
+      const targetIdByCategory = Object.fromEntries(session.primary.targets.map((target) => (
+        [target.category, target.id]
+      )));
+      expect(session.primary.groups).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          status: 'complete',
+          targetIds: [targetIdByCategory.visreg],
+          firstBadSha: fixture.shas['visual-regression-introduced'],
+        }),
+        expect.objectContaining({
+          status: 'complete',
+          targetIds: [targetIdByCategory.perf],
+          firstBadSha: fixture.shas['performance-regression-introduced'],
+        }),
+        expect.objectContaining({
+          status: 'complete',
+          targetIds: [targetIdByCategory.accessibility],
+          firstBadSha: fixture.shas['accessibility-regression-introduced'],
+        }),
+      ]));
+      expect(session.primary.groups).toHaveLength(3);
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
         'all-regressions-confirmed',
@@ -88,6 +109,72 @@ describe('compare bisect black-box E2E', () => {
         'visual-regression-introduced',
         'accessibility-regression-introduced',
       ]);
+      assertExperimentRestored(fixture);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it('resumes a queued divergent target group without repeating completed groups', async () => {
+    const fixture = createLinearFixture([
+      'known-good',
+      'visual-regression-introduced',
+      'performance-regression-introduced',
+      'accessibility-regression-introduced',
+      'all-regressions-confirmed',
+      'good-unrelated-commit-one',
+      'good-unrelated-commit-two',
+      'regressions-still-detected',
+      'known-bad',
+    ]);
+    try {
+      const visual = stubRegression('visual', 'visreg');
+      const performance = stubRegression('performance', 'perf');
+      const accessibility = stubRegression('accessibility', 'accessibility');
+      const resultsBySha = regressionTimeline(fixture, [visual, performance, accessibility], {
+        'known-good': [],
+        'visual-regression-introduced': ['visual'],
+        'performance-regression-introduced': ['visual', 'performance'],
+        'accessibility-regression-introduced': ['visual', 'performance', 'accessibility'],
+        'all-regressions-confirmed': ['visual', 'performance', 'accessibility'],
+        'good-unrelated-commit-one': ['visual', 'performance', 'accessibility'],
+        'good-unrelated-commit-two': ['visual', 'performance', 'accessibility'],
+        'regressions-still-detected': ['visual', 'performance', 'accessibility'],
+        'known-bad': ['visual', 'performance', 'accessibility'],
+      });
+      const interruptedHarness = createE2eDependencies({
+        fixture,
+        resultsBySha,
+        failAtSha: fixture.shas['accessibility-regression-introduced'],
+      });
+
+      await expect(runBisect({
+        ...fixture.runOptions,
+        selectedCategories: ['visreg', 'perf', 'accessibility'],
+        dependencies: interruptedHarness.dependencies,
+      })).rejects.toThrow(/stubbed compare failure/i);
+
+      const interrupted = readPersistedSession(fixture);
+      expect(interrupted.primary.targets.filter((target) => target.status === 'found')).toHaveLength(1);
+      expect(interrupted.primary.groups?.filter((group) => group.status === 'complete')).toHaveLength(1);
+      expect(interrupted.primary.groups?.filter((group) => group.status !== 'complete')).toHaveLength(2);
+      assertExperimentRestored(fixture);
+
+      const resumeHarness = createE2eDependencies({ fixture, resultsBySha });
+      const resumed = await runBisect({
+        ...fixture.runOptions,
+        resume: true,
+        selectedCategories: ['visreg', 'perf', 'accessibility'],
+        dependencies: resumeHarness.dependencies,
+      });
+
+      expectFirstBadCommits(resumed, fixture, [
+        { regression: visual, commit: 'visual-regression-introduced' },
+        { regression: performance, commit: 'performance-regression-introduced' },
+        { regression: accessibility, commit: 'accessibility-regression-introduced' },
+      ]);
+      expectBinarySearchTraversal(resumeHarness, fixture, ['accessibility-regression-introduced']);
+      expect(resumed.primary.groups?.every((group) => group.status === 'complete')).toBe(true);
       assertExperimentRestored(fixture);
     } finally {
       fixture.cleanup();
