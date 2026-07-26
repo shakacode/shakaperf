@@ -16,7 +16,7 @@ import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { ResolvedConfig } from '../../../twin-servers/types';
 import {
-  checkoutDetached,
+  ExactCheckout,
   markNativeBisect,
   resetNativeBisect,
   restoreCheckout,
@@ -216,6 +216,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
   const candidateComparisonCalls: CompareRunRequest[] = [];
   const experimentReloadCalls: ExperimentReloadRequest[] = [];
   const nativeGit = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+  const exactCheckout = new ExactCheckout({ repoDir: fixture.experimentDir });
   let tick = 0;
 
   return {
@@ -223,6 +224,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
     experimentReloadCalls,
     dependencies: {
       nativeGit,
+      exactCheckout,
       installSignalHandlers() {
         return () => undefined;
       },
@@ -247,7 +249,6 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
           await resetNativeBisect(fixture.experimentDir);
         }
       },
-      checkout: (sha) => checkoutDetached(fixture.experimentDir, sha),
       async reloadExperiment(request) {
         experimentReloadCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
