@@ -134,29 +134,6 @@ export function partitionTargetGroup(options: {
   };
 }
 
-export function coalesceTargetGroups(groups: readonly BisectTargetGroup[]): BisectTargetGroup[] {
-  const result: BisectTargetGroup[] = [];
-  for (const group of groups) {
-    const existingIndex = result.findIndex((candidate) => (
-      candidate.status === 'pending'
-      && group.status === 'pending'
-      && candidate.goodSha === group.goodSha
-      && candidate.badSha === group.badSha
-    ));
-    if (existingIndex === -1) {
-      result.push({ ...group, targetIds: [...group.targetIds], decisions: [...group.decisions] });
-      continue;
-    }
-    const existing = result[existingIndex];
-    result[existingIndex] = {
-      ...existing,
-      targetIds: [...new Set([...existing.targetIds, ...group.targetIds])].sort(),
-      decisions: [...existing.decisions, ...group.decisions],
-    };
-  }
-  return result;
-}
-
 export function testsForTargets(targets: readonly BisectTarget[]): BisectTestSelection[] {
   const selections = new Map<string, BisectTestSelection>();
   for (const target of targets) {

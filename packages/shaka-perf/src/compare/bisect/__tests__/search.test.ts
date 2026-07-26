@@ -7,7 +7,6 @@
 
 import {
   candidatePlanForGroup,
-  coalesceTargetGroups,
   createInitialTargetGroup,
   partitionTargetGroup,
 } from '../search';
@@ -193,15 +192,4 @@ describe('native bisect target groups', () => {
     });
   });
 
-  it('coalesces queued groups with identical boundaries', () => {
-    const visual = createInitialTargetGroup('group-1', 'a', 'b', [bisectTarget('visual', 'visreg')]);
-    const tbt = createInitialTargetGroup('group-2', 'a', 'b', [bisectTarget('tbt', 'perf')]);
-
-    expect(coalesceTargetGroups([visual, tbt])).toEqual([expect.objectContaining({
-      id: 'group-1',
-      goodSha: 'a',
-      badSha: 'b',
-      targetIds: ['tbt', 'visual'],
-    })]);
-  });
 });
