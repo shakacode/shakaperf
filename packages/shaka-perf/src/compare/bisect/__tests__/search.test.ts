@@ -6,9 +6,13 @@
  */
 
 import {
+  candidatePlanForGroup,
+  coalesceTargetGroups,
+  createInitialTargetGroup,
   narrowTargetSearchRangesUsingRecordedEvaluations,
   recordTargetEvaluationsAndNarrowSearchRanges,
   nextCandidate,
+  partitionTargetGroup,
   type BisectSearchInput,
 } from '../search';
 import type {
@@ -319,5 +323,106 @@ describe('bisect scheduler', () => {
     ])));
 
     expect(work).toMatchObject({ sha: 'b', targetIds: ['tbt'], categories: ['perf'] });
+  });
+});
+
+describe('native bisect target groups', () => {
+  it('starts every active target in one deterministic group', () => {
+    const targets = [
+      bisectTarget('tbt', 'perf'),
+      bisectTarget('visual', 'visreg'),
+      bisectTarget('button-name', 'accessibility'),
+    ];
+
+    expect(createInitialTargetGroup('group-1', 'good', 'bad', targets)).toEqual({
+      id: 'group-1',
+      status: 'pending',
+      goodSha: 'good',
+      badSha: 'bad',
+      targetIds: ['visual', 'tbt', 'button-name'],
+      decisions: [],
+    });
+  });
+
+  it('requests only group targets without cached evidence', () => {
+    const visual = bisectTarget('visual', 'visreg', {
+      recordedTargetEvaluations: { candidate: evaluation('visual', true, 'candidate') },
+    });
+    const tbt = bisectTarget('tbt', 'perf');
+    const group = createInitialTargetGroup('group-1', 'good', 'bad', [visual, tbt]);
+
+    expect(candidatePlanForGroup(group, [visual, tbt], 'candidate')).toEqual({
+      sha: 'candidate',
+      targetIds: ['tbt'],
+      categories: ['perf'],
+      tests: [{ testFile: 'tbt.abtest.ts', testName: 'tbt' }],
+    });
+  });
+
+  it('continues the largest verdict partition and queues the remainder', () => {
+    const targets = [
+      bisectTarget('visual', 'visreg'),
+      bisectTarget('layout', 'visreg'),
+      bisectTarget('tbt', 'perf'),
+    ];
+    const group = createInitialTargetGroup('group-1', 'good', 'bad', targets);
+    const result = partitionTargetGroup({
+      group,
+      targets,
+      sha: 'candidate',
+      evaluations: [
+        evaluation('visual', true, 'candidate'),
+        evaluation('layout', true, 'candidate'),
+        evaluation('tbt', false, 'candidate'),
+      ],
+      nextGroupId: () => 'group-2',
+    });
+
+    expect(result.verdict).toBe('bad');
+    expect(result.continuingGroup).toMatchObject({
+      id: 'group-1',
+      goodSha: 'good',
+      badSha: 'candidate',
+      targetIds: ['layout', 'visual'],
+    });
+    expect(result.queuedGroups).toEqual([expect.objectContaining({
+      id: 'group-2',
+      goodSha: 'candidate',
+      badSha: 'bad',
+      targetIds: ['tbt'],
+    })]);
+  });
+
+  it('uses category and target identity as a stable equal-size tie-break', () => {
+    const targets = [
+      bisectTarget('visual', 'visreg'),
+      bisectTarget('tbt', 'perf'),
+    ];
+    const result = partitionTargetGroup({
+      group: createInitialTargetGroup('group-1', 'good', 'bad', targets),
+      targets,
+      sha: 'candidate',
+      evaluations: [
+        evaluation('visual', false, 'candidate'),
+        evaluation('tbt', true, 'candidate'),
+      ],
+      nextGroupId: () => 'group-2',
+    });
+
+    expect(result.continuingGroup.targetIds).toEqual(['visual']);
+    expect(result.verdict).toBe('good');
+    expect(result.queuedGroups[0].targetIds).toEqual(['tbt']);
+  });
+
+  it('coalesces queued groups with identical boundaries', () => {
+    const visual = createInitialTargetGroup('group-1', 'a', 'b', [bisectTarget('visual', 'visreg')]);
+    const tbt = createInitialTargetGroup('group-2', 'a', 'b', [bisectTarget('tbt', 'perf')]);
+
+    expect(coalesceTargetGroups([visual, tbt])).toEqual([expect.objectContaining({
+      id: 'group-1',
+      goodSha: 'a',
+      badSha: 'b',
+      targetIds: ['tbt', 'visual'],
+    })]);
   });
 });
