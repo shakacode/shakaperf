@@ -79,6 +79,11 @@ export interface NativeGitBisectDriverOptions {
   allowedPaths?: readonly string[];
 }
 
+export interface ExactCheckoutOptions {
+  repoDir: string;
+  allowedPaths?: readonly string[];
+}
+
 /** Owns the native Git bisect lifecycle and is the only search-candidate mover. */
 export class NativeGitBisectDriver {
   constructor(private readonly options: NativeGitBisectDriverOptions) {}
@@ -125,6 +130,45 @@ export class NativeGitBisectDriver {
     } finally {
       await this.reset();
     }
+  }
+}
+
+/**
+ * Owns temporary, exact endpoint positioning. Search traversal cannot use this
+ * class: only NativeGitBisectDriver is allowed to advance bisect candidates.
+ */
+export class ExactCheckout {
+  constructor(private readonly options: ExactCheckoutOptions) {}
+
+  current(): Promise<CheckoutState> {
+    return checkoutState(this.options.repoDir);
+  }
+
+  async position(sha: string): Promise<void> {
+    await requireClean(this.options.repoDir, 'Experiment', {
+      allowedPaths: this.options.allowedPaths,
+    });
+    await git(this.options.repoDir, ['checkout', '--detach', sha]);
+    await this.assertAt(sha);
+  }
+
+  async assertAt(expectedSha: string): Promise<void> {
+    const actual = await checkoutState(this.options.repoDir);
+    if (actual.sha !== expectedSha || actual.branch !== null) {
+      throw new Error(
+        `Exact checkout produced ${actual.branch ?? 'detached'} at ${actual.sha}, `
+        + `expected detached at ${expectedSha}`,
+      );
+    }
+    await requireClean(this.options.repoDir, 'Exact checkout result', {
+      allowedPaths: this.options.allowedPaths,
+    });
+  }
+
+  restore(original: CheckoutState): Promise<void> {
+    return restoreCheckout(this.options.repoDir, original, {
+      allowedPaths: this.options.allowedPaths,
+    });
   }
 }
 
