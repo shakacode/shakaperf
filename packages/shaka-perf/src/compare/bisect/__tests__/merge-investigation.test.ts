@@ -13,6 +13,7 @@ import {
 } from '../merge-investigation';
 import type { CandidateResult } from '../run-candidate';
 import type { BisectSession, BisectTarget, TargetEvaluationAtCommit } from '../types';
+import type { NativeBisectPhaseDriver } from '../phase';
 
 function target(id: string, firstBadSha: string): BisectTarget {
   return {
@@ -92,11 +93,49 @@ function result(sha: string, targetEvaluations: TargetEvaluationAtCommit[]): Can
   };
 }
 
+function nativeOptions(history = ['base', 'source', 'topic']): {
+  nativeBisect: NativeBisectPhaseDriver;
+  nextGroupId(): string;
+} {
+  let good = history[0]!;
+  let bad = history.at(-1)!;
+  let candidate: string | null = null;
+  let groupId = 0;
+  const step = () => {
+    const goodIndex = history.indexOf(good);
+    const badIndex = history.indexOf(bad);
+    if (badIndex - goodIndex === 1) {
+      candidate = null;
+      return { candidateSha: null, firstBadSha: bad, complete: true, output: '' };
+    }
+    candidate = history[Math.floor((goodIndex + badIndex) / 2)]!;
+    return { candidateSha: candidate, firstBadSha: null, complete: false, output: '' };
+  };
+  return {
+    nextGroupId: () => `merge-group-${++groupId}`,
+    nativeBisect: {
+      async start(group) {
+        good = group.goodSha;
+        bad = group.badSha;
+        return step();
+      },
+      async mark(verdict) {
+        if (!candidate) throw new Error('No native merge candidate to mark');
+        if (verdict === 'good') good = candidate;
+        else bad = candidate;
+        return step();
+      },
+      async reset() {},
+    },
+  };
+}
+
 describe('merge investigation', () => {
   it('builds a stable primary merge queue and classifies octopus merges without work', async () => {
     const queued = buildMergeQueue(session(['main', 'topic-one', 'topic-two']));
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
+      ...nativeOptions(),
       session: queued,
       preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
@@ -127,6 +166,7 @@ describe('merge investigation', () => {
     ));
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
+      ...nativeOptions(['base', 'source-commit', 'nested-merge', 'topic']),
       session: queued,
       preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
@@ -178,6 +218,7 @@ describe('merge investigation', () => {
   it('retries an incomplete second-parent validation before narrowing the child range', async () => {
     let checkpoint = buildMergeQueue(session(['main', 'topic']));
     const common = {
+      ...nativeOptions(),
       preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
@@ -201,6 +242,7 @@ describe('merge investigation', () => {
 
     const measured: string[] = [];
     const completed = await runMergeInvestigations({
+      ...nativeOptions(),
       ...common,
       session: checkpoint,
       async measure(work) {
@@ -220,6 +262,7 @@ describe('merge investigation', () => {
     let measured = false;
 
     const completed = await runMergeInvestigations({
+      ...nativeOptions(['topic']),
       session: queued,
       preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
@@ -250,6 +293,7 @@ describe('merge investigation', () => {
     const measured: string[] = [];
 
     const completed = await runMergeInvestigations({
+      ...nativeOptions(['topic']),
       session: queued,
       preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),
@@ -288,6 +332,7 @@ describe('merge investigation', () => {
     let attemptId = 0;
     const measured: string[] = [];
     const common = {
+      ...nativeOptions(),
       preferredExperimentReloadMode: 'commands' as const,
       commitRuns: () => ({}),
       now: () => 'now',
@@ -342,6 +387,7 @@ describe('merge investigation', () => {
     };
 
     const completed = await runMergeInvestigations({
+      ...nativeOptions(),
       session: failed,
       preferredExperimentReloadMode: 'commands',
       commitRuns: () => ({}),

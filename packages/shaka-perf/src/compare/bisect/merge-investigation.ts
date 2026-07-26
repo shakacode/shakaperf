@@ -9,7 +9,7 @@
 
 import type { PreparedChildGitRange } from './git';
 import { runCheckpointedAttempt } from './attempt';
-import { runSearchPhase } from './phase';
+import { runNativeSearchPhase, type NativeBisectPhaseDriver } from './phase';
 import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
 import { testsForTargets, type CandidateMeasurementPlan } from './search';
 import type {
@@ -58,12 +58,18 @@ export interface RunMergeInvestigationsOptions {
   session: BisectSession;
   preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
+  nextGroupId(): string;
   now(): string;
   commitRuns(): Record<string, CommitRun>;
   checkpoint(session: BisectSession): void;
   afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
-  measure(work: CandidateMeasurementPlan, targets: readonly BisectTarget[]): Promise<CandidateResult>;
+  nativeBisect: NativeBisectPhaseDriver;
+  measure(
+    work: CandidateMeasurementPlan,
+    targets: readonly BisectTarget[],
+    checkout: boolean,
+  ): Promise<CandidateResult>;
 }
 
 export async function runMergeInvestigations(
@@ -176,7 +182,7 @@ export async function runMergeInvestigations(
         afterCheckpoint() {
           options.afterCheckpoint?.(session);
         },
-        measure: () => options.measure(validationWork, primaryTargets),
+        measure: () => options.measure(validationWork, primaryTargets, true),
       });
     }
 
@@ -201,10 +207,12 @@ export async function runMergeInvestigations(
     }
 
     if (phase.targets.length > 0 && phase.status !== 'complete') {
-      const completedPhase = await runSearchPhase({
+      const completedPhase = await runNativeSearchPhase({
         phase,
         preferredExperimentReloadMode: options.preferredExperimentReloadMode,
         nextAttemptId: options.nextAttemptId,
+        nextGroupId: options.nextGroupId,
+        nativeBisect: options.nativeBisect,
         now: options.now,
         commitRuns: options.commitRuns,
         checkpoint(updatedPhase) {
@@ -222,6 +230,7 @@ export async function runMergeInvestigations(
         measure: (work) => options.measure(
           work,
           phase!.targets.filter((target) => work.targetIds.includes(target.id)),
+          false,
         ),
       });
       phase = completedPhase;
