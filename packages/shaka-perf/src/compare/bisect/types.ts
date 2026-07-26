@@ -40,6 +40,21 @@ export interface BisectTarget extends TargetKey {
   recordedTargetEvaluations: Record<string, TargetEvaluationAtCommit>;
 }
 
+export interface NativeBisectDecision {
+  sha: string;
+  verdict: 'good' | 'bad';
+}
+
+export interface BisectTargetGroup {
+  id: string;
+  status: 'pending' | 'running' | 'complete';
+  goodSha: string;
+  badSha: string;
+  targetIds: string[];
+  decisions: NativeBisectDecision[];
+  firstBadSha?: string;
+}
+
 export interface CommitRun {
   sha: string;
   compareCompleted?: boolean;
