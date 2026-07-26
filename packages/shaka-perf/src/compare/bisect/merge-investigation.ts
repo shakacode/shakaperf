@@ -8,16 +8,19 @@
  */
 
 import type { PreparedChildGitRange } from './git';
+import { NativeGitBisectDriver } from './git';
 import { runCheckpointedAttempt } from './attempt';
-import { runNativeSearchPhase, type NativeBisectPhaseDriver } from './phase';
-import type { CandidateResult, ExperimentReloadMode } from './run-candidate';
+import { NativeBisectPhaseRunner } from './native-phase-runner';
+import { MergePhaseStore } from './phase-store';
+import { CompareBisectSession } from './session-owner';
+import { BisectRunEnvironment } from './run-environment';
+import { CandidateEvaluator, type CandidateResult, type ExperimentReloadMode } from './run-candidate';
 import { testsForTargets, type CandidateMeasurementPlan } from './search';
 import type {
   BisectCategory,
   BisectSearchPhase,
   BisectSession,
   BisectTarget,
-  CommitRun,
   MergeInvestigation,
   MergeTargetResult,
 } from './types';
@@ -58,13 +61,14 @@ export interface RunMergeInvestigationsOptions {
   session: BisectSession;
   preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
-  nextGroupId(): string;
   now(): string;
-  commitRuns(): Record<string, CommitRun>;
   checkpoint(session: BisectSession): void;
   afterCheckpoint?(session: BisectSession): void;
   prepareRange(investigation: MergeInvestigation): Promise<PreparedChildGitRange>;
-  nativeBisect: NativeBisectPhaseDriver;
+  owner: CompareBisectSession;
+  nativeGit: NativeGitBisectDriver;
+  candidateEvaluator: CandidateEvaluator;
+  environment: BisectRunEnvironment;
   measure(
     work: CandidateMeasurementPlan,
     targets: readonly BisectTarget[],
@@ -94,13 +98,13 @@ export async function runMergeInvestigations(
         failure: error instanceof Error ? error.message : String(error),
       };
       session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
+      checkpointSession(options, session);
       options.afterCheckpoint?.(session);
       continue;
     }
     investigation = { ...investigation, status: 'running', failure: undefined };
     session = updateInvestigation(session, investigation);
-    options.checkpoint(session);
+    checkpointSession(options, session);
     options.afterCheckpoint?.(session);
 
     let phase = investigation.phase;
@@ -136,7 +140,7 @@ export async function runMergeInvestigations(
           phase = preValidationPhase;
           investigation = preValidationInvestigation;
           session = preValidationSession;
-          options.checkpoint(session);
+          checkpointSession(options, session);
         },
         checkpointComplete(attempts, validation) {
           const targetEvaluations = new Map(
@@ -169,13 +173,13 @@ export async function runMergeInvestigations(
             targetResults,
           };
           session = updateInvestigation(preValidationSession, investigation);
-          options.checkpoint(session);
+          checkpointSession(options, session);
         },
         checkpointIncomplete(attempts) {
           phase = { ...preValidationPhase, attempts };
           investigation = { ...preValidationInvestigation, phase };
           session = updateInvestigation(preValidationSession, investigation);
-          options.checkpoint(session);
+          checkpointSession(options, session);
         },
         afterCheckpoint() {
           options.afterCheckpoint?.(session);
@@ -199,39 +203,21 @@ export async function runMergeInvestigations(
       };
       investigation = { ...investigation, phase, status: 'failed', failure };
       session = updateInvestigation(session, investigation);
-      options.checkpoint(session);
+      checkpointSession(options, session);
       options.afterCheckpoint?.(session);
       continue;
     }
 
     if (phase.targets.length > 0 && phase.status !== 'complete') {
-      const completedPhase = await runNativeSearchPhase({
-        phase,
-        preferredExperimentReloadMode: options.preferredExperimentReloadMode,
-        nextAttemptId: options.nextAttemptId,
-        nextGroupId: options.nextGroupId,
-        nativeBisect: options.nativeBisect,
-        now: options.now,
-        commitRuns: options.commitRuns,
-        checkpoint(updatedPhase) {
-          phase = updatedPhase;
-          investigation = { ...investigation!, phase: updatedPhase };
-          session = updateInvestigation(session, investigation);
-          options.checkpoint(session);
-        },
-        afterCheckpoint(updatedPhase) {
-          phase = updatedPhase;
-          investigation = { ...investigation!, phase: updatedPhase };
-          session = updateInvestigation(session, investigation);
-          options.afterCheckpoint?.(session);
-        },
-        measure: (work) => options.measure(
-          work,
-          phase!.targets.filter((target) => work.targetIds.includes(target.id)),
-          false,
-        ),
-      });
-      phase = completedPhase;
+      phase = await new NativeBisectPhaseRunner(
+        new MergePhaseStore(mergeSha, options.owner),
+        options.nativeGit,
+        options.candidateEvaluator,
+        options.environment,
+      ).run();
+      session = options.owner.current();
+      investigation = session.mergeInvestigations[mergeSha];
+      if (!investigation) throw new Error(`Unknown merge investigation: ${mergeSha}`);
     }
 
     const targetResults = { ...investigation.targetResults };
@@ -244,7 +230,7 @@ export async function runMergeInvestigations(
     }
     investigation = { ...investigation, phase, status: 'complete', targetResults };
     session = updateInvestigation(session, investigation);
-    options.checkpoint(session);
+    checkpointSession(options, session);
     options.afterCheckpoint?.(session);
   }
   return session;
@@ -288,6 +274,11 @@ function updateInvestigation(
       [investigation.mergeSha]: investigation,
     },
   };
+}
+
+function checkpointSession(options: RunMergeInvestigationsOptions, session: BisectSession): void {
+  options.owner.replace(session);
+  options.checkpoint(session);
 }
 
 function unique(values: BisectCategory[]): BisectCategory[] {
