@@ -152,7 +152,7 @@ function targetId(category: string, subject: string, viewport: string) {
 describe('bisect regression analysis', () => {
   it('discovers stable typed targets and evaluates them across all categories', () => {
     const results = [testResult()];
-    const targets = discoverTargets(results, ['good', 'candidate', 'bad'], 'bad');
+    const targets = discoverTargets(results);
     const targetEvaluations = evaluateTargetsAtCommitFromTestResults(results, targets, 'bad');
 
     expect(targets.map((item: BisectTarget) => [item.category, item.subject])).toEqual([
@@ -161,7 +161,7 @@ describe('bisect regression analysis', () => {
       ['visreg', '[data-cy="hero-section"]'],
     ]);
     expect(targets.filter((item: BisectTarget) => item.category === 'accessibility')).toMatchObject([
-      { viewport: 'desktop', goodIndex: 0, badIndex: 2, status: 'active' },
+      { viewport: 'desktop', status: 'active' },
     ]);
     expect(evaluationFor(targetEvaluations, 'accessibility', 'button-name', 'desktop')).toMatchObject({
       commitSha: 'bad',
@@ -206,8 +206,6 @@ describe('bisect regression analysis', () => {
   it('discovers targets only for selected bisect categories', () => {
     const targets = discoverTargets(
       [testResult()],
-      ['good', 'bad'],
-      'bad',
       ['accessibility'],
     );
 
@@ -220,7 +218,7 @@ describe('bisect regression analysis', () => {
     const targets = discoverTargets([
       testResult(),
       testResult(PHONE_VIEWPORT, false),
-    ], ['good', 'candidate', 'bad'], 'bad');
+    ]);
 
     expect(targets.filter((item: BisectTarget) => item.category === 'accessibility')).toMatchObject([
       { subject: 'button-name', viewport: 'desktop' },
@@ -231,13 +229,13 @@ describe('bisect regression analysis', () => {
   it('does not discover changed-only accessibility findings', () => {
     const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
 
-    expect(discoverTargets(changedOnlyResults, ['good', 'bad'], 'bad')).toEqual([]);
+    expect(discoverTargets(changedOnlyResults)).toEqual([]);
   });
 
   it('evaluates an existing accessibility target as regression-free for changed-only findings', () => {
     const existingTarget = discoverTargets([
       testResult(DESKTOP_VIEWPORT, false),
-    ], ['good', 'bad'], 'bad')[0]!;
+    ])[0]!;
     const changedOnlyResults = [testResult(DESKTOP_VIEWPORT, false, 'changed')];
 
     expect(evaluateTargetsAtCommitFromTestResults(changedOnlyResults, [existingTarget], 'candidate')).toMatchObject([
@@ -248,7 +246,7 @@ describe('bisect regression analysis', () => {
   it('throws when a requested target has no matching measurement', () => {
     const existingTarget = discoverTargets([
       testResult(),
-    ], ['good', 'bad'], 'bad')
+    ])
       .find((target) => target.category === 'visreg')!;
 
     expect(() => evaluateTargetsAtCommitFromTestResults([testResult(PHONE_VIEWPORT)], [existingTarget], 'candidate'))
@@ -274,7 +272,7 @@ describe('bisect regression analysis', () => {
       ?.measurement as VisregResult;
     visreg[0]!.diffImage = null;
 
-    expect(discoverTargets([result], ['good', 'bad'], 'bad')
+    expect(discoverTargets([result])
       .some((target) => target.category === 'visreg')).toBe(false);
   });
 
@@ -288,7 +286,7 @@ describe('bisect regression analysis', () => {
       { ...metric, label: 'LCP', direction: 'improvement' },
     ];
 
-    expect(discoverTargets([result], ['good', 'bad'], 'bad')
+    expect(discoverTargets([result])
       .some((target) => target.category === 'perf')).toBe(false);
   });
 });

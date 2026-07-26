@@ -33,8 +33,6 @@ export interface TargetEvaluationAtCommit {
 
 export interface BisectTarget extends TargetKey {
   status: TargetStatus;
-  goodIndex: number;
-  badIndex: number;
   firstBadSha?: string;
   invalidReason?: string;
   recordedTargetEvaluations: Record<string, TargetEvaluationAtCommit>;
@@ -101,16 +99,6 @@ export interface BisectSession {
   finishedAt?: string;
   failure?: string;
 }
-
-declare const searchStateWithCurrentBoundariesBrand: unique symbol;
-
-/**
- * Marks search input whose recorded evaluations have already been folded into
- * each target's good/bad interval, which `nextCandidate` requires.
- */
-export type SearchStateWithCurrentBoundaries<T> = T & {
-  readonly [searchStateWithCurrentBoundariesBrand]: true;
-};
 
 export type PersistedAttemptStatus = 'running' | 'complete' | 'incomplete';
 

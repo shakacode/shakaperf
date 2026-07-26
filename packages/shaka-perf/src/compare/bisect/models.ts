@@ -6,7 +6,7 @@
  */
 
 import type { ReportOutcome, TestResult } from '../../pipeline/report';
-import type { BisectTarget, TargetEvaluationAtCommit } from './types';
+import type { BisectTarget } from './types';
 
 type SuccessfulOutcome = ReportOutcome & { kind: 'ok'; measurement: unknown };
 
@@ -59,99 +59,5 @@ export class TestResultsModel {
         ? []
         : [new StageMeasurementModel(test, outcome.viewport.label, measurement)];
     }));
-  }
-}
-
-export class BisectTargetModel {
-  private constructor(
-    private target: BisectTarget,
-    private readonly orderedCommits: readonly string[],
-  ) {}
-
-  static from(target: BisectTarget, orderedCommits: readonly string[]): BisectTargetModel {
-    return new BisectTargetModel(target, orderedCommits);
-  }
-
-  isActive(): boolean {
-    return this.target.status === 'active';
-  }
-
-  hasValidSearchRange(): boolean {
-    return this.target.goodIndex < this.target.badIndex;
-  }
-
-  middleCommitIndex(): number {
-    return Math.floor((this.target.goodIndex + this.target.badIndex) / 2);
-  }
-
-  needsEvaluationAt(commitSha: string, commitIndex: number): boolean {
-    return this.isActive()
-      && this.searchRangeContains(commitIndex)
-      && !this.hasRecordedEvaluationAt(commitSha);
-  }
-
-  narrowSearchRangeUsingRecordedEvaluations(
-    commitIndexes: ReadonlyMap<string, number>,
-  ): BisectTargetModel {
-    if (!this.isActive()) return this;
-
-    let goodIndex = this.target.goodIndex;
-    let badIndex = this.target.badIndex;
-    for (const evaluation of Object.values(this.target.recordedTargetEvaluations)) {
-      const commitIndex = commitIndexes.get(evaluation.commitSha);
-      if (!this.recordedEvaluationCanNarrowSearchRange(commitIndex)) continue;
-
-      if (evaluation.regressionDetected) badIndex = Math.min(badIndex, commitIndex);
-      else goodIndex = Math.max(goodIndex, commitIndex);
-    }
-
-    this.target = { ...this.target, goodIndex, badIndex };
-    return this.markFirstBadCommitWhenLocated();
-  }
-
-  recordEvaluationAndNarrowSearchRange(
-    evaluation: TargetEvaluationAtCommit,
-    commitIndex: number,
-  ): BisectTargetModel {
-    if (!this.isActive()) return this;
-
-    this.target = {
-      ...this.target,
-      recordedTargetEvaluations: {
-        ...this.target.recordedTargetEvaluations,
-        [evaluation.commitSha]: evaluation,
-      },
-      ...(evaluation.regressionDetected ? { badIndex: commitIndex } : { goodIndex: commitIndex }),
-    };
-    return this.markFirstBadCommitWhenLocated();
-  }
-
-  toTarget(): BisectTarget {
-    return this.target;
-  }
-
-  private searchRangeContains(commitIndex: number): boolean {
-    return this.target.goodIndex <= commitIndex && commitIndex <= this.target.badIndex;
-  }
-
-  private hasRecordedEvaluationAt(commitSha: string): boolean {
-    return this.target.recordedTargetEvaluations[commitSha] !== undefined;
-  }
-
-  private recordedEvaluationCanNarrowSearchRange(
-    commitIndex: number | undefined,
-  ): commitIndex is number {
-    return commitIndex !== undefined && this.searchRangeContains(commitIndex);
-  }
-
-  private markFirstBadCommitWhenLocated(): BisectTargetModel {
-    if (this.target.badIndex - this.target.goodIndex !== 1) return this;
-
-    this.target = {
-      ...this.target,
-      status: 'found',
-      firstBadSha: this.orderedCommits[this.target.badIndex],
-    };
-    return this;
   }
 }

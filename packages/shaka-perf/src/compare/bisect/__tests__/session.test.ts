@@ -1037,7 +1037,7 @@ describe('compare bisect session orchestration', () => {
 
     expect(harness.calls.sessions.at(-1)).toMatchObject({
       status: 'failed',
-      primary: { targets: [{ goodIndex: 0, badIndex: 3 }] },
+      primary: { targets: [{ status: 'active' }] },
     });
     expect(harness.calls.sessions.at(-1)?.primary.targets[0]?.recordedTargetEvaluations.a).toBeUndefined();
     expect(harness.calls.compares.map((call) => call.sha)).toEqual(['bad', 'a']);

@@ -151,8 +151,6 @@ export async function runMergeInvestigations(
             reproducing.push({
               ...target,
               status: 'active',
-              goodIndex: 0,
-              badIndex: range.orderedCommits.length - 1,
               firstBadSha: undefined,
               invalidReason: undefined,
               recordedTargetEvaluations: { [range.secondParent]: evaluation },
@@ -186,9 +184,9 @@ export async function runMergeInvestigations(
 
     if (!phase) throw new Error(`Merge investigation ${mergeSha} has no child phase`);
 
-    const invalidTarget = phase.targets.find((target) => (
-      target.status === 'active' && target.goodIndex >= target.badIndex
-    ));
+    const invalidTarget = range.mergeBase === range.secondParent
+      ? phase.targets.find((target) => target.status === 'active')
+      : undefined;
     if (invalidTarget) {
       const failure = `Cannot investigate merge source for ${mergeSha}: target `
         + `${invalidTarget.id} has no distinct good and bad commits`;

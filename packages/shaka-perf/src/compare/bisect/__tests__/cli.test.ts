@@ -284,9 +284,16 @@ describe('compare bisect command', () => {
         viewport: 'desktop',
         subject: 'document',
         status: 'active',
-        goodIndex: 0,
-        badIndex: 2,
         recordedTargetEvaluations: {},
+          }],
+          groups: [{
+            id: 'primary-group-1',
+            status: 'pending',
+            goodSha: 'good-sha',
+            badSha: 'bad-sha',
+            targetIds: [targetId],
+            decisions: [],
+            previewCandidateSha: 'middle-sha',
           }],
         },
       };
@@ -313,7 +320,7 @@ describe('compare bisect command', () => {
       'Range: good-sha..bad-sha',
       'Targets discovered: 1',
       '  visreg Homepage desktop document',
-      'Next: measure midpoint middle- for 1 target(s)',
+      'Next: measure native bisect candidate middle- for 1 target(s)',
       'Categories: visreg',
       'Tests: tests/homepage.abtest.ts :: Homepage',
     ]));
@@ -327,7 +334,7 @@ describe('compare bisect command', () => {
     const target = {
       id: 'target', category: 'accessibility' as const, testFile: 'home.abtest.ts', testName: 'Home',
       viewport: 'desktop', subject: 'document', status: 'found' as const,
-      goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', recordedTargetEvaluations: {},
+      firstBadSha: 'merge-sha', recordedTargetEvaluations: {},
     };
     try {
       await runCompareBisectFromCli('good', 'merge-sha', {

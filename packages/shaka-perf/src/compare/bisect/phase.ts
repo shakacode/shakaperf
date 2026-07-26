@@ -11,18 +11,13 @@ import {
   candidatePlanForGroup,
   coalesceTargetGroups,
   createInitialTargetGroup,
-  narrowTargetSearchRangesUsingRecordedEvaluations,
-  recordTargetEvaluationsAndNarrowSearchRanges,
-  nextCandidate,
   partitionTargetGroup,
-  type BisectSearchInput,
   type CandidateMeasurementPlan,
 } from './search';
 import type {
   BisectSearchPhase,
   BisectTargetGroup,
   CommitRun,
-  TargetEvaluationAtCommit,
 } from './types';
 import type { NativeBisectStep, NativeBisectVerdict } from './git';
 
@@ -31,12 +26,7 @@ export interface RunSearchPhaseOptions {
   preferredExperimentReloadMode: ExperimentReloadMode;
   nextAttemptId(): string;
   now(): string;
-  /**
-   * The session's commit runs as of *now*. Read through a getter because
-   * `measure` records a run mid-flight, and
-   * `recordTargetEvaluationsAndNarrowSearchRanges` must see the
-   * resulting `infrastructureError` to refuse the evaluations it produced.
-   */
+  /** The session's commit runs as of now, including failures recorded during measurement. */
   commitRuns(): Record<string, CommitRun>;
   checkpoint(phase: BisectSearchPhase): void;
   afterCheckpoint?(phase: BisectSearchPhase): void;
@@ -240,82 +230,4 @@ function checkpointNativePhase(
 ): void {
   options.checkpoint(phase);
   options.afterCheckpoint?.(phase);
-}
-
-export async function runSearchPhase(
-  options: RunSearchPhaseOptions,
-): Promise<BisectSearchPhase> {
-  const searchInput = (phase: BisectSearchPhase): BisectSearchInput => ({
-    orderedCommits: phase.orderedCommits,
-    targets: phase.targets,
-    commitRuns: options.commitRuns(),
-  });
-  const narrowPhaseSearchRangesUsingRecordedEvaluations = (
-    phase: BisectSearchPhase,
-  ): BisectSearchPhase => ({
-    ...phase,
-    targets: narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)).targets,
-  });
-
-  let phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
-    ...options.phase,
-    status: 'running',
-    startedAt: options.phase.startedAt ?? options.now(),
-  });
-  options.checkpoint(phase);
-  options.afterCheckpoint?.(phase);
-
-  while (true) {
-    const work = nextCandidate(
-      narrowTargetSearchRangesUsingRecordedEvaluations(searchInput(phase)),
-    );
-    if (!work) {
-      phase = {
-        ...phase,
-        status: 'complete',
-        finishedAt: options.now(),
-      };
-      options.checkpoint(phase);
-      options.afterCheckpoint?.(phase);
-      return phase;
-    }
-
-    let preMeasurePhase = phase;
-    await runCheckpointedAttempt({
-      attempts: phase.attempts,
-      work,
-      preferredExperimentReloadMode: options.preferredExperimentReloadMode,
-      nextAttemptId: options.nextAttemptId,
-      now: options.now,
-      checkpointRunning(attempts) {
-        preMeasurePhase = { ...phase, attempts };
-        phase = preMeasurePhase;
-        options.checkpoint(phase);
-      },
-      checkpointComplete(attempts, result) {
-        const targetEvaluations = new Map<string, TargetEvaluationAtCommit>(
-          result.targetEvaluations.map((evaluation) => [evaluation.targetId, evaluation]),
-        );
-        const updated = recordTargetEvaluationsAndNarrowSearchRanges(
-          searchInput(preMeasurePhase),
-          work.sha,
-          targetEvaluations,
-        );
-        phase = narrowPhaseSearchRangesUsingRecordedEvaluations({
-          ...preMeasurePhase,
-          targets: updated.targets,
-          attempts,
-        });
-        options.checkpoint(phase);
-      },
-      checkpointIncomplete(attempts) {
-        phase = { ...preMeasurePhase, attempts };
-        options.checkpoint(phase);
-      },
-      afterCheckpoint() {
-        options.afterCheckpoint?.(phase);
-      },
-      measure: () => options.measure(work),
-    });
-  }
 }
