@@ -21,6 +21,7 @@ import {
   resetNativeBisect,
   restoreCheckout,
   startNativeBisect,
+  NativeGitBisectDriver,
 } from '../git';
 
 function git(cwd: string, args: string[]): string {
@@ -423,5 +424,43 @@ describe('bisect Git helpers', () => {
 
     await resetNativeBisect(fixture.experimentDir);
     expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+  });
+
+  it('owns candidate movement and verifies the selected checkout', async () => {
+    const driver = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+    const group = {
+      id: 'group-1',
+      status: 'pending' as const,
+      goodSha: fixture.commits[0],
+      badSha: fixture.commits[4],
+      targetIds: ['target'],
+      decisions: [],
+    };
+
+    const started = await driver.start(group);
+    await expect(driver.assertAtCandidate(started.candidateSha!)).resolves.toBeUndefined();
+    await expect(driver.assertAtCandidate(fixture.commits[1]))
+      .rejects.toThrow(/native git bisect selected .* expected/i);
+
+    await driver.reset();
+  });
+
+  it('previews and resets through the driver without moving HEAD', async () => {
+    const driver = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
+    const originalHead = git(fixture.experimentDir, ['rev-parse', 'HEAD']);
+
+    const step = await driver.preview({
+      id: 'group-1',
+      status: 'pending',
+      goodSha: fixture.commits[0],
+      badSha: fixture.commits[4],
+      targetIds: ['target'],
+      decisions: [],
+    });
+
+    expect(step.candidateSha).toBe(fixture.commits[2]);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(originalHead);
+    expect(fs.existsSync(git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START'])))
+      .toBe(false);
   });
 });
