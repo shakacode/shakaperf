@@ -33,15 +33,20 @@ import {
   prepareChildGitRange,
   prepareGitRange,
   restoreCheckout,
+  markNativeBisect,
+  resetNativeBisect,
+  startNativeBisect,
   type BisectRepositorySnapshot,
   type PreparedGitRange,
+  type NativeBisectStep,
+  type NativeBisectVerdict,
 } from './git';
 import {
   narrowTargetSearchRangesUsingRecordedEvaluations,
   nextCandidate,
   testsForTargets,
 } from './search';
-import { runSearchPhase } from './phase';
+import { runNativeSearchPhase, runSearchPhase } from './phase';
 import { buildMergeQueue, runMergeInvestigations } from './merge-investigation';
 import {
   writeSessionAtomic,
@@ -64,6 +69,7 @@ import type {
   BisectSession,
   BisectTestSelection,
   BisectTarget,
+  BisectTargetGroup,
   CommitRun,
   PersistedRebuildStrategy,
   TargetEvaluationAtCommit,
@@ -202,6 +208,9 @@ export interface ExecuteBisectDependencies extends CandidateDependencies {
   logProgress(message: string): void;
   now(): string;
   reuseCurrentResults(request: ReuseCurrentResultsRequest): Promise<CompareRunResult>;
+  startNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
+  markNativeBisect?(verdict: NativeBisectVerdict): Promise<NativeBisectStep>;
+  resetNativeBisect?(): Promise<void>;
 }
 
 export interface RunBisectOptions {
@@ -468,6 +477,7 @@ interface CandidateMeasureOptions {
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
+  checkout?: boolean;
 }
 
 interface BisectExecutionState {
@@ -557,7 +567,7 @@ function createBisectExecutionContext(
           ...deps,
           async checkout(sha) {
             state.checkoutAttempted = true;
-            await deps.checkout(sha);
+            if (options.checkout !== false) await deps.checkout(sha);
           },
           async syncCandidateFilesToExperimentVolume(request) {
             state.volumeStateUncertain = true;
@@ -804,12 +814,31 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
   const { input, deps, state } = context;
   const primary: BisectSearchPhase = state.session.primary;
   let attemptNumber = primary.attempts.length;
-  const completedPrimary = await runSearchPhase({
+  let groupNumber = Math.max(1, ...(primary.groups ?? []).map((group) => {
+    const suffix = Number(group.id.match(/-(\d+)$/)?.[1]);
+    return Number.isSafeInteger(suffix) ? suffix : 0;
+  }));
+  const start = deps.startNativeBisect;
+  const mark = deps.markNativeBisect;
+  const reset = deps.resetNativeBisect;
+  if (!start || !mark || !reset) {
+    throw new Error('compare bisect requires native Git bisect dependencies');
+  }
+  const completedPrimary = await runNativeSearchPhase({
     phase: primary,
     preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
     nextAttemptId: () => `primary-${++attemptNumber}`,
+    nextGroupId: () => `primary-group-${++groupNumber}`,
     now: deps.now,
     commitRuns: () => state.session.commitRuns,
+    nativeBisect: {
+      start(group) {
+        state.checkoutAttempted = true;
+        return start(group);
+      },
+      mark,
+      reset,
+    },
     checkpoint(phase) {
       state.session = { ...state.session, primary: phase };
       context.persistSession();
@@ -822,17 +851,24 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
       const targets = state.session.primary.targets.filter((target) => (
         work.targetIds.includes(target.id)
       ));
+      const activeGroup = state.session.primary.groups?.find((group) => (
+        group.id === state.session.primary.activeGroupId
+      ));
       context.logDecision(
         'candidate-selected',
-        `Selected midpoint ${shortSha(work.sha)} for ${targets.length} active target(s)`,
+        `Selected Git candidate ${shortSha(work.sha)} for ${targets.length} active target(s)`,
         {
           sha: work.sha,
           categories: work.categories,
           tests: work.tests,
-          targets: targets.map((target) => targetLogData(
-            target,
-            input.gitRange.orderedCommits,
-          )),
+          targets: targets.map((target) => ({
+            ...targetLogData(target),
+            group: activeGroup ? {
+              id: activeGroup.id,
+              goodSha: activeGroup.goodSha,
+              badSha: activeGroup.badSha,
+            } : undefined,
+          })),
         },
       );
       const candidateRun = await context.measure({
@@ -840,6 +876,7 @@ async function runPrimaryBisectSearch(context: BisectExecutionContext): Promise<
         categories: work.categories,
         tests: work.tests,
         targets,
+        checkout: false,
       });
       context.logDecision(
         'candidate-observed',
@@ -1151,6 +1188,18 @@ function createDefaultDependencies(options: {
     checkout: (sha) => checkoutDetached(options.twinServers.experimentDir, sha, {
       allowedPaths: [options.resultsDirectory],
     }),
+    startNativeBisect: (group) => startNativeBisect({
+      repoDir: options.twinServers.experimentDir,
+      goodSha: group.goodSha,
+      badSha: group.badSha,
+      firstParent: true,
+      allowedPaths: [options.resultsDirectory],
+    }),
+    markNativeBisect: (verdict) => markNativeBisect(
+      options.twinServers.experimentDir,
+      verdict,
+    ),
+    resetNativeBisect: () => resetNativeBisect(options.twinServers.experimentDir),
     restore: ({ previouslySyncedSha, originalSha }) => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,

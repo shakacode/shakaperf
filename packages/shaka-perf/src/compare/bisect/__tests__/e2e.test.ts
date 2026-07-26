@@ -88,10 +88,6 @@ describe('compare bisect black-box E2E', () => {
         'visual-regression-introduced',
         'accessibility-regression-introduced',
       ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
-        'good-unrelated-commit-one',
-        'good-unrelated-commit-two',
-      ]);
       assertExperimentRestored(fixture);
     } finally {
       fixture.cleanup();
@@ -150,10 +146,6 @@ describe('compare bisect black-box E2E', () => {
         'good-unrelated-commit-traversed',
         'visual-and-performance-regressions-introduced',
         'clean-before-regressions',
-      ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
-        'good-unrelated-commit-one',
-        'good-unrelated-commit-two',
       ]);
       expect(harness.candidateComparisonCalls.filter((call) => (
         call.sha === fixture.shas['visual-and-performance-regressions-introduced']
@@ -217,12 +209,11 @@ describe('compare bisect black-box E2E', () => {
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
         'homepage-regression-confirmed',
-        'cart-regression-introduced',
-        'homepage-regression-introduced',
-      ]);
-      expectCommitsSkippedByBinarySearch(harness, fixture, [
-        'good-unrelated-commit-one',
+        // Native Git selects the side commits used to close each split group.
         'good-unrelated-commit-two',
+        'cart-regression-introduced',
+        'good-unrelated-commit-one',
+        'homepage-regression-introduced',
       ]);
       expect(harness.candidateComparisonCalls).toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -552,11 +543,12 @@ describe('compare bisect black-box E2E', () => {
       expectBinarySearchTraversal(interruptedHarness, fixture, [
         'known-bad',
         'good-unrelated-commit-traversed',
+        // Native Git owns the candidate sequence for the narrowed range.
+        'good-unrelated-commit-two',
         'compare-failure',
       ]);
       expectCommitsSkippedByBinarySearch(interruptedHarness, fixture, [
         'good-unrelated-commit-one',
-        'good-unrelated-commit-two',
       ]);
       assertExperimentRestored(fixture);
 
@@ -624,6 +616,8 @@ describe('compare bisect black-box E2E', () => {
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
         'command-rebuild-fails',
+        // Native Git tests this candidate before closing the bad boundary.
+        'regression-confirmed',
         'visual-regression-introduced',
       ]);
       expect(harness.experimentReloadCalls).toContainEqual({

@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { runSearchPhase } from '../phase';
+import { runNativeSearchPhase, runSearchPhase } from '../phase';
 import type { CandidateResult } from '../run-candidate';
 import type {
   BisectSearchPhase,
@@ -274,5 +274,86 @@ describe('runSearchPhase', () => {
         return result(work.sha, [evaluation('visual', work.sha, true)]);
       },
     })).rejects.toThrow('Cannot record target evaluations for b: container reload failed');
+  });
+});
+
+describe('runNativeSearchPhase', () => {
+  it('keeps the largest partition active and schedules the divergent group later', async () => {
+    const initial = phase();
+    const starts: Array<{ goodSha: string; badSha: string; targetIds: string[] }> = [];
+    const marks: string[] = [];
+    const resets: number[] = [];
+    const measured: string[] = [];
+    let active = '';
+    const completed = await runNativeSearchPhase({
+      phase: initial,
+      preferredExperimentReloadMode: 'commands',
+      commitRuns: () => ({}),
+      nextAttemptId: (() => {
+        let id = 0;
+        return () => `attempt-${++id}`;
+      })(),
+      nextGroupId: (() => {
+        let id = 1;
+        return () => `primary-group-${++id}`;
+      })(),
+      now: () => '2026-07-13T00:00:00.000Z',
+      checkpoint: () => undefined,
+      nativeBisect: {
+        async start(group) {
+          starts.push({
+            goodSha: group.goodSha,
+            badSha: group.badSha,
+            targetIds: [...group.targetIds],
+          });
+          active = group.targetIds.includes('visual') ? 'visual' : 'perf';
+          return {
+            candidateSha: active === 'visual' ? 'b' : 'c',
+            firstBadSha: null,
+            complete: false,
+            output: '',
+          };
+        },
+        async mark(verdict) {
+          marks.push(verdict);
+          if (active === 'visual' && verdict === 'bad') {
+            return { candidateSha: 'a', firstBadSha: null, complete: false, output: '' };
+          }
+          return {
+            candidateSha: null,
+            firstBadSha: active === 'visual' ? 'b' : 'c',
+            complete: true,
+            output: '',
+          };
+        },
+        async reset() {
+          resets.push(1);
+        },
+      },
+      async measure(work) {
+        measured.push(work.sha);
+        if (work.sha === 'b') {
+          return result('b', [
+            evaluation('visual', 'b', true),
+            evaluation('perf', 'b', false),
+          ]);
+        }
+        if (work.sha === 'a') return result('a', [evaluation('visual', 'a', false)]);
+        return result('c', [evaluation('perf', 'c', true)]);
+      },
+    });
+
+    expect(measured).toEqual(['b', 'a', 'c']);
+    expect(starts).toEqual([
+      { goodSha: 'good', badSha: 'bad', targetIds: ['visual', 'perf'] },
+      { goodSha: 'b', badSha: 'bad', targetIds: ['perf'] },
+    ]);
+    expect(resets).toHaveLength(2);
+    expect(completed.targets).toMatchObject([
+      { id: 'visual', status: 'found', firstBadSha: 'b' },
+      { id: 'perf', status: 'found', firstBadSha: 'c' },
+    ]);
+    expect(completed.groups).toHaveLength(2);
+    expect(completed.groups?.every((group) => group.status === 'complete')).toBe(true);
   });
 });

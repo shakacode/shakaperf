@@ -162,6 +162,7 @@ interface HarnessOptions {
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
   clearPriorReportOutput?: () => void;
+  nativeHistory?: string[];
 }
 
 function deps(
@@ -223,6 +224,27 @@ function deps(
     summaryAfterEvents: [] as string[][],
     signalHandlers: new Set<(signal: NodeJS.Signals) => void>(),
   };
+  const nativeHistory = options.nativeHistory ?? ['good', 'a', 'b', 'bad'];
+  let nativeGood = 'good';
+  let nativeBad = 'bad';
+  let nativeCandidate: string | null = null;
+  const nativeStep = (): Awaited<ReturnType<NonNullable<ExecuteBisectDependencies['startNativeBisect']>>> => {
+    const goodIndex = nativeHistory.indexOf(nativeGood);
+    const badIndex = nativeHistory.indexOf(nativeBad);
+    if (goodIndex === -1 || badIndex === -1 || goodIndex >= badIndex) {
+      throw new Error(`Invalid stubbed native bisect range ${nativeGood}..${nativeBad}`);
+    }
+    if (badIndex - goodIndex === 1) {
+      nativeCandidate = null;
+      return { candidateSha: null, firstBadSha: nativeBad, complete: true, output: '' };
+    }
+    nativeCandidate = nativeHistory[Math.floor((goodIndex + badIndex) / 2)]!;
+    calls.checkouts.push(nativeCandidate);
+    calls.events.push(`checkout:${nativeCandidate}`);
+    const checkoutError = options.checkoutErrorBySha?.[nativeCandidate];
+    if (checkoutError) throw checkoutError;
+    return { candidateSha: nativeCandidate, firstBadSha: null, complete: false, output: '' };
+  };
   return {
     calls,
     emitSignal(signal) {
@@ -244,6 +266,18 @@ function deps(
       async endSession() {
         calls.events.push('lease:end');
       },
+      async startNativeBisect(group) {
+        nativeGood = group.goodSha;
+        nativeBad = group.badSha;
+        return nativeStep();
+      },
+      async markNativeBisect(verdict) {
+        if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
+        if (verdict === 'good') nativeGood = nativeCandidate;
+        else nativeBad = nativeCandidate;
+        return nativeStep();
+      },
+      async resetNativeBisect() {},
       async checkout(sha) {
         calls.checkouts.push(sha);
         calls.events.push(`checkout:${sha}`);
@@ -438,8 +472,8 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.progress).toEqual(expect.arrayContaining([
       'Starting compare bisect session',
       'Measuring bad ref bad to discover regression targets',
-      'Selected midpoint a for 1 active target(s)',
-      'Selected midpoint b for 1 active target(s)',
+      'Selected Git candidate a for 1 active target(s)',
+      'Selected Git candidate b for 1 active target(s)',
       'Compare bisect session completed',
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).toEqual(expect.arrayContaining([
@@ -455,10 +489,9 @@ describe('compare bisect session orchestration', () => {
       sha: 'b',
       tests: [{ testFile: 'tests/homepage.abtest.ts', testName: 'Homepage' }],
       targets: [expect.objectContaining({
-        interval: {
-          goodIndex: 1,
+        group: {
+          id: 'primary-group-1',
           goodSha: 'a',
-          badIndex: 3,
           badSha: 'bad',
         },
       })],
@@ -1167,7 +1200,7 @@ describe('compare bisect session orchestration', () => {
       b: [account('account-diff.png'), admin(null)],
       c: [admin('admin-diff.png')],
       bad: [account('account-diff.png'), admin('admin-diff.png')],
-    });
+    }, { nativeHistory: ['good', 'a', 'b', 'c', 'bad'] });
 
     const divergingInput = input(rootDir);
     divergingInput.gitRange = {

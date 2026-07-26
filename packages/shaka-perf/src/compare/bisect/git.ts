@@ -73,6 +73,7 @@ export interface StartNativeBisectOptions {
   badSha: string;
   firstParent?: boolean;
   noCheckout?: boolean;
+  allowedPaths?: readonly string[];
 }
 
 async function git(repoDir: string, args: string[]): Promise<string> {
@@ -102,7 +103,7 @@ async function nativeBisectStep(
 export async function startNativeBisect(
   options: StartNativeBisectOptions,
 ): Promise<NativeBisectStep> {
-  await requireClean(options.repoDir, 'Experiment');
+  await requireClean(options.repoDir, 'Experiment', { allowedPaths: options.allowedPaths });
   const args = ['bisect', 'start'];
   if (options.noCheckout) args.push('--no-checkout');
   if (options.firstParent !== false) args.push('--first-parent');
