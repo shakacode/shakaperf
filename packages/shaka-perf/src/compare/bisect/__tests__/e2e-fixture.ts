@@ -222,67 +222,78 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       nativeGit,
       exactCheckout,
       mergeRangeSource: new GitMergeRangeSource(fixture.experimentDir),
-      installSignalHandlers() {
-        return () => undefined;
+      clock: {
+        now: () => new Date(Date.UTC(2026, 6, 19, 0, 0, tick++)).toISOString(),
       },
-      async beginSession() {},
-      async endSession() {},
-      async reloadExperiment(request) {
-        experimentReloadCalls.push({ ...request });
-        if (request.sha === options.containerFallbackAtSha) {
-          return { mode: 'container', usedFallback: true };
-        }
-        return { mode: request.preferredExperimentReloadMode, usedFallback: false };
+      signals: {
+        install() { return () => undefined; },
       },
-      async runCandidateComparisons(request) {
-        candidateComparisonCalls.push({
-          ...request,
-          categories: [...request.categories],
-          tests: [...request.tests],
-        });
-        if (request.sha === options.failAtSha) {
-          throw new Error(`Stubbed compare failure at ${request.sha}`);
-        }
-        const results = options.resultsBySha[request.sha];
-        if (!results) {
-          throw new Error(`No stubbed compare results for ${request.sha}`);
-        }
-        return { testResults: filterCompareResults(results, request) };
+      server: {
+        async begin() {},
+        async end() {},
+        async refreshExperiment(request) {
+          experimentReloadCalls.push({ ...request });
+          if (request.sha === options.containerFallbackAtSha) {
+            return { mode: 'container', usedFallback: true };
+          }
+          return { mode: request.preferredExperimentReloadMode, usedFallback: false };
+        },
       },
-      async restore() {
-        await restoreCheckout(fixture.experimentDir, {
-          branch: fixture.experimentBranch,
-          sha: fixture.originalExperimentSha,
-        });
+      comparison: {
+        async run(request) {
+          candidateComparisonCalls.push({
+            ...request,
+            categories: [...request.categories],
+            tests: [...request.tests],
+          });
+          if (request.sha === options.failAtSha) {
+            throw new Error(`Stubbed compare failure at ${request.sha}`);
+          }
+          const results = options.resultsBySha[request.sha];
+          if (!results) {
+            throw new Error(`No stubbed compare results for ${request.sha}`);
+          }
+          return { testResults: filterCompareResults(results, request) };
+        },
       },
-      clearSummary() {
-        fs.rmSync(path.join(fixture.resultsDirectory, 'summary.json'), { force: true });
+      restoration: {
+        async restore() {
+          await restoreCheckout(fixture.experimentDir, {
+            branch: fixture.experimentBranch,
+            sha: fixture.originalExperimentSha,
+          });
+        },
       },
-      clearPriorReportOutput() {},
-      writeSession(session) {
-        writeSessionAtomic(path.join(fixture.resultsDirectory, 'session.json'), session);
+      artifacts: {
+        clearPrevious() {
+          fs.rmSync(path.join(fixture.resultsDirectory, 'summary.json'), { force: true });
+        },
+        writeSession(session) {
+          writeSessionAtomic(path.join(fixture.resultsDirectory, 'session.json'), session);
+        },
+        writeReport() {},
+        writeSummary(session, metadata) {
+          writeSummary(path.join(fixture.resultsDirectory, 'summary.json'), session, metadata);
+        },
+        writeBadRefTests(tests) {
+          return writeBadRefTestsAtomic(
+            path.join(fixture.resultsDirectory, 'bad-ref-tests.json'),
+            tests,
+          );
+        },
       },
-      writeReport() {},
-      writeSummary(session, metadata) {
-        writeSummary(path.join(fixture.resultsDirectory, 'summary.json'), session, metadata);
+      decisions: {
+        record() {},
+        progress() {},
       },
-      writeBadRefTests(tests) {
-        return writeBadRefTestsAtomic(
-          path.join(fixture.resultsDirectory, 'bad-ref-tests.json'),
-          tests,
-        );
-      },
-      recordDecision() {},
-      logProgress() {},
-      now() {
-        return new Date(Date.UTC(2026, 6, 19, 0, 0, tick++)).toISOString();
-      },
-      async reuseCurrentResults(request) {
-        const results = options.resultsBySha[request.sha];
-        if (!results) {
-          throw new Error(`No reusable compare results for ${request.sha}`);
-        }
-        return { testResults: results };
+      reusableResults: {
+        async load(request) {
+          const results = options.resultsBySha[request.sha];
+          if (!results) {
+            throw new Error(`No reusable compare results for ${request.sha}`);
+          }
+          return { testResults: results };
+        },
       },
     },
   };
