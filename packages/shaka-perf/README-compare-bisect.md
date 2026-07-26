@@ -6,8 +6,9 @@ commit that introduced each regression observed at the bad ref.
 
 The command is designed for local, deterministic investigation after a normal
 `compare` run shows a visual, performance, or accessibility regression. It does
-not replace `git bisect`; it adds compare-aware target discovery, persistence,
-and category-specific analysis on top of a stable twin-server setup.
+drives native `git bisect` while adding compare-aware target discovery,
+persistence, grouped multi-target verdicts, and category-specific analysis on
+top of a stable twin-server setup.
 
 ## When to Use It
 
@@ -22,15 +23,8 @@ Use compare bisect when:
 
 ## Basic Flow
 
-Compare bisect requires clean control and experiment worktrees, an experiment
-build manifest, and an active twin-server menu. Generate the manifest before a
-first run or after removing the experiment volume:
-
-```bash
-yarn shaka-perf servers build --target experiment
-```
-
-Then start the twin-server menu:
+Compare bisect requires clean control and experiment worktrees and an active
+twin-server menu. Start the menu with:
 
 ```bash
 yarn shaka-perf servers
@@ -92,14 +86,14 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> \
 ```
 
 `--reuse-current-results` applies only to bad-ref target discovery. Good-ref
-validation, when explicitly enabled, and every midpoint still rebuild and run
+validation, when explicitly enabled, and every Git-selected candidate still rebuild and run
 compare normally. The selected categories must already have persisted outcomes in
 `compare-results/`; otherwise the command fails with the compare command to run
 first.
 
-By default, bisect trusts the control checkout as the good endpoint and starts
-with the first midpoint. To additionally rebuild the experiment at `good-ref`
-and compare both sides before midpoint search, opt in with:
+By default, bisect trusts the control checkout as the good endpoint and lets Git
+select the first candidate. To additionally rebuild the experiment at `good-ref`
+and compare both sides before the search, opt in with:
 
 ```bash
 yarn shaka-perf compare bisect <good-ref> <bad-ref> --validate-good-ref
@@ -127,14 +121,15 @@ yarn shaka-perf compare bisect <good-ref> <bad-ref> \
 
 A dry run stops immediately after bad-ref target discovery. It prints every
 discovered category, test, viewport, and metric/rule/selector, then shows the
-first midpoint that a normal run would measure next, including its narrowed
+first candidate that native Git would measure next, including its narrowed
 categories and exact AB tests, identified by test file plus test name. When
 `--validate-good-ref` is also passed, the preview shows that validation as the
 next action instead. `summary.json` and
 `session.json` record `dryRun: true`, `validateGoodRef`, and the structured
 `nextAction`.
 
-`--dry-run` does not measure the good ref or any midpoint commit. Without
+`--dry-run` asks `git bisect --no-checkout` for the preview and does not measure
+the good ref or any candidate commit. Without
 `--reuse-current-results`, it still checks out, rebuilds, and compares the bad
 ref so it can discover targets, then restores the original experiment checkout.
 Combining both flags is the fast artifact-preview path: it loads the selected
@@ -190,7 +185,7 @@ compare-bisect-results/
   HTML report on resume without repeating bad-ref discovery.
 - `summary.json` records the final user-facing answer grouped by target status.
 - `decision-log.md` is the human-readable trail of the route taken: range setup,
-  target discovery, midpoint choices, interval movements, fallback decisions,
+  target discovery, Git candidate choices, target-group splits, fallback decisions,
   and final first-bad conclusions.
 - `decision-log.jsonl` contains the same decision trail as structured JSON
   events for tooling or later report rendering.
@@ -199,9 +194,11 @@ compare-bisect-results/
 
 The terminal also prints a compact summary with the status, summary path, target
 counts, decision-log path, and first-bad SHA for each found target. During the
-run it prints progress messages before checkout, volume sync, server refresh,
-compare execution, candidate selection, and interval updates so long-running
-perf measurements do not look idle.
+run it prints progress messages before server refresh, compare execution,
+candidate selection, group splitting, and first-bad conclusions so long-running
+perf measurements do not look idle. Git checkout changes reach the experiment
+volume through the twin-server menu's normal auto-sync watcher; bisect does not
+maintain a second file-copy implementation.
 
 ## Configuration
 
@@ -254,29 +251,34 @@ regression targets.
    accessibility outcome becomes a target with a stable key: category, test
    file, test name, viewport, and subject.
 4. **Stop when dry-running.** With `--dry-run`, persist and print the discovered
-   targets plus the exact next action: the first midpoint by default, or good-ref
+   targets plus the exact next action: Git's first candidate by default, or good-ref
    validation when `--validate-good-ref` is enabled. No further measurement is
    performed.
 5. **Optionally measure the good ref.** With `--validate-good-ref`, any target
    already present when the experiment also runs `good-ref` is marked `invalid`.
    By default this step is skipped because range setup already requires control
    to represent `good-ref`.
-6. **Search active targets.** For each active target, the scheduler keeps a
-   `[goodIndex, badIndex]` interval. A candidate in the middle of the interval
-   is measured; if the target is present, the bad boundary moves down. If absent,
-   the good boundary moves up.
-7. **Share candidate work.** When one candidate SHA is useful for multiple
-   targets, the command measures all relevant categories and individual AB tests
-   in one compare run, then applies each target's observation independently.
+6. **Start one grouped native search.** All eligible active targets begin in one
+   target group with the same good and bad SHAs. Native `git bisect` selects and
+   checks out each candidate on the primary first-parent history.
+7. **Share candidate work and split only on divergence.** The command measures
+   every target in the active group in one compare run. If all observations have
+   the same binary verdict, that verdict advances the native search. If they
+   differ, the largest verdict partition continues in the current Git run and
+   each remaining partition is persisted as queued work over its narrowed SHA
+   range. Equal-size ties use a stable category-and-target ordering. Queued
+   groups with identical boundaries are coalesced.
    Exact `(test file, test name)` pairs are deduplicated, so different tests in
    one file remain independently selectable and equal names in different files
    remain distinct.
-8. **Finish on adjacency.** When a target's good and bad boundaries are adjacent,
-   the bad boundary commit is recorded as `firstBadSha`.
+8. **Let Git conclude each group.** When native Git reports the first bad commit,
+   that SHA is assigned to every target still in the group. The next queued group
+   then starts a fresh native search using its persisted SHA boundaries.
 9. **Optionally investigate merges.** After every primary category and target is
    complete and reported, validate the second parent of each two-parent
    first-bad merge. Targets absent there are `merge-introduced`; reproducing
-   targets are narrowed from merge-base to second parent with the same scheduler.
+   targets are narrowed from merge-base to second parent with the same grouped
+   native search. Nested merges remain atomic in that child run.
 
 ## Resuming Safely
 
@@ -295,15 +297,16 @@ frozen `(test file, test name)` pairs, and rebuild strategy. Moved, dirty, or
 incompatible sessions fail with a fresh-run instruction.
 
 Completed observations are never compared again. A crashed `running` attempt is
-loaded as `incomplete` and retried without advancing target bounds. The first
-resumed candidate performs a full manifest reconciliation before refresh;
-subsequent candidates return to normal commit-delta synchronization. A fully
-complete session prints its saved results without acquiring a lease.
+loaded as `incomplete` and retried without advancing its target group. Resume
+uses the persisted group boundaries and verdict decisions to reconstruct a
+fresh native Git bisect run; it does not assume transient `.git/BISECT_*` files
+survived interruption, `git bisect reset`, or worktree cleanup. Candidate source
+changes continue through normal twin-server auto-sync. A fully complete session
+prints its saved results without acquiring a lease.
 
-The scheduler is category-prioritized (`visreg`, `perf`, then `accessibility`)
-and deterministic within each category. Cached observations are reapplied before
-each scheduling decision, so repeated measurements of the same target/SHA are
-avoided.
+Group tie-breaking is category-prioritized (`visreg`, `perf`, then
+`accessibility`) and deterministic within each category. Cached target/SHA
+observations are reused, so already completed measurements are not repeated.
 
 ### Core Invariants
 
@@ -313,44 +316,47 @@ The implementation keeps a few invariants simple on purpose:
   run. Only the experiment checkout moves.
 - **One frozen test set.** The config and `.abtest.ts` definitions come from the
   invocation checkout and do not change as candidate commits are checked out.
-- **One interval per target.** Every unresolved target owns a `goodIndex` and
-  `badIndex`; the first-bad answer is valid only when those indexes become
-  adjacent.
-- **Evidence is explicit.** A candidate only changes an interval when the
+- **One persisted range per target group.** Every unresolved group owns good and
+  bad SHAs plus its ordered native verdict decisions. Divergent targets move to
+  independently resumable queued groups.
+- **Evidence is explicit.** A candidate only changes a group when the
   requested target is actually observed in that candidate's compare output.
 - **Artifacts are durable.** Each measured SHA writes normal compare artifacts
   plus JSON session state so a failed run can be inspected after the fact.
 
 These invariants make the result auditable: for any target in `summary.json`,
-you can walk the observations in `session.json` and see why the interval moved.
+you can walk the observations in `session.json` and see why its group moved.
 For a narrative view, read `decision-log.md`; for exact event payloads, read
 `decision-log.jsonl`.
 
-### Scheduler Details
+### Group Scheduling Details
 
-V0 uses binary search for each target, but it batches work across targets when
-possible:
+Each native search has one binary good/bad verdict, but a compare measurement
+can produce a verdict per target. The group scheduler bridges those models:
 
-1. Reapply cached observations to every active target.
-2. Pick the next unresolved target in deterministic category/test order.
-3. Choose the midpoint of that target's current interval.
-4. Find other active targets that can also use that same candidate SHA.
-5. Run one narrowed compare for the union of those targets' categories and exact
-   `(test file, test name)` selections.
-6. Apply the resulting observations back to each target independently.
+1. Start all targets that share a range in one native Git bisect run.
+2. Run one narrowed compare for the group's categories and exact `(test file,
+   test name)` selections at Git's candidate.
+3. Continue the current native run with the verdict held by the largest target
+   partition.
+4. Persist every other verdict partition as a queued group with its narrowed
+   good and bad SHAs.
+5. Repeat splitting as needed, coalesce equal ranges, and finish queued groups
+   in deterministic order.
 
-This is a compromise between a pure per-target bisect, which would repeat a lot
-of browser work, and a pure commit-level bisect, which cannot explain multiple
-regressions introduced by different commits.
+This retains shared browser work until targets actually disagree while still
+allowing different first-bad SHAs in one overall compare-bisect session.
 
 ## Design Decisions
 
-### Target-Level Bisect, Not Commit-Level Bisect
+### Grouped Target Bisect
 
-`git bisect run` asks one question: "is this commit good or bad?" Compare output
-can contain several unrelated regressions introduced by different commits. V0
-therefore tracks a separate interval per target and can return different
-first-bad SHAs for visual, performance, and accessibility issues in one run.
+Native Git bisect asks one question: "is this commit good or bad?" Compare output
+can contain several unrelated regressions introduced by different commits.
+Compare bisect therefore shares one native run while targets agree, then splits
+and queues divergent target groups. It can return different first-bad SHAs for
+visual, performance, and accessibility issues without starting one full search
+per target up front.
 
 ### Fixed Control, Moving Experiment
 
