@@ -47,6 +47,13 @@ export class CompareBisectSession {
     this.session = next;
   }
 
+  /** Persists a complete orchestration state outside a phase transition. */
+  async save(next: BisectSession): Promise<void> {
+    this.session = next;
+    await this.collaborators.persistence.write(next);
+    await this.collaborators.reports.write(next);
+  }
+
   async commit(transition: PhaseTransition, next: BisectSession): Promise<void> {
     this.session = next;
     await this.collaborators.persistence.write(next);

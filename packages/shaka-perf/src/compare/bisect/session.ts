@@ -28,7 +28,6 @@ import {
 import {
   ExactCheckout,
   inspectBisectRepositories,
-  prepareChildGitRange,
   prepareGitRange,
   restoreCheckout,
   markNativeBisect,
@@ -49,7 +48,12 @@ import { NativeBisectPhaseRunner } from './native-phase-runner';
 import { PrimaryPhaseStore } from './phase-store';
 import type { PhaseTransition } from './phase-transition';
 import { CompareBisectSession } from './session-owner';
-import { buildMergeQueue, runMergeInvestigations } from './merge-investigation';
+import {
+  buildMergeQueue,
+  GitMergeRangeSource,
+  MergeInvestigationRunner,
+  type MergeRangeSource,
+} from './merge-investigation';
 import {
   writeSessionAtomic,
   writeSummary,
@@ -191,7 +195,7 @@ export interface ExecuteBisectDependencies {
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession, metadata?: BisectSummaryMetadata): void;
   writeBadRefTests?(tests: readonly TestResult[]): string;
-  prepareChildRange?(investigation: import('./types').MergeInvestigation): ReturnType<typeof prepareChildGitRange>;
+  mergeRangeSource: MergeRangeSource;
   recordDecision(entry: BisectDecisionLogEntry): void;
   logProgress(message: string): void;
   now(): string;
@@ -950,8 +954,6 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
   if (!input.investigateMerges || (state.session.mergeQueue?.length ?? 0) === 0) return;
   if (state.badRefTests) deps.writeSummary(state.session);
   state.session = { ...state.session, mode: 'merge-investigation' };
-  let mergeAttemptNumber = Object.values(state.session.mergeInvestigations ?? {})
-    .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
   const candidateEvaluator = new CandidateEvaluator(
     deps.nativeGit,
     { refreshExperiment: (request) => deps.reloadExperiment(request) },
@@ -960,38 +962,14 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
     preferredExperimentReloadMode(input.config),
   );
   state.requiresExperimentRestore = true;
-  state.session = await runMergeInvestigations({
-    session: state.session,
-    preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
-    nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
-    owner: state.owner,
-    nativeGit: deps.nativeGit,
+  state.session = await new MergeInvestigationRunner(
+    state.owner,
+    deps.mergeRangeSource,
+    state.endpointValidator,
+    deps.nativeGit,
     candidateEvaluator,
-    environment: state.environment,
-    now: deps.now,
-    checkpoint(updated) {
-      state.session = updated;
-      context.persistSession();
-    },
-    afterCheckpoint(updated) {
-      state.session = updated;
-      context.writeCurrentReport();
-    },
-    prepareRange(investigation) {
-      if (deps.prepareChildRange) return deps.prepareChildRange(investigation);
-      return prepareChildGitRange({
-        experimentDir: input.twinServers.experimentDir,
-        firstParent: investigation.parents[0],
-        secondParent: investigation.parents[1],
-      });
-    },
-    measure: (work, targets) => context.measureEndpoint({
-      sha: work.sha,
-      categories: work.categories,
-      tests: work.tests,
-      targets,
-    }),
-  });
+    state.environment,
+  ).run();
 }
 
 async function finalizeBisectExecution(context: BisectExecutionContext): Promise<void> {
@@ -1192,9 +1170,11 @@ function createDefaultDependencies(options: {
     repoDir: options.twinServers.experimentDir,
     allowedPaths: [options.resultsDirectory],
   });
+  const mergeRangeSource = new GitMergeRangeSource(options.twinServers.experimentDir);
   return {
     nativeGit,
     exactCheckout,
+    mergeRangeSource,
     installSignalHandlers(handler) {
       process.on('SIGINT', handler);
       process.on('SIGTERM', handler);
