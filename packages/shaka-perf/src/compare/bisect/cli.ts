@@ -40,7 +40,7 @@ export function createBisectCommand(deps: BisectCliDependencies = {}): Command {
     )
     .option(
       '--validate-good-ref',
-      'Measure the good ref on the experiment side before midpoint search',
+      'Measure the good ref on the experiment side before native Git search',
       false,
     )
     .option(
