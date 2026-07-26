@@ -318,6 +318,11 @@ function deps(
     deps: {
       nativeGit,
       exactCheckout,
+      mergeRangeSource: {
+        async load() {
+          throw new Error('Unexpected merge range load');
+        },
+      },
       installSignalHandlers(handler) {
         calls.signalHandlers.add(handler);
         return () => {
@@ -628,15 +633,17 @@ describe('compare bisect session orchestration', () => {
       if (session.primary?.status === 'complete') order.push('primary-report');
       writeReport(session, tests);
     };
-    harness.deps.prepareChildRange = async () => {
-      order.push('prepare-child');
-      return {
-        mergeBase: 'base',
-        secondParent: 'topic',
-        orderedCommits: ['base', 'source', 'topic'],
-        commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
-        commitParents: { base: [], source: ['base'], topic: ['source'] },
-      };
+    harness.deps.mergeRangeSource = {
+      async load() {
+        order.push('prepare-child');
+        return {
+          mergeBase: 'base',
+          secondParent: 'topic',
+          orderedCommits: ['base', 'source', 'topic'],
+          commitSubjects: { base: 'base', source: 'source', topic: 'topic' },
+          commitParents: { base: [], source: ['base'], topic: ['source'] },
+        };
+      },
     };
 
     const session = await executeBisect(bisectInput, harness.deps);

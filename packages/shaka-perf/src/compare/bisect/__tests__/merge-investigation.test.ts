@@ -7,8 +7,15 @@
  * License in LICENSE.md.
  */
 
-import { NativeGitBisectDriver, type NativeBisectStep, type PreparedChildGitRange } from '../git';
-import { buildMergeQueue, runMergeInvestigations } from '../merge-investigation';
+import {
+  ExactCheckout,
+  NativeGitBisectDriver,
+  type CheckoutState,
+  type NativeBisectStep,
+  type PreparedChildGitRange,
+} from '../git';
+import { buildMergeQueue, MergeInvestigationRunner } from '../merge-investigation';
+import { EndpointValidator } from '../endpoint-validator';
 import {
   CandidateEvaluationError,
   CandidateEvaluator,
@@ -194,12 +201,25 @@ class MergeCandidateEvaluator extends CandidateEvaluator {
   }
 }
 
+class MemoryExactCheckout extends ExactCheckout {
+  constructor() {
+    super({ repoDir: '/unused' });
+  }
+
+  override async current(): Promise<CheckoutState> {
+    return { branch: 'main', sha: 'merge' };
+  }
+
+  override async position() {}
+  override async assertAt() {}
+  override async restore() {}
+}
+
 function harness(options: {
   initial: BisectSession;
   childRange?: PreparedChildGitRange;
   prepareError?: Error;
   measure(plan: CandidateEvaluationPlan): Promise<CandidateResult>;
-  checkpoint?: (session: BisectSession) => void;
 }) {
   const environment = new FixedEnvironment();
   let persisted = options.initial;
@@ -213,29 +233,20 @@ function harness(options: {
     reports: { async write() {} },
   });
   const childRange = options.childRange ?? range();
-  let attempt = 0;
   return {
     get persisted() { return persisted; },
     async run() {
-      return runMergeInvestigations({
-        session: owner.current(),
+      return new MergeInvestigationRunner(
         owner,
-        environment,
-        nativeGit: new MergeGit([...childRange.orderedCommits]),
-        candidateEvaluator: new MergeCandidateEvaluator(environment, options.measure),
-        preferredExperimentReloadMode: 'commands',
-        nextAttemptId: () => `attempt-${++attempt}`,
-        now: () => environment.now(),
-        checkpoint(value) {
-          persisted = structuredClone(value);
-          options.checkpoint?.(value);
-        },
-        async prepareRange() {
+        { async load() {
           if (options.prepareError) throw options.prepareError;
           return childRange;
-        },
-        measure: (work) => options.measure({ ...work, targets: owner.current().primary.targets }),
-      });
+        } },
+        new EndpointValidator(new MemoryExactCheckout(), { evaluate: options.measure }),
+        new MergeGit([...childRange.orderedCommits]),
+        new MergeCandidateEvaluator(environment, options.measure),
+        environment,
+      ).run();
     },
   };
 }
