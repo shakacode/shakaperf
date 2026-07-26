@@ -42,11 +42,9 @@ import {
 import {
   candidatePlanForGroup,
   createInitialTargetGroup,
-  narrowTargetSearchRangesUsingRecordedEvaluations,
-  nextCandidate,
   testsForTargets,
 } from './search';
-import { runNativeSearchPhase, runSearchPhase } from './phase';
+import { runNativeSearchPhase } from './phase';
 import { buildMergeQueue, runMergeInvestigations } from './merge-investigation';
 import {
   writeSessionAtomic,
@@ -655,8 +653,6 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
   const badRun = await measureOrReuseBadRef(context);
   state.session = withPrimaryTargets(state.session, discoverTargets(
     badRun.testResults,
-    input.gitRange.orderedCommits,
-    input.gitRange.badSha,
     input.selectedCategories,
   ));
   const badRefTargetEvaluations = evaluateTargetsAtCommitFromTestResults(
@@ -1612,14 +1608,6 @@ function activeTargets(session: BisectSession): BisectTarget[] {
   return session.primary.targets.filter((target) => target.status === 'active');
 }
 
-function searchInput(session: BisectSession) {
-  return {
-    orderedCommits: session.primary.orderedCommits,
-    targets: session.primary.targets,
-    commitRuns: session.commitRuns,
-  };
-}
-
 function withPrimaryTargets(
   session: BisectSession,
   targets: BisectTarget[],
@@ -1744,7 +1732,7 @@ function printBisectSummary(
     if (nextAction) {
       const action = nextAction.kind === 'validate-good-ref'
         ? 'validate good ref'
-        : 'measure midpoint';
+        : 'measure native bisect candidate';
       console.log(
         `Next: ${action} ${shortSha(nextAction.sha)} ` +
         `for ${nextAction.targetIds.length} target(s)`,
@@ -1913,7 +1901,7 @@ function formatDecisionMarkdown(entry: BisectDecisionLogEntry): string {
   return `${lines.join('\n')}\n`;
 }
 
-function targetLogData(target: BisectTarget, orderedCommits?: readonly string[]): Record<string, unknown> {
+function targetLogData(target: BisectTarget): Record<string, unknown> {
   return {
     id: target.id,
     category: target.category,
@@ -1924,18 +1912,5 @@ function targetLogData(target: BisectTarget, orderedCommits?: readonly string[])
     status: target.status,
     firstBadSha: target.firstBadSha,
     invalidReason: target.invalidReason,
-    interval: orderedCommits ? intervalLogData(target, orderedCommits) : {
-      goodIndex: target.goodIndex,
-      badIndex: target.badIndex,
-    },
-  };
-}
-
-function intervalLogData(target: BisectTarget, orderedCommits: readonly string[]): Record<string, unknown> {
-  return {
-    goodIndex: target.goodIndex,
-    goodSha: orderedCommits[target.goodIndex],
-    badIndex: target.badIndex,
-    badSha: orderedCommits[target.badIndex],
   };
 }

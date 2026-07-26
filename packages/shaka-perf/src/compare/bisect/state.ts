@@ -44,8 +44,6 @@ const targetSchema = z.object({
   viewport: z.string(),
   subject: z.string(),
   status: z.enum(['active', 'found', 'invalid']),
-  goodIndex: z.number().int(),
-  badIndex: z.number().int(),
   firstBadSha: z.string().optional(),
   invalidReason: z.string().optional(),
   recordedTargetEvaluations: z.record(z.string(), targetEvaluationAtCommitSchema),
