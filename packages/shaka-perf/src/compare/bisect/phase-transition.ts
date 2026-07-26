@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import type { BisectSearchPhase } from './types';
+import type { BisectSearchPhase, CommitRun } from './types';
 
 export type PhaseTransitionEvent =
   | 'phase-started'
@@ -22,5 +22,6 @@ export type PhaseTransitionEvent =
 export interface PhaseTransition {
   event: PhaseTransitionEvent;
   phase: BisectSearchPhase;
+  commitRun?: CommitRun;
   details?: Record<string, unknown>;
 }

@@ -22,7 +22,16 @@ export abstract class PhaseStore {
   ): BisectSession;
 
   async commit(transition: PhaseTransition): Promise<void> {
-    const next = this.install(this.owner.current(), transition.phase);
+    const installed = this.install(this.owner.current(), transition.phase);
+    const next = transition.commitRun
+      ? {
+        ...installed,
+        commitRuns: {
+          ...installed.commitRuns,
+          [transition.commitRun.sha]: transition.commitRun,
+        },
+      }
+      : installed;
     await this.owner.commit(transition, next);
   }
 }
