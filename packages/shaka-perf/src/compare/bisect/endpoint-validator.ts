@@ -26,6 +26,18 @@ export interface EndpointMeasurements {
   evaluate(plan: CandidateEvaluationPlan): Promise<CandidateResult>;
 }
 
+export class EndpointRestoreError extends Error {
+  constructor(
+    readonly result: CandidateResult,
+    readonly restoreError: unknown,
+  ) {
+    super(`Endpoint ${result.commitRun.sha} was measured but its original checkout could not be restored: ${errorMessage(restoreError)}`, {
+      cause: restoreError,
+    });
+    this.name = 'EndpointRestoreError';
+  }
+}
+
 export class EndpointMeasurementRunner implements EndpointMeasurements {
   constructor(
     private readonly server: BisectCandidateServer,
@@ -111,7 +123,6 @@ export class EndpointValidator {
 
     try {
       await this.checkout.position(plan.sha);
-      await this.checkout.assertAt(plan.sha);
       result = await this.measurements.evaluate(plan);
     } catch (error) {
       primaryError = error;
@@ -126,6 +137,7 @@ export class EndpointValidator {
           `Endpoint ${plan.sha} failed and its original checkout could not be restored`,
         );
       }
+      if (result) throw new EndpointRestoreError(result, restoreError);
       throw restoreError;
     }
 

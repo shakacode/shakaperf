@@ -67,7 +67,7 @@ export interface NativeBisectStep {
   output: string;
 }
 
-export interface StartNativeBisectOptions {
+interface StartNativeBisectOptions {
   repoDir: string;
   goodSha: string;
   badSha: string;
@@ -198,7 +198,7 @@ async function nativeBisectStep(
   return { candidateSha, firstBadSha: null, complete: false, output };
 }
 
-export async function startNativeBisect(
+async function startNativeBisect(
   options: StartNativeBisectOptions,
 ): Promise<NativeBisectStep> {
   await requireClean(options.repoDir, 'Experiment', { allowedPaths: options.allowedPaths });
@@ -210,7 +210,7 @@ export async function startNativeBisect(
   return nativeBisectStep(options.repoDir, output, options.noCheckout === true);
 }
 
-export async function markNativeBisect(
+async function markNativeBisect(
   repoDir: string,
   verdict: NativeBisectVerdict,
 ): Promise<NativeBisectStep> {
@@ -222,7 +222,7 @@ export async function nativeBisectLog(repoDir: string): Promise<string> {
   return git(repoDir, ['bisect', 'log']);
 }
 
-export async function resetNativeBisect(repoDir: string): Promise<void> {
+async function resetNativeBisect(repoDir: string): Promise<void> {
   await git(repoDir, ['bisect', 'reset']);
 }
 
@@ -449,16 +449,6 @@ export async function prepareChildGitRange(
     secondParent,
     ...range,
   };
-}
-
-export async function checkoutDetached(
-  repoDir: string,
-  sha: string,
-  options: CleanCheckoutOptions = {},
-): Promise<void> {
-  await requireClean(repoDir, 'Experiment', options);
-  await git(repoDir, ['checkout', '--detach', sha]);
-  await verifyCheckout(repoDir, { branch: null, sha }, 'Detached checkout', options);
 }
 
 export async function restoreCheckout(

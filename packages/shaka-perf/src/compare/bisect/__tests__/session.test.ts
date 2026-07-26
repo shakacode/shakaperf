@@ -21,7 +21,7 @@ import {
   type ExecuteBisectInput,
 } from '../session';
 import * as bisectGit from '../git';
-import { BisectInterruptedError, runCandidate } from '../run-candidate';
+import { BisectInterruptedError } from '../run-candidate';
 import type { AbTestsConfig } from '../../../config';
 import type { TestResult } from '../../../pipeline/report';
 import type { BisectSession } from '../types';
@@ -157,6 +157,7 @@ interface HarnessOptions {
   checkoutErrorBySha?: Record<string, Error>;
   compareErrorBySha?: Record<string, Error>;
   refreshBySha?: Record<string, { mode: 'commands' | 'container'; usedFallback: boolean }>;
+  endpointRestoreError?: Error;
   restoreError?: Error;
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
@@ -308,7 +309,9 @@ function deps(
 
     override async assertAt() {}
 
-    override async restore() {}
+    override async restore() {
+      if (options.endpointRestoreError) throw options.endpointRestoreError;
+    }
   }();
   return {
     calls,
@@ -338,10 +341,6 @@ function deps(
       async endSession() {
         calls.events.push('lease:end');
       },
-      startNativeBisect: (group) => nativeGit.start(group),
-      markNativeBisect: (verdict) => nativeGit.mark(verdict),
-      resetNativeBisect: () => nativeGit.reset(),
-      previewNativeBisect: (group) => nativeGit.preview(group),
       async restore(request) {
         calls.restored.push(request.originalSha);
         calls.events.push('checkout:original');
@@ -1134,6 +1133,22 @@ describe('compare bisect session orchestration', () => {
     },
   );
 
+  it('persists interrupted endpoint metadata when endpoint restoration also fails', async () => {
+    const harness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
+      signalOnCompare: 'bad',
+      signal: 'SIGINT',
+      endpointRestoreError: new Error('endpoint restore failed'),
+    });
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toMatchObject({
+      name: 'AggregateError',
+    });
+    expect(harness.calls.sessions.at(-1)).toMatchObject({
+      status: 'interrupted',
+      commitRuns: { bad: { sha: 'bad', compareCompleted: true } },
+    });
+  });
+
   it('leaves failed durable state and no summary when restoration fails', async () => {
     const harness = deps({
       bad: [],
@@ -1259,7 +1274,7 @@ describe('compare bisect session orchestration', () => {
     ]);
   });
 
-  it('exposes one-object runBisect and runCandidate contracts', async () => {
+  it('exposes the one-object runBisect contract', async () => {
     const harness = deps({ bad: [] });
     const bisectInput = input(rootDir);
     const inspectRepositories = jest.spyOn(bisectGit, 'inspectBisectRepositories')
@@ -1297,7 +1312,6 @@ describe('compare bisect session orchestration', () => {
     } finally {
       inspectRepositories.mockRestore();
     }
-    expect(runCandidate).toEqual(expect.any(Function));
   });
 });
 
