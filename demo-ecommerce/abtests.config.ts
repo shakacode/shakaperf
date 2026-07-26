@@ -100,6 +100,10 @@ export default defineConfig({
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
 
+  bisect: {
+    rebuildContainer: false,
+  },
+
   twinServers: {
     experimentDir: process.cwd(),
     controlDir: process.env.CONTROL_REPO_DIR || '../../shaka-perf-control/demo-ecommerce',
