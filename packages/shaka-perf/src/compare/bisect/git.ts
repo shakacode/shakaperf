@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { exec } from '../../twin-servers/helpers/shell';
-import type { BisectRepositoryIdentity } from './types';
+import type { BisectRepositoryIdentity, BisectTargetGroup } from './types';
 
 export interface CheckoutState {
   branch: string | null;
@@ -72,6 +72,60 @@ export interface StartNativeBisectOptions {
   firstParent?: boolean;
   noCheckout?: boolean;
   allowedPaths?: readonly string[];
+}
+
+export interface NativeGitBisectDriverOptions {
+  repoDir: string;
+  allowedPaths?: readonly string[];
+}
+
+/** Owns the native Git bisect lifecycle and is the only search-candidate mover. */
+export class NativeGitBisectDriver {
+  constructor(private readonly options: NativeGitBisectDriverOptions) {}
+
+  start(group: BisectTargetGroup): Promise<NativeBisectStep> {
+    return startNativeBisect({
+      repoDir: this.options.repoDir,
+      goodSha: group.goodSha,
+      badSha: group.badSha,
+      firstParent: true,
+      allowedPaths: this.options.allowedPaths,
+    });
+  }
+
+  mark(verdict: NativeBisectVerdict): Promise<NativeBisectStep> {
+    return markNativeBisect(this.options.repoDir, verdict);
+  }
+
+  reset(): Promise<void> {
+    return resetNativeBisect(this.options.repoDir);
+  }
+
+  currentCandidate(): Promise<string> {
+    return resolveCommit(this.options.repoDir, 'HEAD');
+  }
+
+  async assertAtCandidate(expectedSha: string): Promise<void> {
+    const actualSha = await this.currentCandidate();
+    if (actualSha !== expectedSha) {
+      throw new Error(`Native Git bisect selected ${actualSha}; expected ${expectedSha}`);
+    }
+  }
+
+  async preview(group: BisectTargetGroup): Promise<NativeBisectStep> {
+    try {
+      return await startNativeBisect({
+        repoDir: this.options.repoDir,
+        goodSha: group.goodSha,
+        badSha: group.badSha,
+        firstParent: true,
+        noCheckout: true,
+        allowedPaths: this.options.allowedPaths,
+      });
+    } finally {
+      await this.reset();
+    }
+  }
 }
 
 async function git(repoDir: string, args: string[]): Promise<string> {
