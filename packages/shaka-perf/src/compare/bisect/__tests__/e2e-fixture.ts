@@ -30,6 +30,7 @@ import type {
 } from '../session';
 import { parseBisectSession, writeBadRefTestsAtomic } from '../state';
 import type { BisectCategory, BisectSession } from '../types';
+import { GitMergeRangeSource } from '../merge-investigation';
 
 export interface E2eRepositoryFixture {
   rootDir: string;
@@ -223,6 +224,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
     dependencies: {
       nativeGit,
       exactCheckout,
+      mergeRangeSource: new GitMergeRangeSource(fixture.experimentDir),
       installSignalHandlers() {
         return () => undefined;
       },
