@@ -7,9 +7,10 @@
  * License in LICENSE.md.
  */
 
-import { EndpointValidator } from '../endpoint-validator';
+import { EndpointMeasurementRunner, EndpointValidator } from '../endpoint-validator';
 import { ExactCheckout, type CheckoutState } from '../git';
 import type { CandidateEvaluationPlan, CandidateResult } from '../run-candidate';
+import { BisectRunEnvironment } from '../run-environment';
 
 function plan(): CandidateEvaluationPlan {
   return { sha: 'endpoint', categories: [], tests: [], targetIds: [], targets: [] };
@@ -96,5 +97,32 @@ describe('EndpointValidator', () => {
       errors: [expect.objectContaining({ message: 'measurement failed' }),
         expect.objectContaining({ message: 'restore failed' })],
     });
+  });
+});
+
+describe('EndpointMeasurementRunner', () => {
+  it('refreshes and compares without moving the checkout', async () => {
+    const events: string[] = [];
+    const runner = new EndpointMeasurementRunner(
+      {
+        async refreshExperiment() {
+          events.push('refresh');
+          return { mode: 'commands', usedFallback: false };
+        },
+      },
+      {
+        async run() {
+          events.push('compare');
+          return { testResults: [], compareResultsPath: '/results' };
+        },
+      },
+      new BisectRunEnvironment(() => 'now'),
+      'commands',
+    );
+
+    await expect(runner.evaluate(plan())).resolves.toMatchObject({
+      commitRun: { sha: 'endpoint', compareCompleted: true, compareResultsPath: '/results' },
+    });
+    expect(events).toEqual(['refresh', 'compare']);
   });
 });

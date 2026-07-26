@@ -70,7 +70,6 @@ export interface RunMergeInvestigationsOptions {
   measure(
     work: CandidateMeasurementPlan,
     targets: readonly BisectTarget[],
-    checkout: boolean,
   ): Promise<CandidateResult>;
 }
 
@@ -182,7 +181,7 @@ export async function runMergeInvestigations(
         afterCheckpoint() {
           options.afterCheckpoint?.(session);
         },
-        measure: () => options.measure(validationWork, primaryTargets, true),
+        measure: () => options.measure(validationWork, primaryTargets),
       });
     }
 
