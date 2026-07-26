@@ -13,7 +13,7 @@ import {
   type PreparedChildGitRange,
 } from '../git';
 import { buildMergeQueue, MergeInvestigationRunner } from '../merge-investigation';
-import { EndpointValidator } from '../endpoint-validator';
+import { EndpointRestoreError, EndpointValidator } from '../endpoint-validator';
 import {
   CandidateEvaluationError,
   CandidateEvaluator,
@@ -200,7 +200,7 @@ class MergeCandidateEvaluator extends CandidateEvaluator {
 }
 
 class MemoryExactCheckout extends ExactCheckout {
-  constructor() {
+  constructor(private readonly restoreError?: Error) {
     super({ repoDir: '/unused' });
   }
 
@@ -210,13 +210,16 @@ class MemoryExactCheckout extends ExactCheckout {
 
   override async position() {}
   override async assertAt() {}
-  override async restore() {}
+  override async restore() {
+    if (this.restoreError) throw this.restoreError;
+  }
 }
 
 function harness(options: {
   initial: BisectSession;
   childRange?: PreparedChildGitRange;
   prepareError?: Error;
+  restoreError?: Error;
   measure(plan: CandidateEvaluationPlan): Promise<CandidateResult>;
 }) {
   const environment = new FixedEnvironment();
@@ -240,7 +243,9 @@ function harness(options: {
           if (options.prepareError) throw options.prepareError;
           return childRange;
         } },
-        new EndpointValidator(new MemoryExactCheckout(), { evaluate: options.measure }),
+        new EndpointValidator(new MemoryExactCheckout(options.restoreError), {
+          evaluate: options.measure,
+        }),
         new MergeGit([...childRange.orderedCommits]),
         new MergeCandidateEvaluator(environment, options.measure),
         environment,
@@ -360,6 +365,32 @@ describe('merge investigation', () => {
 
     expect(value.persisted.mergeInvestigations.merge.phase).toMatchObject({
       attempts: [{ sha: 'topic', status: 'incomplete' }],
+    });
+  });
+
+  it('persists a completed endpoint attempt before surfacing restoration failure', async () => {
+    const value = harness({
+      initial: buildMergeQueue(session(['main', 'topic'])),
+      restoreError: new Error('restore failed'),
+      async measure(plan) {
+        return result(plan.sha, [evaluation('one', plan.sha, true)]);
+      },
+    });
+
+    await expect(value.run()).rejects.toBeInstanceOf(EndpointRestoreError);
+    expect(value.persisted).toMatchObject({
+      commitRuns: { topic: { compareCompleted: true } },
+      mergeInvestigations: {
+        merge: {
+          phase: {
+            attempts: [{
+              id: 'merge:merge-endpoint-1',
+              sha: 'topic',
+              status: 'complete',
+            }],
+          },
+        },
+      },
     });
   });
 });

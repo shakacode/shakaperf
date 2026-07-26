@@ -242,6 +242,9 @@ describe('NativeBisectPhaseRunner', () => {
       { id: 'visual', status: 'found', firstBadSha: 'b' },
       { id: 'perf', status: 'found', firstBadSha: 'c' },
     ]);
+    expect(completed.attempts.map(({ id }) => id)).toEqual([
+      'primary-attempt-1', 'primary-attempt-2', 'primary-attempt-3',
+    ]);
     const split = value.transitions.find(({ event }) => event === 'group-split')!;
     expect(split).toMatchObject({
       commitRun: { sha: 'b' },
