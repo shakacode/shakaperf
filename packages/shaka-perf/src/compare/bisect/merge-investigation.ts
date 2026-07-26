@@ -12,11 +12,11 @@ import { CompareBisectSession } from './session-owner';
 import { BisectRunEnvironment } from './run-environment';
 import {
   BisectInterruptedError,
-  CandidateEvaluationError,
   CandidateEvaluator,
+  findCandidateEvaluationError,
   type CandidateEvaluationPlan,
 } from './run-candidate';
-import { EndpointValidator } from './endpoint-validator';
+import { EndpointRestoreError, EndpointValidator } from './endpoint-validator';
 import { testsForTargets } from './search';
 import type {
   BisectCategory,
@@ -80,8 +80,6 @@ export class GitMergeRangeSource implements MergeRangeSource {
 
 /** Owns the queue, endpoint-attempt, and native child-phase lifecycle. */
 export class MergeInvestigationRunner {
-  private attemptNumber = 0;
-
   constructor(
     private readonly owner: CompareBisectSession,
     private readonly ranges: MergeRangeSource,
@@ -92,9 +90,6 @@ export class MergeInvestigationRunner {
   ) {}
 
   async run(): Promise<BisectSession> {
-    this.attemptNumber = Object.values(this.owner.current().mergeInvestigations)
-      .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
-
     for (const mergeSha of this.owner.current().mergeQueue) {
       let investigation = this.owner.current().mergeInvestigations[mergeSha];
       if (!investigation || investigation.status === 'complete'
@@ -178,7 +173,7 @@ export class MergeInvestigationRunner {
       ? { ...investigation.phase, status: 'pending' as const, targets: [...primaryTargets] }
       : childPhase(investigation, range, primaryTargets);
     const attempt: CommitAttempt = {
-      id: `merge-${++this.attemptNumber}`,
+      id: `${phase.id}-endpoint-${phase.attempts.length + 1}`,
       sha: plan.sha,
       status: 'running',
       requestedCategories: [...plan.categories],
@@ -191,27 +186,33 @@ export class MergeInvestigationRunner {
     investigation = await this.save({ ...investigation, phase: runningPhase });
 
     let validation: Awaited<ReturnType<EndpointValidator['validate']>>;
+    let restorationFailure: EndpointRestoreError | undefined;
     try {
       validation = await this.endpoints.validate(plan);
     } catch (error) {
-      const evaluationError = findCandidateEvaluationError(error);
-      const incomplete: CommitAttempt = {
-        ...attempt,
-        status: 'incomplete',
-        finishedAt: this.environment.now(),
-        error: errorMessage(error),
-      };
-      await this.save({
-        ...investigation,
-        phase: {
-          ...runningPhase,
-          attempts: replaceAttempt(runningPhase.attempts, incomplete),
-        },
-      }, evaluationError?.commitRun);
-      if (evaluationError?.originalError instanceof BisectInterruptedError) {
-        throw evaluationError.originalError;
+      if (error instanceof EndpointRestoreError) {
+        validation = error.result;
+        restorationFailure = error;
+      } else {
+        const evaluationError = findCandidateEvaluationError(error);
+        const incomplete: CommitAttempt = {
+          ...attempt,
+          status: 'incomplete',
+          finishedAt: this.environment.now(),
+          error: errorMessage(error),
+        };
+        await this.save({
+          ...investigation,
+          phase: {
+            ...runningPhase,
+            attempts: replaceAttempt(runningPhase.attempts, incomplete),
+          },
+        }, evaluationError?.commitRun);
+        if (evaluationError?.originalError instanceof BisectInterruptedError) {
+          throw evaluationError.originalError;
+        }
+        throw error;
       }
-      throw error;
     }
 
     const completed: CommitAttempt = {
@@ -243,7 +244,7 @@ export class MergeInvestigationRunner {
         recordedTargetEvaluations: { [range.secondParent]: evaluation },
       });
     }
-    return this.save({
+    const saved = await this.save({
       ...investigation,
       phase: {
         ...runningPhase,
@@ -252,6 +253,8 @@ export class MergeInvestigationRunner {
       },
       targetResults,
     }, validation.commitRun);
+    if (restorationFailure) throw restorationFailure;
+    return saved;
   }
 
   private async save(
@@ -322,14 +325,6 @@ function replaceAttempt(
   replacement: CommitAttempt,
 ): CommitAttempt[] {
   return attempts.map((attempt) => attempt.id === replacement.id ? replacement : attempt);
-}
-
-function findCandidateEvaluationError(error: unknown): CandidateEvaluationError | undefined {
-  if (error instanceof CandidateEvaluationError) return error;
-  if (error instanceof AggregateError) {
-    return error.errors.map(findCandidateEvaluationError).find(Boolean);
-  }
-  return undefined;
 }
 
 function errorMessage(error: unknown): string {

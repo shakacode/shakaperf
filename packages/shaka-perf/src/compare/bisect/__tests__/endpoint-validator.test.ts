@@ -7,7 +7,10 @@
  * License in LICENSE.md.
  */
 
-import { EndpointMeasurementRunner, EndpointValidator } from '../endpoint-validator';
+import {
+  EndpointMeasurementRunner,
+  EndpointValidator,
+} from '../endpoint-validator';
 import { ExactCheckout, type CheckoutState } from '../git';
 import type { CandidateEvaluationPlan, CandidateResult } from '../run-candidate';
 import { BisectRunEnvironment } from '../run-environment';
@@ -42,6 +45,7 @@ class MemoryCheckout extends ExactCheckout {
     this.events.push(`position:${sha}`);
     this.state = { branch: null, sha };
     if (this.positionError) throw this.positionError;
+    await this.assertAt(sha);
   }
 
   override async assertAt(sha: string) {
@@ -96,6 +100,17 @@ describe('EndpointValidator', () => {
       name: 'AggregateError',
       errors: [expect.objectContaining({ message: 'measurement failed' }),
         expect.objectContaining({ message: 'restore failed' })],
+    });
+  });
+
+  it('preserves a successful measurement when restoration fails', async () => {
+    const checkout = new MemoryCheckout(undefined, new Error('restore failed'));
+    const validator = new EndpointValidator(checkout, { async evaluate() { return result(); } });
+
+    await expect(validator.validate(plan())).rejects.toMatchObject({
+      name: 'EndpointRestoreError',
+      result: { commitRun: { sha: 'endpoint', compareCompleted: true } },
+      restoreError: expect.objectContaining({ message: 'restore failed' }),
     });
   });
 });

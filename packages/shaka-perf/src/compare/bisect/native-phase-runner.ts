@@ -207,9 +207,8 @@ export class NativeBisectPhaseRunner {
     phase: BisectSearchPhase,
     plan: Pick<CandidateEvaluationPlan, 'sha' | 'categories' | 'tests'>,
   ): CommitAttempt {
-    const prefix = phase.id === 'primary' ? 'primary' : 'merge';
     return {
-      id: `${prefix}-${++this.attemptNumber}`,
+      id: `${phase.id}-attempt-${++this.attemptNumber}`,
       sha: plan.sha,
       status: 'running',
       requestedCategories: [...plan.categories],

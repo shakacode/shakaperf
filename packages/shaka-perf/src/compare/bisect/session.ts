@@ -30,14 +30,9 @@ import {
   inspectBisectRepositories,
   prepareGitRange,
   restoreCheckout,
-  markNativeBisect,
-  resetNativeBisect,
-  startNativeBisect,
   NativeGitBisectDriver,
   type BisectRepositorySnapshot,
   type PreparedGitRange,
-  type NativeBisectStep,
-  type NativeBisectVerdict,
 } from './git';
 import {
   candidatePlanForGroup,
@@ -86,14 +81,19 @@ import { PROTOCOL_VERSION, type ProxyRequestPayload } from '../../twin-servers/i
 import type { BisectExperimentReloadResult } from '../../twin-servers/commands/bisect-session';
 import {
   BisectInterruptedError,
-  CandidateEvaluationError,
   CandidateEvaluator,
+  containsBisectInterruption,
+  findCandidateEvaluationError,
   type CompareRunRequest,
   type CompareRunResult,
   type ExperimentReloadRequest,
   type ExperimentReloadResult,
 } from './run-candidate';
-import { EndpointMeasurementRunner, EndpointValidator } from './endpoint-validator';
+import {
+  EndpointMeasurementRunner,
+  EndpointRestoreError,
+  EndpointValidator,
+} from './endpoint-validator';
 import { BisectRunEnvironment } from './run-environment';
 import { loadReusableCompareResults } from './reuse-results';
 import {
@@ -204,10 +204,6 @@ export interface ExecuteBisectDependencies {
   exactCheckout: ExactCheckout;
   reloadExperiment(request: ExperimentReloadRequest): Promise<ExperimentReloadResult>;
   runCandidateComparisons(request: CompareRunRequest): Promise<CompareRunResult>;
-  startNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
-  markNativeBisect?(verdict: NativeBisectVerdict): Promise<NativeBisectStep>;
-  resetNativeBisect?(): Promise<void>;
-  previewNativeBisect?(group: BisectTargetGroup): Promise<NativeBisectStep>;
 }
 
 export interface RunBisectOptions {
@@ -478,6 +474,7 @@ interface BisectExecutionState {
   owner: CompareBisectSession;
   badRefTests: readonly TestResult[] | null;
   endpointValidator: EndpointValidator;
+  endpointRestoreError: EndpointRestoreError | null;
   requiresExperimentRestore: boolean;
   leaseAcquired: boolean;
   primaryError: unknown;
@@ -497,6 +494,7 @@ interface BisectExecutionContext {
   checkCancellation(): void;
   logDecision(event: string, message: string, data?: Record<string, unknown>): void;
   measureEndpoint(options: CandidateMeasureOptions): Promise<import('./run-candidate').CandidateResult>;
+  throwEndpointRestoreError(): void;
 }
 
 function createBisectExecutionContext(
@@ -550,6 +548,7 @@ function createBisectExecutionContext(
     owner,
     badRefTests: input.resumeBadRefTests ?? null,
     endpointValidator,
+    endpointRestoreError: null,
     requiresExperimentRestore: false,
     leaseAcquired: false,
     primaryError: null,
@@ -598,13 +597,28 @@ function createBisectExecutionContext(
         context.persistSessionAndReport();
         return result;
       } catch (error) {
-        if (error instanceof CandidateEvaluationError) {
-          state.session = recordCommitRun(state.session, error.commitRun);
+        if (error instanceof EndpointRestoreError) {
+          state.session = recordCommitRun(state.session, error.result.commitRun);
+          state.endpointRestoreError = error;
           context.persistSessionAndReport();
-          if (error.originalError instanceof BisectInterruptedError) throw error.originalError;
+          return error.result;
+        }
+        const evaluationError = findCandidateEvaluationError(error);
+        if (evaluationError) {
+          state.session = recordCommitRun(state.session, evaluationError.commitRun);
+          context.persistSessionAndReport();
+          if (error === evaluationError
+            && evaluationError.originalError instanceof BisectInterruptedError) {
+            throw evaluationError.originalError;
+          }
         }
         throw error;
       }
+    },
+    throwEndpointRestoreError() {
+      const error = state.endpointRestoreError;
+      state.endpointRestoreError = null;
+      if (error) throw error;
     },
   };
   return context;
@@ -703,6 +717,7 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
     },
   );
   context.persistSessionAndReport();
+  context.throwEndpointRestoreError();
 }
 
 async function measureOrReuseBadRef(
@@ -945,6 +960,7 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     },
   );
   context.persistSessionAndReport();
+  context.throwEndpointRestoreError();
 }
 
 async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<void> {
@@ -1192,10 +1208,6 @@ function createDefaultDependencies(options: {
       cmd: 'bisect-end',
       sessionId: bisectSessionId,
     }),
-    startNativeBisect: (group) => nativeGit.start(group),
-    markNativeBisect: (verdict) => nativeGit.mark(verdict),
-    resetNativeBisect: () => nativeGit.reset(),
-    previewNativeBisect: (group) => nativeGit.preview(group),
     restore: () => restoreExperimentState({
       restoreCheckout: () => restoreCheckout(
         options.twinServers.experimentDir,
@@ -1479,7 +1491,7 @@ function terminalSession(
   if (primaryError) {
     return {
       ...session,
-      status: primaryError instanceof BisectInterruptedError ? 'interrupted' : 'failed',
+      status: containsBisectInterruption(primaryError) ? 'interrupted' : 'failed',
       failure: errorMessage(primaryError),
       finishedAt,
     };

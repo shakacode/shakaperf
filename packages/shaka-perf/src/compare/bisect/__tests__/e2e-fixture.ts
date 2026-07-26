@@ -15,10 +15,7 @@ import type { TestResult } from '../../../pipeline/report';
 import type { ResolvedConfig } from '../../../twin-servers/types';
 import {
   ExactCheckout,
-  markNativeBisect,
-  resetNativeBisect,
   restoreCheckout,
-  startNativeBisect,
   NativeGitBisectDriver,
 } from '../git';
 import { writeSessionAtomic, writeSummary } from '../persistence';
@@ -230,25 +227,6 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       },
       async beginSession() {},
       async endSession() {},
-      startNativeBisect: (group) => startNativeBisect({
-        repoDir: fixture.experimentDir,
-        goodSha: group.goodSha,
-        badSha: group.badSha,
-      }),
-      markNativeBisect: (verdict) => markNativeBisect(fixture.experimentDir, verdict),
-      resetNativeBisect: () => resetNativeBisect(fixture.experimentDir),
-      previewNativeBisect: async (group) => {
-        try {
-          return await startNativeBisect({
-            repoDir: fixture.experimentDir,
-            goodSha: group.goodSha,
-            badSha: group.badSha,
-            noCheckout: true,
-          });
-        } finally {
-          await resetNativeBisect(fixture.experimentDir);
-        }
-      },
       async reloadExperiment(request) {
         experimentReloadCalls.push({ ...request });
         if (request.sha === options.containerFallbackAtSha) {
