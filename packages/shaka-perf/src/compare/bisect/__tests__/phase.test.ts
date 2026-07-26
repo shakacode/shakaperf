@@ -190,4 +190,34 @@ describe('runNativeSearchPhase', () => {
     expect(checkpoint.groups).toMatchObject([{ goodSha: 'good', badSha: 'bad' }]);
     expect(resets).toBe(1);
   });
+
+  it('resets native Git when start fails after partially creating bisect state', async () => {
+    let resets = 0;
+
+    await expect(runNativeSearchPhase({
+      phase: phase(),
+      preferredExperimentReloadMode: 'commands',
+      commitRuns: () => ({}),
+      nextAttemptId: () => 'attempt-1',
+      nextGroupId: () => 'group-2',
+      now: () => '2026-07-13T00:00:00.000Z',
+      checkpoint: () => undefined,
+      nativeBisect: {
+        async start() {
+          throw new Error('git bisect start failed');
+        },
+        async mark() {
+          throw new Error('mark should not run');
+        },
+        async reset() {
+          resets++;
+        },
+      },
+      async measure() {
+        throw new Error('measure should not run');
+      },
+    })).rejects.toThrow('git bisect start failed');
+
+    expect(resets).toBe(1);
+  });
 });

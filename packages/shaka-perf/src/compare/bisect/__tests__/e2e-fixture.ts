@@ -543,6 +543,8 @@ export function assertExperimentRestored(fixture: E2eRepositoryFixture): void {
     .toBe(fixture.experimentBranch);
   expect(git(fixture.experimentDir, ['rev-parse', 'HEAD']))
     .toBe(fixture.originalExperimentSha);
+  const bisectStartPath = git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START']);
+  expect(fs.existsSync(path.resolve(fixture.experimentDir, bisectStartPath))).toBe(false);
 }
 
 export function expectBinarySearchTraversal(

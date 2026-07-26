@@ -74,11 +74,9 @@ export async function runNativeSearchPhase(
     phase = { ...phase, activeGroupId: group.id };
     checkpointNativePhase(options, phase);
 
-    let started = false;
     let primaryError: unknown;
     try {
       let step = await options.nativeBisect.start(currentGroup(phase, group.id));
-      started = true;
       while (!step.complete) {
         const candidateSha = step.candidateSha;
         if (!candidateSha) throw new Error(`Native Git bisect did not provide a candidate for ${group.id}`);
@@ -149,12 +147,10 @@ export async function runNativeSearchPhase(
       primaryError = error;
       throw error;
     } finally {
-      if (started) {
-        try {
-          await options.nativeBisect.reset();
-        } catch (resetError) {
-          if (primaryError === undefined) throw resetError;
-        }
+      try {
+        await options.nativeBisect.reset();
+      } catch (resetError) {
+        if (primaryError === undefined) throw resetError;
       }
     }
   }
