@@ -42,6 +42,11 @@ export class CompareBisectSession {
     return this.session;
   }
 
+  /** Installs orchestration state that will be committed by its owning workflow. */
+  replace(next: BisectSession): void {
+    this.session = next;
+  }
+
   async commit(transition: PhaseTransition, next: BisectSession): Promise<void> {
     this.session = next;
     await this.collaborators.persistence.write(next);
