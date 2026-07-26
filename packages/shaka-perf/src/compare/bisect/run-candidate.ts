@@ -106,6 +106,10 @@ export class CandidateEvaluator {
     private readonly reloadMode: ExperimentReloadMode,
   ) {}
 
+  preferredReloadMode(): ExperimentReloadMode {
+    return this.reloadMode;
+  }
+
   async evaluate(plan: CandidateEvaluationPlan): Promise<CandidateResult> {
     let commitRun: CommitRun = {
       sha: plan.sha,
