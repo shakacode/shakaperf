@@ -761,7 +761,7 @@ async function planBisectDryRun(context: BisectExecutionContext): Promise<void> 
     state.nextAction
       ? `Dry run stopped before ${state.nextAction.kind === 'validate-good-ref'
         ? 'validating good ref'
-        : 'measuring midpoint'} ${shortSha(state.nextAction.sha)}`
+        : 'measuring native Git candidate'} ${shortSha(state.nextAction.sha)}`
       : 'Dry run found no regression targets and has no next action',
     state.nextAction ? { nextAction: state.nextAction } : { targetCount: 0 },
   );
