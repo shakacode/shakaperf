@@ -11,6 +11,7 @@ import { NativeGitBisectDriver } from './git';
 import type { PhaseTransitionEvent } from './phase-transition';
 import { PhaseStore } from './phase-store';
 import {
+  BisectInterruptedError,
   CandidateEvaluationError,
   CandidateEvaluator,
   type CandidateEvaluationPlan,
@@ -136,6 +137,14 @@ export class NativeBisectPhaseRunner {
     await this.commit('attempt-started', runningPhase, {
       attemptId: attempt.id,
       sha: candidateSha,
+      categories: work.categories,
+      tests: work.tests,
+      targetIds: work.targetIds,
+      group: {
+        id: group.id,
+        goodSha: group.goodSha,
+        badSha: group.badSha,
+      },
     });
 
     let result: CandidateResult;
@@ -169,7 +178,10 @@ export class NativeBisectPhaseRunner {
         { attemptId: attempt.id, sha: candidateSha, error: errorMessage(error) },
         evaluationError?.commitRun,
       );
-      throw evaluationError?.originalError ?? error;
+      if (evaluationError?.originalError instanceof BisectInterruptedError) {
+        throw evaluationError.originalError;
+      }
+      throw evaluationError ?? error;
     }
 
     const completed = this.completedAttempt(attempt, result);
