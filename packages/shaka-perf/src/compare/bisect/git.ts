@@ -58,6 +58,23 @@ export interface BisectRepositorySnapshot {
   experiment: CheckoutState;
 }
 
+export type NativeBisectVerdict = 'good' | 'bad';
+
+export interface NativeBisectStep {
+  candidateSha: string | null;
+  firstBadSha: string | null;
+  complete: boolean;
+  output: string;
+}
+
+export interface StartNativeBisectOptions {
+  repoDir: string;
+  goodSha: string;
+  badSha: string;
+  firstParent?: boolean;
+  noCheckout?: boolean;
+}
+
 async function git(repoDir: string, args: string[]): Promise<string> {
   const result = await exec('git', args, { cwd: repoDir, silent: true });
   if (result.code !== 0) {
@@ -65,6 +82,49 @@ async function git(repoDir: string, args: string[]): Promise<string> {
     throw new Error(`git ${args[0]} failed in ${repoDir}: ${detail}`);
   }
   return result.stdout.trim();
+}
+
+const FIRST_BAD_PATTERN = /^([0-9a-f]{40,64}) is the first bad commit$/m;
+
+async function nativeBisectStep(
+  repoDir: string,
+  output: string,
+  noCheckout = false,
+): Promise<NativeBisectStep> {
+  const firstBadSha = output.match(FIRST_BAD_PATTERN)?.[1] ?? null;
+  if (firstBadSha) {
+    return { candidateSha: null, firstBadSha, complete: true, output };
+  }
+  const candidateSha = await resolveCommit(repoDir, noCheckout ? 'BISECT_HEAD' : 'HEAD');
+  return { candidateSha, firstBadSha: null, complete: false, output };
+}
+
+export async function startNativeBisect(
+  options: StartNativeBisectOptions,
+): Promise<NativeBisectStep> {
+  await requireClean(options.repoDir, 'Experiment');
+  const args = ['bisect', 'start'];
+  if (options.noCheckout) args.push('--no-checkout');
+  if (options.firstParent !== false) args.push('--first-parent');
+  args.push(options.badSha, options.goodSha);
+  const output = await git(options.repoDir, args);
+  return nativeBisectStep(options.repoDir, output, options.noCheckout === true);
+}
+
+export async function markNativeBisect(
+  repoDir: string,
+  verdict: NativeBisectVerdict,
+): Promise<NativeBisectStep> {
+  const output = await git(repoDir, ['bisect', verdict]);
+  return nativeBisectStep(repoDir, output);
+}
+
+export async function nativeBisectLog(repoDir: string): Promise<string> {
+  return git(repoDir, ['bisect', 'log']);
+}
+
+export async function resetNativeBisect(repoDir: string): Promise<void> {
+  await git(repoDir, ['bisect', 'reset']);
 }
 
 function normalizeRelativePath(relativePath: string): string {
