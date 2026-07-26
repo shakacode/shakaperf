@@ -935,29 +935,23 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
   state.session = { ...state.session, mode: 'merge-investigation' };
   let mergeAttemptNumber = Object.values(state.session.mergeInvestigations ?? {})
     .reduce((count, investigation) => count + (investigation.phase?.attempts.length ?? 0), 0);
-  let mergeGroupNumber = Object.values(state.session.mergeInvestigations ?? {})
-    .reduce((count, investigation) => count + (investigation.phase?.groups?.length ?? 0), 0);
-  const start = deps.startNativeBisect;
-  const mark = deps.markNativeBisect;
-  const reset = deps.resetNativeBisect;
-  if (!start || !mark || !reset) {
-    throw new Error('compare bisect merge investigation requires native Git bisect dependencies');
-  }
+  const candidateEvaluator = new CandidateEvaluator(
+    deps.nativeGit,
+    { refreshExperiment: (request) => deps.reloadExperiment(request) },
+    { run: (request) => deps.runCandidateComparisons(request) },
+    state.environment,
+    preferredExperimentReloadMode(input.config),
+  );
+  state.checkoutAttempted = true;
   state.session = await runMergeInvestigations({
     session: state.session,
     preferredExperimentReloadMode: preferredExperimentReloadMode(input.config),
     nextAttemptId: () => `merge-${++mergeAttemptNumber}`,
-    nextGroupId: () => `merge-group-${++mergeGroupNumber}`,
-    nativeBisect: {
-      start(group) {
-        state.checkoutAttempted = true;
-        return start(group);
-      },
-      mark,
-      reset,
-    },
+    owner: state.owner,
+    nativeGit: deps.nativeGit,
+    candidateEvaluator,
+    environment: state.environment,
     now: deps.now,
-    commitRuns: () => state.session.commitRuns,
     checkpoint(updated) {
       state.session = updated;
       context.persistSession();
