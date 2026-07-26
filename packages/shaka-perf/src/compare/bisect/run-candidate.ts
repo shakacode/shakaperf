@@ -31,21 +31,14 @@ export interface ExperimentReloadResult {
   usedFallback: boolean;
 }
 
-export interface SyncCandidateFilesRequest {
-  previouslySyncedSha: string | null;
-  candidateSha: string;
-}
-
 export type CandidateRunProgressEvent =
   | 'checkout-completed'
-  | 'candidate-files-synced'
   | 'experiment-reloaded'
   | 'comparison-completed'
   | 'candidate-run-failed';
 
 export interface CandidateDependencies {
   checkout(sha: string): Promise<void>;
-  syncCandidateFilesToExperimentVolume(request: SyncCandidateFilesRequest): Promise<void>;
   reloadExperiment(request: ExperimentReloadRequest): Promise<ExperimentReloadResult>;
   runCandidateComparisons(request: CompareRunRequest): Promise<CompareRunResult>;
   now(): string;
@@ -53,7 +46,6 @@ export interface CandidateDependencies {
 
 export interface RunCandidateOptions {
   sha: string;
-  previouslySyncedSha: string | null;
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
@@ -92,13 +84,6 @@ export async function runCandidate(options: RunCandidateOptions): Promise<Candid
   try {
     await options.dependencies.checkout(options.sha);
     options.recordCandidateRunProgress('checkout-completed', commitRun);
-    options.checkCancellation();
-
-    await options.dependencies.syncCandidateFilesToExperimentVolume({
-      previouslySyncedSha: options.previouslySyncedSha,
-      candidateSha: options.sha,
-    });
-    options.recordCandidateRunProgress('candidate-files-synced', commitRun);
     options.checkCancellation();
 
     const experimentReload = await options.dependencies.reloadExperiment({
