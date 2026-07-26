@@ -21,6 +21,7 @@ import {
   resetNativeBisect,
   restoreCheckout,
   startNativeBisect,
+  NativeGitBisectDriver,
 } from '../git';
 import { writeSessionAtomic, writeSummary } from '../persistence';
 import type {
@@ -214,12 +215,14 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
   const { fixture } = options;
   const candidateComparisonCalls: CompareRunRequest[] = [];
   const experimentReloadCalls: ExperimentReloadRequest[] = [];
+  const nativeGit = new NativeGitBisectDriver({ repoDir: fixture.experimentDir });
   let tick = 0;
 
   return {
     candidateComparisonCalls,
     experimentReloadCalls,
     dependencies: {
+      nativeGit,
       installSignalHandlers() {
         return () => undefined;
       },

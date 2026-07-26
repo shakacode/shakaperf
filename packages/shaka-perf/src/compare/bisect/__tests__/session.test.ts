@@ -244,12 +244,59 @@ function deps(
     if (checkoutError) throw checkoutError;
     return { candidateSha: nativeCandidate, firstBadSha: null, complete: false, output: '' };
   };
+  const nativeGit = new class extends bisectGit.NativeGitBisectDriver {
+    constructor() {
+      super({ repoDir: '/unused' });
+    }
+
+    override async start(group: import('../types').BisectTargetGroup) {
+      nativeHistory = nativeHistories.find((history) => (
+        history.includes(group.goodSha) && history.includes(group.badSha)
+      )) ?? primaryNativeHistory;
+      nativeGood = group.goodSha;
+      nativeBad = group.badSha;
+      return nativeStep();
+    }
+
+    override async mark(verdict: import('../git').NativeBisectVerdict) {
+      if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
+      if (verdict === 'good') nativeGood = nativeCandidate;
+      else nativeBad = nativeCandidate;
+      return nativeStep();
+    }
+
+    override async reset() {}
+
+    override async assertAtCandidate(expectedSha: string) {
+      if (nativeCandidate !== expectedSha) {
+        throw new Error(`Stubbed native bisect selected ${nativeCandidate}; expected ${expectedSha}`);
+      }
+    }
+
+    override async preview(group: import('../types').BisectTargetGroup) {
+      const previewHistory = nativeHistories.find((history) => (
+        history.includes(group.goodSha) && history.includes(group.badSha)
+      )) ?? primaryNativeHistory;
+      const goodIndex = previewHistory.indexOf(group.goodSha);
+      const badIndex = previewHistory.indexOf(group.badSha);
+      if (badIndex - goodIndex === 1) {
+        return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
+      }
+      return {
+        candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
+        firstBadSha: null,
+        complete: false,
+        output: '',
+      };
+    }
+  }();
   return {
     calls,
     emitSignal(signal) {
       for (const handler of calls.signalHandlers) handler(signal);
     },
     deps: {
+      nativeGit,
       installSignalHandlers(handler) {
         calls.signalHandlers.add(handler);
         return () => {
@@ -265,37 +312,10 @@ function deps(
       async endSession() {
         calls.events.push('lease:end');
       },
-      async startNativeBisect(group) {
-        nativeHistory = nativeHistories.find((history) => (
-          history.includes(group.goodSha) && history.includes(group.badSha)
-        )) ?? primaryNativeHistory;
-        nativeGood = group.goodSha;
-        nativeBad = group.badSha;
-        return nativeStep();
-      },
-      async markNativeBisect(verdict) {
-        if (!nativeCandidate) throw new Error('Stubbed native bisect has no candidate to mark');
-        if (verdict === 'good') nativeGood = nativeCandidate;
-        else nativeBad = nativeCandidate;
-        return nativeStep();
-      },
-      async resetNativeBisect() {},
-      async previewNativeBisect(group) {
-        const previewHistory = nativeHistories.find((history) => (
-          history.includes(group.goodSha) && history.includes(group.badSha)
-        )) ?? primaryNativeHistory;
-        const goodIndex = previewHistory.indexOf(group.goodSha);
-        const badIndex = previewHistory.indexOf(group.badSha);
-        if (badIndex - goodIndex === 1) {
-          return { candidateSha: null, firstBadSha: group.badSha, complete: true, output: '' };
-        }
-        return {
-          candidateSha: previewHistory[Math.floor((goodIndex + badIndex) / 2)]!,
-          firstBadSha: null,
-          complete: false,
-          output: '',
-        };
-      },
+      startNativeBisect: (group) => nativeGit.start(group),
+      markNativeBisect: (verdict) => nativeGit.mark(verdict),
+      resetNativeBisect: () => nativeGit.reset(),
+      previewNativeBisect: (group) => nativeGit.preview(group),
       async checkout(sha) {
         calls.checkouts.push(sha);
         calls.events.push(`checkout:${sha}`);
