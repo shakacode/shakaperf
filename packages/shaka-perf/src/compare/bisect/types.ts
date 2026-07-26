@@ -53,6 +53,7 @@ export interface BisectTargetGroup {
   targetIds: string[];
   decisions: NativeBisectDecision[];
   firstBadSha?: string;
+  previewCandidateSha?: string;
 }
 
 export interface CommitRun {

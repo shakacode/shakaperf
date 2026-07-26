@@ -85,6 +85,7 @@ const phaseSchema = z.object({
       verdict: z.enum(['good', 'bad']),
     }).strict()),
     firstBadSha: z.string().optional(),
+    previewCandidateSha: z.string().optional(),
   }).strict()).optional(),
   activeGroupId: z.string().optional(),
   attempts: z.array(attemptSchema),
