@@ -5,7 +5,7 @@ compare pipeline against candidate experiment commits and reports the first
 commit that introduced each regression observed at the bad ref.
 
 The command is designed for local, deterministic investigation after a normal
-`compare` run shows a visual, performance, or accessibility regression. It does
+`compare` run shows a visual, performance, or accessibility regression. It
 drives native `git bisect` while adding compare-aware target discovery,
 persistence, grouped multi-target verdicts, and category-specific analysis on
 top of a stable twin-server setup.
@@ -228,11 +228,12 @@ export default defineConfig({
   candidate checkout. This is the fast path for apps where an in-place rebuild
   plus server restart is enough.
 - `rebuildContainer: true` rebuilds the experiment image for each candidate.
-  The current twin-server lifecycle recreates the running pair after that image
-  build, so this is slower but safer when dependencies or generated assets may
-  change across the range.
+  The current twin-server lifecycle recreates the experiment container after
+  that image build while leaving control untouched, so this is slower but safer
+  when dependencies or generated assets may change across the range.
 - If command refresh fails, V0 falls back to the container rebuild path for that
-  candidate and records the fallback in `session.json`.
+  candidate, recreates the experiment container, and records the fallback in
+  `session.json`. Control remains untouched.
 
 ## Algorithm
 
@@ -266,8 +267,9 @@ regression targets.
    the same binary verdict, that verdict advances the native search. If they
    differ, the largest verdict partition continues in the current Git run and
    each remaining partition is persisted as queued work over its narrowed SHA
-   range. Equal-size ties use a stable category-and-target ordering. Queued
-   groups with identical boundaries are coalesced.
+   range. Equal-size ties use a stable category-and-target ordering. The queue
+   rejects duplicate pending ranges as a scheduler invariant instead
+   of trying to merge unrelated decision histories.
    Exact `(test file, test name)` pairs are deduplicated, so different tests in
    one file remain independently selectable and equal names in different files
    remain distinct.
@@ -298,11 +300,12 @@ incompatible sessions fail with a fresh-run instruction.
 
 Completed observations are never compared again. A crashed `running` attempt is
 loaded as `incomplete` and retried without advancing its target group. Resume
-uses the persisted group boundaries and verdict decisions to reconstruct a
-fresh native Git bisect run; it does not assume transient `.git/BISECT_*` files
-survived interruption, `git bisect reset`, or worktree cleanup. Candidate source
-changes continue through normal twin-server auto-sync. A fully complete session
-prints its saved results without acquiring a lease.
+starts a fresh native Git bisect run from each persisted group's already-narrowed
+good and bad boundaries. Persisted decisions remain audit history rather than
+commands replayed into Git. Resume does not assume transient `.git/BISECT_*`
+files survived interruption, `git bisect reset`, or worktree cleanup. Candidate
+source changes continue through normal twin-server auto-sync. A fully complete
+session prints its saved results without acquiring a lease.
 
 Group tie-breaking is category-prioritized (`visreg`, `perf`, then
 `accessibility`) and deterministic within each category. Cached target/SHA
@@ -341,11 +344,42 @@ can produce a verdict per target. The group scheduler bridges those models:
    partition.
 4. Persist every other verdict partition as a queued group with its narrowed
    good and bad SHAs.
-5. Repeat splitting as needed, coalesce equal ranges, and finish queued groups
-   in deterministic order.
+5. Repeat splitting as needed and finish queued groups in deterministic order.
+   Duplicate pending ranges fail loudly because normal group splitting produces
+   disjoint ranges.
 
 This retains shared browser work until targets actually disagree while still
 allowing different first-bad SHAs in one overall compare-bisect session.
+
+### Implementation Ownership
+
+The implementation mirrors the compare pipeline's declarative composition:
+
+- `execution-services.ts` is the composition root for concrete Git,
+  twin-server, comparison, artifact, decision-log, and restoration adapters.
+- `session.ts` owns the command-level lifecycle: discovery, optional endpoint
+  validation, primary search, optional merge investigation, and cleanup. It
+  creates fresh per-execution cancellation state even when service objects are
+  reused for resume.
+- `CompareBisectSession` is the single live session owner. `PrimaryPhaseStore`
+  and `MergePhaseStore` install phase-specific state through that owner, which
+  writes durable session state before decision logs and reports.
+- `NativeBisectPhaseRunner` owns the generic start/evaluate/classify/mark/reset
+  loop. `CandidateEvaluator` only verifies Git's selected candidate, refreshes
+  the experiment, and runs compare; it never changes `HEAD` or persists state.
+- `TargetGroupQueue` owns pending-range uniqueness. Completed attempts, target
+  observations, and any resulting group partition are installed in one phase
+  transition before the runner gives Git a good or bad verdict.
+- `EndpointValidator` and `ExactCheckout` own bad-ref discovery plus explicit
+  good-ref and merge-parent positioning. They are not available to native
+  search traversal.
+- `MergeInvestigationRunner` applies the same phase runner and store contract to
+  eligible merge-source ranges.
+
+This separation makes the persistence boundary explicit: Git never advances on
+a candidate verdict until the complete classification is durable. A report
+rendering failure cannot turn completed comparison work back into an unrecorded
+attempt.
 
 ## Design Decisions
 
@@ -383,34 +417,30 @@ This also means V0 does not infer that a target is absent just because a broader
 compare run failed before producing that target's result. The absence must be
 measured, not guessed.
 
-### Explicit Experiment Materialization
+### Twin-Server Source Synchronization
 
-The experiment checkout is moved to each candidate commit and the build-owned
-files are synchronized into the experiment volume using the existing twin-server
-build manifest. V0 prefers syncing only changed manifest-owned paths after the
-first candidate, while guarding against paths and symlinks that could escape the
-source or volume root.
-
-The manifest boundary matters because the Docker volume contains generated
-runtime state as well as app files. Bisect is allowed to replace files that the
-image build declared as owned by the app checkout; it refuses unsafe replacements
-such as deleting a non-empty generated directory that happens to sit at a former
-manifest file path.
+Compare bisect does not copy candidate source files itself. Native Git moves the
+experiment checkout, and the normal twin-server auto-sync path propagates those
+checkout changes into the experiment container. Before rebuilding or restarting
+the experiment, the server-side bisect refresh waits for pending auto-sync work
+to settle. This keeps file ownership, deletion safety, and Docker build-context
+rules in one twin-server implementation.
 
 ### Refresh Strategy
 
 V0 uses the active `shaka-perf servers` menu as the process manager. For each
-session, it acquires a compare-bisect lease from that menu. The lease pauses the
-menu's experiment auto-sync and rejects unrelated menu lifecycle actions until
-bisect cleanup releases it. For each candidate, the leased session either:
+session, it acquires a compare-bisect lease from that menu. The lease rejects
+unrelated menu lifecycle actions until bisect cleanup releases it, while source
+propagation remains owned by the menu's normal auto-sync machinery. For each
+candidate, the leased session either:
 
 - Runs configured experiment-side rebuild commands and restarts the servers, or
 - Rebuilds the experiment image when `rebuildContainer` is enabled or when
-  command refresh fails, then recreates the running twin-server pair through the
-  existing menu lifecycle.
+  command refresh fails, then recreates the experiment container through the
+  existing menu lifecycle. The control container stays fixed.
 
 This deliberately reuses the existing local server workflow instead of adding a
-second process supervisor for bisect.
+second process supervisor or source-copy path for bisect.
 
 The lease includes the owning bisect process ID. If that process is interrupted,
 the menu reaps the abandoned lease the next time a proxied action checks it, so
@@ -420,8 +450,8 @@ an aborted bisect does not permanently block normal server actions.
 
 The command leaves control fixed and restores the experiment checkout to its
 original branch or detached SHA after success, failure, or interruption. If a
-different candidate was materialized into the experiment volume, V0 syncs the
-original SHA back into the volume and refreshes the experiment side again.
+different candidate reached the experiment volume, normal twin-server auto-sync
+propagates the restored checkout and the experiment side is refreshed again.
 
 Cleanup is best-effort but conservative: the primary bisect error is preserved,
 and cleanup failures are reported separately so users can restore the checkout
@@ -434,9 +464,8 @@ or server state manually if needed.
   commits.
 - V0 depends on an active `shaka-perf servers` menu session for the bisect lease
   and refresh actions.
-- V0's container fallback rebuilds the experiment image, but the existing
-  twin-server menu recreates the running container pair as part of that
-  lifecycle.
+- V0's container fallback rebuilds the experiment image and recreates the
+  experiment container through the existing twin-server menu lifecycle.
 
 ## Output Interpretation
 
