@@ -51,13 +51,8 @@ export function assertNoPipelineErrors(
 
 export function discoverTargets(
   testResults: readonly TestResult[],
-  orderedCommits: readonly string[],
-  badSha: string,
   selectedCategories: readonly BisectCategory[] = categoryAnalyzers.map((analyzer) => analyzer.category),
 ): BisectTarget[] {
-  const badIndex = orderedCommits.indexOf(badSha);
-  if (badIndex === -1) throw new Error(`Unknown bad bisect commit: ${badSha}`);
-
   const input = { testResults };
   const targets = new Map<string, BisectTarget>();
   const selected = new Set(selectedCategories);
@@ -66,8 +61,6 @@ export function discoverTargets(
       targets.set(target.id, {
         ...target,
         status: 'active',
-        goodIndex: 0,
-        badIndex,
         recordedTargetEvaluations: {},
       });
     }

@@ -24,8 +24,6 @@ function target(id: string, firstBadSha: string): BisectTarget {
     viewport: 'desktop',
     subject: 'document',
     status: 'found',
-    goodIndex: 0,
-    badIndex: 1,
     firstBadSha,
     recordedTargetEvaluations: {},
   };
