@@ -161,6 +161,8 @@ interface HarnessOptions {
   restoreError?: Error;
   disposeError?: Error;
   terminalWriteSessionErrors?: Error[];
+  reportErrors?: Array<Error | undefined>;
+  previewResetError?: Error;
   clearPriorReportOutput?: () => void;
   nativeHistory?: string[];
 }
@@ -189,6 +191,7 @@ function deps(
     progress: string[];
     decisions: BisectDecisionLogEntry[];
     disposeAttempts: number;
+    nativeResetAttempts: number;
     sessionAttempts: BisectSession[];
     summaryWriteHandlerCounts: number[];
     terminalWriteHandlerCounts: number[];
@@ -215,6 +218,7 @@ function deps(
     progress: [] as string[],
     decisions: [] as BisectDecisionLogEntry[],
     disposeAttempts: 0,
+    nativeResetAttempts: 0,
     sessionAttempts: [] as BisectSession[],
     summaryWriteHandlerCounts: [] as number[],
     terminalWriteHandlerCounts: [] as number[],
@@ -266,7 +270,9 @@ function deps(
       return nativeStep();
     }
 
-    override async reset() {}
+    override async reset() {
+      calls.nativeResetAttempts += 1;
+    }
 
     override async assertAtCandidate(expectedSha: string) {
       if (nativeCandidate !== expectedSha) {
@@ -275,6 +281,12 @@ function deps(
     }
 
     override async preview(group: import('../types').BisectTargetGroup) {
+      if (options.previewResetError) {
+        const error = options.previewResetError;
+        options.previewResetError = undefined;
+        calls.nativeResetAttempts += 1;
+        throw error;
+      }
       const previewHistory = nativeHistories.find((history) => (
         history.includes(group.goodSha) && history.includes(group.badSha)
       )) ?? primaryNativeHistory;
@@ -417,6 +429,8 @@ function deps(
             session: JSON.parse(JSON.stringify(session)) as BisectSession,
             testNames: badRefTests.map((test) => test.name),
           });
+          const reportError = options.reportErrors?.shift();
+          if (reportError) throw reportError;
         },
         writeSummary(session, metadata = {}) {
           calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
@@ -704,6 +718,42 @@ describe('compare bisect session orchestration', () => {
     expect(fs.existsSync(priorReportPath)).toBe(false);
   });
 
+  it('resumes after a bad-ref report failure without repeating endpoint comparison', async () => {
+    const bisectInput = input(rootDir);
+    const failedHarness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      reportErrors: [new Error('report rendering failed')],
+    });
+
+    await expect(executeBisect(bisectInput, failedHarness.deps))
+      .rejects.toThrow(/report rendering failed/i);
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    expect(saved).toMatchObject({
+      commitRuns: { bad: { compareCompleted: true } },
+      primary: {
+        targets: [expect.objectContaining({
+          recordedTargetEvaluations: {
+            bad: expect.objectContaining({ regressionDetected: true }),
+          },
+        })],
+      },
+    });
+
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const resumed = await executeBisect({
+      ...bisectInput,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.compares.map(({ sha }) => sha)).toEqual(['a', 'b']);
+  });
+
   it('reuses current results for bad-ref discovery without rebuilding the bad ref', async () => {
     const harness = deps({
       good: [resultWithVisualDiff(null)],
@@ -761,6 +811,69 @@ describe('compare bisect session orchestration', () => {
       });
   });
 
+  it('reuses durable good-ref validation after report failure', async () => {
+    const bisectInput = {
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      validateGoodRef: true,
+    };
+    const failedHarness = deps({
+      good: [resultWithVisualDiff(null)],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      reportErrors: [undefined, new Error('good-ref report failed')],
+    });
+
+    await expect(executeBisect(bisectInput, failedHarness.deps))
+      .rejects.toThrow(/good-ref report failed/i);
+    const saved = parseBisectSession(failedHarness.calls.sessions.at(-1));
+    expect(saved.commitRuns.good).toMatchObject({ compareCompleted: true });
+    expect(saved.primary.targets[0]?.recordedTargetEvaluations.good)
+      .toMatchObject({ regressionDetected: false });
+
+    const resumeHarness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const resumed = await executeBisect({
+      ...bisectInput,
+      reuseCurrentResults: false,
+      resumeSession: saved,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, resumeHarness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumeHarness.calls.compares.map(({ sha }) => sha)).toEqual(['a', 'b']);
+    expect(resumeHarness.calls.decisions.map(({ event }) => event))
+      .toContain('good-ref-validation-reused');
+
+    const failedRunHarness = deps({
+      good: [resultWithVisualDiff(null)],
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+    });
+    const sessionWithFailedGoodRun = {
+      ...saved,
+      commitRuns: {
+        ...saved.commitRuns,
+        good: {
+          ...saved.commitRuns.good!,
+          infrastructureError: 'stale good-ref analysis failure',
+        },
+      },
+    };
+    await executeBisect({
+      ...bisectInput,
+      reuseCurrentResults: false,
+      resumeSession: sessionWithFailedGoodRun,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, failedRunHarness.deps);
+
+    expect(failedRunHarness.calls.compares.map(({ sha }) => sha)).toEqual(['good', 'a', 'b']);
+    expect(failedRunHarness.calls.decisions.map(({ event }) => event))
+      .not.toContain('good-ref-validation-reused');
+  });
+
   it('dry runs through target discovery and records the first midpoint by default', async () => {
     const harness = deps({
       bad: [resultWithVisualDiff('diff.png')],
@@ -804,6 +917,23 @@ describe('compare bisect session orchestration', () => {
     ]));
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('good-ref-start');
     expect(harness.calls.decisions.map((entry) => entry.event)).not.toContain('candidate-selected');
+  });
+
+  it('retries native reset during final cleanup when dry-run preview reset fails', async () => {
+    const harness = deps({
+      bad: [resultWithVisualDiff('diff.png')],
+    }, {
+      previewResetError: new Error('preview reset failed'),
+    });
+
+    await expect(executeBisect({
+      ...input(rootDir),
+      reuseCurrentResults: true,
+      dryRun: true,
+    }, harness.deps)).rejects.toThrow(/preview reset failed/i);
+
+    expect(harness.calls.nativeResetAttempts).toBe(2);
+    expect(harness.calls.sessions.at(-1)).toMatchObject({ status: 'failed' });
   });
 
   it('dry runs by measuring only the bad ref when current results are not reused', async () => {

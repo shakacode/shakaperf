@@ -223,7 +223,12 @@ export async function nativeBisectLog(repoDir: string): Promise<string> {
 }
 
 async function resetNativeBisect(repoDir: string): Promise<void> {
-  await git(repoDir, ['bisect', 'reset']);
+  try {
+    await git(repoDir, ['bisect', 'reset']);
+  } catch (error) {
+    if (/not bisecting/i.test(error instanceof Error ? error.message : String(error))) return;
+    throw error;
+  }
 }
 
 function normalizeRelativePath(relativePath: string): string {

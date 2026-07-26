@@ -439,6 +439,11 @@ describe('bisect Git helpers', () => {
       .rejects.toThrow(/native git bisect selected .* expected/i);
 
     await driver.reset();
+    expect(git(fixture.experimentDir, ['branch', '--show-current'])).toBe(fixture.experimentBranch);
+    expect(git(fixture.experimentDir, ['rev-parse', 'HEAD'])).toBe(fixture.commits[4]);
+    expect(fs.existsSync(git(fixture.experimentDir, ['rev-parse', '--git-path', 'BISECT_START'])))
+      .toBe(false);
+    await expect(driver.reset()).resolves.toBeUndefined();
   });
 
   it('previews and resets through the driver without moving HEAD', async () => {
