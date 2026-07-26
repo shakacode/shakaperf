@@ -102,6 +102,20 @@ describe('compare bisect black-box E2E', () => {
         }),
       ]));
       expect(session.primary.groups).toHaveLength(3);
+      expect(session.primary.groups?.[0]).toMatchObject({
+        id: 'primary-group-1',
+        targetIds: [targetIdByCategory.visreg],
+        decisions: expect.arrayContaining([
+          {
+            sha: fixture.shas['performance-regression-introduced'],
+            verdict: 'bad',
+          },
+          {
+            sha: fixture.shas['visual-regression-introduced'],
+            verdict: 'bad',
+          },
+        ]),
+      });
       expectBinarySearchTraversal(harness, fixture, [
         'known-bad',
         'all-regressions-confirmed',
