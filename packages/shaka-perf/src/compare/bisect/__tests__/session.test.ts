@@ -12,7 +12,6 @@ import * as path from 'node:path';
 import {
   executeBisect,
   filterFrozenTests,
-  restoreExperimentState,
   runBisect,
   type BisectDecisionLogEntry,
   type ExecuteBisectDependencies,
@@ -26,6 +25,7 @@ import type { BisectSession } from '../types';
 import { BISECT_REPORT_FILENAME } from '../report';
 import { parseBisectSession } from '../state';
 import type { BisectSummaryMetadata } from '../persistence';
+import { createFileBisectDecisionLogger } from '../execution-services';
 
 function config(): AbTestsConfig {
   return {
@@ -323,104 +323,118 @@ function deps(
           throw new Error('Unexpected merge range load');
         },
       },
-      installSignalHandlers(handler) {
-        calls.signalHandlers.add(handler);
-        return () => {
-          calls.disposeAttempts += 1;
-          calls.signalHandlers.delete(handler);
-          if (options.disposeError) throw options.disposeError;
-        };
+      clock: { now: () => '2026-07-12T00:00:00.000Z' },
+      signals: {
+        install(handler) {
+          calls.signalHandlers.add(handler);
+          return () => {
+            calls.disposeAttempts += 1;
+            calls.signalHandlers.delete(handler);
+            if (options.disposeError) throw options.disposeError;
+          };
+        },
       },
-      async beginSession() {
-        calls.events.push('lease:begin');
-        if (options.beginSessionError) throw options.beginSessionError;
+      server: {
+        async begin() {
+          calls.events.push('lease:begin');
+          if (options.beginSessionError) throw options.beginSessionError;
+        },
+        async end() {
+          calls.events.push('lease:end');
+        },
+        async refreshExperiment(request) {
+          calls.refreshes.push(request.sha);
+          calls.events.push(`reload-experiment:${request.sha}`);
+          return options.refreshBySha?.[request.sha]
+            ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
+        },
       },
-      async endSession() {
-        calls.events.push('lease:end');
+      restoration: {
+        async restore() {
+          calls.restored.push('bad');
+          calls.events.push('checkout:original');
+          calls.events.push('reload-experiment:original');
+          if (options.restoreError) throw options.restoreError;
+        },
       },
-      async restore(request) {
-        calls.restored.push(request.originalSha);
-        calls.events.push('checkout:original');
-        calls.events.push('reload-experiment:original');
-        if (options.restoreError) throw options.restoreError;
+      comparison: {
+        async run(request) {
+          calls.events.push(`run-candidate-comparisons:${request.sha}`);
+          calls.compares.push({
+            sha: request.sha,
+            categories: [...request.categories],
+            tests: [...request.tests],
+          });
+          if (options.signalOnCompare === request.sha) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          const compareError = options.compareErrorBySha?.[request.sha];
+          if (compareError) throw compareError;
+          return {
+            testResults: resultsBySha[request.sha] ?? [],
+            compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
+          };
+        },
       },
-      clearSummary() {},
-      clearPriorReportOutput() {
-        options.clearPriorReportOutput?.();
+      reusableResults: {
+        async load(request) {
+          calls.events.push(`reuse:${request.sha}`);
+          calls.reusedResults.push({
+            sha: request.sha,
+            categories: [...request.categories],
+          });
+          return {
+            testResults: resultsBySha[request.sha] ?? [],
+            compareResultsPath: '/repo/compare-results',
+          };
+        },
       },
-      async reloadExperiment(request) {
-        calls.refreshes.push(request.sha);
-        calls.events.push(`reload-experiment:${request.sha}`);
-        return options.refreshBySha?.[request.sha]
-          ?? { mode: request.preferredExperimentReloadMode, usedFallback: false };
+      artifacts: {
+        clearPrevious() {
+          options.clearPriorReportOutput?.();
+        },
+        writeSession(session) {
+          const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
+          calls.sessionAttempts.push(snapshot);
+          if (session.status !== 'running') {
+            calls.terminalWriteHandlerCounts.push(calls.signalHandlers.size);
+          }
+          if (session.status === options.signalOnTerminalWriteStatus) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          if (session.status !== 'running') {
+            const writeError = options.terminalWriteSessionErrors?.shift();
+            if (writeError) throw writeError;
+          }
+          calls.sessions.push(snapshot);
+          calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
+        },
+        writeReport(session, badRefTests) {
+          calls.reports.push({
+            session: JSON.parse(JSON.stringify(session)) as BisectSession,
+            testNames: badRefTests.map((test) => test.name),
+          });
+        },
+        writeSummary(session, metadata = {}) {
+          calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
+          if (options.signalOnSummary) {
+            for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
+          }
+          calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
+          calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
+          calls.summaryAfterEvents.push([...calls.events]);
+        },
+        writeBadRefTests() {
+          return 'fixture';
+        },
       },
-      async runCandidateComparisons(request) {
-        calls.events.push(`run-candidate-comparisons:${request.sha}`);
-        calls.compares.push({
-          sha: request.sha,
-          categories: [...request.categories],
-          tests: [...request.tests],
-        });
-        if (options.signalOnCompare === request.sha) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        const compareError = options.compareErrorBySha?.[request.sha];
-        if (compareError) throw compareError;
-        return {
-          testResults: resultsBySha[request.sha] ?? [],
-          compareResultsPath: `/repo/compare-bisect-results/commits/${request.sha}/compare-results`,
-        };
-      },
-      async reuseCurrentResults(request) {
-        calls.events.push(`reuse:${request.sha}`);
-        calls.reusedResults.push({
-          sha: request.sha,
-          categories: [...request.categories],
-        });
-        return {
-          testResults: resultsBySha[request.sha] ?? [],
-          compareResultsPath: '/repo/compare-results',
-        };
-      },
-      writeSession(session) {
-        const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
-        calls.sessionAttempts.push(snapshot);
-        if (session.status !== 'running') {
-          calls.terminalWriteHandlerCounts.push(calls.signalHandlers.size);
-        }
-        if (session.status === options.signalOnTerminalWriteStatus) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        if (session.status !== 'running') {
-          const writeError = options.terminalWriteSessionErrors?.shift();
-          if (writeError) throw writeError;
-        }
-        calls.sessions.push(snapshot);
-        calls.checkpoints.push({ afterEvent: calls.events.at(-1), session: snapshot });
-      },
-      writeReport(session, badRefTests) {
-        calls.reports.push({
-          session: JSON.parse(JSON.stringify(session)) as BisectSession,
-          testNames: badRefTests.map((test) => test.name),
-        });
-      },
-      writeSummary(session, metadata = {}) {
-        calls.summaryWriteHandlerCounts.push(calls.signalHandlers.size);
-        if (options.signalOnSummary) {
-          for (const handler of calls.signalHandlers) handler(options.signal ?? 'SIGINT');
-        }
-        calls.summaries.push(JSON.parse(JSON.stringify(session)) as BisectSession);
-        calls.summaryMetadata.push(JSON.parse(JSON.stringify(metadata)) as BisectSummaryMetadata);
-        calls.summaryAfterEvents.push([...calls.events]);
-      },
-      recordDecision(entry) {
-        calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
-      },
-      logProgress(message) {
-        calls.progress.push(message);
-      },
-      now() {
-        return '2026-07-12T00:00:00.000Z';
+      decisions: {
+        record(entry) {
+          calls.decisions.push(JSON.parse(JSON.stringify(entry)) as BisectDecisionLogEntry);
+        },
+        progress(message) {
+          calls.progress.push(message);
+        },
       },
     },
   };
@@ -624,8 +638,8 @@ describe('compare bisect session orchestration', () => {
       source: [resultWithVisualDiff('diff.png')],
     });
     const order: string[] = [];
-    const writeReport = harness.deps.writeReport;
-    harness.deps.writeReport = (session, tests) => {
+    const writeReport = harness.deps.artifacts.writeReport;
+    harness.deps.artifacts.writeReport = (session, tests) => {
       if (session.primary?.status === 'complete') order.push('primary-report');
       writeReport(session, tests);
     };
@@ -956,7 +970,7 @@ describe('compare bisect session orchestration', () => {
       ],
     });
     let visibleSummary: BisectSession | null = { status: 'complete' } as BisectSession;
-    harness.deps.clearSummary = () => {
+    harness.deps.artifacts.clearPrevious = () => {
       visibleSummary = null;
       harness.calls.events.push('summary:cleared');
     };
@@ -1129,6 +1143,35 @@ describe('compare bisect session orchestration', () => {
     expect(harness.calls.signalHandlers.size).toBe(0);
     },
   );
+
+  it('uses fresh cancellation state when the same services resume an interrupted run', async () => {
+    const harnessOptions: HarnessOptions = { signalOnCompare: 'a', signal: 'SIGINT' };
+    const harness = deps({
+      a: [resultWithVisualDiff(null)],
+      b: [resultWithVisualDiff('diff.png')],
+      bad: [resultWithVisualDiff('diff.png')],
+    }, harnessOptions);
+
+    await expect(executeBisect(input(rootDir), harness.deps)).rejects.toBeInstanceOf(
+      BisectInterruptedError,
+    );
+    const interrupted = parseBisectSession(harness.calls.sessions.at(-1));
+    delete harnessOptions.signalOnCompare;
+
+    const resumed = await executeBisect({
+      ...input(rootDir),
+      resumeSession: interrupted,
+      resumeBadRefTests: [resultWithVisualDiff('diff.png')],
+    }, harness.deps);
+
+    expect(resumed.status).toBe('complete');
+    expect(resumed.primary.attempts.map(({ sha, status }) => ({ sha, status }))).toEqual([
+      { sha: 'a', status: 'incomplete' },
+      { sha: 'a', status: 'complete' },
+      { sha: 'b', status: 'complete' },
+    ]);
+    expect(harness.calls.signalHandlers.size).toBe(0);
+  });
 
   it('persists interrupted endpoint metadata when endpoint restoration also fails', async () => {
     const harness = deps({ bad: [resultWithVisualDiff('diff.png')] }, {
@@ -1346,20 +1389,33 @@ describe('frozen bisect test selection', () => {
   });
 });
 
-describe('experiment restoration', () => {
-  it('attempts an experiment reload after checkout restoration fails', async () => {
-    const events: string[] = [];
+describe('bisect decision log', () => {
+  let resultsDirectory: string;
 
-    await expect(restoreExperimentState({
-      async restoreCheckout() {
-        events.push('checkout');
-        throw new Error('checkout restore failed');
-      },
-      async reloadExperiment() {
-        events.push('refresh');
-      },
-    })).rejects.toThrow(/checkout restore/i);
+  beforeEach(() => {
+    resultsDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-bisect-decisions-'));
+  });
 
-    expect(events).toEqual(['checkout', 'refresh']);
+  afterEach(() => {
+    fs.rmSync(resultsDirectory, { recursive: true, force: true });
+  });
+
+  it('appends resumed-run decisions instead of truncating prior history', () => {
+    createFileBisectDecisionLogger(resultsDirectory).record({
+      timestamp: '2026-07-12T00:00:00.000Z',
+      event: 'session-start',
+      message: 'Initial run',
+    });
+    createFileBisectDecisionLogger(resultsDirectory).record({
+      timestamp: '2026-07-12T01:00:00.000Z',
+      event: 'session-start',
+      message: 'Resumed run',
+    });
+
+    const entries = fs.readFileSync(
+      path.join(resultsDirectory, 'decision-log.jsonl'),
+      'utf8',
+    ).trim().split('\n').map((line) => JSON.parse(line) as BisectDecisionLogEntry);
+    expect(entries.map(({ message }) => message)).toEqual(['Initial run', 'Resumed run']);
   });
 });
