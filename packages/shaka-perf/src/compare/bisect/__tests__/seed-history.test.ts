@@ -9,12 +9,16 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { applyCachedObservations, applyObservations, nextCandidate } from '../search';
+import {
+  candidatePlanForGroup,
+  createInitialTargetGroup,
+  partitionTargetGroup,
+} from '../search';
 import type {
   BisectCategory,
-  BisectSession,
   BisectTarget,
-  TargetObservation,
+  BisectTargetGroup,
+  TargetEvaluationAtCommit,
 } from '../types';
 
 const seedCommits = [
@@ -74,69 +78,56 @@ function target(
     viewport: 'desktop',
     subject,
     status: 'active',
-    goodIndex: 0,
-    badIndex: seedCommits.length - 1,
-    observations: {},
+    recordedTargetEvaluations: {},
   };
 }
 
-function observation(
+function evaluation(
   targetId: string,
   commitSha: string,
-  present: boolean,
-): TargetObservation {
+  regressionDetected: boolean,
+): TargetEvaluationAtCommit {
   return {
     targetId,
     commitSha,
-    present,
-    values: { fixture: true },
-    artifacts: [],
+    regressionDetected,
+    evidence: { fixture: true },
+    evidenceArtifacts: [],
   };
 }
 
-function seedSession(): BisectSession {
-  return {
-    version: 1,
-    status: 'running',
-    goodSha: seedCommits[0],
-    badSha: seedCommits.at(-1)!,
-    originalExperiment: { sha: seedCommits.at(-1)!, branch: 'codex/git-bisect-demo-history' },
-    selectedCategories: ['visreg', 'perf', 'accessibility'],
-    orderedCommits: seedCommits,
-    targets: [
-      target(
-        'homepage-hero-visual',
-        'visreg',
-        'demo-ecommerce/ab-tests/homepage.abtest.ts',
-        'Homepage',
-        '[data-cy="hero-section"]',
-      ),
-      target('homepage-tbt', 'perf', 'demo-ecommerce/ab-tests/homepage.abtest.ts', 'Homepage', 'TBT'),
-      target(
-        'homepage-button-name',
-        'accessibility',
-        'demo-ecommerce/ab-tests/homepage.abtest.ts',
-        'Homepage',
-        'button-name',
-      ),
-      target(
-        'product-detail-visual',
-        'visreg',
-        'demo-ecommerce/ab-tests/product-detail.abtest.ts',
-        'Product Detail',
-        'document',
-      ),
-      target(
-        'product-detail-tbt',
-        'perf',
-        'demo-ecommerce/ab-tests/product-detail.abtest.ts',
-        'Product Detail',
-        'TBT',
-      ),
-    ],
-    commitRuns: {},
-    startedAt: '2026-07-12T00:00:00.000Z',
-  };
+function seedTargets(): BisectTarget[] {
+  return [
+    target(
+      'homepage-hero-visual',
+      'visreg',
+      'demo-ecommerce/ab-tests/homepage.abtest.ts',
+      'Homepage',
+      '[data-cy="hero-section"]',
+    ),
+    target('homepage-tbt', 'perf', 'demo-ecommerce/ab-tests/homepage.abtest.ts', 'Homepage', 'TBT'),
+    target(
+      'homepage-button-name',
+      'accessibility',
+      'demo-ecommerce/ab-tests/homepage.abtest.ts',
+      'Homepage',
+      'button-name',
+    ),
+    target(
+      'product-detail-visual',
+      'visreg',
+      'demo-ecommerce/ab-tests/product-detail.abtest.ts',
+      'Product Detail',
+      'document',
+    ),
+    target(
+      'product-detail-tbt',
+      'perf',
+      'demo-ecommerce/ab-tests/product-detail.abtest.ts',
+      'Product Detail',
+      'TBT',
+    ),
+  ];
 }
 
 describe('demo ecommerce bisect seed history fixture', () => {
@@ -152,38 +143,55 @@ describe('demo ecommerce bisect seed history fixture', () => {
   });
 
   it('finds the documented first bad commit for every seeded regression target', () => {
-    let session = seedSession();
+    let targets = seedTargets();
+    const groups: BisectTargetGroup[] = [createInitialTargetGroup(
+      'seed-group-1',
+      seedCommits[0],
+      seedCommits.at(-1)!,
+      targets,
+    )];
+    let nextGroupId = 2;
 
-    while (true) {
-      const normalized = applyCachedObservations(session);
-      const work = nextCandidate(normalized);
-      if (!work) {
-        session = normalized;
-        break;
-      }
-      const candidateIndex = seedCommits.indexOf(work.sha);
-      const regressionsPresent = new Set(
-        seedCommits
-          .slice(0, candidateIndex + 1)
-          .flatMap(
-            (sha) => seedRegressionsByCommit[sha as keyof typeof seedRegressionsByCommit] ?? [],
-          ),
-      );
-      session = applyObservations(normalized, work.sha, new Map(
-        work.targetIds.map((targetId) => [
-          targetId,
-          observation(
+    while (groups.length > 0) {
+      let group = groups.shift()!;
+      while (seedCommits.indexOf(group.badSha) - seedCommits.indexOf(group.goodSha) > 1) {
+        const goodIndex = seedCommits.indexOf(group.goodSha);
+        const badIndex = seedCommits.indexOf(group.badSha);
+        const candidateIndex = Math.floor((goodIndex + badIndex) / 2);
+        const candidateSha = seedCommits[candidateIndex];
+        const work = candidatePlanForGroup(group, targets, candidateSha);
+        const regressionsPresent = new Set(
+          seedCommits
+            .slice(0, candidateIndex + 1)
+            .flatMap(
+              (sha) => seedRegressionsByCommit[sha as keyof typeof seedRegressionsByCommit] ?? [],
+            ),
+        );
+        const partition = partitionTargetGroup({
+          group,
+          targets,
+          sha: candidateSha,
+          evaluations: work.targetIds.map((targetId) => evaluation(
             targetId,
-            work.sha,
+            candidateSha,
             regressionsPresent.has(targetId as SeedTargetId),
-          ),
-        ]),
-      ));
+          )),
+          queuedGroupId: `seed-group-${nextGroupId++}`,
+        });
+        targets = partition.targets;
+        group = partition.continuingGroup;
+        groups.push(...partition.queuedGroups);
+      }
+
+      const completedTargetIds = new Set(group.targetIds);
+      targets = targets.map((item) => completedTargetIds.has(item.id)
+        ? { ...item, status: 'found', firstBadSha: group.badSha }
+        : item);
     }
 
     expect(Object.fromEntries(
-      session.targets.map((item) => [item.id, item.firstBadSha]),
+      targets.map((item) => [item.id, item.firstBadSha]),
     )).toEqual(expectedFirstBad);
-    expect(session.targets.every((item) => item.status === 'found')).toBe(true);
+    expect(targets.every((item) => item.status === 'found')).toBe(true);
   });
 });
