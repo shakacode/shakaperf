@@ -213,9 +213,7 @@ function buildMergeInvestigationReport(
 }
 
 function commitWasMeasured(commitRun: CommitRun | undefined): boolean {
-  if (!commitRun) return false;
-  if (commitRun.compareCompleted !== undefined) return commitRun.compareCompleted;
-  return commitRun.compareResultsPath !== undefined || commitRun.reusedResults === true;
+  return commitRun?.compareCompleted === true;
 }
 
 function countsFor(
