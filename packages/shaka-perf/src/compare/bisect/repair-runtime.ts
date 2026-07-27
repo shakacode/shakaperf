@@ -92,10 +92,24 @@ export class ConfiguredBisectRepairRuntime {
       for (const repair of repairs) {
         const application = applicationFor(evidence, repair.id);
         try {
-          await this.gitApply(repair, false, true);
-          await this.gitApply(repair, false, false);
+          let patchAlreadyPresent = false;
+          try {
+            await this.gitApply(repair, false, true);
+          } catch (forwardCheckError) {
+            try {
+              await this.gitApply(repair, true, true);
+              patchAlreadyPresent = true;
+            } catch {
+              throw forwardCheckError;
+            }
+          }
+          if (!patchAlreadyPresent) {
+            await this.gitApply(repair, false, false);
+            applied.push(repair);
+          } else {
+            application.reverse = 'succeeded';
+          }
           application.apply = 'succeeded';
-          applied.push(repair);
         } catch (error) {
           application.apply = 'failed';
           application.errors.push(errorMessage(error));

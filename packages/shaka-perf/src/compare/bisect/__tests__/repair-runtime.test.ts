@@ -151,6 +151,47 @@ describe('configured bisect repair runtime', () => {
     expect(git(['status', '--porcelain'])).toBe('');
   });
 
+  it('treats a patch already present in the candidate as satisfied', async () => {
+    fs.writeFileSync(path.join(repoDir, 'native-test.abtest.ts'), 'export default true;\n');
+    git(['add', '-N', 'native-test.abtest.ts']);
+    writePatch('native-test.patch');
+    git(['add', 'native-test.abtest.ts']);
+    git(['commit', '-m', 'candidate already contains repair']);
+    candidateSha = git(['rev-parse', 'HEAD']);
+
+    const commandRunner: BisectRepairCommandRunner = {
+      runRepairCommands: jest.fn(async () => undefined),
+    };
+    const runtime = runtimeWith([repair('native-test', 'native-test.patch', {
+      appliesToAll: true,
+      applicableShas: [],
+      prepareCommands: [{ description: 'Prepare', command: 'prepare' }],
+      cleanupCommands: [{ description: 'Cleanup', command: 'cleanup' }],
+    })], commandRunner);
+
+    const result = await runtime.withRepairs({
+      sha: candidateSha,
+      evaluationId: 'native-candidate',
+      run: async ({ prepare }) => {
+        expect(fs.readFileSync(path.join(repoDir, 'native-test.abtest.ts'), 'utf8'))
+          .toBe('export default true;\n');
+        await prepare();
+        return true;
+      },
+    });
+
+    expect(result.evidence.applications).toEqual([
+      expect.objectContaining({
+        repairId: 'native-test', apply: 'succeeded', prepare: 'succeeded',
+        cleanup: 'succeeded', reverse: 'succeeded',
+      }),
+    ]);
+    expect(commandRunner.runRepairCommands).toHaveBeenCalledTimes(2);
+    expect(fs.readFileSync(path.join(repoDir, 'native-test.abtest.ts'), 'utf8'))
+      .toBe('export default true;\n');
+    expect(git(['status', '--porcelain'])).toBe('');
+  });
+
   it('rolls back earlier patches when a later patch cannot apply', async () => {
     fs.writeFileSync(path.join(repoDir, 'app.txt'), 'value=1\n');
     writePatch('valid.patch');
