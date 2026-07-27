@@ -48,6 +48,7 @@ export type {
   ResembleOutputOptionsInput,
   TwinServersConfigInput,
   PerTestConfig,
+  CopyIgnoreConfigInput,
 } from './define-config';
 export { waitUntilPageSettled } from './page-helpers/waitUntilPageSettled';
 export type { WaitUntilPageSettledOptions } from './page-helpers/waitUntilPageSettled';
