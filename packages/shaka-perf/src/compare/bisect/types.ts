@@ -7,6 +7,27 @@
 
 export type BisectCategory = 'visreg' | 'perf' | 'accessibility';
 
+export type BisectRepairKind = 'test-harness' | 'build' | 'data' | 'other';
+
+export interface BisectRepairCommand {
+  description: string;
+  command: string;
+}
+
+export interface BisectRepair {
+  id: string;
+  kind: BisectRepairKind;
+  purpose: string;
+  filename: string;
+  sha256: string;
+  order: number;
+  applicableShas: string[];
+  prepareCommands: BisectRepairCommand[];
+  cleanupCommands: BisectRepairCommand[];
+  registeredAt: string;
+  source: 'config';
+}
+
 export type TargetStatus = 'active' | 'found' | 'invalid';
 
 export interface BisectTestSelection {
@@ -88,6 +109,7 @@ export interface BisectSession {
   originalExperiment: { sha: string; branch: string | null };
   control: { sha: string; branch: string | null };
   rebuildStrategy: PersistedRebuildStrategy;
+  repairs: BisectRepair[];
   reportInput: { filename: string; sha256: string };
   primary: BisectSearchPhase;
   mergeQueue: string[];
@@ -149,12 +171,14 @@ export interface BisectCompatibility {
   categoriesFingerprint: string;
   testsFingerprint: string;
   rebuildFingerprint: string;
+  repairsFingerprint: string;
   rangeFingerprint: string;
   effective: {
     config: unknown;
     categories: BisectCategory[];
     tests: BisectTestSelection[];
     rebuildStrategy: PersistedRebuildStrategy;
+    repairs: BisectRepair[];
     range: { goodSha: string; badSha: string };
   };
 }

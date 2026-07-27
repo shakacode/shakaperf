@@ -13,6 +13,7 @@ import type { TestResult } from '../../pipeline/report';
 import type {
   BisectCategory,
   BisectCompatibility,
+  BisectRepair,
   BisectSession,
   BisectTestSelection,
   PersistedRebuildStrategy,
@@ -96,17 +97,38 @@ const rebuildStrategySchema = z.object({
   commands: z.array(z.string()),
 }).strict();
 
+const repairCommandSchema = z.object({
+  description: z.string(),
+  command: z.string(),
+}).strict();
+
+const repairSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['test-harness', 'build', 'data', 'other']),
+  purpose: z.string(),
+  filename: z.string(),
+  sha256: z.string(),
+  order: z.number().int().nonnegative(),
+  applicableShas: z.array(z.string()),
+  prepareCommands: z.array(repairCommandSchema),
+  cleanupCommands: z.array(repairCommandSchema),
+  registeredAt: z.string(),
+  source: z.literal('config'),
+}).strict();
+
 const compatibilitySchema = z.object({
   configFingerprint: z.string(),
   categoriesFingerprint: z.string(),
   testsFingerprint: z.string(),
   rebuildFingerprint: z.string(),
+  repairsFingerprint: z.string(),
   rangeFingerprint: z.string(),
   effective: z.object({
     config: z.unknown(),
     categories: z.array(z.enum(['visreg', 'perf', 'accessibility'])),
     tests: z.array(testSelectionSchema),
     rebuildStrategy: rebuildStrategySchema,
+    repairs: z.array(repairSchema),
     range: z.object({ goodSha: z.string(), badSha: z.string() }).strict(),
   }).strict(),
 }).strict();
@@ -160,6 +182,7 @@ const sessionSchema = z.object({
   originalExperiment: z.object({ sha: z.string(), branch: z.string().nullable() }).strict(),
   control: z.object({ sha: z.string(), branch: z.string().nullable() }).strict(),
   rebuildStrategy: rebuildStrategySchema,
+  repairs: z.array(repairSchema),
   reportInput: z.object({ filename: z.string(), sha256: z.string() }).strict(),
   primary: phaseSchema,
   mergeQueue: z.array(z.string()),
@@ -195,6 +218,7 @@ export interface BuildCompatibilityInput {
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   rebuildStrategy: PersistedRebuildStrategy;
+  repairs: readonly BisectRepair[];
   range: { goodSha: string; badSha: string };
 }
 
@@ -208,6 +232,7 @@ export function buildCompatibility(input: BuildCompatibilityInput): BisectCompat
     categories,
     tests,
     rebuildStrategy: input.rebuildStrategy,
+    repairs: [...input.repairs],
     range: input.range,
   };
   return {
@@ -215,6 +240,7 @@ export function buildCompatibility(input: BuildCompatibilityInput): BisectCompat
     categoriesFingerprint: fingerprint(categories),
     testsFingerprint: fingerprint(tests),
     rebuildFingerprint: fingerprint(input.rebuildStrategy),
+    repairsFingerprint: fingerprint(input.repairs),
     rangeFingerprint: fingerprint(input.range),
     effective,
   };
@@ -228,6 +254,7 @@ const compatibilityFields: Array<{
   { key: 'categoriesFingerprint', message: 'selected categories changed' },
   { key: 'testsFingerprint', message: 'frozen AB tests changed' },
   { key: 'rebuildFingerprint', message: 'rebuild strategy changed' },
+  { key: 'repairsFingerprint', message: 'configured repairs changed' },
   { key: 'rangeFingerprint', message: 'resolved Git range changed' },
 ];
 

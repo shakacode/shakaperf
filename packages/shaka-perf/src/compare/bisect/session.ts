@@ -103,6 +103,12 @@ import {
   prepareResume,
   readBisectSession,
 } from './state';
+import {
+  prepareConfiguredRepairs,
+  verifyPersistedRepairArtifacts,
+  type PreparedBisectRepairArtifact,
+} from './repair-artifacts';
+import type { BisectRepair } from './types';
 
 type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
@@ -151,6 +157,8 @@ export interface ExecuteBisectInput {
   resumeSession?: BisectSession;
   resumeBadRefTests?: readonly TestResult[];
   investigateMerges?: boolean;
+  repairs?: readonly BisectRepair[];
+  preparedRepairArtifacts?: readonly PreparedBisectRepairArtifact[];
 }
 
 export interface RunBisectOptions {
@@ -171,6 +179,7 @@ export interface RunBisectOptions {
   resume?: boolean;
   investigateMerges?: boolean;
   compatibilityConfig?: unknown;
+  configDirectory?: string;
   gitRange?: PreparedGitRange;
   dependencies?: ExecuteBisectDependencies;
 }
@@ -246,6 +255,7 @@ export async function runCompareBisectFromCli(
           experimentURL: cliOptions.experimentURL ?? config.shared.experimentURL,
         },
       },
+      configDirectory: path.dirname(configPath),
     });
     printBisectSummary(session, path.resolve(cwd, 'compare-bisect-results'), {
       dryRun: cliOptions.dryRun === true,
@@ -284,6 +294,22 @@ async function prepareBisectExecution(
       allowedPaths: [resultsDirectory],
     });
   const rebuildStrategy = persistedRebuildStrategy(options.config);
+  const preparedRepairs = preliminaryResume
+    ? {
+      repairs: preliminaryResume.repairs,
+      artifacts: [] as PreparedBisectRepairArtifact[],
+    }
+    : await prepareConfiguredRepairs({
+      repairs: options.config.bisect.repairs ?? [],
+      configDirectory: options.configDirectory ?? options.cwd,
+      experimentDir: options.twinServers.experimentDir,
+      range: gitRange,
+      registeredAt: new Date().toISOString(),
+      rebuildContainer: options.config.bisect.rebuildContainer,
+    });
+  if (preliminaryResume) {
+    verifyPersistedRepairArtifacts(resultsDirectory, preliminaryResume.repairs);
+  }
   const controlURL = options.controlURL ?? options.config.shared.controlURL;
   const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
   const compatibility = buildCompatibility({
@@ -292,6 +318,7 @@ async function prepareBisectExecution(
     categories: selectedCategories,
     tests: frozenTestSelections(options.frozenTests, options.cwd),
     rebuildStrategy,
+    repairs: preparedRepairs.repairs,
     range: { goodSha: gitRange.goodSha, badSha: gitRange.badSha },
   });
   const resumed = prepareCompatibleResume({
@@ -322,6 +349,8 @@ async function prepareBisectExecution(
     resumeSession: resumed?.session,
     resumeBadRefTests: resumed?.badRefTests,
     investigateMerges: options.investigateMerges === true,
+    repairs: preparedRepairs.repairs,
+    preparedRepairArtifacts: preparedRepairs.artifacts,
   };
   const dependencies = options.dependencies ?? createDefaultBisectDependencies({
     cwd: options.cwd,
@@ -419,7 +448,10 @@ class CompareBisectOrchestrator {
     readonly deps: ExecuteBisectDependencies,
   ) {
     fs.mkdirSync(input.resultsDirectory, { recursive: true });
-    if (!input.resumeSession) deps.artifacts.clearPrevious();
+    if (!input.resumeSession) {
+      deps.artifacts.clearPrevious();
+      deps.artifacts.writeRepairArtifacts(input.preparedRepairArtifacts ?? []);
+    }
     const initial = input.resumeSession
       ? resumedSession(input.resumeSession)
       : initialSession(input, deps.clock.now());
@@ -1119,6 +1151,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     categories: input.selectedCategories,
     tests: frozenTestSelections(input.frozenTests, input.cwd),
     rebuildStrategy,
+    repairs: [...(input.repairs ?? [])],
     range: { goodSha: input.gitRange.goodSha, badSha: input.gitRange.badSha },
   });
   return {
@@ -1128,6 +1161,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     compatibility,
     control: input.repositorySnapshot?.control ?? { branch: null, sha: input.gitRange.goodSha },
     rebuildStrategy,
+    repairs: [...(input.repairs ?? [])],
     reportInput: { filename: 'bad-ref-tests.json', sha256: '' },
     primary: {
       id: 'primary',

@@ -278,7 +278,7 @@ async function requireClean(
   if (dirtyLines.length > 0) throw new Error(`${label} checkout must be clean before bisecting`);
 }
 
-async function resolveCommit(repoDir: string, ref: string): Promise<string> {
+export async function resolveCommit(repoDir: string, ref: string): Promise<string> {
   return git(repoDir, ['rev-parse', '--verify', `${ref}^{commit}`]);
 }
 

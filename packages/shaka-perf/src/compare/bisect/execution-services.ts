@@ -41,6 +41,10 @@ import {
 import { filterFrozenTests } from './test-selection';
 import { writeBadRefTestsAtomic } from './state';
 import type { BisectCategory, BisectSession } from './types';
+import {
+  writePreparedRepairArtifacts,
+  type PreparedBisectRepairArtifact,
+} from './repair-artifacts';
 
 export interface ReuseCurrentResultsRequest {
   sha: string;
@@ -69,6 +73,7 @@ export interface BisectServerSession extends BisectCandidateServer {
 
 export interface BisectArtifactStore {
   clearPrevious(): void;
+  writeRepairArtifacts(artifacts: readonly PreparedBisectRepairArtifact[]): void;
   writeSession(session: BisectSession): void;
   writeReport(session: BisectSession, badRefTests: readonly TestResult[]): void;
   writeSummary(session: BisectSession, metadata?: BisectSummaryMetadata): void;
@@ -209,6 +214,10 @@ class FileBisectArtifactStore implements BisectArtifactStore {
     fs.rmSync(path.join(this.options.resultsDirectory, 'decision-log.jsonl'), { force: true });
     fs.rmSync(path.join(this.options.resultsDirectory, 'decision-log.md'), { force: true });
     clearPriorBisectReportOutput(this.options.resultsDirectory);
+  }
+
+  writeRepairArtifacts(artifacts: readonly PreparedBisectRepairArtifact[]): void {
+    writePreparedRepairArtifacts(this.options.resultsDirectory, artifacts);
   }
 
   writeSession(session: BisectSession): void {

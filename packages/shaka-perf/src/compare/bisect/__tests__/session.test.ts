@@ -405,6 +405,7 @@ function deps(
         clearPrevious() {
           options.clearPriorReportOutput?.();
         },
+        writeRepairArtifacts() {},
         writeSession(session) {
           const snapshot = JSON.parse(JSON.stringify(session)) as BisectSession;
           calls.sessionAttempts.push(snapshot);

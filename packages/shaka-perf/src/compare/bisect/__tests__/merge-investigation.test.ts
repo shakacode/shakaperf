@@ -49,16 +49,19 @@ function session(parents: string[], targets = [target('one')]): BisectSession {
     },
     compatibility: {
       configFingerprint: 'config', categoriesFingerprint: 'categories',
-      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild', rangeFingerprint: 'range',
+      testsFingerprint: 'tests', rebuildFingerprint: 'rebuild',
+      repairsFingerprint: 'repairs', rangeFingerprint: 'range',
       effective: {
         config: {}, categories: ['visreg'], tests: [],
         rebuildStrategy: { mode: 'commands', commands: [] },
+        repairs: [],
         range: { goodSha: 'good', badSha: 'merge' },
       },
     },
     originalExperiment: { branch: 'main', sha: 'merge' },
     control: { branch: null, sha: 'good' },
     rebuildStrategy: { mode: 'commands', commands: [] },
+    repairs: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitRuns: {},
     primary: {

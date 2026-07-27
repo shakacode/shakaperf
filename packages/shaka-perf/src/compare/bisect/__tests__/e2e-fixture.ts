@@ -268,6 +268,15 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
         clearPrevious() {
           fs.rmSync(path.join(fixture.resultsDirectory, 'summary.json'), { force: true });
         },
+        writeRepairArtifacts(artifacts) {
+          const patchesDirectory = path.join(fixture.resultsDirectory, 'patches');
+          fs.rmSync(patchesDirectory, { recursive: true, force: true });
+          for (const artifact of artifacts) {
+            const destination = path.join(fixture.resultsDirectory, artifact.filename);
+            fs.mkdirSync(path.dirname(destination), { recursive: true });
+            fs.writeFileSync(destination, artifact.contents);
+          }
+        },
         writeSession(session) {
           writeSessionAtomic(path.join(fixture.resultsDirectory, 'session.json'), session);
         },
