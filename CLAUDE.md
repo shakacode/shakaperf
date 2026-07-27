@@ -63,12 +63,14 @@ SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url 
 
 `SHAKAPERF_REAL_CHROME_HEADLESS=1` takes precedence if it is combined with
 `--headed` across the real-Chrome audit browsers. Lighthouse and Playwright
-select desktop or mobile identities from the measured viewport; Playwright
-matches the user-agent major to the installed Chrome version and Lighthouse
-normalizes its emulated identity to the host browser. After each Playwright
-navigation the engine polls up to ~25s for the challenge to clear. Both paths
-require `google-chrome` and are opt-in: **never set
-`SHAKAPERF_REAL_CHROME` in CI** - the default bundled Chromium is what CI uses.
+select desktop or mobile identities from the measured viewport. Playwright
+applies a viewport-matched identity to mobile contexts and non-mobile headless
+contexts; a headed non-mobile context keeps Chrome's native identity.
+Lighthouse normalizes its emulated identity to the host browser. After each
+Playwright navigation the engine polls up to ~25s for the challenge to clear.
+Both paths require `google-chrome` and are opt-in: **never set
+`SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
+configuration.
 
 ## Code Conventions
 

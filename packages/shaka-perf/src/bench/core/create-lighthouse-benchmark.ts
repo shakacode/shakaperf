@@ -42,12 +42,15 @@ export function lighthouseWorkerEnvironment(
 export function warnIfRealChromeHeadlessOverridesHeaded(
   options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome'>,
 ): void {
-  if (options.headed && options.realChrome?.headless) {
+  if (options.headed && options.realChrome?.headless && !realChromeHeadlessWarningEmitted) {
+    realChromeHeadlessWarningEmitted = true;
     console.warn(
       'SHAKAPERF_REAL_CHROME_HEADLESS=1 overrides --headed for the audit browsers',
     );
   }
 }
+
+let realChromeHeadlessWarningEmitted = false;
 
 interface ResultMessage {
   type: 'result';
@@ -294,6 +297,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     sampleState,
+    workerReuseKey: options.realChrome ? options.viewport.formFactor : undefined,
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
       warnIfRealChromeHeadlessOverridesHeaded(options);

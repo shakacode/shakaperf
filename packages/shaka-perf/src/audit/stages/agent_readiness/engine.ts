@@ -36,6 +36,7 @@ const RAW_FETCH_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const RAW_HTML_MAX_BYTES = 3 * 1024 * 1024;
 const RAW_FETCH_MAX_REDIRECT_HOPS = 5;
+const nativeUserAgentByBrowser = new WeakMap<Browser, Promise<string | undefined>>();
 
 async function disposeAgentReadinessBrowser(state: Record<string, unknown>): Promise<void> {
   const slot = state as AgentReadinessSlotState;
@@ -149,6 +150,44 @@ export async function fetchRawHtml(
   }
 }
 
+export function rawFetchUserAgentFor(
+  formFactor: string,
+  browserVersion?: string,
+  nativeUserAgent?: string,
+): string {
+  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return RAW_FETCH_UA;
+  if (
+    formFactor !== 'mobile'
+    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
+    && nativeUserAgent
+  ) {
+    return nativeUserAgent;
+  }
+  return matchRealChromeUserAgentVersion(
+    realChromeUserAgentForFormFactor(formFactor),
+    browserVersion,
+  );
+}
+
+function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
+  const existing = nativeUserAgentByBrowser.get(browser);
+  if (existing) return existing;
+  const lookup = (async () => {
+    let context: BrowserContext | undefined;
+    try {
+      context = await browser.newContext();
+      const page = await context.newPage();
+      return await page.evaluate(() => navigator.userAgent);
+    } catch {
+      return undefined;
+    } finally {
+      await context?.close().catch(() => {});
+    }
+  })();
+  nativeUserAgentByBrowser.set(browser, lookup);
+  return lookup;
+}
+
 async function readRenderedSignals(
   ctx: TestContext,
   browser: Browser,
@@ -224,12 +263,18 @@ async function scanAgentReadiness(
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
   const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
-  const rawFetchUserAgent = process.env.SHAKAPERF_REAL_CHROME === '1'
-    ? matchRealChromeUserAgentVersion(
-      realChromeUserAgentForFormFactor(ctx.viewport.formFactor),
-      browser.version?.(),
-    )
-    : RAW_FETCH_UA;
+  const needsNativeUserAgent =
+    process.env.SHAKAPERF_REAL_CHROME === '1'
+    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
+    && ctx.viewport.formFactor !== 'mobile';
+  const nativeUserAgent = needsNativeUserAgent
+    ? await nativeBrowserUserAgent(browser)
+    : undefined;
+  const rawFetchUserAgent = rawFetchUserAgentFor(
+    ctx.viewport.formFactor,
+    browser.version?.(),
+    nativeUserAgent,
+  );
 
   // Raw fetch + rendered render run together - they are independent.
   const [rawFetch, renderedOut] = await Promise.all([

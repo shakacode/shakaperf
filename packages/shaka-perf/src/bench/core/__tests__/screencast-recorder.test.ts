@@ -53,6 +53,39 @@ describe('screencastRecorder', () => {
     expect(session.on).not.toHaveBeenCalled();
   });
 
+  it('ignores an armed navigation without a Lighthouse session', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    screencastRecorder.record(true);
+    await screencastRecorder.onNavigate();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('reports a save failure through the public recorder without throwing', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const session = {
+      sendCommand: jest.fn(async () => {}),
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    screencastRecorder.record(true);
+    await screencastRecorder.onNavigate(session);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'not-a-jpeg',
+      sessionId: 1,
+      metadata: { timestamp: Date.now() / 1000 },
+    });
+    await screencastRecorder.stop();
+
+    await expect(screencastRecorder.save('/unused', 'broken-frame')).resolves.toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      '[shaka-perf screencast] save failed for broken-frame: Input buffer contains unsupported image format',
+    );
+  });
+
   it('retries the main-frame subscription while a swapped renderer attaches', async () => {
     jest.useFakeTimers();
     const handlers = new Map<string, (...args: unknown[]) => void>();

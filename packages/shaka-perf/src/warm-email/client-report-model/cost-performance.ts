@@ -47,7 +47,7 @@ interface PerfGapSpec {
   metricLabel: string;
   line: { good: number; poor: number };
   value: (metrics: PerfGapMetrics) => number | undefined;
-  scalePolicy?: BenchmarkScalePolicy;
+  scalePolicy: BenchmarkScalePolicy;
   lineOwner: string;
   lineUrl: string;
   label: (value: number) => string;
@@ -112,7 +112,7 @@ export function perfGap(kind: PerfGapKind, metrics: PerfGapMetrics): CostGap | u
     zone: benchmarkZone(value, spec.line),
     lineOwner: spec.lineOwner,
     lineUrl: spec.lineUrl,
-    ...(spec.scalePolicy ? { scaleAxis: { unit: spec.scalePolicy.unit, precision: spec.scalePolicy.precision } } : {}),
+    scaleAxis: { unit: spec.scalePolicy.unit, precision: spec.scalePolicy.precision },
   };
 }
 
@@ -123,7 +123,7 @@ function perfGapScale(
 ) {
   const spec = PERF_GAP_SPECS[kind];
   const value = spec.value(metrics);
-  return gap && value !== undefined && spec.scalePolicy
+  return gap && value !== undefined
     ? benchmarkScaleGeometry(value, spec.line, spec.scalePolicy)
     : undefined;
 }

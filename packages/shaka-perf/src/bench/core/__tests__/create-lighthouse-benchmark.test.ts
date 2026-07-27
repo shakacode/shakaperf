@@ -8,10 +8,13 @@
  */
 
 import type { LighthouseBenchmarkOptions } from '../lighthouse-config';
-import {
+import createLighthouseBenchmark, {
   lighthouseWorkerEnvironment,
   warnIfRealChromeHeadlessOverridesHeaded,
 } from '../create-lighthouse-benchmark';
+import {
+  lighthouseSamplerReuseKey,
+} from '../lighthouse-sampling-worker-pool';
 
 const desktopViewport = {
   formFactor: 'desktop',
@@ -36,6 +39,27 @@ describe('lighthouseWorkerEnvironment', () => {
     });
   });
 
+  it('binds real-Chrome sampler reuse to the viewport form factor', () => {
+    const benchmark = createLighthouseBenchmark(
+      'experiment',
+      { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
+      {
+        viewport: desktopViewport,
+        lhConfig: {},
+        targetUrl: 'https://example.com',
+        realChrome: { headless: true },
+      },
+    );
+    const desktopKey = lighthouseSamplerReuseKey([benchmark]);
+    const mobileKey = lighthouseSamplerReuseKey([{
+      ...benchmark,
+      workerReuseKey: 'mobile',
+    }]);
+
+    expect(benchmark.workerReuseKey).toBe('desktop');
+    expect(desktopKey).not.toBe(mobileKey);
+  });
+
   it('does not enable audit real-Chrome mode from ambient state', () => {
     expect(lighthouseWorkerEnvironment({
       headed: true,
@@ -55,9 +79,14 @@ describe('warnIfRealChromeHeadlessOverridesHeaded', () => {
       headed: true,
       realChrome: { headless: true },
     });
+    warnIfRealChromeHeadlessOverridesHeaded({
+      headed: true,
+      realChrome: { headless: true },
+    });
 
     expect(warn).toHaveBeenCalledWith(
       'SHAKAPERF_REAL_CHROME_HEADLESS=1 overrides --headed for the audit browsers',
     );
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });

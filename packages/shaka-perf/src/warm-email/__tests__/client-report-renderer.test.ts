@@ -2320,6 +2320,33 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('<div style="display:flex; justify-content:space-between; margin-top:8px; font-family:\'JetBrains Mono\',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>4.0s</span></div>');
   });
 
+  it('omits a scale whose model has no axis metadata', () => {
+    const perfPanelHtml = renderedPanel(renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        gap: {
+          metricLabel: 'First content',
+          measuredLabel: '3.0s',
+          goodLabel: '1.8s',
+          poorLabel: '3.0s',
+          zone: 'poor',
+          lineOwner: 'Google',
+          lineUrl: 'https://example.com/benchmark',
+        },
+        scale: {
+          axisMaxDisplay: 4,
+          zones: { green: 45, amber: 30, red: 25 },
+          goodLinePercent: 45,
+          poorLinePercent: 75,
+          markerPercent: 75,
+        },
+      },
+    })), 'perf');
+
+    expect(perfPanelHtml).not.toContain('data-benchmark-scale');
+  });
+
   it('renders the FCP scale selected through the branch-3 fallback', () => {
     const slowLcp: PerfCostPage = {
       page: {

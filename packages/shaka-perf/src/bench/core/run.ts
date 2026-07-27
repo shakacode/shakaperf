@@ -13,6 +13,10 @@ import type { Group } from '../../pipeline/log-prefix-format';
 export interface Benchmark<TSample> {
   readonly group: Group;
   readonly sampleState: unknown;
+  /**
+   * Identity of launch-time settings that require a distinct reusable sampler.
+   */
+  readonly workerReuseKey?: string;
   setup(
     raceCancellation: RaceCancellation,
     barrierSynchronizationFd: number,

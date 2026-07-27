@@ -23,6 +23,12 @@ describe('matchRealChromeUserAgentVersion', () => {
       ).toBe(REAL_CHROME_DESKTOP_USER_AGENT);
     },
   );
+
+  it('replaces the Chrome major for a valid dotted browser version', () => {
+    expect(
+      matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, '150.0.0.0'),
+    ).toContain('Chrome/150.0.0.0');
+  });
 });
 
 describe('realChromeContextOptions', () => {
