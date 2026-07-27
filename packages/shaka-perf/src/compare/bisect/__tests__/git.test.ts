@@ -432,8 +432,8 @@ describe('bisect Git helpers', () => {
     };
 
     const started = await driver.start(group);
-    await expect(driver.assertAtCandidate(started.candidateSha!)).resolves.toBeUndefined();
-    await expect(driver.assertAtCandidate(fixture.commits[1]))
+    await expect(driver.assertAt(started.candidateSha!)).resolves.toBeUndefined();
+    await expect(driver.assertAt(fixture.commits[1]))
       .rejects.toThrow(/native git bisect selected .* expected/i);
 
     await driver.reset();

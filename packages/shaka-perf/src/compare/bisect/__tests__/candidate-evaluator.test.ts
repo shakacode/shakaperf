@@ -43,7 +43,7 @@ function evaluator(options: {
   const events: string[] = [];
   const value = new CandidateEvaluator(
     {
-      async assertAtCandidate(expectedSha) {
+      async assertAt(expectedSha) {
         events.push(`verify:${expectedSha}`);
         if ((options.actualSha ?? expectedSha) !== expectedSha) {
           throw new Error(`wrong candidate ${options.actualSha}`);
