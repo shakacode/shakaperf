@@ -6,13 +6,14 @@
  */
 
 import { execSync_ } from './shell';
-import { isCopyIgnored, loadCopyIgnore } from './copy-ignore';
+import type { CopyIgnoreConfig } from '../types';
+import { createCopyIgnoreMatcher, isCopyIgnored } from './copy-ignore';
 
 /**
  * Gets all git-changed files (staged, unstaged, and untracked)
  * Equivalent to: git diff --name-only; git diff --cached --name-only; git ls-files --others --exclude-standard
  */
-export function getChangedFiles(cwd: string): string[] {
+export function getChangedFiles(cwd: string, copyIgnoreConfig: CopyIgnoreConfig): string[] {
   const diffFiles = execSync_('git diff --name-only', { cwd, silent: true });
   const stagedFiles = execSync_('git diff --cached --name-only', { cwd, silent: true });
   const untrackedFiles = execSync_('git ls-files --others --exclude-standard', { cwd, silent: true });
@@ -28,7 +29,7 @@ export function getChangedFiles(cwd: string): string[] {
     untrackedFiles.split('\n').filter(Boolean).forEach(file => allFiles.add(file));
   }
 
-  const copyIgnore = loadCopyIgnore(cwd);
+  const copyIgnore = createCopyIgnoreMatcher(copyIgnoreConfig);
   return Array.from(allFiles).filter((file) => !isCopyIgnored(copyIgnore, file));
 }
 
