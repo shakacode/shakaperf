@@ -5,6 +5,9 @@
  * License in LICENSE.md.
  */
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { getChangedFiles, getGitRootDirectory } from '../helpers/git';
 import * as shell from '../helpers/shell';
 
@@ -85,6 +88,43 @@ describe('getChangedFiles', () => {
       'git ls-files --others --exclude-standard',
       { cwd: '/my/repo', silent: true }
     );
+  });
+
+  it('filters packaged default host-only result directories', () => {
+    const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-copy-ignore-'));
+    mockExecSync
+      .mockReturnValueOnce([
+        'src/app.ts',
+        'compare-results/report.json',
+        'packages/app/compare-bisect-results/session.json',
+      ].join('\n'))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('');
+
+    try {
+      expect(getChangedFiles(repositoryRoot)).toEqual(['src/app.ts']);
+    } finally {
+      fs.rmSync(repositoryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('extends packaged defaults with the repository copy-ignore list', () => {
+    const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-copy-ignore-'));
+    fs.writeFileSync(path.join(repositoryRoot, '.shaka-perf-copyignore'), 'local-artifacts/\n');
+    mockExecSync
+      .mockReturnValueOnce([
+        'src/app.ts',
+        'compare-results/report.json',
+        'local-artifacts/trace.json',
+      ].join('\n'))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce('');
+
+    try {
+      expect(getChangedFiles(repositoryRoot)).toEqual(['src/app.ts']);
+    } finally {
+      fs.rmSync(repositoryRoot, { recursive: true, force: true });
+    }
   });
 });
 
