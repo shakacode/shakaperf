@@ -63,7 +63,8 @@ let root: string;
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'visreg-attempts-'));
-  jest.mocked(captureFailureScreenshot).mockClear();
+  jest.mocked(captureFailureScreenshot).mockReset();
+  jest.mocked(captureFailureScreenshot).mockResolvedValue(undefined);
   jest.mocked(failureScreenshotPath).mockReset();
   jest.mocked(failureScreenshotPath).mockImplementation((_config, _scenario, _viewport, isControl) =>
     `/tmp/failure-${isControl ? 'control' : 'experiment'}.png`);
@@ -260,6 +261,38 @@ it('captures only the side whose preparePage throws', async () => {
   expect(captureFailureScreenshot).not.toHaveBeenCalledWith(pages.control, expect.any(String));
 });
 
+it('waits for the sibling preparation to settle before disposing either side', async () => {
+  const controlError = new Error('control prepare failed');
+  const { deps, preparePage, pages, counts } = makeDeps(() => png(BLUE));
+  let releaseExperiment!: () => void;
+  const experimentFinished = new Promise<PreparePageResult>((resolve) => {
+    releaseExperiment = () => resolve(preparedPage());
+  });
+  let markControlCaptured!: () => void;
+  const controlCaptured = new Promise<void>((resolve) => {
+    markControlCaptured = resolve;
+  });
+  jest.mocked(captureFailureScreenshot).mockImplementation(async (page) => {
+    if (page === pages.control) markControlCaptured();
+  });
+  preparePage.mockImplementation(async (page) => {
+    if (page === pages.control) throw controlError;
+    return experimentFinished;
+  });
+
+  const result = run(deps, makeConfig());
+  await controlCaptured;
+
+  expect(counts().disposed).toBe(0);
+  releaseExperiment();
+  await expect(result).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    side: 'control',
+    cause: controlError,
+  });
+  expect(counts().disposed).toBe(2);
+});
+
 it('does not let a throwing failureScreenshotPath mask the original prepare error', async () => {
   const prepareError = new Error('original prepare error');
   jest.mocked(failureScreenshotPath).mockImplementation(() => {
@@ -329,6 +362,23 @@ it('captures the side whose screenshot capture rejects and attaches the failure 
 
   expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
   expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
+});
+
+it('attributes a selector missing on both pages to experiment only', async () => {
+  const { deps, pages } = makeDeps(() => null);
+
+  await expect(run(deps, makeConfig())).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    message: expect.stringContaining('reference and test pages'),
+    side: 'experiment',
+    screenshotPath: '/tmp/failure-experiment.png',
+  });
+
+  expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
+  expect(captureFailureScreenshot).toHaveBeenCalledWith(
+    pages.experiment,
+    '/tmp/failure-experiment.png',
+  );
 });
 
 it('attributes side creation failures without borrowing the live control page', async () => {

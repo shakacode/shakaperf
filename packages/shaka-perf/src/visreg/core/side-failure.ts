@@ -14,11 +14,14 @@ export class VisregSideFailure extends Error {
   readonly screenshotPath?: string;
 
   constructor(side: VisregSide, cause: unknown, screenshotPath?: string) {
-    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    const message = cause instanceof Error ? cause.message : String(cause);
+    super(message, { cause });
     this.name = 'VisregSideFailure';
     this.side = side;
     this.screenshotPath = screenshotPath;
-    if (cause instanceof Error && cause.stack) this.stack = cause.stack;
+    if (cause instanceof Error && cause.stack) {
+      this.stack = `${this.name}: ${message.split('\n', 1)[0]}\nCaused by: ${cause.stack}`;
+    }
   }
 }
 
