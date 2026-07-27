@@ -19,7 +19,7 @@ import {
 } from '../pipeline';
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
-import { parseAbTestsConfig } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
 
@@ -150,7 +150,7 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -210,7 +210,7 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,

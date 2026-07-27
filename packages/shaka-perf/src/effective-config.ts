@@ -11,7 +11,7 @@ import path from 'node:path';
 import mergeWith from 'lodash/mergeWith.js';
 import type { AbTestDefinition } from 'shaka-shared';
 import { findAbTestsConfig, loadAbTestsConfig } from './config-loader';
-import { parseAbTestsConfig, type AbTestsConfig } from './config';
+import { buildAbTestsConfig, type AbTestsConfig } from './config';
 
 const LOG_PREFIX = '[abtestsConfig]';
 export const ABTESTS_CONFIG_PATH_ENV = 'SHAKA_PERF_ABTESTS_CONFIG_PATH';
@@ -31,13 +31,15 @@ export function applyPerTestConfigOverrides(
 ): AbTestsConfig {
   const perTest = test?.config;
   if (!perTest) return fileConfig;
-  return mergeWith(
+
+  const merged = mergeWith(
     {},
     fileConfig,
     perTest,
     (_fileValue: unknown, perTestValue: unknown) =>
       Array.isArray(perTestValue) ? perTestValue : undefined,
-  ) as AbTestsConfig;
+  );
+  return buildAbTestsConfig(merged, `abTest(${JSON.stringify(test.name)})`);
 }
 
 // In-process consumers use the runner-built `ctx.config`. This module serves the
@@ -93,7 +95,7 @@ function resolveGlobalConfigPath(): string {
 }
 
 async function parseFileConfig(configPath: string): Promise<AbTestsConfig> {
-  return parseAbTestsConfig(await loadAbTestsConfig(configPath));
+  return buildAbTestsConfig(await loadAbTestsConfig(configPath));
 }
 
 export async function withAbTestsConfigPath<T>(

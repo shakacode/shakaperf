@@ -10,10 +10,10 @@
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Command, Option } from 'commander';
+import { Command } from 'commander';
 import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
-import { parseAbTestsConfig, resolvePlaywrightOptions } from '../config';
+import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
@@ -41,10 +41,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
-    .addOption(new Option(
-      '--resume-from-stage <stage>',
-      'Deprecated alias for --restart-from-stage',
-    ).hideHelp())
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--url <url>', 'Application URL to audit', options.urlDefault)
     .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
@@ -70,7 +66,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
         );
       }
       await withAbTestsConfigPath(configPath, async () => {
-        const config = parseAbTestsConfig(await loadAbTestsConfig(configPath));
+        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
         const url = opts.url ?? config.shared.experimentURL;
         const pipeline = createAuditPipeline({
           parallelism: config.shared.parallelism,
@@ -87,7 +83,7 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
             playwrightOptions: resolvePlaywrightOptions(config, 'audit'),
           },
         });
-        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
           config,
           controlURL: url,

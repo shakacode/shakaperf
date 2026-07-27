@@ -67,7 +67,7 @@ import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-sh
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
 import { applyPerTestConfigOverrides } from '../../../../effective-config';
-import { parseAbTestsConfig } from '../../../../config';
+import { buildAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
   it('applies to every test — opting out is testTypes-owned', () => {
@@ -441,7 +441,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
       test,
     ),
   } as unknown as TestContext;

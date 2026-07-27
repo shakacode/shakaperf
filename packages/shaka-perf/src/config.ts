@@ -29,7 +29,7 @@ export const ViewportSchema: z.ZodType<Viewport> = z.object({
   height: z.number().int().positive(),
   formFactor: z.enum(['mobile', 'desktop']),
   deviceScaleFactor: z.number().positive(),
-});
+}).strict();
 
 /**
  * A non-empty array of full-definition viewports with unique labels. Label
@@ -169,7 +169,15 @@ export const SharedConfigSchema = z
     // `visreg.playwrightOptions` and `perf.playwrightOptions` may override
     // per-category (partial, merged per-key).
     playwrightOptions: PlaywrightOptionsSchema,
-  });
+  })
+  // Strict: an unknown key is a typo or a removed option. Zod's default is to
+  // strip silently, which is how a renamed knob quietly falls back to its
+  // default — the failure this config surface exists to prevent. Applies to
+  // per-test `config` overrides too, since those are validated through this
+  // same schema after the merge (see `applyPerTestConfigOverrides`).
+  // `playwrightOptions` stays passthrough: extra keys there are forwarded to
+  // Playwright's `launch()` on purpose.
+  .strict();
 
 export const VisregConfigSchema = z
   .object({
@@ -194,7 +202,8 @@ export const VisregConfigSchema = z
     // Category override of `shared.playwrightOptions` (partial, per-key).
     playwrightOptions: PlaywrightOptionsOverrideSchema.optional(),
     resembleOutputOptions: ResembleOutputOptionsSchema.optional(),
-  });
+  })
+  .strict();
 
 export const PerfConfigSchema = z
   .object({
@@ -234,7 +243,8 @@ export const PerfConfigSchema = z
     // Lighthouse is chromium-only: `browser` must stay 'chromium';
     // `args`/`headless` map onto its chrome-launcher flags.
     playwrightOptions: PlaywrightOptionsOverrideSchema.optional(),
-  });
+  })
+  .strict();
 
 /**
  * Audit-only knobs. Independent from `perf` — set what the audit pipeline
@@ -256,7 +266,8 @@ export const AuditConfigSchema = z
     // the per-task timeout, so the raw stream is evenly downsampled to this cap
     // before dedupe. Defaults to 700.
     limitVideoFramesCount: z.number().int().positive().default(700),
-  });
+  })
+  .strict();
 
 export const AccessibilityConfigSchema = z
   .object({
@@ -267,7 +278,8 @@ export const AccessibilityConfigSchema = z
     disableRules: z.array(z.string()).default([]),
     includeRules: z.array(z.string()).optional(),
     failOnViolation: z.boolean().default(true),
-  });
+  })
+  .strict();
 
 export const AgentReadinessConfigSchema = z
   .object({
@@ -277,11 +289,12 @@ export const AgentReadinessConfigSchema = z
     // just scores their `startingPath` cold. Recommended usage: enable per-test
     // (`config.agentReadiness.enabled`) on the landing pages that matter.
     enabled: z.boolean().default(false),
-  });
+  })
+  .strict();
 
 export const BisectConfigSchema = z.object({
   rebuildContainer: z.boolean().default(false),
-});
+}).strict();
 
 export const AbTestsConfigSchema = z
   .object({
@@ -294,6 +307,7 @@ export const AbTestsConfigSchema = z
     twinServers: TwinServersConfigSchema.optional(),
     bisect: BisectConfigSchema.optional().default({}),
   })
+  .strict()
   .superRefine((cfg, ctx) => {
     // Cross-schema: every category's viewport label must be defined in
     // `shared.viewports`. Catches typos ("dekstop") and wrong references
@@ -316,7 +330,7 @@ export const AbTestsConfigSchema = z
   });
 
 // Zod's inferred shape: category viewports are string[]. We resolve these
-// into full Viewport[] in `parseAbTestsConfig` so downstream code receives
+// into full Viewport[] in `buildAbTestsConfig` so downstream code receives
 // the same rich objects it did before the label-indirection refactor.
 type AbTestsConfigParsed = z.infer<typeof AbTestsConfigSchema>;
 
@@ -400,63 +414,36 @@ export function viewportsByStageCategory(
   };
 }
 
-export function parseAbTestsConfig(raw: unknown): AbTestsConfig {
-  // Zod strips unknown keys silently; the old name would otherwise quietly
-  // fall back to the 0.1 default. Fail loudly instead.
-  const rawVisreg = (raw as { visreg?: Record<string, unknown> } | null | undefined)?.visreg;
-  if (rawVisreg && 'defaultMisMatchThreshold' in rawVisreg) {
-    throw new Error(
-      'visreg.defaultMisMatchThreshold was renamed — use visreg.mismatchThreshold ' +
-      '(see BREAKING_CHANGES.md).',
-    );
-  }
-  if (rawVisreg && 'requireSameDimensions' in rawVisreg) {
-    throw new Error(
-      'visreg.requireSameDimensions was removed — a dimension change always fails ' +
-      'the compare now (a resize IS a visual difference). Delete the key ' +
-      '(see BREAKING_CHANGES.md).',
-    );
-  }
-  // engineOptions was renamed and moved: the base launch options live on
-  // shared.playwrightOptions; visreg/perf may override per-category.
-  for (const section of ['shared', 'visreg', 'perf', 'accessibility', 'audit'] as const) {
-    const rawSection = (raw as Record<string, Record<string, unknown>> | null | undefined)?.[section];
-    if (rawSection && 'engineOptions' in rawSection) {
-      throw new Error(
-        `${section}.engineOptions was renamed — set shared.playwrightOptions` +
-        (section === 'visreg' || section === 'perf'
-          ? ` (or override per-category via ${section}.playwrightOptions)`
-          : '') +
-        ' (see BREAKING_CHANGES.md).',
-      );
-    }
-    // Only visreg/perf have a category override; on accessibility/audit the
-    // key would be zod-stripped and silently ignored — the natural wrong
-    // guess after the engineOptions rename. Fail loudly instead.
-    if (
-      (section === 'accessibility' || section === 'audit') &&
-      rawSection && 'playwrightOptions' in rawSection
-    ) {
-      throw new Error(
-        `${section}.playwrightOptions is not supported — ${section} has no ` +
-        'category override; set shared.playwrightOptions (see BREAKING_CHANGES.md).',
-      );
-    }
-  }
+/**
+ * Build a validated `AbTestsConfig` from a raw config object: check it against
+ * the schema, apply defaults, and reject anything unrecognized. No text parsing
+ * happens here — `loadAbTestsConfig` already turned the file into an object.
+ *
+ * `origin` labels where the object came from, so a per-test override's error
+ * names the test instead of reading like a config-file problem — pass
+ * `abTest("Homepage")` for one, omit it for `abtests.config.ts`.
+ *
+ * Also the validator for per-test `config` overrides: those are merged onto the
+ * already-built file config and the RESULT comes back through here
+ * (`applyPerTestConfigOverrides`). Validating the merged whole rather than the
+ * partial is what makes that work — required fields and defaults are already
+ * supplied by the file, so nothing is missing and nothing is re-defaulted (the
+ * second pass is idempotent), and the cross-field `superRefine` runs against the
+ * config the test will actually execute with.
+ */
+export function buildAbTestsConfig(raw: unknown, origin?: string): AbTestsConfig {
+  const at = origin ? `${origin}: ` : '';
+  // No per-key migration guards: every section is `.strict()`, so a removed or
+  // misspelled key is rejected by name on its own. Renames are documented in
+  // BREAKING_CHANGES.md rather than restated here — one list to maintain, and
+  // no risk of a future rename shipping without its guard.
   const result = AbTestsConfigSchema.safeParse(raw ?? {});
   if (!result.success) {
     const first = result.error.errors[0];
-    const where = first.path.join('.');
-    throw new Error(where ? `${where}: ${first.message}` : first.message);
+    const path = first.path.join('.');
+    throw new Error(at + (path ? `${path}: ${first.message}` : first.message));
   }
   const parsed = result.data;
-  if (parsed.perf.samplingMode === 'sequential') {
-    console.warn(
-      '[shaka-perf] perf.samplingMode "sequential" is deprecated and retained ' +
-      'only for scientific comparison against "simultaneous". ' +
-      'See NOISE_RESISTANT_PERF_TESTS_STUDY.md for why.'
-    );
-  }
   return {
     shared: parsed.shared,
     visreg: parsed.visreg,

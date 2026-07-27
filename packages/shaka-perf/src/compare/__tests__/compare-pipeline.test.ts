@@ -18,7 +18,7 @@ import {
 } from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
 import { runPipeline } from '../../pipeline/runner';
-import { parseAbTestsConfig, type AbTestsConfig } from '../../config';
+import { buildAbTestsConfig, type AbTestsConfig } from '../../config';
 
 describe('compare accessibility pipeline integration', () => {
   it('derives reusable pipeline construction options from parsed config', () => {
@@ -83,7 +83,7 @@ describe('compare accessibility pipeline integration', () => {
     try {
       const result = await runPipeline(pipeline, {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,

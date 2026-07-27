@@ -8,7 +8,7 @@
  */
 
 import type { AbTestDefinition } from 'shaka-shared';
-import { parseAbTestsConfig } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 import { persistedOutcomeInScope } from '../viewport-plan';
 import type { Outcome } from '../outcome';
 import type { Stage } from '../../stage/stage';
@@ -34,7 +34,7 @@ const skippedOutcome = (stage: string): Outcome => ({ kind: 'skipped', stage, re
 
 // Default config: shared viewports desktop/tablet/phone; visreg at all three,
 // accessibility at desktop/phone.
-const config = parseAbTestsConfig({
+const config = buildAbTestsConfig({
   shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
 });
 const visregStage = makeStage('visreg', 'visreg');

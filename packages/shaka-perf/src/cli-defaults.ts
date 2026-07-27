@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 import { findAbTestsConfig, loadAbTestsConfig } from './config-loader';
-import { parseAbTestsConfig, type AbTestsConfig } from './config';
+import { buildAbTestsConfig, type AbTestsConfig } from './config';
 
 /**
  * Pre-scan argv for `-c/--config` so we can load `abtests.config.ts` BEFORE
@@ -44,7 +44,7 @@ export async function getCLIDefaultsFromConfig<T>(
 
   try {
     const raw = await loadAbTestsConfig(configPath);
-    return extract(parseAbTestsConfig(raw));
+    return extract(buildAbTestsConfig(raw));
   } catch (err) {
     console.warn(
       `shaka-perf: failed to pre-load abtests.config for CLI defaults — running without defaults. (${(err as Error).message})`,

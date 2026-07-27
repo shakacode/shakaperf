@@ -644,7 +644,14 @@ process.on('message', async (msg: ParentMessage) => {
     try {
       const workerSampler = new LighthouseWorkerSampler();
       sampler = workerSampler;
-      await workerSampler.setupBrowser({ headed: msg.headed, chromeArgs: msg.chromeArgs });
+      // Forward every launch option off the message rather than cherry-picking
+      // fields: each one is optional, so an omission type-checks and silently
+      // reverts that option to its default in the worker (this is exactly how
+      // `ignoreHTTPSErrors` came to be ignored by Lighthouse alone while every
+      // other engine honoured it). Destructuring `type` off leaves precisely
+      // the launch options, and a new one reaches the browser for free.
+      const { type: _type, ...launchOptions } = msg;
+      await workerSampler.setupBrowser(launchOptions);
       if (shuttingDown) return;
       send({ type: 'ready' });
     } catch (err) {

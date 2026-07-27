@@ -14,7 +14,7 @@ export const SetupCommandSchema = z.object({
   command: z.string().min(1, 'command is required'),
   /** Human-readable description shown during execution */
   description: z.string().min(1, 'description is required'),
-});
+}).strict();
 
 export const TwinServersConfigSchema = z.object({
   /**
@@ -52,7 +52,7 @@ export const TwinServersConfigSchema = z.object({
    * They run inside the experiment container before its processes restart.
    */
   rebuildCommands: z.array(SetupCommandSchema).optional(),
-});
+}).strict();
 
 // Derive types from schemas
 export type SetupCommand = z.infer<typeof SetupCommandSchema>;

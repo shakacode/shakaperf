@@ -51,30 +51,36 @@ describe('ab-test-registry', () => {
       expect(getRegisteredTests()).toHaveLength(0);
     });
 
-    it('rejects the pre-flattening options shape with a migration pointer', () => {
-      // Test files load via tsx without typechecking, so this is the only
-      // guard an un-migrated .abtest.ts actually hits.
-      const legacy = {
-        startingPath: '/',
-        options: { visreg: { misMatchThreshold: 0.01 } },
-      };
+    // Test files load via tsx without typechecking, and the config is spread
+    // onto the definition — so an unrecognized key is read by nobody and the
+    // test silently runs on defaults. Every legacy key must be rejected, not
+    // just the two that used to have hand-written guards.
+    it.each([
+      ['pre-flattening options blob', { options: { visreg: { misMatchThreshold: 0.01 } } }],
+      ['stale top-level beforeNavigate', { beforeNavigate: async () => {} }],
+      ['stale hideSelectors', { hideSelectors: ['.cookie-banner'] }],
+      ['removed visregSelectorExpansion', { visregSelectorExpansion: true }],
+      ['removed resultsFolder', { resultsFolder: 'out/' }],
+      ['old selectors spelling', { selectors: ['[data-cy="hero"]'] }],
+      ['un-nested visreg section', { visreg: { mismatchThreshold: 0.01 } }],
+      ['old flat viewports', { viewports: ['desktop'] }],
+    ])('rejects %s, naming the key and the legal ones', (_label, extra) => {
       expect(() =>
-        abTest('Legacy', legacy as never, async () => {}),
-      ).toThrow(/'options' key was removed.*BREAKING_CHANGES\.md/);
+        abTest('Legacy', { startingPath: '/', ...extra } as never, async () => {}),
+      ).toThrow(/unrecognized key\(s\).*abTest\(\) accepts.*BREAKING_CHANGES\.md/s);
       expect(getRegisteredTests()).toHaveLength(0);
     });
 
-    it('rejects a stale top-level beforeNavigate with a migration pointer', () => {
-      // Same tsx-no-typecheck failure mode: a top-level hook would spread onto
-      // the definition and silently never run (auth/cookies quietly gone).
-      const legacy = {
+    it('accepts every key AbTestConfig declares', () => {
+      abTest('Full', {
         startingPath: '/',
-        beforeNavigate: async () => {},
-      };
-      expect(() =>
-        abTest('Legacy hook', legacy as never, async () => {}),
-      ).toThrow(/'beforeNavigate' moved to config\.shared\.beforeNavigate.*BREAKING_CHANGES\.md/);
-      expect(getRegisteredTests()).toHaveLength(0);
+        experimentPathOverride: '/basket',
+        testTypes: ['visreg'],
+        visregSelectors: ['[data-cy="hero"]'],
+        markers: [{ start: 'a', end: 'b', label: 'phase' }],
+        config: { visreg: { mismatchThreshold: 0.01 } },
+      }, async () => {});
+      expect(getRegisteredTests()).toHaveLength(1);
     });
 
     it('registers multiple tests in order', () => {
