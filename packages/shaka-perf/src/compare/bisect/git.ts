@@ -258,7 +258,7 @@ function isAllowedStatusLine(statusLine: string, allowedPrefixes: readonly strin
   ));
 }
 
-async function requireClean(
+export async function requireClean(
   repoDir: string,
   label: string,
   options: CleanCheckoutOptions = {},

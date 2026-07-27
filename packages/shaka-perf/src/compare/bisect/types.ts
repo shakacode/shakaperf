@@ -28,6 +28,25 @@ export interface BisectRepair {
   source: 'config';
 }
 
+export type BisectRepairStepStatus = 'not-run' | 'succeeded' | 'failed';
+
+export interface BisectRepairApplicationEvidence {
+  repairId: string;
+  apply: BisectRepairStepStatus;
+  prepare: BisectRepairStepStatus;
+  cleanup: BisectRepairStepStatus;
+  reverse: BisectRepairStepStatus;
+  errors: string[];
+}
+
+export interface BisectRepairEvidence {
+  evaluationId: string;
+  sha: string;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  applications: BisectRepairApplicationEvidence[];
+}
+
 export type TargetStatus = 'active' | 'found' | 'invalid';
 
 export interface BisectTestSelection {
