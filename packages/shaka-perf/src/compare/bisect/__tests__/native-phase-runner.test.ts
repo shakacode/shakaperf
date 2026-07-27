@@ -130,6 +130,7 @@ function phase(): BisectSearchPhase {
     commitSubjects: { good: 'good', a: 'a', b: 'b', c: 'c', bad: 'bad' },
     commitParents: { good: [], a: ['good'], b: ['a'], c: ['b'], bad: ['c'] },
     targets: [target('visual', 'visreg'), target('perf', 'perf')],
+    groups: [],
     attempts: [],
   };
 }

@@ -51,6 +51,7 @@ function session(): BisectSession {
       commitSubjects: { good: 'good', mid: 'mid', bad: 'bad' },
       commitParents: { good: [], mid: ['good'], bad: ['mid'] },
       targets: [],
+      groups: [],
       attempts: [{
         id: 'attempt-1',
         sha: 'mid',
@@ -113,6 +114,12 @@ describe('resumable bisect state', () => {
       ...value,
       commitRuns: { mid: { ...currentRun, requestedTests: undefined } },
     })).toThrow();
+  });
+
+  it('rejects sessions without canonical target groups', () => {
+    const value = session();
+    const { groups: _legacyMissingGroups, ...legacyPrimary } = value.primary;
+    expect(() => parseBisectSession({ ...value, primary: legacyPrimary })).toThrow();
   });
 
   it('fingerprints objects independently of object key order', () => {

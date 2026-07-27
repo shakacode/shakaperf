@@ -22,6 +22,7 @@ function phase(id: string, status: BisectSearchPhase['status'] = 'pending'): Bis
     commitSubjects: { good: 'good', bad: 'bad' },
     commitParents: { good: [], bad: ['good'] },
     targets: [],
+    groups: [],
     attempts: [],
   };
 }

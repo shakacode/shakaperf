@@ -124,6 +124,7 @@ function savedSession(): BisectSession {
       commitSubjects: { good: 'Baseline', middle: 'Break homepage', bad: 'Bad tip' },
       commitParents: { good: [], middle: ['good'], bad: ['middle'] },
       targets,
+      groups: [],
       attempts: [],
       startedAt: '2026-07-13T10:00:00.000Z',
       finishedAt: '2026-07-13T11:00:00.000Z',
