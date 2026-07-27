@@ -7,23 +7,14 @@
  * License in LICENSE.md.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import ignore, { type Ignore } from 'ignore';
+import type { CopyIgnoreConfig } from '../types';
 
-export const COPY_IGNORE_FILENAME = '.shaka-perf-copyignore';
-const DEFAULT_COPY_IGNORE_PATH = path.join(__dirname, 'default-copyignore');
-
-function addIgnoreFile(matcher: Ignore, ignorePath: string): void {
-  if (fs.existsSync(ignorePath)) {
-    matcher.add(fs.readFileSync(ignorePath, 'utf8'));
-  }
-}
-
-export function loadCopyIgnore(repositoryRoot: string): Ignore {
+export function createCopyIgnoreMatcher(config: CopyIgnoreConfig): Ignore {
   const matcher = ignore();
-  addIgnoreFile(matcher, DEFAULT_COPY_IGNORE_PATH);
-  addIgnoreFile(matcher, path.join(repositoryRoot, COPY_IGNORE_FILENAME));
+  matcher.add(config.folders.map((folder) => `${folder.replace(/\/+$/, '')}/`));
+  matcher.add(config.files);
   return matcher;
 }
 
