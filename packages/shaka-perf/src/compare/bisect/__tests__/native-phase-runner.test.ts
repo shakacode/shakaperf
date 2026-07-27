@@ -74,7 +74,7 @@ class StubEvaluator extends CandidateEvaluator {
     private readonly results: Record<string, CandidateResult | Error>,
   ) {
     super(
-      { async assertAtCandidate() {} },
+      { async assertAt() {} },
       { async refreshExperiment() { return { mode: 'commands', usedFallback: false }; } },
       { async run() { return { testResults: [] }; } },
       environment,

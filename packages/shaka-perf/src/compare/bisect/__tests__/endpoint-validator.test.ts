@@ -7,12 +7,13 @@
  * License in LICENSE.md.
  */
 
-import {
-  EndpointMeasurementRunner,
-  EndpointValidator,
-} from '../endpoint-validator';
+import { EndpointValidator } from '../endpoint-validator';
 import { ExactCheckout, type CheckoutState } from '../git';
-import type { CandidateEvaluationPlan, CandidateResult } from '../run-candidate';
+import {
+  CandidateEvaluator,
+  type CandidateEvaluationPlan,
+  type CandidateResult,
+} from '../run-candidate';
 import { BisectRunEnvironment } from '../run-environment';
 
 function plan(): CandidateEvaluationPlan {
@@ -76,6 +77,35 @@ describe('EndpointValidator', () => {
     ]);
   });
 
+  it('uses the shared candidate evaluator after exact positioning', async () => {
+    const checkout = new MemoryCheckout();
+    const validator = new EndpointValidator(checkout, new CandidateEvaluator(
+      checkout,
+      {
+        async refreshExperiment() {
+          checkout.events.push('refresh');
+          return { mode: 'commands', usedFallback: false };
+        },
+      },
+      {
+        async run() {
+          checkout.events.push('compare');
+          return { testResults: [], compareResultsPath: '/results' };
+        },
+      },
+      new BisectRunEnvironment(() => 'now'),
+      'commands',
+    ));
+
+    await expect(validator.validate(plan())).resolves.toMatchObject({
+      commitRun: { sha: 'endpoint', compareCompleted: true, compareResultsPath: '/results' },
+    });
+    expect(checkout.events).toEqual([
+      'position:endpoint', 'verify:endpoint', 'verify:endpoint',
+      'refresh', 'compare', 'restore:main:original',
+    ]);
+  });
+
   it('restores when endpoint positioning or measurement fails', async () => {
     const position = new MemoryCheckout(new Error('checkout failed'));
     await expect(new EndpointValidator(position, {
@@ -112,32 +142,5 @@ describe('EndpointValidator', () => {
       result: { commitRun: { sha: 'endpoint', compareCompleted: true } },
       restoreError: expect.objectContaining({ message: 'restore failed' }),
     });
-  });
-});
-
-describe('EndpointMeasurementRunner', () => {
-  it('refreshes and compares without moving the checkout', async () => {
-    const events: string[] = [];
-    const runner = new EndpointMeasurementRunner(
-      {
-        async refreshExperiment() {
-          events.push('refresh');
-          return { mode: 'commands', usedFallback: false };
-        },
-      },
-      {
-        async run() {
-          events.push('compare');
-          return { testResults: [], compareResultsPath: '/results' };
-        },
-      },
-      new BisectRunEnvironment(() => 'now'),
-      'commands',
-    );
-
-    await expect(runner.evaluate(plan())).resolves.toMatchObject({
-      commitRun: { sha: 'endpoint', compareCompleted: true, compareResultsPath: '/results' },
-    });
-    expect(events).toEqual(['refresh', 'compare']);
   });
 });

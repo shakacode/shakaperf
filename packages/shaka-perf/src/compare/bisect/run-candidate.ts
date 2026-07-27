@@ -51,8 +51,8 @@ export interface CandidateEvaluationPlan extends CandidateMeasurementPlan {
   targets: readonly BisectTarget[];
 }
 
-export interface CandidateGitState {
-  assertAtCandidate(expectedSha: string): Promise<void>;
+export interface CandidatePosition {
+  assertAt(expectedSha: string): Promise<void>;
 }
 
 export interface BisectCandidateServer {
@@ -82,7 +82,7 @@ export class CandidateEvaluationError extends Error {
  */
 export class CandidateEvaluator {
   constructor(
-    private readonly git: CandidateGitState,
+    private readonly position: CandidatePosition,
     private readonly server: BisectCandidateServer,
     private readonly comparison: CandidateComparison,
     private readonly environment: BisectRunEnvironment,
@@ -105,7 +105,7 @@ export class CandidateEvaluator {
     };
 
     try {
-      await this.git.assertAtCandidate(plan.sha);
+      await this.position.assertAt(plan.sha);
       this.environment.checkCancellation();
 
       const experimentReload = await this.server.refreshExperiment({

@@ -71,7 +71,6 @@ import {
   type ExperimentReloadResult,
 } from './run-candidate';
 import {
-  EndpointMeasurementRunner,
   EndpointRestoreError,
   EndpointValidator,
 } from './endpoint-validator';
@@ -442,7 +441,8 @@ class CompareBisectOrchestrator {
     });
     const endpointValidator = new EndpointValidator(
       deps.exactCheckout,
-      new EndpointMeasurementRunner(
+      new CandidateEvaluator(
+        deps.exactCheckout,
         deps.server,
         deps.comparison,
         environment,

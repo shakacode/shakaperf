@@ -108,7 +108,7 @@ export class NativeGitBisectDriver {
     return resolveCommit(this.options.repoDir, 'HEAD');
   }
 
-  async assertAtCandidate(expectedSha: string): Promise<void> {
+  async assertAt(expectedSha: string): Promise<void> {
     const actualSha = await this.currentCandidate();
     if (actualSha !== expectedSha) {
       throw new Error(`Native Git bisect selected ${actualSha}; expected ${expectedSha}`);
