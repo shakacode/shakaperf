@@ -14,6 +14,14 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### Existing result artifacts must be removed
+
+The persisted stage-measurement and report-artifact schema has changed.
+Artifacts written by older shaka-perf versions are not supported by
+`--report-only` or `--keep-old-results`. Remove the existing `test-results`
+directory (or your configured results directory) and run the measurements
+again before generating reports with this version.
+
 ### Agent-readiness is now OFF by default (opt in with `agentReadiness.enabled`)
 
 The `agent-readiness` stage (the AI-legibility scan behind the client report's

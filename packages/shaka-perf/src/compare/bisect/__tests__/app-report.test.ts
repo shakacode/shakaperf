@@ -314,7 +314,7 @@ function ordinaryReport(): AppReportData {
       errors: [],
       reportOnly: false,
       pipelineConfig: comparePipelineConfig(),
-      reportMode: 'lightweight',
+      reportMode: 'self-contained',
     },
     tests: [reportTest()],
   };

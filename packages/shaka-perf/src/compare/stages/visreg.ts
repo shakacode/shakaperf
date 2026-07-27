@@ -9,7 +9,10 @@
 
 import { createElement } from 'react';
 import type { VisregConfig } from '../../config';
-import { emptyMachineReadableSummary, type Stage } from '../../stage/stage';
+import {
+  emptyMachineReadableSummary,
+  type Stage,
+} from '../../stage/stage';
 import { VisregArtifactView } from './visreg/report';
 
 export interface VisregArtifact {
@@ -60,6 +63,7 @@ export function createVisregStage(config: VisregStageConfig): Stage<VisregResult
     label: 'Visual Diff',
     category: 'visreg',
     description: 'Capture and compare control vs experiment screenshots.',
+    selfContainedReportStrip: {},
     applies() {
       return true;
     },

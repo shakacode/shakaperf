@@ -23,7 +23,7 @@ import type { ProxyDispatcher } from './server';
  * ready" via the same `BUSY` channel as a contended in-flight action.
  *
  * This is the single deserialisation site for the IPC wire format (the one
- * allowed `switch (cmd)` per the polymorphic-extensibility skill): every
+ * allowed `switch (cmd)` per the review-architecture skill): every
  * branch maps a persisted name to its primitive, with no shared
  * "do-the-variant-thing" interface to factor out.
  */

@@ -712,7 +712,10 @@ async function runConfiguredPipelineWithSelection(
     test: p.test,
     results: p.chipResults,
   }));
-  const chipsByTest = pipeline.chipsForAllTests(perTest);
+  const chipsByTest = pipeline.chipsForAllTests(perTest, {
+    readJsonArtifact: <T>(artifactPath: string) =>
+      store.readJsonArtifact<T>(artifactPath),
+  });
   const sortsByTest = pipeline.sortsForAllTests(perTest);
   // Mirror what each test ends up rendering — including the synthetic
   // `brokenChip()` for failed tests — so the machine report agrees with the
@@ -783,16 +786,21 @@ async function runConfiguredPipelineWithSelection(
 
   console.log(chalk.blue('\n>>> rendering report HTML files'));
   const renderStart = Date.now();
-  const { fullPath, lightPath } = writeReport(data, resultsRoot, pipeline.stages);
-  const reportPath = lightPath;
+  const { fullPath, selfContainedPath } = await writeReport(
+    data,
+    resultsRoot,
+    pipeline.stages,
+  );
+  const reportPath = selfContainedPath;
   const fullBytes = fs.statSync(fullPath).size;
-  const lightBytes = fs.statSync(lightPath).size;
+  const selfContainedBytes = fs.statSync(selfContainedPath).size;
   const elapsed = ((Date.now() - renderStart) / 1000).toFixed(1);
   console.log(
     `    wrote ${fullPath} (${(fullBytes / 1024 / 1024).toFixed(1)} MB) in ${elapsed}s`,
   );
   console.log(
-    `    wrote ${lightPath} (${(lightBytes / 1024 / 1024).toFixed(1)} MB)`,
+    `    wrote ${selfContainedPath} ` +
+    `(${(selfContainedBytes / 1024 / 1024).toFixed(1)} MB)`,
   );
   writeMachineReport(
     path.join(resultsRoot, 'report.json'),
@@ -823,7 +831,7 @@ async function runConfiguredPipelineWithSelection(
   return {
     testResults: data.tests,
     reportPath,
-    shortReportPath: lightPath,
+    shortReportPath: selfContainedPath,
     fullReportPath: fullPath,
     fullReportZipPath,
     resultsRoot,

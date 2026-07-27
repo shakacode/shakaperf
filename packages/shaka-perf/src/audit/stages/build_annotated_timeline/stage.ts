@@ -126,6 +126,9 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   readonly name: StageName = 'build_annotated_timeline';
   readonly label = 'Annotated Timeline';
   readonly description = 'Prepare Lighthouse trace screenshots for the annotated timeline.';
+  readonly selfContainedReportStrip = {
+    screencastHref: true,
+  };
 
   applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
     return priorOutcomes.get('audit')?.kind === 'ok';

@@ -59,4 +59,19 @@ describe('PerfArtifactView', () => {
     expect(html).toContain('<span class="stage-note__label">desktop:</span>');
     expect(html).toContain('No statistically significant differences.');
   });
+
+  it('renders an attachment-only timeline preview without the stripped detail artifact', () => {
+    const previewHref = 'data:image/avif;base64,cHJldmlldw==';
+    const html = renderToStaticMarkup(createElement(PerfArtifactView, {
+      title: 'Performance',
+      measurements: [{
+        measurement: { timelinePreviewHref: previewHref },
+        viewport: DESKTOP_VIEWPORT,
+      }],
+    }));
+
+    expect(html).toContain('aria-label="desktop performance"');
+    expect(html).toContain(`src="${previewHref}"`);
+    expect(html).toContain('alt="timeline preview"');
+  });
 });

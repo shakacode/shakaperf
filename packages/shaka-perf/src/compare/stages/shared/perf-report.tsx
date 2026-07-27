@@ -94,6 +94,13 @@ function PerfBody({
   hasSignificantMetrics: boolean;
   viewportLabel: string;
 }) {
+  const timelinePreview = perf.timelinePreviewHref ? (
+    <img
+      src={perf.timelinePreviewHref}
+      alt="timeline preview"
+      style={{ display: 'block', height: 'auto', width: '100%' }}
+    />
+  ) : null;
   return (
     <>
       {hasSignificantMetrics ? (
@@ -101,19 +108,15 @@ function PerfBody({
       ) : hasNoDifference ? (
         <NoDifferenceNote viewportLabel={viewportLabel} />
       ) : null}
-      {perf.timelinePreviewHref && perf.timelineHref ? (
+      {timelinePreview && perf.timelineHref ? (
         <DetailedArtifactDialog
           variant="preview"
           href={perf.timelineHref}
           label="timeline"
         >
-          <img
-            src={perf.timelinePreviewHref}
-            alt="timeline preview"
-            style={{ display: 'block', height: 'auto', width: '100%' }}
-          />
+          {timelinePreview}
         </DetailedArtifactDialog>
-      ) : null}
+      ) : timelinePreview}
       <ArtifactLinks perf={perf} />
     </>
   );
@@ -232,6 +235,7 @@ function hasAttachments(perf: PerfArtifact): boolean {
     perf.controlLighthouseHref ||
     perf.experimentLighthouseHref ||
     perf.timelineHref ||
+    perf.timelinePreviewHref ||
     (perf.diffHrefs?.length ?? 0) > 0,
   );
 }

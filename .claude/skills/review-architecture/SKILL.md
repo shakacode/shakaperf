@@ -1,9 +1,9 @@
 ---
-name: polymorphic-extensibility
-description: "Review/design guide for framework extension points in shaka-perf. When a primitive has variants (pipeline, stage, …), the variant must own its behaviour via mandatory factory options and the framework must call into it polymorphically. The only allowed name-keyed `switch` is the single deserialisation site that maps a persisted name back to a primitive instance. Use when adding a new pipeline/stage variant, adding an extension point, reviewing a PR that introduces variant-specific behaviour, or auditing a `switch (name)` that picks between behaviours."
+name: review-architecture
+description: "Use when reviewing or designing shaka-perf framework extension points, pipeline or stage variants, artifact ownership, report serialization boundaries, or name-keyed behavior dispatch."
 ---
 
-# Polymorphic Extensibility
+# Review Architecture
 
 shaka-perf's framework primitives (`Pipeline`, `Stage`, …) are designed to be
 extended polymorphically. Variant-specific behaviour belongs **inside the
@@ -177,6 +177,28 @@ Stage results and failure metadata contain only the report-relative paths
 returned by `ctx.artifacts`; never put base64 or data URIs in them. The
 self-contained report owns converting those paths to data URIs.
 
+Store large structured data that is not rendered—coverage statement IDs,
+traces, raw scan output—as a JSON artifact and keep only its report-relative
+path in the measurement. Do not copy large arrays or objects into a measurement
+just because a later framework pass needs them; that pass must read the
+artifact through the results root.
+
+Every stage declares one recursive `selfContainedReportStrip` dictionary.
+Dictionary keys mirror measurement fields: `true` strips a field, `false`
+keeps it, and a nested dictionary applies the same rules inside an object or
+each object in an array. Fields absent from the dictionary are kept.
+
+The full report inlines no artifacts. The self-contained report first applies
+the stage's strip dictionary, then centrally discovers, compresses, and
+base64-encodes every artifact path that remains. Stages never select encoding
+settings or perform file reads, compression, or base64 conversion.
+
+Use `true` only for fields that the local full report needs but the
+self-contained report does not. Do not use the strip dictionary merely to
+compensate for oversized structured data embedded in a measurement; move that
+data to a JSON artifact and keep only its report-relative path in the
+measurement.
+
 To show a screenshot or video on a failed outcome, throw
 `StageFailureError` with the path in `failureArtifacts.media`:
 
@@ -229,6 +251,12 @@ When auditing a change that touches variant behaviour:
    report-relative path stored in the measurement or failure?
 7. Does failure media reach the framework through
    `StageFailureError.failureArtifacts.media`, without stage-side base64?
+8. Is large non-rendered structured data stored as a JSON artifact reference
+   rather than embedded directly in the measurement?
+9. Does each stage expose only a recursive `selfContainedReportStrip`
+   dictionary (`true` strips, `false` keeps), while centralized report code
+   inlines none in the full report and all remaining artifacts in the
+   self-contained report?
 
 ## Reference implementation
 

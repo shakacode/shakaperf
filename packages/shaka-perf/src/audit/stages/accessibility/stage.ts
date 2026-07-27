@@ -31,6 +31,9 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
   readonly name: StageName = 'accessibility';
   readonly label = 'Accessibility';
   readonly description = 'Run accessibility checks on the target URL.';
+  readonly selfContainedReportStrip = {
+    rawArtifactHref: true,
+  };
   private readonly config: AccessibilityStageConfig;
 
   constructor(config: AccessibilityStageConfig) {
@@ -70,5 +73,4 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
       })),
     };
   }
-
 }

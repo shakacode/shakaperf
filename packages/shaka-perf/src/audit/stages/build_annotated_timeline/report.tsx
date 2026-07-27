@@ -60,7 +60,7 @@ export function BuildAnnotatedTimelineArtifactView({
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}
-                      screencastHref={mode === 'lightweight' ? undefined : row.timeline.screencastHref}
+                      screencastHref={mode === 'self-contained' ? undefined : row.timeline.screencastHref}
                       debugAllFrames={row.timeline.debugAllFrames}
                     />
                   }

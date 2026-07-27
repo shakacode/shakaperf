@@ -10,15 +10,19 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import sharp from 'sharp';
 import { ArtifactScope, ArtifactStore } from '../artifact-store';
 import {
+  buildSelfContainedArtifactDictionary,
   reportDataForMode,
+  SELF_CONTAINED_REPORT_FILENAME,
+  writeReport,
   writeMachineReport,
   type ReportData,
   type ReportMeta,
 } from '../report';
 import type { Pipeline, PipelineMachineReportMetaContext } from '../pipeline';
-import type { StageRuntime } from '../../stage/stage';
+import type { Stage, StageRuntime } from '../../stage/stage';
 import { buildAbTestsConfig } from '../../config';
 
 describe('ArtifactScope', () => {
@@ -90,15 +94,20 @@ describe('reportDataForMode', () => {
     } as unknown as ReportData;
 
     const full = reportDataForMode(data, 'full', [], resultsRoot);
-    const lightweight = reportDataForMode(data, 'lightweight', [], resultsRoot);
+    const selfContained = reportDataForMode(
+      data,
+      'self-contained',
+      [],
+      resultsRoot,
+    );
 
     expect(full.tests[0].outcomes[0].failure?.media).toBe(mediaPath);
     expect((full.tests[0].outcomes[0].measurement as {
       nested: Array<{ rawPath: string; timelinePath: string; videoPath: string }>;
     }).nested[0].rawPath).toBe(rawPath);
-    expect(lightweight.tests[0].outcomes[0].failure?.media)
+    expect(selfContained.tests[0].outcomes[0].failure?.media)
       .toBe(`data:image/png;base64,${Buffer.from('png').toString('base64')}`);
-    expect(lightweight.tests[0].outcomes[0].measurement).toEqual({
+    expect(selfContained.tests[0].outcomes[0].measurement).toEqual({
       nested: [{
         rawPath: `data:application/json;base64,${
           Buffer.from('{"ok":true}').toString('base64')
@@ -113,6 +122,154 @@ describe('reportDataForMode', () => {
       url: 'https://example.test/artifact.png',
       label: 'raw.json',
     });
+  });
+
+  it('encodes only post-strip artifacts into the self-contained dictionary', async () => {
+    const artifactDir = path.join(resultsRoot, 'checkout-tablet', 'artifacts');
+    fs.mkdirSync(artifactDir, { recursive: true });
+    const visiblePath = 'checkout-tablet/artifacts/accessibility-screenshot.png';
+    const hiddenPath = 'checkout-tablet/artifacts/accessibility-raw.json';
+    const coveragePath =
+      'checkout-tablet/artifacts/coverage-statement-ids.json';
+    const unlistedImagePath =
+      'checkout-tablet/artifacts/internal-screenshot.png';
+    const image = await sharp({
+      create: {
+        width: 1200,
+        height: 600,
+        channels: 3,
+        background: '#ff0000',
+      },
+    }).png().toBuffer();
+    fs.writeFileSync(path.join(resultsRoot, visiblePath), image);
+    fs.writeFileSync(path.join(resultsRoot, unlistedImagePath), image);
+    fs.writeFileSync(path.join(resultsRoot, hiddenPath), '{"secret":true}');
+    fs.writeFileSync(path.join(resultsRoot, coveragePath), '["app.js:1"]');
+    const data = {
+      meta: { reportMode: 'self-contained' },
+      tests: [{
+        name: 'Checkout',
+        outcomes: [{
+          kind: 'ok',
+          stage: 'accessibility',
+          viewport: { label: 'tablet' },
+          measurement: {
+            visiblePath,
+            hiddenPath,
+            coveragePath,
+            unlistedImagePath,
+          },
+        }],
+      }],
+    } as unknown as ReportData;
+    const stage = {
+      name: 'accessibility',
+      category: 'accessibility',
+      selfContainedReportStrip: {
+        visiblePath: false,
+        hiddenPath: true,
+        coveragePath: true,
+      },
+    } as unknown as Stage;
+
+    const artifacts = await buildSelfContainedArtifactDictionary(
+      data,
+      [stage],
+      resultsRoot,
+    );
+    const selfContained = reportDataForMode(
+      data,
+      'self-contained',
+      [stage],
+      resultsRoot,
+      artifacts,
+    );
+
+    expect(Object.keys(artifacts)).toEqual([
+      visiblePath,
+      unlistedImagePath,
+    ]);
+    expect(artifacts[visiblePath]).toMatch(/^data:image\/avif;base64,/);
+    expect(artifacts[unlistedImagePath]).toMatch(/^data:image\/avif;base64,/);
+    expect(selfContained.tests[0].outcomes[0].measurement).toEqual({
+      visiblePath: artifacts[visiblePath],
+      unlistedImagePath: artifacts[unlistedImagePath],
+    });
+    expect(JSON.stringify(selfContained)).not.toContain('secret');
+  });
+
+  it('writes the self-contained report from the centralized dictionary', async () => {
+    const artifactDir = path.join(resultsRoot, 'checkout-tablet', 'artifacts');
+    fs.mkdirSync(artifactDir, { recursive: true });
+    const imagePath = 'checkout-tablet/artifacts/control.png';
+    fs.writeFileSync(
+      path.join(resultsRoot, imagePath),
+      await sharp({
+        create: {
+          width: 100,
+          height: 50,
+          channels: 3,
+          background: '#00ff00',
+        },
+      }).png().toBuffer(),
+    );
+    const data: ReportData = {
+      meta: {
+        title: 'Report',
+        pipelineName: 'compare',
+        generatedAt: '2026-07-28T00:00:00.000Z',
+        controlUrl: 'https://control.test',
+        experimentUrl: 'https://experiment.test',
+        durationMs: 1,
+        cwd: resultsRoot,
+        errors: [],
+        reportOnly: false,
+        pipelineConfig: {},
+        reportMode: 'full',
+      },
+      tests: [{
+        id: 'checkout',
+        name: 'Checkout',
+        filePath: 'checkout.ts',
+        startingPath: '/',
+        controlUrl: 'https://control.test',
+        experimentUrl: 'https://experiment.test',
+        code: null,
+        chips: [],
+        sorts: [],
+        durationMs: 1,
+        measuredAt: null,
+        runId: null,
+        outcomes: [{
+          kind: 'ok',
+          stage: 'visreg',
+          viewport: {
+            label: 'tablet',
+            width: 800,
+            height: 600,
+            deviceScaleFactor: 1,
+            formFactor: 'desktop',
+          },
+          measurement: { controlImage: imagePath },
+        }],
+        viewportArtifactPaths: [],
+      }],
+    };
+    const stage = {
+      name: 'visreg',
+      category: 'visreg',
+      renderArtifacts: () => null,
+      selfContainedReportStrip: {},
+    } as unknown as Stage;
+
+    await writeReport(data, resultsRoot, [stage]);
+
+    const html = fs.readFileSync(
+      path.join(resultsRoot, SELF_CONTAINED_REPORT_FILENAME),
+      'utf8',
+    );
+    expect(html).toContain('data:image/avif;base64,');
+    expect(html).not.toContain(imagePath);
   });
 });
 

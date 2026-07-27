@@ -33,6 +33,7 @@ export class AgentReadinessStage implements Stage<AgentReadinessResult> {
   readonly name: StageName = 'agent-readiness';
   readonly label = 'Agent Readiness';
   readonly description = 'Measure how readable the page is to AI agents and answer engines (raw HTML vs rendered DOM, structured data, semantic HTML).';
+  readonly selfContainedReportStrip = {};
   private readonly config: AgentReadinessStageConfig;
 
   constructor(config: AgentReadinessStageConfig) {

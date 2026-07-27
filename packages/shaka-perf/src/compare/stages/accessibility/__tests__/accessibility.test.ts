@@ -65,6 +65,15 @@ import { applyPerTestConfigOverrides } from '../../../../effective-config';
 import { buildAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
+  it('removes raw and comparison artifacts from self-contained reports', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
+    expect(stage.selfContainedReportStrip).toEqual({
+      comparisonArtifactHref: true,
+      control: { rawArtifactHref: true },
+      experiment: { rawArtifactHref: true },
+    });
+  });
+
   it('applies to every test — opting out is testTypes-owned', () => {
     const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
 

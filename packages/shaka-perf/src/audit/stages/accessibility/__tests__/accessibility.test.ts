@@ -52,6 +52,7 @@ import {
   normalizeAccessibilityFilterSelection,
 } from '../report';
 import { runAccessibilityStage } from '../engine';
+import { AccessibilityStage } from '../stage';
 import { resolveDialogFilterSelection } from '../report-dialog';
 import type { AccessibilityRawArtifact, AccessibilityResult, AccessibilityViolation } from '../types';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
@@ -68,6 +69,15 @@ const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
   ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
   playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
 };
+
+describe('accessibility self-contained report stripping', () => {
+  it('removes the raw scan artifact and keeps screenshot paths', () => {
+    const stage = new AccessibilityStage(TEST_STAGE_CONFIG);
+    expect(stage.selfContainedReportStrip).toEqual({
+      rawArtifactHref: true,
+    });
+  });
+});
 
 describe('accessibility config defaults', () => {
   it('uses the shared accessibility tag defaults', () => {

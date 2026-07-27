@@ -72,12 +72,12 @@ version on publish.
 - Commander.js for CLIs
 - In new code don't use docker compose directly, see @packages/shaka-perf/SETUP-twin-servers.md
 
-## Polymorphic Extensibility
+## Architecture Review
 
 Variant-specific behaviour (pipeline/stage renderers, summaries, etc.)
 must be configured polymorphically through factory options — no
 `switch (name)` dispatchers in shared modules. See the
-`polymorphic-extensibility` skill for the rule, the single allowed
+`review-architecture` skill for the rule, the single allowed
 exception, and a review checklist.
 
 ## Package Structure

@@ -145,6 +145,24 @@ export class ArtifactStore {
     }
     return outcomes;
   }
+
+  readJsonArtifact<T>(artifactPath: string): T | undefined {
+    const absolutePath = path.resolve(this.resultsRoot, artifactPath);
+    const relativePath = path.relative(this.resultsRoot, absolutePath);
+    if (
+      relativePath === '' ||
+      path.isAbsolute(relativePath) ||
+      relativePath === '..' ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(fs.readFileSync(absolutePath, 'utf8')) as T;
+    } catch {
+      return undefined;
+    }
+  }
 }
 
 export function mimeTypeForArtifactPath(name: string): string {

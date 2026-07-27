@@ -7,9 +7,29 @@
  * License in LICENSE.md.
  */
 
-import type { BuildAnnotatedTimelineResult } from '../stage';
+import {
+  BuildAnnotatedTimelineStage,
+  type BuildAnnotatedTimelineResult,
+} from '../stage';
 
 describe('BuildAnnotatedTimelineStage artifact ownership', () => {
+  it('strips the screencast from self-contained reports', () => {
+    const stage = new BuildAnnotatedTimelineStage();
+    const measurement: BuildAnnotatedTimelineResult = {
+      frames: [{
+        timeMs: 123,
+        imgW: 320,
+        imgH: 180,
+        imageHref: 'timeline.webp',
+      }],
+      screencastHref: 'screencast.mp4',
+    };
+
+    expect(stage.selfContainedReportStrip).toEqual({
+      screencastHref: true,
+    });
+  });
+
   it('leaves every persisted path for report generation to handle', () => {
     const measurement: BuildAnnotatedTimelineResult = {
       frames: [{

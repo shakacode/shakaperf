@@ -54,7 +54,7 @@ describe('writeBisectReport', () => {
     )?.[1];
     expect(serializedPayload).toBeDefined();
     expect(saved).toEqual(JSON.parse(serializedPayload!));
-    expect(saved.meta.reportMode).toBe('lightweight');
+    expect(saved.meta.reportMode).toBe('self-contained');
     expect(html).toContain(
       `data:image/png;base64,${Buffer.from('fixture').toString('base64')}`,
     );

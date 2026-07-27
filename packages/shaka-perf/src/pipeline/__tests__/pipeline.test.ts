@@ -40,6 +40,7 @@ function stage(name: StageName, category: StageCategory = 'perf'): Stage<Record<
     label: name,
     category,
     description: `${name} stage`,
+    selfContainedReportStrip: {},
     applies: () => true,
     run: async (_ctx: TestContext, _pool: WorkerPool) => ({}),
     renderArtifacts: () => null,

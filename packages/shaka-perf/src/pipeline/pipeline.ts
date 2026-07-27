@@ -57,6 +57,10 @@ export interface ChipTestEntry<Measurements extends Record<string, unknown>> {
   readonly results: ChipResultMap<Measurements>;
 }
 
+export interface PipelineChipContext {
+  readJsonArtifact<T>(artifactPath: string): T | undefined;
+}
+
 export interface PipelineChipBuilder<Measurements extends Record<string, unknown>> {
   // Bulk chip computation for the whole run. Receives every test's
   // stage results in a single call; lets the builder construct any
@@ -65,6 +69,7 @@ export interface PipelineChipBuilder<Measurements extends Record<string, unknown
   // a test to fall back to no chips.
   chipsForAllTests(
     perTest: readonly ChipTestEntry<Measurements>[],
+    context?: PipelineChipContext,
   ): ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>;
 }
 
@@ -134,6 +139,7 @@ interface PipelineBuilder {
 export interface Pipeline extends PipelineOptions {
   chipsForAllTests(
     perTest: readonly ChipTestEntry<Record<string, unknown>>[],
+    context?: PipelineChipContext,
   ): ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>;
   sortsForAllTests(
     perTest: readonly ChipTestEntry<Record<string, unknown>>[],

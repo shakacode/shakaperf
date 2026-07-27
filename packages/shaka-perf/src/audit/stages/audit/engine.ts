@@ -169,7 +169,12 @@ export async function runAuditStage(
     artifacts: ctx.artifacts,
     metrics,
   });
-  if (coverageStatementIds) artifact.coverageStatementIds = coverageStatementIds;
+  if (coverageStatementIds) {
+    artifact.coverageStatementIdsHref = await ctx.artifacts.writeJson(
+      'coverage_statement_ids.json',
+      coverageStatementIds,
+    );
+  }
   return artifact;
 }
 
@@ -267,9 +272,9 @@ async function screenshotLighthouseHtml(htmlPath: string): Promise<Buffer | null
 
 // Drain `coverage.json` (istanbul shape: `{ [absFile]: { s: { [stmtId]: hit
 // count } } }`) into a sorted, unique list of `${absFile}:${stmtId}` keys for
-// every executed statement. Returned to the chip pass so duplicate-coverage
-// detection can run against the in-memory measurement set without re-reading
-// disk. Returns `undefined` (not `[]`) when there's no signal — either the
+// every executed statement. The caller persists that list as a small
+// measurement reference instead of embedding tens of thousands of strings in
+// every outcome. Returns `undefined` (not `[]`) when there's no signal — either the
 // file is missing, malformed, or the bundle wasn't instrumented — so the chip
 // pass can distinguish "no coverage data" from "ran but executed nothing".
 function readCoverageStatementIds(artifactsDir: string): string[] | undefined {

@@ -17,6 +17,9 @@ import type { WorkerPool } from '../pipeline/worker-pool';
 
 export type StageCategory = TestType;
 export type StageName = string;
+export interface SelfContainedReportStrip {
+  readonly [field: string]: boolean | SelfContainedReportStrip;
+}
 export type JsonValue =
   | null
   | boolean
@@ -144,11 +147,12 @@ export interface Stage<M = unknown> {
   run(ctx: TestContext, pool: WorkerPool): Promise<M>;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
   /**
-   * Return a copy of `measurement` containing only report-facing data.
-   * Artifact references remain report-relative paths here; self-contained
-   * report generation converts them to data URIs at the report boundary.
+   * Fields explicitly set to `true` are removed from self-contained report
+   * measurements. `false` retains a field, and nested dictionaries apply the
+   * same rule recursively. The report pipeline centrally embeds every artifact
+   * path that remains after this projection.
    */
-  stripMeasurementForReport?(measurement: M): M;
+  readonly selfContainedReportStrip: SelfContainedReportStrip;
 }
 
 // DO NOT DELETE: this will be populated later.

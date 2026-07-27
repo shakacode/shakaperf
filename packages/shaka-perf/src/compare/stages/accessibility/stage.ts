@@ -31,6 +31,11 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   readonly name = 'accessibility';
   readonly label = 'Accessibility';
   readonly description = 'Scan control and experiment with axe and classify accessibility changes.';
+  readonly selfContainedReportStrip = {
+    comparisonArtifactHref: true,
+    control: { rawArtifactHref: true },
+    experiment: { rawArtifactHref: true },
+  };
   private readonly config: AccessibilityStageConfig;
 
   constructor(config: AccessibilityStageConfig) {
@@ -58,5 +63,4 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   }
 
   machineReadableSummary = emptyMachineReadableSummary;
-
 }

@@ -276,7 +276,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       cwd: '/tmp/shaka-perf',
       errors: [],
       reportOnly: false,
-      reportMode: 'lightweight',
+      reportMode: 'self-contained',
       pipelineConfig: {
         parallelism: 1,
         accessibility: {

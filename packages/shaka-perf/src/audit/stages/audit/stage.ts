@@ -41,15 +41,8 @@ export interface AuditResult {
   metrics: AuditMetric[];
   lighthouseHref?: string;
   lighthouseThumbHref?: string;
-  /**
-   * Sorted `${absFile}:${statementId}` keys for every istanbul statement
-   * executed during this test, drained off `window.__coverage__`. Populated
-   * only when the served bundle is instrumented (otherwise absent — a missing
-   * field is treated as "no signal", not "no coverage"). Used by the audit
-   * chip pass to flag tests whose JS coverage is a subset of another's. Never
-   * rendered; stripped from both report modes.
-   */
-  coverageStatementIds?: readonly string[];
+  /** Report-relative path to the executed statement-id JSON artifact. */
+  coverageStatementIdsHref?: string;
 }
 
 export class AuditStage implements Stage<AuditResult> {
@@ -57,6 +50,11 @@ export class AuditStage implements Stage<AuditResult> {
   readonly name: StageName = 'audit';
   readonly label = 'Audit';
   readonly description = 'Capture one absolute Lighthouse measurement on the target URL.';
+  readonly selfContainedReportStrip = {
+    lighthouseHref: true,
+    lighthouseThumbHref: true,
+    coverageStatementIdsHref: true,
+  };
 
   constructor(private readonly config: AuditStageConfig) {}
 
@@ -75,12 +73,4 @@ export class AuditStage implements Stage<AuditResult> {
   }
 
   machineReadableSummary = emptyMachineReadableSummary;
-
-  stripMeasurementForReport(measurement: AuditResult): AuditResult {
-    // `coverageStatementIds` is a chip-pass-only signal — the renderer never
-    // reads it. A typical instrumented SPA produces ~50–100k strings per test,
-    // so leaving it in either report bloats the embedded JSON payload.
-    const { coverageStatementIds: _cov, ...rest } = measurement;
-    return rest;
-  }
 }

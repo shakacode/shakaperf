@@ -81,7 +81,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     pipeline.waitForAllTasksFinishAndDispose(workerPool);
 
     pipeline.buildChips<{ audit: AuditResult; accessibility: AccessibilityResult }>({
-      chipsForAllTests(perTest) {
+      chipsForAllTests(perTest, context) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         // Index test → metrics once and reuse across the chip builders below.
         const indexed = perTest.map((entry) => ({
@@ -98,6 +98,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
             test,
             auditResults: results.audit ?? [],
           })),
+          context?.readJsonArtifact,
         );
         const duplicateChips = coverageDuplicateChips(signatures);
         const coversChips = coverageCoversChips(signatures);
