@@ -103,7 +103,7 @@ const mergeInvestigationLabels: Record<
 };
 
 type CommitTimelineItem =
-  | { kind: 'clean-run'; commits: BisectReportCommit[] }
+  | { kind: 'clean-run'; commits: BisectReportCommit[]; measured: boolean }
   | { kind: 'regression'; commit: BisectReportCommit };
 
 function buildCommitTimeline(commits: readonly BisectReportCommit[]): CommitTimelineItem[] {
@@ -111,8 +111,11 @@ function buildCommitTimeline(commits: readonly BisectReportCommit[]): CommitTime
   for (const commit of commits) {
     const previous = items.at(-1);
     if (!hasRegressions(commit)) {
-      if (previous?.kind === 'clean-run') previous.commits.push(commit);
-      else items.push({ kind: 'clean-run', commits: [commit] });
+      if (previous?.kind === 'clean-run' && previous.measured === commit.measured) {
+        previous.commits.push(commit);
+      } else {
+        items.push({ kind: 'clean-run', commits: [commit], measured: commit.measured });
+      }
     } else {
       items.push({ kind: 'regression', commit });
     }
@@ -130,8 +133,8 @@ function CleanCommitGroup({
   runIndex: number;
 }) {
   const [open, setOpen] = useState(false);
-  const measuredCount = commits.filter((commit) => commit.measured).length;
   const commitLabel = `${commits.length} commit${commits.length === 1 ? '' : 's'}`;
+  const measurementLabel = commits[0]?.measured ? 'measured' : 'not measured';
   const firstCommit = commits[0];
   const lastCommit = commits.at(-1);
 
@@ -142,11 +145,11 @@ function CleanCommitGroup({
         className="bisect-clean-run"
         data-bisect-clean-run={runIndex}
         aria-haspopup="dialog"
-        aria-label={`${commitLabel} with no first-bad regressions`}
+        aria-label={`${commitLabel}, ${measurementLabel}, with no first-bad regressions`}
         onClick={() => setOpen(true)}
       >
         <strong>[{commitLabel}]</strong>
-        <span>no first-bad regressions</span>
+        <span>{measurementLabel} · no first-bad regressions</span>
       </button>
       <Dialog
         open={open}
@@ -161,7 +164,7 @@ function CleanCommitGroup({
             </div>
             <div>
               <dt>measurement</dt>
-              <dd>{measuredCount} measured · {commits.length - measuredCount} not measured</dd>
+              <dd>{measurementLabel}</dd>
             </div>
           </dl>
         )}
