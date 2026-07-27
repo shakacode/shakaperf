@@ -94,7 +94,7 @@ function saveViewportIndexes (viewport: Viewport, index: number) {
   return Object.assign({}, viewport, { vIndex: index });
 }
 
-function delegateCompareScenarios (config: DecoratedCompareConfig) {
+async function delegateCompareScenarios (config: DecoratedCompareConfig): Promise<CompareResult[]> {
   const scenarioViews: ScenarioView[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
@@ -114,23 +114,32 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
 
   const asyncCaptureLimit = config.asyncCaptureLimit === 0 ? 1 : config.asyncCaptureLimit || CONCURRENCY_DEFAULT;
 
-  return new Promise(function (resolve, reject) {
-    createPlaywrightBrowser(config).then(function (browser) {
-      logger.log('Browser created');
+  const browser = await createPlaywrightBrowser(config);
+  logger.log('Browser created');
+  for (const view of scenarioViews) view._playwrightBrowser = browser;
 
-      for (let i = 0; i < scenarioViews.length; i++) {
-        scenarioViews[i]._playwrightBrowser = browser;
-      }
-
-      pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
-        return runCompareScenario.playwright(view);
-      }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
-        disposePlaywrightBrowser(browser).then(function () { resolve(out); });
-      }, function (e: unknown) {
-        disposePlaywrightBrowser(browser).then(function () { reject(e); }).catch(function () { reject(e); });
-      });
-    }, function (e: unknown) { reject(e); });
-  });
+  let comparisonFailed = false;
+  try {
+    return await pMap(
+      scenarioViews as Required<ScenarioView>[],
+      (view) => runCompareScenario.playwright(view),
+      { concurrency: asyncCaptureLimit },
+    );
+  } catch (error) {
+    comparisonFailed = true;
+    throw error;
+  } finally {
+    try {
+      await disposePlaywrightBrowser(browser);
+    } catch (disposeError) {
+      if (!comparisonFailed) throw disposeError;
+      logger.warn(
+        `Could not dispose Playwright browser after comparison failure: ${
+          disposeError instanceof Error ? disposeError.message : String(disposeError)
+        }`,
+      );
+    }
+  }
 }
 
 function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { compareConfig: CompareConfig }) {
