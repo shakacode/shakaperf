@@ -8,9 +8,8 @@
  */
 
 /**
- * Internal mobile identity used by real-Chrome audit stages. Lighthouse
- * rewrites the Chrome major to match the launched browser when this value is
- * supplied through its emulatedUserAgent setting.
+ * Viewport identities used by Lighthouse emulation and real-Chrome audit
+ * stages. The Chrome major is rewritten to match the launched browser.
  */
 export const REAL_CHROME_MOBILE_USER_AGENT =
   'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
@@ -33,5 +32,6 @@ export function matchRealChromeUserAgentVersion(
 }
 
 export function chromeVersionFromProductString(product: string): string | undefined {
-  return /\b(\d+\.\d+\.\d+\.\d+)\b/.exec(product)?.[1];
+  return /\b(?:Google Chrome|Chromium|Chrome)(?:\/|\s+)(\d+\.\d+\.\d+\.\d+)\b/
+    .exec(product)?.[1];
 }

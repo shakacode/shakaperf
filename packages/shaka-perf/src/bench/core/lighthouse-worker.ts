@@ -61,10 +61,22 @@ const execFileAsync = promisify(execFile);
 async function installedChromeVersion(): Promise<string | undefined> {
   try {
     const chromePath = getChromePath();
-    if (!chromePath) return undefined;
-    const { stdout, stderr } = await execFileAsync(chromePath, ['--version']);
-    return chromeVersionFromProductString(`${stdout}\n${stderr}`);
-  } catch {
+    if (!chromePath) {
+      console.warn('[shaka-perf] could not locate Chrome to resolve its user-agent version');
+      return undefined;
+    }
+    const { stdout } = await execFileAsync(chromePath, ['--version'], { timeout: 5000 });
+    const version = chromeVersionFromProductString(stdout);
+    if (!version) {
+      console.warn('[shaka-perf] could not parse the installed Chrome version');
+    }
+    return version;
+  } catch (err) {
+    console.warn(
+      `[shaka-perf] could not resolve the installed Chrome version: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
     return undefined;
   }
 }
@@ -132,15 +144,15 @@ class LighthouseWorkerSampler {
     // measured navigation; getLighthouseSettings pins that path separately.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
       const browserVersion = await installedChromeVersion();
-      chromeFlags.push(
-        '--disable-blink-features=AutomationControlled',
-        `--user-agent=${matchRealChromeUserAgentVersion(
+      chromeFlags.push('--disable-blink-features=AutomationControlled');
+      if (browserVersion) {
+        chromeFlags.push(`--user-agent=${matchRealChromeUserAgentVersion(
           realChromeUserAgentForFormFactor(
             process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
           ),
           browserVersion,
-        )}`,
-      );
+        )}`);
+      }
     }
 
     if (process.env.TRACERBENCH_PROXY_URL) {

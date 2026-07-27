@@ -69,6 +69,8 @@ contexts; a headed non-mobile context keeps Chrome's native identity.
 Lighthouse normalizes its emulated identity to the host browser. After each
 Playwright navigation the engine polls up to ~25s for the challenge to clear.
 Sites that admit only a mobile identity can still block the desktop audit row.
+All Lighthouse performance runs use a viewport-matched emulated identity unless
+the project supplies an explicit `lighthouseConfig.emulatedUserAgent` override.
 Both paths require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
 configuration.

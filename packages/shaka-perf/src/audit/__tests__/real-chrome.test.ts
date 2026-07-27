@@ -40,7 +40,11 @@ describe('matchRealChromeUserAgentVersion', () => {
     expect(chromeVersionFromProductString('Google Chrome 150.0.7339.41')).toBe(
       '150.0.7339.41',
     );
+    expect(chromeVersionFromProductString('Chrome/151.0.1.2')).toBe('151.0.1.2');
     expect(chromeVersionFromProductString('Google Chrome')).toBeUndefined();
+    expect(
+      chromeVersionFromProductString('/usr/lib/chromium-browser/1.2.3.4/chrome: error'),
+    ).toBeUndefined();
   });
 });
 

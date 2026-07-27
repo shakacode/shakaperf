@@ -55,7 +55,7 @@ describe('lighthouseWorkerEnvironment', () => {
     });
   });
 
-  it('binds real-Chrome sampler reuse to the viewport form factor', () => {
+  it('binds sampler reuse to the viewport form factor in the default mode', () => {
     const benchmark = createLighthouseBenchmark(
       'experiment',
       { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
@@ -63,7 +63,6 @@ describe('lighthouseWorkerEnvironment', () => {
         viewport: desktopViewport,
         lhConfig: {},
         targetUrl: 'https://example.com',
-        realChrome: { headless: true },
       },
     );
     const desktopKey = lighthouseSamplerReuseKey([benchmark]);
@@ -105,6 +104,15 @@ describe('lighthouseWorkerEnvironment', () => {
       ...desktopViewport,
       formFactor: 'mobile',
     }).emulatedUserAgent).toContain('Mobile');
+  });
+
+  it('preserves an explicit Lighthouse identity override', () => {
+    expect(lhConfigForViewport(desktopViewport, {
+      emulatedUserAgent: 'custom-user-agent',
+    }).emulatedUserAgent).toBe('custom-user-agent');
+    expect(lhConfigForViewport(desktopViewport, {
+      emulatedUserAgent: false,
+    }).emulatedUserAgent).toBe(false);
   });
 });
 

@@ -91,7 +91,8 @@ export function lhConfigForViewport(
   return {
     ...userOverrides,
     formFactor: viewport.formFactor,
-    emulatedUserAgent: realChromeUserAgentForFormFactor(viewport.formFactor),
+    emulatedUserAgent:
+      userOverrides.emulatedUserAgent ?? realChromeUserAgentForFormFactor(viewport.formFactor),
     screenEmulation: {
       mobile: viewport.formFactor === 'mobile',
       width: viewport.width,

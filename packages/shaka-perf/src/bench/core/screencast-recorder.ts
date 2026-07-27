@@ -381,10 +381,7 @@ export async function startScreencastOnLighthouseSession(
           await lhSession.sendCommand('Page.stopScreencast').catch(() => {});
           return;
         }
-        if (generation !== subscriptionGeneration) {
-          await lhSession.sendCommand('Page.stopScreencast').catch(() => {});
-          return;
-        }
+        if (generation !== subscriptionGeneration) return;
         if (attempt > 1) {
           console.log(
             `[shaka-perf screencast] subscribe (${label}) recovered on attempt ${attempt}`,

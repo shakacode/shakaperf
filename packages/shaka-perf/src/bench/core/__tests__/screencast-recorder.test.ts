@@ -281,17 +281,22 @@ describe('screencastRecorder', () => {
       .toHaveLength(2);
   });
 
-  it('stops a successful subscription that was superseded in flight', async () => {
+  it('keeps the current screencast active when an older subscription settles', async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();
     let startAttempts = 0;
+    let screencastActive = false;
     let resolveFirstNavigation: (() => void) | undefined;
     const sendCommand = jest.fn(async (method: string) => {
-      if (method !== 'Page.startScreencast') return;
-      startAttempts += 1;
-      if (startAttempts === 2) {
-        await new Promise<void>((resolve) => {
-          resolveFirstNavigation = resolve;
-        });
+      if (method === 'Page.startScreencast') {
+        startAttempts += 1;
+        if (startAttempts === 2) {
+          await new Promise<void>((resolve) => {
+            resolveFirstNavigation = resolve;
+          });
+        }
+        screencastActive = true;
+      } else if (method === 'Page.stopScreencast') {
+        screencastActive = false;
       }
     });
     const session = {
@@ -308,8 +313,8 @@ describe('screencastRecorder', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(sendCommand.mock.calls.filter(([method]) => method === 'Page.stopScreencast'))
-      .toHaveLength(1);
+    expect(screencastActive).toBe(true);
+    expect(sendCommand).not.toHaveBeenCalledWith('Page.stopScreencast');
     await recording.stop();
   });
 
