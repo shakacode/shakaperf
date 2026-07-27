@@ -8,6 +8,7 @@
  */
 
 import type { Page, BrowserContext } from 'playwright-core';
+import type { PerTestConfig } from './define-config';
 
 export interface Marker {
   start?: string;
@@ -44,14 +45,13 @@ export const DESKTOP_VIEWPORT: Viewport = { label: 'desktop', width: 1280, heigh
 
 // Tall counterparts of the canonical devices. Visreg captures a CSS-selector
 // element clipped to its bounding box WITHIN the current viewport and no longer
-// resizes the page to fit it, so an element taller than the viewport runs at one
-// of these instead: add it to `shared.viewports` + the category's `viewports`,
-// then narrow per-test via `options.viewports`. The width matches the base
-// device; only the height grows. (formFactor/deviceScaleFactor only feed
+// resizes the page to fit it, so an element taller than the viewport needs one
+// of these added to `config.viewports`. The width matches the base device;
+// only the height grows. (formFactor/deviceScaleFactor only feed
 // perf/Lighthouse; visreg ignores them.)
-export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
-export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 9000, formFactor: 'mobile', deviceScaleFactor: 3 };
-export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 9000, formFactor: 'desktop', deviceScaleFactor: 1 };
+export const PHONE_TALL_VIEWPORT: Viewport = { label: 'phone-tall', width: 375, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const TABLET_TALL_VIEWPORT: Viewport = { label: 'tablet-tall', width: 768, height: 3000, formFactor: 'mobile', deviceScaleFactor: 3 };
+export const DESKTOP_TALL_VIEWPORT: Viewport = { label: 'desktop-tall', width: 1280, height: 3000, formFactor: 'desktop', deviceScaleFactor: 1 };
 
 export type TestType = 'perf' | 'visreg' | 'accessibility' | 'audit';
 
@@ -80,36 +80,6 @@ export interface TestFnContext {
   annotate: (label: string) => Promise<void>;
 }
 
-export interface AbTestVisregConfig {
-  // Selectors to capture (from Scenario)
-  selectors?: string[];
-  selectorExpansion?: boolean | string;
-  hideSelectors?: string[];
-  removeSelectors?: string[];
-
-  // Interactions (from Scenario)
-  hoverSelector?: string;
-  hoverSelectors?: string[];
-  clickSelector?: string;
-  clickSelectors?: string[];
-  scrollToSelector?: string;
-  postInteractionWait?: number | string;
-
-  // Comparison thresholds (from Scenario)
-  misMatchThreshold?: number;
-  requireSameDimensions?: boolean;
-  maxNumDiffPixels?: number;
-  compareRetries?: number;
-  compareRetryDelay?: number;
-  comparePixelmatchThreshold?: number;
-
-  // Ready state (from Scenario)
-  readyEvent?: string;
-  readySelector?: string;
-  readyTimeout?: number;
-  delay?: number;
-}
-
 /**
  * Context handed to a `beforeNavigate` hook. Runs BEFORE the page is created on
  * every engine, so `context` (the Playwright `BrowserContext`) is the only
@@ -131,56 +101,17 @@ export interface BeforeNavigateContext {
 
 export type BeforeNavigateHook = (
   ctx: BeforeNavigateContext,
-  /**
-   * The global `shared.beforeNavigate` hook (a no-op if none is configured),
-   * handed ONLY to a per-test hook so it can decide whether/when to run the
-   * global pre-nav setup — call `runGlobalBeforeNavigate(ctx)`, or skip it to
-   * opt out. When a test has NO per-test hook, the global runs on its own.
-   */
-  runGlobalBeforeNavigate?: BeforeNavigateHook,
 ) => void | Promise<void>;
 
-export interface AbTestAccessibilityConfig {
-  tags?: string[];
-  disableRules?: string[];
-  includeRules?: string[];
-  skip?: boolean;
-}
-
-export interface AbTestOptions {
-  markers?: Marker[];
-  resultsFolder?: string;
-  visreg?: AbTestVisregConfig;
-  accessibility?: AbTestAccessibilityConfig;
-  /**
-   * Runs before this test's page is navigated, on every engine. Use for
-   * per-page pre-nav setup — most commonly aborting third-party resources that
-   * never resolve in the sandbox (e.g. `installRequestBlocking(context,
-   * ['/recaptcha/'])`), but also cookies, headers, or init scripts.
-   *
-   * When present, this hook REPLACES the automatic run of the global
-   * `shared.beforeNavigate`: it receives the global as a second argument and
-   * decides whether to invoke it. To keep the global setup, call it — usually
-   * first — then do your own work:
-   * `async (ctx, runGlobal) => { await runGlobal(ctx); ... }`. Omit the call to
-   * opt out of the global for this test. See `BeforeNavigateContext`.
-   */
-  beforeNavigate?: BeforeNavigateHook;
-  /**
-   * Narrows which viewports this test runs at (applies to every category).
-   * References labels from `shared.viewports`; the intersection with each
-   * category's `viewports` list is what actually executes. If the
-   * intersection is empty for a category, the test is skipped there with
-   * a visible "skipped by viewport filter" marker on the report card.
-   *
-   * Example: test dashboards only render usefully at desktop widths —
-   * `options: { viewports: ['desktop'] }` skips the phone/tablet passes.
-   */
-  viewports?: string[];
-}
-
-export interface AbTestDefinition {
-  name: string;
+/**
+ * The per-test configuration `abTest()` accepts. Test identity and the capture
+ * directive (`visregSelectors`) sit flat at the top level; anything the test
+ * body can already do (interactions, ready-waits, hide/remove) is dropped — do
+ * it in the body. Everything the config file owns (thresholds, viewports, axe
+ * rule sets, …) is overridable per-test through `config`, a partial of the
+ * same `abtests.config.ts` shape.
+ */
+export interface AbTestConfig {
   startingPath: string;
   /**
    * If set, the experiment side benches/visregs against this path instead
@@ -189,9 +120,29 @@ export interface AbTestDefinition {
    * always uses `startingPath`.
    */
   experimentPathOverride?: string;
+  /** Which categories run for this test. Omitted = every category. */
+  testTypes?: TestType[];
+  /** CSS selectors visreg captures. Default: the whole document. */
+  visregSelectors?: string[];
+  /** Per-test perf phase definitions (`{start,end,label}`). */
+  markers?: Marker[];
+  /**
+   * Per-test override of the universal config, merged over the file config for
+   * this test alone — so one test can tighten `visreg.mismatchThreshold`,
+   * replace `visreg.viewports`, replace the `accessibility.disableRules` list,
+   * or swap the pre-navigation hook via `shared.beforeNavigate`, while every
+   * other test keeps the file defaults. A defined array replaces the file's
+   * wholesale (no union or intersection). The type accepts every section
+   * except run-level ones (see `PerTestConfig`); knobs the engines resolve
+   * once per run simply won't vary if overridden.
+   */
+  config?: PerTestConfig;
+}
+
+export interface AbTestDefinition extends Omit<AbTestConfig, 'testTypes'> {
+  name: string;
   file: string | null;
   line: number | null;
-  options: AbTestOptions;
   testTypes: TestType[] | null;
   testFn: (context: TestFnContext) => Promise<void>;
   /**
@@ -222,14 +173,24 @@ function registry(): AbTestDefinition[] {
   return holder.tests;
 }
 
+/**
+ * The keys `abTest()` accepts, as runtime data. Typed `Record<keyof
+ * AbTestConfig, true>` so adding a field to `AbTestConfig` without listing it
+ * here is a compile error — the allowlist cannot drift out of sync with the
+ * interface it guards.
+ */
+const AB_TEST_CONFIG_KEYS: Record<keyof AbTestConfig, true> = {
+  startingPath: true,
+  experimentPathOverride: true,
+  testTypes: true,
+  visregSelectors: true,
+  markers: true,
+  config: true,
+};
+
 export function abTest(
   name: string,
-  config: {
-    startingPath: string;
-    experimentPathOverride?: string;
-    testTypes?: TestType[];
-    options?: AbTestOptions;
-  },
+  config: AbTestConfig,
   testFn: (context: TestFnContext) => Promise<void>
 ): void {
     // Commas are the delimiter for the `--filter` CLI option, so a name
@@ -238,6 +199,27 @@ export function abTest(
       throw new Error(
         `abTest name must not contain commas (got ${JSON.stringify(name)}) — ` +
           `commas delimit entries in the --filter CLI option.`,
+      );
+    }
+    // Test files load via tsx (transpile-only, no typecheck), and the config is
+    // spread onto the definition below — so any key that isn't part of
+    // `AbTestConfig` would load fine, be read by nobody, and leave the test
+    // silently running on defaults. That is the whole class of failure the
+    // flattening created (`options`, a top-level `beforeNavigate`,
+    // `hideSelectors`, `visregSelectorExpansion`, `resultsFolder`, `selectors`,
+    // ...), so reject unknown keys outright rather than listing them one by one
+    // — the same strictness `abtests.config.ts` and per-test `config` get.
+    const unknownKeys = Object.keys(config).filter(
+      (key) => !(key in AB_TEST_CONFIG_KEYS),
+    );
+    if (unknownKeys.length > 0) {
+      throw new Error(
+        `abTest(${JSON.stringify(name)}): unrecognized key(s) ` +
+          `${unknownKeys.map((k) => `'${k}'`).join(', ')} — ` +
+          `abTest() accepts ${Object.keys(AB_TEST_CONFIG_KEYS).join(', ')}. ` +
+          `Per-test settings go under 'config' (a partial of abtests.config.ts, ` +
+          `including 'config.shared.beforeNavigate'); interactions and waits ` +
+          `belong in the test body. See BREAKING_CHANGES.md.`,
       );
     }
     // Capture call-site file and line number from the stack trace
@@ -259,12 +241,10 @@ export function abTest(
     }
 
   registry().push({
+    ...config,
     name,
-    startingPath: config.startingPath,
-    experimentPathOverride: config.experimentPathOverride,
     file,
     line,
-    options: config.options ?? {},
     testTypes: withMandatoryTestTypes(config.testTypes),
     testFn,
   });

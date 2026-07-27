@@ -9,6 +9,7 @@
 
 import * as path from 'path';
 import { pathToFileURL } from 'url';
+import { registerTsExtensionResolver } from './register-ts-extensions';
 
 let loadCounter = 0;
 
@@ -29,6 +30,8 @@ export async function loadTestFile(testFilePath: string): Promise<void> {
   const cacheBust = `?shaka-perf-load=${++loadCounter}`;
 
   if (ext === '.ts') {
+    // Let test files use extensionless / `.js` relative imports (see the hook).
+    registerTsExtensionResolver();
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { tsImport } = require('tsx/esm/api');

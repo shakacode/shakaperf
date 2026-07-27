@@ -6,7 +6,7 @@ argument-hint: <url> [depth=2] [output=./ab-tests/] [mode=twin-server|single-ser
 
 # discover-abtests
 
-Crawl a target site in Chrome, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for `shaka-perf visreg`.
+Crawl a target site in Chrome, probe pages interactively to understand their behavior, then generate validated `.abtest.ts` files for shaka-perf visual regression testing (run via `shaka-perf compare --categories visreg`).
 
 The goal is to produce tests that _actually work_ — not just syntactically valid files. That's why each page is probed in the browser before writing any code: it avoids generating tests for interactions that don't exist, CSS overrides that don't work, or skeleton waits for elements that never appear.
 
@@ -111,7 +111,7 @@ Check for spinners, skeleton screens, loading indicators. Use `javascript_tool` 
 - If an element has near-zero textContent but children have content, it's a **wrapper** — go one level deeper
 - Aim for sections covering 70%+ of page height — use as many sections as needed
 - For sidebar elements (position:absolute/sticky, widthRatio < 0.5), plan desktop-only tests
-- For elements hidden on some viewports, add `viewports` override
+- For elements hidden on some viewports, add a `config: { visreg: { viewports: [...] } }` override
 
 **A5–A7 are not optional.** Interaction tests (clicking buttons, filling forms, opening modals) are just as important as section snapshots — they catch regressions in dynamic behavior that static screenshots miss. A page with 5 section snapshots and 0 interaction tests has a coverage gap.
 
@@ -159,7 +159,7 @@ After completing desktop probing (A1-A7), resize the browser to mobile width and
    el ? { display: getComputedStyle(el).display, height: el.getBoundingClientRect().height } : 'NOT FOUND'
    ```
 5. Compare desktop vs mobile sections:
-   - **Desktop selector hidden/absent on mobile** → restrict that test to `viewports: [tablet, desktop]` or `[desktop]`. Check if there's a mobile-specific replacement (e.g., `.mobile-nav` replaces `.nav-tabs`). If a replacement exists, plan a mobile-only test for it.
+   - **Desktop selector hidden/absent on mobile** → restrict that test via `config: { visreg: { viewports: ['tablet', 'desktop'] } }` or `['desktop']`. Check if there's a mobile-specific replacement (e.g., `.mobile-nav` replaces `.nav-tabs`). If a replacement exists, plan a mobile-only test for it.
    - **New element on mobile not seen on desktop** → plan a mobile-only test for it
    - **Same selector, different dimensions** → note for threshold adjustment
 6. Check interactive elements at mobile width — buttons/menus that appear only on mobile (hamburger menu, mobile filters, etc.)
@@ -194,20 +194,20 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 // TODO: Hero section snapshot
 // - selector: [data-cy="hero"] or .hero-section
 // - wait for: .skeleton (found in A2) to disappear
-// - threshold: 0.05 (dynamic hero image)
-abTest('Homepage Hero', { startingPath: '/', options: { visreg: {} } }, async () => {});
+// - threshold: 0.05 (dynamic hero image) via config.visreg.mismatchThreshold
+abTest('Homepage Hero', { startingPath: '/' }, async () => {});
 
 // TODO: Click "Contact Us" button → modal opens
 // - confirmed in A6: clicking button.contact-cta opens modal .contact-modal
 // - inside modal (A7): form with name, email, message fields
 // - .contact-cta is display:none on mobile viewport (A8)
-// - need desktop-only viewports
-abTest('Homepage Contact Modal', { startingPath: '/', options: { visreg: {} } }, async () => {});
+// - needs config: { visreg: { viewports: ['desktop'] } }
+abTest('Homepage Contact Modal', { startingPath: '/' }, async () => {});
 
 // TODO: Fill contact form inside modal
 // - fields: input[name="name"], input[name="email"], textarea[name="message"]
 // - depends on: opening the modal first (chained interaction)
-abTest('Homepage Contact Form Fill', { startingPath: '/', options: { visreg: {} } }, async () => {});
+abTest('Homepage Contact Form Fill', { startingPath: '/' }, async () => {});
 ```
 
 Before moving to Step C, verify every category below has at least one TODO stub (or an explicit "none found" note). This is a gate — do not proceed until you've checked each one:
@@ -216,9 +216,11 @@ Before moving to Step C, verify every category below has at least one TODO stub 
 2. **Click interactions** — every button/tab confirmed working in A6 gets a test
 3. **Modals/drawers** — every modal opened in A6-A7 gets a "click to open" snapshot test
 4. **Form fills** — every form on the page (inline or inside modals) gets a test that fills ALL its inputs and captures the populated state. This means: text fields get filled, dates get selected, number fields get incremented, dropdowns get opened and a value selected, checkboxes get checked. If a form has a submit button, there should also be a test that fills the form and then clicks submit. A booking form without a "fill dates and guests" test is a coverage gap.
-5. **Viewport-specific from A8** — any desktop-only selectors must have `viewports` restricting them away from mobile. Any mobile-only elements found in A8 get a mobile-only test. If A8 found no mobile-specific elements, write "A8: no mobile-specific elements found" as a comment in the file.
+5. **Viewport-specific from A8** — any desktop-only selectors must have a `config: { visreg: { viewports: [...] } }` override restricting them away from mobile. Any mobile-only elements found in A8 get a mobile-only test. If A8 found no mobile-specific elements, write "A8: no mobile-specific elements found" as a comment in the file.
 
 ### Threshold guidance
+
+The suite-wide default lives in `abtests.config.ts` (`visreg.mismatchThreshold`); override per test via `config: { visreg: { mismatchThreshold: ... } }`:
 
 - `0.01` — static content (legal pages, about text, documentation)
 - `0.05` — standard pages (hero images, structured layouts)
@@ -237,23 +239,23 @@ Annotate waits, clicks, scrolls, fills, and state changes. Don't annotate every 
 Implement each TODO stub directly in the real `.abtest.ts` file, then validate it using `--filter` to run only that test by name:
 
 1. **Implement** the TODO stub — replace the empty `async () => {}` with the real test body
-2. **Run** with `--filter` to execute only this test (the filter is a regex matched against the test name):
+2. **Run** with the unified `compare` command, restricted to visreg and filtered to this test (`--filter` takes a name regex/substring, or a path to a single `.abtest.ts` file):
 
    _Twin-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero"
+   cd <app-directory> && yarn shaka-perf compare --categories visreg --filter "Homepage Hero"
    ```
 
    _Single-server mode_:
    ```bash
-   cd <app-directory> && yarn shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
+   cd <app-directory> && yarn shaka-perf compare --categories visreg --filter "Homepage Hero" --controlURL <url> --experimentURL <url>
    ```
 
 3. **Quick check**: read the screenshot to verify real content was captured (not blank)
 4. **If pass** → move on to the next TODO stub
 5. **If fail** → debug and fix (up to 3 attempts). If still failing, **comment out** the `abTest()` call (don't delete it) and add a `// TODO:` comment explaining what's broken and what was tried. This preserves the test code so it's easy to revisit later.
 
-**Important**: `shaka-perf visreg` must be run from the directory containing `visreg.config.ts`. If the user specified an app directory, `cd` there first.
+**Important**: `shaka-perf compare` reads `abtests.config.ts` — run it from the directory containing that file (or pass `-c <path>`). If the user specified an app directory, `cd` there first. Use `--testPathPattern <regex>` to limit which `.abtest.ts` files are discovered.
 
 **After every test run**, execute these checks:
 
@@ -265,16 +267,16 @@ shaka-perf discover-abtests parse-report
 
 This prints status, diff%, whitespace%, and engine errors per test. Act on these flags:
 - `HIGH-WHITE` (whitePixelPercent > 90%) → selector likely captures empty space. Re-evaluate: try a child element, a sibling, or a different section entirely. **Always read the screenshot** to confirm — a 30px property-specs strip can be 94% white yet "pass" since both servers captured the same tiny fragment.
-- `ENGINE-ERR` → check `engineErrorMsg`. Common: `clip.width = 0` means element has no width at this viewport — add `viewports` override to exclude that breakpoint.
+- `ENGINE-ERR` → check the pair's `error`. Common: `clip.width = 0` means element has no width at this viewport — add a `config: { visreg: { viewports: [...] } }` override to exclude that breakpoint.
 - `BOT70W = true` → content concentrated at top of element; bottom is empty. Consider a tighter selector.
 
 A test that passes (0 diff) can still be broken if both control and experiment captured blank/useless content. The `whitePixelPercent` field catches this — high whitespace on a passing test means the selector is wrong.
 
-**2. Inspect screenshots visually** — use the Read tool on `.png` files:
+**2. Inspect screenshots visually** — use the Read tool on `.png` files. Each test+viewport gets a unit dir under `compare-results/` (named `<test-name-slug>-<viewport>-<hash>`):
 
-- `visreg_data/html_report/experiment_screenshot/`
-- `visreg_data/html_report/reference_screenshot/`
-- `visreg_data/html_report/experiment_screenshot/failed_diff_*.png`
+- `compare-results/<unit>/artifacts/control_screenshots/`
+- `compare-results/<unit>/artifacts/experiment_screenshots/`
+- `compare-results/<unit>/artifacts/experiment_screenshots/failed_diff_*.png`
 
 Always look at screenshots before deciding on a fix. Do not rely on diff percentage alone.
 
@@ -282,13 +284,13 @@ Always look at screenshots before deciding on a fix. Do not rely on diff percent
 
 After all TODO stubs are implemented:
 
-1. Run `shaka-perf visreg-compare --testFile ab-tests/<page>.abtest.ts` with ALL tests in the file
-2. Run `parse-report.py` and check for HIGH-WHITE / ENGINE-ERR flags
+1. Run `shaka-perf compare --categories visreg --filter ab-tests/<page>.abtest.ts` with ALL tests in the file (`--filter` with a file path runs every test in it)
+2. Run `shaka-perf discover-abtests parse-report` and check for HIGH-WHITE / ENGINE-ERR flags
 3. If tests that passed individually now fail in combination → debug and fix (timing issues, shared state, etc.)
 
 ### Step E — Coverage comparison (loop until covered)
 
-1. Open the visreg HTML report (`visreg_data/html_report/index.html`) in Chrome
+1. Open the unified report (`compare-results/report.html`) in Chrome
 2. Open the live page in another Chrome tab
 3. Go through the report images and compare with the live page to find:
    - Missing page sections (important content not captured by any test)
@@ -327,8 +329,8 @@ A test only counts as PASS when **all** of the following are met:
 | Content missing (lazy)                         | scroll + networkidle + scroll-to-top                                          |
 | Carousel moving                                | CSS override from probing                                                     |
 | Selector timeout                               | Inspect DOM in Chrome, use more reliable selector                             |
-| High diff on dynamic content                   | `hideSelectors`/`removeSelectors` or wait for settle — do not raise threshold |
-| Selector not found on some viewports           | Element is `display:none` at that breakpoint — split into viewport-scoped tests (see patterns.md) |
+| High diff on dynamic content                   | Hide/remove the element in the test body (`page.locator(sel).evaluateAll(...)`) or wait for settle — do not raise threshold |
+| Selector not found on some viewports           | Element is `display:none` at that breakpoint — split into viewport-scoped tests via `config.visreg.viewports` (see patterns.md) |
 | High whitespace (whitePixelPercent > 90%)       | Wrong selector — try child, parent, or different section. Read screenshot to verify. |
 | `Cannot type text into input[type=number]`     | Use numeric-only strings: `'5551234567'` not `'555-123-4567'`                 |
 | `button:has-text("X")` matches multiple        | Use `page.getByLabel()`, `page.getByRole()`, or more specific CSS selector    |

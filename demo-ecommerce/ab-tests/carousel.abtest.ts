@@ -20,8 +20,8 @@ const CAROUSEL_PAUSE_CSS = `
 abTest('Carousel Demo - Without stubbing or overriding CSS', {
   startingPath: '/carousel-demo',
   testTypes: ['perf'],
-  options: {
-    viewports: ['phone'],
+  config: {
+    perf: { viewports: ['phone'] },
   },
 }, async () => {});
 
@@ -29,12 +29,8 @@ abTest('Carousel Demo - Without stubbing or overriding CSS', {
 abTest('Carousel Demo - Pause With Override CSS', {
   startingPath: '/carousel-demo',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    visreg: { viewports: ['desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for carousel track to be visible');
@@ -50,12 +46,6 @@ abTest('Carousel Demo - Pause With Override CSS', {
 abTest('Carousel Demo - Stub Slider Images', {
   startingPath: '/carousel-demo',
   testTypes: ['visreg'],
-  options: {
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
-  },
 }, async ({ page, annotate }) => {
   annotate('Intercept and stub slider images');
   await interceptImages(page);

@@ -90,7 +90,6 @@ describe('loadTests', () => {
       startingPath: '/cached',
       file: absPath,
       line: 1,
-      options: {},
       testTypes: null,
       testFn: async () => {},
     }]);
@@ -114,7 +113,6 @@ describe('loadTests', () => {
       startingPath: '/file-url',
       file: pathToFileURL(absPath).href,
       line: 1,
-      options: {},
       testTypes: null,
       testFn: async () => {},
     }]);
@@ -141,7 +139,6 @@ describe('loadTests', () => {
       startingPath: '/interleaved',
       file: noopAbsPath,
       line: 1,
-      options: {},
       testTypes: null,
       testFn: async () => {},
     }]);
@@ -163,7 +160,6 @@ describe('loadTests', () => {
       startingPath: '/elsewhere',
       file: path.join(tmpDir, 'somewhere-else.abtest.js'),
       line: 1,
-      options: {},
       testTypes: null,
       testFn: async () => {},
     }]);

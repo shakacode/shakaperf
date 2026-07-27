@@ -35,7 +35,7 @@ export type {
 } from './run';
 export { measureTest } from './run';
 export { abTest, getRegisteredTests, clearRegistry, TestType } from './ab-test-registry';
-export type { AbTestDefinition, AbTestOptions, AbTestVisregConfig, TestFnContext } from './ab-test-registry';
+export type { AbTestDefinition, AbTestConfig, TestFnContext } from './ab-test-registry';
 export { summarizePerformanceProfile } from './summarize-performance-profile';
 export { generateHtmlDiffs } from './html-diff';
 export type { GenerateHtmlDiffsOptions } from './html-diff';

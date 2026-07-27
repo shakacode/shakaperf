@@ -11,15 +11,16 @@ import * as path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import type { AxeResults } from 'axe-core';
 import sharp from 'sharp';
-import { chromium, firefox, webkit } from 'playwright-core';
-import type { Browser, BrowserContext, LaunchOptions, Page } from 'playwright-core';
+import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { setUpContextForNavigation } from '../../../pre-navigation';
 import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { TestContext } from '../../../stage/stage';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
+import { waitForBotWallToClear } from '../../real-chrome';
+import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
+import { resolvePlaywrightOptions, type PlaywrightOptions } from '../../../config';
 import { normalizeViolation } from './artifacts';
 import type { AccessibilityEffectiveConfig, AccessibilityStageConfig } from './config';
 import type {
@@ -76,14 +77,7 @@ export async function launchAccessibilityBrowser(
   config: AccessibilityStageConfig,
   headed = false,
 ): Promise<Browser> {
-  const engine = config.engineOptions.browser ?? 'chromium';
-  const launchOptions: LaunchOptions = {
-    headless: headed ? false : config.engineOptions.headless ?? true,
-    args: config.engineOptions.args,
-  };
-  if (engine === 'firefox') return firefox.launch(launchOptions);
-  if (engine === 'webkit') return webkit.launch(launchOptions);
-  return chromium.launch(applyRealChrome(launchOptions));
+  return launchStageBrowser(config.playwrightOptions, headed);
 }
 
 export async function scanAccessibilityPage(
@@ -96,33 +90,28 @@ export async function scanAccessibilityPage(
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   try {
-    context = await browser.newContext({
-      viewport: {
-        width: ctx.viewport.width,
-        height: ctx.viewport.height,
-      },
-      deviceScaleFactor: ctx.viewport.deviceScaleFactor,
-      isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
-    });
-    // Clear state and run the beforeNavigate hooks on the context BEFORE the page
-    // is created, uniform with the other engines — context init scripts/routes
-    // then cover the page's first navigation.
+    // The shared per-worker browser is LAUNCHED with the file-level options
+    // (browser/args/headless can't vary once it's up), but every context here is
+    // fresh per scan — so the context/navigation/timeout options honour the
+    // per-test effective config, consistent with beforeNavigate below. A test
+    // that raises `shared.playwrightOptions.waitTimeout` or flips
+    // `ignoreHTTPSErrors` therefore takes effect on its own a11y scan.
+    const effectivePwOptions = resolvePlaywrightOptions(ctx.config, 'accessibility');
+    context = await browser.newContext(stageContextOptions(ctx.viewport, effectivePwOptions));
+    // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,
       url: options.url,
       viewport: ctx.viewport,
       isControl: options.isControl,
       testType: 'accessibility',
-      beforeNavigate: ctx.test.options.beforeNavigate,
+      beforeNavigate: ctx.config.shared.beforeNavigate,
     });
     page = await context.newPage();
-    if (config.engineOptions.waitTimeout) {
-      page.setDefaultTimeout(config.engineOptions.waitTimeout);
-      page.setDefaultNavigationTimeout(config.engineOptions.waitTimeout);
-    }
-    await navigateAccessibilityPage(page, context, ctx, config, options);
+    // The one wait cap every Playwright engine respects (per-test effective).
+    page.setDefaultTimeout(effectivePwOptions.waitTimeout);
+    page.setDefaultNavigationTimeout(effectivePwOptions.waitTimeout);
+    await navigateAccessibilityPage(page, context, ctx, effectivePwOptions, options);
 
     let builder = new AxeBuilder({ page });
     if (effective.includeRules && effective.includeRules.length > 0) {
@@ -226,10 +215,10 @@ async function navigateAccessibilityPage(
   page: Page,
   context: BrowserContext,
   ctx: TestContext,
-  config: AccessibilityStageConfig,
+  playwrightOptions: PlaywrightOptions,
   options: AccessibilityPageScanOptions,
 ): Promise<void> {
-  await page.goto(options.url, accessibilityGotoOptions(config));
+  await page.goto(options.url, accessibilityGotoOptions(playwrightOptions));
   await waitForBotWallToClear(page);
   await runWithLastAnnotation((annotate) =>
     ctx.test.testFn({
@@ -244,8 +233,8 @@ async function navigateAccessibilityPage(
   );
 }
 
-function accessibilityGotoOptions(config: AccessibilityStageConfig): PageGotoOptions {
-  const candidate = config.engineOptions.gotoParameters;
+function accessibilityGotoOptions(playwrightOptions: PlaywrightOptions): PageGotoOptions {
+  const candidate = playwrightOptions.gotoParameters;
   if (candidate && typeof candidate === 'object') {
     return candidate as PageGotoOptions;
   }

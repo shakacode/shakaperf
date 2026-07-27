@@ -7,10 +7,10 @@
  * License in LICENSE.md.
  */
 
-import { Command, Option } from 'commander';
-import { withAbTestsConfigPath } from '../../before-navigate';
+import { Command } from 'commander';
+import { withAbTestsConfigPath } from '../../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
-import { parseAbTestsConfig, viewportsByStageCategory } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
@@ -44,10 +44,6 @@ export async function createCompareCommand(): Promise<Command> {
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
-    .addOption(new Option(
-      '--resume-from-stage <stage>',
-      'Deprecated alias for --restart-from-stage',
-    ).hideHelp())
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
@@ -65,19 +61,25 @@ export async function createCompareCommand(): Promise<Command> {
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
+      if (!configPath) {
+        throw new Error(
+          'No abtests.config.ts found — it is required. ' +
+          'Run `shaka-perf init` to create one, or pass --config <path>.',
+        );
+      }
       await withAbTestsConfigPath(configPath, async () => {
-        const raw = configPath ? await loadAbTestsConfig(configPath) : {};
-        const config = parseAbTestsConfig(raw);
+        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
         const burn = parseBurnOption(opts.burn);
-        const pipeline = createComparePipeline({
-          ...comparePipelineConfigFromAbTests(config, {
+        // Burn replaces retries, visreg's best-of-N included — the visreg
+        // stage zeroes compareRetries off `runtime.burn`.
+        const pipeline = createComparePipeline(
+          comparePipelineConfigFromAbTests(config, {
             testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
           }),
-          // Burn replaces retries, visreg's best-of-N included.
-          ...(burn == null ? {} : { visregCompareRetries: 0 }),
-        });
-        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        );
+        const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
+          config,
           controlURL: opts.controlURL ?? config.shared.controlURL,
           experimentURL: opts.experimentURL ?? config.shared.experimentURL,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
@@ -94,7 +96,6 @@ export async function createCompareCommand(): Promise<Command> {
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,
-          viewports: viewportsByStageCategory(config),
         });
         printReportSummary(result);
         reportPipelineFailure(result);

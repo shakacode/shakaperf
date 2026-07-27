@@ -142,7 +142,6 @@ function frozenTest(rootDir: string, testFile: string, testName: string): AbTest
     startingPath: '/',
     file: path.join(rootDir, testFile),
     line: 1,
-    options: {},
     testTypes: null,
     testFn: async () => undefined,
   };

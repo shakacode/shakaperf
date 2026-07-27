@@ -19,17 +19,17 @@ A visreg test exists to **fail loudly** when the UI changes. Control flow that h
 3. **No `if` — assert the expectation instead.** Don't branch on page state (`if (await locator.isVisible())`, `if (await locator.count())`, `if (el) …`). A branch means the test quietly takes the "do nothing" path *exactly when* the thing you're testing has regressed. State what you expect and let Playwright's auto-waiting throw when it's wrong — these are your assertions:
    - `await page.waitForSelector(sel, { state: 'visible' })` — the element must appear.
    - `await page.waitForURL('**/path')` — navigation must happen.
-   - Need different behaviour per viewport? Don't branch on `viewport.label` — write a separate `abTest` scoped to that viewport via `viewports` (see "Viewport-conditional selectors" in `patterns.md`). Each test stays linear.
+   - Need different behaviour per viewport? Don't branch on `viewport.label` — write a separate `abTest` scoped to that viewport via `config: { visreg: { viewports: [...] } }` (see "Viewport-conditional selectors" in `patterns.md`). Each test stays linear.
 
 4. **Wait for conditions, not the clock.** Use `waitUntilPageSettled(page)` and `waitForSelector(sel, { state })` to wait. `page.waitForTimeout(ms)` is a guess — flaky when short, slow when long. A short fixed delay (≤500ms) is acceptable *only* to let a confirmed animation/transition finish where there's no event to wait on, never to "hope" content loads.
 
 5. **Prefer user-facing locators.** `getByRole`, `getByLabel`, `getByText` express intent and survive refactors better than brittle CSS/XPath; fall back to a stable selector (`[data-cy=…]`, a semantic class) when there's no accessible handle. (Section *captures* still use CSS selectors — see Selectors strategy in `patterns.md`.)
 
-6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `misMatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
-   - **Freeze it at the source** in `onBefore`, before the page loads, so it renders identically every run and on both sides:
+6. **Deterministic inputs *and* content.** Fill fixed values — a fixed date, name, count — never `Date.now()`, randomness, or "today". When the *page itself* renders nondeterministic content (timestamps, "2 minutes ago", live counters, randomized ordering, today's date, ads), **alter the page to force it deterministic** rather than raising `config.visreg.mismatchThreshold` to hide it — a raised threshold isn't determinism, it just blinds the test to real diffs. In order of preference:
+   - **Freeze it at the source** in `beforeNavigate`, before the page loads, so it renders identically every run and on both sides:
      ```typescript
-     onBefore: async ({ page }) => {
-       await page.addInitScript(() => {
+     beforeNavigate: async ({ context }) => {
+       await context.addInitScript(() => {
          const FIXED = new Date('2026-01-01T00:00:00Z').getTime();
          Date.now = () => FIXED;            // also stub the Date constructor if the app uses `new Date()`
          Math.random = () => 0.42;          // pin shuffles / randomized order
@@ -41,7 +41,7 @@ A visreg test exists to **fail loudly** when the UI changes. Control flow that h
      annotate('pinning the relative timestamp');
      await page.locator('.posted-at').evaluate((el) => { el.textContent = 'Jan 1, 2026'; });
      ```
-   - **Drop it from the capture** with `removeSelectors` / `hideSelectors` when the dynamic element isn't what this test is about (e.g. an ad slot inside a section you're snapshotting).
+   - **Drop it from the capture** in the test body when the dynamic element isn't what this test is about (e.g. an ad slot inside a section you're snapshotting): `await page.locator('.ad-slot').evaluateAll((els) => els.forEach((el) => el.remove()))`.
    - **Stub images** with `interceptImages(page)` (call before `page.goto`) and freeze animations/background images with `overrideCSS(page)`.
 
 7. **Each test stands alone.** It starts from its `startingPath` and assumes nothing from any other test — no shared state, no ordering. One behaviour (one section, one interaction) per `abTest`, so a failure pinpoints what broke.

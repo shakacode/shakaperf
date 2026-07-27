@@ -10,13 +10,14 @@
 import * as path from 'node:path';
 
 import * as engineTools from './engineTools';
-import defaultPreparePage from './preparePage';
+import defaultPreparePage, { captureFailureScreenshot, failureScreenshotPath } from './preparePage';
 import createLogger from './logger';
 import { withLogPrefix } from './testContext';
 import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { setUpContextForNavigation } from '../../../pre-navigation';
+import { reconstructEffectiveConfig } from '../../../effective-config';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -28,8 +29,8 @@ export type CaptureScreenshotFn = (
 ) => Promise<Buffer | null>;
 
 type PreparePageFn = (...args: unknown[]) => Promise<{
-  visregSelectorsExp: string[];
-  visregSelectorsExpMap: Record<string, { filePath?: string }>;
+  selectors: string[];
+  selectorMap: Record<string, { filePath?: string }>;
 }>;
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
@@ -45,7 +46,6 @@ export interface CompareAttemptsParams {
   config: DecoratedCompareConfig;
   viewport: Viewport;
   scenario: Scenario;
-  variantOrScenarioLabelSafe: string;
   scenarioLabelSafe: string;
   pixelmatchThreshold: number;
 }
@@ -91,18 +91,25 @@ export async function runCompareAttempts(
   deps: CompareAttemptsDeps,
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
-  const { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold } = params;
+  const { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold } = params;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
   const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
   const sleep = deps.sleep ?? defaultSleep;
 
-  const maxRetries = scenario.compareRetries ?? config.compareRetries ?? 0;
-  const retryDelayMs = scenario.compareRetryDelay ?? config.compareRetryDelay ?? 5000;
-  const maxNumDiffPixels = scenario.maxNumDiffPixels ?? config.maxNumDiffPixels ?? 0;
+  // All comparison tuning is read straight off the effective config (the compare
+  // stage already merged `config.visreg` and wrote it into the bridge config).
+  const maxRetries = config.compareRetries ?? 0;
+  const retryDelayMs = config.compareRetryDelay ?? 5000;
+  const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
   let runs: SelectorRun[] = [];
+
+  // JSON-bridge boundary: the engine's config crosses as data (no functions), so
+  // rebuild this test's effective config here and read from it.
+  const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
+  const beforeNavigate = effectiveConfig.shared.beforeNavigate;
 
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
@@ -112,9 +119,8 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
-    // Pre-nav setup for a side, run on the context BEFORE its page is created
-    // (via createComparisonSide's onContextReady): the shared clear → beforeNavigate
-    // sequence, uniform with the other engines.
+    // Pre-nav setup, run via createComparisonSide's onContextReady before the
+    // page is created — the shared clear → beforeNavigate sequence.
     const setUpSide = (url: string, isControl: boolean) => (context: BrowserContext): Promise<void> =>
       setUpContextForNavigation({
         context,
@@ -122,7 +128,7 @@ export async function runCompareAttempts(
         viewport,
         isControl,
         testType: 'visreg',
-        beforeNavigate: scenario._testDef?.options?.beforeNavigate,
+        beforeNavigate,
       });
 
     // Two throwaway sides per attempt, torn down on every exit path.
@@ -143,11 +149,11 @@ export async function runCompareAttempts(
       // Attempt 0 discovers the selector set (from the test/experiment page);
       // later attempts re-capture that fixed set so pool keys stay stable.
       if (attempt === 0) {
-        runs = testResult.visregSelectorsExp.map((selector, selectorIndex) => {
-          const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector);
-          if (testResult.visregSelectorsExpMap[selector]) testResult.visregSelectorsExpMap[selector].filePath = testPair.test;
-          if (refResult.visregSelectorsExpMap[selector]) refResult.visregSelectorsExpMap[selector].filePath = testPair.reference;
-          const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, config._outputFileFormatSuffix));
+        runs = testResult.selectors.map((selector, selectorIndex) => {
+          const testPair = engineTools.generateTestPair(config, scenario, viewport, scenarioLabelSafe, selectorIndex, selector);
+          if (testResult.selectorMap[selector]) testResult.selectorMap[selector].filePath = testPair.test;
+          if (refResult.selectorMap[selector]) refResult.selectorMap[selector].filePath = testPair.reference;
+          const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX));
           return { selector, testPair, pool, control: pool.load('control'), experiment: pool.load('experiment'), result: null, done: false };
         });
       }
@@ -156,8 +162,8 @@ export async function runCompareAttempts(
         if (run.done) continue;
 
         const [refBuffer, testBuffer] = await Promise.all([
-          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.visregSelectorsExpMap)),
-          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.visregSelectorsExpMap)),
+          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.selectorMap)),
+          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.selectorMap)),
         ]);
         if (!refBuffer || !testBuffer) {
           const where = !refBuffer && !testBuffer ? 'reference and test pages' : (!refBuffer ? 'reference page' : 'test page');
@@ -178,6 +184,23 @@ export async function runCompareAttempts(
         const pixelStable = attempt > 0 && run.control.length + run.experiment.length === framesBefore;
         run.done = run.result.pass || budgetSpent || pixelStable;
       }
+    } catch (err) {
+      // Single failure-screenshot handler for the whole attempt: a testFn throw
+      // in preparePage or a "selector not found" at capture both land here with
+      // the pages still alive (the finally disposes them next). Grab each side's
+      // live full page into the dir the report's failure-screenshot scan reads,
+      // so a crash — not just a pixel mismatch — has something to show. Best
+      // effort; the original error still propagates.
+      await Promise.all(sides.map(async (side, i) => {
+        try {
+          // Path computation stays inside the guard too — a synchronous throw
+          // here must not replace the original `err` we're about to rethrow.
+          await captureFailureScreenshot(side.page, failureScreenshotPath(config, scenario, viewport, i === 0));
+        } catch (captureErr) {
+          logger.warn(`Could not capture ${i === 0 ? 'control' : 'experiment'} failure screenshot: ${(captureErr as Error).message}`);
+        }
+      }));
+      throw err;
     } finally {
       for (const side of sides) await side.dispose();
     }

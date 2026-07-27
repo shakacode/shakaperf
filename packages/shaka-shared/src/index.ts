@@ -23,9 +23,7 @@ export {
 } from './ab-test-registry';
 export type {
   AbTestDefinition,
-  AbTestOptions,
-  AbTestAccessibilityConfig,
-  AbTestVisregConfig,
+  AbTestConfig,
   TestFnContext,
   BeforeNavigateContext,
   BeforeNavigateHook,
@@ -48,8 +46,10 @@ export type {
   PerfConfigInput,
   AuditConfigInput,
   AccessibilityConfigInput,
-  AccessibilityEngineOptionsInput,
+  PlaywrightOptionsInput,
+  ResembleOutputOptionsInput,
   TwinServersConfigInput,
+  PerTestConfig,
 } from './define-config';
 export { waitUntilPageSettled } from './page-helpers/waitUntilPageSettled';
 export type { WaitUntilPageSettledOptions } from './page-helpers/waitUntilPageSettled';

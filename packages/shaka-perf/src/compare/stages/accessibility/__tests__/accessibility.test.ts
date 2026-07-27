@@ -47,7 +47,17 @@ import {
   runAccessibilityCompareStage,
   summarizeFindings,
 } from '../engine';
-import { DEFAULT_ACCESSIBILITY_STAGE_CONFIG } from '../../../../audit/stages/accessibility/config';
+import {
+  DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  type AccessibilityStageConfig,
+} from '../../../../audit/stages/accessibility/config';
+
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+};
 import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
@@ -56,17 +66,18 @@ import type { AccessibilityViolation } from '../../../../audit/stages/accessibil
 import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { buildAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
-  it('honors per-test accessibility skip config', () => {
-    const stage = new AccessibilityCompareStage();
+  it('applies to every test — opting out is testTypes-owned', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
 
     expect(stage.applies({
-      name: 'Skip me',
+      name: 'Any test',
       startingPath: '/',
       file: null,
       line: null,
-      options: { accessibility: { skip: true } },
       testTypes: null,
       testFn: async () => {},
     }, {
@@ -75,7 +86,7 @@ describe('accessibility compare classification', () => {
       height: 800,
       formFactor: 'desktop',
       deviceScaleFactor: 1,
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('classifies new, fixed, unchanged, and changed findings by rule and target', () => {
@@ -237,7 +248,7 @@ describe('accessibility compare engine', () => {
     await runAccessibilityCompareStage(
       fakeContext({ headed: false }, {}, jest.fn(async () => {}), mobileViewport()),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(mockChromiumLaunch).toHaveBeenCalledWith(expect.objectContaining({
@@ -278,7 +289,7 @@ describe('accessibility compare engine', () => {
     const result = await runAccessibilityCompareStage(
       fakeContext({}),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(result.experiment.blocked).toBe(true);
@@ -297,7 +308,7 @@ describe('accessibility compare engine', () => {
       const result = await runAccessibilityCompareStage(
         fakeContext({}),
         fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+        TEST_STAGE_CONFIG,
       );
 
       expect(result.summary.errors).toBe(0);
@@ -393,7 +404,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
   viewport = DESKTOP_VIEWPORT,
 ): TestContext {
@@ -404,7 +415,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {
@@ -429,6 +440,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

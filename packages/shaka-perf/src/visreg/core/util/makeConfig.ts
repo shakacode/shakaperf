@@ -13,10 +13,6 @@ import { loadConfigFile } from '../../../config-loader';
 import extendConfig from './extendConfig';
 import type { RuntimeConfig, VisregEngineInputConfig } from '../types';
 
-function projectPath (_config: Partial<RuntimeConfig>) {
-  return process.cwd();
-}
-
 /**
  * Resolve and load the engine-input config the compare runner wrote to
  * a temp file. No legacy `visreg.config.ts` fallback — `abtests.config.ts`
@@ -24,11 +20,6 @@ function projectPath (_config: Partial<RuntimeConfig>) {
  * always hands this path through.
  */
 async function loadProjectConfig (options: Record<string, any> | undefined, config: Partial<RuntimeConfig>) {
-  const customTestReportFileName = options && (options.testReportFileName || null);
-  if (customTestReportFileName) {
-    config.testReportFileName = options.testReportFileName || null;
-  }
-
   const customConfigPath = options && (options.configFilePath || options.configPath || options.config);
   if (!customConfigPath) {
     throw new Error(
@@ -53,16 +44,13 @@ async function loadProjectConfig (options: Record<string, any> | undefined, conf
   return configWithoutScenarios;
 }
 
-async function makeConfig (_command: string, options?: Record<string, any>) {
+async function makeConfig (options?: Record<string, any>) {
   const config: Partial<RuntimeConfig> = {};
 
   config.args = options || {};
+  config.projectPath = process.cwd();
 
-  config.visregRoot = path.join(__dirname, '../..');
-  config.projectPath = projectPath(config);
-  config.perf = {};
-
-  const userConfig = Object.assign({}, await loadProjectConfig(options, config));
+  const userConfig = await loadProjectConfig(options, config);
 
   return extendConfig(config, userConfig);
 }

@@ -14,7 +14,6 @@ import type { TestContext } from '../../../stage/stage';
 import { StageFailureError } from '../../../stage/stage-failure';
 import { toPosixRelative } from '../../../pipeline/path-utils';
 import {
-  accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from './config';
@@ -66,7 +65,8 @@ async function scanAccessibility(
   browser: Browser,
   config: AccessibilityStageConfig,
 ): Promise<AccessibilityResult> {
-  const effective = accessibilityConfigForTest(config, ctx.test);
+  const acc = ctx.config.accessibility;
+  const effective = { tags: acc.tags, disableRules: acc.disableRules, includeRules: acc.includeRules ?? null };
   const scan = await scanViewport(ctx, browser, effective, config);
   const raw: AccessibilityRawArtifact = {
     testName: ctx.test.name,
@@ -84,7 +84,8 @@ async function scanAccessibility(
     path.join(ctx.artifacts.dir, ACCESSIBILITY_RAW_REPORT_FILENAME),
   );
   return projectAccessibilityRawArtifact(raw, {
-    failOnViolation: config.failOnViolation,
+    // Per-test effective, like tags/disableRules/includeRules above.
+    failOnViolation: acc.failOnViolation,
     rawArtifactHref,
   });
 }

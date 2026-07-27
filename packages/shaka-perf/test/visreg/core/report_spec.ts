@@ -32,15 +32,15 @@ describe('visreg core report', function () {
       failed() { return this.tests.filter((t) => t.status !== 'pass').length; },
     };
 
-    jest.mock('../../../../src/visreg/core/util/compare/index', () => ({
+    jest.mock('../../../src/visreg/core/util/compare/index', () => ({
       __esModule: true,
       default: jest.fn().mockImplementation(() => Promise.resolve(reporter)),
     }));
-    jest.mock('../../../../src/visreg/core/util/logger', () => ({
+    jest.mock('../../../src/visreg/core/util/logger', () => ({
       __esModule: true,
       default: () => ({ log: jest.fn(), error: jest.fn() }),
     }));
-    report = require('../../../../src/visreg/core/command/report') as ReportModule;
+    report = require('../../../src/visreg/core/report') as ReportModule;
   });
 
   beforeEach(function () {
@@ -100,7 +100,7 @@ describe('visreg core report', function () {
     reporter.tests = [{
       pair: {
         label: 'Homepage', viewportLabel: 'desktop', selector: 'document',
-        engineErrorMsg: 'browser crashed',
+        error: 'browser crashed',
       },
       status: 'fail',
     }];
@@ -118,7 +118,7 @@ describe('visreg core report', function () {
       {
         pair: {
           label: 'Homepage', viewportLabel: 'desktop', selector: 'header',
-          engineErrorMsg: 'selector not found',
+          error: 'selector not found',
         },
         status: 'fail',
       },

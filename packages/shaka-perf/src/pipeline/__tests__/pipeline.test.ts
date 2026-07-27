@@ -18,6 +18,8 @@ import {
   type Pipeline,
 } from '../pipeline';
 import { runPipeline, type RuntimeOptions } from '../runner';
+import { ArtifactStore } from '../artifact-store';
+import { buildAbTestsConfig } from '../../config';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
 
@@ -131,7 +133,6 @@ describe('runPipeline', () => {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };
@@ -142,24 +143,25 @@ describe('runPipeline', () => {
 
   async function runWithFrozenTest(runtime: Partial<RuntimeOptions> = {}) {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-pipeline-test-'));
+    // Point the machine-wide measurement lock at a private tmpdir so the test
+    // doesn't queue behind (or block) a real shaka-perf run on this machine.
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
     try {
       return await runPipeline(pipeline(), {
         cwd,
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
         retryDelay: 0,
         timeoutMs: 1_000,
-        viewports: {
-          visreg: [],
-          perf: [],
-          accessibility: [],
-          audit: [],
-        },
         tests: [frozenTest],
         ...runtime,
       });
     } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
       fs.rmSync(cwd, { recursive: true, force: true });
     }
   }
@@ -174,5 +176,128 @@ describe('runPipeline', () => {
     const result = await runWithFrozenTest({ skipReport: true });
 
     expect(result.testResults[0]?.name).toBe(frozenTest.name);
+  });
+});
+
+describe('pre-run wipe', () => {
+  // The narrowed test's plan is tablet-only for visreg; desktop/phone dirs
+  // hold outcomes from a run before the narrowing.
+  const narrowedTest: AbTestDefinition = {
+    name: 'Narrowed homepage',
+    startingPath: '/',
+    file: null,
+    line: null,
+    testTypes: null,
+    testFn: async () => {},
+    config: { visreg: { viewports: ['tablet'] } },
+  };
+
+  let cwd: string;
+
+  beforeEach(() => {
+    jest.mocked(loadTests).mockReset();
+    cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-pipeline-wipe-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  });
+
+  async function run(runtime: Partial<RuntimeOptions> = {}) {
+    // Private measurement-lock location — see runWithFrozenTest.
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
+    try {
+      return await runPipeline(pipeline(), {
+        cwd,
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        controlURL: 'http://control.test',
+        experimentURL: 'http://experiment.test',
+        retries: 0,
+        retryDelay: 0,
+        timeoutMs: 1_000,
+        tests: [narrowedTest],
+        skipReport: true,
+        ...runtime,
+      });
+    } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
+    }
+  }
+
+  function seedOutcome(viewportLabel: string, stage: string) {
+    const store = new ArtifactStore(path.join(cwd, 'test-results'));
+    store.writeOutcome(narrowedTest, viewportLabel, { kind: 'ok', stage, measurement: {} });
+    return path.join(store.unitDirForViewport(narrowedTest, viewportLabel), `${stage}.json`);
+  }
+
+  it('sweeps a selected stage\'s stale outcomes at viewports outside the current plan', async () => {
+    // visreg ran at desktop before the test narrowed itself to tablet.
+    const staleVisreg = seedOutcome('desktop', 'visreg');
+
+    await run({ categories: 'visreg' });
+
+    expect(fs.existsSync(staleVisreg)).toBe(false);
+    // The dir may be re-created by the post-run "--categories skipped" perf
+    // markers, but nothing measured survives — only skip markers.
+    const remaining = fs.existsSync(path.dirname(staleVisreg))
+      ? fs.readdirSync(path.dirname(staleVisreg)).filter((f) => f.endsWith('.json'))
+      : [];
+    for (const file of remaining) {
+      const outcome = JSON.parse(fs.readFileSync(path.join(path.dirname(staleVisreg), file), 'utf8')) as { kind: string };
+      expect(outcome.kind).toBe('skipped');
+    }
+  });
+
+  it('drops other categories\' measured outcomes when sweeping', async () => {
+    // A default run means "this run's results only": the unit dir goes
+    // wholesale so no stale artifact (notably visreg's accumulated screenshot
+    // frames) survives into this run. The perf outcome does not survive as a
+    // measurement — it reappears only as a `--categories` skip marker.
+    const staleVisreg = seedOutcome('desktop', 'visreg');
+    const sweptPerf = seedOutcome('desktop', 'perf');
+
+    await run({ categories: 'visreg' });
+
+    expect(fs.existsSync(staleVisreg)).toBe(false);
+    const perf = fs.existsSync(sweptPerf)
+      ? (JSON.parse(fs.readFileSync(sweptPerf, 'utf8')) as { kind: string })
+      : null;
+    expect(perf?.kind ?? 'absent').not.toBe('ok');
+  });
+
+  it('clears stale artifacts at an IN-PLAN viewport, not just outcomes', async () => {
+    // tablet is the narrowed test's planned visreg viewport. Regression guard:
+    // visreg's screenshot pool ACCUMULATES content-addressed frames and never
+    // prunes its own dir, so a frame left by a previous run would re-enter this
+    // run's best-of-N match and pass on stale pixels. Deleting the outcome is
+    // not enough — the artifacts/ subtree must go with it.
+    const store = new ArtifactStore(path.join(cwd, 'test-results'));
+    store.writeOutcome(narrowedTest, 'tablet', {
+      kind: 'error', stage: 'visreg', error: 'stale from previous run',
+    } as never);
+    const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
+    const staleVisreg = path.join(unitDir, 'visreg.json');
+    seedOutcome('tablet', 'perf');
+    const staleFrame = path.join(unitDir, 'artifacts', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
+    fs.mkdirSync(path.dirname(staleFrame), { recursive: true });
+    fs.writeFileSync(staleFrame, 'stale frame from a previous run');
+
+    await run({ categories: 'visreg' });
+
+    expect(fs.existsSync(staleFrame)).toBe(false);
+    // The stale visreg outcome was swept; whatever visreg.json exists now came
+    // from THIS run's stage (the mock stage succeeds), not the stale error.
+    const rewritten = JSON.parse(fs.readFileSync(staleVisreg, 'utf8')) as { kind: string };
+    expect(rewritten.kind).toBe('ok');
+  });
+
+  it('leaves stale outcomes alone under --keep-old-results', async () => {
+    const staleVisreg = seedOutcome('desktop', 'visreg');
+
+    await run({ categories: 'visreg', keepOldResults: true });
+
+    expect(fs.existsSync(staleVisreg)).toBe(true);
   });
 });

@@ -19,7 +19,6 @@ import {
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  accessibilityConfigForTest,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
 import type {
@@ -36,19 +35,17 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   readonly description = 'Scan control and experiment with axe and classify accessibility changes.';
   private readonly config: AccessibilityStageConfig;
 
-  constructor(config?: AccessibilityStageConfig) {
+  constructor(config: AccessibilityStageConfig) {
     this.config = {
       ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
       ...config,
-      engineOptions: {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
-        ...config?.engineOptions,
-      },
     };
   }
 
-  applies(test: AbTestDefinition, _viewport: Viewport): boolean {
-    return !accessibilityConfigForTest(this.config, test).skip;
+  applies(_test: AbTestDefinition, _viewport: Viewport): boolean {
+    // Opting a test out of accessibility is testTypes-owned (omit
+    // 'accessibility'); there is no per-test skip flag.
+    return true;
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<AccessibilityCompareResult> {

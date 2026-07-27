@@ -16,8 +16,7 @@ describe('createComparisonBitmaps', function () {
   const mockConfig = {
     configFileName: '/tmp/dummy-config.json',
     tempCompareConfigFileName: '/tmp/test-compare-config.json',
-    defaultMisMatchThreshold: 0.1,
-    defaultRequireSameDimensions: true,
+    mismatchThreshold: 0.1,
     compareRetries: 3,
     compareRetryDelay: 5000,
     maxNumDiffPixels: 10,
@@ -43,12 +42,10 @@ describe('createComparisonBitmaps', function () {
     const defaultTests = [{
       name: 'Test Scenario 1',
       startingPath: '/page1',
-      options: { visreg: {} },
       testFn: async function () {},
     }, {
       name: 'Test Scenario 2',
       startingPath: '/page2',
-      options: { visreg: {} },
       testFn: async function () {},
     }];
 
@@ -57,6 +54,7 @@ describe('createComparisonBitmaps', function () {
 
   function createModule (overrides?: {
     runCompareScenario?: Record<string, unknown>;
+    runPlaywright?: Record<string, unknown>;
     registeredTests?: unknown[];
   }) {
     jest.resetModules();
@@ -90,11 +88,13 @@ describe('createComparisonBitmaps', function () {
     jest.mock('node:fs/promises', () => ({
       writeFile: function () { return Promise.resolve(); },
     }));
-    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);
-    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => ({
+    const runPlaywrightMock = overrides?.runPlaywright || {
       createPlaywrightBrowser: function () { return Promise.resolve({}); },
       disposePlaywrightBrowser: function () { return Promise.resolve(); },
-    }));
+    };
+
+    jest.mock('../../../../src/visreg/core/util/runCompareScenario', () => runCompareScenarioMock);
+    jest.mock('../../../../src/visreg/core/util/runPlaywright', () => runPlaywrightMock);
     jest.mock('../../../../src/visreg/core/util/ensureDirectoryPath', () => ({
       __esModule: true,
       default: function () {},
@@ -119,13 +119,23 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedConfig.maxNumDiffPixels, 10, 'Should pass maxNumDiffPixels');
   });
 
-  it('should set isCompare flag', async function () {
-    const createComparisonBitmaps = createModule();
-    await createComparisonBitmaps(mockConfig);
+  // Pins the invariant `flatMapTestPairs` relies on: a scenario that throws
+  // rejects the whole pMap (so no partial results reach flatMap), the original
+  // error propagates, and the browser is still disposed on that path.
+  it('should reject with the original error and dispose the browser when a scenario throws', async function () {
+    let disposed = false;
+    const createComparisonBitmaps = createModule({
+      runCompareScenario: {
+        playwright: function () { return Promise.reject(new Error('scenario blew up')); },
+      },
+      runPlaywright: {
+        createPlaywrightBrowser: function () { return Promise.resolve({}); },
+        disposePlaywrightBrowser: function () { disposed = true; return Promise.resolve(); },
+      },
+    });
 
-    assert(capturedConfig, 'Should have captured config');
-    assert.strictEqual(capturedConfig.isCompare, true, 'Should set isCompare to true');
-    assert.strictEqual(capturedConfig.isControl, false, 'Should set isControl to false');
+    await assert.rejects(() => createComparisonBitmaps(mockConfig), /scenario blew up/);
+    assert(disposed, 'Should dispose the browser after a scenario rejection');
   });
 
   it('should throw error when no tests registered', async function () {
@@ -207,12 +217,7 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Test from registry',
         startingPath: '/page1',
-        options: {
-          visreg: {
-            selectors: ['[data-cy="hero"]'],
-            misMatchThreshold: 0.05,
-          },
-        },
+        visregSelectors: ['[data-cy="hero"]'],
         testFn: mockTestFn,
       }],
       runCompareScenario: {
@@ -234,7 +239,6 @@ describe('createComparisonBitmaps', function () {
     assert.strictEqual(capturedScenarios[0].url, 'http://localhost:3030/page1');
     assert.strictEqual(capturedScenarios[0].referenceUrl, 'http://localhost:3020/page1');
     assert.deepStrictEqual(capturedScenarios[0].selectors, ['[data-cy="hero"]']);
-    assert.strictEqual(capturedScenarios[0].misMatchThreshold, 0.05);
     assert.strictEqual(capturedScenarios[0]._testFn, mockTestFn, 'Should attach testFn');
   });
 
@@ -243,7 +247,6 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Missing URLs test',
         startingPath: '/products',
-        options: {},
         testFn: async function () {},
       }],
     });
@@ -276,7 +279,6 @@ describe('createComparisonBitmaps', function () {
       registeredTests: [{
         name: 'Auto-discovered test',
         startingPath: '/auto',
-        options: {},
         testFn: async function () {},
       }],
       runCompareScenario: {

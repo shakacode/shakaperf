@@ -82,6 +82,22 @@ export class ArtifactStore {
     );
   }
 
+  /**
+   * Remove the unit dir outright — outcomes AND the `artifacts/` subtree they
+   * reference. The pre-run sweep calls this so every stage starts from an empty
+   * slate: engines that ACCUMULATE rather than overwrite (visreg's screenshot
+   * pool writes one content-addressed frame per capture) would otherwise carry
+   * a previous run's frames into this run's best-of-N match and pass on them.
+   *
+   * This deliberately drops other categories' outcomes too. A default run means
+   * "this run's results only"; to layer a category onto a previous run's
+   * results, use `--keep-old-results`, which skips the sweep entirely.
+   */
+  removeUnitDir(test: AbTestDefinition, viewportLabel: string): void {
+    // `force` makes a missing dir a no-op.
+    fs.rmSync(this.unitDirForViewport(test, viewportLabel), { recursive: true, force: true });
+  }
+
   readOutcome(test: AbTestDefinition, viewportLabel: string, stage: StageName): Outcome | null {
     const p = path.join(this.unitDirForViewport(test, viewportLabel), `${stage}.json`);
     try {

@@ -44,7 +44,7 @@ You do not need the full twin-server setup to get value on day one:
    ```ts
    // ab-tests/homepage.abtest.ts
    import { abTest } from 'shaka-shared';
-   abTest('Homepage', { startingPath: '/', options: { visreg: {} } }, async () => {});
+   abTest('Homepage', { startingPath: '/' }, async () => {});
    ```
 
    Output lands in `audit-results/` (Lighthouse perf, accessibility, agent-readiness, screencast timeline).

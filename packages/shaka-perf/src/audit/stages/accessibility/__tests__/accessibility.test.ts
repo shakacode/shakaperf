@@ -43,7 +43,7 @@ jest.mock('../../../../pipeline/artifact-compression', () => ({
 
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  mergeAccessibilityConfig,
+  type AccessibilityStageConfig,
 } from '../config';
 import { normalizeViolation, projectAccessibilityRawArtifact } from '../artifacts';
 import {
@@ -64,42 +64,20 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { buildAbTestsConfig } from '../../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
 
-describe('accessibility config merging', () => {
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+};
+
+describe('accessibility config defaults', () => {
   it('uses the shared accessibility tag defaults', () => {
     expect(DEFAULT_ACCESSIBILITY_STAGE_CONFIG.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
-  });
-
-  it('merges per-test overrides with replace and additive semantics', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      tags: ['wcag2a', 'wcag2aa'],
-      disableRules: ['color-contrast'],
-      includeRules: ['button-name'],
-    }, {
-      tags: ['wcag22aa'],
-      disableRules: ['region', 'color-contrast'],
-      includeRules: ['image-alt'],
-      skip: true,
-    });
-
-    expect(merged).toEqual({
-      tags: ['wcag22aa'],
-      disableRules: ['color-contrast', 'region'],
-      includeRules: ['image-alt'],
-      skip: true,
-    });
-  });
-
-  it('uses global includeRules when the test does not replace them', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      includeRules: ['button-name'],
-    }, undefined);
-
-    expect(merged.includeRules).toEqual(['button-name']);
-    expect(merged.skip).toBe(false);
   });
 });
 
@@ -325,7 +303,7 @@ describe('accessibility report filtering', () => {
 
 describe('accessibility report modes', () => {
   it('keeps linked screenshots for full reports and inline screenshots for lightweight reports', () => {
-    const stage = new AccessibilityStage();
+    const stage = new AccessibilityStage(TEST_STAGE_CONFIG);
     const raw: AccessibilityRawArtifact = {
       testName: 'Checkout',
       experimentURL: 'http://localhost:3030/checkout',
@@ -382,9 +360,9 @@ describe('accessibility browser launch', () => {
       fakeContext({ headed: true }),
       fakeWorkerPool(),
       {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-        engineOptions: {
-          ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
+        ...TEST_STAGE_CONFIG,
+        playwrightOptions: {
+          ...TEST_STAGE_CONFIG.playwrightOptions,
           headless: true,
         },
       },
@@ -403,19 +381,23 @@ describe('accessibility browser launch', () => {
       fakeContext(
         {},
         {
-          beforeNavigate: jest.fn(async ({ context, testType, url }) => {
-            events.push('beforeNavigate');
-            expect(context).toBeDefined();
-            expect(testType).toBe('accessibility');
-            expect(url).toBe('http://localhost:3030/checkout');
-          }),
+          config: {
+            shared: {
+              beforeNavigate: jest.fn(async ({ context, testType, url }) => {
+                events.push('beforeNavigate');
+                expect(context).toBeDefined();
+                expect(testType).toBe('accessibility');
+                expect(url).toBe('http://localhost:3030/checkout');
+              }),
+            },
+          },
         },
         jest.fn(async () => {
           events.push('testFn');
         }),
       ),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     // Browser state is cleared BEFORE the beforeNavigate hooks (so a hook that
@@ -450,7 +432,7 @@ describe('accessibility browser launch', () => {
       const result = await runAccessibilityStage(
         fakeContext({}),
         fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+        TEST_STAGE_CONFIG,
       );
 
       // The PNG is on disk and the violations were computed before the
@@ -467,39 +449,6 @@ describe('accessibility browser launch', () => {
     }
   });
 
-  it('does not read or apply visreg-only test options', async () => {
-    const browser = fakeBrowser();
-    mockChromiumLaunch.mockResolvedValue(browser);
-
-    await runAccessibilityStage(
-      fakeContext(
-        {},
-        {
-          visreg: {
-            readyEvent: 'app:ready',
-            readySelector: '#ready',
-            readyTimeout: 123,
-            delay: 500,
-            removeSelectors: ['.visreg-remove'],
-            hideSelectors: ['.visreg-hide'],
-          },
-        },
-      ),
-      fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-    );
-
-    expect(browser.context.addCookies).not.toHaveBeenCalled();
-    expect(browser.page.on).not.toHaveBeenCalled();
-    expect(browser.page.removeListener).not.toHaveBeenCalled();
-    expect(browser.page.waitForSelector).not.toHaveBeenCalled();
-    // Only the bot-wall probe reads the page; no visreg-driven evaluate runs.
-    expect(browser.page.evaluate).toHaveBeenCalledTimes(1);
-    expect(browser.page.goto).toHaveBeenCalledWith(
-      'http://localhost:3030/checkout',
-      { waitUntil: 'networkidle' },
-    );
-  });
 });
 
 function violation(ruleId: string, tags: string[]): AccessibilityViolation {
@@ -549,7 +498,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
 ): TestContext {
   const test = {
@@ -559,7 +508,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {
@@ -584,6 +533,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

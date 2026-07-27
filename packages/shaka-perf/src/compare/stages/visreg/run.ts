@@ -13,7 +13,8 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import chalk from 'chalk';
 import visregRunner from '../../../visreg/core/runner';
-import type { VisregConfig } from '../../../config';
+import { resolvePlaywrightOptions } from '../../../config';
+import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError } from '../../../stage/stage-failure';
 import {
@@ -37,13 +38,26 @@ export async function runVisregUnit(
 
   const { testPathPattern, ...visregConfig } = {
     ...stageConfig,
+    // Write the effective comparison tuning (already merged into ctx.config) into
+    // the temp config so the engine reads it straight, with no merge of its own.
+    mismatchThreshold: ctx.config.visreg.mismatchThreshold,
+    maxNumDiffPixels: ctx.config.visreg.maxNumDiffPixels,
+    comparePixelmatchThreshold: ctx.config.visreg.comparePixelmatchThreshold,
+    resembleOutputOptions: ctx.config.visreg.resembleOutputOptions,
+    // Best-of-N is per-unit work, so the per-test effective values apply —
+    // except under --burn, which replaces retries everywhere: a burn
+    // instance's raw outcome IS the measurement, so best-of-N is zeroed.
+    compareRetries: ctx.runtime.burn != null ? 0 : ctx.config.visreg.compareRetries,
+    compareRetryDelay: ctx.config.visreg.compareRetryDelay,
     viewports: [ctx.viewport],
-    // `--headed` overrides the configured visreg headless setting so the
-    // Playwright browser is visible too — matching the Lighthouse stages, so
-    // `compare --headed` shows every measurement browser.
-    ...(ctx.runtime.headed
-      ? { engineOptions: { ...stageConfig.engineOptions, headless: false } }
-      : {}),
+    // Effective launch options (shared.playwrightOptions ← visreg override ←
+    // per-test config), resolved here so the engine reads them straight.
+    // `--headed` overrides headless on top so the Playwright browser is
+    // visible too — matching the Lighthouse stages.
+    playwrightOptions: {
+      ...resolvePlaywrightOptions(ctx.config, 'visreg'),
+      ...(ctx.runtime.headed ? { headless: false } : {}),
+    },
   };
 
   // Where this unit's artifacts go, straight from the framework — it already
@@ -55,7 +69,7 @@ export async function runVisregUnit(
 
   const startedAt = Date.now();
   try {
-    await visregRunner('compare', {
+    await visregRunner({
       config: configPath,
       controlURL: ctx.controlURL,
       experimentURL: ctx.experimentURL,
@@ -144,7 +158,7 @@ function walkPngs(root: string, visit: (filePath: string, mtimeMs: number) => vo
 }
 
 function writeTempVisregConfig(
-  visregConfig: VisregConfig,
+  visregConfig: Omit<VisregConfig, 'viewports'> & { viewports: Viewport[] },
   unitArtifactsDir: string,
 ): string {
   const payload = {

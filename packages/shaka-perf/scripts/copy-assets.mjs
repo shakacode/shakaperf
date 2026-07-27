@@ -50,6 +50,12 @@ const assets = [
     'src/audit/stages/audit/accessibility-score-runner.mjs',
     'dist/audit/stages/audit/accessibility-score-runner.mjs',
   ],
+  // ESM resolve hook that lets user config/test files use extensionless / `.js`
+  // relative imports (registered by the config-loader before tsImport).
+  [
+    'src/config-loader/resolve-ts-extensions.mjs',
+    'dist/config-loader/resolve-ts-extensions.mjs',
+  ],
   ...lighthousePatchAssets,
   // Bundled Claude Code skills — `shaka-perf init` copies these into the
   // user's project at .claude/skills/<name>/. Source of truth lives at the

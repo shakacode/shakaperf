@@ -25,6 +25,7 @@ import {
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
 import { setUpContextForNavigation } from '../../pre-navigation';
+import { reconstructEffectiveConfig } from '../../effective-config';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
   DEFAULT_LH_CONFIG,
@@ -60,6 +61,16 @@ export const FAILURE_SCREENSHOT_FILENAME = 'failure-screenshot.png';
 
 interface SetupMessage {
   type: 'setup';
+  /** Launch Chrome headed (no `--headless`): `--headed` CLI flag or resolved `playwrightOptions.headless: false`. */
+  headed?: boolean;
+  /** Extra chrome flags from the resolved `playwrightOptions.args`. */
+  chromeArgs?: string[];
+  /**
+   * From the resolved `playwrightOptions.ignoreHTTPSErrors`. Defaults to true
+   * (like every other engine): `--ignore-certificate-errors` is passed unless
+   * this is explicitly false.
+   */
+  ignoreHTTPSErrors?: boolean;
 }
 
 interface SampleMessage {
@@ -96,17 +107,25 @@ class LighthouseWorkerSampler {
   private chrome: LaunchedChrome | null = null;
   private userDataDir: string | null = null;
 
-  async setupBrowser(): Promise<void> {
+  async setupBrowser(options: { headed?: boolean; chromeArgs?: string[]; ignoreHTTPSErrors?: boolean } = {}): Promise<void> {
     const chromeFlags = [
-      '--ignore-certificate-errors',
       '--enable-unsafe-swiftshader',
       '--disable-dev-shm-usage',
     ];
-    // Headless unless the run opted into --headed (SHAKA_PERF_HEADED=1, set in
-    // the fork env from LighthouseBenchmarkOptions.headed).
-    if (process.env.SHAKA_PERF_HEADED !== '1') {
+    // Same default as every other engine's `ignoreHTTPSErrors`: lax unless the
+    // config explicitly asks for strict certificate checking.
+    if (options.ignoreHTTPSErrors !== false) {
+      chromeFlags.unshift('--ignore-certificate-errors');
+    }
+    // Headless unless the run opted into headed (the setup IPC message, set
+    // from LighthouseBenchmarkOptions.headed / the resolved
+    // playwrightOptions.headless).
+    if (!options.headed) {
       chromeFlags.unshift('--headless');
     }
+
+    // Extra flags from the resolved shared/perf playwrightOptions.args.
+    chromeFlags.push(...(options.chromeArgs ?? []));
 
     if (process.env.TRACERBENCH_PROXY_URL) {
       chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
@@ -190,7 +209,7 @@ class LighthouseWorkerSampler {
 
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
 
-    const markers = testDef.options.markers ?? msg.options.markers;
+    const markers = testDef.markers ?? msg.options.markers;
     const { phases, accessibilityScore } = await this.runLighthouseWithPlaywright(
       testDef,
       msg.options,
@@ -255,6 +274,9 @@ class LighthouseWorkerSampler {
 
     try {
       const context = browser.contexts()[0];
+      // Fork boundary: the parent's `ctx.config` (functions and all) can't cross,
+      // so rebuild this test's effective config here and read from it.
+      const config = await reconstructEffectiveConfig(testDef);
       // The shared clear → beforeNavigate sequence, run on the context before
       // Lighthouse navigates so route-blocking/init-scripts cover the first
       // navigation and subframes. This context is reused across samples, so the
@@ -265,7 +287,7 @@ class LighthouseWorkerSampler {
         viewport: options.viewport,
         isControl: options.isControl ?? false,
         testType: 'perf',
-        beforeNavigate: testDef.options.beforeNavigate,
+        beforeNavigate: config.shared.beforeNavigate,
       });
 
       let releaseTracking: () => void = () => {};
@@ -622,7 +644,14 @@ process.on('message', async (msg: ParentMessage) => {
     try {
       const workerSampler = new LighthouseWorkerSampler();
       sampler = workerSampler;
-      await workerSampler.setupBrowser();
+      // Forward every launch option off the message rather than cherry-picking
+      // fields: each one is optional, so an omission type-checks and silently
+      // reverts that option to its default in the worker (this is exactly how
+      // `ignoreHTTPSErrors` came to be ignored by Lighthouse alone while every
+      // other engine honoured it). Destructuring `type` off leaves precisely
+      // the launch options, and a new one reaches the browser for free.
+      const { type: _type, ...launchOptions } = msg;
+      await workerSampler.setupBrowser(launchOptions);
       if (shuttingDown) return;
       send({ type: 'ready' });
     } catch (err) {

@@ -2,6 +2,10 @@
 
 Each pattern below corresponds to a scenario you confirmed during probing. Only use a pattern if the corresponding behavior was actually observed.
 
+The `abTest()` config is **flat** (no `options` nesting): `startingPath`, `experimentPathOverride`, `testTypes`, `visregSelectors`, `markers`, plus a per-test `config` that overrides `abtests.config.ts` sections for this test alone (`config.visreg.mismatchThreshold`, `config.visreg.viewports`, `config.accessibility.disableRules`, …). Everything else (waits, clicks, hiding elements) is test-body Playwright code. See `api.md` for the full surface.
+
+Per-test `config` values REPLACE the file value wholesale — arrays included (a per-test `disableRules` does not union with the global list; re-list what you need).
+
 ## Test code rules (non-negotiable)
 
 See [`../../assess-abtest-quality/SKILL.md`](../../assess-abtest-quality/SKILL.md) — the canonical list (no error swallowing, no loops, no `if`-branching on page state, wait for conditions, prefer user-facing locators, deterministic inputs, each test independent). Read it before writing or grading any test.
@@ -10,20 +14,20 @@ See [`../../assess-abtest-quality/SKILL.md`](../../assess-abtest-quality/SKILL.m
 
 ### How to choose selectors
 
-1. **CSS selectors (preferred)** — `selectors: ['.section-class']` captures the element clipped to its bounding box within the current viewport. The engine automatically calls `scrollIntoViewIfNeeded()` before capture, so manual scroll calls are only needed to trigger lazy loading, not for positioning. The page is not resized to fit the element, so if a section is taller than the viewport, run the test at a tall viewport (`PHONE_TALL`/`TABLET_TALL`/`DESKTOP_TALL`).
+1. **CSS selectors (preferred)** — `visregSelectors: ['.section-class']` captures the element clipped to its bounding box within the current viewport. The engine automatically calls `scrollIntoViewIfNeeded()` before capture, so manual scroll calls are only needed to trigger lazy loading, not for positioning. The page is not resized to fit the element, so if a section is taller than the viewport, run the test at a tall viewport (`PHONE_TALL`/`TABLET_TALL`/`DESKTOP_TALL` — add it to `shared.viewports` and reference its label in `config.visreg.viewports`).
 
-2. **Viewport + scroll (fallback)** — only use `selectors: ['viewport']` if no CSS selector can target the section. See scroll-to-section pattern below.
+2. **Viewport + scroll (fallback)** — only use `visregSelectors: ['viewport']` if no CSS selector can target the section. See scroll-to-section pattern below.
 
-3. **Short pages (<2000px)** — a single `'document'` capture is enough.
+3. **Short pages (<2000px)** — a single `'document'` capture is enough (the default when `visregSelectors` is omitted).
 
-4. **Tall pages (>2000px)** — run `scripts/probe-sections.js` to find scored candidates, then apply AI visual heuristics to pick the best selectors.
+4. **Tall pages (>2000px)** — run `shaka-perf discover-abtests probe-sections` to find scored candidates, then apply AI visual heuristics to pick the best selectors.
 
 ### Finding selectors for tall pages
 
 Use a two-strategy approach:
 
-**Strategy 1 — Algorithmic probe** (`scripts/probe-sections.js`):
-Run via `javascript_tool` after the page loads. It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
+**Strategy 1 — Algorithmic probe** (`shaka-perf discover-abtests probe-sections`):
+Capture its stdout and run via `javascript_tool` after the page loads. It walks the DOM, scores elements by size, width, depth, semantic name, heading inclusion, content density, and uniqueness. Elements >1000px tall are penalized so their children get picked. Returns up to 15 non-overlapping candidates.
 
 **Strategy 2 — AI visual analysis**:
 Scroll through the page and identify natural visual sections a user would recognize. For each, find the closest DOM element that wraps it. Evaluate: "If I capture just this element, will the screenshot show recognizable, self-contained UI?"
@@ -36,6 +40,7 @@ Scroll through the page and identify natural visual sections a user would recogn
 - Semantic class name (`hero-slider`, `review-list`, not `_a3f2b`)
 - Unique — `querySelectorAll` returns exactly 1 element
 - Contains real text/images, not just empty wrappers
+- **Exists and has a size at every viewport the test runs at** — otherwise restrict the test with `config: { visreg: { viewports: [...] } }` (see "Viewport-conditional selectors" below)
 - **Includes its heading** — if an `<h2>` sits above, try the parent
 - **"Tells a story"** — screenshot makes sense on its own
 
@@ -43,7 +48,7 @@ Scroll through the page and identify natural visual sections a user would recogn
 
 - Height < 50px — too granular, captures a fragment (e.g., a specs strip)
 - `whitePixelPercent > 90%` after capture — mostly empty space
-- Width = 0 at some viewports — causes `clip.width = 0` engine error
+- Width = 0 at some viewports — causes `clip.width = 0` engine error; restrict the test's viewports
 - Content renders in a child, not the selected element (common with `-container` wrappers)
 - Height > 1000px — too tall, split into sub-sections
 - **"Would a designer draw a box here?"** — if no, it's not a real section
@@ -51,15 +56,15 @@ Scroll through the page and identify natural visual sections a user would recogn
 ### Two-column layouts (content + sidebar)
 
 - Capture content column and sidebar as **separate tests**
-- Sidebar test should have `viewports: [desktop]` (sidebars typically hidden/repositioned on mobile)
+- Sidebar test should have `config: { visreg: { viewports: ['desktop'] } }` (sidebars typically hidden/repositioned on mobile)
 - Detect sidebars: elements with `position: absolute/sticky/fixed` narrower than 50% page width
 
 ### Post-capture validation
 
-After running each test, check `parse-report.py` output:
+After running each test, check `shaka-perf discover-abtests parse-report` output:
 - `whitePixelPercent > 90` → selector captures too much empty space. Try child or sibling.
 - `isBottomSeventyPercentWhite = true` → content concentrated at top
-- `hadEngineError` with `clip.width = 0` → add viewport restrictions
+- a pair `error` with `clip.width = 0` → the element has no box at that viewport — add a `config.visreg.viewports` restriction
 - **Always read the first screenshot** of a new selector — whitespace metrics alone can miss "technically not blank but visually useless" captures
 
 When a locator might match multiple elements, use `.first()`:
@@ -77,7 +82,6 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Page Name', {
   startingPath: '/path',
-  options: { visreg: { delay: 50, misMatchThreshold: 0.05 } },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -91,7 +95,10 @@ Use when the page has notable named sections worth capturing individually, or wh
 ```typescript
 abTest('Page Name', {
   startingPath: '/path',
-  options: { visreg: { selectors: ['[data-cy="hero"]', 'document'], delay: 50, misMatchThreshold: 0.01 } },
+  visregSelectors: ['[data-cy="hero"]', 'document'],
+  config: {
+    visreg: { mismatchThreshold: 0.01 },  // static content — tighten
+  },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -108,8 +115,7 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click [Button] on [Page]', {
   startingPath: '/start',
-  options: { visreg: { misMatchThreshold: 0.05, maxNumDiffPixels: 5 } },
-}, async ({ page, testType, annotate }) => {
+}, async ({ page, annotate }) => {
   annotate('waiting for element to appear');
   await page.waitForSelector('[data-cy="element"]');
   annotate('clicking button');
@@ -123,14 +129,13 @@ abTest('Click [Button] on [Page]', {
 
 ## Page with lazy-loaded content (scroll confirmed in probing)
 
-Only use if `scripts/probe-lazy-load.js` (or manual scroll probing) confirmed new content appeared after scrolling.
+Only use if `shaka-perf discover-abtests probe-lazy-load` (or manual scroll probing) confirmed new content appeared after scrolling.
 
 **NEVER use `while (!atBottom)` scroll loops with `page.mouse.wheel()`** — they go infinite in shaka-perf visreg because `window.scrollY` doesn't update in the Playwright context. Instead, use `scrollIntoViewIfNeeded()` on a known bottom element (footer, last section) to trigger lazy loading.
 
 ```typescript
 abTest('Page Name', {
   startingPath: '/path',
-  options: { visreg: { delay: 50, misMatchThreshold: 0.05 } },
 }, async ({ page, annotate }) => {
   annotate('scrolling to bottom to trigger lazy load');
   await page.locator('footer').scrollIntoViewIfNeeded();
@@ -147,43 +152,34 @@ If there's no footer, use the last visible section or `page.locator('body > *:la
 
 ## Viewport-conditional selectors (element hidden on some viewports)
 
-Use when a selector only exists on certain viewports (e.g. `display: none` on mobile). The `viewport` labels come from `visreg.config.ts` (e.g. `'mobile'`, `'tablet'`, `'desktop'`).
+Use when a selector only exists on certain viewports (e.g. `display: none` on mobile). Viewport labels come from `shared.viewports` in `abtests.config.ts` (defaults: `'phone'`, `'tablet'`, `'desktop'`).
 
-### Split into separate tests with `viewports` override
+### Split into separate tests with a `config.visreg.viewports` override
 
-Write separate `abTest()` calls scoped to specific viewports via the `viewports` option, so each test only runs where its selector exists. No branching logic, clear test names, failures easy to trace.
+Write separate `abTest()` calls scoped to specific viewports via `config: { visreg: { viewports: [...] } }`, so each test only runs where its selector exists. No branching logic, clear test names, failures easy to trace.
 
 ```typescript
 import { abTest } from 'shaka-shared';
 import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
-// Desktop/tablet only — .map-container is display:none on mobile
+// Desktop/tablet only — .map-container is display:none on phone
 abTest('Homepage Map Section', {
   startingPath: '/',
-  options: {
-    visreg: {
-      selectors: ['.map-container'],
-      misMatchThreshold: 0.05,
-      viewports: [
-        { label: 'tablet', width: 768, height: 1024 },
-        { label: 'desktop', width: 1280, height: 800 },
-      ],
-    },
+  visregSelectors: ['.map-container'],
+  config: {
+    visreg: { viewports: ['tablet', 'desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
 });
 
-// mobile only — .mobile-featured-grid replaces the desktop grid
+// Phone only — .mobile-featured-grid replaces the desktop grid
 abTest('Homepage Mobile Featured', {
   startingPath: '/',
-  options: {
-    visreg: {
-      selectors: ['.mobile-featured-grid'],
-      misMatchThreshold: 0.05,
-      viewports: [{ label: 'mobile', width: 375, height: 667 }],
-    },
+  visregSelectors: ['.mobile-featured-grid'],
+  config: {
+    visreg: { viewports: ['phone'] },
   },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
@@ -193,19 +189,13 @@ abTest('Homepage Mobile Featured', {
 
 ### Different *logic* per viewport? Still split — don't branch
 
-When the viewport difference is test logic (different waits, clicks, or scroll behaviour), not just which selector to capture, it's tempting to branch on `viewport.label` inside one callback. Don't — that violates the "no `if`" rule and hides which path actually ran. Write one test per viewport, each with its own linear body and a `viewports` override:
+When the viewport difference is test logic (different waits, clicks, or scroll behaviour), not just which selector to capture, it's tempting to branch on `viewport.label` inside one callback. Don't — that violates the "no `if`" rule and hides which path actually ran. Write one test per viewport, each with its own linear body and a `config.visreg.viewports` override:
 
 ```typescript
-// mobile — results render as a list
-abTest('Search Results (mobile)', {
+// phone — results render as a list
+abTest('Search Results (phone)', {
   startingPath: '/search',
-  options: {
-    visreg: {
-      misMatchThreshold: 0.05,
-      delay: 100,
-      viewports: [{ label: 'mobile', width: 375, height: 667 }],
-    },
-  },
+  config: { visreg: { viewports: ['phone'] } },
 }, async ({ page, annotate }) => {
   annotate('waiting for mobile results list');
   await page.waitForSelector('.mobile-results', { state: 'visible' });
@@ -213,16 +203,10 @@ abTest('Search Results (mobile)', {
   await waitUntilPageSettled(page);
 });
 
-// desktop/tablet — results render in a split panel
+// desktop — results render in a split panel
 abTest('Search Results (desktop)', {
   startingPath: '/search',
-  options: {
-    visreg: {
-      misMatchThreshold: 0.05,
-      delay: 100,
-      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
-    },
-  },
+  config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
   annotate('waiting for split-panel search layout');
   await page.waitForSelector('.search-split-panel', { state: 'visible' });
@@ -245,7 +229,6 @@ const PAUSE_CSS = `
 
 abTest('Carousel on [Page]', {
   startingPath: '/path',
-  options: { visreg: { delay: 50, misMatchThreshold: 0.05 } },
 }, async ({ page, annotate }) => {
   annotate('waiting for carousel to appear');
   await page.waitForSelector('[data-cy="carousel-track"]', { state: 'visible' });
@@ -264,13 +247,7 @@ Only use when a CSS selector can't target the section you need AND the test scre
 ```typescript
 abTest('Below-fold Section on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['viewport'],
-      misMatchThreshold: 0.05,
-      delay: 50,
-    },
-  },
+  visregSelectors: ['viewport'],
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -286,20 +263,15 @@ Click a button to open a modal, drawer, or expanded panel, then capture the resu
 ```typescript
 abTest('Open [Modal Name] on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['viewport'],
-      misMatchThreshold: 0.05,
-      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
-    },
-  },
+  visregSelectors: ['viewport'],
+  config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking button to open modal');
   await page.locator('[data-cy="open-modal"]').click();
   annotate('waiting for modal to appear');
-  await page.waitForTimeout(500);
+  await page.waitForSelector('[data-cy="modal"]', { state: 'visible' });
 });
 ```
 
@@ -310,12 +282,7 @@ Fill form inputs and capture the filled state. Use `page.fill()` for text inputs
 ```typescript
 abTest('Fill [Form Name] on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['.form-container'],
-      misMatchThreshold: 0.05,
-    },
-  },
+  visregSelectors: ['.form-container'],
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -384,13 +351,8 @@ When a form has multiple inputs AND a submit button, the test should fill everyt
 ```typescript
 abTest('Fill and Submit Booking on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['viewport'],
-      misMatchThreshold: 0.05,
-      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
-    },
-  },
+  visregSelectors: ['viewport'],
+  config: { visreg: { viewports: ['desktop'] } },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -423,11 +385,9 @@ Use `page.getByLabel()` for checkboxes and radio buttons. Add `{ exact: true }` 
 ```typescript
 abTest('Apply Filters on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['.results-container'],
-      misMatchThreshold: 0.1,
-    },
+  visregSelectors: ['.results-container'],
+  config: {
+    visreg: { mismatchThreshold: 0.1 },  // dynamic listing content
   },
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
@@ -448,12 +408,7 @@ Click something → new UI appears → interact with the new UI. Each link in th
 ```typescript
 abTest('Open Filters and Apply on [Page]', {
   startingPath: '/path',
-  options: {
-    visreg: {
-      selectors: ['.results-container'],
-      misMatchThreshold: 0.1,
-    },
-  },
+  visregSelectors: ['.results-container'],
 }, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
@@ -479,14 +434,9 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Click [CTA] on [Page]', {
   startingPath: '/start-page',
-  options: {
-    visreg: {
-      selectors: ['viewport'],
-      misMatchThreshold: 0.05,
-      viewports: [{ label: 'desktop', width: 1280, height: 800 }],
-    },
-  },
-}, async ({ page, testType, annotate }) => {
+  visregSelectors: ['viewport'],
+  config: { visreg: { viewports: ['desktop'] } },
+}, async ({ page, annotate }) => {
   annotate('waiting for page to settle');
   await waitUntilPageSettled(page);
   annotate('clicking CTA link');

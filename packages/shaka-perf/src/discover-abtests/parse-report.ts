@@ -18,7 +18,7 @@ interface Pair {
   refWhitePixelPercent?: number;
   testIsBottomSeventyPercentWhite?: boolean;
   refIsBottomSeventyPercentWhite?: boolean;
-  hadEngineError?: boolean;
+  error?: string;
 }
 
 interface Test {
@@ -78,7 +78,7 @@ export function parseReport(reportPath: string): void {
     const bot70 = pair.testIsBottomSeventyPercentWhite ?? pair.refIsBottomSeventyPercentWhite;
     const bot70Str = bot70 === undefined ? 'n/a' : String(bot70);
 
-    const hadError = pair.hadEngineError === true;
+    const hadError = typeof pair.error === 'string' && pair.error.length > 0;
     const errorStr = hadError ? 'YES' : '';
 
     const flags: string[] = [];
@@ -114,7 +114,7 @@ export function parseReport(reportPath: string): void {
     );
   }
   if (engineErrorCount > 0) {
-    console.log(`ERRORS: ${engineErrorCount} test(s) with engine error (check engineErrorMsg)`);
+    console.log(`ERRORS: ${engineErrorCount} test(s) with engine error (check the pair's \`error\`)`);
   }
   if (bottomWhiteCount > 0) {
     console.log(`INFO: ${bottomWhiteCount} test(s) with bottom 70% white (content concentrated at top)`);

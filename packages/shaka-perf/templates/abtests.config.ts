@@ -79,39 +79,42 @@ export default defineConfig({
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
     parallelism: PARALLELISM,
-    // Runs before EVERY test's navigation, on every engine. A per-test
-    // `beforeNavigate` on `abTest()` options, if present, receives this hook as
-    // a second arg and decides whether to call it (`await runGlobal(ctx)`) —
-    // so a test can wrap, extend, or opt out of this setup. The
+    // Runs before EVERY test's navigation, on every engine. A test can
+    // override it with `config: { shared: { beforeNavigate } }`, which fully
+    // replaces this global for that test (the global does not also run); a
+    // test that wants this setup too calls a shared function itself (DRY). The
     // `context` is a Playwright BrowserContext — use it for pre-nav setup:
     // request blocking, cookies, extra headers, init scripts. Prefer
     // `installRequestBlocking` over Playwright `route()` for perf request
     // blocking because request interception disables Chromium's HTTP cache.
-    //
-    // Default: abort Google reCAPTCHA. Its scripts load from www.google.com /
-    // www.gstatic.com, which the twin-server sandbox can't reach (no outbound
-    // internet) — those requests never connect, so Playwright's `networkidle`
-    // never fires and any test landing on a captcha page hangs until the pool
-    // timeout. Harmless if your app has no reCAPTCHA (nothing matches). Add
-    // more substring/regex patterns, or delete this if you don't need it.
     beforeNavigate: async (options : {context: BrowserContext}) => {
+      // Abort Google reCAPTCHA.
       await installRequestBlocking(options.context, ['/recaptcha/']);
       // Seed cookies / an auth session here (optional):
       //   await context.addCookies([{ name: 'session', value: '…', options.url }]);
       // localStorage/auth too, via:
       //   context.addInitScript(...)
     },
+    // Browser-launch options every stage respects. REQUIRED — no hidden
+    // defaults; what's written here is what every stage (including the
+    // perf/audit Lighthouse Chrome) launches with. `visreg.playwrightOptions` /
+    // `perf.playwrightOptions` may override per-category (partial, per-key).
+    playwrightOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+      // Default action + navigation timeout (ms) on every Playwright engine
+      // (visreg, accessibility, agent-readiness). Defaults to 60_000 when
+      // omitted; stated here so the config says what the run does.
+      // Lighthouse's page-load wait is separate: LIGHTHOUSE_CONFIG.maxWaitForLoad.
+      waitTimeout: 60_000,
+    },
   },
 
   visreg: {
     viewports: ['desktop', 'tablet', 'phone'],
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
     maxNumDiffPixels: 50,
     comparePixelmatchThreshold: 0.1,
-    engineOptions: {
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    },
   },
 
   perf: {
@@ -128,6 +131,13 @@ export default defineConfig({
     viewports: ['desktop', 'phone'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
+
+  // Agent-readiness (AI-legibility scan → the client report's "Agent Ready"
+  // tab) is OFF by default. It measures each URL anonymously — no cookies/auth,
+  // never your test body — so it only makes sense on the landing pages a crawler
+  // would hit. Prefer enabling it per-test on those pages
+  // (`config: { agentReadiness: { enabled: true } }`) rather than globally here.
+  // agentReadiness: { enabled: true },
 
   // Twin-servers (Docker A/B testing infra). `ports` reuses the constants
   // above so the host-port mapping, the URLs visreg/perf hit, and

@@ -7,20 +7,29 @@
  * License in LICENSE.md.
  */
 
-import type { AbTestAccessibilityConfig, AbTestDefinition } from 'shaka-shared';
-import type { AccessibilityConfig } from '../../../config';
+import type { AccessibilityConfig, PlaywrightOptions } from '../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from './defaults';
 
-export interface AccessibilityStageConfig extends Omit<AccessibilityConfig, 'viewports'> {}
+export interface AccessibilityStageConfig extends Omit<AccessibilityConfig, 'viewports'> {
+  /**
+   * File-level LAUNCH options for this stage — `resolvePlaywrightOptions(config,
+   * 'accessibility')` (i.e. `shared.playwrightOptions`; accessibility has no
+   * category override), handed in by the pipeline builder. Launch-only: the
+   * browser is launched once per worker slot and reused, so `browser`/`args`/
+   * `headless` can't vary per-test. The per-scan context/navigation/timeout
+   * options (`ignoreHTTPSErrors`, `waitTimeout`, `gotoParameters`) are re-resolved
+   * from the PER-TEST effective config in `scanAccessibilityPage`, consistent
+   * with `beforeNavigate`.
+   */
+  playwrightOptions: PlaywrightOptions;
+}
 
-export const DEFAULT_ACCESSIBILITY_STAGE_CONFIG: AccessibilityStageConfig = {
+// No `playwrightOptions` here: launch options have no hidden defaults — the
+// pipeline builder always hands in the resolved `shared.playwrightOptions`.
+export const DEFAULT_ACCESSIBILITY_STAGE_CONFIG: Omit<AccessibilityStageConfig, 'playwrightOptions'> = {
   tags: [...DEFAULT_ACCESSIBILITY_TAGS],
   disableRules: [],
   includeRules: undefined,
-  engineOptions: {
-    browser: 'chromium',
-    args: ['--no-sandbox'],
-  },
   failOnViolation: true,
 };
 
@@ -28,38 +37,4 @@ export interface AccessibilityEffectiveConfig {
   tags: string[];
   disableRules: string[];
   includeRules: string[] | null;
-  skip: boolean;
-}
-
-export function accessibilityConfigForTest(
-  global: AccessibilityStageConfig,
-  test: AbTestDefinition,
-): AccessibilityEffectiveConfig {
-  return mergeAccessibilityConfig(global, test.options.accessibility);
-}
-
-export function mergeAccessibilityConfig(
-  global: AccessibilityStageConfig,
-  perTest: AbTestAccessibilityConfig | undefined,
-): AccessibilityEffectiveConfig {
-  const tags = perTest?.tags ?? global.tags;
-  const disableRules = dedup([
-    ...(global.disableRules ?? []),
-    ...(perTest?.disableRules ?? []),
-  ]);
-  const includeRules = perTest?.includeRules
-    ? [...perTest.includeRules]
-    : global.includeRules
-      ? [...global.includeRules]
-      : null;
-  return {
-    tags: [...tags],
-    disableRules,
-    includeRules,
-    skip: perTest?.skip === true,
-  };
-}
-
-function dedup<T>(values: T[]): T[] {
-  return Array.from(new Set(values));
 }

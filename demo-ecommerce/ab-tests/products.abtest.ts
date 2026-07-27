@@ -13,12 +13,6 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Products List', {
   startingPath: '/products',
   testTypes: ['visreg'],
-  options: {
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
-  },
 }, async ({ page, annotate }) => {
   annotate('Wait for products list to settle');
   await waitUntilPageSettled(page);
@@ -27,12 +21,8 @@ abTest('Products List', {
 abTest('Products - Electronics Filter', {
   startingPath: '/products',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    visreg: { viewports: ['desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for products page to load');

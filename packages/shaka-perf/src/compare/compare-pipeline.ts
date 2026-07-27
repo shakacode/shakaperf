@@ -32,6 +32,10 @@ import type { AccessibilityStageConfig } from '../audit/stages/accessibility';
 import { hasSavedByRetries, hasVisualChange, visualChangeCount } from './stages/visreg/selectors';
 import { comparePipelineReport } from './pipeline-report';
 import type { AbTestsConfig } from '../config';
+// From the type-only-imports leaf module, NOT '../config': this file is part
+// of the report-shell browser bundle, and a value import of config.ts would
+// pull the zod schemas and their node-side imports into the bundle.
+import { resolvePlaywrightOptions } from '../playwright-options';
 import { pairedBenchmarkParallelism } from './stages/shared/runtime';
 
 export const comparePipelineMetadata = {
@@ -39,14 +43,6 @@ export const comparePipelineMetadata = {
   categories: ['visreg', 'perf', 'accessibility'],
   stages: ['visreg', 'perf-warmup', 'perf', 'perf-low-noise', 'accessibility'],
 } as const;
-
-interface VisregEngineOptions {
-  readonly browser?: string | undefined;
-  readonly args?: string[] | undefined;
-  readonly headless?: boolean | undefined;
-  readonly waitTimeout?: number | undefined;
-  readonly [key: string]: unknown;
-}
 
 interface VisregResembleOutputOptions {
   readonly transparency?: number | undefined;
@@ -59,10 +55,9 @@ export interface ComparePipelineConfig {
   readonly artifactRoot?: string | undefined;
   readonly parallelism: number;
   readonly testPathPattern?: string | undefined;
-  readonly visregDefaultMisMatchThreshold: number;
+  readonly visregMismatchThreshold: number;
   readonly visregMaxNumDiffPixels: number;
   readonly visregComparePixelmatchThreshold: number;
-  readonly visregEngineOptions: VisregEngineOptions;
   readonly visregResembleOutputOptions?: VisregResembleOutputOptions;
   readonly visregCompareRetries: number;
   readonly visregCompareRetryDelay: number;
@@ -73,7 +68,7 @@ export interface ComparePipelineConfig {
   readonly perfSamplingMode: 'sequential' | 'simultaneous';
   readonly perfLighthouseConfig?: PerfLighthouseConfig;
   readonly perfPlotTitle?: string;
-  readonly accessibility?: AccessibilityStageConfig;
+  readonly accessibility: AccessibilityStageConfig;
 }
 
 export function comparePipelineConfigFromAbTests(
@@ -84,10 +79,9 @@ export function comparePipelineConfigFromAbTests(
     artifactRoot: overrides.artifactRoot,
     parallelism: pairedBenchmarkParallelism(config.shared.parallelism),
     testPathPattern: overrides.testPathPattern ?? config.shared.testPathPattern,
-    visregDefaultMisMatchThreshold: config.visreg.defaultMisMatchThreshold,
+    visregMismatchThreshold: config.visreg.mismatchThreshold,
     visregMaxNumDiffPixels: config.visreg.maxNumDiffPixels,
     visregComparePixelmatchThreshold: config.visreg.comparePixelmatchThreshold,
-    visregEngineOptions: config.visreg.engineOptions,
     visregResembleOutputOptions: config.visreg.resembleOutputOptions,
     visregCompareRetries: config.visreg.compareRetries,
     visregCompareRetryDelay: config.visreg.compareRetryDelay,
@@ -98,7 +92,10 @@ export function comparePipelineConfigFromAbTests(
     perfSamplingMode: config.perf.samplingMode,
     perfLighthouseConfig: config.perf.lighthouseConfig,
     perfPlotTitle: config.perf.plotTitle,
-    accessibility: config.accessibility,
+    accessibility: {
+      ...config.accessibility,
+      playwrightOptions: resolvePlaywrightOptions(config, 'accessibility'),
+    },
   };
 }
 
@@ -112,10 +109,9 @@ export function createComparePipeline(input: ComparePipelineConfig) {
   }, (pipeline) => {
     const parallelWorkerPool = pipeline.registerWorkerPool(input.parallelism);
     pipeline.runStage(parallelWorkerPool, createVisregStage({
-      defaultMisMatchThreshold: input.visregDefaultMisMatchThreshold,
+      mismatchThreshold: input.visregMismatchThreshold,
       maxNumDiffPixels: input.visregMaxNumDiffPixels,
       comparePixelmatchThreshold: input.visregComparePixelmatchThreshold,
-      engineOptions: input.visregEngineOptions,
       resembleOutputOptions: input.visregResembleOutputOptions,
       compareRetries: input.visregCompareRetries,
       compareRetryDelay: input.visregCompareRetryDelay,
