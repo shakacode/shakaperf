@@ -162,7 +162,7 @@ export interface ExecuteBisectInput {
   resumeSession?: BisectSession;
   resumeBadRefTests?: readonly TestResult[];
   investigateMerges?: boolean;
-  repairs?: readonly BisectRepair[];
+  repairs: readonly BisectRepair[];
   preparedRepairArtifacts?: readonly PreparedBisectRepairArtifact[];
 }
 
@@ -305,7 +305,7 @@ async function prepareBisectExecution(
       artifacts: [] as PreparedBisectRepairArtifact[],
     }
     : await prepareConfiguredRepairs({
-      repairs: options.config.bisect.repairs ?? [],
+      repairs: options.config.bisect.repairs,
       configDirectory: options.configDirectory ?? options.cwd,
       experimentDir: options.twinServers.experimentDir,
       range: gitRange,
@@ -1196,7 +1196,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     categories: input.selectedCategories,
     tests: frozenTestSelections(input.frozenTests, input.cwd),
     rebuildStrategy,
-    repairs: [...(input.repairs ?? [])],
+    repairs: [...input.repairs],
     range: { goodSha: input.gitRange.goodSha, badSha: input.gitRange.badSha },
   });
   return {
@@ -1206,7 +1206,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     compatibility,
     control: input.repositorySnapshot?.control ?? { branch: null, sha: input.gitRange.goodSha },
     rebuildStrategy,
-    repairs: [...(input.repairs ?? [])],
+    repairs: [...input.repairs],
     repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: '' },
     primary: {
