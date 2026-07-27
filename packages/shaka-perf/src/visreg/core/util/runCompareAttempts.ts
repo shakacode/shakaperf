@@ -40,7 +40,11 @@ export interface CompareAttemptsDeps {
   createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
-  captureFailure?: (err: unknown, page: PlaywrightPage) => Promise<unknown>;
+  captureFailure?: (
+    err: unknown,
+    page: PlaywrightPage,
+    isControl: boolean,
+  ) => Promise<unknown>;
 }
 
 export interface CompareAttemptsParams {
@@ -161,7 +165,7 @@ async function captureComparisonSide(
     } catch (err) {
       attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
       const failure = side && activeSides.has(side) && captureFailure
-        ? await captureFailure(err, side.page)
+        ? await captureFailure(err, side.page, isControl)
         : err;
       disposeActiveSidesOnNextTask(activeSides);
       throw failure;

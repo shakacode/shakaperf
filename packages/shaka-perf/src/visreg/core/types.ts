@@ -18,7 +18,11 @@ export type { PlaywrightPage, BrowserContext, Browser };
  * framework that created the stage's ArtifactScope.
  */
 export interface VisregRunRuntime {
-  captureFailure?: (err: unknown, page: PlaywrightPage) => Promise<unknown>;
+  captureFailure?: (
+    err: unknown,
+    page: PlaywrightPage,
+    isControl: boolean,
+  ) => Promise<unknown>;
 }
 
 // ── Viewport ────────────────────────────────────────────────────────

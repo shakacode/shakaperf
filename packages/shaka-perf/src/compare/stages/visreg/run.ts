@@ -79,11 +79,11 @@ export async function runVisregUnit(
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test),
     }, {
-      captureFailure: async (err, page) => {
+      captureFailure: async (err, page, isControl) => {
         const media = await captureFailureScreenshot(
           ctx.artifacts,
           () => page.screenshot({ fullPage: true }),
-          'visreg-failure-screenshot.png',
+          `${isControl ? 'control' : 'experiment'}-visreg-failure-screenshot.png`,
         );
         return new StageFailureError(err, media ? { media } : {});
       },

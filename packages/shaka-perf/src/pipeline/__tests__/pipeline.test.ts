@@ -478,7 +478,7 @@ describe('per-side visreg failures', () => {
 
     expect(outcome.kind).toBe('error');
     expect(outcome.failure?.media)
-      .toMatch(/\/artifacts\/visreg-failure-screenshot\.png$/);
+      .toMatch(/\/artifacts\/experiment-visreg-failure-screenshot\.png$/);
     expect(mediaBytes).toEqual(EXPERIMENT_SCREENSHOT);
     expect(selfContainedReport)
       .toContain(`data:image/png;base64,${Base64('experiment')}`);
