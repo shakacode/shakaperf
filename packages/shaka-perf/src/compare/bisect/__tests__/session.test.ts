@@ -274,7 +274,7 @@ function deps(
       calls.nativeResetAttempts += 1;
     }
 
-    override async assertAtCandidate(expectedSha: string) {
+    override async assertAt(expectedSha: string) {
       if (nativeCandidate !== expectedSha) {
         throw new Error(`Stubbed native bisect selected ${nativeCandidate}; expected ${expectedSha}`);
       }

@@ -151,7 +151,7 @@ class MergeGit extends NativeGitBisectDriver {
 
   override async reset() {}
 
-  override async assertAtCandidate(expectedSha: string) {
+  override async assertAt(expectedSha: string) {
     if (this.candidate !== expectedSha) {
       throw new Error(`Selected ${this.candidate}; expected ${expectedSha}`);
     }
@@ -175,7 +175,7 @@ class MergeCandidateEvaluator extends CandidateEvaluator {
     private readonly measure: (plan: CandidateEvaluationPlan) => Promise<CandidateResult>,
   ) {
     super(
-      { async assertAtCandidate() {} },
+      { async assertAt() {} },
       { async refreshExperiment() { return { mode: 'commands', usedFallback: false }; } },
       { async run() { return { testResults: [] }; } },
       environment,
