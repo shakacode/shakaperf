@@ -8,6 +8,7 @@
  */
 
 import { execSync_ } from './shell';
+import { isCopyIgnored, loadCopyIgnore } from './copy-ignore';
 
 /**
  * Gets all git-changed files (staged, unstaged, and untracked)
@@ -29,7 +30,8 @@ export function getChangedFiles(cwd: string): string[] {
     untrackedFiles.split('\n').filter(Boolean).forEach(file => allFiles.add(file));
   }
 
-  return Array.from(allFiles);
+  const copyIgnore = loadCopyIgnore(cwd);
+  return Array.from(allFiles).filter((file) => !isCopyIgnored(copyIgnore, file));
 }
 
 export function getGitRootDirectory(cwd: string): string {

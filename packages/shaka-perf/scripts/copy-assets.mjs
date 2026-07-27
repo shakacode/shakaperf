@@ -50,6 +50,12 @@ const assets = [
     'src/audit/stages/audit/accessibility-score-runner.mjs',
     'dist/audit/stages/audit/accessibility-score-runner.mjs',
   ],
+  // Default host-only paths for twin-server change copying. Projects can add
+  // their own patterns in a repository-root .shaka-perf-copyignore file.
+  [
+    'src/twin-servers/helpers/default-copyignore',
+    'dist/twin-servers/helpers/default-copyignore',
+  ],
   ...lighthousePatchAssets,
   // Bundled Claude Code skills — `shaka-perf init` copies these into the
   // user's project at .claude/skills/<name>/. Source of truth lives at the
