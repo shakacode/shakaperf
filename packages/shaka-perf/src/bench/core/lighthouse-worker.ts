@@ -25,7 +25,6 @@ import {
 } from '../../test-annotation';
 import { loadTestFile } from '../../config-loader';
 import { setUpContextForNavigation } from '../../pre-navigation';
-import { MOBILE_USER_AGENT } from '../../audit/real-chrome';
 import { installBeforePageNavigateBarrier } from './barrier-synchronization';
 import {
   DEFAULT_LH_CONFIG,
@@ -49,6 +48,7 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
+import { REAL_CHROME_MOBILE_USER_AGENT } from '../../browser-user-agent';
 
 /**
  * Filename for the live-browser screenshot the worker captures on failure.
@@ -108,13 +108,11 @@ class LighthouseWorkerSampler {
     if (process.env.SHAKA_PERF_HEADED !== '1') {
       chromeFlags.unshift('--headless');
     }
-    // Bot walls (e.g. academia.edu's Cloudflare) gate purely on User-Agent: a
-    // mobile UA passes, a desktop UA is walled. Real-Chrome audits are mobile/
-    // phone-focused, and the challenge fires on the FIRST navigation — before
-    // Lighthouse's own emulated UA would apply — so pin the mobile UA browser-wide
-    // at launch. Matches the UA the Playwright stages use via realChromeMobileEmulation.
+    // Pin pre-emulation traffic to the same mobile identity used by the
+    // Playwright stages. Lighthouse applies its own CDP override before the
+    // measured navigation; getMobileSettings pins that path separately.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
-      chromeFlags.push(`--user-agent=${MOBILE_USER_AGENT}`);
+      chromeFlags.push(`--user-agent=${REAL_CHROME_MOBILE_USER_AGENT}`);
     }
 
     if (process.env.TRACERBENCH_PROXY_URL) {
@@ -184,6 +182,9 @@ class LighthouseWorkerSampler {
     return {
       ...defaultConfig?.settings,
       ...DEFAULT_LH_CONFIG,
+      ...(process.env.SHAKAPERF_REAL_CHROME === '1'
+        ? { emulatedUserAgent: REAL_CHROME_MOBILE_USER_AGENT }
+        : {}),
       port: this.chrome!.port,
     };
   }

@@ -44,17 +44,28 @@ A site behind a Cloudflare/Turnstile bot wall serves the headless audit a "Just 
 moment..." / "Verify you are human" challenge instead of the real page. When that
 happens the report says "Could not measure - bot protection" (it never presents
 challenge-page data as the site's). To actually get through and measure the real
-page, run with `SHAKAPERF_REAL_CHROME=1` AND `--headed`:
+page, run with real-Chrome mode enabled. The default path is headed:
 
 ```bash
 SHAKAPERF_REAL_CHROME=1 shaka-perf audit --headed --url https://example.com/
 ```
 
 This drives the installed Chrome (`channel: 'chrome'`) with the automation flag
-stripped and forces a visible (headed) window - headless real Chrome is still
-fingerprinted and gets the un-auto-solvable interactive challenge. After each
-navigation the engine polls up to ~25s for the challenge to clear. It needs a
-display (a real desktop), `google-chrome` installed, and is opt-in: **never set
+stripped. Interactive Turnstile challenges can still require this visible path,
+which needs a display.
+
+Some managed challenges auto-pass real Chrome in headless mode. For those sites,
+opt in explicitly without `--headed`:
+
+```bash
+SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url https://example.com/
+```
+
+`SHAKAPERF_REAL_CHROME_HEADLESS=1` takes precedence if it is combined with
+`--headed`. The headless path pins the audit's mobile user agent browser-wide
+so desktop and tablet contexts do not expose Chrome's headless token. After each
+navigation the engine polls up to ~25s for the challenge to clear. Both paths
+require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - the default bundled Chromium is what CI uses.
 
 ## Code Conventions

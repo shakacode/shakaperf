@@ -288,6 +288,10 @@ export default function createLighthouseBenchmark(
             ...barrierSynchronizationEnv,
             // setupBrowser drops --headless when this is '1'.
             SHAKA_PERF_HEADED: options.headed ? '1' : '0',
+            // Keep the audit-only real-Chrome mode explicit at the worker
+            // boundary instead of relying on the inherited environment.
+            SHAKAPERF_REAL_CHROME:
+              process.env.SHAKAPERF_REAL_CHROME === '1' ? '1' : '0',
           },
         });
       } finally {

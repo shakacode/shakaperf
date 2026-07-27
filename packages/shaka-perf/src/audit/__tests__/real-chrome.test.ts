@@ -53,7 +53,7 @@ describe('applyRealChrome', () => {
     expect(applyRealChrome(opts)).toEqual(opts);
   });
 
-  it('forces real Chrome, headed, and strips automation when enabled', () => {
+  it('defaults real Chrome to headed and strips automation when enabled', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
     const out = applyRealChrome({ headless: true, args: ['--no-sandbox'] });
@@ -62,12 +62,13 @@ describe('applyRealChrome', () => {
     expect(out.args).toEqual(['--no-sandbox', '--disable-blink-features=AutomationControlled']);
   });
 
-  it('uses headless real Chrome only when explicitly enabled', () => {
+  it('lets the explicit headless env override the caller headed mode', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
     process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
     const out = applyRealChrome({ headless: false });
     expect(out.channel).toBe('chrome');
     expect(out.headless).toBe(true);
+    expect(out.args).toContainEqual(expect.stringMatching(/^--user-agent=.* Mobile Safari\//));
   });
 });
 

@@ -8,6 +8,7 @@
  */
 
 import type { LaunchOptions, Page } from 'playwright-core';
+import { REAL_CHROME_MOBILE_USER_AGENT } from '../browser-user-agent';
 import { looksLikeBotWall } from './bot-wall';
 
 // Opt-in (SHAKAPERF_REAL_CHROME=1): drive the real installed Chrome with the
@@ -18,28 +19,23 @@ import { looksLikeBotWall } from './bot-wall';
 // CI and most runs use; `channel: 'chrome'` requires Chrome to be installed.
 export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
   if (process.env.SHAKAPERF_REAL_CHROME !== '1') return opts;
-  // Default HEADED: for many sites headless real Chrome is still fingerprinted and
-  // gets served the interactive Turnstile challenge, while headed real Chrome
-  // passes. But some sites' "managed" challenge auto-passes real Chrome even
-  // headless (verified against academia.edu: channel:'chrome' headless returns the
-  // real page in ~9s, no challenge). SHAKAPERF_REAL_CHROME_HEADLESS=1 opts into
-  // that headless real-Chrome path — no display needed, and it dodges the headed
-  // screencast-attach glitch that produced blank timeline frames.
+  // Default headed: interactive Turnstile challenges can still reject headless
+  // Chrome. Some managed challenges auto-pass real Chrome headless, so
+  // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path. This also
+  // makes --headed unnecessary, leaving the separate Lighthouse browser
+  // headless and avoiding its headed screencast attachment issue.
   const headless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
   return {
     ...opts,
     headless,
     channel: 'chrome',
-    args: [...(opts.args ?? []), '--disable-blink-features=AutomationControlled'],
+    args: [
+      ...(opts.args ?? []),
+      '--disable-blink-features=AutomationControlled',
+      ...(headless ? [`--user-agent=${REAL_CHROME_MOBILE_USER_AGENT}`] : []),
+    ],
   };
 }
-
-// The "Mobile" token makes responsive sites serve their phone layout. Exported so
-// the Lighthouse worker (chrome-launcher path) can pin the same UA at launch —
-// some bot walls (academia.edu's Cloudflare) gate purely on UA: a mobile UA
-// passes, a desktop UA is walled, so the perf browser must present mobile too.
-export const MOBILE_USER_AGENT =
-  'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
 // Headed real Chrome won't honor a small mobile viewport (it renders a desktop
 // breakpoint) unless the context is a full mobile device, so add mobile UA + touch.
@@ -49,7 +45,7 @@ export function realChromeMobileEmulation(
 ): { userAgent: string; hasTouch: boolean } | undefined {
   if (process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
   if (formFactor !== 'mobile') return undefined;
-  return { userAgent: MOBILE_USER_AGENT, hasTouch: true };
+  return { userAgent: REAL_CHROME_MOBILE_USER_AGENT, hasTouch: true };
 }
 
 // In real-Chrome mode a bot challenge can still flash for a second or two before

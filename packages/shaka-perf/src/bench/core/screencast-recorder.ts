@@ -41,7 +41,7 @@ import { SCREENCAST_FILENAME, SCREENCAST_START_FILENAME } from './lighthouse-con
  * non-recording sample on a reused worker can never inherit stale frames.
  */
 
-interface ScreencastSession {
+export interface ScreencastSession {
   frames: { timeMs: number; data: string }[];
   stop: () => Promise<void>;
 }
@@ -267,8 +267,8 @@ async function encodeScreencastVideo(
 // A cross-origin renderer swap can leave the CDP session unattached for a few
 // hundred ms, so the post-navigation re-subscribe is retried across that window
 // (~3s) rather than abandoned on the first "Not attached to an active page".
-const SUBSCRIBE_MAX_ATTEMPTS = 12;
-const SUBSCRIBE_RETRY_DELAY_MS = 250;
+export const SUBSCRIBE_RETRY_WINDOW_MS = 3000;
+export const SUBSCRIBE_RETRY_DELAY_MS = 250;
 
 /**
  * Start the screencast on Lighthouse's own ProtocolSession (handed to us via
@@ -297,20 +297,22 @@ const SUBSCRIBE_RETRY_DELAY_MS = 250;
  * about:blank → benchmark URL); we resubscribe in the Page.frameNavigated
  * handler so the new renderer keeps streaming.
  */
-async function startScreencastOnLighthouseSession(
+export async function startScreencastOnLighthouseSession(
   lhSession: LighthouseSession,
 ): Promise<ScreencastSession> {
   const frames: { timeMs: number; data: string }[] = [];
   let stopped = false;
-  // Anchor at the moment the hook starts so frame timeMs values are
-  // navigation-relative. Lighthouse calls Page.navigate immediately after
-  // our hook returns, so this is essentially navigationStart wall-clock.
-  const wallNavStartMs = Date.now();
+  let subscriptionGeneration = 0;
+  const activeSubscriptions = new Set<Promise<void>>();
+  // Re-stamped after the initial subscription so a slow CDP attach cannot
+  // shift every captured frame away from Lighthouse's navigation start.
+  let wallNavStartMs = Date.now();
 
   // Stable handler references for off() in stop(). The patch's `session` is
   // Lighthouse's ProtocolSession; its `on()` callbacks receive the raw CDP
   // event payload directly.
   const onScreencastFrame = (...args: unknown[]) => {
+    if (stopped) return;
     const evt = args[0] as { data: string; sessionId: number; metadata: { timestamp?: number } };
     if (typeof evt?.metadata?.timestamp === 'number') {
       frames.push({
@@ -325,10 +327,17 @@ async function startScreencastOnLighthouseSession(
     const evt = args[0] as { frame: { parentId?: string; url?: string } };
     if (evt?.frame?.parentId) return; // sub-frames don't reset the screencast
     // Renderer-swap (cross-origin nav): re-arm.
-    void subscribe(`after nav to ${evt.frame.url ?? '?'}`);
+    const generation = ++subscriptionGeneration;
+    const subscription = subscribe(`after nav to ${evt.frame.url ?? '?'}`, generation, true);
+    activeSubscriptions.add(subscription);
+    void subscription.finally(() => activeSubscriptions.delete(subscription));
   };
 
-  const subscribe = async (label: string): Promise<void> => {
+  const subscribe = async (
+    label: string,
+    generation: number,
+    retry: boolean,
+  ): Promise<void> => {
     if (stopped) return;
     try {
       // Pin width to 500 device-px and let height be whatever the
@@ -338,7 +347,7 @@ async function startScreencastOnLighthouseSession(
       // hit the height constraint and end up < 500 wide. With maxHeight
       // raised, every viewport — desktop/tablet/phone — produces a
       // 500-wide frame, just with varying height.
-      await startWithRetry(label);
+      await startWithRetry(label, generation, retry);
     } catch (err) {
       console.warn(`[shaka-perf screencast] subscribe (${label}) failed:`, err);
     }
@@ -352,10 +361,17 @@ async function startScreencastOnLighthouseSession(
    * pre-navigation frames (the whole load goes uncaptured). Retry across the
    * swap window instead — the new renderer attaches within a few hundred ms.
    */
-  const startWithRetry = async (label: string): Promise<void> => {
+  const startWithRetry = async (
+    label: string,
+    generation: number,
+    retry: boolean,
+  ): Promise<void> => {
+    const deadline = Date.now() + (retry ? SUBSCRIBE_RETRY_WINDOW_MS : 0);
     let lastErr: unknown;
-    for (let attempt = 1; attempt <= SUBSCRIBE_MAX_ATTEMPTS; attempt++) {
-      if (stopped) return;
+    let attempt = 0;
+    do {
+      if (stopped || generation !== subscriptionGeneration) return;
+      attempt += 1;
       try {
         await lhSession.sendCommand('Page.startScreencast', {
           format: 'jpeg',
@@ -364,6 +380,11 @@ async function startScreencastOnLighthouseSession(
           maxHeight: 4096,
           everyNthFrame: 1,
         });
+        if (stopped) {
+          await lhSession.sendCommand('Page.stopScreencast').catch(() => {});
+          return;
+        }
+        if (generation !== subscriptionGeneration) return;
         if (attempt > 1) {
           console.log(
             `[shaka-perf screencast] subscribe (${label}) recovered on attempt ${attempt}`,
@@ -372,21 +393,26 @@ async function startScreencastOnLighthouseSession(
         return;
       } catch (err) {
         lastErr = err;
+        if (!retry || Date.now() + SUBSCRIBE_RETRY_DELAY_MS >= deadline) break;
         await new Promise((resolve) => setTimeout(resolve, SUBSCRIBE_RETRY_DELAY_MS));
       }
-    }
+    } while (!stopped && generation === subscriptionGeneration && Date.now() < deadline);
     throw lastErr;
   };
 
   lhSession.on('Page.screencastFrame', onScreencastFrame);
   lhSession.on('Page.frameNavigated', onFrameNavigated);
-  await subscribe('initial');
+  const initialGeneration = ++subscriptionGeneration;
+  await subscribe('initial', initialGeneration, false);
+  wallNavStartMs = Date.now();
 
   return {
     frames,
     stop: async () => {
       stopped = true;
+      subscriptionGeneration += 1;
       try { await lhSession.sendCommand('Page.stopScreencast'); } catch { /* already detached */ }
+      await Promise.allSettled([...activeSubscriptions]);
       if (lhSession.off) {
         try { lhSession.off('Page.screencastFrame', onScreencastFrame); } catch { /* ignore */ }
         try { lhSession.off('Page.frameNavigated', onFrameNavigated); } catch { /* ignore */ }
