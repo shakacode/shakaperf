@@ -978,6 +978,7 @@ describe('renderClientReport perf tile assembly', () => {
   ] as const)('renders the %s dominant problem through the final perf tile', async (_kind, metrics, expected) => {
     const { html } = await renderClientReport(writePerfResults(metrics));
     const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
     expect(perfTile).toContain(expected.kicker);
     expect(perfTile).toContain(expected.wordTx);
     const metricHtml = `>${expected.metric}</div>`;
@@ -992,6 +993,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain(expected.problemTx);
     expect(perfTile).toContain(expected.metricSub);
     expect(perfTile).not.toContain(expected.absent);
+    expect(perfPanelHtml).toContain('data-benchmark-scale');
   });
 
   it('keeps a clean assembled perf tile generic and without a problem line', async () => {
@@ -2315,6 +2317,34 @@ describe('renderClientReportHtml', () => {
 
     expect(perfPanelHtml).toContain('data-benchmark-scale data-benchmark-zone="poor" data-benchmark-axis-max="4.0" style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="First content 3.0s; Google&#39;s good line 1.8s"');
     expect(perfPanelHtml).toContain('<div style="display:flex; justify-content:space-between; margin-top:8px; font-family:\'JetBrains Mono\',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>4.0s</span></div>');
+  });
+
+  it('keeps legacy scale literals without axis metadata compatible', () => {
+    const perfPanelHtml = renderedPanel(renderClientReportHtml(model({
+      perfCost: {
+        tab: 'perf',
+        state: 'measured',
+        gap: {
+          metricLabel: 'First content',
+          measuredLabel: '3.0s',
+          goodLabel: '1.8s',
+          poorLabel: '3.0s',
+          zone: 'poor',
+          lineOwner: 'Google',
+          lineUrl: 'https://example.com/benchmark',
+        },
+        scale: {
+          axisMaxDisplay: 4,
+          zones: { green: 45, amber: 30, red: 25 },
+          goodLinePercent: 45,
+          poorLinePercent: 75,
+          markerPercent: 75,
+        },
+      },
+    })), 'perf');
+
+    expect(perfPanelHtml).toContain('data-benchmark-axis-max="4"');
+    expect(perfPanelHtml).toContain('<span>0s</span><span>4s</span>');
   });
 
   it('renders the FCP scale selected through the branch-3 fallback', () => {

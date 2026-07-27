@@ -8,31 +8,46 @@
  */
 
 import type { Page } from 'playwright-core';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../real-chrome';
+import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../real-chrome';
 
-describe('realChromeMobileEmulation', () => {
+describe('realChromeContextOptions', () => {
   const orig = process.env.SHAKAPERF_REAL_CHROME;
+  const origHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
   afterEach(() => {
     if (orig === undefined) delete process.env.SHAKAPERF_REAL_CHROME;
     else process.env.SHAKAPERF_REAL_CHROME = orig;
+    if (origHeadless === undefined) delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+    else process.env.SHAKAPERF_REAL_CHROME_HEADLESS = origHeadless;
   });
 
   it('is undefined when real-Chrome mode is off (default path unchanged)', () => {
     delete process.env.SHAKAPERF_REAL_CHROME;
-    expect(realChromeMobileEmulation('mobile')).toBeUndefined();
+    expect(realChromeContextOptions('mobile', '150.0.0.0')).toBeUndefined();
   });
 
-  it('is undefined for non-mobile viewports even in real-Chrome mode', () => {
+  it('uses a desktop UA without the headless token for non-mobile viewports', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
-    expect(realChromeMobileEmulation('desktop')).toBeUndefined();
-    expect(realChromeMobileEmulation('tablet')).toBeUndefined();
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+    expect(realChromeContextOptions('desktop', '150.0.0.0')).toEqual({
+      userAgent: expect.stringMatching(/Chrome\/150\.0\.0\.0 Safari\/537\.36$/),
+    });
+    expect(realChromeContextOptions('tablet', '150.0.0.0')).toEqual({
+      userAgent: expect.not.stringContaining('Mobile'),
+    });
   });
 
   it('returns a mobile UA + touch for a mobile viewport in real-Chrome mode', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
-    const out = realChromeMobileEmulation('mobile');
+    const out = realChromeContextOptions('mobile', '150.0.0.0');
     expect(out?.hasTouch).toBe(true);
     expect(out?.userAgent).toMatch(/Mobile/);
+    expect(out?.userAgent).toMatch(/Chrome\/150\.0\.0\.0/);
+  });
+
+  it('keeps the native desktop UA on the headed path', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+    expect(realChromeContextOptions('desktop', '150.0.0.0')).toBeUndefined();
   });
 });
 
@@ -68,7 +83,7 @@ describe('applyRealChrome', () => {
     const out = applyRealChrome({ headless: false });
     expect(out.channel).toBe('chrome');
     expect(out.headless).toBe(true);
-    expect(out.args).toContainEqual(expect.stringMatching(/^--user-agent=.* Mobile Safari\//));
+    expect(out.args).not.toContainEqual(expect.stringMatching(/^--user-agent=/));
   });
 });
 

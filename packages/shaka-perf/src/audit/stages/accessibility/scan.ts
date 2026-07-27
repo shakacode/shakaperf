@@ -19,7 +19,7 @@ import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { TestContext } from '../../../stage/stage';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
+import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
 import { normalizeViolation } from './artifacts';
 import type { AccessibilityEffectiveConfig, AccessibilityStageConfig } from './config';
 import type {
@@ -103,8 +103,7 @@ export async function scanAccessibilityPage(
       },
       deviceScaleFactor: ctx.viewport.deviceScaleFactor,
       isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
+      ...realChromeContextOptions(ctx.viewport.formFactor, browser.version?.()),
     });
     // Clear state and run the beforeNavigate hooks on the context BEFORE the page
     // is created, uniform with the other engines — context init scripts/routes

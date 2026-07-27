@@ -62,10 +62,11 @@ SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url 
 ```
 
 `SHAKAPERF_REAL_CHROME_HEADLESS=1` takes precedence if it is combined with
-`--headed`. The headless path pins the audit's mobile user agent browser-wide
-so desktop and tablet contexts do not expose Chrome's headless token. After each
-navigation the engine polls up to ~25s for the challenge to clear. Both paths
-require `google-chrome` and are opt-in: **never set
+`--headed` across all audit browsers. Each real-Chrome context uses a
+non-headless user agent matched to the installed Chrome version, with the
+mobile identity limited to phone viewports. After each navigation the engine
+polls up to ~25s for the challenge to clear. Both paths require
+`google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - the default bundled Chromium is what CI uses.
 
 ## Code Conventions

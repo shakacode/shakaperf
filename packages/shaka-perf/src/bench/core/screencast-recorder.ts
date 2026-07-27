@@ -316,7 +316,7 @@ export async function startScreencastOnLighthouseSession(
     const evt = args[0] as { data: string; sessionId: number; metadata: { timestamp?: number } };
     if (typeof evt?.metadata?.timestamp === 'number') {
       frames.push({
-        timeMs: evt.metadata.timestamp * 1000 - wallNavStartMs,
+        timeMs: Math.max(0, evt.metadata.timestamp * 1000 - wallNavStartMs),
         data: evt.data,
       });
     }

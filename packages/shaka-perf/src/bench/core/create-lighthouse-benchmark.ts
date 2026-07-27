@@ -279,6 +279,9 @@ export default function createLighthouseBenchmark(
         SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
         SHAKA_PERF_SAMPLING_MODE: samplingMode,
       };
+      const forceRealChromeHeadless =
+        process.env.SHAKAPERF_REAL_CHROME === '1'
+        && process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
       let worker: ChildProcess;
       try {
         worker = fork(workerPath, [], {
@@ -287,11 +290,12 @@ export default function createLighthouseBenchmark(
             ...process.env,
             ...barrierSynchronizationEnv,
             // setupBrowser drops --headless when this is '1'.
-            SHAKA_PERF_HEADED: options.headed ? '1' : '0',
+            SHAKA_PERF_HEADED: options.headed && !forceRealChromeHeadless ? '1' : '0',
             // Keep the audit-only real-Chrome mode explicit at the worker
             // boundary instead of relying on the inherited environment.
             SHAKAPERF_REAL_CHROME:
               process.env.SHAKAPERF_REAL_CHROME === '1' ? '1' : '0',
+            SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
           },
         });
       } finally {

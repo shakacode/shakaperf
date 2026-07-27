@@ -17,8 +17,26 @@ import {
 describe('screencastRecorder', () => {
   afterEach(async () => {
     await screencastRecorder.stop();
+    screencastRecorder.record(false);
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('starts capture through the public recorder entry point', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const sendCommand = jest.fn(async () => {});
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+
+    screencastRecorder.record(true);
+    await screencastRecorder.onNavigate(session);
+    await screencastRecorder.stop();
+
+    expect(sendCommand).toHaveBeenCalledWith('Page.startScreencast', expect.any(Object));
+    expect(sendCommand).toHaveBeenCalledWith('Page.stopScreencast');
   });
 
   it('retries the main-frame subscription while a swapped renderer attaches', async () => {
@@ -90,6 +108,35 @@ describe('screencastRecorder', () => {
     warn.mockRestore();
   });
 
+  it('bounds retries by elapsed time when start failures are slow', async () => {
+    jest.useFakeTimers();
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    let startAttempts = 0;
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method !== 'Page.startScreencast') return;
+      startAttempts += 1;
+      if (startAttempts > 1) {
+        await new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Not attached to an active page')), 700);
+        });
+      }
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
+    await jest.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_WINDOW_MS + 1000);
+
+    expect(startAttempts).toBe(5);
+    expect(warn).toHaveBeenCalledTimes(1);
+    await recording.stop();
+  });
+
   it('does not retain frames or leave capture running when stop wins an in-flight retry', async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();
     let startAttempts = 0;
@@ -111,11 +158,12 @@ describe('screencastRecorder', () => {
 
     const recording = await startScreencastOnLighthouseSession(session);
     handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
+    const lateFrameHandler = handlers.get('Page.screencastFrame');
     await Promise.resolve();
     const stopPromise = recording.stop();
     resolveRetry?.();
     await stopPromise;
-    handlers.get('Page.screencastFrame')?.({
+    lateFrameHandler?.({
       data: 'late-frame',
       sessionId: 2,
       metadata: { timestamp: Date.now() / 1000 },

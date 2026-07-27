@@ -541,6 +541,7 @@ function costDetailsPanel(id: string, content: string, compact = false): string 
   return `<div id="${esc(id)}" data-disclosure hidden style="margin-top:${compact ? '9px' : '10px'}; padding:${compact ? '11px 13px' : '12px 14px'}; border:1px solid #e7e1d8; border-radius:10px; background:#fbfaf8">${content}</div>`;
 }
 
+// Preserve older model literals and direct renderer consumers that omit axis metadata.
 const LEGACY_SECONDS_SCALE_AXIS = { unit: 'seconds', precision: 1 } as const;
 
 function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): string {

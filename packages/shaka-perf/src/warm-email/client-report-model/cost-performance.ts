@@ -53,6 +53,16 @@ interface PerfGapSpec {
   label: (value: number) => string;
 }
 
+const FCP_GAP_SPEC: PerfGapSpec = {
+  metricLabel: 'First content',
+  line: BENCHMARK_LINES.fcpMs,
+  value: (metrics) => finiteMetric(metrics.fcpMs),
+  scalePolicy: BENCHMARK_SCALE_POLICIES.fcpMs,
+  lineOwner: "Google's Core Web Vitals",
+  lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+  label: (value) => `${(value / 1000).toFixed(1)}s`,
+};
+
 const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
   'slow-lcp': {
     metricLabel: 'Main content',
@@ -72,24 +82,8 @@ const PERF_GAP_SPECS: Record<PerfGapKind, PerfGapSpec> = {
     lineUrl: 'https://web.dev/articles/cls',
     label: (value) => value.toFixed(2),
   },
-  blank: {
-    metricLabel: 'First content',
-    line: BENCHMARK_LINES.fcpMs,
-    value: (metrics) => finiteMetric(metrics.fcpMs),
-    scalePolicy: BENCHMARK_SCALE_POLICIES.fcpMs,
-    lineOwner: "Google's Core Web Vitals",
-    lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
-    label: (value) => `${(value / 1000).toFixed(1)}s`,
-  },
-  'late-paint': {
-    metricLabel: 'First content',
-    line: BENCHMARK_LINES.fcpMs,
-    value: (metrics) => finiteMetric(metrics.fcpMs),
-    scalePolicy: BENCHMARK_SCALE_POLICIES.fcpMs,
-    lineOwner: "Google's Core Web Vitals",
-    lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
-    label: (value) => `${(value / 1000).toFixed(1)}s`,
-  },
+  blank: FCP_GAP_SPEC,
+  'late-paint': FCP_GAP_SPEC,
   sluggish: {
     metricLabel: 'Tap delay',
     line: BENCHMARK_LINES.tbtMs,

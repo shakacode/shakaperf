@@ -14,7 +14,7 @@ import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool'
 import type { TestContext } from '../../../stage/stage';
 import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeMobileEmulation, waitForBotWallToClear } from '../../real-chrome';
+import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
 import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
@@ -155,8 +155,7 @@ async function readRenderedSignals(
       viewport: { width: ctx.viewport.width, height: ctx.viewport.height },
       deviceScaleFactor: ctx.viewport.deviceScaleFactor,
       isMobile: ctx.viewport.formFactor === 'mobile',
-      // Real-Chrome only: serve the phone layout (no-op headless).
-      ...realChromeMobileEmulation(ctx.viewport.formFactor),
+      ...realChromeContextOptions(ctx.viewport.formFactor, browser.version?.()),
     });
     const page = await context.newPage();
     const timeout = engineOptions.navTimeoutMs ?? 45_000;

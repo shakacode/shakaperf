@@ -8,7 +8,11 @@
  */
 
 import type { LaunchOptions, Page } from 'playwright-core';
-import { REAL_CHROME_MOBILE_USER_AGENT } from '../browser-user-agent';
+import {
+  matchRealChromeUserAgentVersion,
+  REAL_CHROME_DESKTOP_USER_AGENT,
+  REAL_CHROME_MOBILE_USER_AGENT,
+} from '../browser-user-agent';
 import { looksLikeBotWall } from './bot-wall';
 
 // Opt-in (SHAKAPERF_REAL_CHROME=1): drive the real installed Chrome with the
@@ -32,20 +36,24 @@ export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
     args: [
       ...(opts.args ?? []),
       '--disable-blink-features=AutomationControlled',
-      ...(headless ? [`--user-agent=${REAL_CHROME_MOBILE_USER_AGENT}`] : []),
     ],
   };
 }
 
-// Headed real Chrome won't honor a small mobile viewport (it renders a desktop
-// breakpoint) unless the context is a full mobile device, so add mobile UA + touch.
-// Real-Chrome + mobile only; headless already honors the viewport, so it's a no-op there.
-export function realChromeMobileEmulation(
+// Give every real-Chrome context a non-headless UA that matches the installed
+// Chrome major. Mobile contexts also need touch to serve the phone layout.
+export function realChromeContextOptions(
   formFactor: string,
-): { userAgent: string; hasTouch: boolean } | undefined {
+  browserVersion?: string,
+): { userAgent: string; hasTouch?: boolean } | undefined {
   if (process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
-  if (formFactor !== 'mobile') return undefined;
-  return { userAgent: REAL_CHROME_MOBILE_USER_AGENT, hasTouch: true };
+  const mobile = formFactor === 'mobile';
+  if (!mobile && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1') return undefined;
+  const userAgent = matchRealChromeUserAgentVersion(
+    mobile ? REAL_CHROME_MOBILE_USER_AGENT : REAL_CHROME_DESKTOP_USER_AGENT,
+    browserVersion,
+  );
+  return mobile ? { userAgent, hasTouch: true } : { userAgent };
 }
 
 // In real-Chrome mode a bot challenge can still flash for a second or two before
