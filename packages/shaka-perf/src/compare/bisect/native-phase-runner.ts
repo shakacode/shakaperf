@@ -54,7 +54,7 @@ export class NativeBisectPhaseRunner {
     await this.commit('phase-started', phase);
 
     while (true) {
-      const group = new TargetGroupQueue(phase.groups ?? []).next();
+      const group = new TargetGroupQueue(phase.groups).next();
       if (!group) {
         phase = {
           ...phase,
@@ -261,7 +261,7 @@ export class NativeBisectPhaseRunner {
 
   private initializeIds(phase: BisectSearchPhase): void {
     this.attemptNumber = phase.attempts.length;
-    this.groupNumber = Math.max(0, ...(phase.groups ?? []).map((group) => {
+    this.groupNumber = Math.max(0, ...phase.groups.map((group) => {
       const suffix = Number(group.id.match(/-(\d+)$/)?.[1]);
       return Number.isSafeInteger(suffix) ? suffix : 0;
     }));
@@ -278,7 +278,7 @@ export class NativeBisectPhaseRunner {
 }
 
 function initializeGroups(phase: BisectSearchPhase): BisectSearchPhase {
-  if (phase.groups && phase.groups.length > 0) return phase;
+  if (phase.groups.length > 0) return phase;
   const activeTargets = phase.targets.filter((target) => target.status === 'active');
   return {
     ...phase,
@@ -292,7 +292,7 @@ function initializeGroups(phase: BisectSearchPhase): BisectSearchPhase {
 }
 
 function currentGroup(phase: BisectSearchPhase, groupId: string): BisectTargetGroup {
-  const group = phase.groups?.find((candidate) => candidate.id === groupId);
+  const group = phase.groups.find((candidate) => candidate.id === groupId);
   if (!group) throw new Error(`Unknown native bisect target group: ${groupId}`);
   return group;
 }
@@ -300,7 +300,7 @@ function currentGroup(phase: BisectSearchPhase, groupId: string): BisectTargetGr
 function updateGroup(phase: BisectSearchPhase, group: BisectTargetGroup): BisectSearchPhase {
   return {
     ...phase,
-    groups: (phase.groups ?? []).map((candidate) => candidate.id === group.id ? group : candidate),
+    groups: phase.groups.map((candidate) => candidate.id === group.id ? group : candidate),
   };
 }
 
@@ -309,7 +309,7 @@ function applyPartition(
   groupId: string,
   partition: ReturnType<typeof partitionTargetGroup>,
 ): BisectSearchPhase {
-  const groups = (phase.groups ?? []).map((group) => (
+  const groups = phase.groups.map((group) => (
     group.id === groupId ? partition.continuingGroup : group
   ));
   const queue = new TargetGroupQueue(groups);
@@ -327,7 +327,7 @@ function completeGroup(
   return {
     ...phase,
     activeGroupId: undefined,
-    groups: (phase.groups ?? []).map((candidate) => candidate.id === groupId
+    groups: phase.groups.map((candidate) => candidate.id === groupId
       ? { ...candidate, status: 'complete' as const, firstBadSha }
       : candidate),
     targets: phase.targets.map((target) => targetIds.has(target.id)

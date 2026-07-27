@@ -67,6 +67,7 @@ function session(parents: string[], targets = [target('one')]): BisectSession {
       commitSubjects: { good: 'good', merge: 'merge' },
       commitParents: { good: [], merge: parents },
       targets,
+      groups: [],
       attempts: [],
     },
     mergeQueue: [],

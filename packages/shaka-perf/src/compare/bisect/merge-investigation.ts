@@ -293,6 +293,7 @@ function childPhase(
     commitSubjects: range.commitSubjects,
     commitParents: range.commitParents,
     targets: [...targets],
+    groups: [],
     attempts: [],
   };
 }
