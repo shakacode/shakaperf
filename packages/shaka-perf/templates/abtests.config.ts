@@ -168,6 +168,12 @@ export default defineConfig({
       control: CONTROL_PORT,
       experiment: EXPERIMENT_PORT,
     },
+    // Change copying leaves compare-results/ and compare-bisect-results/ on
+    // the host by default. Override either list for project-specific paths:
+    // copyIgnore: {
+    //   folders: ['compare-results', 'compare-bisect-results', 'tmp/traces'],
+    //   files: ['debug.log'],
+    // },
     // No `setupCommands` by default: do all setup (install, build, migrate,
     // seed) in the Dockerfile so the image is self-contained. They're a last
     // resort for what can't be baked into an image — chiefly starting an
