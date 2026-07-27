@@ -8,43 +8,21 @@
  */
 
 import assert from 'node:assert';
-import { TestType } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 
 describe('preparePage', function () {
   let preparePage: typeof import('../../../../src/visreg/core/util/preparePage').default;
   let translateUrl: typeof import('../../../../src/visreg/core/util/preparePage').translateUrl;
 
-  const mockEvaluate = jest.fn();
   const mockGoto = jest.fn();
-  const mockWaitForSelector = jest.fn();
-  const mockOn = jest.fn();
-  const mockRemoveListener = jest.fn();
-  const mockAddInitScript = jest.fn();
 
   function makePage () {
-    mockEvaluate.mockReset();
     mockGoto.mockReset();
-    mockWaitForSelector.mockReset();
-    mockOn.mockReset();
-    mockRemoveListener.mockReset();
-    mockAddInitScript.mockReset();
 
     mockGoto.mockResolvedValue(undefined);
-    mockWaitForSelector.mockResolvedValue(undefined);
-    mockAddInitScript.mockResolvedValue(undefined);
-    mockEvaluate.mockResolvedValue({
-      selectors: ['document'],
-      selectorMap: { document: { exists: 1, isVisible: true } },
-    });
 
     return {
       goto: mockGoto,
-      evaluate: mockEvaluate,
-      waitForSelector: mockWaitForSelector,
-      on: mockOn,
-      removeListener: mockRemoveListener,
-      addInitScript: mockAddInitScript,
     } as unknown as import('playwright').Page;
   }
 
@@ -179,20 +157,4 @@ describe('preparePage', function () {
     });
   });
 
-  describe('selector defaults', function () {
-    it('should default to ["document"] when no selectors provided', async function () {
-      const page = makePage();
-      const scenario = {
-        label: 'No selectors',
-        url: 'http://test.com',
-      };
-
-      await preparePage(page, scenario.url, scenario as typeof baseScenario, baseViewport, baseConfig, false, baseBrowserContext);
-
-      // The expansion evaluate receives the document fallback (the scenario
-      // itself is not mutated).
-      const evalArgs = mockEvaluate.mock.calls.at(-1) as unknown[];
-      assert.deepStrictEqual(evalArgs[1], ['document']);
-    });
-  });
 });

@@ -332,18 +332,12 @@ describe('per-side visreg failures', () => {
         let pageUrl = '';
         const page = {
           goto: async (url: string) => { pageUrl = url; },
-          evaluate: async (_body: unknown, argument?: unknown) => {
-            if (!Array.isArray(argument)) return true;
-            return {
-              selectors: argument,
-              selectorMap: Object.fromEntries(argument.map((selector) => [selector, {}])),
-            };
-          },
+          evaluate: async () => true,
           screenshot: async () => {
             if (pageUrl.startsWith('http://control.test')) {
-              // The current failure handler captures both sides and then picks
-              // the newest file. Make the non-failing control capture finish
-              // last so that bug is deterministic.
+              // Keep the non-failing control capture newer so an implementation
+              // that guesses the failure owner by recency deterministically
+              // selects the wrong side.
               await new Promise((resolve) => setTimeout(resolve, 20));
               return CONTROL_SCREENSHOT;
             }

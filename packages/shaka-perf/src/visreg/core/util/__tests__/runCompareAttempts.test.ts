@@ -17,10 +17,6 @@ import { PNG } from 'pngjs';
 jest.mock('../preparePage', () => ({
   __esModule: true,
   default: jest.fn(),
-  // The attempt-level failure-screenshot handler; capture is exercised through
-  // the real page mocks' screenshot() where a test cares, so keep these inert.
-  captureFailureScreenshot: jest.fn().mockResolvedValue(undefined),
-  failureScreenshotPath: jest.fn().mockReturnValue('/tmp/failure.png'),
 }));
 jest.mock('../createComparisonSide', () => ({ createComparisonSide: jest.fn() }));
 // The attempt loop rebuilds the test's effective config for `beforeNavigate`
@@ -94,10 +90,7 @@ function makeDeps(produce: Produce) {
     created++;
     return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
   });
-  const preparePage = jest.fn(async () => ({
-    selectors: ['document'],
-    selectorMap: { document: {} as { filePath?: string } },
-  }));
+  const preparePage = jest.fn(async () => {});
   const captureScreenshot = jest.fn(async () => {
     const idx = captureCalls++;
     return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
@@ -106,7 +99,7 @@ function makeDeps(produce: Produce) {
   const deps: CompareAttemptsDeps = {
     captureScreenshot,
     createSide,
-    preparePage: preparePage as unknown as CompareAttemptsDeps['preparePage'],
+    preparePage,
     sleep: async (ms: number) => { sleeps.push(ms); },
   };
   return { deps, sleeps, createSide, counts: () => ({ created, disposed, captureCalls }) };

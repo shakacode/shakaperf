@@ -44,7 +44,7 @@ function createLogger (): CompareLogger {
 /**
  * Capture a single selector to a PNG buffer (no disk write).
  */
-async function captureScreenshot (page: PlaywrightPage, selector: string, _selectorMap: Record<string, { filePath?: string }>) {
+async function captureScreenshot (page: PlaywrightPage, selector: string) {
   const fullPage = (selector === NOCLIP_SELECTOR || selector === DOCUMENT_SELECTOR);
 
   if (selector === BODY_SELECTOR || selector === DOCUMENT_SELECTOR || selector === NOCLIP_SELECTOR) {

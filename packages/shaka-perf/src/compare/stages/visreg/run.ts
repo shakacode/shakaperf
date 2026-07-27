@@ -16,13 +16,14 @@ import visregRunner from '../../../visreg/core/runner';
 import { resolvePlaywrightOptions } from '../../../config';
 import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
-import { StageFailureError } from '../../../stage/stage-failure';
+import { failWithScreenshot } from '../../../stage/stage-failure';
 import {
   exactTestNameFilter,
   testPathPatternForSingleTest,
 } from '../shared/runtime';
 import type { VisregResult, VisregStageConfig } from '../visreg';
 import { readVisregArtifacts } from './artifacts';
+import { getAttachedVisregFailureScreenshot } from '../../../visreg/core/util/failureScreenshot';
 
 const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 
@@ -67,7 +68,6 @@ export async function runVisregUnit(
   const unitArtifactsDir = ctx.artifacts.dir;
   const configPath = writeTempVisregConfig(visregConfig, unitArtifactsDir);
 
-  const startedAt = Date.now();
   try {
     await visregRunner({
       config: configPath,
@@ -88,72 +88,13 @@ export async function runVisregUnit(
   } catch (err) {
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`visreg engine error: ${message}`));
-    // Visreg writes per-scenario screenshots into `{control,experiment}_
-    // screenshot/` under the results root as it runs. If the engine threw
-    // before producing artifacts, the most recent of those is the closest
-    // approximation of "what the browser saw before tearing down." Pick
-    // the newest PNG written since this unit started so we don't pull in
-    // a stale screenshot from a previous test.
-    const captured = await captureVisregFailureScreenshot(ctx, unitArtifactsDir, startedAt);
-    if (captured) {
-      throw new StageFailureError(err, { media: captured });
+    const screenshot = getAttachedVisregFailureScreenshot(err);
+    if (screenshot) {
+      throw await failWithScreenshot(ctx.artifacts, err, () => screenshot);
     }
     throw err;
   } finally {
     try { fs.rmSync(configPath, { force: true }); } catch { /* noop */ }
-  }
-}
-
-async function captureVisregFailureScreenshot(
-  ctx: TestContext,
-  unitArtifactsDir: string,
-  sinceMs: number,
-): Promise<string | undefined> {
-  const candidates = [
-    path.join(unitArtifactsDir, 'experiment_screenshots'),
-    path.join(unitArtifactsDir, 'control_screenshots'),
-  ];
-  let best: { path: string; mtimeMs: number } | undefined;
-  for (const root of candidates) {
-    if (!fs.existsSync(root)) continue;
-    walkPngs(root, (filePath, mtimeMs) => {
-      if (mtimeMs < sinceMs) return;
-      if (!best || mtimeMs > best.mtimeMs) best = { path: filePath, mtimeMs };
-    });
-  }
-  if (!best) return undefined;
-  try {
-    const filename = 'failure-screenshot.png';
-    await ctx.artifacts.writeFile(filename, fs.readFileSync(best.path));
-    // Inline as base64 data URI — the report shell is a self-contained
-    // HTML and can't resolve relative artifact paths.
-    return ctx.artifacts.inlineDataUri(filename);
-  } catch (copyErr) {
-    console.warn(
-      chalk.yellow(`failed to copy visreg failure screenshot ${best.path}: ${(copyErr as Error).message}`),
-    );
-    return undefined;
-  }
-}
-
-function walkPngs(root: string, visit: (filePath: string, mtimeMs: number) => void): void {
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    const abs = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      walkPngs(abs, visit);
-    } else if (entry.isFile() && abs.toLowerCase().endsWith('.png')) {
-      try {
-        visit(abs, fs.statSync(abs).mtimeMs);
-      } catch {
-        /* ignore unreadable */
-      }
-    }
   }
 }
 
