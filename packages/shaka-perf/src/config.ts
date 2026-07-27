@@ -399,8 +399,6 @@ export interface AbTestsConfig {
  * Build the complete per-stage-category viewport record the runner expects.
  * One source of truth for "which TestType maps to which config section,"
  * so adding a new category (e.g. real `accessibility`) edits only this site.
- * Categories the user hasn't configured carry empty arrays — the runner
- * skips work for stages whose category has no viewports.
  */
 export function viewportsByStageCategory(
   config: AbTestsConfig,

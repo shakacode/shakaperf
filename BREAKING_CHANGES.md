@@ -114,10 +114,12 @@ abTest('Homepage', {
 });
 ```
 
-#### Removed — do it in the test body
+#### Removed — use Playwright directly
 
-These duplicated things the Playwright `page` already does. Removed with no
-config equivalent; move the behaviour into the test body.
+These duplicated things Playwright already does. Most move directly into the
+test body. `readyEvent` is the exception: arm its listener from
+`config.shared.beforeNavigate` so an event emitted during initial navigation
+cannot be missed, then await it in the test body.
 
 | Removed option | Fix in the test body |
 |---|---|
@@ -127,7 +129,7 @@ config equivalent; move the behaviour into the test body.
 | `clickSelector` / `clickSelectors` | `await page.click(sel)` |
 | `scrollToSelector` | `await page.locator(sel).scrollIntoViewIfNeeded()` |
 | `postInteractionWait` | `await page.waitForTimeout(ms)` (number) or `await page.waitForSelector(sel)` (string) |
-| `readyEvent` | `await page.waitForEvent('console', (m) => /event/.test(m.text()))` |
+| `readyEvent` | Arm a context `console` listener in per-test `config.shared.beforeNavigate`, then await it in the body. |
 | `readySelector` | `await page.waitForSelector(sel)` |
 | `readyTimeout` | pass the timeout to the body wait, e.g. `await page.waitForSelector(sel, { timeout })` |
 | `delay` | `await page.waitForTimeout(ms)` — or better, `await waitUntilPageSettled(page)` |
@@ -238,10 +240,10 @@ category's file list; it now replaces it, resolving labels against
   in the file, a test's `config.visreg.viewports: ['tablet']` used to run at
   **zero** viewports (silently dropped — a bug); it now runs at tablet. Audit
   per-test lists you left in place because they did nothing will start taking effect.
-- **`viewports: []` now means none, not all.** An explicit empty list replaces
-  the file list with nothing — the test is skipped for that category with a
-  visible `skipped: test's <category>.viewports override is []` outcome. For
-  "all viewports", delete the key.
+- **Empty viewport lists are invalid.** Each configured category must name at
+  least one viewport. To skip a category for one test, omit it from that test's
+  `testTypes`; for all configured viewports, delete the per-test `viewports`
+  key.
 - **An unknown label now throws** instead of being silently dropped:
   `Unknown viewport label 'phome' — defined in shared.viewports: …`. Fix the
   label or add it to `shared.viewports`.
