@@ -89,6 +89,32 @@ describe('resumable bisect state', () => {
     expect(() => parseBisectSession({ ...session(), unexpected: true })).toThrow(/unrecognized/i);
   });
 
+  it('rejects legacy commit-run fields and missing current fields', () => {
+    const value = session();
+    const currentRun = {
+      sha: 'mid',
+      compareCompleted: true,
+      requestedCategories: ['visreg'] as const,
+      requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
+      experimentReloadMode: 'commands' as const,
+      usedFallback: false,
+      startedAt: '2026-07-13T00:01:00.000Z',
+    };
+
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, requestedTestFiles: ['tests/home.abtest.ts'] } },
+    })).toThrow(/unrecognized/i);
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, compareCompleted: undefined } },
+    })).toThrow();
+    expect(() => parseBisectSession({
+      ...value,
+      commitRuns: { mid: { ...currentRun, requestedTests: undefined } },
+    })).toThrow();
+  });
+
   it('fingerprints objects independently of object key order', () => {
     expect(fingerprint({ b: 2, a: { d: 4, c: 3 } }))
       .toBe(fingerprint({ a: { c: 3, d: 4 }, b: 2 }));
