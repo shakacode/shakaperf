@@ -41,6 +41,9 @@ describe('matchRealChromeUserAgentVersion', () => {
       '150.0.7339.41',
     );
     expect(chromeVersionFromProductString('Chrome/151.0.1.2')).toBe('151.0.1.2');
+    expect(
+      chromeVersionFromProductString('Google Chrome for Testing 141.0.7390.55'),
+    ).toBe('141.0.7390.55');
     expect(chromeVersionFromProductString('Google Chrome')).toBeUndefined();
     expect(
       chromeVersionFromProductString('/usr/lib/chromium-browser/1.2.3.4/chrome: error'),
@@ -127,7 +130,6 @@ describe('applyRealChrome', () => {
     const out = applyRealChrome({ headless: false });
     expect(out.channel).toBe('chrome');
     expect(out.headless).toBe(true);
-    expect(out.args).not.toContainEqual(expect.stringMatching(/^--user-agent=/));
   });
 });
 

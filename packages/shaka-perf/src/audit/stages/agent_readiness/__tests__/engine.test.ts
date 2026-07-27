@@ -38,6 +38,14 @@ describe('rawFetchUserAgentFor', () => {
     expect(rawFetchUserAgentFor('mobile', '150.0.0.0')).toContain('Chrome/124.0.0.0');
   });
 
+  it('keeps a neutral raw-fetch identity for a non-Chromium engine', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+
+    expect(rawFetchUserAgentFor('mobile', '133.0.0.0', undefined, false)).toContain(
+      'Chrome/124.0.0.0',
+    );
+  });
+
   it('selects a version-matched mobile identity in real-Chrome mode', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
 

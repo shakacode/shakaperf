@@ -21,7 +21,7 @@ import { looksLikeBotWall } from './bot-wall';
 // audit of a bot-protected site. Off by default - the bundled Chromium is what
 // CI and most runs use; `channel: 'chrome'` requires Chrome to be installed.
 export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
-  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return opts;
+  if (!isRealChromeEnabled()) return opts;
   // Default headed: interactive Turnstile challenges can still reject headless
   // Chrome. Some managed challenges auto-pass real Chrome headless, so
   // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path. This also
@@ -39,22 +39,27 @@ export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
   };
 }
 
+export function isRealChromeEnabled(): boolean {
+  return process.env.SHAKAPERF_REAL_CHROME === '1';
+}
+
 export function realChromeUsesNativeIdentity(formFactor: string): boolean {
   return (
-    process.env.SHAKAPERF_REAL_CHROME === '1'
+    isRealChromeEnabled()
     && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
     && formFactor !== 'mobile'
   );
 }
 
 // Give mobile contexts, plus non-mobile contexts in explicit headless mode, a
-// UA without the HeadlessChrome token. Mobile contexts also need touch.
+// UA string without the HeadlessChrome token. Client hints remain browser-owned.
+// Mobile contexts also need touch.
 export function realChromeContextOptions(
   formFactor: string,
   browserVersion?: string,
   usesChromium = true,
 ): { userAgent: string; hasTouch?: boolean } | undefined {
-  if (!usesChromium || process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
+  if (!usesChromium || !isRealChromeEnabled()) return undefined;
   const mobile = formFactor === 'mobile';
   if (realChromeUsesNativeIdentity(formFactor)) return undefined;
   const userAgent = matchRealChromeUserAgentVersion(

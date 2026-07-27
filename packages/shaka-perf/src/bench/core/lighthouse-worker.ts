@@ -61,11 +61,11 @@ const execFileAsync = promisify(execFile);
 async function installedChromeVersion(): Promise<string | undefined> {
   try {
     const chromePath = getChromePath();
-    if (!chromePath) {
-      console.warn('[shaka-perf] could not locate Chrome to resolve its user-agent version');
-      return undefined;
-    }
-    const { stdout } = await execFileAsync(chromePath, ['--version'], { timeout: 5000 });
+    const { stdout } = await execFileAsync(chromePath, ['--version'], {
+      timeout: 5000,
+      killSignal: 'SIGKILL',
+      maxBuffer: 64 * 1024,
+    });
     const version = chromeVersionFromProductString(stdout);
     if (!version) {
       console.warn('[shaka-perf] could not parse the installed Chrome version');
@@ -141,15 +141,15 @@ class LighthouseWorkerSampler {
     }
     // Pin pre-emulation traffic to the viewport identity used by the
     // Playwright stages. Lighthouse applies its own CDP override before the
-    // measured navigation; getLighthouseSettings pins that path separately.
+    // measured navigation; lhConfigForViewport pins that path via
+    // lhConfig.emulatedUserAgent.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
       const browserVersion = await installedChromeVersion();
+      const formFactor = process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR;
       chromeFlags.push('--disable-blink-features=AutomationControlled');
-      if (browserVersion) {
+      if (browserVersion && formFactor) {
         chromeFlags.push(`--user-agent=${matchRealChromeUserAgentVersion(
-          realChromeUserAgentForFormFactor(
-            process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
-          ),
+          realChromeUserAgentForFormFactor(formFactor),
           browserVersion,
         )}`);
       }

@@ -16,6 +16,7 @@ import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
 import {
   applyRealChrome,
+  isRealChromeEnabled,
   realChromeContextOptions,
   realChromeUsesNativeIdentity,
   waitForBotWallToClear,
@@ -159,8 +160,9 @@ export function rawFetchUserAgentFor(
   formFactor: string,
   browserVersion?: string,
   nativeUserAgent?: string,
+  usesChromium = true,
 ): string {
-  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return RAW_FETCH_UA;
+  if (!usesChromium || !isRealChromeEnabled()) return RAW_FETCH_UA;
   if (realChromeUsesNativeIdentity(formFactor) && nativeUserAgent) {
     return nativeUserAgent;
   }
@@ -277,7 +279,9 @@ async function scanAgentReadiness(
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
   const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
-  const needsNativeUserAgent = realChromeUsesNativeIdentity(ctx.viewport.formFactor);
+  const usesChromium = (engineOptions.browser ?? 'chromium') === 'chromium';
+  const needsNativeUserAgent =
+    usesChromium && realChromeUsesNativeIdentity(ctx.viewport.formFactor);
   const nativeUserAgent = needsNativeUserAgent
     ? await nativeBrowserUserAgent(browser)
     : undefined;
@@ -285,6 +289,7 @@ async function scanAgentReadiness(
     ctx.viewport.formFactor,
     browser.version?.(),
     nativeUserAgent,
+    usesChromium,
   );
 
   // Raw fetch + rendered render run together - they are independent.

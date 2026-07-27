@@ -32,6 +32,6 @@ export function matchRealChromeUserAgentVersion(
 }
 
 export function chromeVersionFromProductString(product: string): string | undefined {
-  return /\b(?:Google Chrome|Chromium|Chrome)(?:\/|\s+)(\d+\.\d+\.\d+\.\d+)\b/
+  return /\b(?:Google Chrome|Chromium|Chrome)\b[^\d]*(\d+\.\d+\.\d+\.\d+)\b/
     .exec(product)?.[1];
 }
