@@ -118,6 +118,13 @@ export interface BisectConfigInput {
   rebuildContainer?: boolean;
 }
 
+export interface CopyIgnoreConfigInput {
+  /** Repository-relative directory patterns excluded from change copying. */
+  folders?: string[];
+  /** Repository-relative file patterns excluded from change copying. */
+  files?: string[];
+}
+
 export interface TwinServersConfigInput {
   experimentDir: string;
   controlDir: string;
@@ -139,6 +146,11 @@ export interface TwinServersConfigInput {
    * before the experiment processes restart.
    */
   rebuildCommands?: SetupCommandInput[];
+  /**
+   * Host-only files and folders excluded from twin-server change copying.
+   * Each supplied array overrides its corresponding packaged default list.
+   */
+  copyIgnore?: CopyIgnoreConfigInput;
 }
 
 export interface AbTestsConfigInput {

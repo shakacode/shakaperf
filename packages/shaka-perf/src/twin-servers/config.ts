@@ -22,6 +22,9 @@ import {
   type TwinServersConfig,
   type TwinServersConfigInput,
 } from './types';
+import {
+  defaultCopyIgnoreConfig,
+} from './copy-ignore-defaults';
 
 const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
 
@@ -153,6 +156,10 @@ export function resolveConfig(config: unknown, cwd: string = process.cwd()): Res
     ports: validConfig.ports,
     setupCommands: validConfig.setupCommands ?? [],
     rebuildCommands: validConfig.rebuildCommands ?? [],
+    copyIgnore: {
+      ...defaultCopyIgnoreConfig(),
+      ...validConfig.copyIgnore,
+    },
     projectSlug: slug,
   };
 }

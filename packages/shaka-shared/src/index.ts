@@ -50,6 +50,7 @@ export type {
   AccessibilityConfigInput,
   AccessibilityEngineOptionsInput,
   TwinServersConfigInput,
+  CopyIgnoreConfigInput,
 } from './define-config';
 export { waitUntilPageSettled } from './page-helpers/waitUntilPageSettled';
 export type { WaitUntilPageSettledOptions } from './page-helpers/waitUntilPageSettled';

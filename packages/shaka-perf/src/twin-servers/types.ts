@@ -16,6 +16,13 @@ export const SetupCommandSchema = z.object({
   description: z.string().min(1, 'description is required'),
 });
 
+export const CopyIgnoreConfigSchema = z.object({
+  /** Repository-relative directory patterns excluded from change copying. */
+  folders: z.array(z.string().min(1)).optional(),
+  /** Repository-relative file patterns excluded from change copying. */
+  files: z.array(z.string().min(1)).optional(),
+});
+
 export const TwinServersConfigSchema = z.object({
   /**
    * Experiment checkout directory. Use `process.cwd()` when running commands
@@ -52,15 +59,28 @@ export const TwinServersConfigSchema = z.object({
    * They run inside the experiment container before its processes restart.
    */
   rebuildCommands: z.array(SetupCommandSchema).optional(),
+  /**
+   * Host-only files and folders excluded from twin-server change copying.
+   * Each supplied array overrides its corresponding packaged default list.
+   */
+  copyIgnore: CopyIgnoreConfigSchema.optional(),
 });
 
 // Derive types from schemas
 export type SetupCommand = z.infer<typeof SetupCommandSchema>;
+export type CopyIgnoreConfigInput = z.input<typeof CopyIgnoreConfigSchema>;
+export interface CopyIgnoreConfig {
+  folders: string[];
+  files: string[];
+}
 export type TwinServersConfig = z.infer<typeof TwinServersConfigSchema>;
 export type TwinServersConfigInput = z.input<typeof TwinServersConfigSchema>;
 
 // ResolvedConfig has setupCommands and composeFile as required (non-optional)
-export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeFile' | 'experimentDir'> & {
+export type ResolvedConfig = Omit<
+  TwinServersConfig,
+  'setupCommands' | 'composeFile' | 'experimentDir' | 'copyIgnore'
+> & {
   /** Current project directory that owns twin-server config, Procfile, and compose. */
   projectDir: string;
   /** Resolved absolute experiment directory */
@@ -69,6 +89,8 @@ export type ResolvedConfig = Omit<TwinServersConfig, 'setupCommands' | 'composeF
   setupCommands: SetupCommand[];
   /** In-container rebuild commands available to the experiment server. */
   rebuildCommands: SetupCommand[];
+  /** Effective host-only paths excluded from manual, automatic, and SSH copying. */
+  copyIgnore: CopyIgnoreConfig;
   /** Resolved compose file path (defaults to bundled template) */
   composeFile: string;
   /**
