@@ -162,6 +162,13 @@ yarn shaka-perf servers sync-changes experiment
 yarn shaka-perf servers sync-changes control
 ```
 
+Manual sync, running-menu auto-sync, and `copy-changes-to-ssh` always leave
+`compare-results/` and `compare-bisect-results/` on the host. These defaults
+ship with the `shaka-perf` CLI, so they also apply when the CLI is installed in
+another project. Add project-specific host-only artifacts to a
+`.shaka-perf-copyignore` file in that project's Git repository root. The file
+uses gitignore pattern syntax and extends the packaged defaults.
+
 ### CI / SSH Integration
 
 ```bash
