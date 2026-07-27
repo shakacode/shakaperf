@@ -33,6 +33,7 @@ jest.mock('../../../../effective-config', () => ({
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
 import { captureFailureScreenshot, failureScreenshotPath } from '../preparePage';
 import { ScreenshotPool } from '../screenshotPool';
+import { findVisregSideFailure } from '../../side-failure';
 import type { BrowserContext, DecoratedCompareConfig, Scenario, Viewport, Browser, PlaywrightPage } from '../../types';
 
 // Solid-colour PNG; `dirtyPixels` flips the first N pixels to white so two
@@ -54,7 +55,6 @@ const RED: [number, number, number] = [255, 0, 0];
 const BLUE: [number, number, number] = [0, 0, 255];
 const GREEN: [number, number, number] = [0, 255, 0];
 
-type TestSideName = 'control' | 'experiment';
 type Produce = (attempt: number, side: 'ref' | 'test') => Buffer | null | Promise<Buffer | null>;
 type PreparePageFn = NonNullable<CompareAttemptsDeps['preparePage']>;
 type PreparePageResult = Awaited<ReturnType<PreparePageFn>>;
@@ -113,13 +113,10 @@ function makeDeps(produce: Produce) {
     experiment: { side: 'experiment' } as unknown as BrowserContext,
   };
 
-  const createSide = jest.fn(async (...args: unknown[]) => {
-    const requestedSide = args[3] === 'control' || args[3] === 'experiment'
-      ? args[3] as TestSideName
-      : (created % 2 === 0 ? 'control' : 'experiment');
+  const createSide = jest.fn(async () => {
+    const requestedSide = created % 2 === 0 ? 'control' : 'experiment';
     created++;
     return {
-      side: requestedSide,
       page: pages[requestedSide],
       context: contexts[requestedSide],
       dispose: async () => { disposed++; },
@@ -251,7 +248,12 @@ it('captures only the side whose preparePage throws', async () => {
     };
   });
 
-  await expect(run(deps, makeConfig())).rejects.toBe(prepareError);
+  await expect(run(deps, makeConfig())).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    side: 'experiment',
+    cause: prepareError,
+    screenshotPath: '/tmp/failure-experiment.png',
+  });
 
   expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
   expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
@@ -273,7 +275,12 @@ it('does not let a throwing failureScreenshotPath mask the original prepare erro
     };
   });
 
-  await expect(run(deps, makeConfig())).rejects.toBe(prepareError);
+  await expect(run(deps, makeConfig())).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    side: 'experiment',
+    cause: prepareError,
+    screenshotPath: undefined,
+  });
 
   expect(warn).toHaveBeenCalledWith(expect.stringContaining('path builder exploded'));
   warn.mockRestore();
@@ -288,7 +295,12 @@ it('throws the experiment prepare error when both sides fail and logs the contro
     throw page === pages.control ? controlError : experimentError;
   });
 
-  await expect(run(deps, makeConfig())).rejects.toBe(experimentError);
+  await expect(run(deps, makeConfig())).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    side: 'experiment',
+    cause: experimentError,
+    screenshotPath: '/tmp/failure-experiment.png',
+  });
 
   expect(warn).toHaveBeenCalledWith(expect.stringContaining('control prepare failed'));
   expect(captureFailureScreenshot).toHaveBeenCalledTimes(2);
@@ -304,9 +316,33 @@ it('captures the side whose screenshot capture rejects and attaches the failure 
     return png(BLUE);
   });
 
-  await expect(run(deps, makeConfig())).rejects.toBe(captureError);
+  try {
+    await run(deps, makeConfig());
+    throw new Error('expected run to fail');
+  } catch (error) {
+    expect(findVisregSideFailure(error)).toMatchObject({
+      side: 'experiment',
+      cause: captureError,
+      screenshotPath: '/tmp/failure-experiment.png',
+    });
+  }
 
   expect(captureFailureScreenshot).toHaveBeenCalledTimes(1);
   expect(captureFailureScreenshot).toHaveBeenCalledWith(pages.experiment, '/tmp/failure-experiment.png');
-  expect((captureError as { failureScreenshotPath?: string }).failureScreenshotPath).toBe('/tmp/failure-experiment.png');
+});
+
+it('attributes side creation failures without borrowing the live control page', async () => {
+  const createError = new Error('experiment context failed');
+  const { deps, createSide } = makeDeps(() => png(BLUE));
+  const createSideImpl = createSide.getMockImplementation()!;
+  createSide
+    .mockImplementationOnce(createSideImpl)
+    .mockRejectedValueOnce(createError);
+
+  await expect(run(deps, makeConfig())).rejects.toMatchObject({
+    name: 'VisregSideFailure',
+    side: 'experiment',
+    cause: createError,
+  });
+  expect(captureFailureScreenshot).not.toHaveBeenCalled();
 });
