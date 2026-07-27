@@ -18,6 +18,7 @@ export class VisregSideFailure extends Error {
     this.name = 'VisregSideFailure';
     this.side = side;
     this.screenshotPath = screenshotPath;
+    if (cause instanceof Error && cause.stack) this.stack = cause.stack;
   }
 }
 

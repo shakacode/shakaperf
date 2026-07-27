@@ -37,6 +37,18 @@ describe('VisregSideFailure', () => {
     expect(findVisregSideFailure(wrapper)).toBe(failure);
   });
 
+  it('keeps the original stack for report formatting', () => {
+    const cause = new Error('test body failed');
+    cause.stack = [
+      'Error: test body failed',
+      '    at scenario._testFn (ab-tests/cart.abtest.ts:42:7)',
+    ].join('\n');
+
+    const failure = new VisregSideFailure('experiment', cause);
+
+    expect(failure.stack).toBe(cause.stack);
+  });
+
   it('returns undefined for cyclic cause chains without side metadata', () => {
     const error = new Error('cycle') as Error & { cause?: unknown };
     error.cause = error;
