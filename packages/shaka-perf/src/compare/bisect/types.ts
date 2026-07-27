@@ -125,7 +125,7 @@ export interface BisectSearchPhase {
   commitSubjects: Record<string, string>;
   commitParents: Record<string, string[]>;
   targets: BisectTarget[];
-  groups?: BisectTargetGroup[];
+  groups: BisectTargetGroup[];
   activeGroupId?: string;
   attempts: CommitAttempt[];
   startedAt?: string;

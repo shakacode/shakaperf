@@ -57,7 +57,7 @@ function session(targets: BisectTarget[] = []): BisectSession {
       id: 'primary', status: 'running', goodSha: 'good', badSha: 'bad',
       commitSubjects: { good: 'Initial baseline', bad: 'Introduce regression' },
       commitParents: { good: [], bad: ['good'] }, orderedCommits: ['good', 'bad'],
-      targets, attempts: [],
+      targets, groups: [], attempts: [],
     },
     mergeQueue: [],
     mergeInvestigations: {},

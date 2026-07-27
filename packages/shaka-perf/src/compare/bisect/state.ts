@@ -86,7 +86,7 @@ const phaseSchema = z.object({
     }).strict()),
     firstBadSha: z.string().optional(),
     previewCandidateSha: z.string().optional(),
-  }).strict()).optional(),
+  }).strict()),
   activeGroupId: z.string().optional(),
   attempts: z.array(attemptSchema),
   startedAt: z.string().optional(),

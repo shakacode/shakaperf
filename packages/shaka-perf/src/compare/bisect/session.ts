@@ -805,7 +805,7 @@ function recordPhaseDecision(
   session: BisectSession,
 ): void {
   const sha = typeof transition.details?.sha === 'string' ? transition.details.sha : undefined;
-  const activeGroup = transition.phase.groups?.find((group) => (
+  const activeGroup = transition.phase.groups.find((group) => (
     group.id === transition.phase.activeGroupId
   ));
   const event = transition.event === 'attempt-started'
@@ -907,7 +907,7 @@ async function runMergeBisectWorkflow(context: BisectExecutionContext): Promise<
   const { input, deps, state } = context;
   state.session = buildMergeQueue(state.session);
   await context.save();
-  if (!input.investigateMerges || (state.session.mergeQueue?.length ?? 0) === 0) return;
+  if (!input.investigateMerges || state.session.mergeQueue.length === 0) return;
   if (state.badRefTests) deps.artifacts.writeSummary(state.session);
   state.session = { ...state.session, mode: 'merge-investigation' };
   state.requiresExperimentRestore = true;
@@ -1138,6 +1138,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
       commitSubjects: input.gitRange.commitSubjects,
       commitParents: input.gitRange.commitParents,
       targets: [],
+      groups: [],
       attempts: [],
     },
     mergeQueue: [],
@@ -1414,7 +1415,7 @@ function dryRunNextAction(
       targetIds: targets.map((target) => target.id),
     };
   }
-  const group = session.primary.groups?.find((candidate) => candidate.previewCandidateSha);
+  const group = session.primary.groups.find((candidate) => candidate.previewCandidateSha);
   if (!group?.previewCandidateSha) return undefined;
   return {
     kind: 'measure-candidate',
