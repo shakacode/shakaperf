@@ -59,7 +59,7 @@ import type { AbTestDefinition } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
 import { applyPerTestConfigOverrides } from '../../../../effective-config';
-import { parseAbTestsConfig } from '../../../../config';
+import { buildAbTestsConfig } from '../../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
 
 // Launch options carry no defaults — the pipeline builder always supplies
@@ -508,7 +508,7 @@ function fakeContext(
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
     config: applyPerTestConfigOverrides(
-      parseAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
       test,
     ),
   } as unknown as TestContext;

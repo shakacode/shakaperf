@@ -9,7 +9,7 @@
 
 import {
   DEFAULT_ACCESSIBILITY_TAGS,
-  parseAbTestsConfig,
+  buildAbTestsConfig,
   resolvePlaywrightOptions,
   resolveViewports,
   viewportsByStageCategory,
@@ -29,7 +29,7 @@ function baseConfig(extra: Record<string, unknown> = {}) {
 
 describe('accessibility config', () => {
   it('defaults accessibility to desktop and phone axe checks', () => {
-    const config = parseAbTestsConfig(baseConfig());
+    const config = buildAbTestsConfig(baseConfig());
 
     expect(config.accessibility.viewports).toEqual(['desktop', 'phone']);
     expect(config.accessibility.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
@@ -45,7 +45,7 @@ describe('accessibility config', () => {
   });
 
   it('maps accessibility viewports into the pipeline stage categories', () => {
-    const config = parseAbTestsConfig(baseConfig({
+    const config = buildAbTestsConfig(baseConfig({
       accessibility: { viewports: ['phone'] },
     }));
 
@@ -53,7 +53,7 @@ describe('accessibility config', () => {
   });
 
   it('validates accessibility viewport labels against shared viewports', () => {
-    expect(() => parseAbTestsConfig(baseConfig({
+    expect(() => buildAbTestsConfig(baseConfig({
       accessibility: { viewports: ['watch'] },
     }))).toThrow('accessibility.viewports: unknown viewport label "watch"');
   });
@@ -61,7 +61,7 @@ describe('accessibility config', () => {
 
 describe('resolveViewports', () => {
   it('resolves labels to their shared.viewports definitions in list order', () => {
-    const config = parseAbTestsConfig(baseConfig());
+    const config = buildAbTestsConfig(baseConfig());
 
     const resolved = resolveViewports(['phone', 'desktop'], config.shared.viewports);
     expect(resolved.map((v) => v.label)).toEqual(['phone', 'desktop']);
@@ -69,7 +69,7 @@ describe('resolveViewports', () => {
   });
 
   it('throws on a label with no shared.viewports definition (per-test typo)', () => {
-    const config = parseAbTestsConfig(baseConfig());
+    const config = buildAbTestsConfig(baseConfig());
 
     expect(() => resolveViewports(['phome'], config.shared.viewports)).toThrow(
       "Unknown viewport label 'phome' — defined in shared.viewports: 'desktop', 'tablet', 'phone'.",
@@ -79,7 +79,7 @@ describe('resolveViewports', () => {
 
 describe('perf config', () => {
   it('defaults to the documented practical timing regression threshold', () => {
-    const config = parseAbTestsConfig(baseConfig());
+    const config = buildAbTestsConfig(baseConfig());
 
     expect(config.perf.regressionThreshold).toBe(50);
   });
@@ -87,39 +87,39 @@ describe('perf config', () => {
 
 describe('visreg config', () => {
   it('parses mismatchThreshold with its 0.1 default', () => {
-    expect(parseAbTestsConfig(baseConfig()).visreg.mismatchThreshold).toBe(0.1);
-    expect(parseAbTestsConfig(baseConfig({
+    expect(buildAbTestsConfig(baseConfig()).visreg.mismatchThreshold).toBe(0.1);
+    expect(buildAbTestsConfig(baseConfig({
       visreg: { mismatchThreshold: 0.01 },
     })).visreg.mismatchThreshold).toBe(0.01);
   });
 
+  // The schema is `.strict()`, so a renamed key is rejected by name instead of
+  // being stripped into a silent fall back to the 0.1 default.
   it('rejects the renamed defaultMisMatchThreshold key loudly', () => {
-    // Zod strips unknown keys, so without this check the old name would
-    // silently fall back to the 0.1 default.
-    expect(() => parseAbTestsConfig(baseConfig({
+    expect(() => buildAbTestsConfig(baseConfig({
       visreg: { defaultMisMatchThreshold: 0.01 },
-    }))).toThrow(/defaultMisMatchThreshold was renamed/);
+    }))).toThrow(/Unrecognized key.*defaultMisMatchThreshold/);
   });
 
-  // Removed key: zod would strip it silently, and a user who relied on
+  // Removed key: without strictness a user who relied on
   // `requireSameDimensions: false` would see previously-tolerated resizes fail
-  // with an undiscoverable cause. Fail loudly instead, like its siblings.
+  // with an undiscoverable cause.
   it('fails loudly on the removed requireSameDimensions key', () => {
-    expect(() => parseAbTestsConfig(baseConfig({
+    expect(() => buildAbTestsConfig(baseConfig({
       visreg: { requireSameDimensions: false },
-    }))).toThrow(/requireSameDimensions was removed/);
+    }))).toThrow(/Unrecognized key.*requireSameDimensions/);
   });
 });
 
 describe('bisect config', () => {
   it('defaults container rebuilding', () => {
-    expect(parseAbTestsConfig(baseConfig()).bisect).toEqual({
+    expect(buildAbTestsConfig(baseConfig()).bisect).toEqual({
       rebuildContainer: false,
     });
   });
 
   it('preserves explicit container rebuilding', () => {
-    expect(parseAbTestsConfig(baseConfig({
+    expect(buildAbTestsConfig(baseConfig({
       bisect: {
         rebuildContainer: true,
       },
@@ -132,11 +132,11 @@ describe('bisect config', () => {
 
 describe('agentReadiness config', () => {
   it('defaults agent-readiness to disabled', () => {
-    expect(parseAbTestsConfig(baseConfig()).agentReadiness).toEqual({ enabled: false });
+    expect(buildAbTestsConfig(baseConfig()).agentReadiness).toEqual({ enabled: false });
   });
 
   it('preserves an explicit enable', () => {
-    expect(parseAbTestsConfig(baseConfig({
+    expect(buildAbTestsConfig(baseConfig({
       agentReadiness: { enabled: true },
     })).agentReadiness).toEqual({ enabled: true });
   });
@@ -144,7 +144,7 @@ describe('agentReadiness config', () => {
 
 describe('playwrightOptions', () => {
   it('is required on shared — no hidden launch defaults', () => {
-    expect(() => parseAbTestsConfig({
+    expect(() => buildAbTestsConfig({
       shared: {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
@@ -154,7 +154,7 @@ describe('playwrightOptions', () => {
   });
 
   it('requires an explicit browser', () => {
-    expect(() => parseAbTestsConfig(baseConfig({
+    expect(() => buildAbTestsConfig(baseConfig({
       shared: {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
@@ -165,7 +165,7 @@ describe('playwrightOptions', () => {
   });
 
   it('defaults waitTimeout to 60s — the one wait cap every Playwright engine respects', () => {
-    const config = parseAbTestsConfig(baseConfig({
+    const config = buildAbTestsConfig(baseConfig({
       shared: {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
@@ -177,7 +177,7 @@ describe('playwrightOptions', () => {
   });
 
   it('resolves shared for every category exactly as written', () => {
-    const config = parseAbTestsConfig(baseConfig());
+    const config = buildAbTestsConfig(baseConfig());
 
     for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
       expect(resolvePlaywrightOptions(config, category)).toEqual({
@@ -189,7 +189,7 @@ describe('playwrightOptions', () => {
   });
 
   it('overrides per-key for visreg and perf, leaving the rest of shared intact', () => {
-    const config = parseAbTestsConfig(baseConfig({
+    const config = buildAbTestsConfig(baseConfig({
       shared: {
         controlURL: 'http://localhost:3020',
         experimentURL: 'http://localhost:3030',
@@ -223,17 +223,24 @@ describe('playwrightOptions', () => {
 
   it('fails loudly on the legacy engineOptions key in any section', () => {
     for (const section of ['shared', 'visreg', 'perf', 'accessibility', 'audit']) {
-      expect(() => parseAbTestsConfig(baseConfig({
-        [section]: { engineOptions: { browser: 'chromium' } },
-      }))).toThrow(`${section}.engineOptions was renamed`);
+      const base = baseConfig() as Record<string, unknown>;
+      // Merge into the section rather than replacing it, so `shared` keeps its
+      // required fields and the stale key is the only thing wrong.
+      expect(() => buildAbTestsConfig({
+        ...base,
+        [section]: { ...(base[section] as object), engineOptions: { browser: 'chromium' } },
+      })).toThrow(new RegExp(`${section}: Unrecognized key.*engineOptions`));
     }
   });
 
+  // Only visreg/perf have a category override; on accessibility/audit the key
+  // is the natural wrong guess after the engineOptions rename, and would
+  // otherwise be stripped and silently ignored.
   it('fails loudly on playwrightOptions in sections with no category override', () => {
     for (const section of ['accessibility', 'audit']) {
-      expect(() => parseAbTestsConfig(baseConfig({
+      expect(() => buildAbTestsConfig(baseConfig({
         [section]: { playwrightOptions: { headless: false } },
-      }))).toThrow(`${section}.playwrightOptions is not supported`);
+      }))).toThrow(new RegExp(`${section}: Unrecognized key.*playwrightOptions`));
     }
   });
 });

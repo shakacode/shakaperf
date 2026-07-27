@@ -13,7 +13,7 @@ export {
   VisregConfigSchema,
   PerfConfigSchema,
   AccessibilityConfigSchema,
-  parseAbTestsConfig,
+  buildAbTestsConfig,
 } from '../config';
 // `defineConfig` now lives in shaka-shared so user configs don't have to
 // pull in shaka-perf just for the type-safe identity helper.

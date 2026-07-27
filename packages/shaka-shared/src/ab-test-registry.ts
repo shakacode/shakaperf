@@ -173,6 +173,21 @@ function registry(): AbTestDefinition[] {
   return holder.tests;
 }
 
+/**
+ * The keys `abTest()` accepts, as runtime data. Typed `Record<keyof
+ * AbTestConfig, true>` so adding a field to `AbTestConfig` without listing it
+ * here is a compile error — the allowlist cannot drift out of sync with the
+ * interface it guards.
+ */
+const AB_TEST_CONFIG_KEYS: Record<keyof AbTestConfig, true> = {
+  startingPath: true,
+  experimentPathOverride: true,
+  testTypes: true,
+  visregSelectors: true,
+  markers: true,
+  config: true,
+};
+
 export function abTest(
   name: string,
   config: AbTestConfig,
@@ -186,26 +201,25 @@ export function abTest(
           `commas delimit entries in the --filter CLI option.`,
       );
     }
-    // Test files are loaded via tsx (transpile-only, no typecheck), so a
-    // pre-flattening `options: {...}` blob would otherwise load fine and every
-    // legacy knob (selectors, thresholds, beforeNavigate, ...) would silently
-    // no-op — a green suite measuring the wrong thing. Fail loudly instead.
-    if ('options' in config) {
+    // Test files load via tsx (transpile-only, no typecheck), and the config is
+    // spread onto the definition below — so any key that isn't part of
+    // `AbTestConfig` would load fine, be read by nobody, and leave the test
+    // silently running on defaults. That is the whole class of failure the
+    // flattening created (`options`, a top-level `beforeNavigate`,
+    // `hideSelectors`, `visregSelectorExpansion`, `resultsFolder`, `selectors`,
+    // ...), so reject unknown keys outright rather than listing them one by one
+    // — the same strictness `abtests.config.ts` and per-test `config` get.
+    const unknownKeys = Object.keys(config).filter(
+      (key) => !(key in AB_TEST_CONFIG_KEYS),
+    );
+    if (unknownKeys.length > 0) {
       throw new Error(
-        `abTest(${JSON.stringify(name)}): the 'options' key was removed — ` +
-          `abTest() config is now flat (visregSelectors, markers, config.<category>, ...; ` +
-          `beforeNavigate moved to config.shared.beforeNavigate). ` +
-          `See BREAKING_CHANGES.md for the per-option migration.`,
-      );
-    }
-    // Same failure mode for a stale top-level beforeNavigate: it would spread
-    // onto the definition, nothing reads it, and auth/cookie setup silently
-    // stops running — a green suite screenshotting login walls on both sides.
-    if ('beforeNavigate' in config) {
-      throw new Error(
-        `abTest(${JSON.stringify(name)}): top-level 'beforeNavigate' moved to ` +
-          `config.shared.beforeNavigate — a hook here would be silently ignored. ` +
-          `See BREAKING_CHANGES.md.`,
+        `abTest(${JSON.stringify(name)}): unrecognized key(s) ` +
+          `${unknownKeys.map((k) => `'${k}'`).join(', ')} — ` +
+          `abTest() accepts ${Object.keys(AB_TEST_CONFIG_KEYS).join(', ')}. ` +
+          `Per-test settings go under 'config' (a partial of abtests.config.ts, ` +
+          `including 'config.shared.beforeNavigate'); interactions and waits ` +
+          `belong in the test body. See BREAKING_CHANGES.md.`,
       );
     }
     // Capture call-site file and line number from the stack trace

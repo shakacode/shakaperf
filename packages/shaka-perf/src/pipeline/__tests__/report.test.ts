@@ -19,7 +19,7 @@ import {
 } from '../report';
 import type { Pipeline, PipelineMachineReportMetaContext } from '../pipeline';
 import type { StageRuntime } from '../../stage/stage';
-import { parseAbTestsConfig } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 
 describe('ArtifactScope', () => {
   let resultsRoot: string;
@@ -160,7 +160,7 @@ describe('writeMachineReport', () => {
       new ArtifactStore(dir),
       { resultsRoot: dir } as StageRuntime,
       new Map(),
-      parseAbTestsConfig({
+      buildAbTestsConfig({
         shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3031', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
       }),
     );

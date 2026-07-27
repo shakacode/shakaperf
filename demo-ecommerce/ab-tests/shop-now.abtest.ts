@@ -14,6 +14,9 @@ abTest('Click Shop Now on the homepage', {
   startingPath: '/',
   config: {
     visreg: { viewports: ['phone'], maxNumDiffPixels: 5 },
+    perf: { viewports: ['phone'] },
+    audit: { viewports: ['phone'] },
+    accessibility: { viewports: ['phone'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for hero section to load');

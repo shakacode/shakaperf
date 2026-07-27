@@ -90,20 +90,16 @@ describe('findConfigFile', () => {
     expect(findConfigFile(tmpDir)).toBeNull();
   });
 
-  it('finds twin-servers.config.ts', () => {
-    fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.ts'), 'export default {}');
-    expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.ts'));
+  it('finds abtests.config.ts', () => {
+    fs.writeFileSync(path.join(tmpDir, 'abtests.config.ts'), 'export default {}');
+    expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'abtests.config.ts'));
   });
 
-  it('finds twin-servers.config.js', () => {
-    fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.js'), 'module.exports = {}');
-    expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.js'));
-  });
-
-  it('prefers .ts over .js', () => {
+  // The standalone twin-servers config was removed — `twinServers` is a section
+  // of abtests.config.ts, so a leftover file must not be discovered.
+  it('ignores a leftover twin-servers.config.ts', () => {
     fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.ts'), 'export default {}');
-    fs.writeFileSync(path.join(tmpDir, 'twin-servers.config.js'), 'module.exports = {}');
-    expect(findConfigFile(tmpDir)).toBe(path.join(tmpDir, 'twin-servers.config.ts'));
+    expect(findConfigFile(tmpDir)).toBeNull();
   });
 });
 

@@ -138,8 +138,8 @@ describe('reconstructEffectiveConfig', function () {
   it('throws (not warns) when the config file fails to parse', async function () {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-badconfig-'));
     const configPath = path.join(tmpDir, 'abtests.config.js');
-    // Stale key → parseAbTestsConfig throws its migration error; a unit that
-    // rebuilds the effective config must FAIL, not degrade to no-config.
+    // Stale key → the strict schema rejects it; a unit that rebuilds the
+    // effective config must FAIL, not degrade to no-config.
     fs.writeFileSync(
       configPath,
       "module.exports = { shared: { controlURL: 'http://localhost:1/', experimentURL: 'http://localhost:2/', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } }, visreg: { defaultMisMatchThreshold: 0.1 } };\n",
@@ -150,7 +150,7 @@ describe('reconstructEffectiveConfig', function () {
     const { reconstructEffectiveConfig } = await import('../src/effective-config');
     await assert.rejects(
       () => reconstructEffectiveConfig(undefined),
-      /defaultMisMatchThreshold was renamed/,
+      /Unrecognized key.*defaultMisMatchThreshold/,
     );
   });
 
@@ -179,5 +179,128 @@ describe('reconstructEffectiveConfig', function () {
     });
 
     assert.equal(process.env[envKey], '/tmp/original-abtests.config.js');
+  });
+});
+
+// `.abtest.ts` files load through tsx (transpile-only), so TypeScript never
+// sees a per-test `config` for anyone who doesn't typecheck ab-tests/. These
+// cover what only runtime validation can catch: a key that merges cleanly,
+// is then ignored, and leaves the test silently running at the file default.
+describe('applyPerTestConfigOverrides validation', function () {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { buildAbTestsConfig } = require('../src/config');
+  const { applyPerTestConfigOverrides } = require('../src/effective-config');
+
+  const fileConfig = () =>
+    buildAbTestsConfig({
+      shared: {
+        controlURL: 'http://localhost:3011/',
+        experimentURL: 'http://localhost:3012/',
+        parallelism: 1,
+        playwrightOptions: { browser: 'chromium' },
+      },
+      visreg: { mismatchThreshold: 0.1, viewports: ['desktop', 'phone'] },
+    });
+
+  const testDef = (name: string, config: unknown) => ({ name, config }) as never;
+
+  it('rejects a renamed per-test key instead of ignoring it', function () {
+    // `misMatchThreshold` is the old per-test spelling — one capital letter
+    // from the new name, so the likeliest half-migration.
+    assert.throws(
+      () => applyPerTestConfigOverrides(fileConfig(), testDef('Homepage', {
+        visreg: { misMatchThreshold: 0.01 },
+      })),
+      /abTest\("Homepage"\).*Unrecognized key.*misMatchThreshold/s,
+    );
+  });
+
+  it('rejects an unknown per-test key, naming the test that declared it', function () {
+    assert.throws(
+      () => applyPerTestConfigOverrides(fileConfig(), testDef('Cart', {
+        visreg: { delay: 50 },
+      })),
+      /abTest\("Cart"\).*Unrecognized key.*delay/s,
+    );
+  });
+
+  it('rejects a per-test viewport label that no shared.viewports entry defines', function () {
+    // Previously dropped silently, then thrown from resolveViewports mid-run.
+    assert.throws(
+      () => applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
+        visreg: { viewports: ['phome'] },
+      })),
+      /abTest\("Home"\).*unknown viewport label "phome"/s,
+    );
+  });
+
+  it('rejects a shared.viewports override that leaves a category label unresolvable', function () {
+    const TABLET = {
+      label: 'tablet', width: 768, height: 1024,
+      formFactor: 'mobile', deviceScaleFactor: 2,
+    };
+    assert.throws(
+      () => applyPerTestConfigOverrides(fileConfig(), testDef('Dash', {
+        shared: { viewports: [TABLET] },
+      })),
+      /abTest\("Dash"\).*unknown viewport label "desktop"/s,
+    );
+  });
+
+  it('accepts a valid override, keeping sibling keys and the hook function', function () {
+    const hook = async () => {};
+    const effective = applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
+      visreg: { mismatchThreshold: 0.01 },
+      shared: { beforeNavigate: hook },
+    }));
+
+    assert.equal(effective.visreg.mismatchThreshold, 0.01);
+    // Siblings fall through from the file rather than being re-defaulted away.
+    assert.equal(effective.visreg.compareRetries, 2);
+    assert.deepEqual(effective.visreg.viewports, ['desktop', 'phone']);
+    // Validation runs in-process on live objects — the hook is not serialised.
+    assert.equal(effective.shared.beforeNavigate, hook);
+  });
+
+  it('does not repeat the file config\'s deprecation warning per test', function () {
+    // The re-validation pass runs buildAbTestsConfig once per test. Anything
+    // that warns about a FILE-level setting must stay keyed to the file build,
+    // or one deprecated value prints once per test.
+    const deprecated = buildAbTestsConfig({
+      shared: {
+        controlURL: 'http://localhost:3011/',
+        experimentURL: 'http://localhost:3012/',
+        parallelism: 1,
+        playwrightOptions: { browser: 'chromium' },
+      },
+      perf: { samplingMode: 'sequential' },
+    });
+
+    const original = console.warn;
+    let warnings = 0;
+    console.warn = (...args: unknown[]) => {
+      if (String(args[0]).includes('samplingMode')) warnings += 1;
+    };
+    try {
+      for (let i = 0; i < 3; i++) {
+        applyPerTestConfigOverrides(deprecated, testDef(`T${i}`, {
+          visreg: { mismatchThreshold: 0.01 },
+        }));
+      }
+    } finally {
+      console.warn = original;
+    }
+
+    assert.equal(warnings, 0);
+  });
+
+  it('does not mutate the file config it merges onto', function () {
+    const file = fileConfig();
+    applyPerTestConfigOverrides(file, testDef('Home', {
+      visreg: { mismatchThreshold: 0.01, viewports: ['desktop'] },
+    }));
+
+    assert.equal(file.visreg.mismatchThreshold, 0.1);
+    assert.deepEqual(file.visreg.viewports, ['desktop', 'phone']);
   });
 });

@@ -20,7 +20,7 @@ import {
 } from '../pipeline';
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
-import { parseAbTestsConfig } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { createVisregStage } from '../../compare/stages/visreg';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
@@ -156,7 +156,7 @@ describe('runPipeline', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -216,7 +216,7 @@ describe('pre-run wipe', () => {
     try {
       return await runPipeline(pipeline(), {
         cwd,
-        config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         retries: 0,
@@ -256,32 +256,43 @@ describe('pre-run wipe', () => {
     }
   });
 
-  it('preserves other categories\' outcomes when sweeping', async () => {
+  it('drops other categories\' measured outcomes when sweeping', async () => {
+    // A default run means "this run's results only": the unit dir goes
+    // wholesale so no stale artifact (notably visreg's accumulated screenshot
+    // frames) survives into this run. The perf outcome does not survive as a
+    // measurement — it reappears only as a `--categories` skip marker.
     const staleVisreg = seedOutcome('desktop', 'visreg');
-    const keptPerf = seedOutcome('desktop', 'perf');
+    const sweptPerf = seedOutcome('desktop', 'perf');
 
     await run({ categories: 'visreg' });
 
     expect(fs.existsSync(staleVisreg)).toBe(false);
-    expect(fs.existsSync(keptPerf)).toBe(true);
+    const perf = fs.existsSync(sweptPerf)
+      ? (JSON.parse(fs.readFileSync(sweptPerf, 'utf8')) as { kind: string })
+      : null;
+    expect(perf?.kind ?? 'absent').not.toBe('ok');
   });
 
-  it('preserves other categories\' outcomes at IN-PLAN viewports too', async () => {
-    // tablet is the narrowed test's planned visreg viewport: the planned-unit
-    // slate must not destroy the perf outcome (or the artifacts it references)
-    // sharing the same unit dir — only a dir with no outcome left is removed.
+  it('clears stale artifacts at an IN-PLAN viewport, not just outcomes', async () => {
+    // tablet is the narrowed test's planned visreg viewport. Regression guard:
+    // visreg's screenshot pool ACCUMULATES content-addressed frames and never
+    // prunes its own dir, so a frame left by a previous run would re-enter this
+    // run's best-of-N match and pass on stale pixels. Deleting the outcome is
+    // not enough — the artifacts/ subtree must go with it.
     const store = new ArtifactStore(path.join(cwd, 'test-results'));
     store.writeOutcome(narrowedTest, 'tablet', {
       kind: 'error', stage: 'visreg', error: 'stale from previous run',
     } as never);
-    const staleVisreg = path.join(store.unitDirForViewport(narrowedTest, 'tablet'), 'visreg.json');
-    const keptPerf = seedOutcome('tablet', 'perf');
+    const unitDir = store.unitDirForViewport(narrowedTest, 'tablet');
+    const staleVisreg = path.join(unitDir, 'visreg.json');
+    seedOutcome('tablet', 'perf');
+    const staleFrame = path.join(unitDir, 'artifacts', 'experiment_screenshots', 'S_0_document_0_tablet__deadbeef.png');
+    fs.mkdirSync(path.dirname(staleFrame), { recursive: true });
+    fs.writeFileSync(staleFrame, 'stale frame from a previous run');
 
     await run({ categories: 'visreg' });
 
-    expect(fs.existsSync(keptPerf)).toBe(true);
-    const kept = JSON.parse(fs.readFileSync(keptPerf, 'utf8')) as { kind: string };
-    expect(kept.kind).toBe('ok');
+    expect(fs.existsSync(staleFrame)).toBe(false);
     // The stale visreg outcome was swept; whatever visreg.json exists now came
     // from THIS run's stage (the mock stage succeeds), not the stale error.
     const rewritten = JSON.parse(fs.readFileSync(staleVisreg, 'utf8')) as { kind: string };
@@ -417,7 +428,7 @@ describe('per-side visreg failures', () => {
       const result = await withAbTestsConfigPath(configPath, () =>
         runPipeline(visregPipeline(), {
           cwd,
-          config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+          config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
           controlURL: 'http://control.test',
           experimentURL: 'http://experiment.test',
           retries: 0,

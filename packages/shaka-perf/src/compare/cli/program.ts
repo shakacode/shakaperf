@@ -7,10 +7,10 @@
  * License in LICENSE.md.
  */
 
-import { Command, Option } from 'commander';
+import { Command } from 'commander';
 import { withAbTestsConfigPath } from '../../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
-import { parseAbTestsConfig } from '../../config';
+import { buildAbTestsConfig } from '../../config';
 import { runPipeline } from '../../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../../pipeline/report-summary';
@@ -44,10 +44,6 @@ export async function createCompareCommand(): Promise<Command> {
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
-    .addOption(new Option(
-      '--resume-from-stage <stage>',
-      'Deprecated alias for --restart-from-stage',
-    ).hideHelp())
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--report-only', 'Re-render the HTML report from existing compare-results/ stage outcomes without re-running engines. Complements --skip-report for sharded CI assembly.', false)
     .option('--skip-report', 'Run the engines but do not produce the top-level report.html / report.json. Intended for CI shards; engine errors are persisted so a later --report-only run can include them.', false)
@@ -72,7 +68,7 @@ export async function createCompareCommand(): Promise<Command> {
         );
       }
       await withAbTestsConfigPath(configPath, async () => {
-        const config = parseAbTestsConfig(await loadAbTestsConfig(configPath));
+        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
         const burn = parseBurnOption(opts.burn);
         // Burn replaces retries, visreg's best-of-N included — the visreg
         // stage zeroes compareRetries off `runtime.burn`.
@@ -81,7 +77,7 @@ export async function createCompareCommand(): Promise<Command> {
             testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
           }),
         );
-        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
           config,
           controlURL: opts.controlURL ?? config.shared.controlURL,
