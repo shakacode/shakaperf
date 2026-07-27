@@ -2179,6 +2179,7 @@ describe('renderClientReportHtml', () => {
           zone: 'poor',
           lineOwner: 'Google',
           lineUrl: 'https://web.dev/articles/lcp',
+          scaleAxis: { unit: 'seconds', precision: 1 },
         },
         gapSubLines: ['Main content is 5.9s past the good line.'],
         bookingLine: 'Calls from phone visitors are waiting on this page.',
@@ -2319,34 +2320,6 @@ describe('renderClientReportHtml', () => {
     expect(perfPanelHtml).toContain('<div style="display:flex; justify-content:space-between; margin-top:8px; font-family:\'JetBrains Mono\',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>4.0s</span></div>');
   });
 
-  it('keeps legacy scale literals without axis metadata compatible', () => {
-    const perfPanelHtml = renderedPanel(renderClientReportHtml(model({
-      perfCost: {
-        tab: 'perf',
-        state: 'measured',
-        gap: {
-          metricLabel: 'First content',
-          measuredLabel: '3.0s',
-          goodLabel: '1.8s',
-          poorLabel: '3.0s',
-          zone: 'poor',
-          lineOwner: 'Google',
-          lineUrl: 'https://example.com/benchmark',
-        },
-        scale: {
-          axisMaxDisplay: 4,
-          zones: { green: 45, amber: 30, red: 25 },
-          goodLinePercent: 45,
-          poorLinePercent: 75,
-          markerPercent: 75,
-        },
-      },
-    })), 'perf');
-
-    expect(perfPanelHtml).toContain('data-benchmark-axis-max="4"');
-    expect(perfPanelHtml).toContain('<span>0s</span><span>4s</span>');
-  });
-
   it('renders the FCP scale selected through the branch-3 fallback', () => {
     const slowLcp: PerfCostPage = {
       page: {
@@ -2418,6 +2391,7 @@ describe('renderClientReportHtml', () => {
           zone: 'poor',
           lineOwner: "Google's Lighthouse benchmark - first contentful paint",
           lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+          scaleAxis: { unit: 'seconds', precision: 1 },
         },
         gapSubLines: ['slowest page: Platform, 3.4s - 1.8x the line'],
         stakes: { kind: 'at-risk', prose: 'Slow starts are where phone visitors give up.' },
@@ -2462,7 +2436,7 @@ describe('renderClientReportHtml', () => {
     }
 
     expect(html).toContain('class="cr-cost-tier cr-cost-tier-measured" data-cost-tier="measured" style="display:grid; grid-template-columns:minmax(88px, 104px) minmax(0, 1fr); gap:16px; padding:18px 0 20px"');
-    expect(html).toContain('data-benchmark-axis-max="4"');
+    expect(html).toContain('data-benchmark-axis-max="4.0"');
     expect(html).toContain('width:45%; background:#e9f4ec');
     expect(html).toContain('width:30%; background:#fbeecf');
     expect(html).toContain('width:25%; background:#fbe6e3');

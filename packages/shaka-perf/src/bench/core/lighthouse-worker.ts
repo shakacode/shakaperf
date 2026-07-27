@@ -48,7 +48,7 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
-import { REAL_CHROME_MOBILE_USER_AGENT } from '../../browser-user-agent';
+import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
 
 /**
  * Filename for the live-browser screenshot the worker captures on failure.
@@ -108,11 +108,15 @@ class LighthouseWorkerSampler {
     if (process.env.SHAKA_PERF_HEADED !== '1') {
       chromeFlags.unshift('--headless');
     }
-    // Pin pre-emulation traffic to the same mobile identity used by the
+    // Pin pre-emulation traffic to the viewport identity used by the
     // Playwright stages. Lighthouse applies its own CDP override before the
-    // measured navigation; getMobileSettings pins that path separately.
+    // measured navigation; getLighthouseSettings pins that path separately.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
-      chromeFlags.push(`--user-agent=${REAL_CHROME_MOBILE_USER_AGENT}`);
+      chromeFlags.push(
+        `--user-agent=${realChromeUserAgentForFormFactor(
+          process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
+        )}`,
+      );
     }
 
     if (process.env.TRACERBENCH_PROXY_URL) {
@@ -172,7 +176,7 @@ class LighthouseWorkerSampler {
     }
   }
 
-  async getMobileSettings(): Promise<LighthouseConfig> {
+  async getLighthouseSettings(): Promise<LighthouseConfig> {
     // Route through importPatchedLighthouse so we fail before runLighthouse
     // if the loader hook didn't apply — otherwise the run produces a vanilla
     // trace that silently excludes post-load testFn interactions.
@@ -183,7 +187,11 @@ class LighthouseWorkerSampler {
       ...defaultConfig?.settings,
       ...DEFAULT_LH_CONFIG,
       ...(process.env.SHAKAPERF_REAL_CHROME === '1'
-        ? { emulatedUserAgent: REAL_CHROME_MOBILE_USER_AGENT }
+        ? {
+          emulatedUserAgent: realChromeUserAgentForFormFactor(
+            process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
+          ),
+        }
         : {}),
       port: this.chrome!.port,
     };
@@ -196,7 +204,7 @@ class LighthouseWorkerSampler {
     const msg = assertSampleMessage(sampleState, sampleIndex);
     const testDef = await resolveTestDef(msg.testFile, msg.testName);
     const saveArtifacts = msg.options.saveArtifacts ?? true;
-    let lhSettings = await this.getMobileSettings();
+    let lhSettings = await this.getLighthouseSettings();
 
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
 

@@ -39,6 +39,20 @@ describe('screencastRecorder', () => {
     expect(sendCommand).toHaveBeenCalledWith('Page.stopScreencast');
   });
 
+  it('ignores navigation while the public recorder is unarmed', async () => {
+    const session = {
+      sendCommand: jest.fn(async () => {}),
+      on: jest.fn(),
+      off: jest.fn(),
+    };
+
+    screencastRecorder.record(false);
+    await screencastRecorder.onNavigate(session);
+
+    expect(session.sendCommand).not.toHaveBeenCalled();
+    expect(session.on).not.toHaveBeenCalled();
+  });
+
   it('retries the main-frame subscription while a swapped renderer attaches', async () => {
     jest.useFakeTimers();
     const handlers = new Map<string, (...args: unknown[]) => void>();
@@ -76,6 +90,25 @@ describe('screencastRecorder', () => {
       maxHeight: 4096,
       everyNthFrame: 1,
     });
+    await recording.stop();
+  });
+
+  it('clamps frames captured before the navigation anchor to zero', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const session = {
+      sendCommand: jest.fn(async () => {}),
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'early-frame',
+      sessionId: 1,
+      metadata: { timestamp: 0 },
+    });
+
+    expect(recording.frames).toEqual([{ timeMs: 0, data: 'early-frame' }]);
     await recording.stop();
   });
 
@@ -137,7 +170,7 @@ describe('screencastRecorder', () => {
     await recording.stop();
   });
 
-  it('does not retain frames or leave capture running when stop wins an in-flight retry', async () => {
+  it('stops without waiting for an in-flight retry and cleans up when it settles', async () => {
     const handlers = new Map<string, (...args: unknown[]) => void>();
     let startAttempts = 0;
     let resolveRetry: (() => void) | undefined;
@@ -160,9 +193,13 @@ describe('screencastRecorder', () => {
     handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
     const lateFrameHandler = handlers.get('Page.screencastFrame');
     await Promise.resolve();
-    const stopPromise = recording.stop();
+    await recording.stop();
+    expect(sendCommand.mock.calls.filter(([method]) => method === 'Page.stopScreencast'))
+      .toHaveLength(1);
+
     resolveRetry?.();
-    await stopPromise;
+    await Promise.resolve();
+    await Promise.resolve();
     lateFrameHandler?.({
       data: 'late-frame',
       sessionId: 2,

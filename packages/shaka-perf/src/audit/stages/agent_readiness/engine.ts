@@ -18,6 +18,10 @@ import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from
 import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
+import {
+  matchRealChromeUserAgentVersion,
+  realChromeUserAgentForFormFactor,
+} from '../../../browser-user-agent';
 
 interface AgentReadinessSlotState extends PoolWorkerState {
   agentReadinessBrowser?: Browser;
@@ -76,6 +80,7 @@ async function launchBrowser(
 export async function fetchRawHtml(
   url: string,
   timeoutMs: number,
+  userAgent = RAW_FETCH_UA,
 ): Promise<{ html: string | null; status?: number; contentType?: string; bytes?: number }> {
   let target: URL;
   try {
@@ -92,7 +97,7 @@ export async function fetchRawHtml(
       const res = await fetch(target.href, {
         signal: ctl.signal,
         redirect: 'manual',
-        headers: { 'user-agent': RAW_FETCH_UA, accept: 'text/html,application/xhtml+xml' },
+        headers: { 'user-agent': userAgent, accept: 'text/html,application/xhtml+xml' },
       });
       if (res.status >= 300 && res.status < 400) {
         await res.body?.cancel().catch(() => {});
@@ -219,10 +224,16 @@ async function scanAgentReadiness(
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
   const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
+  const rawFetchUserAgent = process.env.SHAKAPERF_REAL_CHROME === '1'
+    ? matchRealChromeUserAgentVersion(
+      realChromeUserAgentForFormFactor(ctx.viewport.formFactor),
+      browser.version?.(),
+    )
+    : RAW_FETCH_UA;
 
   // Raw fetch + rendered render run together - they are independent.
   const [rawFetch, renderedOut] = await Promise.all([
-    fetchRawHtml(ctx.experimentURL, rawFetchTimeout),
+    fetchRawHtml(ctx.experimentURL, rawFetchTimeout, rawFetchUserAgent),
     readRenderedSignals(ctx, browser, engineOptions),
   ]);
 

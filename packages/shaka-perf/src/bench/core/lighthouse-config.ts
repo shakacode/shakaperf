@@ -184,6 +184,13 @@ export interface LighthouseBenchmarkOptions {
    */
   headed?: boolean;
   /**
+   * Audit-only real-Chrome mode. Compare deliberately leaves this unset so
+   * ambient audit environment variables cannot change its perf browser.
+   */
+  realChrome?: {
+    headless: boolean;
+  };
+  /**
    * Forwarded to the user's `testFn` so tests can vary behaviour between
    * control and experiment without the worker knowing about groups. The
    * parent sets this from the benchmark's `group`.

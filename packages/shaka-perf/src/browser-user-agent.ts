@@ -18,6 +18,12 @@ export const REAL_CHROME_MOBILE_USER_AGENT =
 export const REAL_CHROME_DESKTOP_USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+export function realChromeUserAgentForFormFactor(formFactor: string): string {
+  return formFactor === 'mobile'
+    ? REAL_CHROME_MOBILE_USER_AGENT
+    : REAL_CHROME_DESKTOP_USER_AGENT;
+}
+
 export function matchRealChromeUserAgentVersion(
   userAgent: string,
   browserVersion?: string,

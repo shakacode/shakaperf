@@ -303,7 +303,6 @@ export async function startScreencastOnLighthouseSession(
   const frames: { timeMs: number; data: string }[] = [];
   let stopped = false;
   let subscriptionGeneration = 0;
-  const activeSubscriptions = new Set<Promise<void>>();
   // Re-stamped after the initial subscription so a slow CDP attach cannot
   // shift every captured frame away from Lighthouse's navigation start.
   let wallNavStartMs = Date.now();
@@ -328,9 +327,7 @@ export async function startScreencastOnLighthouseSession(
     if (evt?.frame?.parentId) return; // sub-frames don't reset the screencast
     // Renderer-swap (cross-origin nav): re-arm.
     const generation = ++subscriptionGeneration;
-    const subscription = subscribe(`after nav to ${evt.frame.url ?? '?'}`, generation, true);
-    activeSubscriptions.add(subscription);
-    void subscription.finally(() => activeSubscriptions.delete(subscription));
+    void subscribe(`after nav to ${evt.frame.url ?? '?'}`, generation, true);
   };
 
   const subscribe = async (
@@ -393,6 +390,7 @@ export async function startScreencastOnLighthouseSession(
         return;
       } catch (err) {
         lastErr = err;
+        if (stopped || generation !== subscriptionGeneration) return;
         if (!retry || Date.now() + SUBSCRIBE_RETRY_DELAY_MS >= deadline) break;
         await new Promise((resolve) => setTimeout(resolve, SUBSCRIBE_RETRY_DELAY_MS));
       }
@@ -412,7 +410,6 @@ export async function startScreencastOnLighthouseSession(
       stopped = true;
       subscriptionGeneration += 1;
       try { await lhSession.sendCommand('Page.stopScreencast'); } catch { /* already detached */ }
-      await Promise.allSettled([...activeSubscriptions]);
       if (lhSession.off) {
         try { lhSession.off('Page.screencastFrame', onScreencastFrame); } catch { /* ignore */ }
         try { lhSession.off('Page.frameNavigated', onFrameNavigated); } catch { /* ignore */ }

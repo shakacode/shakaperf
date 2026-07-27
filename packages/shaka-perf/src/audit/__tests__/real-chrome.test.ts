@@ -9,6 +9,21 @@
 
 import type { Page } from 'playwright-core';
 import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../real-chrome';
+import {
+  matchRealChromeUserAgentVersion,
+  REAL_CHROME_DESKTOP_USER_AGENT,
+} from '../../browser-user-agent';
+
+describe('matchRealChromeUserAgentVersion', () => {
+  it.each([undefined, '', 'abc', '150'])(
+    'preserves the fallback user agent for an unusable browser version (%p)',
+    (browserVersion) => {
+      expect(
+        matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, browserVersion),
+      ).toBe(REAL_CHROME_DESKTOP_USER_AGENT);
+    },
+  );
+});
 
 describe('realChromeContextOptions', () => {
   const orig = process.env.SHAKAPERF_REAL_CHROME;

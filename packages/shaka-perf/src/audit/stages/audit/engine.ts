@@ -117,6 +117,13 @@ export async function runAuditStage(
     captureCoverage: true,
     targetUrl: ctx.experimentURL,
     headed: ctx.runtime.headed,
+    ...(process.env.SHAKAPERF_REAL_CHROME === '1'
+      ? {
+        realChrome: {
+          headless: process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1',
+        },
+      }
+      : {}),
   });
   let sampleGroups;
   try {

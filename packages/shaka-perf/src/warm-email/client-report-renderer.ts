@@ -541,18 +541,12 @@ function costDetailsPanel(id: string, content: string, compact = false): string 
   return `<div id="${esc(id)}" data-disclosure hidden style="margin-top:${compact ? '9px' : '10px'}; padding:${compact ? '11px 13px' : '12px 14px'}; border:1px solid #e7e1d8; border-radius:10px; background:#fbfaf8">${content}</div>`;
 }
 
-// Preserve older model literals and direct renderer consumers that omit axis metadata.
-const LEGACY_SECONDS_SCALE_AXIS = { unit: 'seconds', precision: 1 } as const;
-
 function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): string {
   if (!scale) return '';
+  if (!gap.scaleAxis) throw new Error('benchmark scale requires axis metadata');
   const labelStacked = Math.abs(scale.markerPercent - scale.goodLinePercent) < 12;
-  const scaleAxis = gap.scaleAxis ?? LEGACY_SECONDS_SCALE_AXIS;
-  const axisMax = gap.scaleAxis
-    ? scale.axisMaxDisplay.toFixed(scaleAxis.precision)
-    : Number.isInteger(scale.axisMaxDisplay)
-      ? String(scale.axisMaxDisplay)
-      : scale.axisMaxDisplay.toFixed(scaleAxis.precision);
+  const scaleAxis = gap.scaleAxis;
+  const axisMax = scale.axisMaxDisplay.toFixed(scaleAxis.precision);
   const axisSuffix = scaleAxis.unit === 'seconds' ? 's' : '';
   return `            <div data-benchmark-scale data-benchmark-zone="${esc(gap.zone)}" data-benchmark-axis-max="${esc(axisMax)}"${labelStacked ? ' data-benchmark-label-stack' : ''} style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="${esc(`${gap.metricLabel} ${gap.measuredLabel}; Google's good line ${gap.goodLabel}`)}">
               <span style="position:absolute; top:0; left:${scale.goodLinePercent}%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#2f7d4f; white-space:nowrap">good &middot; ${esc(gap.goodLabel)}</span>

@@ -10,8 +10,7 @@
 import type { LaunchOptions, Page } from 'playwright-core';
 import {
   matchRealChromeUserAgentVersion,
-  REAL_CHROME_DESKTOP_USER_AGENT,
-  REAL_CHROME_MOBILE_USER_AGENT,
+  realChromeUserAgentForFormFactor,
 } from '../browser-user-agent';
 import { looksLikeBotWall } from './bot-wall';
 
@@ -50,7 +49,7 @@ export function realChromeContextOptions(
   const mobile = formFactor === 'mobile';
   if (!mobile && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1') return undefined;
   const userAgent = matchRealChromeUserAgentVersion(
-    mobile ? REAL_CHROME_MOBILE_USER_AGENT : REAL_CHROME_DESKTOP_USER_AGENT,
+    realChromeUserAgentForFormFactor(formFactor),
     browserVersion,
   );
   return mobile ? { userAgent, hasTouch: true } : { userAgent };

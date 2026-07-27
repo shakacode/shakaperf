@@ -47,6 +47,18 @@ describe('fetchRawHtml', () => {
     }));
   });
 
+  it('uses an explicitly selected browser identity for the raw request', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+      response(200, '<main>public HTML</main>'),
+    );
+
+    await fetchRawHtml('https://example.com/start', 1000, 'viewport-user-agent');
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://example.com/start', expect.objectContaining({
+      headers: expect.objectContaining({ 'user-agent': 'viewport-user-agent' }),
+    }));
+  });
+
   it('follows public redirects manually and preserves the final response metadata', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
       switch (String(input)) {

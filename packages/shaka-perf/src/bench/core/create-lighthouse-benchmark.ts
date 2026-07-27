@@ -25,6 +25,30 @@ import type { LogFrame, WorkerLogFrame } from './worker-log';
 // Slot 4 is reserved for the worker-to-worker barrier synchronization fd.
 const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
 
+export function lighthouseWorkerEnvironment(
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome' | 'viewport'>,
+  samplingMode: SamplingMode,
+): NodeJS.ProcessEnv {
+  const forceRealChromeHeadless = options.realChrome?.headless === true;
+  return {
+    SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
+    SHAKA_PERF_SAMPLING_MODE: samplingMode,
+    SHAKA_PERF_HEADED: options.headed && !forceRealChromeHeadless ? '1' : '0',
+    SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
+    SHAKA_PERF_VIEWPORT_FORM_FACTOR: options.viewport.formFactor,
+  };
+}
+
+export function warnIfRealChromeHeadlessOverridesHeaded(
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome'>,
+): void {
+  if (options.headed && options.realChrome?.headless) {
+    console.warn(
+      'SHAKAPERF_REAL_CHROME_HEADLESS=1 overrides --headed for the audit browsers',
+    );
+  }
+}
+
 interface ResultMessage {
   type: 'result';
   sample: NavigationSample;
@@ -272,30 +296,18 @@ export default function createLighthouseBenchmark(
     sampleState,
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
+      warnIfRealChromeHeadlessOverridesHeaded(options);
       // stdio: stdin/stdout/stderr inherit so IPC-dead fallback writes still
       // surface on the parent terminal. The worker entrypoint reroutes normal
       // console/stdout/stderr output to IPC log frames.
-      const barrierSynchronizationEnv = {
-        SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
-        SHAKA_PERF_SAMPLING_MODE: samplingMode,
-      };
-      const forceRealChromeHeadless =
-        process.env.SHAKAPERF_REAL_CHROME === '1'
-        && process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
+      const workerEnvironment = lighthouseWorkerEnvironment(options, samplingMode);
       let worker: ChildProcess;
       try {
         worker = fork(workerPath, [], {
           stdio: ['inherit', 'inherit', 'inherit', 'ipc', barrierSynchronizationFd],
           env: {
             ...process.env,
-            ...barrierSynchronizationEnv,
-            // setupBrowser drops --headless when this is '1'.
-            SHAKA_PERF_HEADED: options.headed && !forceRealChromeHeadless ? '1' : '0',
-            // Keep the audit-only real-Chrome mode explicit at the worker
-            // boundary instead of relying on the inherited environment.
-            SHAKAPERF_REAL_CHROME:
-              process.env.SHAKAPERF_REAL_CHROME === '1' ? '1' : '0',
-            SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
+            ...workerEnvironment,
           },
         });
       } finally {
