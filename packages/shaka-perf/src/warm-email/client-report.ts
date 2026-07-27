@@ -887,7 +887,7 @@ const toPct = (ratio: number): string => `${(clamp01(ratio) * 100).toFixed(2)}%`
 // the boxes actually drawn.
 export async function a11yCropFrames(scan: AccessibilityScan, dropEngulfing = false): Promise<A11yFrame[]> {
   const shot = scan.screenshot;
-  const source = shot?.imageDataUri ?? shot?.imageHref;
+  const source = shot?.imageHref;
   if (!shot || !source) return [];
   const m = /^data:[^;]*;base64,(.+)$/.exec(source);
   if (!m) return []; // only the inline data URI is croppable here
@@ -1369,7 +1369,7 @@ const A11Y_WHOLEPAGE_CAPTION = 'Showing the full page; the flagged issues are li
 // visual. The caller picks the caption (structural vs generic).
 async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Promise<ClientReportA11yCard['frames'][number] | null> {
   const shot = scan.screenshot;
-  const source = shot?.imageDataUri;
+  const source = shot?.imageHref;
   if (!shot || !source) return null;
   const m = /^data:[^;]*;base64,(.+)$/.exec(source);
   if (!m) return null;

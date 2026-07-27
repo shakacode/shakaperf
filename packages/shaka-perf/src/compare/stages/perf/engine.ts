@@ -43,7 +43,7 @@ export async function runPerfEngineStage(
   // The engine measures at ctx.viewport, so config.viewports is unused.
   const perfConfig = config;
   const unitId = ctx.testAndViewportId;
-  const artifactsDir = path.join(ctx.runtime.resultsRoot, unitId, 'artifacts');
+  const artifactsDir = ctx.artifacts.dir;
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
@@ -88,18 +88,12 @@ export async function runPerfEngineStage(
     const mediaName = findFailureMediaName(err);
     if (mediaName) {
       // The Lighthouse worker wrote the media (a screenshot on the perf path)
-      // directly into artifactsDir (== ctx.artifacts.dir). It stays inlined as
-      // a base64 data URI so it survives in the shareable lightweight
-      // report.html and in any standalone-emailed copy — small (a single file
-      // per failed test) and the at-a-glance value is high.
-      try {
-        throw new StageFailureError(err, {
-          media: ctx.artifacts.inlineDataUri(mediaName),
-        });
-      } catch (inlineErr) {
-        if (inlineErr instanceof StageFailureError) throw inlineErr;
-        console.warn(chalk.yellow(`failed to inline perf failure media ${mediaName}: ${(inlineErr as Error).message}`));
-      }
+      // directly into artifactsDir (== ctx.artifacts.dir). The stage exposes
+      // only its report-relative path; self-contained report generation owns
+      // inlining the bytes.
+      throw new StageFailureError(err, {
+        media: ctx.artifacts.pathFor(mediaName),
+      });
     }
     throw err;
   }
@@ -114,9 +108,8 @@ export async function runPerfEngineStage(
       throw new Error(`perf did not produce report.json for ${ctx.viewport.label}`);
     }
   }
-  const artifact = await readPerfArtifact({
-    perTestDir: artifactsDir,
-    reportRoot: ctx.runtime.resultsRoot,
+  const artifact = readPerfArtifact({
+    artifacts: ctx.artifacts,
     // Per-test effective thresholds (config.perf.* in an abTest() applies to
     // that test), same as lighthouseConfig above.
     regressionThreshold: ctx.config.perf.regressionThreshold,

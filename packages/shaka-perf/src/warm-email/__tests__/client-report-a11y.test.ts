@@ -407,12 +407,12 @@ describe('a11yCropFrames structural filter (integration)', () => {
     return `data:image/png;base64,${buf.toString('base64')}`;
   }
 
-  function scanWith(ruleId: string, impact: AccessibilityViolation['impact'], imageDataUri: string): AccessibilityScan {
+  function scanWith(ruleId: string, impact: AccessibilityViolation['impact'], imageHref: string): AccessibilityScan {
     return {
       viewportLabel: 'phone',
       viewport: { label: 'phone', width: 400, height: 800, formFactor: 'mobile', deviceScaleFactor: 1 } as AccessibilityScan['viewport'],
       url: 'https://example.com/',
-      screenshot: { width: 400, height: 800, imageHref: 'a11y.png', imageDataUri },
+      screenshot: { width: 400, height: 800, imageHref },
       violations: [
         {
           ruleId,
@@ -446,7 +446,7 @@ describe('a11yCropFrames structural filter (integration)', () => {
       viewportLabel: 'phone',
       viewport: { label: 'phone', width: 400, height: 800, formFactor: 'mobile', deviceScaleFactor: 1 } as AccessibilityScan['viewport'],
       url: 'https://example.com/',
-      screenshot: { width: 400, height: 800, imageHref: 'a11y.png', imageDataUri: img },
+      screenshot: { width: 400, height: 800, imageHref: img },
       violations: [
         { ruleId: 'link-name', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#a'], html: '<a>', failureSummary: '', bounds: { x: 20, y: 80, width: 200, height: 24 } }] },
         { ruleId: 'color-contrast', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#b'], html: '<b>', failureSummary: '', bounds: { x: 20, y: 420, width: 200, height: 24 } }] },

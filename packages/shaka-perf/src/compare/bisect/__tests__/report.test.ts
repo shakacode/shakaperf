@@ -18,7 +18,6 @@ import {
   writeBisectReportArtifacts,
 } from '../report';
 import type { BisectReportData } from '../report-model';
-import type { Stage } from '../../../stage/stage';
 
 describe('writeBisectReport', () => {
   let resultsDirectory: string;
@@ -32,19 +31,14 @@ describe('writeBisectReport', () => {
   });
 
   it('writes a self-contained report with bisect data and inlined artifacts', () => {
+    const screenshotPath = 'homepage/artifacts/control.png';
+    const screenshotFile = path.join(resultsDirectory, screenshotPath);
+    fs.mkdirSync(path.dirname(screenshotFile), { recursive: true });
+    fs.writeFileSync(screenshotFile, 'fixture');
     const written = writeBisectReportArtifacts({
       resultsDirectory,
-      data: reportData(),
-      stages: [
-        {
-          name: 'visreg',
-          stripMeasurementForLightweight: (measurement: { screenshot: string }) => ({
-            screenshot: measurement.screenshot === '/tmp/control.png'
-              ? 'data:image/png;base64,fixture'
-              : measurement.screenshot,
-          }),
-        } as Stage<{ screenshot: string }>,
-      ],
+      data: reportData(screenshotPath),
+      stages: [],
     });
     const { htmlPath, dataPath } = written;
 
@@ -61,8 +55,10 @@ describe('writeBisectReport', () => {
     expect(serializedPayload).toBeDefined();
     expect(saved).toEqual(JSON.parse(serializedPayload!));
     expect(saved.meta.reportMode).toBe('lightweight');
-    expect(html).toContain('data:image/png;base64,fixture');
-    expect(html).not.toContain('/tmp/control.png');
+    expect(html).toContain(
+      `data:image/png;base64,${Buffer.from('fixture').toString('base64')}`,
+    );
+    expect(html).not.toContain(screenshotPath);
   });
 
   it('returns an absolute path when resultsDirectory is relative', () => {
@@ -109,7 +105,7 @@ describe('writeBisectReport', () => {
   });
 });
 
-function reportData(): BisectReportData {
+function reportData(screenshot = '/tmp/control.png'): BisectReportData {
   return {
     meta: {
       title: 'Bisect report',
@@ -140,7 +136,7 @@ function reportData(): BisectReportData {
         kind: 'ok',
         stage: 'visreg',
         viewport: DESKTOP_VIEWPORT,
-        measurement: { screenshot: '/tmp/control.png' },
+        measurement: { screenshot },
       }],
       viewportArtifactPaths: [],
     }],

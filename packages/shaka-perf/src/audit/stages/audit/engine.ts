@@ -30,7 +30,8 @@ import { parseAccessibilityScoreStdout } from './accessibility-score';
 import type { TestContext } from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import { StageFailureError, findFailureMediaName } from '../../../stage/stage-failure';
-import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
+import type { ArtifactScope } from '../../../pipeline/artifact-store';
+import { safeReaddir } from '../../../pipeline/path-utils';
 import { classifyMetric, levelForMetric } from './metrics';
 import type { AuditMetric, AuditResult, AuditStageConfig } from './stage';
 
@@ -93,7 +94,7 @@ export async function runAuditStage(
   workerPool: WorkerPool,
   config: AuditStageConfig,
 ): Promise<AuditResult> {
-  const artifactsDir = path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId, 'artifacts');
+  const artifactsDir = ctx.artifacts.dir;
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
@@ -135,18 +136,11 @@ export async function runAuditStage(
   } catch (err) {
     // The Lighthouse worker wrote the failure media (a screencast video, or a
     // screenshot when no video was available) directly into artifactsDir
-    // (== ctx.artifacts.dir). It stays inlined as a base64 data URI so it
-    // survives in the shareable lightweight report.html — small enough per
-    // failed test to be worth carrying inline, and the at-a-glance value is
-    // high.
+    // (== ctx.artifacts.dir). Keep the stage payload path-only; report
+    // generation inlines it for the self-contained report.
     const mediaName = findFailureMediaName(err);
     if (mediaName) {
-      try {
-        throw new StageFailureError(err, { media: ctx.artifacts.inlineDataUri(mediaName) });
-      } catch (inlineErr) {
-        if (inlineErr instanceof StageFailureError) throw inlineErr;
-        console.warn(chalk.yellow(`failed to inline audit failure media ${mediaName}: ${(inlineErr as Error).message}`));
-      }
+      throw new StageFailureError(err, { media: ctx.artifacts.pathFor(mediaName) });
     }
     throw err;
   }
@@ -172,8 +166,7 @@ export async function runAuditStage(
   const metrics = sample.phases.map(auditMetricForPhase);
   printAuditLevels(ctx, metrics);
   const artifact = await readAuditArtifact({
-    perTestDir: artifactsDir,
-    reportRoot: ctx.runtime.resultsRoot,
+    artifacts: ctx.artifacts,
     metrics,
   });
   if (coverageStatementIds) artifact.coverageStatementIds = coverageStatementIds;
@@ -215,30 +208,28 @@ function printAuditLevels(ctx: TestContext, metrics: readonly AuditMetric[]): vo
 }
 
 interface ReadAuditArtifactOptions {
-  perTestDir: string;
-  reportRoot: string;
+  artifacts: ArtifactScope;
   metrics: AuditMetric[];
 }
 
 async function readAuditArtifact(opts: ReadAuditArtifactOptions): Promise<AuditResult> {
-  const files = safeReaddir(opts.perTestDir);
+  const files = safeReaddir(opts.artifacts.dir);
   const experimentLh = files.find((f) => f === 'experiment_lighthouse_report.html') ?? null;
   const artifact: AuditResult = {
     metrics: opts.metrics,
   };
 
   if (experimentLh) {
-    const fullPath = path.join(opts.perTestDir, experimentLh);
-    // Reference the LH HTML by relative path (full-report.html sits next to
-    // it). The thumbnail stays inlined as a tiny JPEG — it's the preview UI
-    // that's still useful at-a-glance, and inlining keeps the lightweight
-    // report self-contained for the thumb alone.
-    artifact.lighthouseHref = toPosixRelative(opts.reportRoot, fullPath);
+    const fullPath = path.join(opts.artifacts.dir, experimentLh);
+    artifact.lighthouseHref = opts.artifacts.pathFor(experimentLh);
     console.log(chalk.dim('LH HTML thumbnail starting'));
     const thumbBuffer = await screenshotLighthouseHtml(fullPath);
     console.log(chalk.dim('LH HTML thumbnail done'));
     if (thumbBuffer) {
-      artifact.lighthouseThumbHref = `data:image/jpeg;base64,${thumbBuffer.toString('base64')}`;
+      artifact.lighthouseThumbHref = await opts.artifacts.writeFile(
+        LIGHTHOUSE_THUMB_FILENAME,
+        thumbBuffer,
+      );
     }
   }
 
@@ -246,6 +237,7 @@ async function readAuditArtifact(opts: ReadAuditArtifactOptions): Promise<AuditR
 }
 
 const LIGHTHOUSE_THUMB_WIDTH = 320;
+const LIGHTHOUSE_THUMB_FILENAME = 'experiment_lighthouse_thumbnail.jpg';
 const LIGHTHOUSE_THUMB_CAPTURE_WIDTH = 1024;
 const LIGHTHOUSE_THUMB_CAPTURE_HEIGHT = 1400;
 

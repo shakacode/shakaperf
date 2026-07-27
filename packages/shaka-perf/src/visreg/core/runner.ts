@@ -10,15 +10,18 @@
 import makeConfig from './util/makeConfig';
 import createComparisonBitmaps from './util/createComparisonBitmaps';
 import { execute as writeReport } from './report';
-import type { RuntimeConfig } from './types';
+import type { RuntimeConfig, VisregRunRuntime } from './types';
 
 /**
  * Run one visreg comparison: resolve the runtime config, capture and diff the
  * screenshots, then write the per-unit report. This is the engine's only entry
  * point — the unified compare pipeline calls it once per work unit.
  */
-export default async function runVisregCompare(options?: Record<string, unknown>) {
+export default async function runVisregCompare(
+  options?: Record<string, unknown>,
+  runtime: VisregRunRuntime = {},
+) {
   const config = await makeConfig(options) as RuntimeConfig;
-  await createComparisonBitmaps(config);
+  await createComparisonBitmaps(config, runtime);
   return writeReport(config);
 }

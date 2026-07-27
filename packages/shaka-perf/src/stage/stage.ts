@@ -144,20 +144,11 @@ export interface Stage<M = unknown> {
   run(ctx: TestContext, pool: WorkerPool): Promise<M>;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
   /**
-   * Return a copy of `measurement` shaped for the **lightweight** report —
-   * the shareable, self-contained `self-contained-performance-report.html`.
-   * Drops relative-path hrefs that would 404 when the file is shipped alone,
-   * keeps inlined data URIs (thumbs, AVIF rasterizations) the renderer
-   * shows.
+   * Return a copy of `measurement` containing only report-facing data.
+   * Artifact references remain report-relative paths here; self-contained
+   * report generation converts them to data URIs at the report boundary.
    */
-  stripMeasurementForLightweight?(measurement: M): M;
-  /**
-   * Return a copy of `measurement` shaped for the **full** local-dev report.
-   * Drops inlined data URIs that the renderer doesn't use in full mode
-   * (full uses the lazy-loaded relative-path siblings instead) — keeps the
-   * report HTML small.
-   */
-  stripMeasurementForFull?(measurement: M): M;
+  stripMeasurementForReport?(measurement: M): M;
 }
 
 // DO NOT DELETE: this will be populated later.

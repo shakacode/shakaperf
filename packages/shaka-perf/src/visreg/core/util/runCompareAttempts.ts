@@ -23,7 +23,6 @@ import {
   getLatestTestAnnotation,
   runWithFreshTestAnnotationContext,
 } from '../../../test-annotation';
-import { captureAndAttachVisregFailureScreenshot } from './failureScreenshot';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -41,6 +40,7 @@ export interface CompareAttemptsDeps {
   createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
+  captureFailure?: (err: unknown, page: PlaywrightPage) => Promise<unknown>;
 }
 
 export interface CompareAttemptsParams {
@@ -90,6 +90,7 @@ interface CaptureComparisonSideParams {
   createSide: NonNullable<CompareAttemptsDeps['createSide']>;
   preparePage: PreparePageFn;
   captureScreenshot: CaptureScreenshotFn;
+  captureFailure?: NonNullable<CompareAttemptsDeps['captureFailure']>;
 }
 
 /**
@@ -113,8 +114,8 @@ async function captureComparisonSide(
     createSide,
     preparePage,
     captureScreenshot,
+    captureFailure,
   } = params;
-  const sideLabel = isControl ? 'control' : 'experiment';
   let side: ComparisonSide | undefined;
 
   return runWithFreshTestAnnotationContext(async () => {
@@ -159,17 +160,11 @@ async function captureComparisonSide(
       return captures;
     } catch (err) {
       attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
-      try {
-        if (side) {
-          await captureAndAttachVisregFailureScreenshot(err, side.page);
-        }
-      } catch (captureErr) {
-        logger.warn(
-          `Could not capture ${sideLabel} failure screenshot: ${(captureErr as Error).message}`,
-        );
-      }
-      await disposeActiveSides(activeSides);
-      throw err;
+      const failure = side && activeSides.has(side) && captureFailure
+        ? await captureFailure(err, side.page)
+        : err;
+      disposeActiveSidesOnNextTask(activeSides);
+      throw failure;
     } finally {
       if (side && activeSides.delete(side)) {
         await side.dispose();
@@ -178,12 +173,18 @@ async function captureComparisonSide(
   });
 }
 
-async function disposeActiveSides(
+function disposeActiveSidesOnNextTask(
   activeSides: Set<ComparisonSide>,
-): Promise<void> {
+): void {
   const sidesToDispose = [...activeSides];
   activeSides.clear();
-  await Promise.all(sidesToDispose.map((side) => side.dispose()));
+  if (sidesToDispose.length === 0) return;
+  // Let this side's rejection settle Promise.all before closing its sibling.
+  // Otherwise the sibling's resulting "page closed" rejection can win the
+  // race and replace the failure that initiated cancellation.
+  setImmediate(() => {
+    void Promise.all(sidesToDispose.map((side) => side.dispose()));
+  });
 }
 
 /**
@@ -276,6 +277,7 @@ export async function runCompareAttempts(
       createSide,
       preparePage,
       captureScreenshot,
+      captureFailure: deps.captureFailure,
     };
     const captureSide = (url: string, isControl: boolean) =>
       withLogPrefix(

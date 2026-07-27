@@ -13,27 +13,29 @@ import type { AbTestDefinition } from 'shaka-shared';
 import type { Outcome } from './outcome';
 import type { StageName } from '../stage/stage';
 import { testIdForTest, unitIdForTest } from './unit-id';
+import { toPosixRelative } from './path-utils';
+
+declare const artifactPathBrand: unique symbol;
+export type ArtifactPath = string & { readonly [artifactPathBrand]: true };
 
 export class ArtifactScope {
-  constructor(readonly dir: string) {}
+  constructor(readonly dir: string, private readonly reportRoot: string) {}
 
-  async writeFile(name: string, bytes: string | Buffer): Promise<void> {
+  async writeFile(name: string, bytes: string | Buffer): Promise<ArtifactPath> {
     fs.mkdirSync(this.dir, { recursive: true });
     await fs.promises.writeFile(this.resolveSafeName(name), bytes);
+    return this.pathFor(name);
   }
 
-  async writeJson(name: string, data: unknown): Promise<void> {
-    await this.writeFile(name, JSON.stringify(data, null, 2));
+  async writeJson(name: string, data: unknown): Promise<ArtifactPath> {
+    return this.writeFile(name, JSON.stringify(data, null, 2));
   }
 
-  relativeHref(name: string): string {
-    return `./artifacts/${name}`;
-  }
-
-  inlineDataUri(name: string, mimeType = mimeTypeFor(name)): string {
-    const filePath = this.resolveSafeName(name);
-    const bytes = fs.readFileSync(filePath);
-    return `data:${mimeType};base64,${bytes.toString('base64')}`;
+  pathFor(name: string): ArtifactPath {
+    return toPosixRelative(
+      this.reportRoot,
+      this.resolveScopedPath(name),
+    ) as ArtifactPath;
   }
 
   private resolveSafeName(name: string): string {
@@ -41,6 +43,20 @@ export class ArtifactScope {
       throw new Error(`artifact name must be a local filename: ${name}`);
     }
     return path.join(this.dir, name);
+  }
+
+  private resolveScopedPath(name: string): string {
+    const filePath = path.resolve(this.dir, name);
+    const relativePath = path.relative(this.dir, filePath);
+    if (
+      relativePath === '' ||
+      path.isAbsolute(relativePath) ||
+      relativePath === '..' ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
+      throw new Error(`artifact path must stay inside its scope: ${name}`);
+    }
+    return filePath;
   }
 }
 
@@ -60,7 +76,10 @@ export class ArtifactStore {
   }
 
   scopeFor(test: AbTestDefinition, viewportLabel: string): ArtifactScope {
-    return new ArtifactScope(this.artifactsDirForViewport(test, viewportLabel));
+    return new ArtifactScope(
+      this.artifactsDirForViewport(test, viewportLabel),
+      this.resultsRoot,
+    );
   }
 
   writeOutcome(test: AbTestDefinition, viewportLabel: string, outcome: Outcome): void {
@@ -131,14 +150,21 @@ export class ArtifactStore {
   }
 }
 
-function mimeTypeFor(name: string): string {
+export function mimeTypeForArtifactPath(name: string): string {
   const ext = path.extname(name).toLowerCase();
   if (ext === '.png') return 'image/png';
   if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  if (ext === '.gif') return 'image/gif';
+  if (ext === '.webp') return 'image/webp';
+  if (ext === '.avif') return 'image/avif';
   if (ext === '.svg') return 'image/svg+xml';
   if (ext === '.mp4') return 'video/mp4';
+  if (ext === '.webm') return 'video/webm';
+  if (ext === '.ogv' || ext === '.ogg') return 'video/ogg';
   if (ext === '.html') return 'text/html;charset=utf-8';
   if (ext === '.json') return 'application/json';
+  if (ext === '.pdf') return 'application/pdf';
+  if (ext === '.csv') return 'text/csv;charset=utf-8';
   if (ext === '.txt') return 'text/plain;charset=utf-8';
   return 'application/octet-stream';
 }

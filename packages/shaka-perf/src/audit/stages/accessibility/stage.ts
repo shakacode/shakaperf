@@ -71,33 +71,4 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
     };
   }
 
-  stripMeasurementForLightweight(measurement: AccessibilityResult): AccessibilityResult {
-    const { rawArtifactHref: _raw, ...rest } = measurement;
-    return stripScreenshotField(rest, 'imageDataUri');
-  }
-
-  stripMeasurementForFull(measurement: AccessibilityResult): AccessibilityResult {
-    return stripScreenshotField(measurement, 'imageHref');
-  }
-}
-
-function stripScreenshotField(
-  measurement: AccessibilityResult,
-  keep: 'imageDataUri' | 'imageHref',
-): AccessibilityResult {
-  return {
-    ...measurement,
-    scans: measurement.scans.map((scan) => {
-      if (!scan.screenshot) return scan;
-      const { imageDataUri, imageHref, ...rest } = scan.screenshot;
-      const kept = keep === 'imageDataUri' ? imageDataUri : imageHref;
-      return {
-        ...scan,
-        screenshot: {
-          ...rest,
-          ...(kept ? { [keep]: kept } : {}),
-        },
-      };
-    }),
-  };
 }

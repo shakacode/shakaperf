@@ -44,6 +44,7 @@ export function writeBisectReportArtifacts(options: WriteBisectReportOptions): W
     { ...options.data, meta: { ...options.data.meta, reportMode: 'lightweight' } },
     'lightweight',
     options.stages,
+    options.resultsDirectory,
   ) as BisectReportData;
   fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
   writeFileAtomic(dataPath, `${JSON.stringify(portable, null, 2)}\n`);

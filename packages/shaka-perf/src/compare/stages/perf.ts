@@ -39,21 +39,15 @@ export interface PerfArtifact {
   controlLighthouseHref?: string;
   experimentLighthouseHref?: string;
   /**
-   * Relative URL (from the report.html's directory) to the timeline comparison
-   * HTML — e.g. `perf-desktop/homepage/timeline_comparison.html`. All artifact
-   * hrefs in this struct are now relative paths (not base64 data URIs); the
-   * full-report.html sits next to the artifact directories so the dialog
-   * iframe loads them natively, and the lightweight report.html hides these
-   * links behind <FullReportOnly/> so dead refs are never visible to clients.
+   * Report-relative path to the timeline comparison HTML. Self-contained
+   * report generation replaces it with a data URI.
    */
   timelineHref?: string;
   /**
-   * Inline SVG string for the timeline preview (3xN triplet grid). Only
-   * populated on viewports whose perf status actually moved off
-   * `no_difference` — `no_difference` rows fall back to the plain
-   * "timeline" button in the artifact link row.
+   * Report-relative path to the timeline preview SVG (3xN triplet grid).
+   * Only populated on viewports whose perf status moved off `no_difference`.
    */
-  timelinePreviewSvg?: string;
+  timelinePreviewHref?: string;
   benchReportHref?: string;
   diffHrefs?: { label: string; href: string }[];
 }

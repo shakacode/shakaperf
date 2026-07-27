@@ -604,7 +604,7 @@ function formatDiff(prevDiff: AnnotatedFrame['prevDiff']): string {
 }
 
 function resolveFrameImageSrc(frame: AnnotatedFrame): string | undefined {
-  return frame.imageDataUri ?? frame.imageHref;
+  return frame.imageHref;
 }
 
 function formatMs(timeMs: number): string {

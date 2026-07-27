@@ -37,10 +37,6 @@ jest.mock('sharp', () => jest.fn(() => ({
   metadata: jest.fn(async () => ({ width: 100, height: 80 })),
 })));
 
-jest.mock('../../../../pipeline/artifact-compression', () => ({
-  bufferToAvifDataUri: jest.fn(async () => 'data:image/avif;base64,test'),
-}));
-
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
   type AccessibilityStageConfig,
@@ -56,8 +52,6 @@ import {
   normalizeAccessibilityFilterSelection,
 } from '../report';
 import { runAccessibilityStage } from '../engine';
-import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
-import { AccessibilityStage } from '../stage';
 import { resolveDialogFilterSelection } from '../report-dialog';
 import type { AccessibilityRawArtifact, AccessibilityResult, AccessibilityViolation } from '../types';
 import { DESKTOP_VIEWPORT } from 'shaka-shared';
@@ -301,9 +295,8 @@ describe('accessibility report filtering', () => {
   });
 });
 
-describe('accessibility report modes', () => {
-  it('keeps linked screenshots for full reports and inline screenshots for lightweight reports', () => {
-    const stage = new AccessibilityStage(TEST_STAGE_CONFIG);
+describe('accessibility artifact ownership', () => {
+  it('leaves all persisted paths intact for report generation to handle', () => {
     const raw: AccessibilityRawArtifact = {
       testName: 'Checkout',
       experimentURL: 'http://localhost:3030/checkout',
@@ -320,7 +313,6 @@ describe('accessibility report modes', () => {
           width: 1280,
           height: 800,
           imageHref: 'checkout/artifacts/accessibility-screenshot.png',
-          imageDataUri: 'data:image/avif;base64,thumb',
         },
         violations: [],
       }],
@@ -330,17 +322,10 @@ describe('accessibility report modes', () => {
       rawArtifactHref: 'checkout/artifacts/accessibility-report.json',
     });
 
-    expect(stage.stripMeasurementForFull!(result).scans[0].screenshot).toEqual({
-      width: 1280,
-      height: 800,
-      imageHref: 'checkout/artifacts/accessibility-screenshot.png',
-    });
-    expect(stage.stripMeasurementForLightweight!(result).scans[0].screenshot).toEqual({
-      width: 1280,
-      height: 800,
-      imageDataUri: 'data:image/avif;base64,thumb',
-    });
-    expect(stage.stripMeasurementForLightweight!(result).rawArtifactHref).toBeUndefined();
+    expect(result.scans[0].screenshot?.imageHref)
+      .toBe('checkout/artifacts/accessibility-screenshot.png');
+    expect(result.rawArtifactHref)
+      .toBe('checkout/artifacts/accessibility-report.json');
   });
 });
 
@@ -415,7 +400,7 @@ describe('accessibility browser launch', () => {
     ]);
   });
 
-  it('keeps the page and its violations when the inline screenshot encode fails', async () => {
+  it('keeps the page and its violations with a persisted screenshot path', async () => {
     mockChromiumLaunch.mockResolvedValue(fakeBrowser());
     mockAxeAnalyze.mockResolvedValue({
       url: 'http://localhost:3030/checkout',
@@ -423,30 +408,19 @@ describe('accessibility browser launch', () => {
         { id: 'button-name', impact: 'critical', help: 'Buttons need text', helpUrl: '', tags: ['wcag2a'], nodes: [] },
       ],
     });
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>).mockRejectedValueOnce(
-      new Error('Processed image is too large for the HEIF format'),
+    const result = await runAccessibilityStage(
+      fakeContext({}),
+      fakeWorkerPool(),
+      TEST_STAGE_CONFIG,
     );
 
-    try {
-      const result = await runAccessibilityStage(
-        fakeContext({}),
-        fakeWorkerPool(),
-        TEST_STAGE_CONFIG,
-      );
-
-      // The PNG is on disk and the violations were computed before the
-      // screenshot, so the stage still delivers its primary output - only the
-      // inline crop source is dropped.
-      expect(result.totalViolations).toBe(1);
-      expect(result.scans[0].violations[0].ruleId).toBe('button-name');
-      const screenshot = result.scans[0].screenshot;
-      expect(screenshot?.imageHref).toBe('checkout-desktop/artifacts/accessibility-screenshot.png');
-      expect(screenshot?.imageDataUri).toBeUndefined();
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('inline screenshot encode failed'));
-    } finally {
-      warn.mockRestore();
-    }
+    expect(result.totalViolations).toBe(1);
+    expect(result.scans[0].violations[0].ruleId).toBe('button-name');
+    expect(result.scans[0].screenshot).toEqual({
+      width: 100,
+      height: 80,
+      imageHref: 'checkout-desktop/artifacts/accessibility-screenshot.png',
+    });
   });
 
 });
@@ -519,8 +493,8 @@ function fakeContext(
     testAndViewportId: 'checkout-desktop',
     artifacts: {
       dir: '/tmp/shaka-test/checkout-desktop/artifacts',
-      writeJson: jest.fn(async () => {}),
-      writeFile: jest.fn(async () => {}),
+      writeJson: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
+      writeFile: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
     },
     logger: {
       log: jest.fn(),

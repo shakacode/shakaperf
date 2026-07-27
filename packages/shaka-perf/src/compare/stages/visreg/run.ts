@@ -16,14 +16,16 @@ import visregRunner from '../../../visreg/core/runner';
 import { resolvePlaywrightOptions } from '../../../config';
 import type { VisregConfig, Viewport } from '../../../config';
 import type { TestContext } from '../../../stage/stage';
-import { failWithScreenshot } from '../../../stage/stage-failure';
+import {
+  captureFailureScreenshot,
+  StageFailureError,
+} from '../../../stage/stage-failure';
 import {
   exactTestNameFilter,
   testPathPatternForSingleTest,
 } from '../shared/runtime';
 import type { VisregResult, VisregStageConfig } from '../visreg';
 import { readVisregArtifacts } from './artifacts';
-import { getAttachedVisregFailureScreenshot } from '../../../visreg/core/util/failureScreenshot';
 
 const SINGLE_UNIT_ENGINE_PARALLELISM = 1;
 
@@ -76,9 +78,18 @@ export async function runVisregUnit(
       stageUnitUrls: { controlURL: ctx.controlURL, experimentURL: ctx.experimentURL },
       testPathPattern: testPathPatternForSingleTest(ctx.test, testPathPattern),
       filter: exactTestNameFilter(ctx.test),
+    }, {
+      captureFailure: async (err, page) => {
+        const media = await captureFailureScreenshot(
+          ctx.artifacts,
+          () => page.screenshot({ fullPage: true }),
+          'visreg-failure-screenshot.png',
+        );
+        return new StageFailureError(err, media ? { media } : {});
+      },
     });
-    const artifactSet = await readVisregArtifacts({
-      artifactsDir: unitArtifactsDir,
+    const artifactSet = readVisregArtifacts({
+      artifacts: ctx.artifacts,
       viewport: ctx.viewport,
     });
     if (!artifactSet) {
@@ -88,10 +99,6 @@ export async function runVisregUnit(
   } catch (err) {
     const message = (err as Error).message || String(err);
     console.error(chalk.red(`visreg engine error: ${message}`));
-    const screenshot = getAttachedVisregFailureScreenshot(err);
-    if (screenshot) {
-      throw await failWithScreenshot(ctx.artifacts, err, () => screenshot);
-    }
     throw err;
   } finally {
     try { fs.rmSync(configPath, { force: true }); } catch { /* noop */ }

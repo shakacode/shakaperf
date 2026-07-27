@@ -27,6 +27,7 @@ import type { Stage, StageCategory, StageName, TestContext } from '../../stage/s
 import type { WorkerPool } from '../worker-pool';
 import type { Outcome } from '../outcome';
 import type { Browser } from '../../visreg/core/types';
+import { SELF_CONTAINED_REPORT_FILENAME } from '../report';
 
 jest.mock('../../config-loader', () => ({
   ...jest.requireActual('../../config-loader'),
@@ -299,7 +300,7 @@ describe('pre-run wipe', () => {
 describe('per-side visreg failures', () => {
   const CONTROL_SCREENSHOT = Buffer.from('control');
   const EXPERIMENT_SCREENSHOT = Buffer.from('experiment');
-  const base64 = (value: string): string => Buffer.from(value).toString('base64');
+  const Base64 = (value: string): string => Buffer.from(value).toString('base64');
 
   function visregPipeline(): Pipeline {
     return createPipeline({
@@ -330,16 +331,23 @@ describe('per-side visreg failures', () => {
     return {
       newContext: async () => {
         let pageUrl = '';
+        let closed = false;
+        let rejectPendingScreenshot: ((reason: Error) => void) | undefined;
         const page = {
           goto: async (url: string) => { pageUrl = url; },
           evaluate: async () => true,
           screenshot: async () => {
+            if (closed) {
+              throw new Error('page.screenshot: Target page, context or browser has been closed');
+            }
             if (pageUrl.startsWith('http://control.test')) {
-              // Keep the non-failing control capture newer so an implementation
-              // that guesses the failure owner by recency deterministically
-              // selects the wrong side.
-              await new Promise((resolve) => setTimeout(resolve, 20));
-              return CONTROL_SCREENSHOT;
+              // The control side is still taking its normal screenshot when
+              // the experiment fails. Closing the active control context must
+              // cancel this work without replacing the experiment's failure.
+              return new Promise<Buffer>((resolve, reject) => {
+                rejectPendingScreenshot = reject;
+                setTimeout(() => resolve(CONTROL_SCREENSHOT), 50);
+              });
             }
             return EXPERIMENT_SCREENSHOT;
           },
@@ -350,14 +358,26 @@ describe('per-side visreg failures', () => {
         return {
           clearCookies: async () => {},
           newPage: async () => page,
-          close: async () => {},
+          close: async () => {
+            closed = true;
+            rejectPendingScreenshot?.(
+              new Error('page.screenshot: Target page, context or browser has been closed'),
+            );
+            // Real Playwright context shutdown does not resolve at the same
+            // instant that it rejects an in-flight page operation.
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          },
         };
       },
       close: async () => {},
     } as unknown as Browser;
   }
 
-  async function runFailingVisreg(): Promise<Outcome> {
+  async function runFailingVisreg(): Promise<{
+    outcome: Outcome;
+    mediaBytes: Buffer;
+    selfContainedReport: string;
+  }> {
     let controlFinished!: () => void;
     const controlDone = new Promise<void>((resolve) => { controlFinished = resolve; });
     const test: AbTestDefinition = {
@@ -394,7 +414,7 @@ describe('per-side visreg failures', () => {
       .mockResolvedValue(fakeBrowser());
     try {
       jest.mocked(loadTests).mockResolvedValue([test]);
-      await withAbTestsConfigPath(configPath, () =>
+      const result = await withAbTestsConfigPath(configPath, () =>
         runPipeline(visregPipeline(), {
           cwd,
           config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
@@ -404,13 +424,21 @@ describe('per-side visreg failures', () => {
           retryDelay: 0,
           timeoutMs: 5_000,
           tests: [test],
-          skipReport: true,
         }));
 
       const store = new ArtifactStore(path.join(cwd, 'test-results'));
       const outcome = store.readOutcome(test, 'tablet', 'visreg');
       if (!outcome) throw new Error('visreg outcome was not persisted');
-      return outcome;
+      const media = outcome.failure?.media;
+      if (!media) throw new Error('visreg failure media was not persisted');
+      return {
+        outcome,
+        mediaBytes: fs.readFileSync(path.join(result.resultsRoot, media)),
+        selfContainedReport: fs.readFileSync(
+          path.join(result.resultsRoot, SELF_CONTAINED_REPORT_FILENAME),
+          'utf8',
+        ),
+      };
     } finally {
       if (savedTmpdir === undefined) delete process.env.TMPDIR;
       else process.env.TMPDIR = savedTmpdir;
@@ -424,17 +452,26 @@ describe('per-side visreg failures', () => {
   });
 
   it('labels a failing side with its own step, not a concurrent sibling\'s', async () => {
-    const outcome = await runFailingVisreg();
+    const { outcome } = await runFailingVisreg();
 
     expect(outcome.kind).toBe('error');
+    expect(outcome.error?.message)
+      .toContain('locator.click: Timeout 60000ms exceeded.');
+    expect(outcome.error?.message)
+      .not.toContain('Target page, context or browser has been closed');
     expect(outcome.error?.lastAnnotation).toBe('clicking Add to order');
   });
 
   it('attaches the failing side\'s screenshot, not a concurrent sibling\'s', async () => {
-    const outcome = await runFailingVisreg();
+    const { outcome, mediaBytes, selfContainedReport } = await runFailingVisreg();
 
     expect(outcome.kind).toBe('error');
     expect(outcome.failure?.media)
-      .toBe(`data:image/png;base64,${base64('experiment')}`);
+      .toMatch(/\/artifacts\/visreg-failure-screenshot\.png$/);
+    expect(mediaBytes).toEqual(EXPERIMENT_SCREENSHOT);
+    expect(selfContainedReport)
+      .toContain(`data:image/png;base64,${Base64('experiment')}`);
+    expect(selfContainedReport)
+      .not.toContain(`data:image/png;base64,${Base64('control')}`);
   });
 });

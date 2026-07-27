@@ -76,20 +76,10 @@ export class AuditStage implements Stage<AuditResult> {
 
   machineReadableSummary = emptyMachineReadableSummary;
 
-  stripMeasurementForLightweight(measurement: AuditResult): AuditResult {
-    const {
-      lighthouseHref: _lhh,
-      lighthouseThumbHref: _lhth,
-      coverageStatementIds: _cov,
-      ...rest
-    } = measurement;
-    return rest;
-  }
-
-  stripMeasurementForFull(measurement: AuditResult): AuditResult {
+  stripMeasurementForReport(measurement: AuditResult): AuditResult {
     // `coverageStatementIds` is a chip-pass-only signal — the renderer never
-    // reads it, but a typical instrumented SPA produces ~50–100k strings per
-    // test, so leaving it in the full report bloats the inlined JSON payload.
+    // reads it. A typical instrumented SPA produces ~50–100k strings per test,
+    // so leaving it in either report bloats the embedded JSON payload.
     const { coverageStatementIds: _cov, ...rest } = measurement;
     return rest;
   }

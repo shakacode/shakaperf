@@ -13,8 +13,8 @@ import chalk from 'chalk';
 import sharp from 'sharp';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import { SCREENCAST_FILENAME } from '../../../bench/core/lighthouse-config';
+import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import type { TestContext } from '../../../stage/stage';
-import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { AnnotatedFrame, BuildAnnotatedTimelineResult } from './stage';
 import type { DebugFrameMetadata, FrameMetadata } from './worker-protocol';
 import { TimelineWorkerClient } from './worker-client';
@@ -23,12 +23,6 @@ const FRAMES_METADATA_FILENAME = 'timeline_frames.json';
 // Diagnostics-only (`--debug-show-all-frames`): the full, non-deduped stream's
 // per-frame metadata, written by the worker's computeDebugAllFrames.
 const DEBUG_FRAMES_METADATA_FILENAME = 'timeline_debug_all_frames.json';
-// Inline thumbnail encoding for the self-contained report. `.thumb-v3.avif`
-// invalidates any earlier-format thumbnails left on disk by older runs.
-const THUMB_SUFFIX = '.thumb-v3.avif';
-const THUMB_WIDTH_PX = 256;
-const THUMB_AVIF_QUALITY = 40;
-
 // One TimelineWorkerClient per WorkerPool slot, reused across every
 // audit that lands on that slot for the run's lifetime. Creating a fresh
 // `new Worker(...)` per audit was the dominant native-memory leak: each
@@ -78,13 +72,12 @@ export async function runBuildAnnotatedTimelineStage(
   workerPool: WorkerPool,
   limitVideoFramesCount: number,
 ): Promise<BuildAnnotatedTimelineResult> {
-  const artifactsDir = path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId, 'artifacts');
+  const artifactsDir = ctx.artifacts.dir;
   const profilePath = path.join(artifactsDir, 'experiment_performance_profile.json');
   if (!fs.existsSync(profilePath)) {
     console.log(chalk.dim(`annotated-timeline: no performance profile at ${profilePath}; reading cached artifact`));
     return readAnnotatedTimelineArtifact({
-      perTestDir: artifactsDir,
-      reportRoot: ctx.runtime.resultsRoot,
+      artifacts: ctx.artifacts,
     });
   }
 
@@ -181,24 +174,22 @@ export async function runBuildAnnotatedTimelineStage(
   console.log(chalk.dim('annotated-timeline: frame build done; reading artifact metadata'));
 
   return readAnnotatedTimelineArtifact({
-    perTestDir: artifactsDir,
-    reportRoot: ctx.runtime.resultsRoot,
+    artifacts: ctx.artifacts,
   });
 }
 
 interface ReadAnnotatedTimelineArtifactOptions {
-  perTestDir: string;
-  reportRoot: string;
+  artifacts: ArtifactScope;
 }
 
 async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifactOptions): Promise<BuildAnnotatedTimelineResult> {
-  const metas = await loadOrReconstructFramesMetadata(opts.perTestDir);
+  const metas = await loadOrReconstructFramesMetadata(opts.artifacts.dir);
   if (!metas || metas.length === 0) {
     console.log(chalk.dim('annotated-timeline: no frame metadata found'));
     return {};
   }
   console.log(chalk.dim(`annotated-timeline: preparing ${metas.length} report frame${metas.length === 1 ? '' : 's'}`));
-  const frames: AnnotatedFrame[] = await Promise.all(metas.map(async (meta) => {
+  const frames: AnnotatedFrame[] = metas.map((meta) => {
     const imageFilename = meta.imageFilename;
     const frame: AnnotatedFrame = {
       timeMs: meta.timeMs,
@@ -208,26 +199,21 @@ async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifact
       ...(meta.arrows != null ? { arrows: meta.arrows } : {}),
     };
     if (imageFilename) {
-      const imageAbsPath = path.join(opts.perTestDir, imageFilename);
+      const imageAbsPath = path.join(opts.artifacts.dir, imageFilename);
       if (!fs.existsSync(imageAbsPath)) return frame;
-      // Full local report lazy-loads the full-size frame from disk.
-      frame.imageHref = toPosixRelative(opts.reportRoot, imageAbsPath);
-      // The self-contained report inlines a ~256px-wide AVIF thumbnail so it
-      // stays a few MB even for audits with hundreds of frames.
-      const thumb = await ensureThumbnailAvif(imageAbsPath);
-      if (thumb) {
-        frame.imageDataUri = `data:image/avif;base64,${thumb.toString('base64')}`;
-      }
+      // Report generation keeps this path for the full report and replaces
+      // it with a data URI for the self-contained report.
+      frame.imageHref = opts.artifacts.pathFor(imageFilename);
     }
     return frame;
-  }));
+  });
   console.log(chalk.dim(`annotated-timeline: prepared ${frames.length} report frame${frames.length === 1 ? '' : 's'}`));
-  const screencastPath = path.join(opts.perTestDir, SCREENCAST_FILENAME);
+  const screencastPath = path.join(opts.artifacts.dir, SCREENCAST_FILENAME);
   const screencastHref = fs.existsSync(screencastPath)
-    ? toPosixRelative(opts.reportRoot, screencastPath)
+    ? opts.artifacts.pathFor(SCREENCAST_FILENAME)
     : undefined;
   console.log(chalk.dim(`annotated-timeline: screencast ${screencastHref ? 'attached' : 'not found'}`));
-  const debugAllFrames = await loadDebugAllFrames(opts);
+  const debugAllFrames = loadDebugAllFrames(opts);
   return {
     frames,
     ...(screencastHref ? { screencastHref } : {}),
@@ -238,12 +224,11 @@ async function readAnnotatedTimelineArtifact(opts: ReadAnnotatedTimelineArtifact
 /**
  * Load the diagnostics-only full, non-deduped timeline (`--debug-show-all-frames`)
  * if its metadata file is present, pairing each entry with its on-disk image
- * (lazy-load href) and an inline thumbnail, and carrying the per-frame dedupe
- * signals (`prevDiff`, `keptByDedupe`) through to the report. Returns null when
- * the run wasn't a debug run (file absent).
+ * and carrying the per-frame dedupe signals (`prevDiff`, `keptByDedupe`)
+ * through to the report. Returns null when the run wasn't a debug run.
  */
-async function loadDebugAllFrames(opts: ReadAnnotatedTimelineArtifactOptions): Promise<AnnotatedFrame[] | null> {
-  const jsonPath = path.join(opts.perTestDir, DEBUG_FRAMES_METADATA_FILENAME);
+function loadDebugAllFrames(opts: ReadAnnotatedTimelineArtifactOptions): AnnotatedFrame[] | null {
+  const jsonPath = path.join(opts.artifacts.dir, DEBUG_FRAMES_METADATA_FILENAME);
   if (!fs.existsSync(jsonPath)) return null;
   let metas: DebugFrameMetadata[];
   try {
@@ -254,7 +239,7 @@ async function loadDebugAllFrames(opts: ReadAnnotatedTimelineArtifactOptions): P
   }
   if (metas.length === 0) return [];
   console.log(chalk.dim(`annotated-timeline: [debug] preparing ${metas.length} full-stream report frame${metas.length === 1 ? '' : 's'}`));
-  return Promise.all(metas.map(async (meta) => {
+  return metas.map((meta) => {
     const frame: AnnotatedFrame = {
       timeMs: meta.timeMs,
       imgW: meta.imgW,
@@ -262,41 +247,11 @@ async function loadDebugAllFrames(opts: ReadAnnotatedTimelineArtifactOptions): P
       keptByDedupe: meta.keptByDedupe,
       ...(meta.prevDiff != null ? { prevDiff: meta.prevDiff } : {}),
     };
-    const imageAbsPath = path.join(opts.perTestDir, meta.imageFilename);
+    const imageAbsPath = path.join(opts.artifacts.dir, meta.imageFilename);
     if (!fs.existsSync(imageAbsPath)) return frame;
-    frame.imageHref = toPosixRelative(opts.reportRoot, imageAbsPath);
-    const thumb = await ensureThumbnailAvif(imageAbsPath);
-    if (thumb) frame.imageDataUri = `data:image/avif;base64,${thumb.toString('base64')}`;
+    frame.imageHref = opts.artifacts.pathFor(meta.imageFilename);
     return frame;
-  }));
-}
-
-/**
- * Re-encode `<imagePath>` as a ~256px-wide AVIF and cache it on disk as a
- * sibling `<imagePath>.thumb-v3.avif`. Returns the cached buffer so the caller
- * can inline it as a base64 data URI in the lightweight report payload.
- */
-async function ensureThumbnailAvif(imagePath: string): Promise<Buffer | null> {
-  const thumbPath = imagePath + THUMB_SUFFIX;
-  try {
-    return await fs.promises.readFile(thumbPath);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn(chalk.yellow(`shaka-perf: failed to read cached thumbnail ${thumbPath}: ${(err as Error).message}`));
-      return null;
-    }
-  }
-  try {
-    const thumb = await sharp(imagePath)
-      .resize({ width: THUMB_WIDTH_PX, withoutEnlargement: true })
-      .avif({ quality: THUMB_AVIF_QUALITY })
-      .toBuffer();
-    await fs.promises.writeFile(thumbPath, thumb);
-    return thumb;
-  } catch (err) {
-    console.warn(chalk.yellow(`shaka-perf: failed to thumbnail ${imagePath}: ${(err as Error).message}`));
-    return null;
-  }
+  });
 }
 
 /**

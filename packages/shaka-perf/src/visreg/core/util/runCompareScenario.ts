@@ -13,7 +13,7 @@ import ensureDirectoryPath from './ensureDirectoryPath';
 import * as engineTools from './engineTools';
 import { analyzeWhitePixels } from './compare/pixelmatch-inline';
 import { runCompareAttempts } from './runCompareAttempts';
-import type { PlaywrightPage, Scenario, Viewport, Browser, TestPair, DecoratedCompareConfig } from '../types';
+import type { PlaywrightPage, Scenario, Viewport, Browser, TestPair, DecoratedCompareConfig, VisregRunRuntime } from '../types';
 
 type ConsoleMethod = 'error' | 'warn' | 'log' | 'info';
 interface CompareLogger {
@@ -70,7 +70,15 @@ async function captureScreenshot (page: PlaywrightPage, selector: string) {
 /**
  * Core comparison logic for live compare scenarios.
  */
-async function processCompareView (scenario: Scenario, scenarioLabelSafe: string, viewport: Viewport, config: DecoratedCompareConfig, browser: Browser, logger: CompareLogger) {
+async function processCompareView (
+  scenario: Scenario,
+  scenarioLabelSafe: string,
+  viewport: Viewport,
+  config: DecoratedCompareConfig,
+  browser: Browser,
+  logger: CompareLogger,
+  runtime: VisregRunRuntime,
+) {
   const compareConfig: { testPairs: TestPair[] } = { testPairs: [] };
   const pixelmatchThreshold = config.comparePixelmatchThreshold;
   logger.log('blue', 'LIVE COMPARE: opening reference (' + scenario.referenceUrl + ') and test (' + scenario.url + ') simultaneously');
@@ -80,7 +88,7 @@ async function processCompareView (scenario: Scenario, scenarioLabelSafe: string
   // Per-selector cross-matching and crash-resume live in there too; it hands
   // back one outcome per selector for us to turn into a report entry.
   const outcomes = await runCompareAttempts(
-    { captureScreenshot },
+    { captureScreenshot, captureFailure: runtime.captureFailure },
     { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold },
   );
 
@@ -127,7 +135,15 @@ async function processCompareView (scenario: Scenario, scenarioLabelSafe: string
 
 // ── Playwright entry point ─────────────────────────────────────────
 
-export async function playwright ({ scenario, viewport, config, _playwrightBrowser: browser }: { scenario: Scenario; viewport: Viewport; config: DecoratedCompareConfig; _playwrightBrowser: Browser }) {
+export async function playwright (
+  { scenario, viewport, config, _playwrightBrowser: browser }: {
+    scenario: Scenario;
+    viewport: Viewport;
+    config: DecoratedCompareConfig;
+    _playwrightBrowser: Browser;
+  },
+  runtime: VisregRunRuntime,
+) {
   const scenarioLabelSafe = engineTools.makeSafe(scenario.label);
   const logger = createLogger();
 
@@ -136,6 +152,6 @@ export async function playwright ({ scenario, viewport, config, _playwrightBrows
   // tears down its own isolated sides. We just hand it the browser.
   return await processCompareView(
     scenario, scenarioLabelSafe,
-    viewport, config, browser, logger
+    viewport, config, browser, logger, runtime,
   );
 };

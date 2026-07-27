@@ -37,10 +37,6 @@ jest.mock('sharp', () => jest.fn(() => ({
   metadata: jest.fn(async () => ({ width: 100, height: 80 })),
 })));
 
-jest.mock('../../../../pipeline/artifact-compression', () => ({
-  bufferToAvifDataUri: jest.fn(async () => 'data:image/avif;base64,test'),
-}));
-
 import {
   compareScans,
   projectCompareResultForReport,
@@ -58,7 +54,6 @@ const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
   ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
   playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
 };
-import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
 import type { AccessibilityCompareFinding, AccessibilitySideScan } from '../types';
@@ -231,8 +226,6 @@ describe('accessibility compare engine', () => {
       url: 'http://localhost/scan',
       violations: [],
     });
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>)
-      .mockResolvedValue('data:image/avif;base64,test');
   });
 
   afterEach(() => {
@@ -297,26 +290,21 @@ describe('accessibility compare engine', () => {
     expect(result.findings).toEqual([]);
   });
 
-  it('keeps completed scans when inline screenshot encoding fails', async () => {
+  it('keeps completed scans with persisted screenshot paths', async () => {
     const browser = fakeBrowser();
     mockChromiumLaunch.mockResolvedValue(browser);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>)
-      .mockRejectedValueOnce(new Error('Processed image is too large for the HEIF format'));
+    const result = await runAccessibilityCompareStage(
+      fakeContext({}),
+      fakeWorkerPool(),
+      TEST_STAGE_CONFIG,
+    );
 
-    try {
-      const result = await runAccessibilityCompareStage(
-        fakeContext({}),
-        fakeWorkerPool(),
-        TEST_STAGE_CONFIG,
-      );
-
-      expect(result.summary.errors).toBe(0);
-      expect(result.control.screenshot?.imageHref).toBe('checkout-desktop/artifacts/control-accessibility-screenshot.png');
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('inline screenshot encode failed'));
-    } finally {
-      warn.mockRestore();
-    }
+    expect(result.summary.errors).toBe(0);
+    expect(result.control.screenshot).toEqual({
+      width: 100,
+      height: 80,
+      imageHref: 'checkout-desktop/artifacts/control-accessibility-screenshot.png',
+    });
   });
 });
 
@@ -426,8 +414,8 @@ function fakeContext(
     testAndViewportId: 'checkout-desktop',
     artifacts: {
       dir: '/tmp/shaka-test/checkout-desktop/artifacts',
-      writeJson: jest.fn(async () => {}),
-      writeFile: jest.fn(async () => {}),
+      writeJson: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
+      writeFile: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
     },
     logger: {
       log: jest.fn(),

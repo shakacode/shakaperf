@@ -166,6 +166,32 @@ or `writeMachineReport`.
    objects that are passed in via factory options. The framework never
    imports them directly.
 
+## Stage artifact contract
+
+Every stage writes artifacts under `ctx.artifacts` and nowhere else. Use
+`ctx.artifacts.writeFile()` / `writeJson()` for stage-owned bytes. If an
+engine or worker must write files itself, give it `ctx.artifacts.dir`, then
+expose an existing file with `ctx.artifacts.pathFor(filename)`.
+
+Stage results and failure metadata contain only the report-relative paths
+returned by `ctx.artifacts`; never put base64 or data URIs in them. The
+self-contained report owns converting those paths to data URIs.
+
+To show a screenshot or video on a failed outcome, throw
+`StageFailureError` with the path in `failureArtifacts.media`:
+
+```ts
+const media = await captureFailureScreenshot(
+  ctx.artifacts,
+  () => page.screenshot({ fullPage: true }),
+);
+throw new StageFailureError(cause, media ? { media } : {});
+```
+
+For media already written by a worker, pass
+`ctx.artifacts.pathFor(mediaName)` instead. Screenshot capture is
+best-effort: its failure must never replace the original stage error.
+
 ## Anti-patterns to flag
 
 The first cut at the audit/compare report-rendering split used
@@ -199,6 +225,10 @@ When auditing a change that touches variant behaviour:
 5. Could a new variant be added by editing only the variant's own files
    plus the single deserialisation switch? If the answer requires touching
    more central files, the design has leaked variant knowledge upward.
+6. Does every stage artifact live under `ctx.artifacts`, with only its
+   report-relative path stored in the measurement or failure?
+7. Does failure media reach the framework through
+   `StageFailureError.failureArtifacts.media`, without stage-side base64?
 
 ## Reference implementation
 

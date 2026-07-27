@@ -77,19 +77,4 @@ export class PerfEngineStage<M> implements Stage<M> {
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue {
     return this.options.machineReadableSummary(measurement, ctx);
   }
-
-  stripMeasurementForLightweight(measurement: M): M {
-    // `M` is `PerfArtifact` (or a subtype) for every PerfEngineStage variant;
-    // strip fields that <FullReportOnly/> hides in `perf-report.tsx::ArtifactLinks`.
-    const m = measurement as PerfArtifact;
-    const {
-      controlLighthouseHref: _clh,
-      experimentLighthouseHref: _elh,
-      benchReportHref: _br,
-      diffHrefs: _dh,
-      timelineHref: _th,
-      ...rest
-    } = m;
-    return rest as M;
-  }
 }

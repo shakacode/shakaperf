@@ -11,7 +11,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { AbTestDefinition, Viewport } from 'shaka-shared';
 import type { AbTestsConfig } from '../config';
-import type { ArtifactStore } from './artifact-store';
+import {
+  mimeTypeForArtifactPath,
+  type ArtifactStore,
+} from './artifact-store';
 import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
 import type { Pipeline } from './pipeline';
@@ -244,9 +247,8 @@ export interface WriteReportResult {
   /** Local-dev report; references sibling artifact files via relative paths. */
   fullPath: string;
   /**
-   * Shareable, fully self-contained report — every renderable artifact
-   * (LH thumbs, BAT timeline AVIF, etc.) is inlined as a base64 data URI
-   * so the file works alone without its sibling artifact directories.
+   * Shareable, fully self-contained report — every persisted artifact path is
+   * replaced with a base64 data URI so the file works without sibling files.
    */
   lightPath: string;
 }
@@ -266,11 +268,13 @@ export function writeReport(
     { ...data, meta: { ...data.meta, reportMode: 'full' } },
     'full',
     stages,
+    outDir,
   );
   const lightData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'lightweight' } },
     'lightweight',
     stages,
+    outDir,
   );
   const fullPath = path.join(outDir, FULL_REPORT_FILENAME);
   const lightPath = path.join(outDir, SELF_CONTAINED_REPORT_FILENAME);
@@ -280,23 +284,22 @@ export function writeReport(
 }
 
 /**
- * Apply each stage's per-mode stripper to every matching outcome's
- * measurement, so each report variant only ships the fields the renderer
- * needs in that mode (inlined data URIs for lightweight, relative-path
- * refs for full).
+ * Project each measurement to its report-facing shape. Full reports retain
+ * artifact paths; self-contained reports recursively replace those paths with
+ * data URIs.
  */
 export function reportDataForMode<T extends ReportData>(
   data: T,
   mode: ReportMode,
   stages: readonly Stage[],
+  resultsRoot: string,
 ): T {
   const strippers = new Map<StageName, (m: unknown) => unknown>();
   for (const stage of stages) {
-    const fn = mode === 'lightweight' ? stage.stripMeasurementForLightweight : stage.stripMeasurementForFull;
+    const fn = stage.stripMeasurementForReport;
     if (fn) strippers.set(stage.name, fn.bind(stage) as (m: unknown) => unknown);
   }
-  if (strippers.size === 0) return data;
-  return {
+  const stripped = strippers.size === 0 ? data : {
     ...data,
     tests: data.tests.map((test) => ({
       ...test,
@@ -308,6 +311,45 @@ export function reportDataForMode<T extends ReportData>(
       }),
     })),
   } as T;
+  return mode === 'lightweight'
+    ? inlineArtifactPaths(stripped, resultsRoot) as T
+    : stripped;
+}
+
+function inlineArtifactPaths(value: unknown, resultsRoot: string): unknown {
+  if (typeof value === 'string') {
+    const absolutePath = path.resolve(resultsRoot, value);
+    const relativePath = path.relative(resultsRoot, absolutePath);
+    if (
+      relativePath === '' ||
+      path.isAbsolute(relativePath) ||
+      relativePath === '..' ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
+      return value;
+    }
+    try {
+      if (!fs.statSync(absolutePath).isFile()) return value;
+      const bytes = fs.readFileSync(absolutePath);
+      return `data:${mimeTypeForArtifactPath(absolutePath)};base64,${
+        bytes.toString('base64')
+      }`;
+    } catch {
+      return value;
+    }
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => inlineArtifactPaths(item, resultsRoot));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        inlineArtifactPaths(item, resultsRoot),
+      ]),
+    );
+  }
+  return value;
 }
 
 class ReportSummaryLogger implements StageLogger {

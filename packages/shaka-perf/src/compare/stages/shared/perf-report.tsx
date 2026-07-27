@@ -14,7 +14,6 @@ import {
   StageArtifact,
   StageArtifactTitle,
   StageNote,
-  svgWithFullWidthStyle,
 } from '../../../pipeline/stage-report-components';
 import { FullReportOnly } from '../../../pipeline/report-mode';
 
@@ -102,13 +101,17 @@ function PerfBody({
       ) : hasNoDifference ? (
         <NoDifferenceNote viewportLabel={viewportLabel} />
       ) : null}
-      {perf.timelinePreviewSvg && perf.timelineHref ? (
+      {perf.timelinePreviewHref && perf.timelineHref ? (
         <DetailedArtifactDialog
           variant="preview"
           href={perf.timelineHref}
           label="timeline"
         >
-          <span dangerouslySetInnerHTML={{ __html: svgWithFullWidthStyle(perf.timelinePreviewSvg) }} />
+          <img
+            src={perf.timelinePreviewHref}
+            alt="timeline preview"
+            style={{ display: 'block', height: 'auto', width: '100%' }}
+          />
         </DetailedArtifactDialog>
       ) : null}
       <ArtifactLinks perf={perf} />

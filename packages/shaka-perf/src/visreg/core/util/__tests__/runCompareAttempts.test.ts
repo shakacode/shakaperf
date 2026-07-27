@@ -197,5 +197,6 @@ it('missing selector throws, with the attempt sides still disposed', async () =>
   const { deps, counts } = makeDeps((_attempt, side) => (side === 'ref' ? null : png(BLUE)));
 
   await expect(run(deps, makeConfig())).rejects.toThrow('Selector "document" not found on reference page');
+  await new Promise<void>((resolve) => setImmediate(resolve));
   expect(counts()).toMatchObject({ created: 2, disposed: 2 });
 });
