@@ -60,13 +60,12 @@ function viewportArray(defaults: [Viewport, ...Viewport[]]) {
 }
 
 /**
- * A non-empty array of viewport LABELS (strings). Used by `visreg.viewports`
- * and `perf.viewports`, which reference the full definitions in
- * `shared.viewports`. Label-set existence (every label must be defined in
- * shared) is validated at the root schema level — we can't refine there
- * without cross-schema access.
+ * A non-empty array of viewport LABELS (strings), referencing the full
+ * definitions in `shared.viewportDefinitions`. Label-set existence (every label
+ * must be defined there) is validated at the root schema level — we can't
+ * refine here without cross-schema access.
  */
-function viewportLabelArray(defaults: [string, ...string[]]) {
+function viewportLabelList() {
   return z
     .array(z.string())
     .nonempty()
@@ -83,8 +82,20 @@ function viewportLabelArray(defaults: [string, ...string[]]) {
           message: `duplicate viewport label(s): ${[...duplicates].join(', ')}`,
         });
       }
-    })
-    .default(defaults);
+    });
+}
+
+/**
+ * A category's viewport labels. LEFT UNSET on purpose when the user doesn't
+ * narrow: the fallback to `shared.viewports` is resolved downstream by
+ * `viewportsForCategory`, not baked in here. Materialising a default at parse
+ * time would break the per-test override — `applyPerTestConfigOverrides` merges
+ * the test's `config` onto the ALREADY-PARSED file config, so a filled-in
+ * category default would outrank a per-test `shared.viewports` and silently
+ * ignore it.
+ */
+function categoryViewportLabels() {
+  return viewportLabelList().optional();
 }
 
 export type { Viewport };
@@ -144,11 +155,23 @@ export const SharedConfigSchema = z
     filter: z.string().optional(),
     /**
      * Full-definition viewports (label + dimensions + formFactor + DPR).
-     * Single source of truth; `visreg.viewports` and `perf.viewports`
-     * reference these by label, and a per-test `config.<category>.viewports`
-     * replaces which labels a given test runs at.
+     * The registry: every viewport LABEL used anywhere else — `shared.viewports`,
+     * `<category>.viewports`, and per-test `config.<category>.viewports` — must
+     * resolve to an entry here. Defining a viewport does not run it.
      */
-    viewports: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
+    viewportDefinitions: viewportArray([DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT]),
+    /**
+     * Labels (from `shared.viewportDefinitions`) that every category runs at
+     * unless it sets its own `viewports`. This is the one place to change the
+     * breakpoints for a whole run; `visreg.viewports` / `perf.viewports` /
+     * `audit.viewports` / `accessibility.viewports` override it per category,
+     * and a per-test `config.<category>.viewports` overrides that.
+     *
+     * A per-test `config.shared.viewports` narrows every category the test
+     * runs — but only those the FILE config left unset, since an explicit
+     * file-level category list is the more specific of the two.
+     */
+    viewports: viewportLabelList().default(['desktop', 'phone']),
     parallelism: z.number().int().positive(),
     retries: z.number().int().nonnegative().default(2),
     retryDelay: z.number().int().nonnegative().default(1000),
@@ -182,11 +205,11 @@ export const SharedConfigSchema = z
 export const VisregConfigSchema = z
   .object({
     /**
-     * Labels (from `shared.viewports`) that visreg runs at. Default matches
-     * the three canonical devices; narrow here to skip specific breakpoints
-     * for all tests, or replace per-test via `config.visreg.viewports`.
+     * Labels (from `shared.viewportDefinitions`) that visreg runs at. Unset
+     * means "whatever `shared.viewports` says"; set it to give visreg its own
+     * breakpoints, or replace per-test via `config.visreg.viewports`.
      */
-    viewports: viewportLabelArray(['desktop', 'tablet', 'phone']),
+    viewports: categoryViewportLabels(),
     mismatchThreshold: z.number().nonnegative().default(0.1),
     maxNumDiffPixels: z.number().int().nonnegative().default(50),
     comparePixelmatchThreshold: z.number().nonnegative().default(0.1),
@@ -218,12 +241,11 @@ export const PerfConfigSchema = z
       .enum(['sequential', 'simultaneous'])
       .default('simultaneous'),
     /**
-     * Labels (from `shared.viewports`) that perf runs at. Default is
-     * desktop + phone so device-specific regressions aren't missed.
-     * Narrow here to skip breakpoints for all tests, or replace per-test
-     * via `config.perf.viewports`.
+     * Labels (from `shared.viewportDefinitions`) that perf runs at. Unset
+     * means "whatever `shared.viewports` says"; set it to give perf its own
+     * breakpoints, or replace per-test via `config.perf.viewports`.
      */
-    viewports: viewportLabelArray(['desktop', 'phone']),
+    viewports: categoryViewportLabels(),
     // Raw Lighthouse flags, passed straight through (the engine only layers in
     // the viewport's `formFactor` / `screenEmulation`). Set `maxWaitForLoad`
     // (ms) here to cap LH's wait for the page to fully load before it measures;
@@ -254,7 +276,8 @@ export const PerfConfigSchema = z
  */
 export const AuditConfigSchema = z
   .object({
-    viewports: viewportLabelArray(['desktop', 'phone']),
+    // Unset means "whatever `shared.viewports` says".
+    viewports: categoryViewportLabels(),
     // Raw Lighthouse flags (same as `perf.lighthouseConfig`). Set
     // `maxWaitForLoad` here to cap LH's page-load wait; `DEFAULT_LH_CONFIG`
     // supplies the fallback when unset.
@@ -271,7 +294,8 @@ export const AuditConfigSchema = z
 
 export const AccessibilityConfigSchema = z
   .object({
-    viewports: viewportLabelArray(['desktop', 'phone']),
+    // Unset means "whatever `shared.viewports` says".
+    viewports: categoryViewportLabels(),
     // axe tags are category labels, not a hierarchy: `best-practice` does not
     // include WCAG rules, and WCAG AA tags do not include A tags.
     tags: z.array(z.string()).default([...DEFAULT_ACCESSIBILITY_TAGS]),
@@ -309,19 +333,28 @@ export const AbTestsConfigSchema = z
   })
   .strict()
   .superRefine((cfg, ctx) => {
-    // Cross-schema: every category's viewport label must be defined in
-    // `shared.viewports`. Catches typos ("dekstop") and wrong references
-    // at parse time rather than "no viewport matched" at run time.
-    const knownLabels = new Set(cfg.shared.viewports.map((v) => v.label));
-    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
-      for (const label of cfg[category].viewports) {
+    // Cross-schema: every viewport label — the shared default list and each
+    // category's own — must be defined in `shared.viewportDefinitions`. Catches
+    // typos ("dekstop") and wrong references at parse time rather than
+    // "no viewport matched" at run time.
+    const knownLabels = new Set(cfg.shared.viewportDefinitions.map((v) => v.label));
+    const lists: Array<[path: [string, string], labels: readonly string[] | undefined]> = [
+      [['shared', 'viewports'], cfg.shared.viewports],
+      ...(['visreg', 'perf', 'audit', 'accessibility'] as const)
+        .map((category) => [[category, 'viewports'], cfg[category].viewports] as
+          [[string, string], readonly string[] | undefined]),
+    ];
+    for (const [path, labels] of lists) {
+      // An unset category list is not an error — it falls back to
+      // `shared.viewports`, which this same loop already validated.
+      for (const label of labels ?? []) {
         if (!knownLabels.has(label)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: [category, 'viewports'],
+            path,
             message:
               `unknown viewport label "${label}" — ` +
-              `define it in shared.viewports or drop it here. ` +
+              `define it in shared.viewportDefinitions or drop it here. ` +
               `Known: ${[...knownLabels].join(', ')}`,
           });
         }
@@ -355,11 +388,11 @@ export type BisectConfig = z.infer<typeof BisectConfigSchema>;
 
 /**
  * Resolve viewport LABELS into their full `Viewport` definitions from
- * `shared.viewports`. Throws on a label with no definition — a typo'd per-test
- * override must fail loudly, not silently skip the viewport (file-level labels
- * are already schema-validated, so in practice this catches per-test lists).
- * This is the single point where the label→object indirection is turned back
- * into objects, run by whoever needs dimensions (the runner's expansion,
+ * `shared.viewportDefinitions`. Throws on a label with no definition — a typo'd
+ * per-test override must fail loudly, not silently skip the viewport (file-level
+ * labels are already schema-validated, so in practice this catches per-test
+ * lists). This is the single point where the label→object indirection is turned
+ * back into objects, run by whoever needs dimensions (the runner's expansion,
  * `viewportsByStageCategory`).
  */
 // Lives in the type-only-imports leaf `playwright-options.ts` so the
@@ -377,13 +410,38 @@ export function resolveViewports(
     const v = byLabel.get(label);
     if (!v) {
       throw new Error(
-        `Unknown viewport label '${label}' — defined in shared.viewports: ` +
+        `Unknown viewport label '${label}' — defined in shared.viewportDefinitions: ` +
         `${[...byLabel.keys()].map((l) => `'${l}'`).join(', ')}.`,
       );
     }
     return v;
   });
 }
+
+/**
+ * The viewports one stage category runs at, under one (already per-test-merged)
+ * config. THE single site of the `<category>.viewports ?? shared.viewports`
+ * fallback — every caller that needs a category's viewports goes through here,
+ * so the precedence lives in exactly one place:
+ *
+ *   test `config.<category>.viewports`   (most specific)
+ *   file `<category>.viewports`
+ *   test `config.shared.viewports`
+ *   file `shared.viewports`              (least specific)
+ *
+ * Test-over-file at each level is the per-test deep merge's doing
+ * (`applyPerTestConfigOverrides`); category-over-shared is the `??` below.
+ */
+export function viewportsForCategory(
+  config: AbTestsConfig,
+  category: TestType,
+): readonly Viewport[] {
+  return resolveViewports(
+    config[category].viewports ?? config.shared.viewports,
+    config.shared.viewportDefinitions,
+  );
+}
+
 export interface AbTestsConfig {
   shared: SharedConfig;
   visreg: VisregConfig;
@@ -403,12 +461,11 @@ export interface AbTestsConfig {
 export function viewportsByStageCategory(
   config: AbTestsConfig,
 ): Record<TestType, readonly Viewport[]> {
-  const defs = config.shared.viewports;
   return {
-    visreg: resolveViewports(config.visreg.viewports, defs),
-    perf: resolveViewports(config.perf.viewports, defs),
-    audit: resolveViewports(config.audit.viewports, defs),
-    accessibility: resolveViewports(config.accessibility.viewports, defs),
+    visreg: viewportsForCategory(config, 'visreg'),
+    perf: viewportsForCategory(config, 'perf'),
+    audit: viewportsForCategory(config, 'audit'),
+    accessibility: viewportsForCategory(config, 'accessibility'),
   };
 }
 

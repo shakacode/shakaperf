@@ -104,6 +104,7 @@ export default defineConfig({
     },
   },
   visreg: {
+    // Overrides shared.viewports for visreg alone; omit to inherit it.
     viewports: ['desktop', 'tablet', 'phone'],
     compareRetries: 2,
     compareRetryDelay: 500,
@@ -146,7 +147,7 @@ alone. The visreg knobs (`config.visreg`):
 | `mismatchThreshold`   | Percentage of different pixels allowed to pass (default: 0.1)                            |
 | `maxNumDiffPixels`           | Absolute cap on differing pixels before a comparison fails                               |
 | `comparePixelmatchThreshold` | Per-pixel color-distance sensitivity for the pixelmatch comparison                       |
-| `viewports`                  | Narrow which viewports this test's visreg runs at (names from `shared.viewports`)        |
+| `viewports`                  | Narrow which viewports this test's visreg runs at (labels from `shared.viewportDefinitions`) |
 
 ```ts
 abTest('Cart', {
@@ -160,7 +161,21 @@ abTest('Cart', {
 Viewport narrowing is per-category: `config.visreg.viewports` narrows only
 visreg — perf, audit, and accessibility each have their own
 `config.<category>.viewports`, so a test can be desktop-only for visreg while
-still benching on the phone.
+still benching on the phone. To narrow every category at once, set
+`config.shared.viewports` instead; it supplies the default for each category
+that has no `viewports` of its own, at both the file and per-test level:
+
+```
+config.<category>.viewports   (per-test)     most specific
+<category>.viewports          (file)
+config.shared.viewports       (per-test)
+shared.viewports              (file)         least specific — defaults to desktop + phone
+```
+
+An explicit file-level `<category>.viewports` therefore beats a per-test
+`config.shared.viewports`. Every label in any of these must be defined in
+`shared.viewportDefinitions`, which is only a registry — defining a viewport
+does not run it.
 
 Every defined per-test key REPLACES the file value wholesale — arrays included
 (`config.visreg.viewports: ['phone']` is the effective list, not a union with

@@ -14,6 +14,71 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
+### `shared.viewports` renamed to `shared.viewportDefinitions`; `shared.viewports` is now the default label list
+
+`shared.viewports` used to hold the full viewport **definitions**. It is now
+`shared.viewportDefinitions`, and the freed-up `shared.viewports` becomes a list
+of **labels** — the viewports every category runs at unless it sets its own.
+
+```ts
+// BEFORE
+shared: {
+  viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
+},
+visreg: { viewports: ['desktop', 'tablet', 'phone'] },
+perf:   { viewports: ['desktop', 'phone'] },
+audit:  { viewports: ['desktop', 'phone'] },
+
+// AFTER
+shared: {
+  viewportDefinitions: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],  // the registry
+  viewports: ['desktop', 'phone'],                                           // what actually runs
+},
+visreg: { viewports: ['desktop', 'tablet', 'phone'] },  // keep: visreg wants the extra breakpoint
+perf:   { },                                            // drop: inherits shared.viewports
+audit:  { },                                            // drop: inherits shared.viewports
+```
+
+**The config is `.strict()`, so leaving `shared.viewports` holding definitions
+fails loudly** — `Expected string, received object` at `shared.viewports.0`.
+Rename the key; you don't have to add the new `shared.viewports` unless you want
+something other than the desktop + phone default.
+
+**Watch the visreg default.** Every category now shares ONE default,
+`['desktop', 'phone']`. visreg's old built-in default was `['desktop',
+'tablet', 'phone']`, so **a config that never set `visreg.viewports` silently
+stops running tablet** — those baselines just disappear from the run rather
+than failing. To keep them, set it explicitly (as the two examples above and
+`shaka-perf init`'s template now do), or put `tablet` in `shared.viewports` and
+accept it for perf/audit/accessibility too. perf, audit, and accessibility
+already defaulted to desktop + phone and are unaffected.
+
+Precedence, most specific first — the per-test level is new:
+
+```
+config.<category>.viewports   (per-test)
+<category>.viewports          (file)
+config.shared.viewports       (per-test)
+shared.viewports              (file)
+```
+
+So `config: { shared: { viewports: ['phone'] } }` on a single test makes that
+test phone-only across visreg, perf, audit, and accessibility at once — except
+for any category the FILE config pinned itself, which stays more specific. This
+replaces the whole-test `options.viewports` removed in the flat-`config`
+migration below.
+
+`shared.viewportDefinitions` is only a registry: every label used anywhere must
+resolve to an entry in it, and an unknown one is rejected at parse time with
+`unknown viewport label "…" — define it in shared.viewportDefinitions or drop it
+here`. Defining a viewport does not run it.
+
+If your registry does NOT define both `desktop` and `phone` (you renamed the
+canonical viewports, or listed only one), that same error now fires on
+`shared.viewports` because its default names both — set `shared.viewports` to
+your own labels. Previously the equivalent error came from each category's
+default list, so this is one fix instead of four.
+
 ### Agent-readiness is now OFF by default (opt in with `agentReadiness.enabled`)
 
 The `agent-readiness` stage (the AI-legibility scan behind the client report's

@@ -46,7 +46,7 @@ import {
 import { writeFullReportArchive } from './report-archive';
 import { persistedOutcomeInScope, resolveViewportsForTest } from './viewport-plan';
 import { applyPerTestConfigOverrides } from '../effective-config';
-import { resolveViewports } from '../config';
+import { viewportsForCategory } from '../config';
 import type { AbTestsConfig } from '../config';
 import {
   type Pipeline,
@@ -558,10 +558,13 @@ async function runConfiguredPipelineWithSelection(
   if (!runtime.reportOnly) {
     if (!preserveOldResults) {
       for (const test of runTests) {
-        // Per-test effective config: an override may swap the viewport
-        // definitions themselves, not just a category's label list.
-        const sharedViewports = applyPerTestConfigOverrides(runtime.config, test).shared.viewports;
-        for (const viewport of sharedViewports) {
+        // Every viewport this test could have a unit dir for — the DEFINITION
+        // registry, not a category's run list, since a stale dir from a wider
+        // earlier run still has to be swept. Per-test effective config: an
+        // override may swap the definitions themselves.
+        const definitions = applyPerTestConfigOverrides(runtime.config, test)
+          .shared.viewportDefinitions;
+        for (const viewport of definitions) {
           for (const stage of executableStages) {
             store.deleteOutcome(test, viewport.label, stage.name);
           }
@@ -1482,7 +1485,7 @@ function viewportsForStages(
   const labels = new Set<string>();
   const viewports: Viewport[] = [];
   for (const stage of stages) {
-    for (const viewport of resolveViewports(config[stage.category].viewports, config.shared.viewports)) {
+    for (const viewport of viewportsForCategory(config, stage.category)) {
       if (labels.has(viewport.label)) continue;
       labels.add(viewport.label);
       viewports.push(viewport);
@@ -1503,7 +1506,7 @@ function persistSkippedOutcomesForStages(
   config: AbTestsConfig,
 ): void {
   for (const stage of stages) {
-    for (const viewport of resolveViewports(config[stage.category].viewports, config.shared.viewports)) {
+    for (const viewport of viewportsForCategory(config, stage.category)) {
       if (store.readOutcome(test, viewport.label, stage.name)) continue;
       store.writeOutcome(test, viewport.label, skippedOutcome(stage.name, reason));
     }

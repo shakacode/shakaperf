@@ -8,7 +8,7 @@
  */
 
 import { testRunsForType, type AbTestDefinition, type TestType } from 'shaka-shared';
-import { resolveViewports, type AbTestsConfig, type Viewport } from '../config';
+import { viewportsForCategory, type AbTestsConfig, type Viewport } from '../config';
 import { applyPerTestConfigOverrides } from '../effective-config';
 import type { Outcome } from './outcome';
 import type { Stage } from '../stage/stage';
@@ -16,15 +16,16 @@ import type { Stage } from '../stage/stage';
 /**
  * The viewports a test runs at for one stage category: apply the test's `config`
  * override, then resolve that category's viewport labels into `Viewport`
- * definitions — resolution stays downstream of the merge.
+ * definitions. Both the `shared.viewports` fallback and the label resolution
+ * stay downstream of the merge — that ordering is what lets a per-test
+ * `config.shared.viewports` reach a category the file config left unset.
  */
 export function resolveViewportsForTest(
   test: AbTestDefinition,
   fileConfig: AbTestsConfig,
   category: TestType,
 ): readonly Viewport[] {
-  const effective = applyPerTestConfigOverrides(fileConfig, test);
-  return resolveViewports(effective[category].viewports, effective.shared.viewports);
+  return viewportsForCategory(applyPerTestConfigOverrides(fileConfig, test), category);
 }
 
 /**

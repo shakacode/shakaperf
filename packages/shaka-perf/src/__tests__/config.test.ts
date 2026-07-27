@@ -13,6 +13,7 @@ import {
   resolvePlaywrightOptions,
   resolveViewports,
   viewportsByStageCategory,
+  viewportsForCategory,
 } from '../config';
 
 function baseConfig(extra: Record<string, unknown> = {}) {
@@ -31,7 +32,10 @@ describe('accessibility config', () => {
   it('defaults accessibility to desktop and phone axe checks', () => {
     const config = buildAbTestsConfig(baseConfig());
 
-    expect(config.accessibility.viewports).toEqual(['desktop', 'phone']);
+    // Unset by design — the category falls back to `shared.viewports`.
+    expect(config.accessibility.viewports).toBeUndefined();
+    expect(viewportsForCategory(config, 'accessibility').map((v) => v.label))
+      .toEqual(['desktop', 'phone']);
     expect(config.accessibility.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
     expect(config.accessibility.disableRules).toEqual([]);
     expect(config.accessibility.includeRules).toBeUndefined();
@@ -52,7 +56,7 @@ describe('accessibility config', () => {
     expect(viewportsByStageCategory(config).accessibility.map((v) => v.label)).toEqual(['phone']);
   });
 
-  it('validates accessibility viewport labels against shared viewports', () => {
+  it('validates accessibility viewport labels against shared viewportDefinitions', () => {
     expect(() => buildAbTestsConfig(baseConfig({
       accessibility: { viewports: ['watch'] },
     }))).toThrow('accessibility.viewports: unknown viewport label "watch"');
@@ -60,20 +64,61 @@ describe('accessibility config', () => {
 });
 
 describe('resolveViewports', () => {
-  it('resolves labels to their shared.viewports definitions in list order', () => {
+  it('resolves labels to their shared.viewportDefinitions in list order', () => {
     const config = buildAbTestsConfig(baseConfig());
 
-    const resolved = resolveViewports(['phone', 'desktop'], config.shared.viewports);
+    const resolved = resolveViewports(['phone', 'desktop'], config.shared.viewportDefinitions);
     expect(resolved.map((v) => v.label)).toEqual(['phone', 'desktop']);
     expect(resolved[0].width).toBeGreaterThan(0);
   });
 
-  it('throws on a label with no shared.viewports definition (per-test typo)', () => {
+  it('throws on a label with no shared.viewportDefinitions entry (per-test typo)', () => {
     const config = buildAbTestsConfig(baseConfig());
 
-    expect(() => resolveViewports(['phome'], config.shared.viewports)).toThrow(
-      "Unknown viewport label 'phome' — defined in shared.viewports: 'desktop', 'tablet', 'phone'.",
+    expect(() => resolveViewports(['phome'], config.shared.viewportDefinitions)).toThrow(
+      "Unknown viewport label 'phome' — defined in shared.viewportDefinitions: 'desktop', 'tablet', 'phone'.",
     );
+  });
+});
+
+describe('shared.viewports as the per-category default', () => {
+  it('defaults to desktop + phone for every category', () => {
+    const byCategory = viewportsByStageCategory(buildAbTestsConfig(baseConfig()));
+
+    for (const category of ['visreg', 'perf', 'audit', 'accessibility'] as const) {
+      expect(byCategory[category].map((v) => v.label)).toEqual(['desktop', 'phone']);
+    }
+  });
+
+  it('feeds every category that did not set its own viewports', () => {
+    const byCategory = viewportsByStageCategory(buildAbTestsConfig(baseConfig({
+      shared: {
+        ...baseConfig().shared,
+        viewports: ['tablet'],
+      },
+      perf: { viewports: ['desktop'] },
+    })));
+
+    expect(byCategory.perf.map((v) => v.label)).toEqual(['desktop']);
+    for (const category of ['visreg', 'audit', 'accessibility'] as const) {
+      expect(byCategory[category].map((v) => v.label)).toEqual(['tablet']);
+    }
+  });
+
+  // The registry stays wider than the run list on purpose: defining a viewport
+  // must not run it, or `shared.viewports` would have nothing to narrow.
+  it('does not run every defined viewport', () => {
+    const config = buildAbTestsConfig(baseConfig());
+
+    expect(config.shared.viewportDefinitions.map((v) => v.label))
+      .toEqual(['desktop', 'tablet', 'phone']);
+    expect(config.shared.viewports).toEqual(['desktop', 'phone']);
+  });
+
+  it('rejects a shared.viewports label that no definition covers', () => {
+    expect(() => buildAbTestsConfig(baseConfig({
+      shared: { ...baseConfig().shared, viewports: ['watch'] },
+    }))).toThrow('shared.viewports: unknown viewport label "watch"');
   });
 });
 

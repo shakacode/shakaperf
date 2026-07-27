@@ -13,6 +13,10 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Cart', {
   startingPath: '/cart',
   testTypes: ['visreg'],
+  config: {
+    // Plain page load — safe to scan for AI legibility (see homepage.abtest.ts).
+    agentReadiness: { enabled: true },
+  },
 }, async ({ page, annotate }) => {
   annotate('Wait for cart page to settle');
   await waitUntilPageSettled(page);
