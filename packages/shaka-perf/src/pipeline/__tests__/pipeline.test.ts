@@ -10,6 +10,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import playwright from 'playwright';
 import type { AbTestDefinition } from 'shaka-shared';
 import { loadTests } from '../../config-loader';
 import {
@@ -20,8 +21,12 @@ import {
 import { runPipeline, type RuntimeOptions } from '../runner';
 import { ArtifactStore } from '../artifact-store';
 import { parseAbTestsConfig } from '../../config';
+import { withAbTestsConfigPath } from '../../effective-config';
+import { createVisregStage } from '../../compare/stages/visreg';
 import type { Stage, StageCategory, StageName, TestContext } from '../../stage/stage';
 import type { WorkerPool } from '../worker-pool';
+import type { Outcome } from '../outcome';
+import type { Browser } from '../../visreg/core/types';
 
 jest.mock('../../config-loader', () => ({
   ...jest.requireActual('../../config-loader'),
@@ -288,5 +293,154 @@ describe('pre-run wipe', () => {
     await run({ categories: 'visreg', keepOldResults: true });
 
     expect(fs.existsSync(staleVisreg)).toBe(true);
+  });
+});
+
+describe('per-side visreg failures', () => {
+  const CONTROL_SCREENSHOT = Buffer.from('control');
+  const EXPERIMENT_SCREENSHOT = Buffer.from('experiment');
+  const base64 = (value: string): string => Buffer.from(value).toString('base64');
+
+  function visregPipeline(): Pipeline {
+    return createPipeline({
+      name: 'test',
+      description: 'test pipeline',
+      report: {
+        reportLabel: 'Test',
+        renderHeaderUrls: () => null,
+        renderTestCardUrls: () => null,
+        renderDialogMetaUrls: () => null,
+      },
+    }, (builder) => {
+      const pool = builder.registerWorkerPool(1);
+      builder.runStage(pool, createVisregStage({
+        mismatchThreshold: 0.1,
+        maxNumDiffPixels: 0,
+        comparePixelmatchThreshold: 0.1,
+        compareRetries: 0,
+        compareRetryDelay: 0,
+      }));
+      builder.waitForAllTasksFinishAndDispose(pool);
+      builder.buildChips({ chipsForAllTests: (perTest) => new Map(perTest.map(({ test }) => [test, []])) });
+      builder.buildSorts({ sortsForAllTests: () => new Map() });
+    });
+  }
+
+  function fakeBrowser(): Browser {
+    return {
+      newContext: async () => {
+        let pageUrl = '';
+        const page = {
+          goto: async (url: string) => { pageUrl = url; },
+          evaluate: async (_body: unknown, argument?: unknown) => {
+            if (!Array.isArray(argument)) return true;
+            return {
+              selectors: argument,
+              selectorMap: Object.fromEntries(argument.map((selector) => [selector, {}])),
+            };
+          },
+          screenshot: async () => {
+            if (pageUrl.startsWith('http://control.test')) {
+              // The current failure handler captures both sides and then picks
+              // the newest file. Make the non-failing control capture finish
+              // last so that bug is deterministic.
+              await new Promise((resolve) => setTimeout(resolve, 20));
+              return CONTROL_SCREENSHOT;
+            }
+            return EXPERIMENT_SCREENSHOT;
+          },
+          setDefaultTimeout: () => {},
+          setDefaultNavigationTimeout: () => {},
+          close: async () => {},
+        };
+        return {
+          clearCookies: async () => {},
+          newPage: async () => page,
+          close: async () => {},
+        };
+      },
+      close: async () => {},
+    } as unknown as Browser;
+  }
+
+  async function runFailingVisreg(): Promise<Outcome> {
+    let controlFinished!: () => void;
+    const controlDone = new Promise<void>((resolve) => { controlFinished = resolve; });
+    const test: AbTestDefinition = {
+      name: 'Cart Edit Item',
+      startingPath: '/',
+      file: null,
+      line: null,
+      testTypes: null,
+      testFn: async ({ isControl, annotate }) => {
+        if (isControl) {
+          await annotate('control opens menu');
+          await annotate('control adds item');
+          await annotate('control clicks Update');
+          controlFinished();
+          return;
+        }
+
+        await annotate('adding Curly Fries');
+        await annotate('clicking Add to order');
+        await controlDone;
+        throw new Error('locator.click: Timeout 60000ms exceeded.');
+      },
+      config: { visreg: { viewports: ['tablet'] } },
+    };
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-visreg-side-'));
+    const configPath = path.join(cwd, 'abtests.config.js');
+    fs.writeFileSync(
+      configPath,
+      'module.exports = { shared: { controlURL: "http://control.test", experimentURL: "http://experiment.test", parallelism: 1, playwrightOptions: { browser: "chromium", waitTimeout: 60000 } } };',
+    );
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
+    const launch = jest.spyOn(playwright.chromium, 'launch')
+      .mockResolvedValue(fakeBrowser());
+    try {
+      jest.mocked(loadTests).mockResolvedValue([test]);
+      await withAbTestsConfigPath(configPath, () =>
+        runPipeline(visregPipeline(), {
+          cwd,
+          config: parseAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+          controlURL: 'http://control.test',
+          experimentURL: 'http://experiment.test',
+          retries: 0,
+          retryDelay: 0,
+          timeoutMs: 5_000,
+          tests: [test],
+          skipReport: true,
+        }));
+
+      const store = new ArtifactStore(path.join(cwd, 'test-results'));
+      const outcome = store.readOutcome(test, 'tablet', 'visreg');
+      if (!outcome) throw new Error('visreg outcome was not persisted');
+      return outcome;
+    } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
+      launch.mockRestore();
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  }
+
+  beforeEach(() => {
+    jest.mocked(loadTests).mockReset();
+  });
+
+  it('labels a failing side with its own step, not a concurrent sibling\'s', async () => {
+    const outcome = await runFailingVisreg();
+
+    expect(outcome.kind).toBe('error');
+    expect(outcome.error?.lastAnnotation).toBe('clicking Add to order');
+  });
+
+  it('attaches the failing side\'s screenshot, not a concurrent sibling\'s', async () => {
+    const outcome = await runFailingVisreg();
+
+    expect(outcome.kind).toBe('error');
+    expect(outcome.failure?.media)
+      .toBe(`data:image/png;base64,${base64('experiment')}`);
   });
 });
