@@ -56,10 +56,9 @@ export interface BisectTargetGroup {
 
 export interface CommitRun {
   sha: string;
-  compareCompleted?: boolean;
+  compareCompleted: boolean;
   requestedCategories: BisectCategory[];
-  requestedTests?: BisectTestSelection[];
-  requestedTestFiles?: string[];
+  requestedTests: BisectTestSelection[];
   experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
   compareResultsPath?: string;
@@ -72,8 +71,7 @@ export interface CommitRun {
 interface BisectNextActionBase {
   sha: string;
   categories: BisectCategory[];
-  tests?: BisectTestSelection[];
-  testFiles?: string[];
+  tests: BisectTestSelection[];
   targetIds: string[];
 }
 

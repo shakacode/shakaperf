@@ -1360,13 +1360,9 @@ function printBisectSummary(
         `for ${nextAction.targetIds.length} target(s)`,
       );
       console.log(`Categories: ${nextAction.categories.join(', ')}`);
-      if (nextAction.tests) {
-        console.log(`Tests: ${nextAction.tests
-          .map((test) => `${test.testFile} :: ${test.testName}`)
-          .join(', ')}`);
-      } else if (nextAction.testFiles) {
-        console.log(`Test files: ${nextAction.testFiles.join(', ')}`);
-      }
+      console.log(`Tests: ${nextAction.tests
+        .map((test) => `${test.testFile} :: ${test.testName}`)
+        .join(', ')}`);
     } else {
       console.log('Next: no bisect action because no regression targets were discovered.');
     }
