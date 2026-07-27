@@ -129,6 +129,7 @@ const repairSchema = z.object({
   filename: z.string(),
   sha256: z.string(),
   order: z.number().int().nonnegative(),
+  appliesToAll: z.boolean(),
   applicableShas: z.array(z.string()),
   prepareCommands: z.array(repairCommandSchema),
   cleanupCommands: z.array(repairCommandSchema),

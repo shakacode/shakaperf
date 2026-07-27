@@ -622,6 +622,7 @@ async function startBisectExecution(context: BisectExecutionContext): Promise<vo
       kind: repair.kind,
       purpose: repair.purpose,
       sha256: repair.sha256,
+      appliesToAll: repair.appliesToAll,
       applicableShas: repair.applicableShas,
     })),
   });

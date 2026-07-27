@@ -224,6 +224,7 @@ describe('configured bisect repair runtime', () => {
       filename: `patches/${filename}`,
       sha256: `${id}-hash`,
       order: 0,
+      appliesToAll: false,
       applicableShas: [candidateSha],
       prepareCommands: [],
       cleanupCommands: [],

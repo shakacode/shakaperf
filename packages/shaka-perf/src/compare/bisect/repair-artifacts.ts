@@ -50,6 +50,7 @@ export async function prepareConfiguredRepairs(options: {
       throw new Error(`Bisect repair "${configured.id}" patch is empty`);
     }
     const filename = `patches/${configured.id}.patch`;
+    const appliesToAll = 'all' in configured.appliesTo;
     repairs.push({
       id: configured.id,
       kind: configured.kind,
@@ -57,11 +58,10 @@ export async function prepareConfiguredRepairs(options: {
       filename,
       sha256: hash(contents),
       order,
-      applicableShas: await resolveApplicableShas(
-        configured,
-        options.experimentDir,
-        options.range,
-      ),
+      appliesToAll,
+      applicableShas: appliesToAll
+        ? []
+        : await resolveApplicableShas(configured, options.experimentDir, options.range),
       prepareCommands: configured.prepareCommands.map((command) => ({ ...command })),
       cleanupCommands: configured.cleanupCommands.map((command) => ({ ...command })),
       registeredAt: options.registeredAt,
@@ -126,6 +126,7 @@ async function resolveApplicableShas(
   experimentDir: string,
   range: PreparedGitRange,
 ): Promise<string[]> {
+  if ('all' in configured.appliesTo) return [];
   if ('commits' in configured.appliesTo) {
     const resolved = await Promise.all(configured.appliesTo.commits.map((ref) => (
       resolveCommit(experimentDir, ref)
