@@ -331,6 +331,20 @@ describe('compare bisect command', () => {
       viewport: 'desktop', subject: 'document', status: 'found' as const,
       goodIndex: 0, badIndex: 1, firstBadSha: 'merge-sha', recordedTargetEvaluations: {},
     };
+    const phoneTarget = {
+      ...target,
+      id: 'phone-target',
+      viewport: 'phone',
+      subject: 'button-name',
+    };
+    const plainTarget = {
+      ...target,
+      id: 'plain-target',
+      testFile: 'product.abtest.ts',
+      testName: 'Product',
+      subject: 'link-name',
+      firstBadSha: 'plain-sha',
+    };
     try {
       await runCompareBisectFromCli('good', 'merge-sha', {
         configPath: '/tmp/abtests.config.ts', categories: 'accessibility',
@@ -355,17 +369,20 @@ describe('compare bisect command', () => {
           primary: {
             ...completedSession().primary,
             badSha: 'merge-sha',
-            orderedCommits: ['good', 'merge-sha'],
-            commitSubjects: { good: 'good', 'merge-sha': 'merge' },
-            commitParents: { good: [], 'merge-sha': ['good', 'topic'] },
-            targets: [target],
+            orderedCommits: ['good', 'plain-sha', 'merge-sha'],
+            commitSubjects: { good: 'good', 'plain-sha': 'break product', 'merge-sha': 'merge deals' },
+            commitParents: { good: [], 'plain-sha': ['good'], 'merge-sha': ['plain-sha', 'topic'] },
+            targets: [target, phoneTarget, plainTarget],
           },
           mergeQueue: ['merge-sha'],
           mergeInvestigations: {
             'merge-sha': {
               mergeSha: 'merge-sha', parents: ['main', 'topic'],
-              status: 'merge-uninvestigated', targetIds: ['target'],
-              targetResults: { target: { kind: 'merge-uninvestigated' } },
+              status: 'merge-uninvestigated', targetIds: ['target', 'phone-target'],
+              targetResults: {
+                target: { kind: 'merge-uninvestigated' },
+                'phone-target': { kind: 'merge-uninvestigated' },
+              },
             },
           },
         }),
@@ -376,6 +393,20 @@ describe('compare bisect command', () => {
 
     expect(output).toContain(
       'shaka-perf compare bisect --categories accessibility --resume --investigate-merges',
+    );
+    expect(output).toEqual(expect.arrayContaining([
+      'Regressions by commit:',
+      '  plain-s break product',
+      '    accessibility',
+      '      Product',
+      '        desktop: link-name',
+      '  merge-s merge deals · merge · investigation not started',
+      '      Home',
+      '        desktop: document',
+      '        phone: button-name',
+    ]));
+    expect(output.indexOf('  plain-s break product')).toBeLessThan(
+      output.indexOf('  merge-s merge deals · merge · investigation not started'),
     );
   });
 });
