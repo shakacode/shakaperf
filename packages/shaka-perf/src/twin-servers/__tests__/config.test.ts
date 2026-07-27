@@ -205,6 +205,39 @@ describe('resolveConfig', () => {
     expect(resolved.rebuildCommands).toEqual([]);
   });
 
+  it('defaults copy-ignore folders to compare result directories', () => {
+    const resolved = resolveConfig(makeConfig(), tmpDir);
+    expect(resolved.copyIgnore).toEqual({
+      folders: ['compare-results', 'compare-bisect-results'],
+      files: [],
+    });
+  });
+
+  it('overrides copy-ignore files and folders from abtests config', () => {
+    const resolved = resolveConfig(makeConfig({
+      copyIgnore: {
+        folders: ['tmp/screenshots'],
+        files: ['debug.log'],
+      },
+    }), tmpDir);
+
+    expect(resolved.copyIgnore).toEqual({
+      folders: ['tmp/screenshots'],
+      files: ['debug.log'],
+    });
+  });
+
+  it('retains the default folder list when only files are overridden', () => {
+    const resolved = resolveConfig(makeConfig({
+      copyIgnore: { files: ['debug.log'] },
+    }), tmpDir);
+
+    expect(resolved.copyIgnore).toEqual({
+      folders: ['compare-results', 'compare-bisect-results'],
+      files: ['debug.log'],
+    });
+  });
+
   it('passes through configured rebuildCommands', () => {
     const resolved = resolveConfig(makeConfig({
       rebuildCommands: [{ description: 'Build assets', command: 'yarn build' }],

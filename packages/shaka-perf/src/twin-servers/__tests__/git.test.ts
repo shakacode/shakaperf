@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { getChangedFiles, getGitRootDirectory } from '../helpers/git';
+import { defaultCopyIgnoreConfig } from '../copy-ignore-defaults';
 import * as shell from '../helpers/shell';
 
 jest.mock('../helpers/shell');
@@ -27,7 +28,7 @@ describe('getChangedFiles', () => {
       .mockReturnValueOnce('file3.ts') // git diff --cached
       .mockReturnValueOnce('file4.ts'); // untracked
 
-    const files = getChangedFiles('/repo');
+    const files = getChangedFiles('/repo', defaultCopyIgnoreConfig());
 
     expect(files).toEqual(['file1.ts', 'file2.ts', 'file3.ts', 'file4.ts']);
   });
@@ -38,7 +39,7 @@ describe('getChangedFiles', () => {
       .mockReturnValueOnce('shared.ts\nonly-staged.ts')
       .mockReturnValueOnce('shared.ts\nonly-untracked.ts');
 
-    const files = getChangedFiles('/repo');
+    const files = getChangedFiles('/repo', defaultCopyIgnoreConfig());
 
     expect(files).toEqual(['shared.ts', 'only-diff.ts', 'only-staged.ts', 'only-untracked.ts']);
   });
@@ -46,7 +47,7 @@ describe('getChangedFiles', () => {
   it('returns empty array when no changes', () => {
     mockExecSync.mockReturnValue('');
 
-    const files = getChangedFiles('/repo');
+    const files = getChangedFiles('/repo', defaultCopyIgnoreConfig());
 
     expect(files).toEqual([]);
   });
@@ -57,7 +58,7 @@ describe('getChangedFiles', () => {
       .mockReturnValueOnce('')
       .mockReturnValueOnce('');
 
-    const files = getChangedFiles('/repo');
+    const files = getChangedFiles('/repo', defaultCopyIgnoreConfig());
 
     expect(files).toEqual(['modified.ts']);
   });
@@ -68,7 +69,7 @@ describe('getChangedFiles', () => {
       .mockReturnValueOnce('')
       .mockReturnValueOnce('new-file.ts');
 
-    const files = getChangedFiles('/repo');
+    const files = getChangedFiles('/repo', defaultCopyIgnoreConfig());
 
     expect(files).toEqual(['new-file.ts']);
   });
@@ -76,7 +77,7 @@ describe('getChangedFiles', () => {
   it('passes cwd to execSync_', () => {
     mockExecSync.mockReturnValue('');
 
-    getChangedFiles('/my/repo');
+    getChangedFiles('/my/repo', defaultCopyIgnoreConfig());
 
     expect(mockExecSync).toHaveBeenCalledWith(
       'git diff --name-only',
@@ -104,26 +105,29 @@ describe('getChangedFiles', () => {
       .mockReturnValueOnce('');
 
     try {
-      expect(getChangedFiles(repositoryRoot)).toEqual(['src/app.ts']);
+      expect(getChangedFiles(repositoryRoot, defaultCopyIgnoreConfig())).toEqual(['src/app.ts']);
     } finally {
       fs.rmSync(repositoryRoot, { recursive: true, force: true });
     }
   });
 
-  it('extends packaged defaults with the repository copy-ignore list', () => {
+  it('uses configured files and folders instead of the corresponding defaults', () => {
     const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-copy-ignore-'));
-    fs.writeFileSync(path.join(repositoryRoot, '.shaka-perf-copyignore'), 'local-artifacts/\n');
     mockExecSync
       .mockReturnValueOnce([
         'src/app.ts',
         'compare-results/report.json',
         'local-artifacts/trace.json',
+        'debug.log',
       ].join('\n'))
       .mockReturnValueOnce('')
       .mockReturnValueOnce('');
 
     try {
-      expect(getChangedFiles(repositoryRoot)).toEqual(['src/app.ts']);
+      expect(getChangedFiles(repositoryRoot, {
+        folders: ['local-artifacts'],
+        files: ['debug.log'],
+      })).toEqual(['src/app.ts', 'compare-results/report.json']);
     } finally {
       fs.rmSync(repositoryRoot, { recursive: true, force: true });
     }

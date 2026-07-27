@@ -67,6 +67,10 @@ function createMockConfig(tmpDir: string): ResolvedConfig {
     ports: { control: 3020, experiment: 3030 },
     setupCommands: [],
     rebuildCommands: [],
+    copyIgnore: {
+      folders: ['compare-results', 'compare-bisect-results'],
+      files: [],
+    },
     projectSlug: 'test-slug',
   };
 }
@@ -608,6 +612,7 @@ describe('get-config command', () => {
       'images',
       'volumes',
       'setupCommands',
+      'copyIgnore',
       'projectSlug',
     ];
     expectedKeys.forEach((key) => {

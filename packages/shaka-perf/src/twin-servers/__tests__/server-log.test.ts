@@ -37,6 +37,7 @@ function createConfig(tmpDir: string): ResolvedConfig {
     ports: { control: 3021, experiment: 3031 },
     setupCommands: [],
     rebuildCommands: [],
+    copyIgnore: { folders: [], files: [] },
     projectSlug: 'test-project',
   };
 }

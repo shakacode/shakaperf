@@ -77,6 +77,7 @@ describe('docker compose helpers', () => {
       ports: { control: 3020, experiment: 3030 },
       setupCommands: [],
       rebuildCommands: [],
+      copyIgnore: { folders: [], files: [] },
       projectSlug: 'printivity',
     };
 
@@ -107,6 +108,7 @@ describe('docker compose helpers', () => {
       ports: { control: 3020, experiment: 3030 },
       setupCommands: [],
       rebuildCommands: [],
+      copyIgnore: { folders: [], files: [] },
       projectSlug: 'printivity',
     };
 
