@@ -177,7 +177,7 @@ export class ConfiguredBisectRepairRuntime {
 
   private repairsFor(sha: string): BisectRepair[] {
     return this.options.repairs
-      .filter((repair) => repair.applicableShas.includes(sha))
+      .filter((repair) => repairAppliesToSha(repair, sha))
       .sort((left, right) => left.order - right.order);
   }
 
@@ -207,6 +207,10 @@ export class ConfiguredBisectRepairRuntime {
       throw new Error(`Repair "${repair.id}" git apply failed: ${detail}`);
     }
   }
+}
+
+export function repairAppliesToSha(repair: BisectRepair, sha: string): boolean {
+  return repair.appliesToAll || repair.applicableShas.includes(sha);
 }
 
 export function createRepairEvidence(

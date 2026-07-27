@@ -125,6 +125,32 @@ describe('configured bisect repair runtime', () => {
     expect(git(['status', '--porcelain'])).toBe('');
   });
 
+  it('applies all-commit repairs without an enumerated SHA list', async () => {
+    fs.writeFileSync(path.join(repoDir, 'all.txt'), 'all commits\n');
+    git(['add', '-N', 'all.txt']);
+    writePatch('all.patch');
+    git(['reset']);
+    fs.rmSync(path.join(repoDir, 'all.txt'));
+
+    const runtime = runtimeWith([repair('all', 'all.patch', {
+      appliesToAll: true,
+      applicableShas: [],
+    })]);
+    const result = await runtime.withRepairs({
+      sha: candidateSha,
+      evaluationId: 'all-candidate',
+      run: async ({ prepare }) => {
+        expect(fs.readFileSync(path.join(repoDir, 'all.txt'), 'utf8')).toBe('all commits\n');
+        await prepare();
+        return true;
+      },
+    });
+
+    expect(result.evidence.repairIds).toEqual(['all']);
+    expect(fs.existsSync(path.join(repoDir, 'all.txt'))).toBe(false);
+    expect(git(['status', '--porcelain'])).toBe('');
+  });
+
   it('rolls back earlier patches when a later patch cannot apply', async () => {
     fs.writeFileSync(path.join(repoDir, 'app.txt'), 'value=1\n');
     writePatch('valid.patch');
