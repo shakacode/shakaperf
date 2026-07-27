@@ -14,7 +14,12 @@ import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool'
 import type { TestContext } from '../../../stage/stage';
 import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
-import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
+import {
+  applyRealChrome,
+  realChromeContextOptions,
+  realChromeUsesNativeIdentity,
+  waitForBotWallToClear,
+} from '../../real-chrome';
 import { resolveAgentReadinessConfig, type AgentReadinessStageConfig } from './config';
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
@@ -156,11 +161,7 @@ export function rawFetchUserAgentFor(
   nativeUserAgent?: string,
 ): string {
   if (process.env.SHAKAPERF_REAL_CHROME !== '1') return RAW_FETCH_UA;
-  if (
-    formFactor !== 'mobile'
-    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
-    && nativeUserAgent
-  ) {
+  if (realChromeUsesNativeIdentity(formFactor) && nativeUserAgent) {
     return nativeUserAgent;
   }
   return matchRealChromeUserAgentVersion(
@@ -178,7 +179,15 @@ function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
       context = await browser.newContext();
       const page = await context.newPage();
       return await page.evaluate(() => navigator.userAgent);
-    } catch {
+    } catch (err) {
+      nativeUserAgentByBrowser.delete(browser);
+      console.warn(
+        chalk.yellow(
+          `[shaka-perf agent] could not read native browser user agent: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        ),
+      );
       return undefined;
     } finally {
       await context?.close().catch(() => {});
@@ -195,11 +204,16 @@ async function readRenderedSignals(
 ): Promise<{ signals: PageSignals; htmlBytes: number; blocked: boolean }> {
   let context: BrowserContext | undefined;
   try {
+    const usesChromium = (engineOptions.browser ?? 'chromium') === 'chromium';
     context = await browser.newContext({
       viewport: { width: ctx.viewport.width, height: ctx.viewport.height },
       deviceScaleFactor: ctx.viewport.deviceScaleFactor,
       isMobile: ctx.viewport.formFactor === 'mobile',
-      ...realChromeContextOptions(ctx.viewport.formFactor, browser.version?.()),
+      ...realChromeContextOptions(
+        ctx.viewport.formFactor,
+        browser.version?.(),
+        usesChromium,
+      ),
     });
     const page = await context.newPage();
     const timeout = engineOptions.navTimeoutMs ?? 45_000;
@@ -263,10 +277,7 @@ async function scanAgentReadiness(
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
   const rawFetchTimeout = engineOptions.rawFetchTimeoutMs ?? 15_000;
-  const needsNativeUserAgent =
-    process.env.SHAKAPERF_REAL_CHROME === '1'
-    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
-    && ctx.viewport.formFactor !== 'mobile';
+  const needsNativeUserAgent = realChromeUsesNativeIdentity(ctx.viewport.formFactor);
   const nativeUserAgent = needsNativeUserAgent
     ? await nativeBrowserUserAgent(browser)
     : undefined;

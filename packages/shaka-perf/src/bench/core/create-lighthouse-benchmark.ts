@@ -33,7 +33,8 @@ export function lighthouseWorkerEnvironment(
   return {
     SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
     SHAKA_PERF_SAMPLING_MODE: samplingMode,
-    SHAKA_PERF_HEADED: options.headed && !forceRealChromeHeadless ? '1' : '0',
+    SHAKA_PERF_HEADED:
+      !forceRealChromeHeadless && (options.realChrome || options.headed) ? '1' : '0',
     SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
     SHAKA_PERF_VIEWPORT_FORM_FACTOR: options.viewport.formFactor,
   };
@@ -297,7 +298,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     sampleState,
-    workerReuseKey: options.realChrome ? options.viewport.formFactor : undefined,
+    workerReuseKey: options.viewport.formFactor,
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
       warnIfRealChromeHeadlessOverridesHeaded(options);

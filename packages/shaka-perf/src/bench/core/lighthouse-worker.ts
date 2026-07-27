@@ -10,8 +10,10 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
-import { launch, type LaunchedChrome } from 'chrome-launcher';
+import { getChromePath, launch, type LaunchedChrome } from 'chrome-launcher';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 
 import {
@@ -48,7 +50,24 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
-import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
+import {
+  chromeVersionFromProductString,
+  matchRealChromeUserAgentVersion,
+  realChromeUserAgentForFormFactor,
+} from '../../browser-user-agent';
+
+const execFileAsync = promisify(execFile);
+
+async function installedChromeVersion(): Promise<string | undefined> {
+  try {
+    const chromePath = getChromePath();
+    if (!chromePath) return undefined;
+    const { stdout, stderr } = await execFileAsync(chromePath, ['--version']);
+    return chromeVersionFromProductString(`${stdout}\n${stderr}`);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Filename for the live-browser screenshot the worker captures on failure.
@@ -112,9 +131,14 @@ class LighthouseWorkerSampler {
     // Playwright stages. Lighthouse applies its own CDP override before the
     // measured navigation; getLighthouseSettings pins that path separately.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
+      const browserVersion = await installedChromeVersion();
       chromeFlags.push(
-        `--user-agent=${realChromeUserAgentForFormFactor(
-          process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
+        '--disable-blink-features=AutomationControlled',
+        `--user-agent=${matchRealChromeUserAgentVersion(
+          realChromeUserAgentForFormFactor(
+            process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
+          ),
+          browserVersion,
         )}`,
       );
     }
@@ -186,13 +210,6 @@ class LighthouseWorkerSampler {
     return {
       ...defaultConfig?.settings,
       ...DEFAULT_LH_CONFIG,
-      ...(process.env.SHAKAPERF_REAL_CHROME === '1'
-        ? {
-          emulatedUserAgent: realChromeUserAgentForFormFactor(
-            process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR ?? 'mobile',
-          ),
-        }
-        : {}),
       port: this.chrome!.port,
     };
   }

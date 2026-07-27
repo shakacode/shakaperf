@@ -24,6 +24,7 @@ export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
+import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
 
 export type LighthouseConfig = Flags;
 
@@ -90,6 +91,7 @@ export function lhConfigForViewport(
   return {
     ...userOverrides,
     formFactor: viewport.formFactor,
+    emulatedUserAgent: realChromeUserAgentForFormFactor(viewport.formFactor),
     screenEmulation: {
       mobile: viewport.formFactor === 'mobile',
       width: viewport.width,
@@ -185,7 +187,7 @@ export interface LighthouseBenchmarkOptions {
   headed?: boolean;
   /**
    * Audit-only real-Chrome mode. Compare deliberately leaves this unset so
-   * ambient audit environment variables cannot change its perf browser.
+   * ambient audit environment variables cannot change its Lighthouse browser.
    */
   realChrome?: {
     headless: boolean;

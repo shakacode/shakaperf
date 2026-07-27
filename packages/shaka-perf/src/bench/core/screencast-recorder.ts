@@ -285,9 +285,9 @@ export const SUBSCRIBE_RETRY_DELAY_MS = 250;
  * `maxWidth`/`maxHeight`) and emits at Chrome's natural vsync rate when
  * `everyNthFrame` is 1.
  *
- * We record absolute wall-clock timestamps for each frame and use the moment
- * the hook fires as wallNavStartMs. Frame timeMs = (frame.metadata.timestamp
- * × 1000) − wallNavStartMs, so frames align with the trace's navigationStart.
+ * We record absolute wall-clock timestamps for each frame and rebase them when
+ * the initial subscription completes, immediately before Lighthouse navigates.
+ * Frame timeMs then aligns with the trace's navigationStart.
  *
  * Frames arrive as `Page.screencastFrame` events; we ack each one
  * fire-and-forget so the renderer doesn't queue waiting for our round-trip
@@ -381,7 +381,10 @@ export async function startScreencastOnLighthouseSession(
           await lhSession.sendCommand('Page.stopScreencast').catch(() => {});
           return;
         }
-        if (generation !== subscriptionGeneration) return;
+        if (generation !== subscriptionGeneration) {
+          await lhSession.sendCommand('Page.stopScreencast').catch(() => {});
+          return;
+        }
         if (attempt > 1) {
           console.log(
             `[shaka-perf screencast] subscribe (${label}) recovered on attempt ${attempt}`,
@@ -393,6 +396,7 @@ export async function startScreencastOnLighthouseSession(
         if (stopped || generation !== subscriptionGeneration) return;
         if (!retry || Date.now() + SUBSCRIBE_RETRY_DELAY_MS >= deadline) break;
         await new Promise((resolve) => setTimeout(resolve, SUBSCRIBE_RETRY_DELAY_MS));
+        if (stopped || generation !== subscriptionGeneration) return;
       }
     } while (!stopped && generation === subscriptionGeneration && Date.now() < deadline);
     throw lastErr;
@@ -402,7 +406,11 @@ export async function startScreencastOnLighthouseSession(
   lhSession.on('Page.frameNavigated', onFrameNavigated);
   const initialGeneration = ++subscriptionGeneration;
   await subscribe('initial', initialGeneration, false);
-  wallNavStartMs = Date.now();
+  const anchorDeltaMs = Date.now() - wallNavStartMs;
+  wallNavStartMs += anchorDeltaMs;
+  for (const frame of frames) {
+    frame.timeMs = Math.max(0, frame.timeMs - anchorDeltaMs);
+  }
 
   return {
     frames,

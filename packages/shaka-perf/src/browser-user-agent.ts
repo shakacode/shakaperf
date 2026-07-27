@@ -31,3 +31,7 @@ export function matchRealChromeUserAgentVersion(
   const major = browserVersion ? /^(\d+)\./.exec(browserVersion)?.[1] : undefined;
   return major ? userAgent.replace(/Chrome\/\d+\./, `Chrome/${major}.`) : userAgent;
 }
+
+export function chromeVersionFromProductString(product: string): string | undefined {
+  return /\b(\d+\.\d+\.\d+\.\d+)\b/.exec(product)?.[1];
+}

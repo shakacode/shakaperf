@@ -93,5 +93,6 @@ export function a11yContrastGap(ratio: number | undefined): CostGap | undefined 
     zone: ratio >= BENCHMARK_LINES.contrast ? 'good' : 'poor',
     lineOwner: 'WCAG AA',
     lineUrl: 'https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html',
+    scaleAxis: { unit: 'unitless', precision: 2 },
   };
 }

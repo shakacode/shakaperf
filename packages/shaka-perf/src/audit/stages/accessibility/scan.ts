@@ -96,6 +96,7 @@ export async function scanAccessibilityPage(
   let context: BrowserContext | undefined;
   let page: Page | undefined;
   try {
+    const usesChromium = (config.engineOptions.browser ?? 'chromium') === 'chromium';
     context = await browser.newContext({
       viewport: {
         width: ctx.viewport.width,
@@ -103,7 +104,11 @@ export async function scanAccessibilityPage(
       },
       deviceScaleFactor: ctx.viewport.deviceScaleFactor,
       isMobile: ctx.viewport.formFactor === 'mobile',
-      ...realChromeContextOptions(ctx.viewport.formFactor, browser.version?.()),
+      ...realChromeContextOptions(
+        ctx.viewport.formFactor,
+        browser.version?.(),
+        usesChromium,
+      ),
     });
     // Clear state and run the beforeNavigate hooks on the context BEFORE the page
     // is created, uniform with the other engines — context init scripts/routes

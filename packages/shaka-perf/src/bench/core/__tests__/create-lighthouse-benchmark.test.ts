@@ -7,7 +7,10 @@
  * License in LICENSE.md.
  */
 
-import type { LighthouseBenchmarkOptions } from '../lighthouse-config';
+import {
+  lhConfigForViewport,
+  type LighthouseBenchmarkOptions,
+} from '../lighthouse-config';
 import createLighthouseBenchmark, {
   lighthouseWorkerEnvironment,
   warnIfRealChromeHeadlessOverridesHeaded,
@@ -18,9 +21,22 @@ import {
 
 const desktopViewport = {
   formFactor: 'desktop',
+  width: 1440,
+  height: 900,
+  deviceScaleFactor: 1,
 } as LighthouseBenchmarkOptions['viewport'];
 
+const originalRealChrome = process.env.SHAKAPERF_REAL_CHROME;
+const originalRealChromeHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
 afterEach(() => {
+  if (originalRealChrome === undefined) delete process.env.SHAKAPERF_REAL_CHROME;
+  else process.env.SHAKAPERF_REAL_CHROME = originalRealChrome;
+  if (originalRealChromeHeadless === undefined) {
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+  } else {
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = originalRealChromeHeadless;
+  }
   jest.restoreAllMocks();
 });
 
@@ -61,6 +77,9 @@ describe('lighthouseWorkerEnvironment', () => {
   });
 
   it('does not enable audit real-Chrome mode from ambient state', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+
     expect(lighthouseWorkerEnvironment({
       headed: true,
       viewport: desktopViewport,
@@ -68,6 +87,24 @@ describe('lighthouseWorkerEnvironment', () => {
       SHAKA_PERF_HEADED: '1',
       SHAKAPERF_REAL_CHROME: '0',
     }));
+  });
+
+  it('defaults every real-Chrome worker to the same headed mode as Playwright', () => {
+    expect(lighthouseWorkerEnvironment({
+      realChrome: { headless: false },
+      viewport: desktopViewport,
+    }, 'simultaneous')).toEqual(expect.objectContaining({
+      SHAKA_PERF_HEADED: '1',
+      SHAKAPERF_REAL_CHROME: '1',
+    }));
+  });
+
+  it('pins the Lighthouse identity to the viewport outside real-Chrome mode too', () => {
+    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).not.toContain('Mobile');
+    expect(lhConfigForViewport({
+      ...desktopViewport,
+      formFactor: 'mobile',
+    }).emulatedUserAgent).toContain('Mobile');
   });
 });
 

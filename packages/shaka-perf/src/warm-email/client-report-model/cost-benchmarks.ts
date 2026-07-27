@@ -100,7 +100,7 @@ export interface CostGap {
   zone: CostZone;
   lineOwner: string;
   lineUrl: string;
-  scaleAxis?: Pick<BenchmarkScalePolicy, 'unit' | 'precision'>;
+  scaleAxis: Pick<BenchmarkScalePolicy, 'unit' | 'precision'>;
 }
 
 export interface BenchmarkScaleGeometry {

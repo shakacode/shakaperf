@@ -145,6 +145,43 @@ describe('screencastRecorder', () => {
     await recording.stop();
   });
 
+  it('rebases frames captured while the initial subscription is in flight', async () => {
+    jest.useFakeTimers();
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method === 'Page.startScreencast') {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+
+    const recordingPromise = startScreencastOnLighthouseSession(session);
+    await jest.advanceTimersByTimeAsync(50);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'initial-frame',
+      sessionId: 1,
+      metadata: { timestamp: Date.now() / 1000 },
+    });
+    await jest.advanceTimersByTimeAsync(50);
+    const recording = await recordingPromise;
+    await jest.advanceTimersByTimeAsync(50);
+    handlers.get('Page.screencastFrame')?.({
+      data: 'navigation-frame',
+      sessionId: 2,
+      metadata: { timestamp: Date.now() / 1000 },
+    });
+
+    expect(recording.frames).toEqual([
+      { timeMs: 0, data: 'initial-frame' },
+      { timeMs: 50, data: 'navigation-frame' },
+    ]);
+    await recording.stop();
+  });
+
   it('uses the full retry window before abandoning a detached renderer', async () => {
     jest.useFakeTimers();
     const handlers = new Map<string, (...args: unknown[]) => void>();
@@ -242,5 +279,62 @@ describe('screencastRecorder', () => {
     expect(recording.frames).toEqual([]);
     expect(sendCommand.mock.calls.filter(([method]) => method === 'Page.stopScreencast'))
       .toHaveLength(2);
+  });
+
+  it('stops a successful subscription that was superseded in flight', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    let startAttempts = 0;
+    let resolveFirstNavigation: (() => void) | undefined;
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method !== 'Page.startScreencast') return;
+      startAttempts += 1;
+      if (startAttempts === 2) {
+        await new Promise<void>((resolve) => {
+          resolveFirstNavigation = resolve;
+        });
+      }
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com/one' } });
+    await Promise.resolve();
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com/two' } });
+    resolveFirstNavigation?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sendCommand.mock.calls.filter(([method]) => method === 'Page.stopScreencast'))
+      .toHaveLength(1);
+    await recording.stop();
+  });
+
+  it('does not warn when stop lands during retry backoff', async () => {
+    jest.useFakeTimers();
+    const handlers = new Map<string, (...args: unknown[]) => void>();
+    let startAttempts = 0;
+    const sendCommand = jest.fn(async (method: string) => {
+      if (method !== 'Page.startScreencast') return;
+      startAttempts += 1;
+      if (startAttempts > 1) throw new Error('Not attached to an active page');
+    });
+    const session = {
+      sendCommand,
+      on: (event: string, handler: (...args: unknown[]) => void) => handlers.set(event, handler),
+      off: (event: string) => handlers.delete(event),
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const recording = await startScreencastOnLighthouseSession(session);
+    handlers.get('Page.frameNavigated')?.({ frame: { url: 'https://example.com' } });
+    await Promise.resolve();
+    await recording.stop();
+    await jest.advanceTimersByTimeAsync(SUBSCRIBE_RETRY_DELAY_MS);
+
+    expect(warn).not.toHaveBeenCalled();
   });
 });

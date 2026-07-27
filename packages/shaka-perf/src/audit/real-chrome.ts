@@ -39,15 +39,24 @@ export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
   };
 }
 
-// Give every real-Chrome context a non-headless UA that matches the installed
-// Chrome major. Mobile contexts also need touch to serve the phone layout.
+export function realChromeUsesNativeIdentity(formFactor: string): boolean {
+  return (
+    process.env.SHAKAPERF_REAL_CHROME === '1'
+    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
+    && formFactor !== 'mobile'
+  );
+}
+
+// Give mobile contexts, plus non-mobile contexts in explicit headless mode, a
+// UA without the HeadlessChrome token. Mobile contexts also need touch.
 export function realChromeContextOptions(
   formFactor: string,
   browserVersion?: string,
+  usesChromium = true,
 ): { userAgent: string; hasTouch?: boolean } | undefined {
-  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
+  if (!usesChromium || process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
   const mobile = formFactor === 'mobile';
-  if (!mobile && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1') return undefined;
+  if (realChromeUsesNativeIdentity(formFactor)) return undefined;
   const userAgent = matchRealChromeUserAgentVersion(
     realChromeUserAgentForFormFactor(formFactor),
     browserVersion,

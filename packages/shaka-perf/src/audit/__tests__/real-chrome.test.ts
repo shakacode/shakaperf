@@ -8,8 +8,14 @@
  */
 
 import type { Page } from 'playwright-core';
-import { applyRealChrome, realChromeContextOptions, waitForBotWallToClear } from '../real-chrome';
 import {
+  applyRealChrome,
+  realChromeContextOptions,
+  realChromeUsesNativeIdentity,
+  waitForBotWallToClear,
+} from '../real-chrome';
+import {
+  chromeVersionFromProductString,
   matchRealChromeUserAgentVersion,
   REAL_CHROME_DESKTOP_USER_AGENT,
 } from '../../browser-user-agent';
@@ -29,6 +35,13 @@ describe('matchRealChromeUserAgentVersion', () => {
       matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, '150.0.0.0'),
     ).toContain('Chrome/150.0.0.0');
   });
+
+  it('extracts a four-part version from Chrome product output', () => {
+    expect(chromeVersionFromProductString('Google Chrome 150.0.7339.41')).toBe(
+      '150.0.7339.41',
+    );
+    expect(chromeVersionFromProductString('Google Chrome')).toBeUndefined();
+  });
 });
 
 describe('realChromeContextOptions', () => {
@@ -44,6 +57,11 @@ describe('realChromeContextOptions', () => {
   it('is undefined when real-Chrome mode is off (default path unchanged)', () => {
     delete process.env.SHAKAPERF_REAL_CHROME;
     expect(realChromeContextOptions('mobile', '150.0.0.0')).toBeUndefined();
+  });
+
+  it('does not apply Chrome identity options to another browser engine', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    expect(realChromeContextOptions('mobile', '18.2.0.0', false)).toBeUndefined();
   });
 
   it('uses a desktop UA without the headless token for non-mobile viewports', () => {
@@ -69,6 +87,7 @@ describe('realChromeContextOptions', () => {
     process.env.SHAKAPERF_REAL_CHROME = '1';
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
     expect(realChromeContextOptions('desktop', '150.0.0.0')).toBeUndefined();
+    expect(realChromeUsesNativeIdentity('desktop')).toBe(true);
   });
 });
 

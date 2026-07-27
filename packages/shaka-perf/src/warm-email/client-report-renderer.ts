@@ -543,7 +543,6 @@ function costDetailsPanel(id: string, content: string, compact = false): string 
 
 function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): string {
   if (!scale) return '';
-  if (!gap.scaleAxis) return '';
   const labelStacked = Math.abs(scale.markerPercent - scale.goodLinePercent) < 12;
   const scaleAxis = gap.scaleAxis;
   const axisMax = scale.axisMaxDisplay.toFixed(scaleAxis.precision);
