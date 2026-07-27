@@ -109,6 +109,11 @@ import {
   type PreparedBisectRepairArtifact,
 } from './repair-artifacts';
 import type { BisectRepair } from './types';
+import { installCommitRun } from './commit-run-state';
+import {
+  ConfiguredBisectRepairRuntime,
+  createRepairEvidence,
+} from './repair-runtime';
 
 type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
@@ -310,6 +315,13 @@ async function prepareBisectExecution(
   if (preliminaryResume) {
     verifyPersistedRepairArtifacts(resultsDirectory, preliminaryResume.repairs);
   }
+  if (options.reuseCurrentResults && preparedRepairs.repairs.some((repair) => (
+    repair.applicableShas.includes(gitRange.badSha)
+  ))) {
+    throw new Error(
+      'Cannot use --reuse-current-results when a configured repair applies to the bad ref',
+    );
+  }
   const controlURL = options.controlURL ?? options.config.shared.controlURL;
   const experimentURL = options.experimentURL ?? options.config.shared.experimentURL;
   const compatibility = buildCompatibility({
@@ -421,6 +433,7 @@ interface CandidateMeasureOptions {
   categories: readonly BisectCategory[];
   tests: readonly BisectTestSelection[];
   targets: readonly BisectTarget[];
+  evaluationId: string;
 }
 
 interface BisectExecutionState {
@@ -456,6 +469,12 @@ class CompareBisectOrchestrator {
       ? resumedSession(input.resumeSession)
       : initialSession(input, deps.clock.now());
     const environment = new BisectRunEnvironment(() => deps.clock.now());
+    const repairRuntime = new ConfiguredBisectRepairRuntime({
+      repoDir: input.twinServers.experimentDir,
+      resultsDirectory: input.resultsDirectory,
+      repairs: initial.repairs,
+      commandRunner: deps.server,
+    });
     const owner = new CompareBisectSession(initial, {
       persistence: {
         async write(session) {
@@ -481,6 +500,7 @@ class CompareBisectOrchestrator {
         deps.comparison,
         environment,
         preferredExperimentReloadMode(input.config),
+        repairRuntime,
       ),
     );
     this.state = {
@@ -499,6 +519,7 @@ class CompareBisectOrchestrator {
         deps.comparison,
         environment,
         preferredExperimentReloadMode(input.config),
+        repairRuntime,
       ),
       endpointRestoreError: null,
       requiresExperimentRestore: false,
@@ -554,6 +575,7 @@ class CompareBisectOrchestrator {
         tests: [...options.tests],
         targetIds: options.targets.map((target) => target.id),
         targets: [...options.targets],
+        evaluationId: options.evaluationId,
       });
     } catch (error) {
       if (error instanceof EndpointRestoreError) {
@@ -595,6 +617,13 @@ async function startBisectExecution(context: BisectExecutionContext): Promise<vo
     categories: input.selectedCategories,
     resultsDirectory: input.resultsDirectory,
     decisionLog: path.join(input.resultsDirectory, 'decision-log.md'),
+    repairs: state.session.repairs.map((repair) => ({
+      id: repair.id,
+      kind: repair.kind,
+      purpose: repair.purpose,
+      sha256: repair.sha256,
+      applicableShas: repair.applicableShas,
+    })),
   });
 }
 
@@ -671,6 +700,8 @@ async function discoverBadRefTargets(context: BisectExecutionContext): Promise<v
       sha: input.gitRange.badSha,
       targetCount: state.session.primary.targets.length,
       targets: state.session.primary.targets.map((target) => targetLogData(target)),
+      repairIds: badRun.commitRun.repairIds,
+      repairSetFingerprint: badRun.commitRun.repairSetFingerprint,
     },
   );
   await context.save();
@@ -697,6 +728,11 @@ async function measureOrReuseBadRef(
       categories: input.selectedCategories,
     });
     assertNoPipelineErrors(badRun.testResults, input.gitRange.badSha);
+    const repairEvidence = createRepairEvidence(
+      input.gitRange.badSha,
+      'primary:bad-ref-reuse',
+      [],
+    );
     const commitRun: CommitRun = {
       sha: input.gitRange.badSha,
       compareCompleted: true,
@@ -704,6 +740,9 @@ async function measureOrReuseBadRef(
       requestedTests: [],
       experimentReloadMode: preferredExperimentReloadMode(input.config),
       usedFallback: false,
+      repairIds: repairEvidence.repairIds,
+      repairSetFingerprint: repairEvidence.repairSetFingerprint,
+      repairEvidence,
       compareResultsPath: badRun.compareResultsPath,
       startedAt,
       finishedAt: state.environment.now(),
@@ -724,6 +763,7 @@ async function measureOrReuseBadRef(
     categories: input.selectedCategories,
     tests: [],
     targets: [],
+    evaluationId: 'primary:bad-ref-discovery',
   });
   return {
     testResults: result.testResults,
@@ -871,6 +911,8 @@ function recordPhaseDecision(
       phaseId: transition.phase.id,
       activeGroupId: transition.phase.activeGroupId,
       sessionMode: session.mode,
+      repairIds: transition.commitRun?.repairIds,
+      repairSetFingerprint: transition.commitRun?.repairSetFingerprint,
     },
   });
 }
@@ -914,6 +956,7 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     categories: categoriesForTargets(goodTargets),
     tests: testsForTargets(goodTargets),
     targets: goodTargets,
+    evaluationId: 'primary:good-ref-validation',
   });
   state.session = recordCommitRun(
     validateGoodEndpoint(state.session, goodRun.targetEvaluations),
@@ -928,6 +971,8 @@ async function validateBisectGoodRef(context: BisectExecutionContext): Promise<v
     {
       sha: input.gitRange.goodSha,
       invalidTargets: invalidTargets.map((target) => targetLogData(target)),
+      repairIds: goodRun.commitRun.repairIds,
+      repairSetFingerprint: goodRun.commitRun.repairSetFingerprint,
       activeTargets: activeTargets(state.session).map((target) => targetLogData(target)),
     },
   );
@@ -1162,6 +1207,7 @@ function initialSession(input: ExecuteBisectInput, startedAt: string): BisectSes
     control: input.repositorySnapshot?.control ?? { branch: null, sha: input.gitRange.goodSha },
     rebuildStrategy,
     repairs: [...(input.repairs ?? [])],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: '' },
     primary: {
       id: 'primary',
@@ -1316,13 +1362,7 @@ function attachCleanupContext(primaryError: Error, cleanupErrors: readonly Error
 }
 
 function recordCommitRun(session: BisectSession, commitRun: CommitRun): BisectSession {
-  return {
-    ...session,
-    commitRuns: {
-      ...session.commitRuns,
-      [commitRun.sha]: commitRun,
-    },
-  };
+  return installCommitRun(session, commitRun);
 }
 
 function activeTargets(session: BisectSession): BisectTarget[] {

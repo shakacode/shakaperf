@@ -477,6 +477,7 @@ function completedSession(): BisectSession {
     control: { sha: 'good', branch: null },
     rebuildStrategy: { mode: 'commands', commands: [] },
     repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     primary: {
       id: 'primary', status: 'complete', goodSha: 'good', badSha: 'bad',

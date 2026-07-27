@@ -143,6 +143,8 @@ function reportData(screenshot = '/tmp/control.png'): BisectReportData {
       goodSha: 'good',
       badSha: 'bad',
       generatedAt: '2026-07-13T00:00:00.000Z',
+      repairs: [],
+      repairApplications: [],
       commits: [],
       targets: [],
       targetsById: {},

@@ -28,6 +28,7 @@ import type {
   MergeInvestigation,
   MergeTargetResult,
 } from './types';
+import { installCommitRun } from './commit-run-state';
 
 export function buildMergeQueue(session: BisectSession): BisectSession {
   if (!session.primary) return session;
@@ -180,6 +181,7 @@ export class MergeInvestigationRunner {
       requestedTests: [...plan.tests],
       experimentReloadMode: this.candidates.preferredReloadMode(),
       usedFallback: false,
+      ...this.repairAttemptSelection(plan.sha, `${phase.id}-endpoint-${phase.attempts.length + 1}`),
       startedAt: this.environment.now(),
     };
     const runningPhase = { ...phase, attempts: [...phase.attempts, attempt] };
@@ -188,7 +190,7 @@ export class MergeInvestigationRunner {
     let validation: Awaited<ReturnType<EndpointValidator['validate']>>;
     let restorationFailure: EndpointRestoreError | undefined;
     try {
-      validation = await this.endpoints.validate(plan);
+      validation = await this.endpoints.validate({ ...plan, evaluationId: attempt.id });
     } catch (error) {
       if (error instanceof EndpointRestoreError) {
         validation = error.result;
@@ -200,6 +202,11 @@ export class MergeInvestigationRunner {
           status: 'incomplete',
           finishedAt: this.environment.now(),
           error: errorMessage(error),
+          ...(evaluationError ? {
+            repairIds: evaluationError.commitRun.repairIds,
+            repairSetFingerprint: evaluationError.commitRun.repairSetFingerprint,
+            repairEvidence: evaluationError.commitRun.repairEvidence,
+          } : {}),
         };
         await this.save({
           ...investigation,
@@ -220,6 +227,9 @@ export class MergeInvestigationRunner {
       status: 'complete',
       experimentReloadMode: validation.experimentReload.mode,
       usedFallback: validation.experimentReload.usedFallback,
+      repairIds: validation.commitRun.repairIds,
+      repairSetFingerprint: validation.commitRun.repairSetFingerprint,
+      repairEvidence: validation.commitRun.repairEvidence,
       finishedAt: validation.commitRun.finishedAt ?? this.environment.now(),
       ...(validation.commitRun.compareResultsPath
         ? { compareResultsPath: validation.commitRun.compareResultsPath }
@@ -257,16 +267,21 @@ export class MergeInvestigationRunner {
     return saved;
   }
 
+  private repairAttemptSelection(sha: string, evaluationId: string) {
+    const selection = this.candidates.repairSelection(sha, evaluationId);
+    return {
+      repairIds: selection.repairIds,
+      repairSetFingerprint: selection.repairSetFingerprint,
+    };
+  }
+
   private async save(
     investigation: MergeInvestigation,
     commitRun?: CommitRun,
   ): Promise<MergeInvestigation> {
     let next = updateInvestigation(this.owner.current(), investigation);
     if (commitRun) {
-      next = {
-        ...next,
-        commitRuns: { ...next.commitRuns, [commitRun.sha]: commitRun },
-      };
+      next = installCommitRun(next, commitRun);
     }
     await this.owner.save(next);
     return this.investigation(investigation.mergeSha);

@@ -339,6 +339,8 @@ function reportData(): BisectReportData {
       goodSha: GOOD_SHA,
       badSha: BAD_SHA,
       generatedAt: '2026-07-13T00:00:00.000Z',
+      repairs: [],
+      repairApplications: [],
       commits: [
         commit(GOOD_SHA, 'baseline', false, [], { visreg: 0, perf: 0, accessibility: 0 }),
         commit(PRE_VISUAL_SHA, 'prepare hero', true, [], { visreg: 0, perf: 0, accessibility: 0 }),

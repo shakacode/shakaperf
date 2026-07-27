@@ -43,6 +43,8 @@ export function writeSummary(
     commitSubjects: primary.commitSubjects,
     ...metadata,
     mode: session.mode,
+    repairs: session.repairs,
+    repairApplications: session.repairApplications,
     primary,
     mergeQueue: session.mergeQueue,
     mergeInvestigations: session.mergeInvestigations,

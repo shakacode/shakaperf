@@ -101,6 +101,9 @@ export interface CommitRun {
   requestedTests: BisectTestSelection[];
   experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  repairEvidence: BisectRepairEvidence;
   compareResultsPath?: string;
   startedAt: string;
   finishedAt?: string;
@@ -129,6 +132,7 @@ export interface BisectSession {
   control: { sha: string; branch: string | null };
   rebuildStrategy: PersistedRebuildStrategy;
   repairs: BisectRepair[];
+  repairApplications: BisectRepairEvidence[];
   reportInput: { filename: string; sha256: string };
   primary: BisectSearchPhase;
   mergeQueue: string[];
@@ -149,6 +153,9 @@ export interface CommitAttempt {
   requestedTests: BisectTestSelection[];
   experimentReloadMode: 'commands' | 'container';
   usedFallback: boolean;
+  repairIds: string[];
+  repairSetFingerprint: string;
+  repairEvidence?: BisectRepairEvidence;
   startedAt: string;
   finishedAt?: string;
   compareResultsPath?: string;

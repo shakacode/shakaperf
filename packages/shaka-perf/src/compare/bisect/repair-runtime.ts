@@ -33,6 +33,15 @@ export interface BisectRepairTransactionResult<T> {
   evidence: BisectRepairEvidence;
 }
 
+export interface BisectRepairExecutor {
+  selectionFor(sha: string, evaluationId: string): BisectRepairEvidence;
+  withRepairs<T>(options: {
+    sha: string;
+    evaluationId: string;
+    run: (scope: BisectRepairScope) => Promise<T>;
+  }): Promise<BisectRepairTransactionResult<T>>;
+}
+
 export class BisectRepairTransactionError extends Error {
   constructor(
     readonly evidence: BisectRepairEvidence,
@@ -53,15 +62,17 @@ export class ConfiguredBisectRepairRuntime {
     commandRunner: BisectRepairCommandRunner;
   }) {}
 
+  selectionFor(sha: string, evaluationId: string): BisectRepairEvidence {
+    return createRepairEvidence(sha, evaluationId, this.repairsFor(sha));
+  }
+
   async withRepairs<T>(options: {
     sha: string;
     evaluationId: string;
     run: (scope: BisectRepairScope) => Promise<T>;
   }): Promise<BisectRepairTransactionResult<T>> {
-    const repairs = this.options.repairs
-      .filter((repair) => repair.applicableShas.includes(options.sha))
-      .sort((left, right) => left.order - right.order);
-    const evidence = createEvidence(options.sha, options.evaluationId, repairs);
+    const repairs = this.repairsFor(options.sha);
+    const evidence = createRepairEvidence(options.sha, options.evaluationId, repairs);
     if (repairs.length === 0) {
       return {
         value: await options.run({ prepare: async () => undefined }),
@@ -164,6 +175,12 @@ export class ConfiguredBisectRepairRuntime {
     return { value, evidence };
   }
 
+  private repairsFor(sha: string): BisectRepair[] {
+    return this.options.repairs
+      .filter((repair) => repair.applicableShas.includes(sha))
+      .sort((left, right) => left.order - right.order);
+  }
+
   private async assertUnpatchedCandidate(sha: string, operation: string): Promise<void> {
     const actual = await resolveCommit(this.options.repoDir, 'HEAD');
     if (actual !== sha) {
@@ -192,7 +209,7 @@ export class ConfiguredBisectRepairRuntime {
   }
 }
 
-function createEvidence(
+export function createRepairEvidence(
   sha: string,
   evaluationId: string,
   repairs: readonly BisectRepair[],

@@ -116,6 +116,7 @@ function savedSession(): BisectSession {
     control: { sha: 'good', branch: null },
     rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
     repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'fixture' },
     commitRuns: {},
     primary: {
@@ -180,6 +181,8 @@ function savedReport(): BisectReportData {
       goodSha: 'good',
       badSha: 'bad',
       generatedAt: '2026-07-13T11:00:00.000Z',
+      repairs: [],
+      repairApplications: [],
       commits: [],
       targets: [],
       targetsById: {},

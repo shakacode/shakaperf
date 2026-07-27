@@ -69,6 +69,10 @@ export interface BisectSignalHandlers {
 export interface BisectServerSession extends BisectCandidateServer {
   begin(): Promise<void>;
   end(): Promise<void>;
+  runRepairCommands(
+    phase: 'prepare' | 'cleanup',
+    commands: readonly string[],
+  ): Promise<void>;
 }
 
 export interface BisectArtifactStore {
@@ -155,6 +159,18 @@ class TwinServerBisectSession implements BisectServerSession {
       mode: request.preferredExperimentReloadMode,
       rebuildCommands: configuredRebuildCommands(this.config).map((command) => command.command),
       noCache: false,
+    });
+  }
+
+  runRepairCommands(
+    phase: 'prepare' | 'cleanup',
+    commands: readonly string[],
+  ): Promise<void> {
+    return proxyBisect<void>(this.twinServers, {
+      cmd: 'bisect-run-commands',
+      sessionId: this.sessionId,
+      phase,
+      commands: [...commands],
     });
   }
 }

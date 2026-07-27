@@ -231,6 +231,7 @@ export function createE2eDependencies(options: E2eDependencyOptions): E2eDepende
       server: {
         async begin() {},
         async end() {},
+        async runRepairCommands() {},
         async refreshExperiment(request) {
           experimentReloadCalls.push({ ...request });
           if (request.sha === options.containerFallbackAtSha) {

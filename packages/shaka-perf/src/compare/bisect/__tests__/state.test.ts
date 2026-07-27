@@ -43,6 +43,7 @@ function session(): BisectSession {
     control: { branch: null, sha: 'good' },
     rebuildStrategy: { mode: 'commands', commands: ['yarn build'] },
     repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'abc' },
     primary: {
       id: 'primary',
@@ -62,6 +63,8 @@ function session(): BisectSession {
         requestedTests: [{ testFile: 'tests/home.abtest.ts', testName: 'Homepage' }],
         experimentReloadMode: 'commands',
         usedFallback: false,
+        repairIds: [],
+        repairSetFingerprint: 'empty',
         startedAt: '2026-07-13T00:01:00.000Z',
       }],
       startedAt: '2026-07-13T00:00:00.000Z',

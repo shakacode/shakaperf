@@ -26,6 +26,7 @@ import type {
   BisectTarget,
   TargetEvaluationAtCommit,
 } from '../types';
+import { createRepairEvidence } from '../repair-runtime';
 
 class FixedEnvironment extends BisectRunEnvironment {
   private tick = 0;
@@ -86,6 +87,7 @@ class StubEvaluator extends CandidateEvaluator {
     this.measured.push(plan.sha);
     const result = this.results[plan.sha];
     if (result instanceof Error) {
+      const repairEvidence = createRepairEvidence(plan.sha, `failure:${plan.sha}`, []);
       throw new CandidateEvaluationError({
         sha: plan.sha,
         compareCompleted: false,
@@ -93,6 +95,7 @@ class StubEvaluator extends CandidateEvaluator {
         requestedTests: [...plan.tests],
         experimentReloadMode: 'commands',
         usedFallback: false,
+        repairIds: [], repairSetFingerprint: repairEvidence.repairSetFingerprint, repairEvidence,
         startedAt: 'start',
         finishedAt: 'finish',
         infrastructureError: result.message,
@@ -159,6 +162,7 @@ function session(): BisectSession {
     control: { sha: 'good', branch: 'main' },
     rebuildStrategy: { mode: 'commands', commands: [] },
     repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'digest' },
     primary: phase(),
     mergeQueue: [],
@@ -177,6 +181,7 @@ function evaluation(
 }
 
 function result(sha: string, evaluations: TargetEvaluationAtCommit[]): CandidateResult {
+  const repairEvidence = createRepairEvidence(sha, `result:${sha}`, []);
   return {
     commitRun: {
       sha,
@@ -185,6 +190,7 @@ function result(sha: string, evaluations: TargetEvaluationAtCommit[]): Candidate
       requestedTests: [],
       experimentReloadMode: 'commands',
       usedFallback: false,
+      repairIds: [], repairSetFingerprint: repairEvidence.repairSetFingerprint, repairEvidence,
       startedAt: 'start',
       finishedAt: 'finish',
     },
@@ -252,6 +258,8 @@ describe('NativeBisectPhaseRunner', () => {
     expect(completed.attempts.map(({ id }) => id)).toEqual([
       'primary-attempt-1', 'primary-attempt-2', 'primary-attempt-3',
     ]);
+    expect(value.owner.current().repairApplications.map(({ evaluationId }) => evaluationId))
+      .toEqual(['result:b', 'result:a', 'result:c']);
     const split = value.transitions.find(({ event }) => event === 'group-split')!;
     expect(split).toMatchObject({
       commitRun: { sha: 'b' },

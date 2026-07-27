@@ -10,6 +10,7 @@
 import type { PhaseTransition } from './phase-transition';
 import { CompareBisectSession } from './session-owner';
 import type { BisectSearchPhase, BisectSession } from './types';
+import { installCommitRun } from './commit-run-state';
 
 export abstract class PhaseStore {
   constructor(protected readonly owner: CompareBisectSession) {}
@@ -24,13 +25,7 @@ export abstract class PhaseStore {
   async commit(transition: PhaseTransition): Promise<void> {
     const installed = this.install(this.owner.current(), transition.phase);
     const next = transition.commitRun
-      ? {
-        ...installed,
-        commitRuns: {
-          ...installed.commitRuns,
-          [transition.commitRun.sha]: transition.commitRun,
-        },
-      }
+      ? installCommitRun(installed, transition.commitRun)
       : installed;
     await this.owner.commit(transition, next);
   }

@@ -50,6 +50,23 @@ const targetSchema = z.object({
   recordedTargetEvaluations: z.record(z.string(), targetEvaluationAtCommitSchema),
 }).strict();
 
+const repairStepStatusSchema = z.enum(['not-run', 'succeeded', 'failed']);
+const repairApplicationEvidenceSchema = z.object({
+  repairId: z.string(),
+  apply: repairStepStatusSchema,
+  prepare: repairStepStatusSchema,
+  cleanup: repairStepStatusSchema,
+  reverse: repairStepStatusSchema,
+  errors: z.array(z.string()),
+}).strict();
+const repairEvidenceSchema = z.object({
+  evaluationId: z.string(),
+  sha: z.string(),
+  repairIds: z.array(z.string()),
+  repairSetFingerprint: z.string(),
+  applications: z.array(repairApplicationEvidenceSchema),
+}).strict();
+
 const attemptSchema = z.object({
   id: z.string(),
   sha: z.string(),
@@ -58,6 +75,9 @@ const attemptSchema = z.object({
   requestedTests: z.array(testSelectionSchema),
   experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
+  repairIds: z.array(z.string()),
+  repairSetFingerprint: z.string(),
+  repairEvidence: repairEvidenceSchema.optional(),
   startedAt: z.string(),
   finishedAt: z.string().optional(),
   compareResultsPath: z.string().optional(),
@@ -160,6 +180,9 @@ const commitRunSchema = z.object({
   requestedTests: z.array(testSelectionSchema),
   experimentReloadMode: z.enum(['commands', 'container']),
   usedFallback: z.boolean(),
+  repairIds: z.array(z.string()),
+  repairSetFingerprint: z.string(),
+  repairEvidence: repairEvidenceSchema,
   compareResultsPath: z.string().optional(),
   startedAt: z.string(),
   finishedAt: z.string().optional(),
@@ -183,6 +206,7 @@ const sessionSchema = z.object({
   control: z.object({ sha: z.string(), branch: z.string().nullable() }).strict(),
   rebuildStrategy: rebuildStrategySchema,
   repairs: z.array(repairSchema),
+  repairApplications: z.array(repairEvidenceSchema),
   reportInput: z.object({ filename: z.string(), sha256: z.string() }).strict(),
   primary: phaseSchema,
   mergeQueue: z.array(z.string()),

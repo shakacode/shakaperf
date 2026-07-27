@@ -10,6 +10,8 @@ import type { ReportData, TestResult } from '../../pipeline/report';
 import type {
   BisectCategory,
   BisectSession,
+  BisectRepair,
+  BisectRepairEvidence,
   CommitRun,
   MergeInvestigation,
   MergeTargetResult,
@@ -30,6 +32,7 @@ export interface BisectReportMergeSourceCommit {
   isMerge: boolean;
   targetIds: string[];
   counts: BisectReportCounts;
+  repairIds?: string[];
 }
 
 export interface BisectReportMergeInvestigation {
@@ -48,6 +51,7 @@ export interface BisectReportCommit {
   measured: boolean;
   counts: BisectReportCounts;
   targetIds: string[];
+  repairIds?: string[];
   isMerge?: boolean;
   mergeInvestigationStatus?: MergeInvestigation['status'];
   mergeInvestigation?: BisectReportMergeInvestigation;
@@ -81,6 +85,8 @@ export interface BisectReportModel {
   goodSha: string;
   badSha: string;
   generatedAt: string;
+  repairs: BisectRepair[];
+  repairApplications: BisectRepairEvidence[];
   commits: BisectReportCommit[];
   targets: BisectReportTarget[];
   targetsById: Record<string, BisectReportTarget>;
@@ -134,11 +140,13 @@ export function buildBisectReportModel(
       .filter((target) => target.status === 'found' && target.firstBadSha === sha)
       .map((target) => target.id);
     const investigation = session.mergeInvestigations?.[sha];
+    const repairIds = session.commitRuns[sha]?.repairIds ?? [];
     return {
       sha,
       subject: primary.commitSubjects[sha] || sha.slice(0, 7),
       position,
       measured: commitWasMeasured(session.commitRuns[sha]),
+      ...(repairIds.length > 0 ? { repairIds } : {}),
       counts: countsFor(targetIds, targetsById),
       targetIds,
       isMerge: (primary.commitParents[sha] ?? []).length > 1,
@@ -152,6 +160,8 @@ export function buildBisectReportModel(
     goodSha: primary.goodSha,
     badSha: primary.badSha,
     generatedAt,
+    repairs: session.repairs,
+    repairApplications: session.repairApplications,
     commits,
     targets,
     targetsById,
@@ -190,10 +200,12 @@ function buildMergeInvestigationReport(
     .filter((sha) => sha !== phase?.goodSha)
     .map((sha) => {
       const targetIds = targetIdsBySourceSha.get(sha) ?? [];
+      const repairIds = sessionRepairIdsForSource(investigation, sha);
       return {
         sha,
         subject: phase?.commitSubjects[sha] || sha.slice(0, 7),
         measured: measuredShas.has(sha),
+        ...(repairIds.length > 0 ? { repairIds } : {}),
         isMerge: (phase?.commitParents[sha] ?? []).length > 1,
         targetIds,
         counts: countsFor(targetIds, targetsById),
@@ -208,6 +220,18 @@ function buildMergeInvestigationReport(
     sourceCommits,
     mergeIntroducedTargetIds,
   };
+}
+
+function sessionRepairIdsForSource(
+  investigation: MergeInvestigation,
+  sha: string,
+): string[] {
+  const attempts = investigation.phase?.attempts ?? [];
+  for (let index = attempts.length - 1; index >= 0; index -= 1) {
+    const attempt = attempts[index]!;
+    if (attempt.sha === sha && attempt.status === 'complete') return attempt.repairIds ?? [];
+  }
+  return [];
 }
 
 function commitWasMeasured(commitRun: CommitRun | undefined): boolean {

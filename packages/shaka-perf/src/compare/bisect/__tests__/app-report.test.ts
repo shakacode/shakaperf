@@ -429,6 +429,8 @@ function bisectReport(): AppReportData {
       goodSha: 'good-commit',
       badSha: 'mixed-commit',
       generatedAt: '2026-07-13T00:00:00.000Z',
+      repairs: [],
+      repairApplications: [],
       commits: [
         {
           sha: 'good-commit',
@@ -578,6 +580,8 @@ function bisectModel(): BisectReportModel {
     goodSha: '1111111111111111111111111111111111111111',
     badSha: '2222222222222222222222222222222222222222',
     generatedAt: '2026-07-13T00:00:00.000Z',
+    repairs: [],
+    repairApplications: [],
     commits: [
       {
         sha: '1111111111111111111111111111111111111111',

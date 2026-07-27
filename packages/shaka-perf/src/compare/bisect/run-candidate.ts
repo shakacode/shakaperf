@@ -16,6 +16,11 @@ import type {
 } from './types';
 import type { CandidateMeasurementPlan } from './search';
 import type { BisectRunEnvironment } from './run-environment';
+import {
+  BisectRepairTransactionError,
+  createRepairEvidence,
+  type BisectRepairExecutor,
+} from './repair-runtime';
 
 export type ExperimentReloadMode = CommitRun['experimentReloadMode'];
 
@@ -49,6 +54,7 @@ export interface CandidateResult {
 
 export interface CandidateEvaluationPlan extends CandidateMeasurementPlan {
   targets: readonly BisectTarget[];
+  evaluationId?: string;
 }
 
 export interface CandidatePosition {
@@ -87,13 +93,20 @@ export class CandidateEvaluator {
     private readonly comparison: CandidateComparison,
     private readonly environment: BisectRunEnvironment,
     private readonly reloadMode: ExperimentReloadMode,
+    private readonly repairs: BisectRepairExecutor = NO_REPAIRS,
   ) {}
 
   preferredReloadMode(): ExperimentReloadMode {
     return this.reloadMode;
   }
 
+  repairSelection(sha: string, evaluationId: string) {
+    return this.repairs.selectionFor(sha, evaluationId);
+  }
+
   async evaluate(plan: CandidateEvaluationPlan): Promise<CandidateResult> {
+    const evaluationId = plan.evaluationId ?? `candidate:${plan.sha}`;
+    let repairEvidence = this.repairs.selectionFor(plan.sha, evaluationId);
     let commitRun: CommitRun = {
       sha: plan.sha,
       compareCompleted: false,
@@ -101,6 +114,9 @@ export class CandidateEvaluator {
       requestedTests: [...plan.tests],
       experimentReloadMode: this.reloadMode,
       usedFallback: false,
+      repairIds: repairEvidence.repairIds,
+      repairSetFingerprint: repairEvidence.repairSetFingerprint,
+      repairEvidence,
       startedAt: this.environment.now(),
     };
 
@@ -108,30 +124,48 @@ export class CandidateEvaluator {
       await this.position.assertAt(plan.sha);
       this.environment.checkCancellation();
 
-      const experimentReload = await this.server.refreshExperiment({
+      const transaction = await this.repairs.withRepairs({
         sha: plan.sha,
-        preferredExperimentReloadMode: this.reloadMode,
-      });
-      commitRun = {
-        ...commitRun,
-        experimentReloadMode: experimentReload.mode,
-        usedFallback: experimentReload.usedFallback,
-      };
-      this.environment.checkCancellation();
+        evaluationId,
+        run: async ({ prepare }) => {
+          const experimentReload = await this.server.refreshExperiment({
+            sha: plan.sha,
+            preferredExperimentReloadMode: this.reloadMode,
+          });
+          commitRun = {
+            ...commitRun,
+            experimentReloadMode: experimentReload.mode,
+            usedFallback: experimentReload.usedFallback,
+          };
+          this.environment.checkCancellation();
+          await prepare();
+          this.environment.checkCancellation();
 
-      const comparison = await this.comparison.run({
-        sha: plan.sha,
-        categories: plan.categories,
-        tests: plan.tests,
+          const comparison = await this.comparison.run({
+            sha: plan.sha,
+            categories: plan.categories,
+            tests: plan.tests,
+          });
+          commitRun = {
+            ...commitRun,
+            compareCompleted: true,
+            compareResultsPath: comparison.compareResultsPath,
+            finishedAt: this.environment.now(),
+          };
+          this.environment.checkCancellation();
+          assertNoPipelineErrors(comparison.testResults, plan.sha);
+          return { comparison, experimentReload };
+        },
       });
+      repairEvidence = transaction.evidence;
       commitRun = {
         ...commitRun,
-        compareCompleted: true,
-        compareResultsPath: comparison.compareResultsPath,
-        finishedAt: this.environment.now(),
+        repairIds: repairEvidence.repairIds,
+        repairSetFingerprint: repairEvidence.repairSetFingerprint,
+        repairEvidence,
       };
       this.environment.checkCancellation();
-      assertNoPipelineErrors(comparison.testResults, plan.sha);
+      const { comparison, experimentReload } = transaction.value;
 
       return {
         commitRun,
@@ -146,8 +180,15 @@ export class CandidateEvaluator {
         experimentReload,
       };
     } catch (error) {
+      if (error instanceof BisectRepairTransactionError) {
+        repairEvidence = error.evidence;
+        error = error.originalError;
+      }
       const failedRun: CommitRun = {
         ...commitRun,
+        repairIds: repairEvidence.repairIds,
+        repairSetFingerprint: repairEvidence.repairSetFingerprint,
+        repairEvidence,
         finishedAt: this.environment.now(),
         ...(error instanceof BisectInterruptedError
           ? {}
@@ -157,6 +198,16 @@ export class CandidateEvaluator {
     }
   }
 }
+
+const NO_REPAIRS: BisectRepairExecutor = {
+  selectionFor: (sha, evaluationId) => createRepairEvidence(sha, evaluationId, []),
+  async withRepairs(options) {
+    return {
+      value: await options.run({ prepare: async () => undefined }),
+      evidence: createRepairEvidence(options.sha, options.evaluationId, []),
+    };
+  },
+};
 
 export class BisectInterruptedError extends Error {
   constructor(readonly signal: NodeJS.Signals) {

@@ -354,6 +354,7 @@ function deps(
         async end() {
           calls.events.push('lease:end');
         },
+        async runRepairCommands() {},
         async refreshExperiment(request) {
           calls.refreshes.push(request.sha);
           calls.events.push(`reload-experiment:${request.sha}`);

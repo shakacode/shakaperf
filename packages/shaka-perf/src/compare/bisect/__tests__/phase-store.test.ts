@@ -60,6 +60,7 @@ function session(): BisectSession {
     control: { sha: 'good', branch: 'main' },
     rebuildStrategy: { mode: 'commands', commands: [] },
     repairs: [],
+    repairApplications: [],
     reportInput: { filename: 'bad-ref-tests.json', sha256: 'digest' },
     primary: phase('primary'),
     mergeQueue: ['merge'],
