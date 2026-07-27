@@ -110,6 +110,12 @@ export interface MenuController {
     rebuildCommands: string[];
     noCache: boolean;
   }): Promise<BisectExperimentReloadResult>;
+  /** Run repair lifecycle commands under the active bisect lease. */
+  runBisectRepairCommands(request: {
+    sessionId: string;
+    phase: 'prepare' | 'cleanup';
+    commands: string[];
+  }): Promise<void>;
   /** End the bisect session and allow normal menu auto-sync/actions again. */
   endBisectSession(sessionId: string): Promise<void>;
 }
@@ -742,6 +748,18 @@ export async function runServersMenu(
           ? 'Bisect command reload failed; rebuilt experiment container.'
           : `Bisect reloaded experiment using ${result.mode} mode.`;
         return result;
+      },
+      { allowDuringBisect: true },
+    ),
+    runBisectRepairCommands: (request) => runProxiedAction(
+      `running bisect repair ${request.phase} commands`,
+      async () => {
+        await state.bisectSession.runRepairCommands(
+          request.sessionId,
+          request.phase,
+          request.commands,
+        );
+        state.lastMessage = `Bisect repair ${request.phase} commands completed.`;
       },
       { allowDuringBisect: true },
     ),
