@@ -193,6 +193,13 @@ input {
   letter-spacing: 0.04em;
 }
 
+/* Each dt/dd pair is a flex item; without `min-width: 0` + a break-anywhere dd
+   a long control/experiment URL sets the item's floor and pushes the header
+   past a narrow viewport. */
+.header__meta > div {
+  min-width: 0;
+}
+
 .header__meta dt {
   display: inline;
   text-transform: uppercase;
@@ -204,6 +211,7 @@ input {
   display: inline;
   margin: 0;
   color: var(--fg);
+  overflow-wrap: anywhere;
 }
 
 .header__controls {
@@ -2050,23 +2058,44 @@ input {
 }
 
 @media (max-width: 760px) {
-  .app.app--bisect {
+  /* Phone layout — shared by both reports. Reclaim the wide gutters, stack the
+     header controls, and collapse every multi-column grid to a single column so
+     nothing is pushed past the viewport edge. */
+  .app {
     padding: 20px 14px 60px;
   }
 
-  .app--bisect .header {
+  .header {
     margin: -20px -14px 24px;
     padding: 18px 14px 16px;
   }
 
-  .app--bisect .header__controls {
+  .header__controls {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app--bisect .header__filter-stack,
-  .app--bisect .header__secondary-filters {
+  .header__filter-stack,
+  .header__secondary-filters {
     align-items: stretch;
     justify-content: flex-start;
+  }
+
+  .filterbar-wrap {
+    align-items: stretch;
+  }
+
+  .filterbar {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  /* The sections menu drops from a now left-aligned summary, so anchoring it
+     to the summary's right edge would hang it off the left of the screen. */
+  .stage-filter__menu {
+    left: 0;
+    right: auto;
+    width: calc(100vw - 28px);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .bisect-navigator {
@@ -2158,16 +2187,34 @@ input {
     border-bottom: 0;
   }
 
-  .app--bisect .grid {
+  /* The card grid's 560px minimum column is wider than a phone: force one
+     column so cards can't overflow the viewport. */
+  .grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app--bisect .card__head {
+  .card__head {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app--bisect .card__pills {
+  .card__pills {
     align-items: flex-start;
+  }
+
+  /* The zoom dialog exists to show a shot up close — four columns on a phone
+     leave ~75px per image, so stack them instead. */
+  .artifact-dialog__image-grid--triplet,
+  .artifact-dialog__image-grid--quad {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Below ~560px a third artifact column leaves each thumbnail under 100px, which
+   squeezes its header into "documen / t". Two columns keep the labels on one
+   line. (Compare cards span the full row either way.) */
+@media (max-width: 560px) {
+  .artifact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
