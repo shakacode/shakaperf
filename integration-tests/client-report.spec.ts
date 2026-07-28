@@ -109,13 +109,37 @@ test('audit filtered pages, render v2 client report, screenshot its states @audi
   // would quietly become a report full of broken pages.
   const auditReport = JSON.parse(
     fs.readFileSync(path.join(AUDIT_RESULTS_DIR, 'report.json'), 'utf-8'),
-  ) as { tests: Array<{ name: string; outcomes: Array<{ kind: string }> }> };
+  ) as {
+    tests: Array<{
+      name: string;
+      viewport?: { label?: string };
+      outcomes: Array<{ kind: string }>;
+    }>;
+  };
   const erroredTests = [...new Set(
     auditReport.tests
       .filter((t) => t.outcomes.some((o) => o.kind === 'error'))
       .map((t) => t.name),
   )];
   expect(erroredTests, 'only the sabotaged products test may error').toEqual(['Products - Electronics Filter']);
+
+  // The client report is phone-framed: it renders one page per phone-class row
+  // in report.json (selectViewportRows -> one page each). Pin that set, because
+  // a phantom phone row is invisible in the technical report but shows up in
+  // the CLIENT report as a "we couldn't measure this page" card. Products -
+  // Electronics Filter is audit-desktop-only and must NOT appear: it opts out
+  // of accessibility via testTypes, and accessibility's shared desktop + phone
+  // default used to put its phone row back (see viewportsForTestAcrossStages).
+  const phonePages = [...new Set(
+    auditReport.tests
+      .filter((t) => /phone|mobile/i.test(t.viewport?.label ?? ''))
+      .map((t) => t.name),
+  )].sort();
+  expect(phonePages, 'client report must cover exactly the phone-measured pages').toEqual([
+    'Click Shop Now on the homepage',
+    'Homepage',
+    'Products List',
+  ]);
 
   // Render the v2 client report deterministically: every claude pass off, so
   // the verdict copy / captions / a11y summaries are the built-in fallbacks.

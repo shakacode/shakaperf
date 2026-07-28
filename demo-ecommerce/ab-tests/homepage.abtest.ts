@@ -19,6 +19,9 @@ abTest('Homepage', {
   ],
   config: {
     visreg: { mismatchThreshold: 0.01 },
+    // The AI-legibility scan measures `startingPath` cold, as an anonymous
+    // crawler — so it is opted in only on tests that just load a page.
+    agentReadiness: { enabled: true },
   },
 }, async ({ page, annotate, testType }) => {
   annotate('Wait for homepage to settle');

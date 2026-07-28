@@ -9,7 +9,7 @@
 
 import type { AbTestDefinition } from 'shaka-shared';
 import { buildAbTestsConfig } from '../../config';
-import { persistedOutcomeInScope } from '../viewport-plan';
+import { persistedOutcomeInScope, viewportsForTestAcrossStages } from '../viewport-plan';
 import type { Outcome } from '../outcome';
 import type { Stage } from '../../stage/stage';
 
@@ -71,5 +71,39 @@ describe('persistedOutcomeInScope', () => {
   it('keeps outcomes for a stage the pipeline does not know', () => {
     const test = makeTest();
     expect(persistedOutcomeInScope(test, config, undefined, okOutcome('legacy-stage'), 'desktop')).toBe(true);
+  });
+});
+
+describe('viewportsForTestAcrossStages', () => {
+  const auditStage = makeStage('audit', 'audit');
+  const labels = (test: AbTestDefinition, stages: Stage[]) =>
+    viewportsForTestAcrossStages(test, stages, config).map((viewport) => viewport.label);
+
+  it('unions the viewports of every category the test runs', () => {
+    // visreg narrowed to tablet, accessibility left on the shared default.
+    const test = makeTest({ config: { visreg: { viewports: ['tablet'] } } });
+    expect(labels(test, [visregStage, a11yStage]).sort()).toEqual(['desktop', 'phone', 'tablet']);
+  });
+
+  it('ignores viewports of a category the test opted out of via testTypes', () => {
+    // The audit-report repro: `testTypes: ['visreg']` is widened to
+    // ['visreg', 'audit'] by withMandatoryTestTypes, so audit runs and
+    // accessibility does not. Audit is pinned to desktop, so the test has no
+    // phone work at all — accessibility's shared desktop + phone default must
+    // not put a phone row back, or the phone-framed client report renders it
+    // as a page it "couldn't measure".
+    const test = makeTest({
+      testTypes: ['visreg', 'audit'],
+      config: { visreg: { viewports: ['desktop'] }, audit: { viewports: ['desktop'] } },
+    });
+    expect(labels(test, [auditStage, a11yStage])).toEqual(['desktop']);
+  });
+
+  it('keeps that category once the test declares it', () => {
+    const test = makeTest({
+      testTypes: ['visreg', 'audit', 'accessibility'],
+      config: { visreg: { viewports: ['desktop'] }, audit: { viewports: ['desktop'] } },
+    });
+    expect(labels(test, [auditStage, a11yStage]).sort()).toEqual(['desktop', 'phone']);
   });
 });

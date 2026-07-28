@@ -188,7 +188,7 @@ describe('reconstructEffectiveConfig', function () {
 // is then ignored, and leaves the test silently running at the file default.
 describe('applyPerTestConfigOverrides validation', function () {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { buildAbTestsConfig } = require('../src/config');
+  const { buildAbTestsConfig, viewportsForCategory } = require('../src/config');
   const { applyPerTestConfigOverrides } = require('../src/effective-config');
 
   const fileConfig = () =>
@@ -224,7 +224,7 @@ describe('applyPerTestConfigOverrides validation', function () {
     );
   });
 
-  it('rejects a per-test viewport label that no shared.viewports entry defines', function () {
+  it('rejects a per-test label that no shared.viewportDefinitions entry defines', function () {
     // Previously dropped silently, then thrown from resolveViewports mid-run.
     assert.throws(
       () => applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
@@ -234,17 +234,44 @@ describe('applyPerTestConfigOverrides validation', function () {
     );
   });
 
-  it('rejects a shared.viewports override that leaves a category label unresolvable', function () {
+  it('rejects a viewportDefinitions override that leaves a category label unresolvable', function () {
     const TABLET = {
       label: 'tablet', width: 768, height: 1024,
       formFactor: 'mobile', deviceScaleFactor: 2,
     };
     assert.throws(
       () => applyPerTestConfigOverrides(fileConfig(), testDef('Dash', {
-        shared: { viewports: [TABLET] },
+        shared: { viewportDefinitions: [TABLET] },
       })),
       /abTest\("Dash"\).*unknown viewport label "desktop"/s,
     );
+  });
+
+  // The precedence the `shared.viewports` default exists for: a test narrows
+  // every category at once, EXCEPT ones the file config pinned itself — an
+  // explicit file-level category list is the more specific of the two.
+  const labelsFor = (effective: unknown, category: string): string[] =>
+    viewportsForCategory(effective, category).map((v: { label: string }) => v.label);
+
+  it('lets a per-test shared.viewports narrow the categories the file left unset', function () {
+    const effective = applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
+      shared: { viewports: ['phone'] },
+    }));
+
+    assert.deepEqual(labelsFor(effective, 'audit'), ['phone']);
+    assert.deepEqual(labelsFor(effective, 'perf'), ['phone']);
+    // fileConfig() pins visreg to desktop + phone, so it wins.
+    assert.deepEqual(labelsFor(effective, 'visreg'), ['desktop', 'phone']);
+  });
+
+  it("lets a per-test category viewports outrank the test's own shared.viewports", function () {
+    const effective = applyPerTestConfigOverrides(fileConfig(), testDef('Home', {
+      shared: { viewports: ['phone'] },
+      audit: { viewports: ['desktop'] },
+    }));
+
+    assert.deepEqual(labelsFor(effective, 'audit'), ['desktop']);
+    assert.deepEqual(labelsFor(effective, 'perf'), ['phone']);
   });
 
   it('accepts a valid override, keeping sibling keys and the hook function', function () {

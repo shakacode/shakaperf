@@ -21,7 +21,14 @@ abTest('Carousel Demo - Without stubbing or overriding CSS', {
   startingPath: '/carousel-demo',
   testTypes: ['perf'],
   config: {
+    // Per-test viewports are per-category — pin audit too, or it runs this
+    // test at its own default (desktop + phone).
     perf: { viewports: ['phone'] },
+    audit: { viewports: ['phone'] },
+    // Plain page load — safe to scan for AI legibility (see homepage.abtest.ts).
+    // The two carousel tests below hit this same URL but stub/override the page,
+    // so they stay opted out.
+    agentReadiness: { enabled: true },
   },
 }, async () => {});
 
@@ -31,6 +38,7 @@ abTest('Carousel Demo - Pause With Override CSS', {
   testTypes: ['visreg'],
   config: {
     visreg: { viewports: ['desktop'] },
+    audit: { viewports: ['desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for carousel track to be visible');

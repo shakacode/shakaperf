@@ -15,7 +15,10 @@ abTest('Admin Dashboard - Cookie Login', {
   startingPath: '/admin',
   testTypes: ['visreg'],
   config: {
+    // Per-test viewports are per-category: `visreg` alone would leave the
+    // audit pipeline running this test at its own default (desktop + phone).
     visreg: { viewports: ['desktop'] },
+    audit: { viewports: ['desktop'] },
     // Seed the admin auth cookie before navigation, on the context, so the
     // first load is already authenticated. Overriding `shared.beforeNavigate`
     // per-test replaces the global hook for this test (this config has none).
@@ -52,7 +55,9 @@ abTest('Admin Orders - Form Login Interaction', {
   startingPath: '/admin/login',
   testTypes: ['visreg'],
   config: {
+    // Phone-only in every pipeline that runs this test — see the note above.
     visreg: { viewports: ['phone'] },
+    audit: { viewports: ['phone'] },
   },
 }, async ({ page, scenario, annotate }) => {
   annotate('Wait for admin login form to appear');

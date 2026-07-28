@@ -55,8 +55,17 @@ export interface SharedConfigInput {
   experimentURL: string;
   testPathPattern?: string;
   filter?: string;
-  /** Full-definition viewports (label + dimensions + formFactor + DPR). */
-  viewports?: [Viewport, ...Viewport[]];
+  /**
+   * Full-definition viewports (label + dimensions + formFactor + DPR) — the
+   * registry every viewport LABEL elsewhere must resolve against. Defining a
+   * viewport does not run it.
+   */
+  viewportDefinitions?: [Viewport, ...Viewport[]];
+  /**
+   * Labels (from `viewportDefinitions`) that every category runs at unless it
+   * sets its own `viewports`. Defaults to desktop + phone.
+   */
+  viewports?: [string, ...string[]];
   parallelism: number;
   retries?: number;
   retryDelay?: number;
