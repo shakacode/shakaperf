@@ -87,12 +87,17 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
 export function lhConfigForViewport(
   viewport: Viewport,
   userOverrides: PerfLighthouseConfig = {},
+  useViewportUserAgent = false,
 ): LighthouseConfig {
   return {
     ...userOverrides,
     formFactor: viewport.formFactor,
-    emulatedUserAgent:
-      userOverrides.emulatedUserAgent ?? realChromeUserAgentForFormFactor(viewport.formFactor),
+    ...(useViewportUserAgent
+      ? {
+        emulatedUserAgent:
+          userOverrides.emulatedUserAgent ?? realChromeUserAgentForFormFactor(viewport.formFactor),
+      }
+      : {}),
     screenEmulation: {
       mobile: viewport.formFactor === 'mobile',
       width: viewport.width,

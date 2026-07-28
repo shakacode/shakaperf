@@ -71,11 +71,10 @@ the platform token remains the viewport-matched literal. Playwright's UA string
 override does not replace browser-owned client hints. After each Playwright
 navigation the engine polls up to ~25s for the challenge to clear.
 Sites that admit only a mobile identity can still block the desktop audit row.
-All Lighthouse performance runs use a viewport-matched emulated identity unless
-the project supplies an explicit `lighthouseConfig.emulatedUserAgent` override.
-Desktop and tablet baselines recorded before this behavior are not comparable
-when a site varies content by user agent. Projects that need the legacy mobile
-identity can preserve it with that explicit override while migrating baselines.
+In real-Chrome mode, Lighthouse performance runs use a viewport-matched
+emulated identity unless the project supplies an explicit
+`lighthouseConfig.emulatedUserAgent` override. Baselines recorded without
+real-Chrome mode are unaffected.
 Both paths require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
 configuration.

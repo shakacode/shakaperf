@@ -98,21 +98,26 @@ describe('lighthouseWorkerEnvironment', () => {
     }));
   });
 
-  it('pins the Lighthouse identity to the viewport outside real-Chrome mode too', () => {
-    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).not.toContain('Mobile');
+  it('pins the Lighthouse identity to the viewport only in real-Chrome mode', () => {
+    expect(lhConfigForViewport(desktopViewport).emulatedUserAgent).toBeUndefined();
     expect(lhConfigForViewport({
       ...desktopViewport,
       formFactor: 'mobile',
-    }).emulatedUserAgent).toContain('Mobile');
+    }).emulatedUserAgent).toBeUndefined();
+    expect(lhConfigForViewport(desktopViewport, {}, true).emulatedUserAgent).not.toContain('Mobile');
+    expect(lhConfigForViewport({
+      ...desktopViewport,
+      formFactor: 'mobile',
+    }, {}, true).emulatedUserAgent).toContain('Mobile');
   });
 
   it('preserves an explicit Lighthouse identity override', () => {
     expect(lhConfigForViewport(desktopViewport, {
       emulatedUserAgent: 'custom-user-agent',
-    }).emulatedUserAgent).toBe('custom-user-agent');
+    }, true).emulatedUserAgent).toBe('custom-user-agent');
     expect(lhConfigForViewport(desktopViewport, {
       emulatedUserAgent: false,
-    }).emulatedUserAgent).toBe(false);
+    }, true).emulatedUserAgent).toBe(false);
   });
 });
 

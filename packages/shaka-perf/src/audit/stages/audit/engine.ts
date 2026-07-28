@@ -96,7 +96,12 @@ export async function runAuditStage(
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
-  const lhConfig = lhConfigForViewport(ctx.viewport, config.lighthouseConfig);
+  const realChrome = process.env.SHAKAPERF_REAL_CHROME === '1';
+  const lhConfig = lhConfigForViewport(
+    ctx.viewport,
+    config.lighthouseConfig,
+    realChrome,
+  );
   // Perf-only run: the a11y score comes from measureAccessibilityScore, not this
   // gather. Always keep `performance`; a user override may add categories, not drop it.
   const requestedCategories = lhConfig.onlyCategories?.length ? lhConfig.onlyCategories : [];
@@ -117,7 +122,7 @@ export async function runAuditStage(
     captureCoverage: true,
     targetUrl: ctx.experimentURL,
     headed: ctx.runtime.headed,
-    ...(process.env.SHAKAPERF_REAL_CHROME === '1'
+    ...(realChrome
       ? {
         realChrome: {
           headless: process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1',
