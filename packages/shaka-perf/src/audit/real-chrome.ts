@@ -24,9 +24,7 @@ export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
   if (!isRealChromeEnabled()) return opts;
   // Default headed: interactive Turnstile challenges can still reject headless
   // Chrome. Some managed challenges auto-pass real Chrome headless, so
-  // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path. This also
-  // makes --headed unnecessary and keeps every audit browser headless, which
-  // also avoids the Lighthouse browser's headed screencast attachment issue.
+  // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path.
   const headless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
   return {
     ...opts,

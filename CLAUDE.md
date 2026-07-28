@@ -68,9 +68,11 @@ Playwright apply viewport-matched identities to mobile contexts and non-mobile
 headless contexts; a headed non-mobile context keeps Chrome's native identity.
 Lighthouse normalizes only the Chrome version milestone to the host browser;
 the platform token remains the viewport-matched literal. Playwright derives the
-platform, platform-version, architecture, and mobile client hints from its UA
-override; its brand list and model remain browser-controlled. After each
-Playwright navigation the engine polls up to ~25s for the challenge to clear.
+platform, platform-version, and architecture client hints from its UA override,
+and sets the mobile hint from the context's `isMobile` option. It forces the
+model hint to an empty value; only the brand list remains browser-controlled.
+After each Playwright navigation the engine polls up to ~25s for the challenge
+to clear.
 Sites that admit only a mobile identity can still block the desktop audit row.
 In real-Chrome mode, Lighthouse performance runs use a viewport-matched
 emulated identity unless the project supplies an explicit
@@ -78,9 +80,11 @@ emulated identity unless the project supplies an explicit
 real-Chrome mode are unaffected.
 The raw agent-readiness fetch uses the same native identity as a headed
 non-mobile real-Chrome context, so its score can differ from default-mode
-results on sites that vary markup by user agent. The standalone Lighthouse
-accessibility score is omitted in real-Chrome mode because it cannot share the
-interactive challenge state; the Playwright accessibility scan still runs.
+results on sites that vary markup by user agent. On that path the audited host
+receives the operator's native browser identity instead of the neutral raw-fetch
+identity. The standalone Lighthouse accessibility score is omitted in
+real-Chrome mode because it cannot share the interactive challenge state; the
+Playwright accessibility scan still runs.
 Both paths require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
 configuration.

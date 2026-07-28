@@ -54,6 +54,10 @@ export function warnIfRealChromeHeadlessOverridesHeaded(
   }
 }
 
+export function resetRealChromeHeadlessWarning(): void {
+  realChromeHeadlessWarningEmitted = false;
+}
+
 interface ResultMessage {
   type: 'result';
   sample: NavigationSample;

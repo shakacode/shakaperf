@@ -98,10 +98,15 @@ export async function runAuditStage(
 
   ensureLighthousePatchRegistered();
   const realChrome = process.env.SHAKAPERF_REAL_CHROME === '1';
+  const lighthouseUserAgentMode = !realChrome
+    ? 'default'
+    : realChromeUsesNativeIdentity(ctx.viewport.formFactor)
+      ? 'native'
+      : 'viewport';
   const lhConfig = lhConfigForViewport(
     ctx.viewport,
     config.lighthouseConfig,
-    realChrome && !realChromeUsesNativeIdentity(ctx.viewport.formFactor),
+    lighthouseUserAgentMode,
   );
   // Perf-only run: the a11y score comes from measureAccessibilityScore, not this
   // gather. Always keep `performance`; a user override may add categories, not drop it.

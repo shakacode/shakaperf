@@ -13,6 +13,7 @@ import {
 } from '../lighthouse-config';
 import createLighthouseBenchmark, {
   lighthouseWorkerEnvironment,
+  resetRealChromeHeadlessWarning,
   warnIfRealChromeHeadlessOverridesHeaded,
 } from '../create-lighthouse-benchmark';
 import {
@@ -28,6 +29,10 @@ const desktopViewport = {
 
 const originalRealChrome = process.env.SHAKAPERF_REAL_CHROME;
 const originalRealChromeHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
+beforeEach(() => {
+  resetRealChromeHeadlessWarning();
+});
 
 afterEach(() => {
   if (originalRealChrome === undefined) delete process.env.SHAKAPERF_REAL_CHROME;
@@ -118,20 +123,25 @@ describe('lighthouseWorkerEnvironment', () => {
       ...desktopViewport,
       formFactor: 'mobile',
     }).emulatedUserAgent).toBeUndefined();
-    expect(lhConfigForViewport(desktopViewport, {}, true).emulatedUserAgent).not.toContain('Mobile');
+    expect(lhConfigForViewport(desktopViewport, {}, 'viewport').emulatedUserAgent)
+      .not.toContain('Mobile');
     expect(lhConfigForViewport({
       ...desktopViewport,
       formFactor: 'mobile',
-    }, {}, true).emulatedUserAgent).toContain('Mobile');
+    }, {}, 'viewport').emulatedUserAgent).toContain('Mobile');
+    expect(lhConfigForViewport(desktopViewport, {}, 'native').emulatedUserAgent).toBe(false);
   });
 
   it('preserves an explicit Lighthouse identity override', () => {
     expect(lhConfigForViewport(desktopViewport, {
       emulatedUserAgent: 'custom-user-agent',
-    }, true).emulatedUserAgent).toBe('custom-user-agent');
+    }, 'viewport').emulatedUserAgent).toBe('custom-user-agent');
     expect(lhConfigForViewport(desktopViewport, {
       emulatedUserAgent: false,
-    }, true).emulatedUserAgent).toBe(false);
+    }, 'viewport').emulatedUserAgent).toBe(false);
+    expect(lhConfigForViewport(desktopViewport, {
+      emulatedUserAgent: 'custom-user-agent',
+    }, 'native').emulatedUserAgent).toBe('custom-user-agent');
   });
 });
 
