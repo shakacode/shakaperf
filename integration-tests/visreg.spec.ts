@@ -12,12 +12,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ORIGINAL_REPO, DEMO_CWD, CONTROL_PORT, EXPERIMENT_PORT,
-  assertPlainNonZeroExit, loud, run, stage, startServers, waitForPort,
+  assertPlainNonZeroExit, loud, run, stage, startServers, stripAnsi, waitForPort,
 } from './helpers';
 import { captureReportScreenshots } from './report-capture';
+import { formatLogPrefix } from '../packages/shaka-perf/src/pipeline/log-prefix-format';
 
 const COMPARE_RESULTS_DIR = path.join(DEMO_CWD, 'compare-results');
 const SNAPSHOT_DIR = path.join(ORIGINAL_REPO, 'integration-tests', 'snapshots', 'visreg-results');
+
+// From the real formatter, so a padding change moves this check with it.
+const SIDE_PREFIXES = [formatLogPrefix('control'), formatLogPrefix('experiment')];
 
 test('run shaka-perf compare --categories visreg on twin servers @visreg', async ({ page }) => {
   test.setTimeout(20 * 60 * 1000);
@@ -32,17 +36,18 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
   // injection reliably produce mismatches, and compare now propagates that
   // to the exit code. Swallow the throw so we can still verify the report.
   let visregFailed = false;
+  let compareOutput = '';
   await stage('Running shaka-perf compare --categories visreg', () => {
     try {
-      run('yarn shaka-perf compare --categories visreg', {
+      compareOutput = run('yarn shaka-perf compare --categories visreg', {
         timeout: 15 * 60 * 1000,
       });
     } catch (e) {
       visregFailed = true;
       if (e && typeof e === 'object') {
         const err = e as { stderr?: Buffer; stdout?: Buffer };
-        if (err.stdout) console.log(err.stdout.toString());
-        if (err.stderr) console.log(err.stderr.toString());
+        compareOutput = `${err.stdout ?? ''}${err.stderr ?? ''}`;
+        if (compareOutput) console.log(compareOutput);
       }
       // Only a plain non-zero exit counts as "failed as designed" — a timeout
       // kill or spawn failure must fail the spec, not masquerade as mismatches.
@@ -59,16 +64,38 @@ test('run shaka-perf compare --categories visreg on twin servers @visreg', async
   // outcomes in the machine report.
   const machineReport = JSON.parse(
     fs.readFileSync(path.join(COMPARE_RESULTS_DIR, 'report.json'), 'utf-8'),
-  ) as { tests: Array<{ name: string; chips: Array<{ tag: string }>; outcomes: Array<{ kind: string }> }> };
+  ) as {
+    tests: Array<{
+      name: string;
+      chips: Array<{ tag: string }>;
+      outcomes: Array<{ kind: string; error?: { message?: string; stack?: string } }>;
+    }>;
+  };
   const rowsFor = (name: string) => machineReport.tests.filter((t) => t.name === name);
+  const productsErrors = rowsFor('Products - Electronics Filter')
+    .flatMap((t) => t.outcomes)
+    .filter((o) => o.kind === 'error');
   expect(
-    rowsFor('Products - Electronics Filter').some((t) => t.outcomes.some((o) => o.kind === 'error')),
+    productsErrors.length,
     'the sabotaged products selector must produce an engine error',
-  ).toBe(true);
+  ).toBeGreaterThan(0);
   expect(
     rowsFor('Homepage').some((t) => t.chips.some((c) => c.tag === 'visual change')),
     'the hero padding change must flag Homepage as a visual change',
   ).toBe(true);
+
+  // Both sides run concurrently, so the `[  control   ]` / `[ experiment ]`
+  // column is the only thing naming WHICH side threw. It lands on `err.message`
+  // as the error unwinds, after the stage wrapped it — a wrapper that freezes
+  // its stack at construction silently drops it. Pin both surfaces.
+  const traces = stripAnsi(compareOutput).split('\n').filter((l) => l.startsWith('StageFailureError:'));
+  expect(traces.length, 'the sabotaged selector must print a StageFailureError trace').toBeGreaterThan(0);
+  for (const text of [...traces, ...productsErrors.map((o) => `${o.error?.message}\n${o.error?.stack}`)]) {
+    expect(
+      SIDE_PREFIXES.some((p) => text.includes(p)),
+      `must name the failing side: ${text}`,
+    ).toBe(true);
+  }
 
   // Snapshots receive ONLY the deep-click report screenshots below. The results
   // tree itself (report JSON/HTML, raw captures with per-run ids in their

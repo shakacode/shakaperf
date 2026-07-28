@@ -54,7 +54,7 @@ import { screencastRecorder } from './screencast-recorder';
  * Filename for the live-browser screenshot the worker captures on failure.
  * Lives directly under `options.resultsFolder` — which the stage points at
  * the same dir as `ctx.artifacts.dir`, so the parent can reference it via
- * `ctx.artifacts.relativeHref(FAILURE_SCREENSHOT_FILENAME)` without
+ * `ctx.artifacts.pathFor(FAILURE_SCREENSHOT_FILENAME)` without
  * copying.
  */
 export const FAILURE_SCREENSHOT_FILENAME = 'failure-screenshot.png';

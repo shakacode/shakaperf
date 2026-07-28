@@ -31,6 +31,9 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
   readonly name: StageName = 'accessibility';
   readonly label = 'Accessibility';
   readonly description = 'Run accessibility checks on the target URL.';
+  readonly selfContainedReportStrip = {
+    rawArtifactHref: true,
+  };
   private readonly config: AccessibilityStageConfig;
 
   constructor(config: AccessibilityStageConfig) {
@@ -70,34 +73,4 @@ export class AccessibilityStage implements Stage<AccessibilityResult> {
       })),
     };
   }
-
-  stripMeasurementForLightweight(measurement: AccessibilityResult): AccessibilityResult {
-    const { rawArtifactHref: _raw, ...rest } = measurement;
-    return stripScreenshotField(rest, 'imageDataUri');
-  }
-
-  stripMeasurementForFull(measurement: AccessibilityResult): AccessibilityResult {
-    return stripScreenshotField(measurement, 'imageHref');
-  }
-}
-
-function stripScreenshotField(
-  measurement: AccessibilityResult,
-  keep: 'imageDataUri' | 'imageHref',
-): AccessibilityResult {
-  return {
-    ...measurement,
-    scans: measurement.scans.map((scan) => {
-      if (!scan.screenshot) return scan;
-      const { imageDataUri, imageHref, ...rest } = scan.screenshot;
-      const kept = keep === 'imageDataUri' ? imageDataUri : imageHref;
-      return {
-        ...scan,
-        screenshot: {
-          ...rest,
-          ...(kept ? { [keep]: kept } : {}),
-        },
-      };
-    }),
-  };
 }

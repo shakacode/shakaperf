@@ -23,7 +23,9 @@ function mkTest(name: string): AbTestDefinition {
   return { name } as AbTestDefinition;
 }
 
-function mkAuditEntry(ids: readonly string[]): ChipStageResult<AuditResult> {
+function mkAuditEntry(
+  coverageStatementIdsHref?: string,
+): ChipStageResult<AuditResult> {
   return {
     stage: 'audit',
     viewport: {
@@ -33,21 +35,36 @@ function mkAuditEntry(ids: readonly string[]): ChipStageResult<AuditResult> {
       formFactor: 'desktop',
       deviceScaleFactor: 1,
     },
-    measurement: { metrics: [], coverageStatementIds: ids },
+    measurement: {
+      metrics: [],
+      ...(coverageStatementIdsHref ? { coverageStatementIdsHref } : {}),
+    },
     outcome: { kind: 'ok' } as ChipStageResult<AuditResult>['outcome'],
   };
 }
 
 describe('coverageSignaturesByTest', () => {
+  const artifacts = new Map<string, unknown>();
+  const readJsonArtifact = <T>(href: string): T | undefined =>
+    artifacts.get(href) as T | undefined;
+
+  beforeEach(() => artifacts.clear());
+
+  function writeIds(name: string, ids: readonly string[]): string {
+    const href = `${name}.json`;
+    artifacts.set(href, ids);
+    return href;
+  }
+
   it('unions statement ids across all viewports of a test', () => {
     const test = mkTest('a');
     const signatures = coverageSignaturesByTest([{
       test,
       auditResults: [
-        mkAuditEntry(['f.js:1', 'f.js:2']),
-        mkAuditEntry(['f.js:2', 'g.js:5']),
+        mkAuditEntry(writeIds('desktop', ['f.js:1', 'f.js:2'])),
+        mkAuditEntry(writeIds('mobile', ['f.js:2', 'g.js:5'])),
       ],
-    }]);
+    }], readJsonArtifact);
     expect([...signatures.get(test)!].sort()).toEqual(['f.js:1', 'f.js:2', 'g.js:5']);
   });
 
@@ -55,9 +72,9 @@ describe('coverageSignaturesByTest', () => {
     const a = mkTest('a');
     const b = mkTest('b');
     const signatures = coverageSignaturesByTest([
-      { test: a, auditResults: [mkAuditEntry(['x:1'])] },
-      { test: b, auditResults: [mkAuditEntry([])] },
-    ]);
+      { test: a, auditResults: [mkAuditEntry(writeIds('a', ['x:1']))] },
+      { test: b, auditResults: [mkAuditEntry()] },
+    ], readJsonArtifact);
     expect(signatures.has(a)).toBe(true);
     expect(signatures.has(b)).toBe(false);
   });

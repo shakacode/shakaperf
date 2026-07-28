@@ -399,20 +399,37 @@ describe('isStructuralA11yRule', () => {
 });
 
 describe('a11yCropFrames structural filter (integration)', () => {
+  // The accessibility stage writes its screenshot as an artifact FILE under the
+  // results dir and records the results-relative path in `imageHref`, so these
+  // fixtures use that exact shape. A crop pass that only understood an inline
+  // data: URI silently emptied every accessibility card once the stage switched
+  // to artifact paths - reading the file back is what this locks.
+  let results: string;
+  beforeEach(() => {
+    results = fs.mkdtempSync(path.join(os.tmpdir(), 'a11y-crop-'));
+  });
+  afterEach(() => {
+    fs.rmSync(results, { recursive: true, force: true });
+  });
+
   // A real (tiny) screenshot so sharp can decode and extract a crop window.
-  async function shotDataUri(width: number, height: number): Promise<string> {
+  async function shotArtifact(width: number, height: number): Promise<string> {
     const buf = await sharp({ create: { width, height, channels: 3, background: { r: 210, g: 210, b: 210 } } })
       .png()
       .toBuffer();
-    return `data:image/png;base64,${buf.toString('base64')}`;
+    const rel = path.posix.join('page-phone-abc123', 'artifacts', 'accessibility-screenshot.png');
+    const abs = path.join(results, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, buf);
+    return rel;
   }
 
-  function scanWith(ruleId: string, impact: AccessibilityViolation['impact'], imageDataUri: string): AccessibilityScan {
+  function scanWith(ruleId: string, impact: AccessibilityViolation['impact'], imageHref: string): AccessibilityScan {
     return {
       viewportLabel: 'phone',
       viewport: { label: 'phone', width: 400, height: 800, formFactor: 'mobile', deviceScaleFactor: 1 } as AccessibilityScan['viewport'],
       url: 'https://example.com/',
-      screenshot: { width: 400, height: 800, imageHref: 'a11y.png', imageDataUri },
+      screenshot: { width: 400, height: 800, imageHref },
       violations: [
         {
           ruleId,
@@ -430,29 +447,37 @@ describe('a11yCropFrames structural filter (integration)', () => {
   // (heading-order) must NOT render a screenshot crop. The classifier being
   // correct is not enough - this locks the actual filter wiring + banding.
   it('produces no crop for a structural-only scan (heading-order)', async () => {
-    const frames = await a11yCropFrames(scanWith('heading-order', 'moderate', await shotDataUri(400, 800)));
+    const frames = await a11yCropFrames(results, scanWith('heading-order', 'moderate', await shotArtifact(400, 800)));
     expect(frames).toEqual([]);
   }, 20000);
 
   it('still produces a crop for a spatial violation (color-contrast)', async () => {
-    const frames = await a11yCropFrames(scanWith('color-contrast', 'serious', await shotDataUri(400, 800)));
+    const frames = await a11yCropFrames(results, scanWith('color-contrast', 'serious', await shotArtifact(400, 800)));
     expect(frames.length).toBeGreaterThanOrEqual(1);
+  }, 20000);
+
+  it('yields no crop when the screenshot artifact is missing or escapes the results dir', async () => {
+    await shotArtifact(400, 800); // the real artifact exists; these hrefs still must not resolve
+    for (const href of ['page-phone-abc123/artifacts/gone.png', '../outside.png']) {
+      const frames = await a11yCropFrames(results, scanWith('color-contrast', 'serious', href));
+      expect({ href, frames }).toEqual({ href, frames: [] });
+    }
   }, 20000);
 
   it('client report blank-skip keeps the color-contrast band and skips a flat non-contrast band', async () => {
     // Both bands are flat grey; color-contrast is exempt from blank-skip, so it (not the link-name fallback) survives.
-    const img = await shotDataUri(400, 800);
+    const img = await shotArtifact(400, 800);
     const scan: AccessibilityScan = {
       viewportLabel: 'phone',
       viewport: { label: 'phone', width: 400, height: 800, formFactor: 'mobile', deviceScaleFactor: 1 } as AccessibilityScan['viewport'],
       url: 'https://example.com/',
-      screenshot: { width: 400, height: 800, imageHref: 'a11y.png', imageDataUri: img },
+      screenshot: { width: 400, height: 800, imageHref: img },
       violations: [
         { ruleId: 'link-name', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#a'], html: '<a>', failureSummary: '', bounds: { x: 20, y: 80, width: 200, height: 24 } }] },
         { ruleId: 'color-contrast', impact: 'serious', help: 'h', helpUrl: '', tags: [], nodes: [{ target: ['#b'], html: '<b>', failureSummary: '', bounds: { x: 20, y: 420, width: 200, height: 24 } }] },
       ],
     };
-    const frames = await a11yCropFrames(scan, true); // current report (dropEngulfing=true)
+    const frames = await a11yCropFrames(results, scan, true); // current report (dropEngulfing=true)
     expect(frames).toHaveLength(1);
     expect(frames[0].summary).toMatch(/contrast/i);
   }, 20000);

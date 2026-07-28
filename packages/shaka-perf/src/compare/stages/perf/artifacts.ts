@@ -17,8 +17,8 @@ import type {
 } from '../perf';
 import type { RegressionThresholdStat } from '../../../bench/cli/command-config/tb-config';
 import { classifyPracticalDelta } from '../../../bench/cli/compare/regression-thresholds';
-import { compressSvgEmbeddedImages } from '../../../pipeline/artifact-compression';
-import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
+import type { ArtifactScope } from '../../../pipeline/artifact-store';
+import { safeReaddir } from '../../../pipeline/path-utils';
 
 function classifyGroup(heading: string | undefined): PerfMetricGroup {
   return heading && heading.toLowerCase().includes('diagnostic') ? 'diagnostics' : 'vitals';
@@ -100,8 +100,7 @@ interface BenchCompareJsonResults {
 }
 
 export interface ReadPerfArtifactOptions {
-  perTestDir: string;
-  reportRoot: string;
+  artifacts: ArtifactScope;
   regressionThreshold: number;
   regressionThresholdStat?: RegressionThresholdStat;
   saveArtifacts: boolean;
@@ -112,8 +111,8 @@ export interface ReadPerfArtifactOptions {
  * Reads bench's per-test `<slug>/report.json` (shape: ICompareJSONResults)
  * plus sibling artifact files, and emits one PerfArtifact.
  */
-export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<PerfArtifact> {
-  const { perTestDir, reportRoot } = opts;
+export function readPerfArtifact(opts: ReadPerfArtifactOptions): PerfArtifact {
+  const perTestDir = opts.artifacts.dir;
   const artifact: PerfArtifact = {};
 
   const metrics: PerfMetric[] = [];
@@ -186,14 +185,12 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
 
   const files = safeReaddir(perTestDir);
 
-  // All artifact HTMLs (Lighthouse profiles, bench-report, per-stat diffs,
-  // timeline) are referenced by relative path. The full-report.html sits
-  // alongside the artifact directories so links resolve natively; the
-  // lightweight report.html hides these links via <FullReportOnly/>, so a
-  // shared-elsewhere copy never surfaces dead relative URLs.
+  // Every renderable artifact is exposed as a report-relative path. The full
+  // report uses it directly; self-contained report generation replaces it
+  // with a data URI.
   const relativeHref = (name: string | null): string | null => {
     if (!name) return null;
-    return toPosixRelative(reportRoot, path.join(perTestDir, name));
+    return opts.artifacts.pathFor(name);
   };
 
   const controlLh = files.find((f) => f === 'control_lighthouse_report.html') ?? null;
@@ -213,25 +210,14 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
   // performance_profile.summary, …) so each gets its own button in the report.
   const diffFiles = files.filter((f) => f.endsWith('.diff.html')).sort();
 
-  // Only inline the preview SVG when the test actually moved off
+  // Only expose the preview SVG when the test actually moved off
   // `no_difference` — a flat row doesn't need the glanceable triplet grid,
-  // and the file can be multi-hundred-KB (10 embedded JPEGs + a PNG diff),
-  // so skipping it saves ~1 MB × (no-diff tests count) in the report.
+  // and the file can be multi-hundred-KB.
   // Artifact-only runs have no statistical verdict but still benefit from
   // the timeline at a glance, since that is the whole point of the pass.
   const shouldIncludePreview = hasSignificantDifference || !opts.statisticalAnalysis;
-  const timelinePreviewSvg = shouldIncludePreview && timelinePreview
-    ? (async () => {
-        try {
-          const raw = fs.readFileSync(path.join(perTestDir, timelinePreview), 'utf8');
-          return await compressSvgEmbeddedImages(raw, {
-            imageQuality: 40,
-            maxWidthPx: 160,
-          });
-        } catch {
-          return null;
-        }
-      })()
+  const timelinePreviewHref = shouldIncludePreview
+    ? relativeHref(timelinePreview)
     : null;
 
   const controlLighthouseHref = relativeHref(controlLh);
@@ -245,8 +231,7 @@ export async function readPerfArtifact(opts: ReadPerfArtifactOptions): Promise<P
   if (experimentLighthouseHref) artifact.experimentLighthouseHref = experimentLighthouseHref;
   const timelineHref = relativeHref(timeline);
   if (timelineHref) artifact.timelineHref = timelineHref;
-  const previewSvg = await timelinePreviewSvg;
-  if (previewSvg) artifact.timelinePreviewSvg = previewSvg;
+  if (timelinePreviewHref) artifact.timelinePreviewHref = timelinePreviewHref;
   if (benchReportHref) artifact.benchReportHref = benchReportHref;
   if (diffHrefs.length > 0) artifact.diffHrefs = diffHrefs;
   return artifact;

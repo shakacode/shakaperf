@@ -27,13 +27,8 @@ export interface AnnotatedFrame {
   imgW: number;
   imgH: number;
   /**
-   * Inline thumbnail data URI for the frame image. Populated for the
-   * lightweight, self-contained report and rendered with React annotations.
-   */
-  imageDataUri?: string;
-  /**
-   * Relative path to the on-disk full-size frame image. Populated for the
-   * full local report so the browser lazy-loads frames from disk.
+   * Report-relative path to the persisted frame image. Self-contained report
+   * generation replaces it with a data URI in the same field.
    */
   imageHref?: string;
   annotations?: FrameAnnotation[];
@@ -131,6 +126,9 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   readonly name: StageName = 'build_annotated_timeline';
   readonly label = 'Annotated Timeline';
   readonly description = 'Prepare Lighthouse trace screenshots for the annotated timeline.';
+  readonly selfContainedReportStrip = {
+    screencastHref: true,
+  };
 
   applies(_test: AbTestDefinition, _viewport: Viewport, priorOutcomes: ReadonlyMap<StageName, Outcome>): boolean {
     return priorOutcomes.get('audit')?.kind === 'ok';
@@ -149,44 +147,4 @@ export class BuildAnnotatedTimelineStage implements Stage<BuildAnnotatedTimeline
   }
 
   machineReadableSummary = emptyMachineReadableSummary;
-
-  // Lightweight ships the inline thumbnail data URI for each frame; the
-  // relative-path hrefs and the screencast video aren't usable when the
-  // self-contained report file is shared on its own.
-  stripMeasurementForLightweight(measurement: BuildAnnotatedTimelineResult): BuildAnnotatedTimelineResult {
-    const out: BuildAnnotatedTimelineResult = measurement.frames
-      ? { frames: measurement.frames.map((f) => stripFrame(f, 'imageDataUri')) }
-      : {};
-    if (measurement.debugAllFrames != null) {
-      out.debugAllFrames = measurement.debugAllFrames.map((f) => stripFrame(f, 'imageDataUri'));
-    }
-    return out;
-  }
-
-  // Full mode lazy-loads each frame via `<img src={imageHref}>` from disk —
-  // the inline thumbnail data URIs are unused weight here.
-  stripMeasurementForFull(measurement: BuildAnnotatedTimelineResult): BuildAnnotatedTimelineResult {
-    const out: BuildAnnotatedTimelineResult = measurement.frames
-      ? { frames: measurement.frames.map((f) => stripFrame(f, 'imageHref')) }
-      : {};
-    if (measurement.screencastHref != null) out.screencastHref = measurement.screencastHref;
-    if (measurement.debugAllFrames != null) {
-      out.debugAllFrames = measurement.debugAllFrames.map((f) => stripFrame(f, 'imageHref'));
-    }
-    return out;
-  }
-}
-
-function stripFrame(f: AnnotatedFrame, keep: 'imageDataUri' | 'imageHref'): AnnotatedFrame {
-  const src = f[keep];
-  return {
-    timeMs: f.timeMs,
-    imgW: f.imgW,
-    imgH: f.imgH,
-    ...(src != null ? { [keep]: src } : {}),
-    ...(f.annotations != null ? { annotations: f.annotations } : {}),
-    ...(f.arrows != null ? { arrows: f.arrows } : {}),
-    ...(f.prevDiff != null ? { prevDiff: f.prevDiff } : {}),
-    ...(f.keptByDedupe != null ? { keptByDedupe: f.keptByDedupe } : {}),
-  };
 }

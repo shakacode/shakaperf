@@ -388,8 +388,9 @@ export async function captureClientReportScreenshots(opts: CaptureOptions): Prom
   // jump-links (data-jump="<tab>") that switch to that tab's panel. The 02 loop
   // above left us on the last tab, so clicking the first tile navigates to its
   // target — assert that panel is revealed and its tab becomes selected. (The
-  // old 03-tile-jump.png was pixel-identical to 01-overview: the first tile
-  // targets the default Performance panel, which the overview already shows.)
+  // old 03-tile-jump.png was dropped as a near-duplicate of a panel shot 01/02
+  // already covers.) The tiles are ordered worst-problem-first, so which panel
+  // this lands on is data-dependent — and it is the panel 04/05 below shoot.
   const firstTile = page.locator('.cr-tile[data-jump]').first();
   if ((await firstTile.count()) > 0) {
     const target = await firstTile.getAttribute('data-jump');

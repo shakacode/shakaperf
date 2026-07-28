@@ -980,7 +980,7 @@ function CompareScreenshotPanel({
   viewportLabel: string;
 }) {
   const sideScan = side === 'control' ? result.control : result.experiment;
-  const source = sideScan.screenshot?.imageHref ?? sideScan.screenshot?.imageDataUri;
+  const source = sideScan.screenshot?.imageHref;
   const hotspots = useMemo(
     () => compareHotspotsForSide(findings, side),
     [findings, side],

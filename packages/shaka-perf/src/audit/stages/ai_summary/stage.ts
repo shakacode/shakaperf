@@ -38,6 +38,7 @@ export class AiSummaryStage implements Stage<AiSummaryResult> {
   readonly name: StageName = 'ai_summary';
   readonly label = 'Summary';
   readonly description = 'Summarise the audit results in plain language via an AI model.';
+  readonly selfContainedReportStrip = {};
   // Runs last, renders first.
   readonly renderingPriority = 100;
 

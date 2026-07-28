@@ -10,13 +10,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PNG } from 'pngjs';
-import { embedAsBase64 } from 'shaka-shared';
 import type { Viewport } from '../../../config';
 import type { VisregArtifact } from '../visreg';
-import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
-
-const VISREG_AVIF_QUALITY = 55;
-const VISREG_IMAGE_SCALE = 0.75;
+import type { ArtifactScope } from '../../../pipeline/artifact-store';
 
 type DiffBbox = NonNullable<VisregArtifact['diffBbox']>;
 
@@ -151,8 +147,8 @@ function coerceNumber(value: unknown): number {
 }
 
 export interface ReadVisregArtifactsOptions {
-  /** The unit's artifacts dir, as handed to the stage by the framework. */
-  artifactsDir: string;
+  /** The unit's artifact scope, as handed to the stage by the framework. */
+  artifacts: ArtifactScope;
   viewport: Viewport;
 }
 
@@ -162,9 +158,8 @@ export interface VisregArtifactSet {
 
 /**
  * Harvests one unit's engine output into the stage's measurement: reads the
- * report.json the engine wrote into `artifactsDir`, and turns each captured
- * pair into a `VisregArtifact` with its images inlined as data URIs (the report
- * shell is single-file HTML and can't resolve sibling files).
+ * report.json the engine wrote into the artifact scope, and turns each captured
+ * pair into a `VisregArtifact` containing report-relative image paths.
  *
  * The reader half of a pair whose writer is the visreg engine's report command.
  * Both take this dir from the framework (`ctx.artifacts.dir`) rather than
@@ -174,8 +169,9 @@ export interface VisregArtifactSet {
  * (the shard didn't run it, or visreg filtered it out). Throws if one exists
  * but is unreadable, so a corrupt run can't masquerade as an unmeasured one.
  */
-export async function readVisregArtifacts(opts: ReadVisregArtifactsOptions): Promise<VisregArtifactSet | null> {
-  const { artifactsDir: perTestDir, viewport } = opts;
+export function readVisregArtifacts(opts: ReadVisregArtifactsOptions): VisregArtifactSet | null {
+  const { artifacts: artifactScope, viewport } = opts;
+  const perTestDir = artifactScope.dir;
   const reportPath = path.join(perTestDir, 'report.json');
   if (!fs.existsSync(reportPath)) return null;
 
@@ -214,11 +210,11 @@ export async function readVisregArtifacts(opts: ReadVisregArtifactsOptions): Pro
         )
       : null;
 
-    const [controlImage, experimentImage, diffImage] = await Promise.all([
-      toDataUri(perTestDir, pair.reference),
-      toDataUri(perTestDir, pair.test),
-      diffSource ? toDataUri(perTestDir, diffSource) : Promise.resolve(null),
-    ]);
+    const controlImage = toArtifactHref(artifactScope, pair.reference);
+    const experimentImage = toArtifactHref(artifactScope, pair.test);
+    const diffImage = diffSource
+      ? toArtifactHref(artifactScope, diffSource)
+      : null;
 
     artifacts.push({
       selector: pair.selector ?? 'document',
@@ -242,16 +238,11 @@ function resolveUnderBase(baseDir: string, relOrAbs: string): string {
   return path.isAbsolute(relOrAbs) ? relOrAbs : path.join(baseDir, relOrAbs);
 }
 
-async function toDataUri(baseDir: string, relOrAbs?: string | null): Promise<string> {
+function toArtifactHref(
+  artifacts: ArtifactScope,
+  relOrAbs?: string | null,
+): string {
   if (!relOrAbs) return '';
-  const absPath = resolveUnderBase(baseDir, relOrAbs);
-  const ext = path.extname(absPath).toLowerCase();
-  if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
-    return bufferToAvifDataUri(
-      fs.readFileSync(absPath),
-      VISREG_AVIF_QUALITY,
-      VISREG_IMAGE_SCALE,
-    );
-  }
-  return embedAsBase64(absPath) ?? '';
+  const absPath = resolveUnderBase(artifacts.dir, relOrAbs);
+  return artifacts.pathFor(path.relative(artifacts.dir, absPath));
 }

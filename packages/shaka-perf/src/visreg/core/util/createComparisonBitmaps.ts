@@ -16,7 +16,7 @@ import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
 import createLogger from './logger';
-import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, CompareConfig, Browser } from '../types';
+import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, CompareConfig, Browser, VisregRunRuntime } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -94,7 +94,10 @@ function saveViewportIndexes (viewport: Viewport, index: number) {
   return Object.assign({}, viewport, { vIndex: index });
 }
 
-function delegateCompareScenarios (config: DecoratedCompareConfig) {
+function delegateCompareScenarios (
+  config: DecoratedCompareConfig,
+  runtime: VisregRunRuntime,
+) {
   const scenarioViews: ScenarioView[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
@@ -123,7 +126,7 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
       }
 
       pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
-        return runCompareScenario.playwright(view);
+        return runCompareScenario.playwright(view, runtime);
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
         disposePlaywrightBrowser(browser).then(function () { resolve(out); });
       }, function (e: unknown) {
@@ -147,10 +150,13 @@ function flatMapTestPairs (rawTestPairs: CompareResult[]) {
   });
 }
 
-export default async function createComparisonBitmaps (config: RuntimeConfig) {
+export default async function createComparisonBitmaps (
+  config: RuntimeConfig,
+  runtime: VisregRunRuntime,
+) {
   const decoratedConfig = await decorateConfigForTestFile(config);
 
-  const rawTestPairs = await delegateCompareScenarios(decoratedConfig);
+  const rawTestPairs = await delegateCompareScenarios(decoratedConfig, runtime);
   const result = {
     compareConfig: {
       testPairs: flatMapTestPairs(rawTestPairs as CompareResult[])

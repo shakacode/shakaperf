@@ -9,7 +9,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 
-export type ReportMode = 'full' | 'lightweight';
+export type ReportMode = 'full' | 'self-contained';
 
 const ReportModeContext = createContext<ReportMode>('full');
 

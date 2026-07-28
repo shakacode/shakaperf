@@ -9,6 +9,7 @@
 
 import { attachLatestTestAnnotation } from '../../test-annotation';
 import { StageFailureError } from '../../stage/stage-failure';
+import type { ArtifactPath } from '../artifact-store';
 import { WorkerPool, type PoolWorkerState, type WorkerTaskProgressSink } from '../worker-pool';
 
 type TestWorkerState = PoolWorkerState & {
@@ -117,7 +118,9 @@ describe('WorkerPool worker state ownership', () => {
       '    at Object._testFn (ab-tests/cart.abtest.ts:54:16)',
     ].join('\n');
     attachLatestTestAnnotation(cause, 'adding Curly Fries');
-    const err = new StageFailureError(cause, { media: 'data:image/png;base64,abc' });
+    const err = new StageFailureError(cause, {
+      media: 'cart-phone/artifacts/failure.png' as ArtifactPath,
+    });
 
     try {
       await expect(pool.submit(async () => {

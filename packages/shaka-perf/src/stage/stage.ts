@@ -17,6 +17,9 @@ import type { WorkerPool } from '../pipeline/worker-pool';
 
 export type StageCategory = TestType;
 export type StageName = string;
+export interface SelfContainedReportStrip {
+  readonly [field: string]: boolean | SelfContainedReportStrip;
+}
 export type JsonValue =
   | null
   | boolean
@@ -144,20 +147,12 @@ export interface Stage<M = unknown> {
   run(ctx: TestContext, pool: WorkerPool): Promise<M>;
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue;
   /**
-   * Return a copy of `measurement` shaped for the **lightweight** report —
-   * the shareable, self-contained `self-contained-performance-report.html`.
-   * Drops relative-path hrefs that would 404 when the file is shipped alone,
-   * keeps inlined data URIs (thumbs, AVIF rasterizations) the renderer
-   * shows.
+   * Fields explicitly set to `true` are removed from self-contained report
+   * measurements. `false` retains a field, and nested dictionaries apply the
+   * same rule recursively. The report pipeline centrally embeds every artifact
+   * path that remains after this projection.
    */
-  stripMeasurementForLightweight?(measurement: M): M;
-  /**
-   * Return a copy of `measurement` shaped for the **full** local-dev report.
-   * Drops inlined data URIs that the renderer doesn't use in full mode
-   * (full uses the lazy-loaded relative-path siblings instead) — keeps the
-   * report HTML small.
-   */
-  stripMeasurementForFull?(measurement: M): M;
+  readonly selfContainedReportStrip: SelfContainedReportStrip;
 }
 
 // DO NOT DELETE: this will be populated later.

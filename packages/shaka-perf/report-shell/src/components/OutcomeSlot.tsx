@@ -20,10 +20,13 @@ function OutcomeError({ outcome }: { outcome: ReportOutcome }) {
   const message = outcome.error?.message?.trim();
   const displayMessage = message && message.length > 0 ? message : 'stage failed';
   const stack = (outcome.error?.stack ?? '').replace(STACK_HEAD_PATTERN, '');
-  // One media field that's either a video or an image — the MIME type in the
-  // data URI tells us which element to render.
+  // Full reports carry paths while self-contained reports carry data URIs.
+  // Detect the media kind from either representation.
   const media = outcome.failure?.media;
-  const isVideo = media?.startsWith('data:video');
+  const isVideo = media != null && (
+    /^data:video\//i.test(media) ||
+    /\.(?:mp4|webm|og[gv])(?:[?#]|$)/i.test(media)
+  );
   // Headline with the last test annotation reached (e.g. "Fill email") so the
   // banner names the in-flight test step; fall back to the stage name for
   // failures with no annotation (non-test stages, or a throw before the first

@@ -176,7 +176,7 @@ describe('accessibility report UI filters', () => {
       React.createElement(AccessibilityDialog, {
         filterOptions: collectConfiguredFilterOptions([result]),
         scan: result.scans[0],
-        source: result.scans[0].screenshot!.imageDataUri ?? '',
+        source: result.scans[0].screenshot!.imageHref ?? '',
       }),
     );
 
@@ -276,7 +276,7 @@ function reportData(accessibility: AccessibilityResult): ReportData {
       cwd: '/tmp/shaka-perf',
       errors: [],
       reportOnly: false,
-      reportMode: 'lightweight',
+      reportMode: 'self-contained',
       pipelineConfig: {
         parallelism: 1,
         accessibility: {
@@ -338,7 +338,7 @@ function accessibilityResult({
       screenshot: {
         width: 800,
         height: 600,
-        imageDataUri: 'data:image/svg+xml;base64,PHN2Zy8+',
+        imageHref: 'data:image/svg+xml;base64,PHN2Zy8+',
       },
       violations,
     }],

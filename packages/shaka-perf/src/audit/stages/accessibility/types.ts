@@ -29,7 +29,6 @@ export interface AccessibilityScreenshot {
   width: number;
   height: number;
   imageHref?: string;
-  imageDataUri?: string;
 }
 
 export interface AccessibilityViolation {

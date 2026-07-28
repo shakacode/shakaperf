@@ -14,8 +14,16 @@ version being released and updates the "Current version" line at the bottom.
 
 ## Unreleased
 
-### `shared.viewports` renamed to `shared.viewportDefinitions`; `shared.viewports` is now the default label list
+### Existing result artifacts must be removed
 
+The persisted stage-measurement and report-artifact schema has changed.
+Artifacts written by older shaka-perf versions are not supported by
+`--report-only` or `--keep-old-results`. Remove the existing `test-results`
+directory (or your configured results directory) and run the measurements
+again before generating reports with this version.
+
+
+### `shared.viewports` renamed to `shared.viewportDefinitions`; `shared.viewports` is now the default label list
 `shared.viewports` used to hold the full viewport **definitions**. It is now
 `shared.viewportDefinitions`, and the freed-up `shared.viewports` becomes a list
 of **labels** — the viewports every category runs at unless it sets its own.

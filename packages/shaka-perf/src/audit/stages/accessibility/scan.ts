@@ -7,15 +7,14 @@
  * License in LICENSE.md.
  */
 
-import * as path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import type { AxeResults } from 'axe-core';
 import sharp from 'sharp';
 import type { Browser, BrowserContext, Page } from 'playwright-core';
 import { setUpContextForNavigation } from '../../../pre-navigation';
-import { bufferToAvifDataUri } from '../../../pipeline/artifact-compression';
-import { toPosixRelative } from '../../../pipeline/path-utils';
+import type { ArtifactPath } from '../../../pipeline/artifact-store';
 import type { TestContext } from '../../../stage/stage';
+import { captureFailureScreenshot } from '../../../stage/stage-failure';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
 import { waitForBotWallToClear } from '../../real-chrome';
@@ -32,7 +31,7 @@ import type {
 type PageGotoOptions = NonNullable<Parameters<Page['goto']>[1]>;
 
 interface AccessibilityFailureArtifacts {
-  media?: string;
+  media?: ArtifactPath;
   screenshot?: AccessibilityScreenshot;
 }
 
@@ -67,7 +66,6 @@ export interface AccessibilityPageScanOptions {
   url: string;
   isControl: boolean;
   screenshotFilename: string;
-  inlineEncodeWarningPrefix: string;
   captureFailure?: (input: {
     page: Page;
   }) => Promise<AccessibilityFailureArtifacts>;
@@ -128,7 +126,6 @@ export async function scanAccessibilityPage(
       ctx,
       page,
       options.screenshotFilename,
-      options.inlineEncodeWarningPrefix,
     );
     const probe = await page
       .evaluate(() => ({ title: document.title, html: document.documentElement.outerHTML.slice(0, 4000) }))
@@ -155,32 +152,20 @@ export async function captureAccessibilityScreenshot(
   ctx: TestContext,
   page: Page,
   filename: string,
-  warningPrefix: string,
 ): Promise<AccessibilityScreenshot> {
   const shot = await page.screenshot({
     type: 'png',
     fullPage: true,
     scale: 'css',
   });
-  await ctx.artifacts.writeFile(filename, shot);
+  const imageHref = await ctx.artifacts.writeFile(filename, shot);
   const meta = await sharp(shot).metadata();
   const width = meta.width ?? ctx.viewport.width;
   const height = meta.height ?? ctx.viewport.height;
-  const scale = Math.min(1, 960 / Math.max(1, width));
-  let imageDataUri: string | undefined;
-  try {
-    imageDataUri = await bufferToAvifDataUri(shot, 45, scale);
-  } catch (err) {
-    console.warn(
-      `${warningPrefix} inline screenshot encode failed (${width}x${height}px); ` +
-        `card will render without crop frames: ${(err as Error).message}`,
-    );
-  }
   return {
     width,
     height,
-    imageHref: relativeArtifactHref(ctx, filename),
-    imageDataUri,
+    imageHref,
   };
 }
 
@@ -188,10 +173,9 @@ export async function captureAccessibilityScreenshotIfPossible(
   ctx: TestContext,
   page: Page,
   filename: string,
-  warningPrefix: string,
 ): Promise<AccessibilityScreenshot | undefined> {
   try {
-    return await captureAccessibilityScreenshot(ctx, page, filename, warningPrefix);
+    return await captureAccessibilityScreenshot(ctx, page, filename);
   } catch {
     return undefined;
   }
@@ -201,14 +185,12 @@ export async function captureAccessibilityFailureMedia(
   ctx: TestContext,
   page: Page,
   filename: string,
-): Promise<string | undefined> {
-  try {
-    const shot = await page.screenshot({ type: 'png', fullPage: true });
-    await ctx.artifacts.writeFile(filename, shot);
-    return ctx.artifacts.inlineDataUri(filename);
-  } catch {
-    return undefined;
-  }
+): Promise<ArtifactPath | undefined> {
+  return captureFailureScreenshot(
+    ctx.artifacts,
+    () => page.screenshot({ type: 'png', fullPage: true }),
+    filename,
+  );
 }
 
 async function navigateAccessibilityPage(
@@ -290,8 +272,4 @@ async function attachNodeBounds(page: Page, violations: AccessibilityViolation[]
       if (bounds) node.bounds = bounds;
     }
   }
-}
-
-function relativeArtifactHref(ctx: TestContext, filename: string): string {
-  return toPosixRelative(ctx.runtime.resultsRoot, path.join(ctx.artifacts.dir, filename));
 }

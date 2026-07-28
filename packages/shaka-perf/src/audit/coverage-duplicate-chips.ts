@@ -13,7 +13,7 @@ import type { ChipDescriptor } from '../pipeline/report';
 import type { AuditResult } from './stages/audit';
 
 /**
- * Union of every viewport's `coverageStatementIds` for each test in `perTest`.
+ * Union of every viewport's coverage statement-id artifact for each test.
  * A test contributes a signature only if at least one of its audit measurements
  * had a non-empty coverage list — tests missing coverage (uninstrumented
  * bundles, drain failures) are absent from the returned map and therefore
@@ -21,18 +21,34 @@ import type { AuditResult } from './stages/audit';
  */
 export function coverageSignaturesByTest(
   perTest: readonly { test: AbTestDefinition; auditResults: ChipStageResults<AuditResult> }[],
+  readJsonArtifact?: <T>(artifactPath: string) => T | undefined,
 ): Map<AbTestDefinition, ReadonlySet<string>> {
   const out = new Map<AbTestDefinition, ReadonlySet<string>>();
   for (const { test, auditResults } of perTest) {
     const ids = new Set<string>();
     for (const entry of auditResults) {
-      for (const id of entry.measurement.coverageStatementIds ?? []) {
+      for (const id of readCoverageStatementIds(
+        entry.measurement.coverageStatementIdsHref,
+        readJsonArtifact,
+      )) {
         ids.add(id);
       }
     }
     if (ids.size > 0) out.set(test, ids);
   }
   return out;
+}
+
+function readCoverageStatementIds(
+  href: string | undefined,
+  readJsonArtifact:
+    (<T>(artifactPath: string) => T | undefined) | undefined,
+): readonly string[] {
+  if (!href || !readJsonArtifact) return [];
+  const value = readJsonArtifact<unknown>(href);
+  return Array.isArray(value)
+    ? value.filter((id): id is string => typeof id === 'string')
+    : [];
 }
 
 /**

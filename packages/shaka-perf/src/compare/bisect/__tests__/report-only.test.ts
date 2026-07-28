@@ -152,7 +152,7 @@ function savedReport(): BisectReportData {
       errors: [],
       reportOnly: false,
       pipelineConfig: {},
-      reportMode: 'lightweight',
+      reportMode: 'self-contained',
     },
     tests: [{
       id: 'homepage',
