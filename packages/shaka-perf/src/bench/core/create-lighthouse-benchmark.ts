@@ -347,7 +347,9 @@ export default function createLighthouseBenchmark(
             type: 'setup',
             // setupBrowser drops --headless when headed. `--headed` wins;
             // otherwise the resolved playwrightOptions.headless applies.
-            headed: options.headed === true || playwrightOptions.headless === false,
+            headed: options.realChrome?.headless !== true && (
+              options.headed === true || playwrightOptions.headless === false
+            ),
             // Extra chrome flags from the resolved playwrightOptions.args.
             chromeArgs: playwrightOptions.args ?? [],
             // Lax certs unless explicitly false — same default as every engine.
