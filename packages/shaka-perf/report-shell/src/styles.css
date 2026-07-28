@@ -127,9 +127,10 @@ input {
 
 /* ───────── layout ───────── */
 
+/* No max-width: the card grid is a greedy `auto-fill` flow (see `.grid`), so
+   every extra pixel of an ultra-wide monitor buys another column of tests
+   instead of letterboxing the report. */
 .app {
-  max-width: 1920px;
-  margin: 0 auto;
   padding: 32px 40px 80px;
 }
 
