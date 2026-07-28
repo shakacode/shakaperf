@@ -133,8 +133,9 @@ gone, both visreg sides screenshotting the same login wall and passing.
 
 `PHONE_TALL_VIEWPORT`, `TABLET_TALL_VIEWPORT`, and `DESKTOP_TALL_VIEWPORT`
 (shaka-shared) are now 3000px tall instead of 9000px — 9000px captures were
-extremely slow and heavy for little extra signal. If you use them in
-`shared.viewports`:
+extremely slow and heavy for little extra signal. If you include them in
+`shared.viewportDefinitions` and select their labels in `shared.viewports` or a
+category's `viewports`:
 
 - **Visreg baselines change dimensions**, and a dimension mismatch now always
   fails the compare — expect every `*-tall` unit to fail once; re-baseline.
@@ -299,7 +300,7 @@ still want them. (`tags` / `includeRules` already replaced; unchanged.)
 
 **Per-test `viewports`** used to be an allow-list *intersected* with the
 category's file list; it now replaces it, resolving labels against
-`shared.viewports`:
+`shared.viewportDefinitions`:
 
 - **Labels outside the file list now run.** With `visreg.viewports: ['desktop','phone']`
   in the file, a test's `config.visreg.viewports: ['tablet']` used to run at
@@ -310,8 +311,8 @@ category's file list; it now replaces it, resolving labels against
   `testTypes`; for all configured viewports, delete the per-test `viewports`
   key.
 - **An unknown label now throws** instead of being silently dropped:
-  `Unknown viewport label 'phome' — defined in shared.viewports: …`. Fix the
-  label or add it to `shared.viewports`.
+  `Unknown viewport label 'phome' — defined in shared.viewportDefinitions: …`.
+  Fix the label or add its full definition to `shared.viewportDefinitions`.
 
 ### `engineOptions` → `shared.playwrightOptions`, required, respected by every stage
 
