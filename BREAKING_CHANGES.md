@@ -12,7 +12,7 @@ version being released and updates the "Current version" line at the bottom.
 
 ---
 
-## Unreleased
+## 0.2.0 — 2026-07-28
 
 ### Existing result artifacts must be removed
 
@@ -411,5 +411,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.1.6, shaka-shared 0.1.6 (breaking changes under
+Current version: shaka-perf 0.2.0, shaka-shared 0.2.0 (breaking changes under
 **Unreleased** ship in the next release).
