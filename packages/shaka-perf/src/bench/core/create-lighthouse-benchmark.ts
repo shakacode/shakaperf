@@ -27,21 +27,30 @@ const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
 let realChromeHeadlessWarningEmitted = false;
 
 export function lighthouseWorkerEnvironment(
-  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'playwrightOptions' | 'realChrome' | 'viewport'>,
+  options: Pick<LighthouseBenchmarkOptions, 'realChrome' | 'viewport'>,
   samplingMode: SamplingMode,
 ): NodeJS.ProcessEnv {
   const forceRealChromeHeadless = options.realChrome?.headless === true;
   return {
     SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
     SHAKA_PERF_SAMPLING_MODE: samplingMode,
-    SHAKA_PERF_HEADED:
-      !forceRealChromeHeadless && (
-        options.realChrome || options.headed || options.playwrightOptions?.headless === false
-      ) ? '1' : '0',
     SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
     SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
     SHAKA_PERF_VIEWPORT_FORM_FACTOR:
       options.realChrome ? options.viewport.formFactor : '',
+  };
+}
+
+export function lighthouseWorkerSetupOptions(
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'playwrightOptions' | 'realChrome'>,
+): { headed: boolean; chromeArgs: string[]; ignoreHTTPSErrors: boolean } {
+  const playwrightOptions = options.playwrightOptions ?? {};
+  return {
+    headed: options.realChrome
+      ? options.realChrome.headless !== true
+      : (options.headed === true || playwrightOptions.headless === false),
+    chromeArgs: playwrightOptions.args ?? [],
+    ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
   };
 }
 
@@ -345,15 +354,7 @@ export default function createLighthouseBenchmark(
         try {
           if (!safeSend(worker, {
             type: 'setup',
-            // setupBrowser drops --headless when headed. `--headed` wins;
-            // otherwise the resolved playwrightOptions.headless applies.
-            headed: options.realChrome?.headless !== true && (
-              options.headed === true || playwrightOptions.headless === false
-            ),
-            // Extra chrome flags from the resolved playwrightOptions.args.
-            chromeArgs: playwrightOptions.args ?? [],
-            // Lax certs unless explicitly false — same default as every engine.
-            ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
+            ...lighthouseWorkerSetupOptions(options),
           })) {
             throw new Error('lighthouse worker died before setup could be sent');
           }

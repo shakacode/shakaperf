@@ -13,6 +13,7 @@ import {
 } from '../lighthouse-config';
 import createLighthouseBenchmark, {
   lighthouseWorkerEnvironment,
+  lighthouseWorkerSetupOptions,
   resetRealChromeHeadlessWarning,
   warnIfRealChromeHeadlessOverridesHeaded,
 } from '../create-lighthouse-benchmark';
@@ -48,13 +49,11 @@ afterEach(() => {
 describe('lighthouseWorkerEnvironment', () => {
   it('forces an audit real-Chrome worker headless and forwards its viewport identity', () => {
     expect(lighthouseWorkerEnvironment({
-      headed: true,
       realChrome: { headless: true },
       viewport: desktopViewport,
     }, 'sequential')).toEqual({
       SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: '4',
       SHAKA_PERF_SAMPLING_MODE: 'sequential',
-      SHAKA_PERF_HEADED: '0',
       SHAKAPERF_REAL_CHROME: '1',
       SHAKAPERF_REAL_CHROME_HEADLESS: '1',
       SHAKA_PERF_VIEWPORT_FORM_FACTOR: 'desktop',
@@ -98,10 +97,8 @@ describe('lighthouseWorkerEnvironment', () => {
     process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
 
     expect(lighthouseWorkerEnvironment({
-      headed: true,
       viewport: desktopViewport,
     }, 'simultaneous')).toEqual(expect.objectContaining({
-      SHAKA_PERF_HEADED: '1',
       SHAKAPERF_REAL_CHROME: '0',
     }));
   });
@@ -111,7 +108,6 @@ describe('lighthouseWorkerEnvironment', () => {
       realChrome: { headless: false },
       viewport: desktopViewport,
     }, 'simultaneous')).toEqual(expect.objectContaining({
-      SHAKA_PERF_HEADED: '1',
       SHAKAPERF_REAL_CHROME: '1',
       SHAKAPERF_REAL_CHROME_HEADLESS: '0',
     }));
@@ -142,6 +138,21 @@ describe('lighthouseWorkerEnvironment', () => {
     expect(lhConfigForViewport(desktopViewport, {
       emulatedUserAgent: 'custom-user-agent',
     }, 'native').emulatedUserAgent).toBe('custom-user-agent');
+  });
+});
+
+describe('lighthouseWorkerSetupOptions', () => {
+  it('defaults real Chrome to headed and lets its explicit headless mode override all other inputs', () => {
+    expect(lighthouseWorkerSetupOptions({
+      headed: false,
+      playwrightOptions: {},
+      realChrome: { headless: false },
+    })).toMatchObject({ headed: true });
+    expect(lighthouseWorkerSetupOptions({
+      headed: true,
+      playwrightOptions: { headless: false },
+      realChrome: { headless: true },
+    })).toMatchObject({ headed: false });
   });
 });
 

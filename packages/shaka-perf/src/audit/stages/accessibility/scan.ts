@@ -100,7 +100,7 @@ export async function scanAccessibilityPage(
       ...realChromeContextOptions(
         ctx.viewport.formFactor,
         browser.version?.(),
-        effectivePwOptions.browser === 'chromium',
+        config.playwrightOptions.browser === 'chromium',
       ),
     });
     // Clear state + run beforeNavigate on the context before the page is created.
