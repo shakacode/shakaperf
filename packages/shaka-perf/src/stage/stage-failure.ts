@@ -49,9 +49,22 @@ export class StageFailureError extends Error {
     super(message, { cause });
     this.name = 'StageFailureError';
     this.failureArtifacts = artifacts;
-    if (cause instanceof Error && cause.stack) {
-      this.stack = `${this.name}: ${firstLine(message)}\nCaused by: ${cause.stack}`;
-    }
+    const { stack: causeStack } = cause instanceof Error ? cause : {};
+    if (!causeStack) return;
+    // Composed on every read off the CURRENT message, the way V8 formats a plain
+    // Error's stack lazily. `withLogPrefix` prepends its `[ experiment ]` column
+    // to `err.message` as the error unwinds — after this wrapper is built, since
+    // visreg captures the failure screenshot inside the per-side scope — so a
+    // string frozen here would drop the failing side from every printed trace.
+    // `Caused by:` stays as captured: Playwright materialised it before then.
+    // The setter keeps assignment working for the IPC boundaries that rebuild
+    // stacks; without it a get-only property throws.
+    let assigned: string | undefined;
+    Object.defineProperty(this, 'stack', {
+      configurable: true,
+      get: () => assigned ?? `${this.name}: ${firstLine(this.message)}\nCaused by: ${causeStack}`,
+      set: (value: string) => { assigned = value; },
+    });
   }
 }
 

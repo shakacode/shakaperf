@@ -98,6 +98,33 @@ describe('StageFailureError', () => {
     expect(err.stack).not.toContain('at StageFailureError');
   });
 
+  it('reflects a message prepended after construction in the stack header', () => {
+    // `withLogPrefix` prepends the side column as the error unwinds, after
+    // visreg's captureFailure built this wrapper — a frozen stack dropped it.
+    const cause = new Error('page.click: Timeout 60000ms exceeded.');
+    cause.stack = [
+      'page.click: Timeout 60000ms exceeded.',
+      '    at Object._testFn (ab-tests/products.abtest.ts:44:14)',
+    ].join('\n');
+
+    const err = new StageFailureError(cause, { media: FAILURE_MEDIA_PATH });
+    err.message = `[ experiment ] ${err.message}`;
+
+    expect(err.stack).toBe(
+      `StageFailureError: [ experiment ] page.click: Timeout 60000ms exceeded.\nCaused by: ${cause.stack}`,
+    );
+  });
+
+  it('keeps an explicitly assigned stack', () => {
+    const cause = new Error('boom');
+    cause.stack = 'Error: boom\n    at somewhere (file.ts:1:1)';
+
+    const err = new StageFailureError(cause, { media: FAILURE_MEDIA_PATH });
+    err.stack = 'Rewritten by the IPC boundary';
+
+    expect(err.stack).toBe('Rewritten by the IPC boundary');
+  });
+
   it('finds the latest test annotation attached by the framework through wrapper errors', () => {
     const cause = new Error('Failed while waiting for the validation result');
     cause.stack = [
