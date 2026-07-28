@@ -24,6 +24,7 @@ import type { LogFrame, WorkerLogFrame } from './worker-log';
 // stdio slots 0-3 are stdin, stdout, stderr, and Node's IPC channel.
 // Slot 4 is reserved for the worker-to-worker barrier synchronization fd.
 const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
+let realChromeHeadlessWarningEmitted = false;
 
 export function lighthouseWorkerEnvironment(
   options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome' | 'viewport'>,
@@ -36,7 +37,9 @@ export function lighthouseWorkerEnvironment(
     SHAKA_PERF_HEADED:
       !forceRealChromeHeadless && (options.realChrome || options.headed) ? '1' : '0',
     SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
-    SHAKA_PERF_VIEWPORT_FORM_FACTOR: options.viewport.formFactor,
+    SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
+    SHAKA_PERF_VIEWPORT_FORM_FACTOR:
+      options.realChrome ? options.viewport.formFactor : '',
   };
 }
 
@@ -50,8 +53,6 @@ export function warnIfRealChromeHeadlessOverridesHeaded(
     );
   }
 }
-
-let realChromeHeadlessWarningEmitted = false;
 
 interface ResultMessage {
   type: 'result';
@@ -298,7 +299,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     sampleState,
-    workerReuseKey: options.viewport.formFactor,
+    workerReuseKey: options.realChrome ? options.viewport.formFactor : undefined,
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
       warnIfRealChromeHeadlessOverridesHeaded(options);

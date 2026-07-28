@@ -25,8 +25,8 @@ export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
   // Default headed: interactive Turnstile challenges can still reject headless
   // Chrome. Some managed challenges auto-pass real Chrome headless, so
   // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path. This also
-  // makes --headed unnecessary, leaving the separate Lighthouse browser
-  // headless and avoiding its headed screencast attachment issue.
+  // makes --headed unnecessary and keeps every audit browser headless, which
+  // also avoids the Lighthouse browser's headed screencast attachment issue.
   const headless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
   return {
     ...opts,
@@ -52,8 +52,7 @@ export function realChromeUsesNativeIdentity(formFactor: string): boolean {
 }
 
 // Give mobile contexts, plus non-mobile contexts in explicit headless mode, a
-// UA string without the HeadlessChrome token. Client hints remain browser-owned.
-// Mobile contexts also need touch.
+// UA string without the HeadlessChrome token. Mobile contexts also need touch.
 export function realChromeContextOptions(
   formFactor: string,
   browserVersion?: string,
@@ -66,6 +65,7 @@ export function realChromeContextOptions(
     realChromeUserAgentForFormFactor(formFactor),
     browserVersion,
   );
+  if (!userAgent) return undefined;
   return mobile ? { userAgent, hasTouch: true } : { userAgent };
 }
 

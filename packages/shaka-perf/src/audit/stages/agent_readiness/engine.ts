@@ -163,13 +163,13 @@ export function rawFetchUserAgentFor(
   usesChromium = true,
 ): string {
   if (!usesChromium || !isRealChromeEnabled()) return RAW_FETCH_UA;
-  if (realChromeUsesNativeIdentity(formFactor) && nativeUserAgent) {
-    return nativeUserAgent;
+  if (realChromeUsesNativeIdentity(formFactor)) {
+    return nativeUserAgent ?? RAW_FETCH_UA;
   }
   return matchRealChromeUserAgentVersion(
     realChromeUserAgentForFormFactor(formFactor),
     browserVersion,
-  );
+  ) ?? RAW_FETCH_UA;
 }
 
 function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
@@ -182,7 +182,6 @@ function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
       const page = await context.newPage();
       return await page.evaluate(() => navigator.userAgent);
     } catch (err) {
-      nativeUserAgentByBrowser.delete(browser);
       console.warn(
         chalk.yellow(
           `[shaka-perf agent] could not read native browser user agent: ${

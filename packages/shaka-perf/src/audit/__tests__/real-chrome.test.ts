@@ -22,11 +22,11 @@ import {
 
 describe('matchRealChromeUserAgentVersion', () => {
   it.each([undefined, '', 'abc', '150'])(
-    'preserves the fallback user agent for an unusable browser version (%p)',
+    'returns undefined for an unusable browser version (%p)',
     (browserVersion) => {
       expect(
         matchRealChromeUserAgentVersion(REAL_CHROME_DESKTOP_USER_AGENT, browserVersion),
-      ).toBe(REAL_CHROME_DESKTOP_USER_AGENT);
+      ).toBeUndefined();
     },
   );
 
@@ -95,6 +95,12 @@ describe('realChromeContextOptions', () => {
     delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
     expect(realChromeContextOptions('desktop', '150.0.0.0')).toBeUndefined();
     expect(realChromeUsesNativeIdentity('desktop')).toBe(true);
+  });
+
+  it('keeps the native identity when the browser version is unavailable', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+    expect(realChromeContextOptions('mobile')).toBeUndefined();
   });
 });
 

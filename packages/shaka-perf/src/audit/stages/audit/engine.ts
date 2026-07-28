@@ -32,6 +32,7 @@ import { StageFailureError, findFailureMediaName } from '../../../stage/stage-fa
 import { safeReaddir, toPosixRelative } from '../../../pipeline/path-utils';
 import { classifyMetric, levelForMetric } from './metrics';
 import type { AuditMetric, AuditResult, AuditStageConfig } from './stage';
+import { realChromeUsesNativeIdentity } from '../../real-chrome';
 
 const execFileAsync = promisify(execFile);
 
@@ -100,7 +101,7 @@ export async function runAuditStage(
   const lhConfig = lhConfigForViewport(
     ctx.viewport,
     config.lighthouseConfig,
-    realChrome,
+    realChrome && !realChromeUsesNativeIdentity(ctx.viewport.formFactor),
   );
   // Perf-only run: the a11y score comes from measureAccessibilityScore, not this
   // gather. Always keep `performance`; a user override may add categories, not drop it.
@@ -163,7 +164,12 @@ export async function runAuditStage(
   }
 
   // Persist the a11y score to <id>/accessibility-client.json (report reads phone).
-  const accessibilityScore = await measureAccessibilityScore(ctx.experimentURL, ctx.viewport);
+  // The standalone score runner cannot share the interactive challenge state
+  // from the real-Chrome audit browsers. Omitting the score is safer than
+  // publishing a score for a bot-wall interstitial.
+  const accessibilityScore = realChrome
+    ? null
+    : await measureAccessibilityScore(ctx.experimentURL, ctx.viewport);
   if (accessibilityScore != null) {
     writeAccessibilityClientScore(
       path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId),

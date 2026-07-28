@@ -64,6 +64,15 @@ describe('rawFetchUserAgentFor', () => {
       'native-browser-user-agent',
     )).toBe('native-browser-user-agent');
   });
+
+  it('falls back to the neutral identity when a native or versioned identity is unavailable', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
+    expect(rawFetchUserAgentFor('desktop')).toContain('Chrome/124.0.0.0');
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+    expect(rawFetchUserAgentFor('mobile')).toContain('Chrome/124.0.0.0');
+  });
 });
 
 describe('fetchRawHtml', () => {

@@ -311,7 +311,7 @@ export async function startScreencastOnLighthouseSession(
   // Lighthouse's ProtocolSession; its `on()` callbacks receive the raw CDP
   // event payload directly.
   const onScreencastFrame = (...args: unknown[]) => {
-    if (stopped) return;
+    if (stopped) return; // Stop freezes the frame set; late events are ignored.
     const evt = args[0] as { data: string; sessionId: number; metadata: { timestamp?: number } };
     if (typeof evt?.metadata?.timestamp === 'number') {
       frames.push({
@@ -356,7 +356,7 @@ export async function startScreencastOnLighthouseSession(
    * reports "Not attached to an active page". Giving up on that first error
    * kills the stream at the navigation, leaving the timeline with only the blank
    * pre-navigation frames (the whole load goes uncaptured). Retry across the
-   * swap window instead — the new renderer attaches within a few hundred ms.
+   * swap window instead - the new renderer attaches within a few hundred ms.
    */
   const startWithRetry = async (
     label: string,

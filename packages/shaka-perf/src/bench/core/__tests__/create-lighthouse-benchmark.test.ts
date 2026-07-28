@@ -51,11 +51,12 @@ describe('lighthouseWorkerEnvironment', () => {
       SHAKA_PERF_SAMPLING_MODE: 'sequential',
       SHAKA_PERF_HEADED: '0',
       SHAKAPERF_REAL_CHROME: '1',
+      SHAKAPERF_REAL_CHROME_HEADLESS: '1',
       SHAKA_PERF_VIEWPORT_FORM_FACTOR: 'desktop',
     });
   });
 
-  it('binds sampler reuse to the viewport form factor in the default mode', () => {
+  it('binds sampler reuse to the viewport form factor only in real-Chrome mode', () => {
     const benchmark = createLighthouseBenchmark(
       'experiment',
       { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
@@ -71,8 +72,20 @@ describe('lighthouseWorkerEnvironment', () => {
       workerReuseKey: 'mobile',
     }]);
 
-    expect(benchmark.workerReuseKey).toBe('desktop');
+    expect(benchmark.workerReuseKey).toBeUndefined();
     expect(desktopKey).not.toBe(mobileKey);
+
+    const realChromeBenchmark = createLighthouseBenchmark(
+      'experiment',
+      { file: null, name: 'example' } as Parameters<typeof createLighthouseBenchmark>[1],
+      {
+        viewport: desktopViewport,
+        lhConfig: {},
+        targetUrl: 'https://example.com',
+        realChrome: { headless: false },
+      },
+    );
+    expect(realChromeBenchmark.workerReuseKey).toBe('desktop');
   });
 
   it('does not enable audit real-Chrome mode from ambient state', () => {
@@ -95,6 +108,7 @@ describe('lighthouseWorkerEnvironment', () => {
     }, 'simultaneous')).toEqual(expect.objectContaining({
       SHAKA_PERF_HEADED: '1',
       SHAKAPERF_REAL_CHROME: '1',
+      SHAKAPERF_REAL_CHROME_HEADLESS: '0',
     }));
   });
 

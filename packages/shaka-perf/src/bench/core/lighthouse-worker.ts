@@ -57,14 +57,17 @@ import {
 } from '../../browser-user-agent';
 
 const execFileAsync = promisify(execFile);
+const CHROME_VERSION_PROBE_TIMEOUT_MS = 5000;
+const CHROME_VERSION_PROBE_MAX_BUFFER_BYTES = 64 * 1024;
 
 async function installedChromeVersion(): Promise<string | undefined> {
+  if (process.platform === 'win32') return undefined;
   try {
     const chromePath = getChromePath();
     const { stdout } = await execFileAsync(chromePath, ['--version'], {
-      timeout: 5000,
+      timeout: CHROME_VERSION_PROBE_TIMEOUT_MS,
       killSignal: 'SIGKILL',
-      maxBuffer: 64 * 1024,
+      maxBuffer: CHROME_VERSION_PROBE_MAX_BUFFER_BYTES,
     });
     const version = chromeVersionFromProductString(stdout);
     if (!version) {
@@ -139,19 +142,22 @@ class LighthouseWorkerSampler {
     if (process.env.SHAKA_PERF_HEADED !== '1') {
       chromeFlags.unshift('--headless');
     }
-    // Pin pre-emulation traffic to the viewport identity used by the
-    // Playwright stages. Lighthouse applies its own CDP override before the
-    // measured navigation; lhConfigForViewport pins that path via
-    // lhConfig.emulatedUserAgent.
+    // Pin pre-emulation traffic when the matching Playwright context also uses
+    // a viewport identity. Lighthouse applies its own CDP override before the
+    // measured navigation.
     if (process.env.SHAKAPERF_REAL_CHROME === '1') {
-      const browserVersion = await installedChromeVersion();
       const formFactor = process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR;
       chromeFlags.push('--disable-blink-features=AutomationControlled');
-      if (browserVersion && formFactor) {
-        chromeFlags.push(`--user-agent=${matchRealChromeUserAgentVersion(
+      const useViewportUserAgent =
+        formFactor === 'mobile'
+        || process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
+      if (formFactor && useViewportUserAgent) {
+        const browserVersion = await installedChromeVersion();
+        const userAgent = matchRealChromeUserAgentVersion(
           realChromeUserAgentForFormFactor(formFactor),
           browserVersion,
-        )}`);
+        );
+        if (userAgent) chromeFlags.push(`--user-agent=${userAgent}`);
       }
     }
 

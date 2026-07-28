@@ -26,9 +26,9 @@ export function realChromeUserAgentForFormFactor(formFactor: string): string {
 export function matchRealChromeUserAgentVersion(
   userAgent: string,
   browserVersion?: string,
-): string {
+): string | undefined {
   const major = browserVersion ? /^(\d+)\./.exec(browserVersion)?.[1] : undefined;
-  return major ? userAgent.replace(/Chrome\/\d+\./, `Chrome/${major}.`) : userAgent;
+  return major ? userAgent.replace(/Chrome\/\d+\./, `Chrome/${major}.`) : undefined;
 }
 
 export function chromeVersionFromProductString(product: string): string | undefined {
