@@ -1605,6 +1605,9 @@ input {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  /* Each card is as tall as its own shot. Stretching them to the row height
+     would only add dead space above the image. */
+  align-items: start;
 }
 
 .artifact-card {
@@ -1672,7 +1675,6 @@ input {
   grid-template-columns: 1fr;
   gap: 1px;
   background: var(--border);
-  margin-top: auto;
 }
 
 .artifact-card__media-button {
@@ -1683,14 +1685,9 @@ input {
   cursor: zoom-in;
   display: block;
   font: inherit;
-  margin-top: auto;
   padding: 0;
   text-align: inherit;
   width: 100%;
-}
-
-.artifact-card__media-button .artifact-card__media {
-  margin-top: 0;
 }
 
 .artifact-card__media--triplet {
@@ -1699,33 +1696,24 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* Non-crop triplet thumbnails: let each shot fill its narrow column instead of
-   the 150px cap used for stacked single cards. (The crop variant drives its own
-   width via the zoom math below, so leave it untouched.) */
-.artifact-card__media--triplet:not(.artifact-card__media--crop) .artifact-card__image img {
-  max-width: 100%;
-}
-
 .artifact-card__image {
   position: relative;
   background: var(--bg-sunken);
   overflow: hidden;
 }
 
+/* Thumbnails fill their cell edge to edge — no width or height cap, so a card
+   is exactly as big as the shot it shows. (The crop variant overrides `width`
+   below with its zoom math; it relies on nothing here clamping it.) */
 .artifact-card--single .artifact-card__image img,
 .artifact-card--compare .artifact-card__image img {
-  width: auto;
+  width: 100%;
   height: auto;
-  max-width: 150px;
-  max-height: 720px;
-  object-fit: contain;
   display: block;
-  margin: 0 auto;
 }
 
 .artifact-card__media--crop .artifact-card__image {
   aspect-ratio: calc(var(--crop-w) / var(--crop-h));
-  max-height: 720px;
   position: relative;
   overflow: hidden;
 }
