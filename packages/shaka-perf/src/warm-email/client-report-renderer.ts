@@ -545,7 +545,11 @@ function benchmarkScale(gap: CostGap, scale: ClientReportCostBlock['scale']): st
   if (!scale) return '';
   const labelStacked = Math.abs(scale.markerPercent - scale.goodLinePercent) < 12;
   const scaleAxis = gap.scaleAxis;
-  const axisMax = scale.axisMaxDisplay.toFixed(scaleAxis.precision);
+  const preserveWholeFcpAxis =
+    gap.metricLabel === 'First content' && Number.isInteger(scale.axisMaxDisplay);
+  const axisMax = preserveWholeFcpAxis
+    ? String(scale.axisMaxDisplay)
+    : scale.axisMaxDisplay.toFixed(scaleAxis.precision);
   const axisSuffix = scaleAxis.unit === 'seconds' ? 's' : '';
   return `            <div data-benchmark-scale data-benchmark-zone="${esc(gap.zone)}" data-benchmark-axis-max="${esc(axisMax)}"${labelStacked ? ' data-benchmark-label-stack' : ''} style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="${esc(`${gap.metricLabel} ${gap.measuredLabel}; Google's good line ${gap.goodLabel}`)}">
               <span style="position:absolute; top:0; left:${scale.goodLinePercent}%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#2f7d4f; white-space:nowrap">good &middot; ${esc(gap.goodLabel)}</span>

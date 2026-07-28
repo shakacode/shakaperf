@@ -66,18 +66,20 @@ SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url 
 `--headed` across the real-Chrome audit browsers. Performance Lighthouse and
 Playwright apply viewport-matched identities to mobile contexts and non-mobile
 headless contexts; a headed non-mobile context keeps Chrome's native identity.
-Lighthouse normalizes only the Chrome version milestone to the host browser;
-the platform token remains the viewport-matched literal. Playwright derives the
+On the viewport-matched paths, Lighthouse normalizes only the Chrome version
+milestone to the host browser and keeps the literal platform token. On the
+headed non-mobile path it sends no UA override. Playwright derives the
 platform, platform-version, and architecture client hints from its UA override,
 and sets the mobile hint from the context's `isMobile` option. It forces the
 model hint to an empty value; only the brand list remains browser-controlled.
 After each Playwright navigation the engine polls up to ~25s for the challenge
 to clear.
 Sites that admit only a mobile identity can still block the desktop audit row.
-In real-Chrome mode, Lighthouse performance runs use a viewport-matched
-emulated identity unless the project supplies an explicit
-`lighthouseConfig.emulatedUserAgent` override. Baselines recorded without
-real-Chrome mode are unaffected.
+In real-Chrome mode, Lighthouse uses a viewport-matched emulated identity for
+mobile contexts and explicit-headless non-mobile contexts; a headed non-mobile
+context keeps Chrome's native identity. An explicit
+`lighthouseConfig.emulatedUserAgent` override wins in either case. Baselines
+recorded without real-Chrome mode are unaffected.
 The raw agent-readiness fetch uses the same native identity as a headed
 non-mobile real-Chrome context, so its score can differ from default-mode
 results on sites that vary markup by user agent. On that path the audited host
