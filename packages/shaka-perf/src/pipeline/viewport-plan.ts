@@ -29,6 +29,42 @@ export function resolveViewportsForTest(
 }
 
 /**
+ * Every viewport this test has work at across `stages`: the union of each
+ * stage category's per-test-narrowed viewports, skipping categories the test
+ * opted out of via `testTypes`.
+ *
+ * ONE function for both the work plan and the report's row set, because the
+ * two must agree. They didn't: the report used to union every stage's
+ * viewports without the `testRunsForType` check, so a test that opted out of a
+ * category still got rows at that category's viewports. With
+ * `testTypes: ['visreg']` (which `withMandatoryTestTypes` widens to
+ * `['visreg', 'audit']`) and audit narrowed to desktop, accessibility — opted
+ * out, so never run, but resolving to the shared desktop + phone default —
+ * put back a phone row the audit never measured. The opt-out path persists
+ * skip markers at the file-level category viewports and
+ * `persistedOutcomeInScope` keeps skip markers unconditionally, so the row
+ * arrived non-empty and survived into report.json, where the phone-framed
+ * client report rendered it as a "we couldn't measure this page" card.
+ *
+ * A category the test DOES declare still contributes all its viewports, so a
+ * test that narrows visreg to desktop keeps its phone row when perf ran there.
+ */
+export function viewportsForTestAcrossStages(
+  test: AbTestDefinition,
+  stages: readonly Stage[],
+  fileConfig: AbTestsConfig,
+): Viewport[] {
+  const labels = new Map<string, Viewport>();
+  for (const stage of stages) {
+    if (!testRunsForType(test, stage.category)) continue;
+    for (const viewport of resolveViewportsForTest(test, fileConfig, stage.category)) {
+      labels.set(viewport.label, viewport);
+    }
+  }
+  return [...labels.values()];
+}
+
+/**
  * Whether a persisted stage outcome is in scope for this test at this viewport
  * under the CURRENT config. Guards report assembly against stale on-disk
  * outcomes: unit dirs from earlier runs survive on disk, so after a test
