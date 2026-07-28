@@ -20,8 +20,15 @@ const CAROUSEL_PAUSE_CSS = `
 abTest('Carousel Demo - Without stubbing or overriding CSS', {
   startingPath: '/carousel-demo',
   testTypes: ['perf'],
-  options: {
-    viewports: ['phone'],
+  config: {
+    // Per-test viewports are per-category — pin audit too, or it runs this
+    // test at its own default (desktop + phone).
+    perf: { viewports: ['phone'] },
+    audit: { viewports: ['phone'] },
+    // Plain page load — safe to scan for AI legibility (see homepage.abtest.ts).
+    // The two carousel tests below hit this same URL but stub/override the page,
+    // so they stay opted out.
+    agentReadiness: { enabled: true },
   },
 }, async () => {});
 
@@ -29,12 +36,9 @@ abTest('Carousel Demo - Without stubbing or overriding CSS', {
 abTest('Carousel Demo - Pause With Override CSS', {
   startingPath: '/carousel-demo',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    visreg: { viewports: ['desktop'] },
+    audit: { viewports: ['desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for carousel track to be visible');
@@ -50,12 +54,6 @@ abTest('Carousel Demo - Pause With Override CSS', {
 abTest('Carousel Demo - Stub Slider Images', {
   startingPath: '/carousel-demo',
   testTypes: ['visreg'],
-  options: {
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
-  },
 }, async ({ page, annotate }) => {
   annotate('Intercept and stub slider images');
   await interceptImages(page);

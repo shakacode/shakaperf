@@ -27,7 +27,7 @@ const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
 let realChromeHeadlessWarningEmitted = false;
 
 export function lighthouseWorkerEnvironment(
-  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome' | 'viewport'>,
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'playwrightOptions' | 'realChrome' | 'viewport'>,
   samplingMode: SamplingMode,
 ): NodeJS.ProcessEnv {
   const forceRealChromeHeadless = options.realChrome?.headless === true;
@@ -35,7 +35,9 @@ export function lighthouseWorkerEnvironment(
     SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
     SHAKA_PERF_SAMPLING_MODE: samplingMode,
     SHAKA_PERF_HEADED:
-      !forceRealChromeHeadless && (options.realChrome || options.headed) ? '1' : '0',
+      !forceRealChromeHeadless && (
+        options.realChrome || options.headed || options.playwrightOptions?.headless === false
+      ) ? '1' : '0',
     SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
     SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
     SHAKA_PERF_VIEWPORT_FORM_FACTOR:
@@ -311,6 +313,13 @@ export default function createLighthouseBenchmark(
       // surface on the parent terminal. The worker entrypoint reroutes normal
       // console/stdout/stderr output to IPC log frames.
       const workerEnvironment = lighthouseWorkerEnvironment(options, samplingMode);
+      const playwrightOptions = options.playwrightOptions ?? {};
+      if (playwrightOptions.browser && playwrightOptions.browser !== 'chromium') {
+        console.warn(
+          `[lighthouse worker ${group}] playwrightOptions.browser "${playwrightOptions.browser}" ` +
+          'is not supported — Lighthouse is chromium-only; launching Chrome.',
+        );
+      }
       let worker: ChildProcess;
       try {
         worker = fork(workerPath, [], {
@@ -336,6 +345,13 @@ export default function createLighthouseBenchmark(
         try {
           if (!safeSend(worker, {
             type: 'setup',
+            // setupBrowser drops --headless when headed. `--headed` wins;
+            // otherwise the resolved playwrightOptions.headless applies.
+            headed: options.headed === true || playwrightOptions.headless === false,
+            // Extra chrome flags from the resolved playwrightOptions.args.
+            chromeArgs: playwrightOptions.args ?? [],
+            // Lax certs unless explicitly false — same default as every engine.
+            ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
           })) {
             throw new Error('lighthouse worker died before setup could be sent');
           }

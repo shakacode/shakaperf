@@ -9,6 +9,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { registerTsExtensionResolver } from './register-ts-extensions';
 
 export async function loadConfigFile(configPath: string): Promise<Record<string, unknown>> {
   const absolutePath = path.resolve(configPath);
@@ -26,6 +27,8 @@ export async function loadConfigFile(configPath: string): Promise<Record<string,
   let configModule;
 
   if (ext === '.ts') {
+    // Let the config use extensionless / `.js` relative imports (see the hook).
+    registerTsExtensionResolver();
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { tsImport } = require('tsx/esm/api');

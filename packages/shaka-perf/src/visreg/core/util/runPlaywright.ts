@@ -16,43 +16,27 @@ type PlaywrightBrowserType = 'chromium' | 'firefox' | 'webkit';
 export async function createPlaywrightBrowser (config: DecoratedCompareConfig) {
   console.log('Creating Browser');
 
-  let { engineOptions: sanitizedEngineOptions } = JSON.parse(JSON.stringify(config));
-  let { browser: browserChoice, headless } = sanitizedEngineOptions;
+  const { playwrightOptions: sanitizedPlaywrightOptions } = JSON.parse(JSON.stringify(config));
+  let { browser: browserChoice } = sanitizedPlaywrightOptions;
+  const { headless } = sanitizedPlaywrightOptions;
 
   if (!browserChoice) {
     console.warn(chalk.yellow('No Playwright browser specified, assuming Chromium.'));
     browserChoice = 'chromium';
   }
 
-  if (typeof headless === 'string' && headless !== 'new') {
-    console.warn(chalk.yellow(`The headless mode, "${headless}", may not be supported by Playwright.`));
-  }
-
-  // Error when using unknown `browserChoice`
+  // Fail fast on an unknown `browserChoice` — the bridge config is raw JSON
+  // and per-test playwrightOptions overrides merge without zod re-validation,
+  // so an unknown browser can reach the engine; returning undefined would only
+  // crash later with an unrelated TypeError.
   if (!(playwright[browserChoice as PlaywrightBrowserType])) {
-    console.error(chalk.red(`Unsupported Playwright browser "${browserChoice}"`));
-    return;
-  }
-
-  // If headless is a string (e.g. 'new'), suppress Playwright's built-in --headless flag
-  // via ignoreDefaultArgs and pass the custom --headless=<value> flag instead.
-  // This allows forward-compatible headless modes that Playwright doesn't natively support yet.
-  if (typeof headless !== 'undefined' && typeof headless !== 'boolean') {
-    sanitizedEngineOptions = {
-      ...sanitizedEngineOptions,
-      ignoreDefaultArgs: sanitizedEngineOptions.ignoreDefaultArgs ? [...sanitizedEngineOptions.ignoredDefaultArgs, '--headless'] : ['--headless']
-    };
-    sanitizedEngineOptions.args.push(`--headless=${headless}`);
+    throw new Error(`Unsupported Playwright browser "${browserChoice}" — use chromium, firefox, or webkit.`);
   }
 
   const playwrightArgs = Object.assign(
     {},
-    sanitizedEngineOptions,
-    {
-      headless: config.debugWindow
-        ? false
-        : typeof headless === 'boolean' ? headless : typeof headless === 'string' ? headless === 'new' ? true : headless : true
-    }
+    sanitizedPlaywrightOptions,
+    { headless: typeof headless === 'boolean' ? headless : true }
   );
   return await playwright[browserChoice as PlaywrightBrowserType].launch(playwrightArgs);
 };

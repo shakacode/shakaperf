@@ -11,8 +11,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import {
-  loadConfigFile,
-  findConfigFile as sharedFindConfigFile,
   findAbTestsConfig,
   loadAbTestsConfig,
 } from '../config-loader';
@@ -23,8 +21,6 @@ import {
   type TwinServersConfigInput,
 } from './types';
 
-const LEGACY_CONFIG_FILENAMES = ['twin-servers.config.ts', 'twin-servers.config.js'];
-
 // At runtime __dirname is dist/twin-servers/, so go up two levels to package root
 const DEFAULT_COMPOSE_FILE = path.resolve(__dirname, '..', '..', 'templates', 'docker-compose.yml');
 
@@ -33,7 +29,7 @@ export function defineConfig(config: TwinServersConfigInput): TwinServersConfigI
 }
 
 export function findConfigFile(cwd?: string): string | null {
-  return findAbTestsConfig(cwd) ?? sharedFindConfigFile(LEGACY_CONFIG_FILENAMES, cwd);
+  return findAbTestsConfig(cwd);
 }
 
 function parseTwinServersConfig(config: unknown): TwinServersConfig {
@@ -47,18 +43,18 @@ function parseTwinServersConfig(config: unknown): TwinServersConfig {
 }
 
 export async function loadConfig(configPath: string): Promise<TwinServersConfig> {
-  const basename = path.basename(configPath);
-  if (basename.startsWith('abtests.config.')) {
-    const raw = await loadAbTestsConfig(configPath);
-    const slice = raw.twinServers;
-    if (!slice) {
-      throw new Error(
-        `${configPath} has no \`twinServers\` section. Add one or use a legacy twin-servers.config.ts.`,
-      );
-    }
-    return parseTwinServersConfig(slice);
+  if (!path.basename(configPath).startsWith('abtests.config.')) {
+    throw new Error(
+      `${configPath} is not an abtests.config file — twin-servers settings live in ` +
+      'the `twinServers` section of abtests.config.ts (see BREAKING_CHANGES.md).',
+    );
   }
-  return parseTwinServersConfig(await loadConfigFile(configPath));
+  const raw = await loadAbTestsConfig(configPath);
+  const slice = raw.twinServers;
+  if (!slice) {
+    throw new Error(`${configPath} has no \`twinServers\` section — add one.`);
+  }
+  return parseTwinServersConfig(slice);
 }
 
 function expandTilde(filePath: string): string {

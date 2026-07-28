@@ -24,6 +24,5 @@ export type {
   WaitForNetworkSettleOptions,
   WaitForFontsReadyOptions,
 } from 'shaka-shared';
-export { clickAndHoverHelper } from './clickAndHoverHelper';
 export { interceptImages } from './interceptImages';
 export { overrideCSS } from './overrideCSS';

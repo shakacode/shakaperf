@@ -12,11 +12,11 @@ import * as path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { AbTestDefinition } from 'shaka-shared';
 import { loadTests } from '../../config-loader';
-import { parseAbTestsConfig, viewportsByStageCategory, type AbTestsConfig } from '../../config';
+import { buildAbTestsConfig, viewportsByStageCategory, type AbTestsConfig } from '../../config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../../config-loader';
 import { runPipeline } from '../../pipeline/runner';
 import type { TestResult } from '../../pipeline/report';
-import { withAbTestsConfigPath } from '../../before-navigate';
+import { withAbTestsConfigPath } from '../../effective-config';
 import {
   comparePipelineConfigFromAbTests,
   createComparePipeline,
@@ -228,7 +228,7 @@ export interface RunBisectOptions {
 
 export interface BisectCliRuntimeDependencies {
   loadConfig?: typeof loadAbTestsConfig;
-  parseConfig?: typeof parseAbTestsConfig;
+  parseConfig?: typeof buildAbTestsConfig;
   resolveTwinServers?: typeof resolveConfig;
   loadFrozenTests?: typeof loadTests;
   run?: typeof runBisect;
@@ -254,7 +254,7 @@ export async function runCompareBisectFromCli(
 
   return withAbTestsConfigPath(configPath, async () => {
     const raw = await (runtime.loadConfig ?? loadAbTestsConfig)(configPath);
-    const config = (runtime.parseConfig ?? parseAbTestsConfig)(raw);
+    const config = (runtime.parseConfig ?? buildAbTestsConfig)(raw);
     if (cliOptions.reportOnly) {
       if (goodRef || badRef) {
         throw new Error('compare bisect --report-only does not accept good-ref or bad-ref');
@@ -1233,7 +1233,7 @@ function createDefaultDependencies(options: {
       controlURL: options.controlURL,
       experimentURL: options.experimentURL,
       viewports: viewportsByStageCategory(options.config),
-    }),
+      }),
     writeSession: (session) => writeSessionAtomic(path.join(options.resultsDirectory, 'session.json'), session),
     writeReport: (session, badRefTests) => {
       const generatedAt = new Date().toISOString();
@@ -1289,6 +1289,7 @@ async function runCandidateComparisons(options: {
   const tests = filterFrozenTests(options.frozenTests, options.cwd, options.tests);
   const result = await runPipeline(pipeline, {
     cwd: options.cwd,
+    config: options.config,
     tests,
     controlURL: options.controlURL,
     experimentURL: options.experimentURL,
@@ -1298,7 +1299,6 @@ async function runCandidateComparisons(options: {
     retries: options.config.shared.retries,
     retryDelay: options.config.shared.retryDelay,
     timeoutMs: options.config.shared.timeoutMs,
-    viewports: viewportsByStageCategory(options.config),
   });
   return {
     testResults: result.testResults,

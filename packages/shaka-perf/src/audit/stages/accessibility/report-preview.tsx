@@ -43,7 +43,7 @@ export function ScreenshotPreview({
 }) {
   const filterState = useAccessibilityFilterState();
   const screenshot = scan.screenshot;
-  const source = screenshot?.imageHref ?? screenshot?.imageDataUri;
+  const source = screenshot?.imageHref;
   if (!screenshot || !source) return null;
   const visibleScan = filterState ? scanWithVisibleViolations(scan, filterState.selection) : scan;
   const hotspots = localizedHotspots(visibleScan);

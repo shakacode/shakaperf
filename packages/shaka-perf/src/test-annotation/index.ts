@@ -22,15 +22,27 @@ export const MAX_ANNOTATION_LENGTH = 50;
 export function runWithTestAnnotationContext<T>(
   body: () => Promise<T>,
 ): Promise<T> {
-  const run = async (): Promise<T> => {
-    try {
-      return await body();
-    } catch (err: unknown) {
-      throw attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
-    }
-  };
-  if (annotationStorage.getStore()) return run();
-  return annotationStorage.run({}, run);
+  if (annotationStorage.getStore()) return runWithAttachedAnnotation(body);
+  return annotationStorage.run({}, () => runWithAttachedAnnotation(body));
+}
+
+/**
+ * Run in a new annotation scope even when the caller already has one.
+ */
+export function runWithFreshTestAnnotationContext<T>(
+  body: () => Promise<T>,
+): Promise<T> {
+  return annotationStorage.run({}, body);
+}
+
+async function runWithAttachedAnnotation<T>(
+  body: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await body();
+  } catch (err: unknown) {
+    throw attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
+  }
 }
 
 export function createTestAnnotate(

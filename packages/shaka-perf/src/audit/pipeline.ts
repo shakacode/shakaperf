@@ -45,15 +45,8 @@ export const auditPipelineMetadata = {
 export interface AuditPipelineConfig {
   readonly parallelism: number;
   readonly lighthouseConfig?: PerfLighthouseConfig;
-  /**
-   * Pre-dedupe hard cap on raw screencast frames for the annotated timeline.
-   * Defaults to 700 (see DEFAULT_LIMIT_VIDEO_FRAMES_COUNT). A long/slow page can
-   * emit thousands of frames; deduping them all can blow the per-task timeout,
-   * so the raw stream is evenly downsampled to this cap first.
-   */
-  readonly limitVideoFramesCount?: number;
-  readonly accessibility?: AccessibilityStageConfig;
-  readonly agentReadiness?: AgentReadinessStageConfig;
+  readonly accessibility: AccessibilityStageConfig;
+  readonly agentReadiness: AgentReadinessStageConfig;
 }
 
 export function createAuditPipeline(input: AuditPipelineConfig) {
@@ -74,12 +67,13 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     }));
     pipeline.runStage(workerPool, new AccessibilityStage(input.accessibility));
     // A second lens beside accessibility: how legible the page is to AI agents /
-    // answer engines. Runs under the `audit` category so a plain `shaka-perf
-    // audit` produces the data; the client report renders the "Agent Ready" tab.
+    // answer engines. OFF by default (opt-in via `config.agentReadiness.enabled`,
+    // ideally per-test); when enabled the client report renders the "Agent Ready"
+    // tab. Its `applies()` skips units for tests that didn't turn it on.
     pipeline.runStage(workerPool, new AgentReadinessStage(input.agentReadiness));
-    pipeline.runStage(workerPool, new BuildAnnotatedTimelineStage({
-      limitVideoFramesCount: input.limitVideoFramesCount,
-    }));
+    // Reads its frame cap (audit.limitVideoFramesCount) off the per-test
+    // effective config at run time — no stage-level config.
+    pipeline.runStage(workerPool, new BuildAnnotatedTimelineStage());
     // Registered LAST so it runs after the audit + timeline stages and can
     // review their results; its renderingPriority floats it to the top of the
     // card (runs last, renders first).
@@ -87,7 +81,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
     pipeline.waitForAllTasksFinishAndDispose(workerPool);
 
     pipeline.buildChips<{ audit: AuditResult; accessibility: AccessibilityResult }>({
-      chipsForAllTests(perTest) {
+      chipsForAllTests(perTest, context) {
         const out = new Map<AbTestDefinition, readonly ChipDescriptor[]>();
         // Index test → metrics once and reuse across the chip builders below.
         const indexed = perTest.map((entry) => ({
@@ -104,6 +98,7 @@ export function createAuditPipeline(input: AuditPipelineConfig) {
             test,
             auditResults: results.audit ?? [],
           })),
+          context?.readJsonArtifact,
         );
         const duplicateChips = coverageDuplicateChips(signatures);
         const coversChips = coverageCoversChips(signatures);

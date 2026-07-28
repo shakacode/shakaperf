@@ -17,7 +17,6 @@ function testDef(name: string): AbTestDefinition {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };
@@ -56,8 +55,12 @@ function chipsFor(result: AccessibilityResult) {
       tags: ['wcag2aa'],
       disableRules: [],
       includeRules: undefined,
-      engineOptions: { browser: 'chromium' },
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
       failOnViolation: result.failOnViolation,
+    },
+    agentReadiness: {
+      enabled: false,
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
     },
   });
   const chips = pipeline.chipsForAllTests([{

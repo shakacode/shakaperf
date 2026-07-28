@@ -18,17 +18,16 @@ import {
 } from '../compare-pipeline';
 import type { AccessibilityCompareResult, AccessibilityCompareSummary } from '../stages/accessibility';
 import { runPipeline } from '../../pipeline/runner';
-import type { AbTestsConfig } from '../../config';
+import { buildAbTestsConfig, type AbTestsConfig } from '../../config';
 
 describe('compare accessibility pipeline integration', () => {
   it('derives reusable pipeline construction options from parsed config', () => {
     const parsed = {
       shared: { parallelism: 6, testPathPattern: 'checkout' },
       visreg: {
-        defaultMisMatchThreshold: 0.2,
+        mismatchThreshold: 0.2,
         maxNumDiffPixels: 12,
         comparePixelmatchThreshold: 0.3,
-        engineOptions: { browser: 'chromium' },
         resembleOutputOptions: { transparency: 0.4 },
         compareRetries: 4,
         compareRetryDelay: 50,
@@ -50,7 +49,7 @@ describe('compare accessibility pipeline integration', () => {
         artifactRoot: 'commits/abc',
         parallelism: 3,
         testPathPattern: 'checkout',
-        visregDefaultMisMatchThreshold: 0.2,
+        visregMismatchThreshold: 0.2,
         perfNumberOfMeasurements: 7,
         accessibility: { tags: ['wcag2a'] },
       });
@@ -77,26 +76,27 @@ describe('compare accessibility pipeline integration', () => {
       artifactRoot: 'candidate-artifacts',
     });
 
+    // Point the machine-wide measurement lock at a private tmpdir so the test
+    // doesn't queue behind a real shaka-perf run on this machine.
+    const savedTmpdir = process.env.TMPDIR;
+    process.env.TMPDIR = cwd;
     try {
       const result = await runPipeline(pipeline, {
         cwd,
+        config: buildAbTestsConfig({ shared: { controlURL: 'http://control.test', experimentURL: 'http://experiment.test', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
         controlURL: 'http://control.test',
         experimentURL: 'http://experiment.test',
         skipReport: true,
         retries: 0,
         retryDelay: 0,
         timeoutMs: 1_000,
-        viewports: {
-          visreg: [],
-          perf: [],
-          accessibility: [],
-          audit: [],
-        },
         tests: [testDefinition()],
       });
 
       expect(result.resultsRoot).toBe(path.join(cwd, 'candidate-artifacts', 'compare-results'));
     } finally {
+      if (savedTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = savedTmpdir;
       fs.rmSync(cwd, { recursive: true, force: true });
     }
   });
@@ -285,10 +285,9 @@ describe('compare accessibility pipeline integration', () => {
 function baseConfig(): Parameters<typeof createComparePipeline>[0] {
   return {
     parallelism: 1,
-    visregDefaultMisMatchThreshold: 0.1,
+    visregMismatchThreshold: 0.1,
     visregMaxNumDiffPixels: 50,
     visregComparePixelmatchThreshold: 0.1,
-    visregEngineOptions: {},
     visregCompareRetries: 0,
     visregCompareRetryDelay: 0,
     perfNumberOfMeasurements: 1,
@@ -296,6 +295,12 @@ function baseConfig(): Parameters<typeof createComparePipeline>[0] {
     perfPValueThreshold: 0.05,
     perfRegressionThresholdStat: 'estimator',
     perfSamplingMode: 'simultaneous',
+    accessibility: {
+      tags: [],
+      disableRules: [],
+      failOnViolation: true,
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+    },
   };
 }
 
@@ -344,7 +349,6 @@ function testDefinition(): AbTestDefinition {
     startingPath: '/',
     file: null,
     line: null,
-    options: {},
     testTypes: null,
     testFn: async () => {},
   };

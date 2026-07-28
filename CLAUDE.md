@@ -20,8 +20,6 @@ yarn build      # Build all packages (tsc)
 
 ```bash
 shaka-perf compare              # Unified visreg + perf comparison + single-file HTML report
-shaka-perf perf-compare         # (legacy) Performance benchmarking
-shaka-perf visreg-compare       # (legacy) Visual regression testing
 shaka-perf servers              # Docker A/B testing infrastructure (auto build+start)
 shaka-perf client-report        # Client-facing mobile-speed report from a saved audit-results dir
 shaka-perf warm-email           # Warm outreach email draft + client report from a saved audit
@@ -91,6 +89,15 @@ Both paths require `google-chrome` and are opt-in: **never set
 `SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
 configuration.
 
+## Breaking changes
+
+Any change that can break an existing consumer's `.abtest.ts` files or
+`abtests.config.ts` — a removed/renamed `abTest()` option, a moved or
+renamed config field, a changed default — MUST be logged in
+[BREAKING_CHANGES.md](./BREAKING_CHANGES.md) under its **Unreleased** section,
+with the exact fix for affected tests. `/deploy` stamps that section with the
+version on publish.
+
 ## Code Conventions
 
 - TypeScript strict mode, no ESLint/Prettier
@@ -99,12 +106,12 @@ configuration.
 - Commander.js for CLIs
 - In new code don't use docker compose directly, see @packages/shaka-perf/SETUP-twin-servers.md
 
-## Polymorphic Extensibility
+## Architecture Review
 
 Variant-specific behaviour (pipeline/stage renderers, summaries, etc.)
 must be configured polymorphically through factory options — no
 `switch (name)` dispatchers in shared modules. See the
-`polymorphic-extensibility` skill for the rule, the single allowed
+`review-architecture` skill for the rule, the single allowed
 exception, and a review checklist.
 
 ## Package Structure

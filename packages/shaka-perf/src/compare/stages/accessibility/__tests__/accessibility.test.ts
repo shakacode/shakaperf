@@ -37,18 +37,23 @@ jest.mock('sharp', () => jest.fn(() => ({
   metadata: jest.fn(async () => ({ width: 100, height: 80 })),
 })));
 
-jest.mock('../../../../pipeline/artifact-compression', () => ({
-  bufferToAvifDataUri: jest.fn(async () => 'data:image/avif;base64,test'),
-}));
-
 import {
   compareScans,
   projectCompareResultForReport,
   runAccessibilityCompareStage,
   summarizeFindings,
 } from '../engine';
-import { DEFAULT_ACCESSIBILITY_STAGE_CONFIG } from '../../../../audit/stages/accessibility/config';
-import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
+import {
+  DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  type AccessibilityStageConfig,
+} from '../../../../audit/stages/accessibility/config';
+
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+};
 import { collectFilterOptions, isFindingVisible, primaryCompareTags } from '../report';
 import { AccessibilityCompareStage } from '../stage';
 import type { AccessibilityCompareFinding, AccessibilitySideScan } from '../types';
@@ -56,17 +61,27 @@ import type { AccessibilityViolation } from '../../../../audit/stages/accessibil
 import { DESKTOP_VIEWPORT, type AbTestDefinition, type Viewport } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { buildAbTestsConfig } from '../../../../config';
 
 describe('accessibility compare classification', () => {
-  it('honors per-test accessibility skip config', () => {
-    const stage = new AccessibilityCompareStage();
+  it('removes raw and comparison artifacts from self-contained reports', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
+    expect(stage.selfContainedReportStrip).toEqual({
+      comparisonArtifactHref: true,
+      control: { rawArtifactHref: true },
+      experiment: { rawArtifactHref: true },
+    });
+  });
+
+  it('applies to every test — opting out is testTypes-owned', () => {
+    const stage = new AccessibilityCompareStage(TEST_STAGE_CONFIG);
 
     expect(stage.applies({
-      name: 'Skip me',
+      name: 'Any test',
       startingPath: '/',
       file: null,
       line: null,
-      options: { accessibility: { skip: true } },
       testTypes: null,
       testFn: async () => {},
     }, {
@@ -75,7 +90,7 @@ describe('accessibility compare classification', () => {
       height: 800,
       formFactor: 'desktop',
       deviceScaleFactor: 1,
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('classifies new, fixed, unchanged, and changed findings by rule and target', () => {
@@ -220,8 +235,6 @@ describe('accessibility compare engine', () => {
       url: 'http://localhost/scan',
       violations: [],
     });
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>)
-      .mockResolvedValue('data:image/avif;base64,test');
   });
 
   afterEach(() => {
@@ -237,7 +250,7 @@ describe('accessibility compare engine', () => {
     await runAccessibilityCompareStage(
       fakeContext({ headed: false }, {}, jest.fn(async () => {}), mobileViewport()),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(mockChromiumLaunch).toHaveBeenCalledWith(expect.objectContaining({
@@ -278,7 +291,7 @@ describe('accessibility compare engine', () => {
     const result = await runAccessibilityCompareStage(
       fakeContext({}),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     expect(result.experiment.blocked).toBe(true);
@@ -286,26 +299,21 @@ describe('accessibility compare engine', () => {
     expect(result.findings).toEqual([]);
   });
 
-  it('keeps completed scans when inline screenshot encoding fails', async () => {
+  it('keeps completed scans with persisted screenshot paths', async () => {
     const browser = fakeBrowser();
     mockChromiumLaunch.mockResolvedValue(browser);
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>)
-      .mockRejectedValueOnce(new Error('Processed image is too large for the HEIF format'));
+    const result = await runAccessibilityCompareStage(
+      fakeContext({}),
+      fakeWorkerPool(),
+      TEST_STAGE_CONFIG,
+    );
 
-    try {
-      const result = await runAccessibilityCompareStage(
-        fakeContext({}),
-        fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      );
-
-      expect(result.summary.errors).toBe(0);
-      expect(result.control.screenshot?.imageHref).toBe('checkout-desktop/artifacts/control-accessibility-screenshot.png');
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('inline screenshot encode failed'));
-    } finally {
-      warn.mockRestore();
-    }
+    expect(result.summary.errors).toBe(0);
+    expect(result.control.screenshot).toEqual({
+      width: 100,
+      height: 80,
+      imageHref: 'checkout-desktop/artifacts/control-accessibility-screenshot.png',
+    });
   });
 });
 
@@ -393,7 +401,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
   viewport = DESKTOP_VIEWPORT,
 ): TestContext {
@@ -404,7 +412,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {
@@ -415,8 +423,8 @@ function fakeContext(
     testAndViewportId: 'checkout-desktop',
     artifacts: {
       dir: '/tmp/shaka-test/checkout-desktop/artifacts',
-      writeJson: jest.fn(async () => {}),
-      writeFile: jest.fn(async () => {}),
+      writeJson: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
+      writeFile: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
     },
     logger: {
       log: jest.fn(),
@@ -429,6 +437,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

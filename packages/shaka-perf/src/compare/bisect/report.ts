@@ -41,9 +41,10 @@ export function writeBisectReportArtifacts(options: WriteBisectReportOptions): W
   const htmlPath = path.resolve(options.resultsDirectory, BISECT_REPORT_FILENAME);
   const dataPath = path.resolve(options.resultsDirectory, BISECT_REPORT_DATA_FILENAME);
   const portable = reportDataForMode(
-    { ...options.data, meta: { ...options.data.meta, reportMode: 'lightweight' } },
-    'lightweight',
+    { ...options.data, meta: { ...options.data.meta, reportMode: 'self-contained' } },
+    'self-contained',
     options.stages,
+    options.resultsDirectory,
   ) as BisectReportData;
   fs.mkdirSync(path.dirname(htmlPath), { recursive: true });
   writeFileAtomic(dataPath, `${JSON.stringify(portable, null, 2)}\n`);

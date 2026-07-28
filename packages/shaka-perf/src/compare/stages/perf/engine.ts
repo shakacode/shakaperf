@@ -22,6 +22,7 @@ import {
   type NavigationSample,
 } from '../../../bench/core';
 import { lhConfigForViewport } from '../../../bench/core/lighthouse-config';
+import { resolvePlaywrightOptions } from '../../../config';
 import { ensureLighthousePatchRegistered } from '../../../bench/core/patched-lighthouse/register-patch';
 import { durationInSec, secondsToTime, timestamp, chalkScheme } from '../../../bench/cli/helpers/utils';
 import { runAnalyze } from '../../../bench/cli/commands/compare/analyze';
@@ -39,16 +40,16 @@ export async function runPerfEngineStage(
   workerPool: WorkerPool,
   config: PerfStageConfig,
 ): Promise<PerfResult | PerfLowNoiseResult | PerfWarmupResult> {
-  const perfConfig: PerfConfig = {
-    ...config,
-    viewports: [ctx.viewport],
-  };
+  // The engine measures at ctx.viewport, so config.viewports is unused.
+  const perfConfig = config;
   const unitId = ctx.testAndViewportId;
-  const artifactsDir = path.join(ctx.runtime.resultsRoot, unitId, 'artifacts');
+  const artifactsDir = ctx.artifacts.dir;
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
-  const lhConfig = lhConfigForViewport(ctx.viewport, perfConfig.lighthouseConfig);
+  // Per-test effective lighthouseConfig (config.perf.lighthouseConfig in an
+  // abTest() applies to that test), not the file-level stage config.
+  const lhConfig = lhConfigForViewport(ctx.viewport, ctx.config.perf.lighthouseConfig ?? perfConfig.lighthouseConfig);
   const pool = createWorkerLighthouseSamplingPool<NavigationSample>(workerPool, {
     samplingMode: perfConfig.samplingMode,
   });
@@ -65,6 +66,9 @@ export async function runPerfEngineStage(
     lhConfig,
     saveArtifacts: config.saveArtifacts,
     headed: ctx.runtime.headed,
+    // Effective launch options (shared.playwrightOptions ← perf override ←
+    // per-test config); the fork maps args/headless onto chrome flags.
+    playwrightOptions: resolvePlaywrightOptions(ctx.config, 'perf'),
   };
   const benchmarks = [
     createLighthouseBenchmark('control', ctx.test, {
@@ -84,18 +88,12 @@ export async function runPerfEngineStage(
     const mediaName = findFailureMediaName(err);
     if (mediaName) {
       // The Lighthouse worker wrote the media (a screenshot on the perf path)
-      // directly into artifactsDir (== ctx.artifacts.dir). It stays inlined as
-      // a base64 data URI so it survives in the shareable lightweight
-      // report.html and in any standalone-emailed copy — small (a single file
-      // per failed test) and the at-a-glance value is high.
-      try {
-        throw new StageFailureError(err, {
-          media: ctx.artifacts.inlineDataUri(mediaName),
-        });
-      } catch (inlineErr) {
-        if (inlineErr instanceof StageFailureError) throw inlineErr;
-        console.warn(chalk.yellow(`failed to inline perf failure media ${mediaName}: ${(inlineErr as Error).message}`));
-      }
+      // directly into artifactsDir (== ctx.artifacts.dir). The stage exposes
+      // only its report-relative path; self-contained report generation owns
+      // inlining the bytes.
+      throw new StageFailureError(err, {
+        media: ctx.artifacts.pathFor(mediaName),
+      });
     }
     throw err;
   }
@@ -110,11 +108,12 @@ export async function runPerfEngineStage(
       throw new Error(`perf did not produce report.json for ${ctx.viewport.label}`);
     }
   }
-  const artifact = await readPerfArtifact({
-    perTestDir: artifactsDir,
-    reportRoot: ctx.runtime.resultsRoot,
-    regressionThreshold: config.regressionThreshold,
-    regressionThresholdStat: config.regressionThresholdStat,
+  const artifact = readPerfArtifact({
+    artifacts: ctx.artifacts,
+    // Per-test effective thresholds (config.perf.* in an abTest() applies to
+    // that test), same as lighthouseConfig above.
+    regressionThreshold: ctx.config.perf.regressionThreshold,
+    regressionThresholdStat: ctx.config.perf.regressionThresholdStat,
     saveArtifacts: config.saveArtifacts,
     statisticalAnalysis: config.statisticalAnalysis,
   });
@@ -129,9 +128,15 @@ async function runPerfPhase(
   config: PerfStageConfig,
 ): Promise<void> {
   const startTime = config.statisticalAnalysis ? timestamp() : null;
+  // The statistical stage samples the per-test effective count
+  // (config.perf.numberOfMeasurements in an abTest() applies to that test);
+  // warmup / low-noise stages keep their fixed stage-defined count (1).
+  const numberOfMeasurements = config.statisticalAnalysis
+    ? ctx.config.perf.numberOfMeasurements
+    : config.numberOfMeasurements;
   const sampleGroups = await measureTest(
     benchmarks,
-    config.numberOfMeasurements,
+    numberOfMeasurements,
     pool,
     { testKey: perfSamplerKey(ctx.testAndViewportId, config) },
   );
@@ -159,9 +164,10 @@ async function runPerfPhase(
     const actualMeasurements = results[0]?.samples.length ?? 0;
     await runAnalyze(abMeasurementsPath, {
       numberOfMeasurements: actualMeasurements,
-      regressionThreshold: config.regressionThreshold,
-      regressionThresholdStat: config.regressionThresholdStat,
-      pValueThreshold: config.pValueThreshold,
+      // Per-test effective thresholds, same as the sampling count above.
+      regressionThreshold: ctx.config.perf.regressionThreshold,
+      regressionThresholdStat: ctx.config.perf.regressionThresholdStat,
+      pValueThreshold: ctx.config.perf.pValueThreshold,
       jsonReport: true,
       summaryMetadata: {
         testName: ctx.test.name,
@@ -174,7 +180,7 @@ async function runPerfPhase(
       try {
         await runReport({
           resultsFolder: artifactsDir,
-          pValueThreshold: config.pValueThreshold,
+          pValueThreshold: ctx.config.perf.pValueThreshold,
         });
       } catch (err) {
         console.error(chalk.red(`Failed to generate bench HTML report for ${ctx.test.name}:`), err);

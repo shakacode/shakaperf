@@ -7,9 +7,7 @@
  * License in LICENSE.md.
  */
 
-import * as path from 'node:path';
 import type { Browser } from 'playwright-core';
-import { toPosixRelative } from '../../../pipeline/path-utils';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import {
@@ -17,7 +15,6 @@ import {
   messageWithLatestTestAnnotation,
 } from '../../../test-annotation';
 import {
-  accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
@@ -76,7 +73,8 @@ async function scanAccessibilityComparison(
   browser: Browser,
   config: AccessibilityStageConfig,
 ): Promise<AccessibilityCompareResult> {
-  const effective = accessibilityConfigForTest(config, ctx.test);
+  const acc = ctx.config.accessibility;
+  const effective = { tags: acc.tags, disableRules: acc.disableRules, includeRules: acc.includeRules ?? null };
   const [control, experiment] = await Promise.all([
     scanSide(ctx, browser, effective, config, 'control', ctx.controlURL),
     scanSide(ctx, browser, effective, config, 'experiment', ctx.experimentURL),
@@ -92,12 +90,15 @@ async function scanAccessibilityComparison(
       disableRules: effective.disableRules,
       includeRules: effective.includeRules,
     },
-    failOnViolation: config.failOnViolation,
+    // Per-test effective, like tags/disableRules/includeRules above.
+    failOnViolation: acc.failOnViolation,
     findings,
     summary: summarizeFindings(findings, control, experiment),
   });
-  await ctx.artifacts.writeJson('accessibility-comparison.json', result);
-  result.comparisonArtifactHref = relativeArtifactHref(ctx, 'accessibility-comparison.json');
+  result.comparisonArtifactHref = await ctx.artifacts.writeJson(
+    'accessibility-comparison.json',
+    result,
+  );
   return result;
 }
 
@@ -114,18 +115,16 @@ async function scanSide(
       url,
       isControl: side === 'control',
       screenshotFilename: `${side}-accessibility-screenshot.png`,
-      inlineEncodeWarningPrefix: '[shaka-perf compare a11y]',
       captureFailure: async ({ page }) => ({
         screenshot: await captureAccessibilityScreenshotIfPossible(
           ctx,
           page,
           `${side}-failure-accessibility-screenshot.png`,
-          '[shaka-perf compare a11y]',
         ),
       }),
     });
     const rawFilename = `${side}-accessibility-report.json`;
-    await ctx.artifacts.writeJson(rawFilename, {
+    const rawArtifactHref = await ctx.artifacts.writeJson(rawFilename, {
       side,
       testName: ctx.test.name,
       url: result.url,
@@ -140,7 +139,7 @@ async function scanSide(
     return {
       side,
       url: result.url,
-      rawArtifactHref: relativeArtifactHref(ctx, rawFilename),
+      rawArtifactHref,
       screenshot: result.screenshot,
       violations: result.violations,
       blocked: result.blocked,
@@ -153,16 +152,16 @@ async function scanSide(
       getLatestTestAnnotation(cause),
     );
     const rawFilename = `${side}-accessibility-error.json`;
-    await ctx.artifacts.writeJson(rawFilename, {
+    const rawArtifactHref = await ctx.artifacts.writeJson(rawFilename, {
       side,
       testName: ctx.test.name,
       url,
       error,
-    }).catch(() => {});
+    }).catch(() => undefined);
     return {
       side,
       url,
-      rawArtifactHref: relativeArtifactHref(ctx, rawFilename),
+      ...(rawArtifactHref ? { rawArtifactHref } : {}),
       screenshot: scanError?.artifacts.screenshot,
       violations: [],
       error,
@@ -365,8 +364,4 @@ function impactRank(impact: AccessibilityViolation['impact']): number {
 
 function sortedUnique(values: string[]): string[] {
   return [...new Set(values)].sort();
-}
-
-function relativeArtifactHref(ctx: TestContext, filename: string): string {
-  return toPosixRelative(ctx.runtime.resultsRoot, path.join(ctx.artifacts.dir, filename));
 }

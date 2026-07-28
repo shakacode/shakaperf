@@ -60,7 +60,7 @@ export function BuildAnnotatedTimelineArtifactView({
                   body={
                     <AnnotatedTimelineDialog
                       frames={frames}
-                      screencastHref={mode === 'lightweight' ? undefined : row.timeline.screencastHref}
+                      screencastHref={mode === 'self-contained' ? undefined : row.timeline.screencastHref}
                       debugAllFrames={row.timeline.debugAllFrames}
                     />
                   }
@@ -604,7 +604,7 @@ function formatDiff(prevDiff: AnnotatedFrame['prevDiff']): string {
 }
 
 function resolveFrameImageSrc(frame: AnnotatedFrame): string | undefined {
-  return frame.imageDataUri ?? frame.imageHref;
+  return frame.imageHref;
 }
 
 function formatMs(timeMs: number): string {

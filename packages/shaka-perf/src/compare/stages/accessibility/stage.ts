@@ -19,13 +19,10 @@ import {
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  accessibilityConfigForTest,
   type AccessibilityStageConfig,
 } from '../../../audit/stages/accessibility/config';
 import type {
   AccessibilityCompareResult,
-  AccessibilityCompareScreenshot,
-  AccessibilitySideScan,
 } from './types';
 import { AccessibilityCompareArtifactView } from './report';
 
@@ -34,21 +31,24 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   readonly name = 'accessibility';
   readonly label = 'Accessibility';
   readonly description = 'Scan control and experiment with axe and classify accessibility changes.';
+  readonly selfContainedReportStrip = {
+    comparisonArtifactHref: true,
+    control: { rawArtifactHref: true },
+    experiment: { rawArtifactHref: true },
+  };
   private readonly config: AccessibilityStageConfig;
 
-  constructor(config?: AccessibilityStageConfig) {
+  constructor(config: AccessibilityStageConfig) {
     this.config = {
       ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
       ...config,
-      engineOptions: {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
-        ...config?.engineOptions,
-      },
     };
   }
 
-  applies(test: AbTestDefinition, _viewport: Viewport): boolean {
-    return !accessibilityConfigForTest(this.config, test).skip;
+  applies(_test: AbTestDefinition, _viewport: Viewport): boolean {
+    // Opting a test out of accessibility is testTypes-owned (omit
+    // 'accessibility'); there is no per-test skip flag.
+    return true;
   }
 
   async run(ctx: TestContext, pool: WorkerPool): Promise<AccessibilityCompareResult> {
@@ -63,42 +63,4 @@ export class AccessibilityCompareStage implements Stage<AccessibilityCompareResu
   }
 
   machineReadableSummary = emptyMachineReadableSummary;
-
-  stripMeasurementForLightweight(measurement: AccessibilityCompareResult): AccessibilityCompareResult {
-    const {
-      comparisonArtifactHref: _comparison,
-      ...rest
-    } = measurement;
-    return {
-      ...rest,
-      control: stripSideForMode(rest.control, 'imageDataUri'),
-      experiment: stripSideForMode(rest.experiment, 'imageDataUri'),
-    };
-  }
-
-  stripMeasurementForFull(measurement: AccessibilityCompareResult): AccessibilityCompareResult {
-    return {
-      ...measurement,
-      control: stripSideForMode(measurement.control, 'imageHref'),
-      experiment: stripSideForMode(measurement.experiment, 'imageHref'),
-    };
-  }
-}
-
-function stripSideForMode(
-  scan: AccessibilitySideScan,
-  keep: keyof Pick<AccessibilityCompareScreenshot, 'imageDataUri' | 'imageHref'>,
-): AccessibilitySideScan {
-  const { rawArtifactHref, screenshot, ...rest } = scan;
-  const base = keep === 'imageHref' ? { ...rest, rawArtifactHref } : rest;
-  if (!screenshot) return base;
-  const { imageDataUri, imageHref, ...size } = screenshot;
-  const value = keep === 'imageHref' ? imageHref : imageDataUri;
-  return {
-    ...base,
-    screenshot: {
-      ...size,
-      ...(value ? { [keep]: value } : {}),
-    },
-  };
 }

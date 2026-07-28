@@ -99,6 +99,11 @@ export function assertPlainNonZeroExit(e: unknown, what: string): void {
   );
 }
 
+// Child processes emit chalk colors through pipes, and chalk re-opens the style
+// after every newline — so a line inside a multi-line colored block starts mid
+// escape sequence. Strip before matching on line content.
+export const stripAnsi = (text: string): string => text.replace(/\x1b\[[0-9;]*m/g, '');
+
 const GREEN_BOLD = '\x1b[1;32m';
 const RESET = '\x1b[0m';
 

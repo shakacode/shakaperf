@@ -11,7 +11,7 @@ import { Command } from 'commander';
 import { createCompareCommand } from '../../cli/program';
 import { createBisectCommand } from '../cli';
 import { runCompareBisectFromCli } from '../session';
-import { parseAbTestsConfig, type AbTestsConfig } from '../../../config';
+import { buildAbTestsConfig, type AbTestsConfig } from '../../../config';
 import type { BisectSession } from '../types';
 
 describe('compare bisect command', () => {
@@ -416,11 +416,12 @@ function completedSession(): BisectSession {
 }
 
 function reportOnlyConfig(): AbTestsConfig {
-  return parseAbTestsConfig({
+  return buildAbTestsConfig({
     shared: {
       controlURL: 'http://control.test',
       experimentURL: 'http://experiment.test',
       parallelism: 2,
+      playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
     },
   });
 }

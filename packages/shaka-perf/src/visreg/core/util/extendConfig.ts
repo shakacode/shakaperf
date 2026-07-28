@@ -11,26 +11,18 @@ import path from 'node:path';
 import temp from 'temp';
 import type { RuntimeConfig, VisregConfig } from '../types';
 
-// At runtime this file is at dist/visreg/core/util/, package.json is 4 levels up
-const packageJson = require('../../../../package.json');
-const { version } = packageJson;
-
 function extendConfig (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
   artifactPaths(config, userConfig);
-  ci(config, userConfig);
   tempCompareConfigPath(config);
 
-  config.id = userConfig.id;
-  config.engine = userConfig.engine || null;
   config.viewports = userConfig.viewports || [];
-  config.defaultMisMatchThreshold = 0.1;
-  config.debug = userConfig.debug || false;
+  // The effective value the compare stage wrote into the bridge config
+  // (`config.visreg` with the per-test override already merged) — never a
+  // hardcoded constant, or per-test/file tuning is silently ignored.
+  config.mismatchThreshold = userConfig.mismatchThreshold ?? 0.1;
   config.resembleOutputOptions = userConfig.resembleOutputOptions;
   config.asyncCompareLimit = userConfig.asyncCompareLimit;
-  config.visregVersion = version;
-  config.scenarioLogsInReports = userConfig.scenarioLogsInReports;
 
-  // compare command options
   config.compareRetries = userConfig.compareRetries ?? 0;
   config.compareRetryDelay = userConfig.compareRetryDelay ?? 5000;
   config.maxNumDiffPixels = userConfig.maxNumDiffPixels ?? 0;
@@ -63,22 +55,6 @@ function artifactPaths (config: Partial<RuntimeConfig>, userConfig: VisregConfig
   // accumulation), not one.
   config.controlScreenshotDir = path.join(artifacts, 'control_screenshots');
   config.experimentScreenshotDir = path.join(artifacts, 'experiment_screenshots');
-}
-
-function ci (config: Partial<RuntimeConfig>, userConfig: VisregConfig | Record<string, any>) {
-  config.ciReport = {
-    format: 'junit',
-    testReportFileName: 'xunit',
-    testSuiteName: 'shaka-perf-visreg'
-  };
-
-  if (userConfig.ci) {
-    config.ciReport = {
-      format: userConfig.ci.format || config.ciReport.format,
-      testReportFileName: userConfig.ci.testReportFileName || config.ciReport.testReportFileName,
-      testSuiteName: userConfig.ci.testSuiteName || config.ciReport.testSuiteName
-    };
-  }
 }
 
 function tempCompareConfigPath (config: Partial<RuntimeConfig>) {

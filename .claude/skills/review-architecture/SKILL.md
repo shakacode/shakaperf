@@ -1,9 +1,9 @@
 ---
-name: polymorphic-extensibility
-description: "Review/design guide for framework extension points in shaka-perf. When a primitive has variants (pipeline, stage, …), the variant must own its behaviour via mandatory factory options and the framework must call into it polymorphically. The only allowed name-keyed `switch` is the single deserialisation site that maps a persisted name back to a primitive instance. Use when adding a new pipeline/stage variant, adding an extension point, reviewing a PR that introduces variant-specific behaviour, or auditing a `switch (name)` that picks between behaviours."
+name: review-architecture
+description: "Use when reviewing or designing shaka-perf framework extension points, pipeline or stage variants, artifact ownership, report serialization boundaries, or name-keyed behavior dispatch."
 ---
 
-# Polymorphic Extensibility
+# Review Architecture
 
 shaka-perf's framework primitives (`Pipeline`, `Stage`, …) are designed to be
 extended polymorphically. Variant-specific behaviour belongs **inside the
@@ -166,6 +166,65 @@ or `writeMachineReport`.
    objects that are passed in via factory options. The framework never
    imports them directly.
 
+5. **Minimalistic functionality. Shakaperf core components should KISS.**
+  Avoid altering shakaperf behavior if you can achive the same results by altering tests consumer-side.
+  Don't add options, unless they are vital. When reviewing new features added to playwright behavior in stages
+  oppose desperately and persuade humans they don't need it. Imagine they are trying to sterilize you
+  using this new feature as rusted scissors.
+
+  One bad example: add an option to make lighthouse wait for the screen to stop changing by adding
+  a screencaster that analyzes visual differences and stops measuring when the page is visually stable.
+  NO NO NO NO NO! THIS FEATURE TRIES TO HURT YOUR REPRODUCTIVE ORGANS!!!  
+  PROTEST!!! (can be implemented in tests)
+
+## Stage artifact contract
+
+Every stage writes artifacts under `ctx.artifacts` and nowhere else. Use
+`ctx.artifacts.writeFile()` / `writeJson()` for stage-owned bytes. If an
+engine or worker must write files itself, give it `ctx.artifacts.dir`, then
+expose an existing file with `ctx.artifacts.pathFor(filename)`.
+
+Stage results and failure metadata contain only the report-relative paths
+returned by `ctx.artifacts`; never put base64 or data URIs in them. The
+self-contained report owns converting those paths to data URIs.
+
+Store large structured data that is not rendered—coverage statement IDs,
+traces, raw scan output—as a JSON artifact and keep only its report-relative
+path in the measurement. Do not copy large arrays or objects into a measurement
+just because a later framework pass needs them; that pass must read the
+artifact through the results root.
+
+Every stage declares one recursive `selfContainedReportStrip` dictionary.
+Dictionary keys mirror measurement fields: `true` strips a field, `false`
+keeps it, and a nested dictionary applies the same rules inside an object or
+each object in an array. Fields absent from the dictionary are kept.
+
+The full report inlines no artifacts. The self-contained report first applies
+the stage's strip dictionary, then centrally discovers, compresses, and
+base64-encodes every artifact path that remains. Stages never select encoding
+settings or perform file reads, compression, or base64 conversion.
+
+Use `true` only for fields that the local full report needs but the
+self-contained report does not. Do not use the strip dictionary merely to
+compensate for oversized structured data embedded in a measurement; move that
+data to a JSON artifact and keep only its report-relative path in the
+measurement.
+
+To show a screenshot or video on a failed outcome, throw
+`StageFailureError` with the path in `failureArtifacts.media`:
+
+```ts
+const media = await captureFailureScreenshot(
+  ctx.artifacts,
+  () => page.screenshot({ fullPage: true }),
+);
+throw new StageFailureError(cause, media ? { media } : {});
+```
+
+For media already written by a worker, pass
+`ctx.artifacts.pathFor(mediaName)` instead. Screenshot capture is
+best-effort: its failure must never replace the original stage error.
+
 ## Anti-patterns to flag
 
 The first cut at the audit/compare report-rendering split used
@@ -199,6 +258,16 @@ When auditing a change that touches variant behaviour:
 5. Could a new variant be added by editing only the variant's own files
    plus the single deserialisation switch? If the answer requires touching
    more central files, the design has leaked variant knowledge upward.
+6. Does every stage artifact live under `ctx.artifacts`, with only its
+   report-relative path stored in the measurement or failure?
+7. Does failure media reach the framework through
+   `StageFailureError.failureArtifacts.media`, without stage-side base64?
+8. Is large non-rendered structured data stored as a JSON artifact reference
+   rather than embedded directly in the measurement?
+9. Does each stage expose only a recursive `selfContainedReportStrip`
+   dictionary (`true` strips, `false` keeps), while centralized report code
+   inlines none in the full report and all remaining artifacts in the
+   self-contained report?
 
 ## Reference implementation
 

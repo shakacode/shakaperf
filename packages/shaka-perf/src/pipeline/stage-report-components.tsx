@@ -219,23 +219,6 @@ export function DetailedArtifactDialog({
   );
 }
 
-/**
- * Forces an inline SVG to fill its container — pair with PreviewButton when
- * the preview content is a `dangerouslySetInnerHTML` SVG that would otherwise
- * render at its natural width.
- */
-export function svgWithFullWidthStyle(svg: string): string {
-  return svg.replace(/<svg\b([^>]*)>/, (_match, attrs: string) => {
-    const styleMatch = attrs.match(/\sstyle=(["'])(.*?)\1/);
-    if (!styleMatch) return `<svg style="${FULL_WIDTH_SVG_STYLE}"${attrs}>`;
-    const [styleAttr, quote, currentStyle] = styleMatch;
-    const nextStyle = `${currentStyle};${FULL_WIDTH_SVG_STYLE}`;
-    return `<svg${attrs.replace(styleAttr, ` style=${quote}${nextStyle}${quote}`)}>`;
-  });
-}
-
-const FULL_WIDTH_SVG_STYLE = 'display:block;height:auto;width:100%';
-
 function PreviewButton({
   children,
   onClick,

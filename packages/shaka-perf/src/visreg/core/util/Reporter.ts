@@ -26,7 +26,6 @@ export class Test {
 class Reporter {
   testSuite: string;
   tests: Test[];
-  id?: string;
 
   constructor (testSuite: string) {
     this.testSuite = testSuite;

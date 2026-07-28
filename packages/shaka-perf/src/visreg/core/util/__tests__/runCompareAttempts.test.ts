@@ -14,8 +14,17 @@ import { PNG } from 'pngjs';
 
 // The real implementations pull in Playwright; the loop takes them as injected
 // deps, so stub the module-load defaults out — every test passes its own fakes.
-jest.mock('../preparePage', () => ({ __esModule: true, default: jest.fn() }));
+jest.mock('../preparePage', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 jest.mock('../createComparisonSide', () => ({ createComparisonSide: jest.fn() }));
+// The attempt loop rebuilds the test's effective config for `beforeNavigate`
+// (mandatory abtests.config.ts — the real loader THROWS without one, and these
+// tests run configless by design). The loop only reads `shared.beforeNavigate`.
+jest.mock('../../../../effective-config', () => ({
+  reconstructEffectiveConfig: jest.fn().mockResolvedValue({ shared: {} }),
+}));
 
 import { runCompareAttempts, type CompareAttemptsDeps, type CompareSelectorOutcome } from '../runCompareAttempts';
 import { ScreenshotPool } from '../screenshotPool';
@@ -53,14 +62,15 @@ afterEach(() => {
 
 function makeConfig(overrides: Partial<Record<string, unknown>> = {}): DecoratedCompareConfig {
   return {
-    _fileNameTemplate: 'frame_{selectorIndex}',
-    _outputFileFormatSuffix: '.png',
-    _configId: 'cfg',
-    _controlScreenshotPath: path.join(root, 'control_screenshots'),
-    _experimentScreenshotPath: path.join(root, 'experiment_screenshots'),
+    env: {
+      controlScreenshotDir: path.join(root, 'control_screenshots'),
+      experimentScreenshotDir: path.join(root, 'experiment_screenshots'),
+    },
     compareRetries: 2,
     compareRetryDelay: 10,
     maxNumDiffPixels: 0,
+    mismatchThreshold: 0.1,
+    comparePixelmatchThreshold: 0.1,
     ...overrides,
   } as unknown as DecoratedCompareConfig;
 }
@@ -80,10 +90,7 @@ function makeDeps(produce: Produce) {
     created++;
     return { page: {} as never, context: {} as never, dispose: async () => { disposed++; } };
   });
-  const preparePage = jest.fn(async () => ({
-    visregSelectorsExp: ['document'],
-    visregSelectorsExpMap: { document: {} as { filePath?: string } },
-  }));
+  const preparePage = jest.fn(async () => {});
   const captureScreenshot = jest.fn(async () => {
     const idx = captureCalls++;
     return produce(Math.floor(idx / 2), idx % 2 === 0 ? 'ref' : 'test');
@@ -92,7 +99,7 @@ function makeDeps(produce: Produce) {
   const deps: CompareAttemptsDeps = {
     captureScreenshot,
     createSide,
-    preparePage: preparePage as unknown as CompareAttemptsDeps['preparePage'],
+    preparePage,
     sleep: async (ms: number) => { sleeps.push(ms); },
   };
   return { deps, sleeps, createSide, counts: () => ({ created, disposed, captureCalls }) };
@@ -104,7 +111,7 @@ function run(deps: CompareAttemptsDeps, config: DecoratedCompareConfig): Promise
   return runCompareAttempts(deps, {
     browser: {} as unknown as Browser,
     config, viewport, scenario,
-    variantOrScenarioLabelSafe: 'S', scenarioLabelSafe: 'S',
+    scenarioLabelSafe: 'S',
     pixelmatchThreshold: 0.1,
   });
 }
@@ -160,13 +167,14 @@ it('stops early once no new frames are captured (pixel-stable mismatch)', async 
 });
 
 // Crash-resume: the loop derives its pool from the config's screenshot dirs and
-// the filename template ('frame_{selectorIndex}' → key 'frame_0'), so seeding
-// that pool is exactly what an earlier crashed attempt leaves behind.
+// the engine's fixed filename scheme (scenario 'S', selector 'document',
+// viewport 'desktop' → key 'S_0_document_0_desktop'), so seeding that pool is
+// exactly what an earlier crashed attempt leaves behind.
 function seedPoolFrame(side: 'control' | 'experiment', buffer: Buffer): void {
   new ScreenshotPool(
     path.join(root, 'control_screenshots'),
     path.join(root, 'experiment_screenshots'),
-    'frame_0',
+    'S_0_document_0_desktop',
   ).add(side, buffer);
 }
 
@@ -189,5 +197,6 @@ it('missing selector throws, with the attempt sides still disposed', async () =>
   const { deps, counts } = makeDeps((_attempt, side) => (side === 'ref' ? null : png(BLUE)));
 
   await expect(run(deps, makeConfig())).rejects.toThrow('Selector "document" not found on reference page');
+  await new Promise<void>((resolve) => setImmediate(resolve));
   expect(counts()).toMatchObject({ created: 2, disposed: 2 });
 });

@@ -12,11 +12,10 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Product Detail', {
   startingPath: '/products/1',
-  options: {
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    // Plain page load — safe to scan for AI legibility (see homepage.abtest.ts).
+    // The interaction tests on this same URL below stay opted out.
+    agentReadiness: { enabled: true },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for product detail page to settle');
@@ -26,13 +25,12 @@ abTest('Product Detail', {
 abTest('Product Detail - Desktop Actions', {
   startingPath: '/products/1',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['tablet', 'desktop'],
-    visreg: {
-      selectors: ['[data-cy="product-actions-desktop"]'],
-      delay: 50,
-      misMatchThreshold: 0.01,
-    },
+  visregSelectors: ['[data-cy="product-actions-desktop"]'],
+  config: {
+    // Per-test viewports are per-category — pin audit too, or it runs this
+    // test at its own default (desktop + phone).
+    visreg: { viewports: ['tablet', 'desktop'], mismatchThreshold: 0.01 },
+    audit: { viewports: ['tablet', 'desktop'] },
   },
 }, async ({ page }) => {
   await page.waitForSelector('[data-cy="product-actions-desktop"]');
@@ -43,15 +41,10 @@ abTest('Product Detail - Desktop Actions', {
 abTest('Product Detail - Show Product Journey Toggle', {
   startingPath: '/products/1',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['phone'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
-    accessibility: {
-      disableRules: ['color-contrast', 'aria-progressbar-name'],
-    },
+  config: {
+    visreg: { viewports: ['phone'] },
+    audit: { viewports: ['phone'] },
+    accessibility: { disableRules: ['color-contrast', 'aria-progressbar-name'] },
   },
 }, async ({ page }) => {
   // Scroll to bottom to reveal the toggle, then enable it
@@ -64,12 +57,9 @@ abTest('Product Detail - Show Product Journey Toggle', {
 abTest('Click Reviews on Product Detail', {
   startingPath: '/products/1',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      misMatchThreshold: 0.1,
-      maxNumDiffPixels: 5,
-    },
+  config: {
+    visreg: { viewports: ['desktop'], maxNumDiffPixels: 5 },
+    audit: { viewports: ['desktop'] },
   },
 }, async ({ page, viewport }) => {
   if (viewport.label === 'mobile') {
@@ -88,12 +78,9 @@ abTest('Click Reviews on Product Detail', {
 abTest('Product Details => Click on Reviews => Click on Deals', {
   startingPath: '/products/1',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      misMatchThreshold: 0.1,
-      maxNumDiffPixels: 5,
-    },
+  config: {
+    visreg: { viewports: ['desktop'], maxNumDiffPixels: 5 },
+    audit: { viewports: ['desktop'] },
   },
 }, async ({ page, viewport  }) => {
   if (viewport.label === 'mobile') {

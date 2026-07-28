@@ -17,6 +17,12 @@ import { formatLogPrefix } from '../../../pipeline/log-prefix-format';
 import { createComparisonSide as defaultCreateComparisonSide, type ComparisonSide } from './createComparisonSide';
 import { ScreenshotPool, crossMatch, type PoolFrame, type CrossMatchResult } from './screenshotPool';
 import { setUpContextForNavigation } from '../../../pre-navigation';
+import { reconstructEffectiveConfig } from '../../../effective-config';
+import {
+  attachLatestTestAnnotation,
+  getLatestTestAnnotation,
+  runWithFreshTestAnnotationContext,
+} from '../../../test-annotation';
 import type { Browser, BrowserContext, PlaywrightPage, Scenario, Viewport, TestPair, DecoratedCompareConfig } from '../types';
 
 const logger = createLogger('runCompareAttempts');
@@ -24,13 +30,9 @@ const logger = createLogger('runCompareAttempts');
 export type CaptureScreenshotFn = (
   page: PlaywrightPage,
   selector: string,
-  selectorMap: Record<string, { filePath?: string }>,
 ) => Promise<Buffer | null>;
 
-type PreparePageFn = (...args: unknown[]) => Promise<{
-  visregSelectorsExp: string[];
-  visregSelectorsExpMap: Record<string, { filePath?: string }>;
-}>;
+type PreparePageFn = typeof defaultPreparePage;
 
 /** Injected collaborators — defaulted to the real implementations; overridden in tests. */
 export interface CompareAttemptsDeps {
@@ -38,6 +40,11 @@ export interface CompareAttemptsDeps {
   createSide?: (browser: Browser, config: DecoratedCompareConfig, viewport: Viewport, onContextReady?: (context: BrowserContext) => Promise<void>) => Promise<ComparisonSide>;
   preparePage?: PreparePageFn;
   sleep?: (ms: number) => Promise<void>;
+  captureFailure?: (
+    err: unknown,
+    page: PlaywrightPage,
+    isControl: boolean,
+  ) => Promise<unknown>;
 }
 
 export interface CompareAttemptsParams {
@@ -45,7 +52,6 @@ export interface CompareAttemptsParams {
   config: DecoratedCompareConfig;
   viewport: Viewport;
   scenario: Scenario;
-  variantOrScenarioLabelSafe: string;
   scenarioLabelSafe: string;
   pixelmatchThreshold: number;
 }
@@ -73,6 +79,117 @@ interface SelectorRun {
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const DOCUMENT_SELECTOR = 'document';
+
+interface CaptureComparisonSideParams {
+  browser: Browser;
+  config: DecoratedCompareConfig;
+  viewport: Viewport;
+  scenario: Scenario;
+  url: string;
+  isControl: boolean;
+  beforeNavigate: Awaited<ReturnType<typeof reconstructEffectiveConfig>>['shared']['beforeNavigate'];
+  runs: SelectorRun[];
+  activeSides: Set<ComparisonSide>;
+  createSide: NonNullable<CompareAttemptsDeps['createSide']>;
+  preparePage: PreparePageFn;
+  captureScreenshot: CaptureScreenshotFn;
+  captureFailure?: NonNullable<CompareAttemptsDeps['captureFailure']>;
+}
+
+/**
+ * Own one comparison side from browser-context creation through selector
+ * capture and teardown. Its annotation state and failure screenshot stay on
+ * the same async branch, so a concurrent sibling cannot overwrite either.
+ */
+async function captureComparisonSide(
+  params: CaptureComparisonSideParams,
+): Promise<Map<string, Buffer>> {
+  const {
+    browser,
+    config,
+    viewport,
+    scenario,
+    url,
+    isControl,
+    beforeNavigate,
+    runs,
+    activeSides,
+    createSide,
+    preparePage,
+    captureScreenshot,
+    captureFailure,
+  } = params;
+  let side: ComparisonSide | undefined;
+
+  return runWithFreshTestAnnotationContext(async () => {
+    try {
+      side = await createSide(
+        browser,
+        config,
+        viewport,
+        (context) => setUpContextForNavigation({
+          context,
+          url,
+          viewport,
+          isControl,
+          testType: 'visreg',
+          beforeNavigate,
+        }),
+      );
+      activeSides.add(side);
+
+      await preparePage(
+        side.page,
+        url,
+        scenario,
+        viewport,
+        config,
+        isControl,
+        side.context,
+      );
+
+      const captures = new Map<string, Buffer>();
+      for (const run of runs) {
+        if (run.done) continue;
+        const screenshot = await captureScreenshot(side.page, run.selector);
+        if (!screenshot) {
+          const pageLabel = isControl ? 'reference page' : 'test page';
+          throw new Error(
+            `Selector "${run.selector}" not found on ${pageLabel} for "${scenario.label}"`,
+          );
+        }
+        captures.set(run.selector, screenshot);
+      }
+      return captures;
+    } catch (err) {
+      attachLatestTestAnnotation(err, getLatestTestAnnotation(err));
+      const failure = side && activeSides.has(side) && captureFailure
+        ? await captureFailure(err, side.page, isControl)
+        : err;
+      disposeActiveSidesOnNextTask(activeSides);
+      throw failure;
+    } finally {
+      if (side && activeSides.delete(side)) {
+        await side.dispose();
+      }
+    }
+  });
+}
+
+function disposeActiveSidesOnNextTask(
+  activeSides: Set<ComparisonSide>,
+): void {
+  const sidesToDispose = [...activeSides];
+  activeSides.clear();
+  if (sidesToDispose.length === 0) return;
+  // Let this side's rejection settle Promise.all before closing its sibling.
+  // Otherwise the sibling's resulting "page closed" rejection can win the
+  // race and replace the failure that initiated cancellation.
+  setImmediate(() => {
+    void Promise.all(sidesToDispose.map((side) => side.dispose()));
+  });
+}
 
 /**
  * Drive one compare unit (scenario × viewport, across its selectors) through a
@@ -91,18 +208,25 @@ export async function runCompareAttempts(
   deps: CompareAttemptsDeps,
   params: CompareAttemptsParams,
 ): Promise<CompareSelectorOutcome[]> {
-  const { browser, config, viewport, scenario, variantOrScenarioLabelSafe, scenarioLabelSafe, pixelmatchThreshold } = params;
+  const { browser, config, viewport, scenario, scenarioLabelSafe, pixelmatchThreshold } = params;
   const captureScreenshot = deps.captureScreenshot;
   const createSide = deps.createSide ?? defaultCreateComparisonSide;
-  const preparePage = (deps.preparePage ?? defaultPreparePage) as PreparePageFn;
+  const preparePage = deps.preparePage ?? defaultPreparePage;
   const sleep = deps.sleep ?? defaultSleep;
 
-  const maxRetries = scenario.compareRetries ?? config.compareRetries ?? 0;
-  const retryDelayMs = scenario.compareRetryDelay ?? config.compareRetryDelay ?? 5000;
-  const maxNumDiffPixels = scenario.maxNumDiffPixels ?? config.maxNumDiffPixels ?? 0;
+  // All comparison tuning is read straight off the effective config (the compare
+  // stage already merged `config.visreg` and wrote it into the bridge config).
+  const maxRetries = config.compareRetries ?? 0;
+  const retryDelayMs = config.compareRetryDelay ?? 5000;
+  const maxNumDiffPixels = config.maxNumDiffPixels;
   const compareOpts = { maxNumDiffPixels, pixelmatchThreshold };
 
   let runs: SelectorRun[] = [];
+
+  // JSON-bridge boundary: the engine's config crosses as data (no functions), so
+  // rebuild this test's effective config here and read from it.
+  const effectiveConfig = await reconstructEffectiveConfig(scenario._testDef);
+  const beforeNavigate = effectiveConfig.shared.beforeNavigate;
 
   for (let attempt = 0; attempt <= maxRetries && (attempt === 0 || runs.some((r) => !r.done)); attempt++) {
     if (attempt > 0) {
@@ -112,74 +236,87 @@ export async function runCompareAttempts(
       await sleep(delay);
     }
 
-    // Pre-nav setup for a side, run on the context BEFORE its page is created
-    // (via createComparisonSide's onContextReady): the shared clear → beforeNavigate
-    // sequence, uniform with the other engines.
-    const setUpSide = (url: string, isControl: boolean) => (context: BrowserContext): Promise<void> =>
-      setUpContextForNavigation({
-        context,
-        url,
-        viewport,
-        isControl,
-        testType: 'visreg',
-        beforeNavigate: scenario._testDef?.options?.beforeNavigate,
+    // The selector set is declarative on the scenario. Build the pools before
+    // launching the concurrent side lifecycles so both sides capture the same
+    // set of still-pending selectors.
+    if (attempt === 0) {
+      const selectors = scenario.selectors?.length
+        ? scenario.selectors
+        : [DOCUMENT_SELECTOR];
+      runs = selectors.map((selector, selectorIndex) => {
+        const testPair = engineTools.generateTestPair(
+          config,
+          scenario,
+          viewport,
+          scenarioLabelSafe,
+          selectorIndex,
+          selector,
+        );
+        const pool = new ScreenshotPool(
+          path.dirname(testPair.reference),
+          path.dirname(testPair.test),
+          path.basename(testPair.test, engineTools.OUTPUT_FORMAT_SUFFIX),
+        );
+        return {
+          selector,
+          testPair,
+          pool,
+          control: pool.load('control'),
+          experiment: pool.load('experiment'),
+          result: null,
+          done: false,
+        };
       });
+    }
 
-    // Two throwaway sides per attempt, torn down on every exit path.
-    const sides: ComparisonSide[] = [];
-    try {
-      const refSide = await createSide(browser, config, viewport, setUpSide(scenario.referenceUrl!, true));
-      sides.push(refSide);
-      const testSide = await createSide(browser, config, viewport, setUpSide(scenario.url, false));
-      sides.push(testSide);
+    const activeSides = new Set<ComparisonSide>();
+    const commonSideParams = {
+      browser,
+      config,
+      viewport,
+      scenario,
+      beforeNavigate,
+      runs,
+      activeSides,
+      createSide,
+      preparePage,
+      captureScreenshot,
+      captureFailure: deps.captureFailure,
+    };
+    const captureSide = (url: string, isControl: boolean) =>
+      withLogPrefix(
+        formatLogPrefix(isControl ? 'control' : 'experiment'),
+        () => captureComparisonSide({ ...commonSideParams, url, isControl }),
+      );
+    const [refCaptures, testCaptures] = await Promise.all([
+      captureSide(scenario.referenceUrl!, true),
+      captureSide(scenario.url, false),
+    ]);
 
-      // Navigate + prepare both pages (runs the scenario's testFn), with
-      // side-scoped [control] / [experiment] log labels.
-      const [refResult, testResult] = await Promise.all([
-        withLogPrefix(formatLogPrefix('control'), () => preparePage(refSide.page, scenario.referenceUrl!, scenario, viewport, config, true, refSide.context)),
-        withLogPrefix(formatLogPrefix('experiment'), () => preparePage(testSide.page, scenario.url, scenario, viewport, config, false, testSide.context)),
-      ]);
+    for (const run of runs) {
+      if (run.done) continue;
+      const refBuffer = refCaptures.get(run.selector)!;
+      const testBuffer = testCaptures.get(run.selector)!;
 
-      // Attempt 0 discovers the selector set (from the test/experiment page);
-      // later attempts re-capture that fixed set so pool keys stay stable.
-      if (attempt === 0) {
-        runs = testResult.visregSelectorsExp.map((selector, selectorIndex) => {
-          const testPair = engineTools.generateTestPair(config, scenario, viewport, variantOrScenarioLabelSafe, scenarioLabelSafe, selectorIndex, selector);
-          if (testResult.visregSelectorsExpMap[selector]) testResult.visregSelectorsExpMap[selector].filePath = testPair.test;
-          if (refResult.visregSelectorsExpMap[selector]) refResult.visregSelectorsExpMap[selector].filePath = testPair.reference;
-          const pool = new ScreenshotPool(path.dirname(testPair.reference), path.dirname(testPair.test), path.basename(testPair.test, config._outputFileFormatSuffix));
-          return { selector, testPair, pool, control: pool.load('control'), experiment: pool.load('experiment'), result: null, done: false };
-        });
-      }
+      // Frames are content-addressed, so identical re-captures are no-ops and
+      // the pools only grow by genuinely new frames.
+      const framesBefore = run.control.length + run.experiment.length;
+      run.pool.add('control', refBuffer);
+      run.pool.add('experiment', testBuffer);
+      run.control = run.pool.load('control');
+      run.experiment = run.pool.load('experiment');
 
-      for (const run of runs) {
-        if (run.done) continue;
-
-        const [refBuffer, testBuffer] = await Promise.all([
-          withLogPrefix(formatLogPrefix('control'), () => captureScreenshot(refSide.page, run.selector, refResult.visregSelectorsExpMap)),
-          withLogPrefix(formatLogPrefix('experiment'), () => captureScreenshot(testSide.page, run.selector, testResult.visregSelectorsExpMap)),
-        ]);
-        if (!refBuffer || !testBuffer) {
-          const where = !refBuffer && !testBuffer ? 'reference and test pages' : (!refBuffer ? 'reference page' : 'test page');
-          throw new Error(`Selector "${run.selector}" not found on ${where} for "${scenario.label}"`);
-        }
-
-        // Frames are content-addressed, so identical re-captures are no-ops and
-        // the pools only grow by genuinely new frames.
-        const framesBefore = run.control.length + run.experiment.length;
-        run.pool.add('control', refBuffer);
-        run.pool.add('experiment', testBuffer);
-        run.control = run.pool.load('control');
-        run.experiment = run.pool.load('experiment');
-
-        run.result = crossMatch(run.control.map((f) => f.buffer), run.experiment.map((f) => f.buffer), compareOpts);
-        const budgetSpent = run.control.length > maxRetries && run.experiment.length > maxRetries;
-        // A retry that added no frames is pixel-stable — retrying can't change it.
-        const pixelStable = attempt > 0 && run.control.length + run.experiment.length === framesBefore;
-        run.done = run.result.pass || budgetSpent || pixelStable;
-      }
-    } finally {
-      for (const side of sides) await side.dispose();
+      run.result = crossMatch(
+        run.control.map((f) => f.buffer),
+        run.experiment.map((f) => f.buffer),
+        compareOpts,
+      );
+      const budgetSpent = run.control.length > maxRetries &&
+        run.experiment.length > maxRetries;
+      // A retry that added no frames is pixel-stable — retrying can't change it.
+      const pixelStable = attempt > 0 &&
+        run.control.length + run.experiment.length === framesBefore;
+      run.done = run.result.pass || budgetSpent || pixelStable;
     }
   }
 

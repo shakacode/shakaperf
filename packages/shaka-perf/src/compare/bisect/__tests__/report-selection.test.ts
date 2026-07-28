@@ -184,7 +184,7 @@ describe('bisect report selection', () => {
 function comparePipelineConfig() {
   return {
     parallelism: 1,
-    visregDefaultMisMatchThreshold: 0.1,
+    visregMismatchThreshold: 0.1,
     visregMaxNumDiffPixels: 50,
     visregComparePixelmatchThreshold: 0.1,
     visregEngineOptions: {},

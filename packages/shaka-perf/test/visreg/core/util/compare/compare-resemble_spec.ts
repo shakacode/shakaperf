@@ -30,7 +30,7 @@ describe('compare-resemble', function () {
   });
   it('should use resemble\'s more precise rawMisMatchPercentage value if specified', function () {
     return expect(
-      compareResemble(REF_IMG1, REF_IMG3, 0, { usePreciseMatching: true }, true)
+      compareResemble(REF_IMG1, REF_IMG3, 0, { usePreciseMatching: true })
     ).rejects.toBeDefined();
   });
 });

@@ -24,68 +24,6 @@ export default (target: PlaywrightPage) => {
     }
 
     window._visregTools = {
-      hasLogged: function (str) {
-        return new RegExp(str).test(window._visregTools._consoleLogger || '');
-      },
-      startConsoleLogger: function () {
-        if (typeof window._visregTools._consoleLogger !== 'string') {
-          window._visregTools._consoleLogger = '';
-        }
-        const log = window.console.log.bind(console);
-        window.console.log = function (...args: unknown[]) {
-          window._visregTools._consoleLogger += args.join('\n');
-          log(...args);
-        };
-      },
-      /**
-       * Take an array of selector names and return and array of *all* matching selectors.
-       * For each selector name, If more than 1 selector is matched, proceeding matches are
-       * tagged with an additional `__n` class.
-       *
-       * @return {[string]} [array of expanded selectors]
-       * @param selectors
-       */
-      expandSelectors: function (selectors) {
-        if (!Array.isArray(selectors)) {
-          selectors = selectors.split(',');
-        }
-        return selectors.reduce(function (acc: string[], selector: string) {
-          if (selector === 'body' || selector === 'viewport') {
-            return acc.concat([selector]);
-          }
-          if (selector === 'document') {
-            return acc.concat(['document']);
-          }
-          const qResult = document.querySelectorAll(selector);
-
-          // pass-through any selectors that don't match any DOM elements
-          if (!qResult.length) {
-            return acc.concat(selector);
-          }
-
-          const expandedSelector = ([] as Element[]).slice.call(qResult)
-            .map(function (element: Element, expandedIndex: number) {
-              if (element.classList.contains('__86d')) {
-                return '';
-              }
-              if (!expandedIndex) {
-                // only first element is used for screenshots -- even if multiple instances exist.
-                // therefore index 0 does not need extended qualification.
-                return selector;
-              }
-              // create index partial
-              const indexPartial = '__n' + expandedIndex;
-              // update all matching selectors with additional indexPartial class
-              element.classList.add(indexPartial);
-              // return array of fully-qualified classnames
-              return selector + '.' + indexPartial;
-            });
-          // concat arrays of fully-qualified classnames
-          return acc.concat(expandedSelector);
-        }, [] as string[]).filter(function (selector: string) {
-          return selector !== '';
-        });
-      },
       /**
        * is the selector element visible?
        * @param  {[type]}  selector [a css selector str]
@@ -114,7 +52,6 @@ export default (target: PlaywrightPage) => {
       }
     };
 
-    window._visregTools.startConsoleLogger();
     console.info('VisregTools have been installed.');
     return true;
   });

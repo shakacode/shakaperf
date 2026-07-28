@@ -9,11 +9,24 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 import type { AbTestDefinition, Viewport } from 'shaka-shared';
-import type { ArtifactStore } from './artifact-store';
+import type { AbTestsConfig } from '../config';
+import {
+  mimeTypeForArtifactPath,
+  type ArtifactStore,
+} from './artifact-store';
+import { persistedOutcomeInScope } from './viewport-plan';
 import type { Outcome } from './outcome';
 import type { Pipeline } from './pipeline';
-import type { Stage, StageLogger, StageName, StageRenderContext, StageRuntime } from '../stage/stage';
+import type {
+  SelfContainedReportStrip,
+  Stage,
+  StageLogger,
+  StageName,
+  StageRenderContext,
+  StageRuntime,
+} from '../stage/stage';
 import type { ReportMode } from './report-mode';
 import { resolveUrl } from './unit-urls';
 
@@ -66,13 +79,9 @@ export type Status =
   | 'improvement'
   | 'no_difference'
   /**
-   * Category was skipped for this test because the intersection of
-   * `options.viewports` (test narrow) and the category's own `viewports`
-   * is empty — e.g. a test tagged `viewports: ['desktop']` against
-   * `perf.viewports: ['phone']` produces no perf work. Rendered as a
-   * small "skipped by viewport filter" banner; does not propagate to the
-   * test-level status (a skipped perf category doesn't override a visreg
-   * change).
+   * Category produced no work for this test (e.g. its stage's `applies()`
+   * declined). Rendered as a small "skipped" banner; does not propagate to
+   * the test-level status.
    */
   | 'skipped';
 
@@ -137,7 +146,8 @@ export interface ReportMeta {
   /**
    * Which variant of the report this HTML file is. `writeReport` emits two
    * files per run — `full-report.html` (mode `'full'`) for local devs and
-   * `report.html` (mode `'lightweight'`) for sharing — and the shell uses
+   * `self-contained-performance-report.html` (mode `'self-contained'`) for
+   * sharing — and the shell uses
    * this flag at render time to gate `<FullReportOnly/>` content.
    */
   reportMode: ReportMode;
@@ -246,11 +256,10 @@ export interface WriteReportResult {
   /** Local-dev report; references sibling artifact files via relative paths. */
   fullPath: string;
   /**
-   * Shareable, fully self-contained report — every renderable artifact
-   * (LH thumbs, BAT timeline AVIF, etc.) is inlined as a base64 data URI
-   * so the file works alone without its sibling artifact directories.
+   * Shareable, fully self-contained report — every persisted artifact path is
+   * replaced with a base64 data URI so the file works without sibling files.
    */
-  lightPath: string;
+  selfContainedPath: string;
 }
 
 /** Local-dev report variant; references sibling artifact files via relative paths. */
@@ -258,58 +267,315 @@ export const FULL_REPORT_FILENAME = 'full-report.html';
 /** Shareable variant; every artifact inlined as a base64 data URI, works standalone. */
 export const SELF_CONTAINED_REPORT_FILENAME = 'self-contained-performance-report.html';
 
-export function writeReport(
+export async function writeReport(
   data: ReportData,
   outDir: string,
   stages: readonly Stage[] = [],
-): WriteReportResult {
+): Promise<WriteReportResult> {
   fs.mkdirSync(outDir, { recursive: true });
   const fullData = reportDataForMode(
     { ...data, meta: { ...data.meta, reportMode: 'full' } },
     'full',
     stages,
+    outDir,
   );
-  const lightData = reportDataForMode(
-    { ...data, meta: { ...data.meta, reportMode: 'lightweight' } },
-    'lightweight',
+  const selfContainedInput = {
+    ...data,
+    meta: { ...data.meta, reportMode: 'self-contained' as const },
+  };
+  const artifactDictionary = await buildSelfContainedArtifactDictionary(
+    selfContainedInput,
     stages,
+    outDir,
+  );
+  const selfContainedData = reportDataForMode(
+    selfContainedInput,
+    'self-contained',
+    stages,
+    outDir,
+    artifactDictionary,
   );
   const fullPath = path.join(outDir, FULL_REPORT_FILENAME);
-  const lightPath = path.join(outDir, SELF_CONTAINED_REPORT_FILENAME);
+  const selfContainedPath = path.join(
+    outDir,
+    SELF_CONTAINED_REPORT_FILENAME,
+  );
   fs.writeFileSync(fullPath, renderReportHtml(fullData));
-  fs.writeFileSync(lightPath, renderReportHtml(lightData));
-  return { fullPath, lightPath };
+  fs.writeFileSync(
+    selfContainedPath,
+    renderReportHtml(selfContainedData),
+  );
+  return { fullPath, selfContainedPath };
 }
 
 /**
- * Apply each stage's per-mode stripper to every matching outcome's
- * measurement, so each report variant only ships the fields the renderer
- * needs in that mode (inlined data URIs for lightweight, relative-path
- * refs for full).
+ * Project each measurement to its report-facing shape. Full reports retain
+ * artifact paths; self-contained reports recursively replace those paths with
+ * data URIs.
  */
 export function reportDataForMode<T extends ReportData>(
   data: T,
   mode: ReportMode,
   stages: readonly Stage[],
+  resultsRoot: string,
+  artifactDictionary?: Readonly<Record<string, string>>,
 ): T {
-  const strippers = new Map<StageName, (m: unknown) => unknown>();
-  for (const stage of stages) {
-    const fn = mode === 'lightweight' ? stage.stripMeasurementForLightweight : stage.stripMeasurementForFull;
-    if (fn) strippers.set(stage.name, fn.bind(stage) as (m: unknown) => unknown);
-  }
-  if (strippers.size === 0) return data;
-  return {
+  const selfContainedStrips = new Map(
+    stages.map((stage) => [stage.name, stage.selfContainedReportStrip]),
+  );
+  const shouldStrip = mode === 'self-contained' &&
+    selfContainedStrips.size > 0;
+  const stripped = !shouldStrip ? data : {
     ...data,
     tests: data.tests.map((test) => ({
       ...test,
       outcomes: test.outcomes.map((outcome) => {
         if (outcome.kind !== 'ok' || outcome.measurement == null) return outcome;
-        const strip = strippers.get(outcome.stage);
+        const strip = selfContainedStrips.get(outcome.stage);
         if (!strip) return outcome;
-        return { ...outcome, measurement: strip(outcome.measurement) };
+        return {
+          ...outcome,
+          measurement: applySelfContainedReportStrip(
+            outcome.measurement,
+            strip,
+          ),
+        };
       }),
     })),
   } as T;
+  return mode === 'self-contained'
+    ? inlineArtifactPaths(stripped, resultsRoot, artifactDictionary) as T
+    : stripped;
+}
+
+function applySelfContainedReportStrip(
+  value: unknown,
+  strip: SelfContainedReportStrip,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      item && typeof item === 'object'
+        ? applySelfContainedReportStrip(item, strip)
+        : item);
+  }
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, item]) => {
+      const rule = strip[key];
+      if (rule === true) return [];
+      if (rule && typeof rule === 'object') {
+        return [[key, applySelfContainedReportStrip(item, rule)]];
+      }
+      return [[key, item]];
+    }),
+  );
+}
+
+function inlineArtifactPaths(
+  value: unknown,
+  resultsRoot: string,
+  artifactDictionary?: Readonly<Record<string, string>>,
+): unknown {
+  if (typeof value === 'string') {
+    if (artifactDictionary) {
+      return Object.prototype.hasOwnProperty.call(artifactDictionary, value)
+        ? artifactDictionary[value]
+        : value;
+    }
+    const absolutePath = path.resolve(resultsRoot, value);
+    const relativePath = path.relative(resultsRoot, absolutePath);
+    if (
+      relativePath === '' ||
+      path.isAbsolute(relativePath) ||
+      relativePath === '..' ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
+      return value;
+    }
+    try {
+      if (!fs.statSync(absolutePath).isFile()) return value;
+      const bytes = fs.readFileSync(absolutePath);
+      return `data:${mimeTypeForArtifactPath(absolutePath)};base64,${
+        bytes.toString('base64')
+      }`;
+    } catch {
+      return value;
+    }
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) =>
+      inlineArtifactPaths(item, resultsRoot, artifactDictionary));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        inlineArtifactPaths(item, resultsRoot, artifactDictionary),
+      ]),
+    );
+  }
+  return value;
+}
+
+const HEIF_MAX_DIMENSION = 16_384;
+const SVG_IMAGE_DATA_URI_RE =
+  /data:image\/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/]+=*/g;
+
+/**
+ * Build the exact path→data-URI dictionary used by the self-contained report.
+ * Stage strip dictionaries remove local-only fields first; this function
+ * centrally encodes every artifact path that survives.
+ */
+export async function buildSelfContainedArtifactDictionary(
+  data: ReportData,
+  stages: readonly Stage[],
+  resultsRoot: string,
+): Promise<Record<string, string>> {
+  const projected = reportDataForMode(
+    data,
+    'self-contained',
+    stages,
+    resultsRoot,
+    {},
+  );
+  const artifactPaths = new Set<string>();
+  collectArtifactPaths(projected, resultsRoot, artifactPaths);
+
+  const encoded = await Promise.all(
+    [...artifactPaths].map(async (artifactPath) => [
+      artifactPath,
+      await encodeArtifact(artifactPath, resultsRoot),
+    ] as const),
+  );
+  return Object.fromEntries(encoded);
+}
+
+function collectArtifactPaths(
+  value: unknown,
+  resultsRoot: string,
+  artifactPaths: Set<string>,
+): void {
+  if (typeof value === 'string') {
+    if (resolveArtifactPath(value, resultsRoot)) artifactPaths.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectArtifactPaths(item, resultsRoot, artifactPaths);
+    }
+    return;
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) {
+      collectArtifactPaths(item, resultsRoot, artifactPaths);
+    }
+  }
+}
+
+async function encodeArtifact(
+  artifactPath: string,
+  resultsRoot: string,
+): Promise<string> {
+  const absolutePath = resolveArtifactPath(artifactPath, resultsRoot);
+  if (!absolutePath) return artifactPath;
+  const raw = (): string => {
+    const bytes = fs.readFileSync(absolutePath);
+    return `data:${mimeTypeForArtifactPath(absolutePath)};base64,${
+      bytes.toString('base64')
+    }`;
+  };
+  try {
+    if (isRasterImage(absolutePath)) {
+      const bytes = await encodeAvif(absolutePath);
+      return `data:image/avif;base64,${bytes.toString('base64')}`;
+    }
+    if (
+      path.extname(absolutePath).toLowerCase() === '.svg'
+    ) {
+      const svg = await compressSvgEmbeddedImages(
+        fs.readFileSync(absolutePath, 'utf8'),
+      );
+      return `data:image/svg+xml;base64,${
+        Buffer.from(svg).toString('base64')
+      }`;
+    }
+    return raw();
+  } catch (error) {
+    console.warn(
+      `[shaka-perf report] failed to compress ${artifactPath}; ` +
+      `using original bytes: ${(error as Error).message}`,
+    );
+    return raw();
+  }
+}
+
+function resolveArtifactPath(
+  artifactPath: string,
+  resultsRoot: string,
+): string | undefined {
+  const absolutePath = path.resolve(resultsRoot, artifactPath);
+  const relativePath = path.relative(resultsRoot, absolutePath);
+  if (
+    relativePath === '' ||
+    path.isAbsolute(relativePath) ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${path.sep}`)
+  ) {
+    return undefined;
+  }
+  try {
+    return fs.statSync(absolutePath).isFile() ? absolutePath : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRasterImage(filePath: string): boolean {
+  return /\.(?:png|jpe?g|webp|avif)$/i.test(filePath);
+}
+
+async function encodeAvif(
+  filePath: string,
+): Promise<Buffer> {
+  const metadata = await sharp(filePath).metadata();
+  const sourceWidth = metadata.width;
+  let targetWidth = sourceWidth ?? HEIF_MAX_DIMENSION;
+  targetWidth = Math.min(targetWidth, 960);
+  targetWidth = Math.min(targetWidth, HEIF_MAX_DIMENSION);
+  return sharp(filePath)
+    .resize({
+      width: targetWidth,
+      height: HEIF_MAX_DIMENSION,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+    .avif({ quality: 45, effort: 2 })
+    .toBuffer();
+}
+
+async function compressSvgEmbeddedImages(
+  svg: string,
+): Promise<string> {
+  const matches = [...svg.matchAll(SVG_IMAGE_DATA_URI_RE)];
+  const replacements = await Promise.all(matches.map(async (match) => {
+    const original = match[0];
+    const base64 = original.slice(
+      original.indexOf('base64,') + 'base64,'.length,
+    );
+    const output = await sharp(Buffer.from(base64, 'base64'))
+      .resize({ width: 160, withoutEnlargement: true })
+      .webp({ quality: 40 })
+      .toBuffer();
+    return `data:image/webp;base64,${output.toString('base64')}`;
+  }));
+  let output = svg;
+  for (let index = matches.length - 1; index >= 0; index -= 1) {
+    const match = matches[index];
+    output = output.slice(0, match.index!) +
+      replacements[index] +
+      output.slice(match.index! + match[0].length);
+  }
+  return output;
 }
 
 class ReportSummaryLogger implements StageLogger {
@@ -328,6 +594,7 @@ export function writeMachineReport(
   store: ArtifactStore,
   runtime: StageRuntime,
   chipsByTest: ReadonlyMap<AbTestDefinition, readonly ChipDescriptor[]>,
+  config: AbTestsConfig,
 ): void {
   const stagesByName = new Map<StageName, Stage>(
     pipeline.stages.map((stage) => [stage.name, stage]),
@@ -335,7 +602,10 @@ export function writeMachineReport(
   const rows = tests.flatMap((test) => viewportsByTest(test).map((viewport) => ({
     test,
     viewport,
-    outcomes: store.readOutcomesForViewport(test, viewport.label),
+    // Same stale-outcome guard as the HTML report (see buildTestPartial).
+    outcomes: store.readOutcomesForViewport(test, viewport.label)
+      .filter((outcome) =>
+        persistedOutcomeInScope(test, config, stagesByName.get(outcome.stage), outcome, viewport.label)),
   })));
   const machineReportMeta = pipeline.machineReportMeta?.({
     rows,

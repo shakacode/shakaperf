@@ -53,18 +53,26 @@ export default defineConfig({
     controlURL: `http://localhost:${CONTROL_PORT}`,
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
     parallelism: PARALLELISM,
-    retries: 1
+    retries: 1,
+    // Browser-launch options every stage respects. Required — no hidden
+    // defaults; visreg/perf may override per-category via
+    // <category>.playwrightOptions (partial, per-key).
+    playwrightOptions: {
+      browser: 'chromium',
+      args: ['--no-sandbox'],
+      // Default action + navigation timeout (ms) on every Playwright engine
+      // (visreg, accessibility, agent-readiness). Lighthouse's page-load wait
+      // is separate: lighthouseConfig.maxWaitForLoad.
+      waitTimeout: 60_000,
+    },
   },
 
   visreg: {
-    // viewports default to ['desktop', 'tablet', 'phone'] — full defs live
-    // in shared.viewports (also defaulted).
-    engineOptions: {
-      browser: 'chromium',
-      args: ['--no-sandbox'],
-    },
+    // Overrides shared.viewports (desktop + phone) for visreg alone —
+    // screenshots are cheap, so the extra breakpoint is worth it here.
+    viewports: ['desktop', 'tablet', 'phone'],
     maxNumDiffPixels: 50,
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
   },
 
   accessibility: {
@@ -72,10 +80,10 @@ export default defineConfig({
   },
 
   perf: {
-    // viewports default to ['desktop', 'phone']. `formFactor` and
-    // `screenEmulation` are NOT set here — the viewport referenced from
-    // shared.viewports owns them; the runner lowers them via
-    // lhConfigForViewport.
+    // No `viewports` — perf inherits shared.viewports (desktop + phone).
+    // `formFactor` and `screenEmulation` are NOT set here — the viewport
+    // referenced from shared.viewportDefinitions owns them; the runner lowers
+    // them via lhConfigForViewport.
     lighthouseConfig: LIGHTHOUSE_CONFIG,
     numberOfMeasurements: 10,
     pValueThreshold: 0.01,

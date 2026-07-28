@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { ArtifactScope } from '../../../../pipeline/artifact-store';
 import { readPerfArtifact } from '../artifacts';
 
 function metric(
@@ -37,8 +38,7 @@ async function readMetrics(
   );
 
   return readPerfArtifact({
-    perTestDir,
-    reportRoot: perTestDir,
+    artifacts: new ArtifactScope(perTestDir, perTestDir),
     regressionThreshold: 50,
     regressionThresholdStat,
     saveArtifacts: false,
@@ -47,6 +47,31 @@ async function readMetrics(
 }
 
 describe('readPerfArtifact', () => {
+  it('returns paths for every successful render artifact', async () => {
+    const resultsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'shaka-perf-paths-test-'));
+    const perTestDir = path.join(resultsRoot, 'checkout-desktop', 'artifacts');
+    fs.mkdirSync(perTestDir, { recursive: true });
+    fs.writeFileSync(path.join(perTestDir, 'timeline_comparison.html'), '<html></html>');
+    fs.writeFileSync(path.join(perTestDir, 'timeline_preview.svg'), '<svg></svg>');
+
+    try {
+      const artifact = await readPerfArtifact({
+        artifacts: new ArtifactScope(perTestDir, resultsRoot),
+        regressionThreshold: 50,
+        saveArtifacts: true,
+        statisticalAnalysis: false,
+      });
+
+      expect(artifact).toMatchObject({
+        timelineHref: 'checkout-desktop/artifacts/timeline_comparison.html',
+        timelinePreviewHref: 'checkout-desktop/artifacts/timeline_preview.svg',
+      });
+      expect(JSON.stringify(artifact)).not.toContain('data:');
+    } finally {
+      fs.rmSync(resultsRoot, { recursive: true, force: true });
+    }
+  });
+
   it('preserves numeric metric values beside their display values', async () => {
     const artifact = await readMetrics([
       metric('TBT', '20ms', true, 100, 120),

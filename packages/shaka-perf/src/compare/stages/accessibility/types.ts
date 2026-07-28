@@ -19,7 +19,6 @@ export interface AccessibilityCompareScreenshot {
   width: number;
   height: number;
   imageHref?: string;
-  imageDataUri?: string;
 }
 
 export interface AccessibilitySideScan {

@@ -120,12 +120,13 @@ normalize_log() {
 
 cd "$REPO_ROOT"
 
-echo "=== Cleaning previous snapshots ==="
 mkdir -p "$SNAPSHOTS"
-$PERF         && rm -rf "$SNAPSHOTS/baseline-perf.log" "$SNAPSHOTS/bench-results"
-$VISREG       && rm -rf "$SNAPSHOTS/baseline-visreg.log" "$SNAPSHOTS/visreg-results"
-$TWIN_SERVERS && rm -rf "$SNAPSHOTS/baseline-twin-servers.log"
-$AUDIT        && rm -rf "$SNAPSHOTS/baseline-audit.log" "$SNAPSHOTS/audit-results"
+
+# Snapshots are NOT wiped up front. Each suite replaces its own as it runs —
+# `tee` truncates the baseline log, and each spec rm -rf's the results dir it
+# owns (visreg-results, bench-results, audit-results). Deleting them all here
+# first meant any early exit — a failed suite, the Node version check below,
+# ^C — left the un-run suites' snapshots simply gone from the working tree.
 
 # Ensure the Node version from .nvmrc is active (requires nvm to be loaded)
 REQUIRED_NODE=$(cat "$REPO_ROOT/.nvmrc")
@@ -138,6 +139,8 @@ if [ "$CURRENT_NODE" != "$REQUIRED_NODE" ]; then
   nvm use || { echo "Failed to switch Node version. Run 'nvm install $REQUIRED_NODE' first."; exit 1; }
 fi
 
+FAILED_SUITES=()
+
 run_suite() {
   local tag="$1" baseline="$2"
   local args=("${EXTRA_ARGS[@]}" --grep "$tag")
@@ -147,8 +150,18 @@ run_suite() {
   SETUP_NEEDED=false
   export SKIP_TEARDOWN=1
   echo "=== Running $tag tests ==="
-  yarn test:integration "${args[@]}" 2>&1 | tee "$baseline"
+  # A failing spec must NOT abort the script: aborting here skips the remaining
+  # suites, leaves this suite's log un-normalized (raw ANSI, no <TIMING> stubs —
+  # an unreviewable diff), and leaves the containers running. Record the failure,
+  # keep going, and exit non-zero at the very end instead.
+  local status=0
+  yarn test:integration "${args[@]}" 2>&1 | tee "$baseline" || status=$?
   normalize_log "$baseline"
+  if [ "$status" -ne 0 ]; then
+    FAILED_SUITES+=("$tag")
+    echo "=== $tag FAILED (exit $status) — continuing so the remaining suites still update ==="
+  fi
+  return 0
 }
 
 # Run each selected suite. First suite runs global setup; subsequent ones skip it.
@@ -169,3 +182,10 @@ DEMO_CWD="/tmp/temp-shaka-perf-repos-for-tests/shaka-perf/demo-ecommerce"
 # `|| true` (containers are already stopped above).
 echo "=== Generating screenshot diff report ==="
 yarn node "$SCRIPT_DIR/compare-screenshots.mjs"
+
+# Surface suite failures only now, so everything above (remaining suites, log
+# normalization, container shutdown, diff report) has already run.
+if [ ${#FAILED_SUITES[@]} -gt 0 ]; then
+  echo "=== FAILED suites: ${FAILED_SUITES[*]} ==="
+  exit 1
+fi

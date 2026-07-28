@@ -18,4 +18,4 @@ export { runAnalyze } from "./commands/compare/analyze";
 
 // Test definition API
 export { abTest } from "../core/ab-test-registry";
-export type { AbTestDefinition, AbTestOptions } from "../core/ab-test-registry";
+export type { AbTestDefinition, AbTestConfig } from "../core/ab-test-registry";

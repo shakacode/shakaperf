@@ -18,11 +18,28 @@
 
 import type { BeforeNavigateHook, Viewport } from './ab-test-registry';
 
-export interface EngineOptionsInput {
-  browser?: string;
+/**
+ * Browser-launch options, one shape for every stage. REQUIRED on
+ * `shared.playwrightOptions` — no hidden launch defaults; what the config
+ * says is what every stage launches with. `visreg.playwrightOptions` and
+ * `perf.playwrightOptions` may override it per-category with a partial of
+ * this shape, merged per-key over shared.
+ *
+ * `waitTimeout` (ms) is respected identically by every Playwright engine
+ * (visreg, accessibility, agent-readiness): the default action + navigation
+ * timeout. Defaults to 60_000. The perf/audit Lighthouse page-load wait is a
+ * different concern, configured via `lighthouseConfig.maxWaitForLoad`.
+ *
+ * `ignoreHTTPSErrors` defaults to true on every engine (Playwright context
+ * option / Lighthouse `--ignore-certificate-errors`); set `false` for strict
+ * certificate checking everywhere.
+ */
+export interface PlaywrightOptionsInput {
+  browser: 'chromium' | 'firefox' | 'webkit';
   args?: string[];
   headless?: boolean;
   waitTimeout?: number;
+  ignoreHTTPSErrors?: boolean;
   [key: string]: unknown;
 }
 
@@ -38,8 +55,17 @@ export interface SharedConfigInput {
   experimentURL: string;
   testPathPattern?: string;
   filter?: string;
-  /** Full-definition viewports (label + dimensions + formFactor + DPR). */
-  viewports?: [Viewport, ...Viewport[]];
+  /**
+   * Full-definition viewports (label + dimensions + formFactor + DPR) — the
+   * registry every viewport LABEL elsewhere must resolve against. Defining a
+   * viewport does not run it.
+   */
+  viewportDefinitions?: [Viewport, ...Viewport[]];
+  /**
+   * Labels (from `viewportDefinitions`) that every category runs at unless it
+   * sets its own `viewports`. Defaults to desktop + phone.
+   */
+  viewports?: [string, ...string[]];
   parallelism: number;
   retries?: number;
   retryDelay?: number;
@@ -52,23 +78,25 @@ export interface SharedConfigInput {
    *
    *   beforeNavigate: ({ context }) =>
    *     installRequestBlocking(context, ['/recaptcha/'])
-   *
-   * A per-test `beforeNavigate` (on `abTest()` options), if present, RECEIVES
-   * this hook as a second argument and decides whether to call it — so a test
-   * can extend, wrap, or opt out of the global setup. Tests with no per-test
-   * hook get this one automatically. See `BeforeNavigateContext`.
+
    */
   beforeNavigate?: BeforeNavigateHook;
+  /**
+   * Browser-launch options every stage respects (see PlaywrightOptionsInput).
+   * Required — there are no hidden launch defaults.
+   */
+  playwrightOptions: PlaywrightOptionsInput;
 }
 
 export interface VisregConfigInput {
   viewports?: [string, ...string[]];
-  defaultMisMatchThreshold?: number;
+  mismatchThreshold?: number;
   maxNumDiffPixels?: number;
   comparePixelmatchThreshold?: number;
   compareRetries?: number;
   compareRetryDelay?: number;
-  engineOptions?: EngineOptionsInput;
+  /** Category override of `shared.playwrightOptions` (partial, per-key). */
+  playwrightOptions?: Partial<PlaywrightOptionsInput>;
   resembleOutputOptions?: ResembleOutputOptionsInput;
 }
 
@@ -83,6 +111,12 @@ export interface PerfConfigInput {
   // wait before measuring; the engine layers in `formFactor` / `screenEmulation`.
   lighthouseConfig?: Record<string, unknown>;
   plotTitle?: string;
+  /**
+   * Category override of `shared.playwrightOptions` (partial, per-key).
+   * Lighthouse is chromium-only; `args`/`headless` map onto its
+   * chrome-launcher flags.
+   */
+  playwrightOptions?: Partial<PlaywrightOptionsInput>;
 }
 
 export interface AuditConfigInput {
@@ -92,21 +126,24 @@ export interface AuditConfigInput {
   limitVideoFramesCount?: number;
 }
 
-export interface AccessibilityEngineOptionsInput {
-  browser?: 'chromium' | 'firefox' | 'webkit';
-  args?: string[];
-  headless?: boolean;
-  waitTimeout?: number;
-  [key: string]: unknown;
-}
-
 export interface AccessibilityConfigInput {
   viewports?: [string, ...string[]];
   tags?: string[];
   disableRules?: string[];
   includeRules?: string[];
-  engineOptions?: AccessibilityEngineOptionsInput;
   failOnViolation?: boolean;
+}
+
+export interface AgentReadinessConfigInput {
+  /**
+   * Opt-in: the agent-readiness (AI-legibility) scan is OFF by default. Set to
+   * `true` — ideally per-test, on the specific landing pages where a crawler's
+   * cold view actually matters — to run it. It measures each URL anonymously
+   * (no cookies/auth, and it never runs your test body), so enabling it on
+   * every interaction test just scores their `startingPath` cold. See
+   * BREAKING_CHANGES.md.
+   */
+  enabled?: boolean;
 }
 
 export interface SetupCommandInput {
@@ -147,9 +184,33 @@ export interface AbTestsConfigInput {
   perf?: PerfConfigInput;
   audit?: AuditConfigInput;
   accessibility?: AccessibilityConfigInput;
+  agentReadiness?: AgentReadinessConfigInput;
   twinServers?: TwinServersConfigInput;
   bisect?: BisectConfigInput;
 }
+
+/**
+ * The per-test `config` override on `abTest()`, merged over the file config for
+ * that test alone. It mirrors the `abtests.config.ts` section shape (same keys,
+ * same types) with every field optional, so a test overrides just what it needs.
+ *
+ * It exposes every section EXCEPT the two that are inherently run/infra-level and
+ * make no sense scoped to a single test: `twinServers` (the Docker A/B servers
+ * are one pair for the whole run) and `bisect` (a run-level search). Everything
+ * else is fair game; settings the engines resolve once per run (e.g. shared
+ * `parallelism`) simply won't vary if overridden, but nothing is off-limits by
+ * type — the merge (`applyPerTestConfigOverrides`) applies whatever is set.
+ */
+export type PerTestConfig = {
+  [K in keyof Omit<AbTestsConfigInput, 'twinServers' | 'bisect'>]?: K extends 'shared'
+    // `shared.playwrightOptions` is a required, browser-mandatory block at the
+    // file level, but a per-test override merges per-key — so here it is a
+    // partial like every other override.
+    ? Omit<Partial<SharedConfigInput>, 'playwrightOptions'> & {
+        playwrightOptions?: Partial<PlaywrightOptionsInput>;
+      }
+    : Partial<AbTestsConfigInput[K]>;
+};
 
 /**
  * Identity function whose only job is to give the user's config object the

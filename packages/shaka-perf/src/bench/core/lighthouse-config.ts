@@ -25,6 +25,7 @@ export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
 import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
+import type { PlaywrightOptions } from '../../config';
 
 export type LighthouseConfig = Flags;
 
@@ -189,8 +190,8 @@ export interface LighthouseBenchmarkOptions {
   saveArtifacts?: boolean;
   /**
    * Launch Chrome headed (visible window) instead of headless. Off by default;
-   * driven by the `--headed` CLI flag. Forwarded to the forked worker via the
-   * `SHAKA_PERF_HEADED` env var, which `setupBrowser` reads to drop `--headless`.
+   * driven by the `--headed` CLI flag. Forwarded to the forked worker in the
+   * `setup` IPC message, which `setupBrowser` reads to drop `--headless`.
    */
   headed?: boolean;
   /**
@@ -200,6 +201,14 @@ export interface LighthouseBenchmarkOptions {
   realChrome?: {
     headless: boolean;
   };
+  /**
+   * Resolved launch options (`shared.playwrightOptions` ← category override ←
+   * per-test config). Lighthouse drives Chrome via chrome-launcher, so only
+   * `args` and `headless` map — forwarded to the fork in the `setup` IPC
+   * message. `browser` must be chromium; the benchmark warns before forking
+   * and ignores anything else.
+   */
+  playwrightOptions?: Partial<PlaywrightOptions>;
   /**
    * Forwarded to the user's `testFn` so tests can vary behaviour between
    * control and experiment without the worker knowing about groups. The

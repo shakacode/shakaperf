@@ -37,13 +37,9 @@ jest.mock('sharp', () => jest.fn(() => ({
   metadata: jest.fn(async () => ({ width: 100, height: 80 })),
 })));
 
-jest.mock('../../../../pipeline/artifact-compression', () => ({
-  bufferToAvifDataUri: jest.fn(async () => 'data:image/avif;base64,test'),
-}));
-
 import {
   DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-  mergeAccessibilityConfig,
+  type AccessibilityStageConfig,
 } from '../config';
 import { normalizeViolation, projectAccessibilityRawArtifact } from '../artifacts';
 import {
@@ -56,7 +52,6 @@ import {
   normalizeAccessibilityFilterSelection,
 } from '../report';
 import { runAccessibilityStage } from '../engine';
-import { bufferToAvifDataUri } from '../../../../pipeline/artifact-compression';
 import { AccessibilityStage } from '../stage';
 import { resolveDialogFilterSelection } from '../report-dialog';
 import type { AccessibilityRawArtifact, AccessibilityResult, AccessibilityViolation } from '../types';
@@ -64,42 +59,29 @@ import { DESKTOP_VIEWPORT } from 'shaka-shared';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { StageRuntime, TestContext } from '../../../../stage/stage';
 import type { WorkerPool } from '../../../../pipeline/worker-pool';
+import { applyPerTestConfigOverrides } from '../../../../effective-config';
+import { buildAbTestsConfig } from '../../../../config';
 import { DEFAULT_ACCESSIBILITY_TAGS } from '../../../../config';
 
-describe('accessibility config merging', () => {
+// Launch options carry no defaults — the pipeline builder always supplies
+// them; tests do the same.
+const TEST_STAGE_CONFIG: AccessibilityStageConfig = {
+  ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+  playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+};
+
+describe('accessibility self-contained report stripping', () => {
+  it('removes the raw scan artifact and keeps screenshot paths', () => {
+    const stage = new AccessibilityStage(TEST_STAGE_CONFIG);
+    expect(stage.selfContainedReportStrip).toEqual({
+      rawArtifactHref: true,
+    });
+  });
+});
+
+describe('accessibility config defaults', () => {
   it('uses the shared accessibility tag defaults', () => {
     expect(DEFAULT_ACCESSIBILITY_STAGE_CONFIG.tags).toEqual([...DEFAULT_ACCESSIBILITY_TAGS]);
-  });
-
-  it('merges per-test overrides with replace and additive semantics', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      tags: ['wcag2a', 'wcag2aa'],
-      disableRules: ['color-contrast'],
-      includeRules: ['button-name'],
-    }, {
-      tags: ['wcag22aa'],
-      disableRules: ['region', 'color-contrast'],
-      includeRules: ['image-alt'],
-      skip: true,
-    });
-
-    expect(merged).toEqual({
-      tags: ['wcag22aa'],
-      disableRules: ['color-contrast', 'region'],
-      includeRules: ['image-alt'],
-      skip: true,
-    });
-  });
-
-  it('uses global includeRules when the test does not replace them', () => {
-    const merged = mergeAccessibilityConfig({
-      ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      includeRules: ['button-name'],
-    }, undefined);
-
-    expect(merged.includeRules).toEqual(['button-name']);
-    expect(merged.skip).toBe(false);
   });
 });
 
@@ -323,9 +305,8 @@ describe('accessibility report filtering', () => {
   });
 });
 
-describe('accessibility report modes', () => {
-  it('keeps linked screenshots for full reports and inline screenshots for lightweight reports', () => {
-    const stage = new AccessibilityStage();
+describe('accessibility artifact ownership', () => {
+  it('leaves all persisted paths intact for report generation to handle', () => {
     const raw: AccessibilityRawArtifact = {
       testName: 'Checkout',
       experimentURL: 'http://localhost:3030/checkout',
@@ -342,7 +323,6 @@ describe('accessibility report modes', () => {
           width: 1280,
           height: 800,
           imageHref: 'checkout/artifacts/accessibility-screenshot.png',
-          imageDataUri: 'data:image/avif;base64,thumb',
         },
         violations: [],
       }],
@@ -352,17 +332,10 @@ describe('accessibility report modes', () => {
       rawArtifactHref: 'checkout/artifacts/accessibility-report.json',
     });
 
-    expect(stage.stripMeasurementForFull!(result).scans[0].screenshot).toEqual({
-      width: 1280,
-      height: 800,
-      imageHref: 'checkout/artifacts/accessibility-screenshot.png',
-    });
-    expect(stage.stripMeasurementForLightweight!(result).scans[0].screenshot).toEqual({
-      width: 1280,
-      height: 800,
-      imageDataUri: 'data:image/avif;base64,thumb',
-    });
-    expect(stage.stripMeasurementForLightweight!(result).rawArtifactHref).toBeUndefined();
+    expect(result.scans[0].screenshot?.imageHref)
+      .toBe('checkout/artifacts/accessibility-screenshot.png');
+    expect(result.rawArtifactHref)
+      .toBe('checkout/artifacts/accessibility-report.json');
   });
 });
 
@@ -382,9 +355,9 @@ describe('accessibility browser launch', () => {
       fakeContext({ headed: true }),
       fakeWorkerPool(),
       {
-        ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-        engineOptions: {
-          ...DEFAULT_ACCESSIBILITY_STAGE_CONFIG.engineOptions,
+        ...TEST_STAGE_CONFIG,
+        playwrightOptions: {
+          ...TEST_STAGE_CONFIG.playwrightOptions,
           headless: true,
         },
       },
@@ -403,19 +376,23 @@ describe('accessibility browser launch', () => {
       fakeContext(
         {},
         {
-          beforeNavigate: jest.fn(async ({ context, testType, url }) => {
-            events.push('beforeNavigate');
-            expect(context).toBeDefined();
-            expect(testType).toBe('accessibility');
-            expect(url).toBe('http://localhost:3030/checkout');
-          }),
+          config: {
+            shared: {
+              beforeNavigate: jest.fn(async ({ context, testType, url }) => {
+                events.push('beforeNavigate');
+                expect(context).toBeDefined();
+                expect(testType).toBe('accessibility');
+                expect(url).toBe('http://localhost:3030/checkout');
+              }),
+            },
+          },
         },
         jest.fn(async () => {
           events.push('testFn');
         }),
       ),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
     // Browser state is cleared BEFORE the beforeNavigate hooks (so a hook that
@@ -433,7 +410,7 @@ describe('accessibility browser launch', () => {
     ]);
   });
 
-  it('keeps the page and its violations when the inline screenshot encode fails', async () => {
+  it('keeps the page and its violations with a persisted screenshot path', async () => {
     mockChromiumLaunch.mockResolvedValue(fakeBrowser());
     mockAxeAnalyze.mockResolvedValue({
       url: 'http://localhost:3030/checkout',
@@ -441,65 +418,21 @@ describe('accessibility browser launch', () => {
         { id: 'button-name', impact: 'critical', help: 'Buttons need text', helpUrl: '', tags: ['wcag2a'], nodes: [] },
       ],
     });
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    (bufferToAvifDataUri as jest.MockedFunction<typeof bufferToAvifDataUri>).mockRejectedValueOnce(
-      new Error('Processed image is too large for the HEIF format'),
-    );
-
-    try {
-      const result = await runAccessibilityStage(
-        fakeContext({}),
-        fakeWorkerPool(),
-        DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
-      );
-
-      // The PNG is on disk and the violations were computed before the
-      // screenshot, so the stage still delivers its primary output - only the
-      // inline crop source is dropped.
-      expect(result.totalViolations).toBe(1);
-      expect(result.scans[0].violations[0].ruleId).toBe('button-name');
-      const screenshot = result.scans[0].screenshot;
-      expect(screenshot?.imageHref).toBe('checkout-desktop/artifacts/accessibility-screenshot.png');
-      expect(screenshot?.imageDataUri).toBeUndefined();
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('inline screenshot encode failed'));
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
-  it('does not read or apply visreg-only test options', async () => {
-    const browser = fakeBrowser();
-    mockChromiumLaunch.mockResolvedValue(browser);
-
-    await runAccessibilityStage(
-      fakeContext(
-        {},
-        {
-          visreg: {
-            readyEvent: 'app:ready',
-            readySelector: '#ready',
-            readyTimeout: 123,
-            delay: 500,
-            removeSelectors: ['.visreg-remove'],
-            hideSelectors: ['.visreg-hide'],
-          },
-        },
-      ),
+    const result = await runAccessibilityStage(
+      fakeContext({}),
       fakeWorkerPool(),
-      DEFAULT_ACCESSIBILITY_STAGE_CONFIG,
+      TEST_STAGE_CONFIG,
     );
 
-    expect(browser.context.addCookies).not.toHaveBeenCalled();
-    expect(browser.page.on).not.toHaveBeenCalled();
-    expect(browser.page.removeListener).not.toHaveBeenCalled();
-    expect(browser.page.waitForSelector).not.toHaveBeenCalled();
-    // Only the bot-wall probe reads the page; no visreg-driven evaluate runs.
-    expect(browser.page.evaluate).toHaveBeenCalledTimes(1);
-    expect(browser.page.goto).toHaveBeenCalledWith(
-      'http://localhost:3030/checkout',
-      { waitUntil: 'networkidle' },
-    );
+    expect(result.totalViolations).toBe(1);
+    expect(result.scans[0].violations[0].ruleId).toBe('button-name');
+    expect(result.scans[0].screenshot).toEqual({
+      width: 100,
+      height: 80,
+      imageHref: 'checkout-desktop/artifacts/accessibility-screenshot.png',
+    });
   });
+
 });
 
 function violation(ruleId: string, tags: string[]): AccessibilityViolation {
@@ -549,7 +482,7 @@ function fakeWorkerPool(): WorkerPool {
 
 function fakeContext(
   runtime: Partial<StageRuntime>,
-  options: AbTestDefinition['options'] = {},
+  perTest: Partial<AbTestDefinition> = {},
   testFn = jest.fn(async () => {}),
 ): TestContext {
   const test = {
@@ -559,7 +492,7 @@ function fakeContext(
     startingPath: '/checkout',
     testTypes: ['accessibility'],
     experimentPathOverride: undefined,
-    options,
+    ...perTest,
     testFn,
   } as AbTestDefinition;
   return {
@@ -570,8 +503,8 @@ function fakeContext(
     testAndViewportId: 'checkout-desktop',
     artifacts: {
       dir: '/tmp/shaka-test/checkout-desktop/artifacts',
-      writeJson: jest.fn(async () => {}),
-      writeFile: jest.fn(async () => {}),
+      writeJson: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
+      writeFile: jest.fn(async (name: string) => `checkout-desktop/artifacts/${name}`),
     },
     logger: {
       log: jest.fn(),
@@ -584,6 +517,10 @@ function fakeContext(
     },
     readPriorResult: jest.fn(),
     raceCancellation: jest.fn(),
+    config: applyPerTestConfigOverrides(
+      buildAbTestsConfig({ shared: { controlURL: 'http://localhost:3030', experimentURL: 'http://localhost:3030', parallelism: 1, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } } }),
+      test,
+    ),
   } as unknown as TestContext;
 }
 

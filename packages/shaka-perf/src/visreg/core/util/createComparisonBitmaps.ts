@@ -9,17 +9,14 @@
 
 import cloneDeep from 'lodash/cloneDeep.js';
 import { writeFile } from 'node:fs/promises';
-import _ from 'lodash';
 import pMap from 'p-map';
-import { TestType } from 'shaka-shared';
 import { loadTests } from '../../../config-loader';
 import { createPlaywrightBrowser, disposePlaywrightBrowser } from './runPlaywright';
 import * as runCompareScenario from './runCompareScenario';
 import ensureDirectoryPath from './ensureDirectoryPath';
 import { convertAbTestToScenario, type ScenarioUrls } from './convertAbTestToScenario';
 import createLogger from './logger';
-import { planTestViewports } from '../../../pipeline/viewport-plan';
-import type { RuntimeConfig, Scenario, Viewport, Variant, DecoratedCompareConfig, VisregEngineInputConfig, TestPair, Browser } from '../types';
+import type { RuntimeConfig, Scenario, Viewport, DecoratedCompareConfig, VisregEngineInputConfig, CompareConfig, Browser, VisregRunRuntime } from '../types';
 
 interface ScenarioView {
   scenario: Scenario;
@@ -29,13 +26,8 @@ interface ScenarioView {
   _playwrightBrowser?: Browser;
 }
 
-interface CompareResult {
-  testPairs?: TestPair[];
-  scenario?: Scenario;
-  viewport?: Viewport;
-  msg?: string;
-  originalError?: Error;
-}
+/** One scenario invocation's output — the same shape `CompareConfig` persists. */
+type CompareResult = CompareConfig;
 
 const logger = createLogger('compare');
 
@@ -62,41 +54,34 @@ async function decorateConfigForTestFile (config: RuntimeConfig) {
 
   // Engine-input config was loaded in makeConfig and stashed on
   // `config.args._loadedVisregConfig`. Retrieve it for viewports /
-  // engineOptions / etc. which aren't part of RuntimeConfig.
+  // playwrightOptions / etc. which aren't part of RuntimeConfig.
   const globalConfig = (config.args._loadedVisregConfig as Partial<VisregEngineInputConfig>) || {};
 
-  // Convert AbTestDefinitions to Scenarios — pass the resolved category
-  // viewports so per-test `options.viewports` can narrow `scenario.viewports`
-  // before the engine iterates. Without this, `options.viewports: ['phone']`
-  // would still run desktop/tablet and only get filtered at harvest time.
-  const categoryViewports = globalConfig.viewports ?? [];
-  const plannedTests = planTestViewports(tests, categoryViewports)
-    .filter(function (entry) { return entry.viewports.length > 0; });
-  const stageUnitUrls = plannedTests.length === 1
+  // Convert AbTestDefinitions to Scenarios. Per-test viewport narrowing is
+  // applied upstream by the runner (it only expands work units for a test's
+  // effective viewports), so the engine runs whatever single viewport this
+  // unit was handed — no narrowing needed here.
+  const stageUnitUrls = tests.length === 1
     ? config.args.stageUnitUrls as ScenarioUrls | undefined
     : undefined;
-  const scenarios = plannedTests
-    .map(function ({ test }) {
-      return convertAbTestToScenario(test, controlURL, experimentURL, categoryViewports, stageUnitUrls);
+  const scenarios = tests
+    .map(function (test) {
+      return convertAbTestToScenario(test, controlURL, experimentURL, stageUnitUrls);
     });
 
   const configJSON: Record<string, unknown> = {
     ...globalConfig,
     viewports: globalConfig.viewports,
-    engineOptions: globalConfig.engineOptions || { browser: 'chromium' },
+    // No default here: the compare bridge always writes the resolved options;
+    // a standalone config without them hits createPlaywrightBrowser's visible
+    // assume-chromium warning rather than a silent default.
+    playwrightOptions: globalConfig.playwrightOptions || {},
     scenarios,
   };
 
-  if ((configJSON as Record<string, unknown>).dynamicTestId) {
-    console.log('dynamicTestId \'' + (configJSON as Record<string, unknown>).dynamicTestId + '\' found. shaka-perf visreg will run in dynamic-test mode.');
-  }
-
   configJSON.env = cloneDeep(config);
-  configJSON.isControl = false;
-  configJSON.isCompare = true;
-  configJSON.defaultMisMatchThreshold = config.defaultMisMatchThreshold;
+  configJSON.mismatchThreshold = config.mismatchThreshold;
   configJSON.configFileName = config.configFileName;
-  configJSON.defaultRequireSameDimensions = config.defaultRequireSameDimensions;
 
   configJSON.compareRetries = config.compareRetries;
   configJSON.compareRetryDelay = config.compareRetryDelay;
@@ -109,37 +94,18 @@ function saveViewportIndexes (viewport: Viewport, index: number) {
   return Object.assign({}, viewport, { vIndex: index });
 }
 
-function delegateCompareScenarios (config: DecoratedCompareConfig) {
-  const scenarios: Scenario[] = [];
+function delegateCompareScenarios (
+  config: DecoratedCompareConfig,
+  runtime: VisregRunRuntime,
+) {
   const scenarioViews: ScenarioView[] = [];
 
   config.viewports = config.viewports.map(saveViewportIndexes);
 
+  let scenarioViewId = 0;
   config.scenarios.forEach(function (scenario: Scenario, i: number) {
     scenario.sIndex = i;
-    scenario.selectors = scenario.selectors || [];
-    if (scenario.viewports) {
-      scenario.viewports = scenario.viewports.map(saveViewportIndexes);
-    }
-    scenarios.push(scenario);
-
-    if (_.has(scenario, 'variants')) {
-      scenario.variants!.forEach(function (variant: Variant) {
-        variant._parent = scenario;
-        scenarios.push(variant as unknown as Scenario);
-      });
-    }
-  });
-
-  let scenarioViewId = 0;
-  scenarios.forEach(function (scenario: Scenario) {
-    let desiredViewportsForScenario = config.viewports;
-
-    if (scenario.viewports && scenario.viewports.length > 0) {
-      desiredViewportsForScenario = scenario.viewports;
-    }
-
-    desiredViewportsForScenario.forEach(function (viewport: Viewport) {
+    config.viewports.forEach(function (viewport: Viewport) {
       scenarioViews.push({
         scenario,
         viewport,
@@ -160,52 +126,37 @@ function delegateCompareScenarios (config: DecoratedCompareConfig) {
       }
 
       pMap(scenarioViews as Required<ScenarioView>[], function (view: Required<ScenarioView>) {
-        return runCompareScenario.playwright(view);
+        return runCompareScenario.playwright(view, runtime);
       }, { concurrency: asyncCaptureLimit }).then(function (out: unknown) {
-        disposePlaywrightBrowser(browser!).then(function () { resolve(out); });
+        disposePlaywrightBrowser(browser).then(function () { resolve(out); });
       }, function (e: unknown) {
-        disposePlaywrightBrowser(browser!).then(function () { reject(e); });
+        disposePlaywrightBrowser(browser).then(function () { reject(e); });
       });
     }, function (e: unknown) { reject(e); });
   });
 }
 
-function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { compareConfig: { testPairs: TestPair[] } }) {
+function writeCompareConfigFile (comparePairsFileName: string, compareConfig: { compareConfig: CompareConfig }) {
   const compareConfigJSON = JSON.stringify(compareConfig, null, 2);
   ensureDirectoryPath(comparePairsFileName);
   return writeFile(comparePairsFileName, compareConfigJSON);
 }
 
+// A scenario that throws rejects the whole pMap (the framework's unit-level
+// retry/error reporting owns that path), so every result here has testPairs.
 function flatMapTestPairs (rawTestPairs: CompareResult[]) {
-  return rawTestPairs.reduce(function (acc: TestPair[], result: CompareResult) {
-    let testPairs: TestPair[] | TestPair | undefined = result.testPairs;
-    if (!testPairs) {
-      // Error fallback — create a stub test pair for reporting
-      testPairs = {
-        reference: '',
-        test: '',
-        selector: '',
-        fileName: '',
-        label: '',
-        requireSameDimensions: true,
-        misMatchThreshold: 0,
-        url: '',
-        expect: 0,
-        viewportLabel: result.viewport?.label ?? '',
-        scenario: result.scenario,
-        viewport: result.viewport,
-        msg: result.msg,
-        error: result.originalError?.name
-      } satisfies TestPair;
-    }
-    return acc.concat(testPairs);
-  }, []);
+  return rawTestPairs.flatMap(function (result: CompareResult) {
+    return result.testPairs;
+  });
 }
 
-export default async function createComparisonBitmaps (config: RuntimeConfig) {
+export default async function createComparisonBitmaps (
+  config: RuntimeConfig,
+  runtime: VisregRunRuntime,
+) {
   const decoratedConfig = await decorateConfigForTestFile(config);
 
-  const rawTestPairs = await delegateCompareScenarios(decoratedConfig);
+  const rawTestPairs = await delegateCompareScenarios(decoratedConfig, runtime);
   const result = {
     compareConfig: {
       testPairs: flatMapTestPairs(rawTestPairs as CompareResult[])

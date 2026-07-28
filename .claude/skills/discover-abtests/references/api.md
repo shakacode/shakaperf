@@ -2,81 +2,132 @@
 
 ## `abTest(name, config, testFn)`
 
+The config is **flat** — there is no `options` key (`abTest()` throws at load
+time if it sees one). Interactions, ready-waits, and hide/remove logic live in
+the Playwright test body. Tunables (thresholds, viewports, axe rules) live in
+`abtests.config.ts`, overridable per test through `config`.
+
 ```typescript
 import { abTest } from 'shaka-shared';
 
 abTest(name: string, {
-  startingPath: string,
-  options?: {
-    visreg?: {
-      // What to capture
-      selectors?: string[];          // CSS selectors to screenshot. Default: ['document']
+  startingPath: string,              // Path both sides navigate to. Test names must not contain commas.
+  experimentPathOverride?: string,   // Experiment side navigates here instead (renamed routes);
+                                     // control always uses startingPath
+  testTypes?: ('visreg' | 'perf' | 'accessibility' | 'audit')[],
+                                     // Omitted = every category. 'audit' is always
+                                     // auto-added to explicit lists.
+
+  // What visreg captures
+  visregSelectors?: string[],        // CSS selectors to screenshot. Default: ['document']
                                      // Special values: 'document' (full page), 'viewport', 'body'
                                      // A CSS selector is clipped to its box within the current
                                      // viewport (the page is NOT resized to fit it) — if the element
                                      // is taller than the viewport, run at a tall viewport
                                      // (PHONE_TALL/TABLET_TALL/DESKTOP_TALL).
-      hideSelectors?: string[];      // Hide elements (display:none) before capture
-      removeSelectors?: string[];    // Remove elements from DOM before capture
+  markers?: { start?: string, end: string, label: string }[],
+                                     // Per-test perf phase definitions
 
-      // Thresholds
-      misMatchThreshold?: number;    // 0.0–1.0. Default: 0.1. Use 0.01 for static pages
-      maxNumDiffPixels?: number;     // Max differing pixels allowed. Default: 50
-
-      // Timing / readiness
-      delay?: number;                // Fixed ms delay after navigation
-      readySelector?: string;        // Wait for this selector to appear before capturing
-      readyEvent?: string;           // Wait for this custom DOM event before capturing
-
-      // Built-in interactions (use when you don't need testFn logic)
-      clickSelector?: string;        // Click a single element
-      clickSelectors?: string[];     // Click multiple elements in sequence
-      hoverSelector?: string;        // Hover a single element
-      hoverSelectors?: string[];     // Hover multiple elements
-      scrollToSelector?: string;     // Scroll element into view before capture
-      postInteractionWait?: number | string; // ms or selector to wait after interactions
-
-      // Lifecycle hook
-      onBefore?: (context) => Promise<void>; // Runs before navigation — use for
-                                              // cookies, localStorage, feature flags
-
-      // Viewport override
-      viewports?: { label: string, width: number, height: number }[];
-                                     // Override global viewports for this test only
-
-      // Auth
-      cookiePath?: string;           // Path to JSON cookie file to load before test
-    }
-  }
-}, async ({ page, testType, isReference, viewport, browserContext, annotate }) => {
+  // Per-test override of abtests.config.ts, merged over the file config for
+  // this test alone. Same section shape. The knobs the engines honour
+  // per-test:
+  config?: {
+    shared?: {
+      beforeNavigate?: (ctx) => Promise<void>,  // Pre-navigation hook — see below
+      playwrightOptions?: { ... },       // Partial launch-options override (browser, args, headless)
+    },
+    visreg?: {
+      mismatchThreshold?: number,  // 0.0–1.0. Default 0.1. Use 0.01 for static pages
+      maxNumDiffPixels?: number,          // Max differing pixels allowed
+      comparePixelmatchThreshold?: number,
+      viewports?: string[],               // Labels from shared.viewports, e.g. ['desktop']
+      playwrightOptions?: { ... },        // Visreg-only launch-options override
+    },
+    perf?: {
+      viewports?: string[],
+      lighthouseConfig?: { ... },         // Raw Lighthouse flags for this test
+      playwrightOptions?: { ... },        // Perf-only launch-options override
+    },
+    audit?: {
+      viewports?: string[],
+      lighthouseConfig?: { ... },         // Raw Lighthouse flags for this test
+    },
+    accessibility?: {
+      tags?: string[],
+      disableRules?: string[],
+      includeRules?: string[],
+      viewports?: string[],
+    },
+  },
+}, async ({ page, browserContext, isControl, scenario, viewport, testType, annotate }) => {
+  // page: Playwright Page — all interactions and waits go here
+  // isControl: true on the control server, false on experiment
+  // viewport: { label, width, height, formFactor, deviceScaleFactor }
   // testType: 'visreg' | 'perf' | 'accessibility' | 'audit'
-  // isReference: true for control server, false for experiment
-  // viewport: { label, width, height } — current viewport being tested
+  // annotate: label the next step — failures report "Failed while <label>"
 })
 ```
+
+**Per-test `config` merge rule:** every defined per-test key REPLACES the file
+value wholesale — arrays included. A per-test
+`accessibility: { disableRules: ['color-contrast'] }` does NOT union with the
+file's `disableRules`; re-list everything the test needs. Per-test
+`playwrightOptions` (`shared`/`visreg`/`perf`) and
+`perf.lighthouseConfig`/`audit.lighthouseConfig` ARE honoured on the engines
+that launch per unit (visreg, perf, audit); accessibility and agent-readiness
+reuse one browser per worker slot and resolve launch options once per run.
+Other whole-suite settings (`resembleOutputOptions`,
+`compareRetries`/`compareRetryDelay`, perf/audit measurement tuning) also
+resolve once per run — overriding them per-test has no effect; set them once
+in `abtests.config.ts`.
+
+## Removed capture-time options — write the test body instead
+
+The old `options.visreg` interaction/readiness knobs are gone. Playwright
+equivalents:
+
+| Old option | Test body equivalent |
+|---|---|
+| `hideSelectors` | `await page.locator(sel).evaluateAll((els) => els.forEach((el) => { el.style.visibility = 'hidden'; }))` |
+| `removeSelectors` | `await page.locator(sel).evaluateAll((els) => els.forEach((el) => el.remove()))` |
+| `clickSelector(s)` / `hoverSelector(s)` | `await page.click(sel)` / `await page.hover(sel)` |
+| `scrollToSelector` | `await page.locator(sel).scrollIntoViewIfNeeded()` |
+| `readySelector` / `readyTimeout` | `await page.waitForSelector(sel, { timeout })` |
+| `delay` / `postInteractionWait` | `await waitUntilPageSettled(page)` (preferred) or `await page.waitForTimeout(ms)` |
 
 ## Helpers (`shaka-perf/visreg/helpers`)
 
 | Helper | What it does |
 |--------|-------------|
-| `waitUntilPageSettled(page)` | Waits for DOM mutations, network idle, fonts, images, and spinners to settle (30s timeout). Use instead of arbitrary `delay`. |
-| `overrideCSS(page)` | Injects CSS to strip background images — reduces noise in visual diffs. |
-| `interceptImages(page)` | Replaces all image requests with a stub — call before `page.goto()` for fully deterministic renders. |
+| `waitUntilPageSettled(page)` | Waits for DOM mutations, network idle, fonts, images, and spinners to settle (30s timeout). Use instead of arbitrary delays. |
+| `overrideCSS(page)` | Injects CSS to strip background images and freeze animations — reduces noise in visual diffs. |
+| `interceptImages(page)` | Replaces all image requests with a stub — call before navigation for fully deterministic renders. |
 
-## `onBefore` pattern
+`installRequestBlocking(context, patterns)` (import from `shaka-shared`) aborts
+matching third-party requests — use it inside `beforeNavigate` for resources
+that never resolve locally (analytics, reCAPTCHA) and would hang `networkidle`.
 
-Use `onBefore` when you need to set up state *before* the page navigates — e.g. injecting cookies, setting localStorage, or enabling a feature flag. It receives the same context as `testFn`.
+## `beforeNavigate` pattern
+
+Runs before the page is created, on every engine — the place for setup that
+must precede the first navigation: cookies, init scripts, request blocking.
+Set it globally as `shared.beforeNavigate` in `abtests.config.ts`, or per-test
+via `config.shared.beforeNavigate`. It receives
+`{ context, url, viewport, isControl, testType }` (`context` is the Playwright
+`BrowserContext`; there is no `page` yet). A per-test hook fully REPLACES the
+global `shared.beforeNavigate` for that test — if you want both, extract a
+shared function and call it from each.
 
 ```typescript
 abTest('Feature flag test', {
   startingPath: '/checkout',
-  options: {
-    visreg: {
-      onBefore: async ({ browserContext }) => {
-        await browserContext.addCookies([{ name: 'flag_new_checkout', value: '1', domain: 'localhost', path: '/' }]);
-      }
-    }
-  }
+  config: {
+    shared: {
+      beforeNavigate: async ({ context }) => {
+        await context.addCookies([{ name: 'flag_new_checkout', value: '1', domain: 'localhost', path: '/' }]);
+      },
+    },
+  },
 }, async ({ page }) => {
   await waitUntilPageSettled(page);
 });

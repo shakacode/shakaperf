@@ -13,11 +13,11 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 abTest('Products List', {
   startingPath: '/products',
   testTypes: ['visreg'],
-  options: {
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    // Plain page load — safe to scan for AI legibility (see homepage.abtest.ts).
+    // The Electronics Filter test below is deliberately NOT opted in: the scan
+    // never runs the test body, so it would just re-score this same URL.
+    agentReadiness: { enabled: true },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for products list to settle');
@@ -27,12 +27,11 @@ abTest('Products List', {
 abTest('Products - Electronics Filter', {
   startingPath: '/products',
   testTypes: ['visreg'],
-  options: {
-    viewports: ['desktop'],
-    visreg: {
-      delay: 50,
-      misMatchThreshold: 0.1,
-    },
+  config: {
+    // Desktop-only in every pipeline: per-test viewports are per-category, so
+    // `visreg` alone would leave audit running this test at desktop + phone.
+    visreg: { viewports: ['desktop'] },
+    audit: { viewports: ['desktop'] },
   },
 }, async ({ page, annotate }) => {
   annotate('Wait for products page to load');

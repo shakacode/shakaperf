@@ -7,28 +7,26 @@
  * License in LICENSE.md.
  */
 
-import type { ArtifactScope } from '../pipeline/artifact-store';
+import type {
+  ArtifactPath,
+  ArtifactScope,
+} from '../pipeline/artifact-store';
 
 /**
  * Artifacts a stage captured at the moment it observed a failure. JSON-shaped
  * because the runner persists it inside `Outcome.failure` and the report
  * shell re-reads it from disk.
  *
- * Media is stored as a base64 `data:` URI (via
- * `ArtifactScope.inlineDataUri(name)`) rather than a relative href — the
- * report HTML is bundled with vite-plugin-singlefile and has no way to
- * resolve a sibling file when opened standalone. The source file is still
- * written to disk for debugging, but the report carries its bytes inline.
+ * Media is stored as a path relative to the report root. Full reports use
+ * that path directly; self-contained report generation replaces it with a
+ * data URI at the report boundary.
  */
 export interface StageFailureArtifacts {
   /**
-   * `data:` URI of a single media artifact captured at the failure — either a
-   * `video/mp4` screencast of the run up to the throw (preferred, when frames
-   * were recorded) or a `image/png` screenshot of the final state (the
-   * fallback, e.g. the perf path or when no screencast frames exist). The MIME
-   * type in the URI tells the report which element to render.
+   * Report-relative path of a single media artifact captured at the failure —
+   * either a screencast video or a screenshot of the final state.
    */
-  media?: string;
+  media?: ArtifactPath;
 }
 
 /**
@@ -38,8 +36,8 @@ export interface StageFailureArtifacts {
  * the original error is preserved as `cause` so `errorInfo()`'s cause-chain
  * walk still produces the underlying stack.
  *
- * Always persist your bytes via `ctx.artifacts.writeFile(...)` BEFORE
- * throwing — `failureArtifacts.media` is just an inline data URI of those bytes.
+ * Always persist your bytes via `ctx.artifacts.writeFile(...)` before
+ * throwing — `failureArtifacts.media` is the returned artifact path.
  */
 export class StageFailureError extends Error {
   readonly failureArtifacts: StageFailureArtifacts;
@@ -51,9 +49,22 @@ export class StageFailureError extends Error {
     super(message, { cause });
     this.name = 'StageFailureError';
     this.failureArtifacts = artifacts;
-    if (cause instanceof Error && cause.stack) {
-      this.stack = `${this.name}: ${firstLine(message)}\nCaused by: ${cause.stack}`;
-    }
+    const { stack: causeStack } = cause instanceof Error ? cause : {};
+    if (!causeStack) return;
+    // Composed on every read off the CURRENT message, the way V8 formats a plain
+    // Error's stack lazily. `withLogPrefix` prepends its `[ experiment ]` column
+    // to `err.message` as the error unwinds — after this wrapper is built, since
+    // visreg captures the failure screenshot inside the per-side scope — so a
+    // string frozen here would drop the failing side from every printed trace.
+    // `Caused by:` stays as captured: Playwright materialised it before then.
+    // The setter keeps assignment working for the IPC boundaries that rebuild
+    // stacks; without it a get-only property throws.
+    let assigned: string | undefined;
+    Object.defineProperty(this, 'stack', {
+      configurable: true,
+      get: () => assigned ?? `${this.name}: ${firstLine(this.message)}\nCaused by: ${causeStack}`,
+      set: (value: string) => { assigned = value; },
+    });
   }
 }
 
@@ -63,37 +74,24 @@ function firstLine(message: string): string {
 }
 
 /**
- * Convenience for the common case: persist a screenshot via the test
- * context, then return a `StageFailureError` that references it. Use inside
- * a stage's catch:
- *
- *     } catch (err) {
- *       throw await failWithScreenshot(ctx.artifacts, err, () => page.screenshot());
- *     }
- *
- * If the capture itself fails (browser already torn down, OOM, …) the
- * original error is wrapped without artifacts rather than masked by the
- * capture failure.
+ * Capture and persist a failure screenshot without masking the stage's
+ * original error when Playwright or artifact persistence fails.
  */
-export async function failWithScreenshot(
+export async function captureFailureScreenshot(
   artifacts: ArtifactScope,
-  cause: unknown,
   capture: () => Promise<Buffer> | Buffer,
   filename = 'failure-screenshot.png',
-): Promise<StageFailureError> {
+): Promise<ArtifactPath | undefined> {
   try {
     const png = await capture();
-    await artifacts.writeFile(filename, png);
-    return new StageFailureError(cause, { media: artifacts.inlineDataUri(filename) });
+    return await artifacts.writeFile(filename, png);
   } catch (captureErr) {
-    // Surface the capture failure so it isn't a silent black hole — but
-    // still propagate the original cause unmasked.
     console.warn(
       `[shaka-perf failure-screenshot] capture failed: ${
         captureErr instanceof Error ? (captureErr.stack ?? captureErr.message) : String(captureErr)
       }`,
     );
-    return new StageFailureError(cause, {});
+    return undefined;
   }
 }
 

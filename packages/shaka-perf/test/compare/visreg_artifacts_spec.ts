@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Viewport } from 'shaka-shared';
+import { ArtifactScope } from '../../src/pipeline/artifact-store';
 import { readVisregArtifacts } from '../../src/compare/stages/visreg/artifacts';
 import { hasVisualChange, visualChangeCount } from '../../src/compare/stages/visreg/selectors';
 
@@ -52,7 +53,7 @@ describe('readVisregArtifacts', function () {
             label: 'Homepage',
             viewportLabel: 'desktop',
             selector: 'document',
-            misMatchThreshold: 0.01,
+            mismatchThreshold: 0.01,
             diff: { misMatchPercentage: '0.00', isSameDimensions: false },
             diffImage: 'failed_diff_homepage_desktop.txt',
           },
@@ -64,13 +65,17 @@ describe('readVisregArtifacts', function () {
         'dimension-only diff marker',
       );
 
+      const artifactsDir = path.join(resultsRoot, 'homepage__desktop', 'artifacts');
       const artifactSet = await readVisregArtifacts({
-        artifactsDir: path.join(resultsRoot, 'homepage__desktop', 'artifacts'),
+        artifacts: new ArtifactScope(artifactsDir, resultsRoot),
         viewport: DESKTOP,
       });
 
       assert.ok(artifactSet);
-      assert.strictEqual(artifactSet.artifacts[0].diffImage !== null, true);
+      assert.strictEqual(
+        artifactSet.artifacts[0].diffImage,
+        'homepage__desktop/artifacts/failed_diff_homepage_desktop.txt',
+      );
       assert.strictEqual(hasVisualChange(artifactSet.artifacts), true);
       assert.strictEqual(visualChangeCount(artifactSet.artifacts), 1);
     });
@@ -85,15 +90,16 @@ describe('readVisregArtifacts', function () {
             label: 'Homepage',
             viewportLabel: 'desktop',
             selector: 'document',
-            misMatchThreshold: 0.01,
+            mismatchThreshold: 0.01,
             diff: { misMatchPercentage: '0.00', isSameDimensions: true },
           },
           status: 'pass',
         }],
       });
 
+      const artifactsDir = path.join(resultsRoot, 'homepage__desktop', 'artifacts');
       const artifactSet = await readVisregArtifacts({
-        artifactsDir: path.join(resultsRoot, 'homepage__desktop', 'artifacts'),
+        artifacts: new ArtifactScope(artifactsDir, resultsRoot),
         viewport: DESKTOP,
       });
 

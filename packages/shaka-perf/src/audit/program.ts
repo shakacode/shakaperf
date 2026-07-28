@@ -10,10 +10,10 @@
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { Command, Option } from 'commander';
-import { withAbTestsConfigPath } from '../before-navigate';
+import { Command } from 'commander';
+import { withAbTestsConfigPath } from '../effective-config';
 import { findAbTestsConfig, loadAbTestsConfig } from '../config-loader';
-import { parseAbTestsConfig, viewportsByStageCategory } from '../config';
+import { buildAbTestsConfig, resolvePlaywrightOptions } from '../config';
 import { runPipeline } from '../pipeline/runner';
 import { BURN_OPTION_DESCRIPTION, parseBurnOption } from '../pipeline/burn';
 import { printReportSummary, reportPipelineFailure } from '../pipeline/report-summary';
@@ -41,10 +41,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
       '--restart-from-stage <stage>',
       `Restart from this stage: discard its results and all later stages' results, then re-run them; earlier stages' results are preserved (${validStages.join(', ')})`,
     )
-    .addOption(new Option(
-      '--resume-from-stage <stage>',
-      'Deprecated alias for --restart-from-stage',
-    ).hideHelp())
     .option('-c, --config <path>', 'Path to abtests.config.ts (default: cwd lookup)')
     .option('--url <url>', 'Application URL to audit', options.urlDefault)
     .option('--testPathPattern <regex>', 'Regex pattern to filter discovered .abtest.ts/.abtest.js files (like Jest)')
@@ -62,24 +58,34 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
     .action(async function (this: Command) {
       const opts = this.opts();
       const configPath = opts.config ?? findAbTestsConfig();
+      if (!configPath) {
+        throw new Error(
+          'No abtests.config.ts found — it is required (audit reads its viewports, ' +
+          'parallelism, and launch options from it). ' +
+          'Run `shaka-perf init` to create one, or pass --config <path>.',
+        );
+      }
       await withAbTestsConfigPath(configPath, async () => {
-        const raw = configPath ? await loadAbTestsConfig(configPath) : {};
-        const config = parseAbTestsConfig(raw);
+        const config = buildAbTestsConfig(await loadAbTestsConfig(configPath));
         const url = opts.url ?? config.shared.experimentURL;
         const pipeline = createAuditPipeline({
           parallelism: config.shared.parallelism,
           lighthouseConfig: config.audit.lighthouseConfig,
-          limitVideoFramesCount: config.audit.limitVideoFramesCount,
           accessibility: {
             tags: config.accessibility.tags,
             disableRules: config.accessibility.disableRules,
             includeRules: config.accessibility.includeRules,
-            engineOptions: config.accessibility.engineOptions,
+            playwrightOptions: resolvePlaywrightOptions(config, 'accessibility'),
             failOnViolation: config.accessibility.failOnViolation,
           },
+          agentReadiness: {
+            enabled: config.agentReadiness.enabled,
+            playwrightOptions: resolvePlaywrightOptions(config, 'audit'),
+          },
         });
-        const restartFromStage = opts.restartFromStage ?? opts.resumeFromStage;
+        const restartFromStage = opts.restartFromStage;
         const result = await runPipeline(pipeline, {
+          config,
           controlURL: url,
           experimentURL: url,
           testPathPattern: opts.testPathPattern ?? config.shared.testPathPattern,
@@ -97,7 +103,6 @@ export function createAuditCommand(options: CreateAuditCommandOptions = {}): Com
           retries: config.shared.retries,
           retryDelay: config.shared.retryDelay,
           timeoutMs: config.shared.timeoutMs,
-          viewports: viewportsByStageCategory(config),
         });
         printReportSummary(result);
         maybeGenerateCoverageReport(result.resultsRoot);

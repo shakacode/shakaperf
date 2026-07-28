@@ -12,16 +12,16 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Homepage', {
   startingPath: '/',
-  options: {
-    visreg: {
-      selectors: [
-        '[data-cy="hero-section"]',
-        '[data-cy="features-section"]',
-        'document',
-      ],
-      delay: 50,
-      misMatchThreshold: 0.01,
-    },
+  visregSelectors: [
+    '[data-cy="hero-section"]',
+    '[data-cy="features-section"]',
+    'document',
+  ],
+  config: {
+    visreg: { mismatchThreshold: 0.01 },
+    // The AI-legibility scan measures `startingPath` cold, as an anonymous
+    // crawler — so it is opted in only on tests that just load a page.
+    agentReadiness: { enabled: true },
   },
 }, async ({ page, annotate, testType }) => {
   annotate('Wait for homepage to settle');

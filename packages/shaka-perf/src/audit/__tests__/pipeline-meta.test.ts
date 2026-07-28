@@ -49,7 +49,16 @@ describe('auditMachineReportMeta', () => {
   });
 
   it('persists audit meta from saved rows during report-only runs', () => {
-    const pipeline = createAuditPipeline({ parallelism: 1 });
+    const pipeline = createAuditPipeline({
+      parallelism: 1,
+      accessibility: {
+        tags: [],
+        disableRules: [],
+        failOnViolation: true,
+        playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 },
+      },
+      agentReadiness: { enabled: false, playwrightOptions: { browser: 'chromium', waitTimeout: 60_000 } },
+    });
 
     expect(pipeline.machineReportMeta?.({ rows: [row(PHONE_VIEWPORT)], reportOnly: true })).toEqual({
       throttleProfile: 'Slow-4G',

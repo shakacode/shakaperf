@@ -7,14 +7,11 @@
  * License in LICENSE.md.
  */
 
-import * as path from 'node:path';
 import type { Browser } from 'playwright-core';
 import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool';
 import type { TestContext } from '../../../stage/stage';
 import { StageFailureError } from '../../../stage/stage-failure';
-import { toPosixRelative } from '../../../pipeline/path-utils';
 import {
-  accessibilityConfigForTest,
   type AccessibilityEffectiveConfig,
   type AccessibilityStageConfig,
 } from './config';
@@ -66,7 +63,8 @@ async function scanAccessibility(
   browser: Browser,
   config: AccessibilityStageConfig,
 ): Promise<AccessibilityResult> {
-  const effective = accessibilityConfigForTest(config, ctx.test);
+  const acc = ctx.config.accessibility;
+  const effective = { tags: acc.tags, disableRules: acc.disableRules, includeRules: acc.includeRules ?? null };
   const scan = await scanViewport(ctx, browser, effective, config);
   const raw: AccessibilityRawArtifact = {
     testName: ctx.test.name,
@@ -78,13 +76,13 @@ async function scanAccessibility(
     },
     scans: [scan],
   };
-  await ctx.artifacts.writeJson(ACCESSIBILITY_RAW_REPORT_FILENAME, raw);
-  const rawArtifactHref = toPosixRelative(
-    ctx.runtime.resultsRoot,
-    path.join(ctx.artifacts.dir, ACCESSIBILITY_RAW_REPORT_FILENAME),
+  const rawArtifactHref = await ctx.artifacts.writeJson(
+    ACCESSIBILITY_RAW_REPORT_FILENAME,
+    raw,
   );
   return projectAccessibilityRawArtifact(raw, {
-    failOnViolation: config.failOnViolation,
+    // Per-test effective, like tags/disableRules/includeRules above.
+    failOnViolation: acc.failOnViolation,
     rawArtifactHref,
   });
 }
@@ -100,7 +98,6 @@ async function scanViewport(
       url: ctx.experimentURL,
       isControl: false,
       screenshotFilename: ACCESSIBILITY_SCREENSHOT_FILENAME,
-      inlineEncodeWarningPrefix: '[shaka-perf a11y]',
       captureFailure: async ({ page }) => ({
         media: await captureAccessibilityFailureMedia(ctx, page, 'accessibility-failure-screenshot.png'),
       }),

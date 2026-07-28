@@ -12,7 +12,14 @@ import { createElement } from 'react';
 import type { AbTestDefinition } from 'shaka-shared';
 import type { PerfConfig, Viewport } from '../../../config';
 import type { Outcome } from '../../../pipeline/outcome';
-import type { JsonValue, Stage, StageName, StageRenderEntry, StageRenderContext, TestContext } from '../../../stage/stage';
+import type {
+  JsonValue,
+  Stage,
+  StageName,
+  StageRenderEntry,
+  StageRenderContext,
+  TestContext,
+} from '../../../stage/stage';
 import type { WorkerPool } from '../../../pipeline/worker-pool';
 import type { PerfArtifact } from '../perf';
 import { PerfArtifactView } from '../shared/perf-report';
@@ -43,6 +50,13 @@ export class PerfEngineStage<M> implements Stage<M> {
   readonly name: StageName;
   readonly label: string;
   readonly description: string;
+  readonly selfContainedReportStrip = {
+    controlLighthouseHref: true,
+    experimentLighthouseHref: true,
+    timelineHref: true,
+    benchReportHref: true,
+    diffHrefs: true,
+  };
 
   constructor(private readonly options: PerfEngineStageOptions<M>) {
     this.name = options.name;
@@ -76,20 +90,5 @@ export class PerfEngineStage<M> implements Stage<M> {
 
   machineReadableSummary(measurement: M, ctx: StageRenderContext): JsonValue {
     return this.options.machineReadableSummary(measurement, ctx);
-  }
-
-  stripMeasurementForLightweight(measurement: M): M {
-    // `M` is `PerfArtifact` (or a subtype) for every PerfEngineStage variant;
-    // strip fields that <FullReportOnly/> hides in `perf-report.tsx::ArtifactLinks`.
-    const m = measurement as PerfArtifact;
-    const {
-      controlLighthouseHref: _clh,
-      experimentLighthouseHref: _elh,
-      benchReportHref: _br,
-      diffHrefs: _dh,
-      timelineHref: _th,
-      ...rest
-    } = m;
-    return rest as M;
   }
 }

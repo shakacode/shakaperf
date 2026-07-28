@@ -5,8 +5,8 @@ pipeline that introduces one). Covers the `Stage<M>` contract, file
 layout, how parallelism actually works, and what to do with long
 synchronous JS tasks.
 
-If you're trying to make variant behaviour polymorphic, also read
-`.claude/skills/polymorphic-extensibility/SKILL.md` — this doc focuses
+If you're messing with core componets like Pipeline Stage Runner Report
+ etc. read `.claude/skills/review-architecture/SKILL.md` — this doc focuses
 on plumbing; that one is about API shape.
 
 ## What a stage is
@@ -419,7 +419,7 @@ Don't add `switch (stage.name)` to shared modules to dispatch
 stage-specific behaviour. The framework calls into the stage's methods
 — the stage owns its variant logic. The only allowed name-keyed switch
 is the pipeline deserialiser in `src/pipeline/pipeline-artifacts.ts`.
-See `.claude/skills/polymorphic-extensibility/SKILL.md`.
+See `.claude/skills/review-architecture/SKILL.md`.
 
 ## Checklist for a new stage
 

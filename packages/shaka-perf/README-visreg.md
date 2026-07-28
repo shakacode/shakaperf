@@ -13,14 +13,12 @@ Built on Playwright. Uses pixel-level diffing to detect visual changes and gener
   - [Initializing Your Project](#initializing-your-project)
 - [Configuration](#configuration)
   - [Example Config](#example-config)
-  - [Scenario Properties](#scenario-properties)
+  - [Per-Test Configuration](#per-test-configuration)
   - [Changing Screenshot Filename Formats](#changing-screenshot-filename-formats)
 - [Advanced Scenarios](#advanced-scenarios)
-  - [Click and Hover Interactions](#click-and-hover-interactions)
-  - [Key Press Interactions](#key-press-interactions)
+  - [Interactions and Waits: Do It in the Body](#interactions-and-waits-do-it-in-the-body)
+  - [Setting Cookies](#setting-cookies)
   - [Targeting Elements](#targeting-elements)
-  - [Testing SPAs and Ajax Content](#testing-spas-and-ajax-content)
-  - [Dealing with Dynamic Content](#dealing-with-dynamic-content)
   - [Comparing Different Endpoints](#comparing-different-endpoints)
   - [Capturing the Document, Viewport, or Specific Elements](#capturing-the-document-viewport-or-specific-elements)
   - [Changing Test Sensitivity](#changing-test-sensitivity)
@@ -97,17 +95,21 @@ Visreg has no standalone config file any more — visual-regression settings liv
 import { defineConfig } from 'shaka-perf/compare';
 
 export default defineConfig({
-  visreg: {
-    viewports: ['desktop', 'tablet', 'phone'],
-    engineOptions: {
+  shared: {
+    // Browser-launch options every stage respects; `visreg.playwrightOptions`
+    // and `perf.playwrightOptions` may override per-category (same type).
+    playwrightOptions: {
       browser: 'chromium',
       args: ['--no-sandbox'],
     },
-    asyncCaptureLimit: 5,
+  },
+  visreg: {
+    // Overrides shared.viewports for visreg alone; omit to inherit it.
+    viewports: ['desktop', 'tablet', 'phone'],
     compareRetries: 2,
     compareRetryDelay: 500,
     maxNumDiffPixels: 50,
-    defaultMisMatchThreshold: 0.1,
+    mismatchThreshold: 0.1,
   },
 });
 ```
@@ -116,162 +118,147 @@ Run `shaka-perf init` to scaffold a fully-commented `abtests.config.ts` with eve
 
 Scenarios are defined as standalone `*.abtest.ts` files in an `ab-tests/` directory — this lets you co-locate test definitions with the features they cover. See the [shaka-shared `abTest()` registry](../shaka-shared/) for how to author them.
 
-### Scenario Properties
+### Per-Test Configuration
 
-Per-test visreg options go under `options.visreg` on each `abTest(...)` call. The full set — processed sequentially in the order listed:
+The `abTest()` config is flat — there is no nested `options` object (an
+un-migrated `options:` key throws at load time; see
+[BREAKING_CHANGES.md](../../BREAKING_CHANGES.md) for the per-option migration).
+One flat field drives what visreg captures:
 
-| Property                | Description                                                                                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `onBefore`              | Lifecycle hook — runs before page navigation. Use to set up cookies, auth state, etc.                                                               |
-| `readyEvent`            | Wait until this string has been logged to the console                                                                                               |
-| `readySelector`         | Wait until this selector exists before continuing                                                                                                   |
-| `readyTimeout`          | Timeout for readyEvent and readySelector (default: 30000ms)                                                                                         |
-| `delay`                 | Wait for x milliseconds                                                                                                                             |
-| `hideSelectors`         | Array of selectors set to `visibility: hidden`                                                                                                      |
-| `removeSelectors`       | Array of selectors set to `display: none`                                                                                                           |
-| `hoverSelector`         | Move the pointer over the specified DOM element prior to the screenshot                                                                             |
-| `hoverSelectors`        | Array of selectors — simulates multiple sequential hover interactions                                                                               |
-| `clickSelector`         | Click the specified DOM element prior to the screenshot                                                                                             |
-| `clickSelectors`        | Array of selectors — simulates multiple sequential click interactions                                                                               |
-| `postInteractionWait`   | Wait for a selector after interacting with hoverSelector or clickSelector (optionally accepts wait time in ms). Ideal for click/hover transitions   |
-| `scrollToSelector`      | Scrolls the specified DOM element into view prior to the screenshot                                                                                 |
-| `selectors`             | Array of selectors to capture. Defaults to `document` if omitted. Use `"viewport"` for viewport size. See [Targeting Elements](#targeting-elements) |
-| `selectorExpansion`     | See [Targeting Elements](#targeting-elements) below                                                                                                 |
-| `misMatchThreshold`     | Percentage of different pixels allowed to pass (default: 0.1)                                                                                       |
-| `requireSameDimensions` | If true, any change in selector size triggers a test failure (default: true)                                                                        |
-
-Narrow which viewports a single test runs at via `options.viewports` (sibling of `options.visreg`) — it's shared with perf and intersects with `visreg.viewports` in `abtests.config.ts`.
-
-### Changing Screenshot Filename Formats
-
-`shaka-perf visreg` uses a specific file-naming scheme to manage screenshot files. Changing this is NOT RECOMMENDED, but if you have an overwhelming need, you can modify it using the `fileNameTemplate` property:
+| Property                  | Description                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `visregSelectors`         | CSS selectors to capture. Defaults to the whole document. Also accepts the magic `document` / `viewport` selectors — see [Targeting Elements](#targeting-elements) |
 
 ```ts
-fileNameTemplate: '{scenarioIndex}_{scenarioLabel}_{selectorIndex}_{selectorLabel}_{viewportIndex}_{viewportLabel}'
+abTest('Homepage hero', {
+  startingPath: '/',
+  visregSelectors: ['[data-cy="hero"]'],
+}, async ({ page }) => {
+  await waitUntilPageSettled(page);
+});
 ```
+
+Every remaining per-test override lives under `config` — a partial of the same
+sections as `abtests.config.ts`, merged over the file config for this test
+alone. The visreg knobs (`config.visreg`):
+
+| Knob                         | Description                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `mismatchThreshold`   | Percentage of different pixels allowed to pass (default: 0.1)                            |
+| `maxNumDiffPixels`           | Absolute cap on differing pixels before a comparison fails                               |
+| `comparePixelmatchThreshold` | Per-pixel color-distance sensitivity for the pixelmatch comparison                       |
+| `viewports`                  | Narrow which viewports this test's visreg runs at (labels from `shared.viewportDefinitions`) |
+
+```ts
+abTest('Cart', {
+  startingPath: '/cart',
+  config: {
+    visreg: { mismatchThreshold: 0.01, viewports: ['desktop'] },
+  },
+}, async ({ page }) => { /* ... */ });
+```
+
+Viewport narrowing is per-category: `config.visreg.viewports` narrows only
+visreg — perf, audit, and accessibility each have their own
+`config.<category>.viewports`, so a test can be desktop-only for visreg while
+still benching on the phone. To narrow every category at once, set
+`config.shared.viewports` instead; it supplies the default for each category
+that has no `viewports` of its own, at both the file and per-test level:
+
+```
+config.<category>.viewports   (per-test)     most specific
+<category>.viewports          (file)
+config.shared.viewports       (per-test)
+shared.viewports              (file)         least specific — defaults to desktop + phone
+```
+
+An explicit file-level `<category>.viewports` therefore beats a per-test
+`config.shared.viewports`. Every label in any of these must be defined in
+`shared.viewportDefinitions`, which is only a registry — defining a viewport
+does not run it.
+
+Every defined per-test key REPLACES the file value wholesale — arrays included
+(`config.visreg.viewports: ['phone']` is the effective list, not a union with
+the file's). Keys you leave undefined fall through to the file value.
+
+Interactions, ready-waits, and hide/remove options are gone from the config —
+write them in the test body instead (see
+[Interactions and Waits: Do It in the Body](#interactions-and-waits-do-it-in-the-body)).
+
+### Screenshot Filenames
+
+The screenshot naming scheme is fixed (scenario × selector × viewport) and not
+configurable — stable names are what make crash-resume and the frame pools
+work.
 
 ## Advanced Scenarios
 
-### Click and Hover Interactions
+### Interactions and Waits: Do It in the Body
 
-`shaka-perf visreg` supports interaction selectors directly on the scenario:
-
-```ts
-clickSelector: '.my-hamburger-menu',
-hoverSelector: '.my-hamburger-menu .some-menu-item',
-```
-
-The above would wait for your app to generate an element with a `.my-hamburger-menu` class, then click that selector. Then wait again for a `.my-hamburger-menu .some-menu-item` class, then move the cursor over that element (causing a hover state). Then take a screenshot.
-
-You can use these properties independent of each other to test various click and/or hover states.
-
-> [!NOTE]
-> You can also use `clickSelectors` & `hoverSelectors` as arrays of selectors:
+The old interaction and wait options (`clickSelector`, `hoverSelector`,
+`keyPressSelectors`, `readySelector`, `readyEvent`, `delay`, `hideSelectors`,
+`removeSelectors`, `postInteractionWait`, ...) are gone — the test body is a
+real Playwright function, so write the behaviour there. The screenshot is taken
+after the body returns.
 
 ```ts
-clickSelectors: ['.my-hamburger-menu', '.my-hamburger-item'],
-hoverSelectors: ['.my-nav-menu-item', '.my-nav-menu-dropdown-item'],
+abTest('Open nav menu', { startingPath: '/' }, async ({ page }) => {
+  // Click and hover before the screenshot (waits for the element implicitly)
+  await page.click('.my-hamburger-menu');
+  await page.hover('.my-hamburger-menu .some-menu-item');
+
+  // Wait until the app is actually ready — a real condition beats a delay
+  await page.waitForSelector('#catOfTheDayResult', { timeout: 30_000 });
+  // ...or wait for the page to settle (network, images, fonts, mutations)
+  await waitUntilPageSettled(page);
+
+  // Hide dynamic content (e.g. ad banners) while keeping the layout flow...
+  await page.locator('.ad-banner')
+    .evaluateAll((els) => els.forEach((el) => { el.style.visibility = 'hidden'; }));
+  // ...or remove it from the DOM entirely
+  await page.locator('.popover').evaluateAll((els) => els.forEach((el) => el.remove()));
+});
 ```
 
-### Key Press Interactions
-
-Sequences of key presses can be defined per scenario:
-
-```ts
-keyPressSelectors: [
-  { selector: '#email', keyPress: 'user@example.com' },
-  { selector: '#password', keyPress: '1234' },
-],
-```
+The complete removed-option → body-recipe table lives in
+[BREAKING_CHANGES.md](../../BREAKING_CHANGES.md).
 
 ### Setting Cookies
 
 Seed cookies (and localStorage/auth) before the page loads from a `beforeNavigate`
-hook — `shared.beforeNavigate` in the config for every test, or per-test
-`options.beforeNavigate`. It runs on the Playwright `BrowserContext` after the
-per-run state clear, so what you seed survives into the navigation:
+hook — `shared.beforeNavigate` in the config for every test, or override it for
+one test via `config: { shared: { beforeNavigate } }` (which fully replaces the
+global for that test — call a shared function if you want both). It runs on the
+Playwright `BrowserContext` after the per-run state clear, so what you seed
+survives into the navigation:
 
 ```ts
-options: {
-  beforeNavigate: async ({ context, url }) => {
-    await context.addCookies([{ name: 'session', value: '…', url }]);
-    // localStorage/auth too, via context.addInitScript(...)
+abTest('Authenticated page', {
+  startingPath: '/dashboard',
+  config: {
+    shared: {
+      beforeNavigate: async ({ context, url }) => {
+        await context.addCookies([{ name: 'session', value: '…', url }]);
+        // localStorage/auth too, via context.addInitScript(...)
+      },
+    },
   },
-},
+}, async ({ page }) => { /* ... */ });
 ```
 
 ### Targeting Elements
 
-Screenshots can capture your entire layout or just parts of it, defined in the `scenario.selectors` array. Elements use standard CSS notation. By default, `shaka-perf visreg` takes a screenshot of the first occurrence of any selector found in your DOM.
-
-#### `selectorExpansion`
-
-To capture _all_ matching selector instances, set `selectorExpansion` to `true`:
-
-```ts
-selectors: ['.aListOfStuff li'],
-selectorExpansion: true,
-```
-
-With `selectorExpansion` set to `false` (the default), only the first matching element is captured.
-
-### Testing SPAs and Ajax Content
-
-Client-side web apps often progressively load content. The challenge is knowing _when_ to take the screenshot. `shaka-perf visreg` solves this with `readySelector`, `readyEvent`, and `delay`.
-
-#### Trigger Capture Via Selector
-
-The `readySelector` property waits until a selector exists before taking a screenshot:
-
-```ts
-readySelector: '#catOfTheDayResult'
-```
-
-#### Trigger Capture Via `console.log()`
-
-The `readyEvent` property triggers capture when a predefined string is logged to the console:
-
-```ts
-readyEvent: 'app_ready'
-```
-
-It's up to you to log this string in your app after all dependencies have loaded.
-
-#### Delay Capture
-
-The `delay` property pauses capture for a specified duration (in ms). This delay is applied _after_ `readyEvent` (if also set):
-
-```ts
-readyEvent: 'app_ready',
-delay: 1000,
-```
-
-### Dealing with Dynamic Content
-
-For testing a DOM with dynamic content (e.g. ad banners), you have two options:
-
-- **`hideSelectors`** — Sets the element to `visibility: hidden`, hiding it from analysis but retaining the original layout flow:
-
-  ```ts
-  hideSelectors: ['#someFixedSizeDomSelector']
-  ```
-
-- **`removeSelectors`** — Removes elements from the DOM entirely before screenshots:
-
-  ```ts
-  removeSelectors: ['#someUnpredictableSizedDomSelector']
-  ```
+Screenshots can capture your entire layout or just parts of it, via the `visregSelectors` array on the `abTest()` config. Elements use standard CSS notation. `shaka-perf visreg` takes a screenshot of the first occurrence of each selector found in your DOM — to capture several instances, list each one explicitly (`'.list li:nth-child(1)'`, `'.list li:nth-child(2)'`, …).
 
 ### Comparing Different Endpoints
 
-Comparing different endpoints (e.g. staging vs production) is easy with `referenceUrl`. For `compare`, set `referenceUrl` to your baseline and `url` to what you're testing:
+Control and experiment URLs come from `shared.controlURL` / `shared.experimentURL` in `abtests.config.ts`. When a route was renamed between the two sides, keep `startingPath` for control and point the experiment elsewhere with `experimentPathOverride`:
 
 ```ts
-{
-  label: 'cat meme feed sanity check',
-  url: 'http://staging.moreCatMemes.com',
-  referenceUrl: 'http://www.moreCatMemes.com',
-}
+abTest('Cart page', {
+  startingPath: '/cart',              // control side
+  experimentPathOverride: '/basket',  // experiment side
+}, async ({ page }) => { /* ... */ });
 ```
 
 ### Capturing the Document, Viewport, or Specific Elements
@@ -279,20 +266,18 @@ Comparing different endpoints (e.g. staging vs production) is easy with `referen
 `shaka-perf visreg` recognizes two magic selectors: `document` and `viewport` — these capture the entire document and just the current specified viewport respectively. You can mix them with CSS selectors:
 
 ```ts
-selectors: ['document', 'viewport', '#myFeature']
+visregSelectors: ['document', 'viewport', '#myFeature']
 ```
 
 ### Changing Test Sensitivity
 
-`misMatchThreshold` (percentage 0.00%-100.00%) controls how much difference `shaka-perf visreg` will tolerate before marking a test as failed. The default is `0.1` — adjust based on the kinds of testing you're doing.
+`mismatchThreshold` (percentage 0.00%-100.00%) controls how much difference `shaka-perf visreg` will tolerate before marking a test as failed. The default is `0.1` — set it once in the config's `visreg` slice, or for one test via `config.visreg.mismatchThreshold`.
 
-`requireSameDimensions` (default: `true`) controls whether any change in dimensions causes a failure. Setting it to `false` allows dimension changes as long as pixel differences stay within `misMatchThreshold`.
-
-These settings work in conjunction — e.g. with a non-zero `misMatchThreshold` and a mismatch that causes a dimension change, `requireSameDimensions: false` allows the test to still pass.
+A change in a capture's dimensions always fails the compare — a resize IS a visual difference; there is no "tolerate resizes" mode.
 
 ## Running Custom Scripts
 
-Use the `onBefore` lifecycle hook on a scenario to run custom Playwright code (set up state, simulate user actions, etc.):
+There is no separate lifecycle hook for in-page scripting — the test body IS the custom script. It receives a `TestFnContext` with `page`, `browserContext`, `isControl`, `scenario`, `viewport`, `testType`, and `annotate`; anything you do there (log in, open a menu, dismiss a modal) happens before the screenshot. For setup that must run before the page exists — cookies, request blocking, init scripts — use `config.shared.beforeNavigate` (see [Setting Cookies](#setting-cookies)).
 
 ```ts
 import { abTest } from 'shaka-shared';
@@ -300,32 +285,28 @@ import { waitUntilPageSettled } from 'shaka-perf/visreg/helpers';
 
 abTest('Authenticated dashboard', {
   startingPath: '/dashboard',
-  options: {
-    visreg: {
-      onBefore: async ({ browserContext }) => {
-        await browserContext.addCookies([
-          { name: 'session', value: '…', url: 'https://example.com' },
-        ]);
+  config: {
+    shared: {
+      beforeNavigate: async ({ context, url }) => {
+        await context.addCookies([{ name: 'session', value: '…', url }]);
       },
     },
   },
 }, async ({ page }) => {
+  await page.click('[data-cy="open-usage-panel"]');
   await waitUntilPageSettled(page);
 });
 ```
 
-The `onBefore` hook receives a `TestFnContext` with `page`, `browserContext`, `isControl`, `scenario`, `viewport`, and `testType`.
-
 The visreg helpers (`shaka-perf/visreg/helpers`) include:
 
 - `waitUntilPageSettled` — Wait for the page to fully render before screenshotting
-- `clickAndHoverHelper` — Apply click/hover selectors from the scenario
 - `interceptImages` — Stub out image requests for deterministic captures
 - `overrideCSS` — Inject CSS into the page
 
 ## Playwright Engine Configuration
 
-`shaka-perf visreg` uses Playwright as its rendering engine. It supports `chromium`, `firefox`, and `webkit` browsers via `engineOptions.browser`.
+`shaka-perf visreg` uses Playwright as its rendering engine, driving `chromium` via `shared.playwrightOptions.browser` (or the visreg-only `visreg.playwrightOptions.browser` override). The `firefox` and `webkit` values are accepted but not yet supported end-to-end — the audit-side stages (accessibility, agent-readiness) and the perf/audit Lighthouse engine are chromium-only.
 
 To seed cookies, localStorage, or a logged-in session before tests run, use a
 `beforeNavigate` hook (see [Setting Cookies](#setting-cookies)) — the Playwright
@@ -334,20 +315,31 @@ extra headers, and more.
 
 ### Playwright Option Flags
 
-`shaka-perf visreg` sets two defaults for Playwright:
+Every engine defaults to:
 
 ```
 ignoreHTTPSErrors: true
-headless: !config.debugWindow
+headless: true
 ```
 
-You can add more settings (or override the defaults) with `engineOptions`:
+You can add more settings (or override the defaults) with
+`shared.playwrightOptions` (all stages — required, with an explicit `browser`)
+or `visreg.playwrightOptions` (visreg only — a partial, merged per-key over
+shared):
 
 ```ts
-engineOptions: {
-  ignoreHTTPSErrors: false,
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  gotoParameters: { waitUntil: 'networkidle0' },
+shared: {
+  playwrightOptions: {
+    browser: 'chromium',
+    // Default action + navigation timeout (ms) on every Playwright engine
+    // (visreg, accessibility, agent-readiness).
+    waitTimeout: 60_000,
+    // Set false for strict certificate checking on every engine.
+    ignoreHTTPSErrors: false,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // Playwright waitUntil values: load | domcontentloaded | networkidle | commit
+    gotoParameters: { waitUntil: 'networkidle' },
+  },
 }
 ```
 
@@ -361,32 +353,12 @@ a run — copy-paste it into your browser.
 
 The compare runner pins where that `report.json` goes; the engine never chooses.
 
-### Capturing Console Logs in Reports
-
-Set `scenarioLogsInReports: true` at the config root to include browser console output in HTML reports.
-
-> [!NOTE]
-> To view the logs, you will need to serve the reports from an HTTP server.
-
 ## Performance Tuning
 
-`shaka-perf visreg` processes image capture and image comparisons in parallel. You can adjust concurrency to balance speed vs. RAM usage.
-
-### Capturing Screens in Parallel
-
-Default: 2 concurrent captures. Adjust with:
-
-```ts
-asyncCaptureLimit: 5
-```
-
-### Comparing Screens in Parallel
-
-Default: 4 concurrent comparisons. As a rough rule of thumb, `shaka-perf visreg` will use ~100MB RAM plus ~5MB for each concurrent image comparison.
-
-```ts
-asyncCompareLimit: 16
-```
+Concurrency is owned by the compare runner: each engine invocation measures one
+test at one viewport, and `shared.parallelism` in `abtests.config.ts` controls
+how many such units run at once. The engine's internal capture/compare limits
+are pinned per unit by the runner and are not user-configurable.
 
 ## Resemble.js Output Options
 
@@ -401,23 +373,17 @@ resembleOutputOptions: {
 }
 ```
 
-If you need a `misMatchThreshold` below `0.01` (e.g. for large screenshots or very small changes), set `usePreciseMatching` in `resembleOutputOptions`.
+If you need a `mismatchThreshold` below `0.01` (e.g. for large screenshots or very small changes), set `usePreciseMatching` in `resembleOutputOptions`.
 
 ## Debugging
 
 Display the browser window as tests run to visually see your app state at the time of the test:
 
 ```ts
-debugWindow: true
+visreg: {
+  playwrightOptions: { headless: false },
+}
 ```
-
-Enable verbose console output with:
-
-```ts
-debug: true
-```
-
-This will also output your source payload to the terminal so you can verify the server is sending what you expect.
 
 ## Git Integration
 
