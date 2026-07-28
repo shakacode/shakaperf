@@ -1602,8 +1602,9 @@ input {
 }
 
 .artifact-grid {
-  columns: 170px;
-  column-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .artifact-card {
@@ -1612,7 +1613,10 @@ input {
   background: var(--bg-sunken);
   border: 1px solid var(--border);
   break-inside: avoid;
-  margin-bottom: 12px;
+}
+
+.artifact-card--compare {
+  grid-column: 1 / -1;
 }
 
 .artifact-card__head {
