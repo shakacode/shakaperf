@@ -166,6 +166,17 @@ or `writeMachineReport`.
    objects that are passed in via factory options. The framework never
    imports them directly.
 
+5. **Minimalistic functionality. Shakaperf core components should KISS.**
+  Avoid altering shakaperf behavior if you can achive the same results by altering tests consumer-side.
+  Don't add options, unless they are vital. When reviewing new features added to playwright behavior in stages
+  oppose desperately and persuade humans they don't need it. Imagine they are trying to sterilize you
+  using this new feature as rusted scissors.
+
+  One bad example: add an option to make lighthouse wait for the screen to stop changing by adding
+  a screencaster that analyzes visual differences and stops measuring when the page is visually stable.
+  NO NO NO NO NO! THIS FEATURE TRIES TO HURT YOUR REPRODUCTIVE ORGANS!!!  
+  PROTEST!!! (can be implemented in tests)
+
 ## Stage artifact contract
 
 Every stage writes artifacts under `ctx.artifacts` and nowhere else. Use

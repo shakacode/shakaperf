@@ -193,13 +193,6 @@ input {
   letter-spacing: 0.04em;
 }
 
-/* Each dt/dd pair is a flex item; without `min-width: 0` + a break-anywhere dd
-   a long control/experiment URL sets the item's floor and pushes the header
-   past a narrow viewport. */
-.header__meta > div {
-  min-width: 0;
-}
-
 .header__meta dt {
   display: inline;
   text-transform: uppercase;
@@ -207,6 +200,9 @@ input {
   color: var(--fg-faint);
 }
 
+/* Each dt/dd pair is a flex item, so an unbreakable control/experiment URL
+   would set the item's floor and push the header past a narrow viewport.
+   `anywhere` (not `break-word`) is what shrinks the min-content size. */
 .header__meta dd {
   display: inline;
   margin: 0;
@@ -1277,8 +1273,8 @@ input {
 
 /* ───────── grid ─────────
    One greedy flow — no section dividers. `auto-fill` + a min-width of
-   420px per card lets the grid add as many columns as the viewport can
-   fit (4+ on wide monitors) instead of stopping at a fixed breakpoint. */
+   560px per card lets the grid add as many columns as the viewport can
+   fit (5+ on an ultra-wide) instead of stopping at a fixed breakpoint. */
 
 .grid {
   display: grid;
@@ -1615,7 +1611,7 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   /* Each card is as tall as its own shot. Stretching them to the row height
-     would only add dead space above the image. */
+     would only add dead space under the image. */
   align-items: start;
 }
 
@@ -1712,8 +1708,10 @@ input {
 }
 
 /* Thumbnails fill their cell edge to edge — no width or height cap, so a card
-   is exactly as big as the shot it shows. (The crop variant overrides `width`
-   below with its zoom math; it relies on nothing here clamping it.) */
+   is as tall as its shot's aspect ratio at column width. A full-page capture
+   (the default `document` selector) therefore makes a very tall card, by
+   design. (The crop variant overrides `width` below with its zoom math; it
+   relies on nothing here clamping it.) */
 .artifact-card--single .artifact-card__image img,
 .artifact-card--compare .artifact-card__image img {
   width: 100%;
@@ -1721,10 +1719,9 @@ input {
   display: block;
 }
 
+/* `position: relative` + `overflow: hidden` come from the base rule above. */
 .artifact-card__media--crop .artifact-card__image {
   aspect-ratio: calc(var(--crop-w) / var(--crop-h));
-  position: relative;
-  overflow: hidden;
 }
 
 .artifact-card__media--crop .artifact-card__image img {
@@ -1863,10 +1860,6 @@ input {
   display: grid;
   gap: 12px;
   padding: 16px;
-}
-
-.artifact-dialog__image-grid--triplet {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* control · experiment · diff · scrubber */
@@ -2058,9 +2051,11 @@ input {
 }
 
 @media (max-width: 760px) {
-  /* Phone layout — shared by both reports. Reclaim the wide gutters, stack the
-     header controls, and collapse every multi-column grid to a single column so
-     nothing is pushed past the viewport edge. */
+  /* Phone layout for every report this shell renders — compare, bisect, audit.
+     Reclaim the wide gutters, stack the header controls, and collapse the
+     page-level grids to one column so nothing is pushed past the viewport edge.
+     The artifact grid and the triplet strip stay multi-column on purpose; see
+     the 560px query below. */
   .app {
     padding: 20px 14px 60px;
   }
@@ -2086,15 +2081,24 @@ input {
 
   .filterbar {
     justify-content: flex-start;
-    max-width: none;
   }
 
-  /* The sections menu drops from a now left-aligned summary, so anchoring it
-     to the summary's right edge would hang it off the left of the screen. */
+  /* Anchor the sections menu to the whole filters row rather than to its own
+     summary. The summary's position in that row is not fixed — on an audit
+     report the accessibility filter precedes it and may share the line — so
+     either edge of the summary can put a viewport-wide menu off-screen. */
+  .header__secondary-filters {
+    position: relative;
+  }
+
+  .stage-filter {
+    position: static;
+  }
+
   .stage-filter__menu {
     left: 0;
-    right: auto;
-    width: calc(100vw - 28px);
+    right: 0;
+    width: auto;
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2203,15 +2207,16 @@ input {
 
   /* The zoom dialog exists to show a shot up close — four columns on a phone
      leave ~75px per image, so stack them instead. */
-  .artifact-dialog__image-grid--triplet,
   .artifact-dialog__image-grid--quad {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Below ~560px a third artifact column leaves each thumbnail under 100px, which
-   squeezes its header into "documen / t". Two columns keep the labels on one
-   line. (Compare cards span the full row either way.) */
+/* Two columns below 560px keep a phone thumbnail at ~150px. A third would put
+   it under ~115px, where the selector in the card head starts wrapping mid-word
+   ("documen / t"), and under 100px on a 390px phone. The breakpoint is a
+   comfort margin, unrelated to `.grid`'s 560px minimum column width.
+   (Compare cards span the full row either way.) */
 @media (max-width: 560px) {
   .artifact-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
