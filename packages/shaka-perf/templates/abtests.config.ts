@@ -77,7 +77,13 @@ export default defineConfig({
   shared: {
     controlURL: `http://localhost:${CONTROL_PORT}`,
     experimentURL: `http://localhost:${EXPERIMENT_PORT}`,
-    viewports: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
+    // The viewport REGISTRY: every label used below (and in any test's
+    // `config.<category>.viewports`) must resolve to an entry here. Defining a
+    // viewport does not run it — `viewports` decides that.
+    viewportDefinitions: [DESKTOP_VIEWPORT, TABLET_VIEWPORT, PHONE_VIEWPORT],
+    // The breakpoints EVERY category runs at unless it sets its own
+    // `viewports` below. One place to widen or narrow a whole run.
+    viewports: ['desktop', 'phone'],
     parallelism: PARALLELISM,
     // Runs before EVERY test's navigation, on every engine. A test can
     // override it with `config: { shared: { beforeNavigate } }`, which fully
@@ -111,6 +117,8 @@ export default defineConfig({
   },
 
   visreg: {
+    // Overrides shared.viewports for visreg alone — screenshots are cheap
+    // enough to be worth the extra breakpoint. Drop this line to inherit.
     viewports: ['desktop', 'tablet', 'phone'],
     mismatchThreshold: 0.1,
     maxNumDiffPixels: 50,
@@ -123,12 +131,12 @@ export default defineConfig({
     pValueThreshold: 0.05,
     regressionThresholdStat: 'estimator',
     samplingMode: 'simultaneous',
-    viewports: ['desktop', 'phone'],
+    // No `viewports` here — perf inherits shared.viewports. Add it to give
+    // perf its own breakpoints.
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
 
   audit: {
-    viewports: ['desktop', 'phone'],
     lighthouseConfig: LIGHTHOUSE_CONFIG,
   },
 
