@@ -449,6 +449,7 @@ function fakeBrowser(options: {
   const sides: AccessibilitySideScan['side'][] = ['control', 'experiment'];
   const pages: Record<string, unknown> = {};
   const browser = {
+    version: jest.fn(() => '150.0.0.0'),
     newContext: jest.fn(async () => {
       const side = sides[contextIndex++] ?? 'experiment';
       const probe = options.probeBySide?.[side] ?? { title: 'Real page', html: '<main>ok</main>' };
