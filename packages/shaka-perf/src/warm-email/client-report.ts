@@ -881,21 +881,39 @@ const A11Y_BLANK_STDEV = 6;
 
 const toPct = (ratio: number): string => `${(clamp01(ratio) * 100).toFixed(2)}%`;
 
+// The accessibility stage writes its screenshot as an artifact FILE and records
+// a results-relative path in `imageHref` (ArtifactScope.pathFor), so every crop
+// below starts by reading those bytes back off disk. An unreadable path (escapes
+// the results dir, or the artifact is gone) warns rather than returning a quiet
+// null: it costs the report EVERY accessibility screenshot at once, which is
+// otherwise invisible until someone notices the cards lost their frames.
+function readA11yScreenshot(resultsDir: string, source: string): Buffer | null {
+  const abs = containedJoin(resultsDir, source);
+  if (!abs) {
+    console.warn(chalk.yellow(`shaka-perf: accessibility screenshot ${source} escapes ${resultsDir}, skipping its frames`));
+    return null;
+  }
+  try {
+    return fs.readFileSync(abs);
+  } catch (err) {
+    console.warn(chalk.yellow(`shaka-perf: cannot read accessibility screenshot ${abs}, skipping its frames: ${(err as Error).message}`));
+    return null;
+  }
+}
+
 // Exported for the crop-filter integration test (structural rules must yield no
 // crop, spatial rules must still crop). Not part of the public report API.
 // `dropEngulfing`: skip a coarse box that covers the whole crop and count only
 // the boxes actually drawn.
-export async function a11yCropFrames(scan: AccessibilityScan, dropEngulfing = false): Promise<A11yFrame[]> {
+export async function a11yCropFrames(resultsDir: string, scan: AccessibilityScan, dropEngulfing = false): Promise<A11yFrame[]> {
   const shot = scan.screenshot;
   const source = shot?.imageHref;
   if (!shot || !source) return [];
-  const m = /^data:[^;]*;base64,(.+)$/.exec(source);
-  if (!m) return []; // only the inline data URI is croppable here
-  let buf: Buffer;
+  const buf = readA11yScreenshot(resultsDir, source);
+  if (!buf) return [];
   let avifW: number;
   let avifH: number;
   try {
-    buf = Buffer.from(m[1], 'base64');
     const meta = await sharp(buf).metadata();
     avifW = meta.width ?? shot.width;
     avifH = meta.height ?? shot.height;
@@ -1367,14 +1385,13 @@ const A11Y_WHOLEPAGE_CAPTION = 'Showing the full page; the flagged issues are li
 
 // When a page has no crop frames, show the whole page so the card still has a
 // visual. The caller picks the caption (structural vs generic).
-async function a11yWholePageFrame(scan: AccessibilityScan, caption: string): Promise<ClientReportA11yCard['frames'][number] | null> {
+async function a11yWholePageFrame(resultsDir: string, scan: AccessibilityScan, caption: string): Promise<ClientReportA11yCard['frames'][number] | null> {
   const shot = scan.screenshot;
   const source = shot?.imageHref;
   if (!shot || !source) return null;
-  const m = /^data:[^;]*;base64,(.+)$/.exec(source);
-  if (!m) return null;
+  const buf = readA11yScreenshot(resultsDir, source);
+  if (!buf) return null;
   try {
-    const buf = Buffer.from(m[1], 'base64');
     const meta = await sharp(buf).metadata();
     const w = meta.width ?? shot.width;
     const h = meta.height ?? shot.height;
@@ -1402,9 +1419,9 @@ function a11yCopyPromptForView(view: A11ySectionView, siteUrl: string, ctx: A11y
   });
 }
 
-async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
+async function a11yCardModel(resultsDir: string, view: A11ySectionView, siteUrl?: string, promptCtx?: A11yPromptContext): Promise<ClientReportA11yCard> {
   const { page, scan, client } = view;
-  const crops = await a11yCropFrames(scan, true);
+  const crops = await a11yCropFrames(resultsDir, scan, true);
   const score = client?.score;
   const status: ClientReportStatus = typeof score === 'number' ? scoreStatus(score) : 'poor';
   const topLabel = sortViolations(scan.violations)[0] ? a11yIssueLabel(sortViolations(scan.violations)[0].ruleId) : '';
@@ -1427,7 +1444,7 @@ async function a11yCardModel(view: A11ySectionView, siteUrl?: string, promptCtx?
     // Show the a11y stage's own screenshot - the exact frame the violations were
     // detected on. If it is a reload / bot-challenge interstitial, that IS what we
     // measured and must be shown, not a cleaner perf-timeline frame.
-    const whole = await a11yWholePageFrame(scan, caption);
+    const whole = await a11yWholePageFrame(resultsDir, scan, caption);
     if (whole) frames = [whole];
   }
   const card: ClientReportA11yCard = {
@@ -1638,7 +1655,7 @@ async function buildClientReportModel(
     date: agentPromptDate(dateStr, sc.generatedAt),
   };
   const a11yCards = await Promise.all(
-    preparedA11y.cardedA11y.map((view) => a11yCardModel(view, sc.url, a11yPromptCtx)),
+    preparedA11y.cardedA11y.map((view) => a11yCardModel(resultsDir, view, sc.url, a11yPromptCtx)),
   );
   const a11y = buildA11ySection(preparedA11y, a11yCards, sc.url, a11yPromptCtx);
 
