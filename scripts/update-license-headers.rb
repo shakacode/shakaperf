@@ -37,6 +37,8 @@ SKIP_PATTERNS = [
   %r{\A\.claude/},
   %r{\A\.yarn/},
   %r{\Aintegration-tests/snapshots/},
+  # Vendored MIT-licensed source; preserve its upstream file-level notice.
+  %r{\Apackages/shaka-perf/src/bench/cli/static/chartjs-2\.9\.3-chart\.min\.js\z},
   # Copied verbatim into a consumer's project by `shaka-perf init`, so it must
   # not carry our header.
   %r{\Apackages/shaka-perf/templates/}
@@ -111,11 +113,12 @@ def header_insert_offset(contents)
   offset
 end
 
-def has_license_header?(contents, header)
+def has_license_header?(contents)
   header_body = contents.byteslice(header_insert_offset(contents)..) || ""
   header_body = header_body.sub(/\A\n/, "")
+  leading_comment = header_body.match(/\A\/\*.*?\*\//m)&.[](0)
 
-  header_body.start_with?(header) || header_body == header.delete_suffix("\n")
+  leading_comment&.include?(HEADER_MARKER) || false
 end
 
 def insert_header(contents, header)
@@ -135,8 +138,7 @@ end
 files = tracked_source_files.select { |path| selected_file?(path) && regular_file?(path) }
 file_contents = files.to_h { |path| [path, File.read(repo_path(path), encoding: "UTF-8")] }
 missing = files.reject do |path|
-  header = HEADERS.fetch(File.extname(path))
-  has_license_header?(file_contents.fetch(path), header)
+  has_license_header?(file_contents.fetch(path))
 end
 
 if options[:check]
