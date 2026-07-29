@@ -8,13 +8,14 @@
   "files": [
     "dist",
     "templates",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "prepublishOnly": "yarn build"
+    "prepublishOnly": "yarn build",
+    "prepack": "node ../../scripts/sync-license.mjs"
   },
   "keywords": [
     "bundle-size",
@@ -23,7 +24,7 @@
     "webpack",
     "bundle-analysis"
   ],
-  "author": "",
+  "author": "Roman Kuksin, co-authored by Ramez Weisa and Sasha Kharitonov, ShakaCode LLC <rkuksin.cpp@gmail.com>, <rameznoshy@gmail.com>, <sashakhar1@icloud.com>",
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

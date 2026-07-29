@@ -6,8 +6,6 @@ Trust-Based Commercial Licensing.
 Copyright (c) 2026 ShakaCode LLC, a Hawaii limited liability company
 ("ShakaCode").
 
-The SPDX identifier for these terms is `LicenseRef-ShakaPerf-1.0`.
-
 ## Plain-language summary (informative, not part of the terms)
 
 ShakaPerf is source-available and trust-based: no license keys, no
@@ -249,7 +247,6 @@ https://github.com/shakacode/commercial-licensing
 ## Machine-readable summary (informative)
 
 ```yaml
-license_id: LicenseRef-ShakaPerf-1.0
 license_name: The ShakaPerf License 1.0
 type: source-available, trust-based
 free_production_use_if_all:

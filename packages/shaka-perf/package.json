@@ -11,6 +11,7 @@
     "scripts",
     "templates",
     "tb-schema.json",
+    "LICENSE.md",
     "THIRD_PARTY_NOTICES.md",
     "binding.gyp",
     "native"
@@ -83,6 +84,7 @@
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "jest",
     "prepublishOnly": "yarn build",
+    "prepack": "node ../../scripts/sync-license.mjs",
     "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
   },
   "keywords": [
@@ -92,7 +94,7 @@
     "twin-servers",
     "testing"
   ],
-  "author": "ShakaCode LLC",
+  "author": "Roman Kuksin, co-authored by Ramez Weisa and Sasha Kharitonov, ShakaCode LLC <rkuksin.cpp@gmail.com>, <rameznoshy@gmail.com>, <sashakhar1@icloud.com>",
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

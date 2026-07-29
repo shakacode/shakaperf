@@ -1,10 +1,3 @@
-/*
- * Copyright (c) 2026 ShakaCode LLC.
- *
- * This file is part of ShakaPerf. Use is governed by The ShakaPerf
- * License in LICENSE.md.
- */
-
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { BrowserContext } from 'playwright-core';
