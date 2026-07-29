@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "prepack": "node ../../scripts/sync-license.mjs"
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs"
   },
   "keywords": [
     "accessibility",

@@ -16,7 +16,7 @@
 // `yarn npm publish` (Yarn does not run npm's `prepublishOnly`). Yarn sets the
 // cwd to the workspace directory, which is where the copy lands.
 
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
