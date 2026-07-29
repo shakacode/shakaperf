@@ -411,5 +411,5 @@ Notes:
 ---
 
 <!-- deploy: keep this line last; /deploy updates the version on publish -->
-Current version: shaka-perf 0.2.0, shaka-shared 0.2.0 (breaking changes under
+Current version: shaka-perf 0.2.1, shaka-shared 0.2.1 (breaking changes under
 **Unreleased** ship in the next release).
