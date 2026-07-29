@@ -17,7 +17,11 @@
     "accessibility",
     "testing"
   ],
-  "author": "Roman Kuksin, co-authored by Ramez Weisa and Sasha Kharitonov, ShakaCode LLC <rkuksin.cpp@gmail.com>, <rameznoshy@gmail.com>, <sashakhar1@icloud.com>",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

@@ -21,7 +21,11 @@
     "type": "git",
     "url": "https://github.com/shakacode/shakaperf.git"
   },
-  "author": "Roman Kuksin, co-authored by Ramez Weisa and Sasha Kharitonov, ShakaCode LLC <rkuksin.cpp@gmail.com>, <rameznoshy@gmail.com>, <sashakhar1@icloud.com>",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "devDependencies": {
     "@playwright/test": "^1.50.0",
