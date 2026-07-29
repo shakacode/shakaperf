@@ -11,6 +11,7 @@
     "scripts",
     "templates",
     "tb-schema.json",
+    "LICENSE.md",
     "THIRD_PARTY_NOTICES.md",
     "binding.gyp",
     "native"
@@ -82,7 +83,7 @@
     "dev-report-shell": "vite --config report-shell/vite.config.ts",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "jest",
-    "prepublishOnly": "yarn build",
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs",
     "install-global": "yarn workspaces foreach -Apt --include 'packages/*' run build && node scripts/install-global.mjs"
   },
   "keywords": [
@@ -92,7 +93,11 @@
     "twin-servers",
     "testing"
   ],
-  "author": "ShakaCode LLC",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

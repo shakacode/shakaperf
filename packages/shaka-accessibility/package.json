@@ -6,17 +6,22 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs"
   },
   "keywords": [
     "accessibility",
     "testing"
   ],
-  "author": "",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

@@ -8,13 +8,13 @@
   "files": [
     "dist",
     "templates",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "prepublishOnly": "yarn build"
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs"
   },
   "keywords": [
     "bundle-size",
@@ -23,7 +23,11 @@
     "webpack",
     "bundle-analysis"
   ],
-  "author": "",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

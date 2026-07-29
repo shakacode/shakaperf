@@ -5,19 +5,25 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "prepack": "yarn build && node ../../scripts/sync-license.mjs"
   },
   "keywords": [
     "performance",
     "testing",
     "shared"
   ],
-  "author": "",
+  "author": "Roman Kuksin, ShakaCode LLC <rkuksin.cpp@gmail.com>",
+  "contributors": [
+    "Ramez Weissa <rameznoshy@gmail.com>",
+    "Sasha Kharitonov <sashakhar1@icloud.com>"
+  ],
   "license": "SEE LICENSE IN LICENSE.md",
   "repository": {
     "type": "git",

@@ -1,42 +1,47 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-# Copyright (c) 2026 ShakaCode LLC
-# Licensed under the Business Source License 1.1. See LICENSE for terms.
+# Copyright (c) 2026 ShakaCode LLC.
+#
+# This file is part of ShakaPerf. Use is governed by The ShakaPerf
+# License in LICENSE.md.
 
 require "open3"
 require "optparse"
 
-HEADER_MARKER = "Licensed under the Business Source License 1.1. See LICENSE for terms."
+# Substring that identifies the header. Kept short so reflowing the sentence
+# across lines does not make an existing header look missing.
+HEADER_MARKER = "This file is part of ShakaPerf."
 
+BLOCK_HEADER = <<~HEADER
+  /*
+   * Copyright (c) 2026 ShakaCode LLC.
+   *
+   * This file is part of ShakaPerf. Use is governed by The ShakaPerf
+   * License in LICENSE.md.
+   */
+
+HEADER
+
+# JS/TS only. No Ruby file in this repo carries a source header - the Rails
+# demo app is illustrative, not part of the licensed toolkit.
 HEADERS = {
-  ".cjs" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n",
-  ".js" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n",
-  ".jsx" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n",
-  ".mjs" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n",
-  ".rb" => "# Copyright (c) 2026 ShakaCode LLC\n# #{HEADER_MARKER}\n\n",
-  ".ts" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n",
-  ".tsx" => "// Copyright (c) 2026 ShakaCode LLC\n// #{HEADER_MARKER}\n\n"
+  ".cjs" => BLOCK_HEADER,
+  ".js" => BLOCK_HEADER,
+  ".jsx" => BLOCK_HEADER,
+  ".mjs" => BLOCK_HEADER,
+  ".ts" => BLOCK_HEADER,
+  ".tsx" => BLOCK_HEADER
 }.freeze
-
-RUBY_MAGIC_COMMENT = /\A#\s*(?:frozen_string_literal|encoding|coding):/.freeze
 
 SKIP_PATTERNS = [
   %r{\A\.claude/},
   %r{\A\.yarn/},
-  %r{\Ademo-ecommerce/app/assets/config/manifest\.js\z},
-  %r{\Ademo-ecommerce/app/javascript/packs/server-bundle\.js\z},
-  %r{\Ademo-ecommerce/config/},
-  %r{\Ademo-ecommerce/db/schema\.rb\z},
   %r{\Aintegration-tests/snapshots/},
-  %r{\Apackages/shaka-shared/},
+  # Vendored MIT-licensed source; preserve its upstream file-level notice.
   %r{\Apackages/shaka-perf/src/bench/cli/static/chartjs-2\.9\.3-chart\.min\.js\z},
-  %r{\Aplaywright\.integration\.config\.ts\z},
-  %r{(?:\A|/)abtests\.config\.ts\z},
-  %r{(?:\A|/)admin\.bundle-size\.config\.ts\z},
-  %r{(?:\A|/)bundle-size\.config\.js\z},
-  %r{(?:\A|/)jest\.config\.js\z},
-  %r{(?:\A|/)postcss\.config\.js\z},
-  %r{(?:\A|/)vite\.config\.ts\z}
+  # Copied verbatim into a consumer's project by `shaka-perf init`, so it must
+  # not carry our header.
+  %r{\Apackages/shaka-perf/templates/}
 ].freeze
 
 REPO_ROOT = begin
@@ -74,7 +79,6 @@ def tracked_source_files
     ":(top)*.js",
     ":(top)*.jsx",
     ":(top)*.mjs",
-    ":(top)*.rb",
     ":(top)*.ts",
     ":(top)*.tsx"
   )
@@ -104,24 +108,17 @@ def header_insert_offset(contents)
   lines = contents.lines
   index = 0
 
-  if lines[index]&.start_with?("#!")
-    offset += lines[index].length
-    index += 1
-  end
-
-  while lines[index]&.match?(RUBY_MAGIC_COMMENT)
-    offset += lines[index].length
-    index += 1
-  end
+  offset += lines[index].length if lines[index]&.start_with?("#!")
 
   offset
 end
 
-def has_license_header?(contents, header)
+def has_license_header?(contents)
   header_body = contents.byteslice(header_insert_offset(contents)..) || ""
   header_body = header_body.sub(/\A\n/, "")
+  leading_comment = header_body.match(/\A\/\*.*?\*\//m)&.[](0)
 
-  header_body.start_with?(header) || header_body == header.delete_suffix("\n")
+  leading_comment&.include?(HEADER_MARKER) || false
 end
 
 def insert_header(contents, header)
@@ -141,17 +138,16 @@ end
 files = tracked_source_files.select { |path| selected_file?(path) && regular_file?(path) }
 file_contents = files.to_h { |path| [path, File.read(repo_path(path), encoding: "UTF-8")] }
 missing = files.reject do |path|
-  header = HEADERS.fetch(File.extname(path))
-  has_license_header?(file_contents.fetch(path), header)
+  has_license_header?(file_contents.fetch(path))
 end
 
 if options[:check]
   if missing.empty?
-    puts "BSL source headers OK (#{files.length} files checked)"
+    puts "License headers OK (#{files.length} files checked)"
     exit 0
   end
 
-  warn "Missing BSL source headers in #{missing.length} of #{files.length} files:"
+  warn "Missing license headers in #{missing.length} of #{files.length} files:"
   warn missing.join("\n")
   exit 1
 end
