@@ -8,6 +8,10 @@
  */
 
 import type { LaunchOptions, Page } from 'playwright-core';
+import {
+  matchRealChromeUserAgentVersion,
+  realChromeUserAgentForFormFactor,
+} from '../browser-user-agent';
 import { looksLikeBotWall } from './bot-wall';
 
 // Opt-in (SHAKAPERF_REAL_CHROME=1): drive the real installed Chrome with the
@@ -17,32 +21,50 @@ import { looksLikeBotWall } from './bot-wall';
 // audit of a bot-protected site. Off by default - the bundled Chromium is what
 // CI and most runs use; `channel: 'chrome'` requires Chrome to be installed.
 export function applyRealChrome(opts: LaunchOptions): LaunchOptions {
-  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return opts;
-  // Must run HEADED: headless real Chrome is still fingerprinted and gets served
-  // the interactive (un-auto-solvable) Turnstile challenge - confirmed against
-  // Cloudflare. Headed real Chrome passes, so this mode forces a visible window
-  // (it therefore needs a display; it is opt-in and not for headless CI).
+  if (!isRealChromeEnabled()) return opts;
+  // Default headed: interactive Turnstile challenges can still reject headless
+  // Chrome. Some managed challenges auto-pass real Chrome headless, so
+  // SHAKAPERF_REAL_CHROME_HEADLESS=1 explicitly selects that path.
+  const headless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
   return {
     ...opts,
-    headless: false,
+    headless,
     channel: 'chrome',
-    args: [...(opts.args ?? []), '--disable-blink-features=AutomationControlled'],
+    args: [
+      ...(opts.args ?? []),
+      '--disable-blink-features=AutomationControlled',
+    ],
   };
 }
 
-// The "Mobile" token makes responsive sites serve their phone layout.
-const MOBILE_USER_AGENT =
-  'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+export function isRealChromeEnabled(): boolean {
+  return process.env.SHAKAPERF_REAL_CHROME === '1';
+}
 
-// Headed real Chrome won't honor a small mobile viewport (it renders a desktop
-// breakpoint) unless the context is a full mobile device, so add mobile UA + touch.
-// Real-Chrome + mobile only; headless already honors the viewport, so it's a no-op there.
-export function realChromeMobileEmulation(
+export function realChromeUsesNativeIdentity(formFactor: string): boolean {
+  return (
+    isRealChromeEnabled()
+    && process.env.SHAKAPERF_REAL_CHROME_HEADLESS !== '1'
+    && formFactor !== 'mobile'
+  );
+}
+
+// Give mobile contexts, plus non-mobile contexts in explicit headless mode, a
+// UA string without the HeadlessChrome token. Mobile contexts also need touch.
+export function realChromeContextOptions(
   formFactor: string,
-): { userAgent: string; hasTouch: boolean } | undefined {
-  if (process.env.SHAKAPERF_REAL_CHROME !== '1') return undefined;
-  if (formFactor !== 'mobile') return undefined;
-  return { userAgent: MOBILE_USER_AGENT, hasTouch: true };
+  browserVersion?: string,
+  usesChromium = true,
+): { userAgent: string; hasTouch?: boolean } | undefined {
+  if (!usesChromium || !isRealChromeEnabled()) return undefined;
+  const mobile = formFactor === 'mobile';
+  if (realChromeUsesNativeIdentity(formFactor)) return undefined;
+  const userAgent = matchRealChromeUserAgentVersion(
+    realChromeUserAgentForFormFactor(formFactor),
+    browserVersion,
+  );
+  if (!userAgent) return undefined;
+  return mobile ? { userAgent, hasTouch: true } : { userAgent };
 }
 
 // In real-Chrome mode a bot challenge can still flash for a second or two before

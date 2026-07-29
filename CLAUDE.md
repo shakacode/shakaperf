@@ -42,18 +42,52 @@ A site behind a Cloudflare/Turnstile bot wall serves the headless audit a "Just 
 moment..." / "Verify you are human" challenge instead of the real page. When that
 happens the report says "Could not measure - bot protection" (it never presents
 challenge-page data as the site's). To actually get through and measure the real
-page, run with `SHAKAPERF_REAL_CHROME=1` AND `--headed`:
+page, run with real-Chrome mode enabled. The default path is headed:
 
 ```bash
-SHAKAPERF_REAL_CHROME=1 shaka-perf audit --headed --url https://example.com/
+SHAKAPERF_REAL_CHROME=1 shaka-perf audit --url https://example.com/
 ```
 
 This drives the installed Chrome (`channel: 'chrome'`) with the automation flag
-stripped and forces a visible (headed) window - headless real Chrome is still
-fingerprinted and gets the un-auto-solvable interactive challenge. After each
-navigation the engine polls up to ~25s for the challenge to clear. It needs a
-display (a real desktop), `google-chrome` installed, and is opt-in: **never set
-`SHAKAPERF_REAL_CHROME` in CI** - the default bundled Chromium is what CI uses.
+stripped. Interactive Turnstile challenges can still require this visible path,
+which needs a display. In real-Chrome mode, `--headed` is redundant: all audit
+browsers are headed unless `SHAKAPERF_REAL_CHROME_HEADLESS=1` is set.
+
+Some managed challenges auto-pass real Chrome in headless mode. For those sites,
+opt in explicitly without `--headed`:
+
+```bash
+SHAKAPERF_REAL_CHROME=1 SHAKAPERF_REAL_CHROME_HEADLESS=1 shaka-perf audit --url https://example.com/
+```
+
+`SHAKAPERF_REAL_CHROME_HEADLESS=1` takes precedence if it is combined with
+`--headed` across the real-Chrome audit browsers. Performance Lighthouse and
+Playwright apply viewport-matched identities to mobile contexts and non-mobile
+headless contexts; a headed non-mobile context keeps Chrome's native identity.
+On the viewport-matched paths, Lighthouse normalizes only the Chrome version
+milestone to the host browser and keeps the literal platform token. On the
+headed non-mobile path it sends no UA override. Playwright derives the
+platform, platform-version, and architecture client hints from its UA override,
+and sets the mobile hint from the context's `isMobile` option. It forces the
+model hint to an empty value; only the brand list remains browser-controlled.
+After each Playwright navigation the engine polls up to ~25s for the challenge
+to clear.
+Sites that admit only a mobile identity can still block the desktop audit row.
+In real-Chrome mode, Lighthouse uses a viewport-matched emulated identity for
+mobile contexts and explicit-headless non-mobile contexts; a headed non-mobile
+context keeps Chrome's native identity. An explicit
+`lighthouseConfig.emulatedUserAgent` override wins in either case. Baselines
+recorded without real-Chrome mode are unaffected.
+The raw agent-readiness fetch uses the same native identity as a headed
+non-mobile real-Chrome context, so its score can differ from default-mode
+results on sites that vary markup by user agent. On that path the audited host
+receives the operator's native browser identity instead of the neutral raw-fetch
+identity. The standalone Lighthouse accessibility score is omitted in
+real-Chrome mode because it cannot share the interactive challenge state; the
+Playwright accessibility scan still runs.
+Both paths require `google-chrome` and are opt-in: **never set
+`SHAKAPERF_REAL_CHROME` in CI** - CI should use the default browser
+configuration.
 
 ## Breaking changes
 

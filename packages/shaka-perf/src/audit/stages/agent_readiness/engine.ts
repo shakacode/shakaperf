@@ -13,11 +13,20 @@ import type { PoolWorkerState, WorkerPool } from '../../../pipeline/worker-pool'
 import type { TestContext } from '../../../stage/stage';
 import { isPublicHost } from '../../../net/public-host';
 import { looksLikeBotWall, scanLandedOnBotWall } from '../../bot-wall';
-import { waitForBotWallToClear } from '../../real-chrome';
+import {
+  isRealChromeEnabled,
+  realChromeContextOptions,
+  realChromeUsesNativeIdentity,
+  waitForBotWallToClear,
+} from '../../real-chrome';
 import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
 import { resolveAgentReadinessConfig, type AgentReadinessEngineOptions, type AgentReadinessStageConfig } from './config';
 import { extractPageSignals } from './extract';
 import type { AgentReadinessResult, PageSignals, RawFetchResult } from './types';
+import {
+  matchRealChromeUserAgentVersion,
+  realChromeUserAgentForFormFactor,
+} from '../../../browser-user-agent';
 
 interface AgentReadinessSlotState extends PoolWorkerState {
   agentReadinessBrowser?: Browser;
@@ -32,6 +41,7 @@ const RAW_FETCH_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const RAW_HTML_MAX_BYTES = 3 * 1024 * 1024;
 const RAW_FETCH_MAX_REDIRECT_HOPS = 5;
+const nativeUserAgentByBrowser = new WeakMap<Browser, Promise<string | undefined>>();
 
 async function disposeAgentReadinessBrowser(state: Record<string, unknown>): Promise<void> {
   const slot = state as AgentReadinessSlotState;
@@ -66,6 +76,7 @@ export async function runAgentReadinessStage(
 export async function fetchRawHtml(
   url: string,
   timeoutMs: number,
+  userAgent = RAW_FETCH_UA,
 ): Promise<{ html: string | null; status?: number; contentType?: string; bytes?: number }> {
   let target: URL;
   try {
@@ -82,7 +93,7 @@ export async function fetchRawHtml(
       const res = await fetch(target.href, {
         signal: ctl.signal,
         redirect: 'manual',
-        headers: { 'user-agent': RAW_FETCH_UA, accept: 'text/html,application/xhtml+xml' },
+        headers: { 'user-agent': userAgent, accept: 'text/html,application/xhtml+xml' },
       });
       if (res.status >= 300 && res.status < 400) {
         await res.body?.cancel().catch(() => {});
@@ -134,6 +145,48 @@ export async function fetchRawHtml(
   }
 }
 
+export function rawFetchUserAgentFor(
+  formFactor: string,
+  browserVersion?: string,
+  nativeUserAgent?: string,
+  usesChromium = true,
+): string {
+  if (!usesChromium || !isRealChromeEnabled()) return RAW_FETCH_UA;
+  if (realChromeUsesNativeIdentity(formFactor)) {
+    return nativeUserAgent ?? RAW_FETCH_UA;
+  }
+  return matchRealChromeUserAgentVersion(
+    realChromeUserAgentForFormFactor(formFactor),
+    browserVersion,
+  ) ?? RAW_FETCH_UA;
+}
+
+function nativeBrowserUserAgent(browser: Browser): Promise<string | undefined> {
+  const existing = nativeUserAgentByBrowser.get(browser);
+  if (existing) return existing;
+  const lookup = (async () => {
+    let context: BrowserContext | undefined;
+    try {
+      context = await browser.newContext();
+      const page = await context.newPage();
+      return await page.evaluate(() => navigator.userAgent);
+    } catch (err) {
+      console.warn(
+        chalk.yellow(
+          `[shaka-perf agent] could not read native browser user agent: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        ),
+      );
+      return undefined;
+    } finally {
+      await context?.close().catch(() => {});
+    }
+  })();
+  nativeUserAgentByBrowser.set(browser, lookup);
+  return lookup;
+}
+
 async function readRenderedSignals(
   ctx: TestContext,
   browser: Browser,
@@ -146,7 +199,14 @@ async function readRenderedSignals(
     // beforeNavigate hook, and NOT the test body. Running any of those would
     // measure a page state (post-login, post-consent, post-interaction) that no
     // crawler ever reaches, which is the opposite of what this metric means.
-    context = await browser.newContext(stageContextOptions(ctx.viewport, engineOptions.playwrightOptions));
+    context = await browser.newContext({
+      ...stageContextOptions(ctx.viewport, engineOptions.playwrightOptions),
+      ...realChromeContextOptions(
+        ctx.viewport.formFactor,
+        browser.version?.(),
+        engineOptions.playwrightOptions.browser === 'chromium',
+      ),
+    });
     const page = await context.newPage();
     const timeout = engineOptions.navTimeoutMs;
     page.setDefaultTimeout(timeout);
@@ -209,10 +269,22 @@ async function scanAgentReadiness(
 ): Promise<AgentReadinessResult> {
   const fetchedAt = new Date().toISOString();
   const rawFetchTimeout = engineOptions.rawFetchTimeoutMs;
+  const usesChromium = engineOptions.playwrightOptions.browser === 'chromium';
+  const needsNativeUserAgent =
+    usesChromium && realChromeUsesNativeIdentity(ctx.viewport.formFactor);
+  const nativeUserAgent = needsNativeUserAgent
+    ? await nativeBrowserUserAgent(browser)
+    : undefined;
+  const rawFetchUserAgent = rawFetchUserAgentFor(
+    ctx.viewport.formFactor,
+    browser.version?.(),
+    nativeUserAgent,
+    usesChromium,
+  );
 
   // Raw fetch + rendered render run together - they are independent.
   const [rawFetch, renderedOut] = await Promise.all([
-    fetchRawHtml(ctx.experimentURL, rawFetchTimeout),
+    fetchRawHtml(ctx.experimentURL, rawFetchTimeout, rawFetchUserAgent),
     readRenderedSignals(ctx, browser, engineOptions),
   ]);
 

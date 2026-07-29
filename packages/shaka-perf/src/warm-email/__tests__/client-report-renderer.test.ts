@@ -58,6 +58,10 @@ import {
   perfCostHeadline,
 } from '../client-report-model/perf';
 import {
+  buildPerfCost,
+  type PerfCostPage,
+} from '../client-report-model/cost-performance';
+import {
   BENCHMARK_LINES,
   BENCHMARK_SCALE_POLICIES,
   benchmarkScaleGeometry,
@@ -974,6 +978,7 @@ describe('renderClientReport perf tile assembly', () => {
   ] as const)('renders the %s dominant problem through the final perf tile', async (_kind, metrics, expected) => {
     const { html } = await renderClientReport(writePerfResults(metrics));
     const perfTile = renderedTile(html, 'perf');
+    const perfPanelHtml = renderedPanel(html, 'perf');
     expect(perfTile).toContain(expected.kicker);
     expect(perfTile).toContain(expected.wordTx);
     const metricHtml = `>${expected.metric}</div>`;
@@ -988,6 +993,7 @@ describe('renderClientReport perf tile assembly', () => {
     expect(perfTile).toContain(expected.problemTx);
     expect(perfTile).toContain(expected.metricSub);
     expect(perfTile).not.toContain(expected.absent);
+    expect(perfPanelHtml).toContain('data-benchmark-scale');
   });
 
   it('keeps a clean assembled perf tile generic and without a problem line', async () => {
@@ -2173,6 +2179,7 @@ describe('renderClientReportHtml', () => {
           zone: 'poor',
           lineOwner: 'Google',
           lineUrl: 'https://web.dev/articles/lcp',
+          scaleAxis: { unit: 'seconds', precision: 1 },
         },
         gapSubLines: ['Main content is 5.9s past the good line.'],
         bookingLine: 'Calls from phone visitors are waiting on this page.',
@@ -2300,7 +2307,7 @@ describe('renderClientReportHtml', () => {
     if (gap.scaleAxis.unit === 'unitless') expect(perfPanelHtml).not.toContain('0.40s');
   });
 
-  it('keeps the production FCP scale markup byte-for-byte compatible', () => {
+  it('renders the production FCP scale in seconds', () => {
     const gap = perfGap('blank', { fcpMs: 3030 });
     const scale = benchmarkScaleGeometry(3030, BENCHMARK_LINES.fcpMs, BENCHMARK_SCALE_POLICIES.fcpMs);
     if (!gap || !scale) throw new Error('the FCP benchmark scale must be computable');
@@ -2311,6 +2318,51 @@ describe('renderClientReportHtml', () => {
 
     expect(perfPanelHtml).toContain('data-benchmark-scale data-benchmark-zone="poor" data-benchmark-axis-max="4" style="position:relative; max-width:520px; margin:14px 0 2px; padding-top:17px" aria-label="First content 3.0s; Google&#39;s good line 1.8s"');
     expect(perfPanelHtml).toContain('<div style="display:flex; justify-content:space-between; margin-top:8px; font-family:\'JetBrains Mono\',monospace; font-size:9.5px; color:#6f665c"><span>0s</span><span>4s</span></div>');
+  });
+
+  it('renders the FCP scale selected through the branch-3 fallback', () => {
+    const slowLcp: PerfCostPage = {
+      page: {
+        ...perfPage({ LCP: 12_000, FCP: 900, CLS: 2, TBT: 50 }),
+        id: 'home',
+        name: 'Home',
+      },
+      lead: problem('slow-lcp'),
+    };
+    const latePaint: PerfCostPage = {
+      page: {
+        ...perfPage({ LCP: 1800, FCP: 3030, CLS: 2, TBT: 50 }),
+        id: 'platform',
+        name: 'Platform',
+        startingPath: '/platform',
+      },
+      lead: problem('late-paint', 'fair'),
+    };
+    const { perfCost } = buildPerfCost({
+      hasPerf: true,
+      perfCouldNotMeasure: false,
+      perfStatus: 'poor',
+      measured: [slowLcp, latePaint],
+      rankedCarded: [latePaint],
+      siteUrl: 'https://example.com',
+      throttleProfile: 'Slow-4G',
+      promptCtx: {
+        host: 'example.com',
+        date: 'July 27, 2026',
+        viewportLabel: 'phone',
+        throttleProfile: 'Slow-4G',
+      },
+      pageUrl: (pageValue) => `https://example.com${pageValue.startingPath}`,
+      copyPromptForPage: () => undefined,
+      sameAsPsiDefaultProfile: (profile) => profile === 'Slow-4G',
+    });
+    if (!perfCost) throw new Error('the FCP fallback must produce a performance cost block');
+
+    const perfPanelHtml = renderedPanel(renderClientReportHtml(model({ perfCost })), 'perf');
+
+    expect(perfPanelHtml).toContain(
+      'data-benchmark-scale data-benchmark-zone="poor" data-benchmark-axis-max="4"',
+    );
   });
 
   it('ports the C cost blocks with closed disclosures, honest geometry, and the middle calculator band', () => {
@@ -2339,6 +2391,7 @@ describe('renderClientReportHtml', () => {
           zone: 'poor',
           lineOwner: "Google's Lighthouse benchmark - first contentful paint",
           lineUrl: 'https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint',
+          scaleAxis: { unit: 'seconds', precision: 1 },
         },
         gapSubLines: ['slowest page: Platform, 3.4s - 1.8x the line'],
         stakes: { kind: 'at-risk', prose: 'Slow starts are where phone visitors give up.' },
@@ -2719,6 +2772,7 @@ describe('renderClientReportHtml', () => {
           zone: 'poor',
           lineOwner: 'Example',
           lineUrl: 'https://example.com/line',
+          scaleAxis: { unit: 'unitless', precision: 2 },
         },
         stakes: { kind: 'at-risk', prose: 'This must stay hidden.' },
         fix: { tone: 'primary', text: 'This must stay hidden too.' },

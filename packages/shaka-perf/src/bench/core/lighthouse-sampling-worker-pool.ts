@@ -301,8 +301,17 @@ async function runOneShuffledPair<TSample>(
   return Promise.all(shuffled.map(sampleOne));
 }
 
+export function lighthouseSamplerReuseKey<TSample>(
+  benchmarks: Array<Pick<Benchmark<TSample>, 'group' | 'workerReuseKey'>>,
+): string {
+  return benchmarks
+    .map((benchmark) => `${benchmark.group}\0${benchmark.workerReuseKey ?? ''}`)
+    .sort()
+    .join('\0');
+}
+
 function groupsKeyFor<TSample>(benchmarks: Benchmark<TSample>[]): string {
-  return benchmarks.map((benchmark) => benchmark.group).sort().join('\0');
+  return lighthouseSamplerReuseKey(benchmarks);
 }
 
 function shuffle<T>(array: T[]): T[] {

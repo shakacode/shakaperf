@@ -7,7 +7,7 @@
  * License in LICENSE.md.
  */
 
-import { fetchRawHtml } from '../engine';
+import { fetchRawHtml, rawFetchUserAgentFor } from '../engine';
 
 function response(status: number, body = '', headers: Record<string, string> = {}): Response {
   return new Response(body, { status, headers });
@@ -19,6 +19,60 @@ function fetchedUrls(fetchSpy: jest.SpyInstance): string[] {
 
 afterEach(() => {
   jest.restoreAllMocks();
+});
+
+describe('rawFetchUserAgentFor', () => {
+  const originalRealChrome = process.env.SHAKAPERF_REAL_CHROME;
+  const originalHeadless = process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
+  afterEach(() => {
+    if (originalRealChrome === undefined) delete process.env.SHAKAPERF_REAL_CHROME;
+    else process.env.SHAKAPERF_REAL_CHROME = originalRealChrome;
+    if (originalHeadless === undefined) delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+    else process.env.SHAKAPERF_REAL_CHROME_HEADLESS = originalHeadless;
+  });
+
+  it('keeps the default raw-fetch identity outside real-Chrome mode', () => {
+    delete process.env.SHAKAPERF_REAL_CHROME;
+
+    expect(rawFetchUserAgentFor('mobile', '150.0.0.0')).toContain('Chrome/124.0.0.0');
+  });
+
+  it('keeps a neutral raw-fetch identity for a non-Chromium engine', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+
+    expect(rawFetchUserAgentFor('mobile', '133.0.0.0', undefined, false)).toContain(
+      'Chrome/124.0.0.0',
+    );
+  });
+
+  it('selects a version-matched mobile identity in real-Chrome mode', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+
+    expect(rawFetchUserAgentFor('mobile', '150.0.0.0')).toMatch(
+      /Chrome\/150\.0\.0\.0 Mobile/,
+    );
+  });
+
+  it('reuses the native identity for a headed desktop context', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
+    expect(rawFetchUserAgentFor(
+      'desktop',
+      '150.0.0.0',
+      'native-browser-user-agent',
+    )).toBe('native-browser-user-agent');
+  });
+
+  it('falls back to the neutral identity when a native or versioned identity is unavailable', () => {
+    process.env.SHAKAPERF_REAL_CHROME = '1';
+    delete process.env.SHAKAPERF_REAL_CHROME_HEADLESS;
+
+    expect(rawFetchUserAgentFor('desktop')).toContain('Chrome/124.0.0.0');
+    process.env.SHAKAPERF_REAL_CHROME_HEADLESS = '1';
+    expect(rawFetchUserAgentFor('mobile')).toContain('Chrome/124.0.0.0');
+  });
 });
 
 describe('fetchRawHtml', () => {
@@ -44,6 +98,18 @@ describe('fetchRawHtml', () => {
     expect(fetchedUrls(fetchSpy)).toEqual(['https://example.com/start']);
     expect(fetchSpy).toHaveBeenCalledWith('https://example.com/start', expect.objectContaining({
       redirect: 'manual',
+    }));
+  });
+
+  it('uses an explicitly selected browser identity for the raw request', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+      response(200, '<main>public HTML</main>'),
+    );
+
+    await fetchRawHtml('https://example.com/start', 1000, 'viewport-user-agent');
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://example.com/start', expect.objectContaining({
+      headers: expect.objectContaining({ 'user-agent': 'viewport-user-agent' }),
     }));
   });
 

@@ -10,8 +10,10 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
-import { launch, type LaunchedChrome } from 'chrome-launcher';
+import { getChromePath, launch, type LaunchedChrome } from 'chrome-launcher';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 
 import {
@@ -49,6 +51,39 @@ import type { AbTestDefinition } from './ab-test-registry';
 import { sendErrorFrame } from './worker-log';
 import { existsSync, writeFileSync } from 'node:fs';
 import { screencastRecorder } from './screencast-recorder';
+import {
+  chromeVersionFromProductString,
+  matchRealChromeUserAgentVersion,
+  realChromeUserAgentForFormFactor,
+} from '../../browser-user-agent';
+
+const execFileAsync = promisify(execFile);
+const CHROME_VERSION_PROBE_TIMEOUT_MS = 5000;
+const CHROME_VERSION_PROBE_MAX_BUFFER_BYTES = 64 * 1024;
+
+async function installedChromeVersion(): Promise<string | undefined> {
+  if (process.platform === 'win32') return undefined;
+  try {
+    const chromePath = getChromePath();
+    const { stdout } = await execFileAsync(chromePath, ['--version'], {
+      timeout: CHROME_VERSION_PROBE_TIMEOUT_MS,
+      killSignal: 'SIGKILL',
+      maxBuffer: CHROME_VERSION_PROBE_MAX_BUFFER_BYTES,
+    });
+    const version = chromeVersionFromProductString(stdout);
+    if (!version) {
+      console.warn('[shaka-perf] could not parse the installed Chrome version');
+    }
+    return version;
+  } catch (err) {
+    console.warn(
+      `[shaka-perf] could not resolve the installed Chrome version: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return undefined;
+  }
+}
 
 /**
  * Filename for the live-browser screenshot the worker captures on failure.
@@ -123,6 +158,24 @@ class LighthouseWorkerSampler {
     if (!options.headed) {
       chromeFlags.unshift('--headless');
     }
+    // Pin pre-emulation traffic when the matching Playwright context also uses
+    // a viewport identity. Lighthouse applies its own CDP override before the
+    // measured navigation.
+    if (process.env.SHAKAPERF_REAL_CHROME === '1') {
+      const formFactor = process.env.SHAKA_PERF_VIEWPORT_FORM_FACTOR;
+      chromeFlags.push('--disable-blink-features=AutomationControlled');
+      const useViewportUserAgent =
+        formFactor === 'mobile'
+        || process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1';
+      if (formFactor && useViewportUserAgent) {
+        const browserVersion = await installedChromeVersion();
+        const userAgent = matchRealChromeUserAgentVersion(
+          realChromeUserAgentForFormFactor(formFactor),
+          browserVersion,
+        );
+        if (userAgent) chromeFlags.push(`--user-agent=${userAgent}`);
+      }
+    }
 
     // Extra flags from the resolved shared/perf playwrightOptions.args.
     chromeFlags.push(...(options.chromeArgs ?? []));
@@ -184,7 +237,7 @@ class LighthouseWorkerSampler {
     }
   }
 
-  async getMobileSettings(): Promise<LighthouseConfig> {
+  async getLighthouseSettings(): Promise<LighthouseConfig> {
     // Route through importPatchedLighthouse so we fail before runLighthouse
     // if the loader hook didn't apply — otherwise the run produces a vanilla
     // trace that silently excludes post-load testFn interactions.
@@ -205,7 +258,7 @@ class LighthouseWorkerSampler {
     const msg = assertSampleMessage(sampleState, sampleIndex);
     const testDef = await resolveTestDef(msg.testFile, msg.testName);
     const saveArtifacts = msg.options.saveArtifacts ?? true;
-    let lhSettings = await this.getMobileSettings();
+    let lhSettings = await this.getLighthouseSettings();
 
     lhSettings = { ...lhSettings, ...msg.options.lhConfig, port: this.chrome!.port };
 

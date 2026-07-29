@@ -24,6 +24,7 @@ export const DEFAULT_THROTTLE_PROFILE_LABEL = 'Slow-4G';
 
 import type { Flags } from 'lighthouse/types/externs.js';
 import type { Viewport } from 'shaka-shared';
+import { realChromeUserAgentForFormFactor } from '../../browser-user-agent';
 import type { PlaywrightOptions } from '../../config';
 
 export type LighthouseConfig = Flags;
@@ -87,10 +88,19 @@ export const DEFAULT_LH_CONFIG: PerfLighthouseConfig = {
 export function lhConfigForViewport(
   viewport: Viewport,
   userOverrides: PerfLighthouseConfig = {},
+  userAgentMode: 'default' | 'viewport' | 'native' = 'default',
 ): LighthouseConfig {
   return {
     ...userOverrides,
     formFactor: viewport.formFactor,
+    ...(userAgentMode === 'viewport'
+      ? {
+        emulatedUserAgent:
+          userOverrides.emulatedUserAgent ?? realChromeUserAgentForFormFactor(viewport.formFactor),
+      }
+      : userAgentMode === 'native'
+        ? { emulatedUserAgent: userOverrides.emulatedUserAgent ?? false }
+      : {}),
     screenEmulation: {
       mobile: viewport.formFactor === 'mobile',
       width: viewport.width,
@@ -184,6 +194,13 @@ export interface LighthouseBenchmarkOptions {
    * `setup` IPC message, which `setupBrowser` reads to drop `--headless`.
    */
   headed?: boolean;
+  /**
+   * Audit-only real-Chrome mode. Compare deliberately leaves this unset so
+   * ambient audit environment variables cannot change its Lighthouse browser.
+   */
+  realChrome?: {
+    headless: boolean;
+  };
   /**
    * Resolved launch options (`shared.playwrightOptions` ← category override ←
    * per-test config). Lighthouse drives Chrome via chrome-launcher, so only

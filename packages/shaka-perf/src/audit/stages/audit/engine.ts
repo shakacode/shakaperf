@@ -34,6 +34,7 @@ import type { ArtifactScope } from '../../../pipeline/artifact-store';
 import { safeReaddir } from '../../../pipeline/path-utils';
 import { classifyMetric, levelForMetric } from './metrics';
 import type { AuditMetric, AuditResult, AuditStageConfig } from './stage';
+import { realChromeUsesNativeIdentity } from '../../real-chrome';
 
 const execFileAsync = promisify(execFile);
 
@@ -98,9 +99,17 @@ export async function runAuditStage(
   fs.mkdirSync(artifactsDir, { recursive: true });
 
   ensureLighthousePatchRegistered();
-  // Per-test effective lighthouseConfig (config.audit.lighthouseConfig in an
-  // abTest() applies to that test), not the file-level stage config.
-  const lhConfig = lhConfigForViewport(ctx.viewport, ctx.config.audit.lighthouseConfig ?? config.lighthouseConfig);
+  const realChrome = process.env.SHAKAPERF_REAL_CHROME === '1';
+  const lighthouseUserAgentMode = !realChrome
+    ? 'default'
+    : realChromeUsesNativeIdentity(ctx.viewport.formFactor)
+      ? 'native'
+      : 'viewport';
+  const lhConfig = lhConfigForViewport(
+    ctx.viewport,
+    ctx.config.audit.lighthouseConfig ?? config.lighthouseConfig,
+    lighthouseUserAgentMode,
+  );
   // Perf-only run: the a11y score comes from measureAccessibilityScore, not this
   // gather. Always keep `performance`; a user override may add categories, not drop it.
   const requestedCategories = lhConfig.onlyCategories?.length ? lhConfig.onlyCategories : [];
@@ -121,6 +130,13 @@ export async function runAuditStage(
     captureCoverage: true,
     targetUrl: ctx.experimentURL,
     headed: ctx.runtime.headed,
+    ...(realChrome
+      ? {
+        realChrome: {
+          headless: process.env.SHAKAPERF_REAL_CHROME_HEADLESS === '1',
+        },
+      }
+      : {}),
     // Effective launch options (shared.playwrightOptions ← per-test config);
     // the fork maps args/headless onto chrome flags.
     playwrightOptions: resolvePlaywrightOptions(ctx.config, 'audit'),
@@ -151,7 +167,12 @@ export async function runAuditStage(
   }
 
   // Persist the a11y score to <id>/accessibility-client.json (report reads phone).
-  const accessibilityScore = await measureAccessibilityScore(ctx.experimentURL, ctx.viewport);
+  // The standalone score runner cannot share the interactive challenge state
+  // from the real-Chrome audit browsers. Omitting the score is safer than
+  // publishing a score for a bot-wall interstitial.
+  const accessibilityScore = realChrome
+    ? null
+    : await measureAccessibilityScore(ctx.experimentURL, ctx.viewport);
   if (accessibilityScore != null) {
     writeAccessibilityClientScore(
       path.join(ctx.runtime.resultsRoot, ctx.testAndViewportId),

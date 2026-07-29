@@ -24,6 +24,50 @@ import type { LogFrame, WorkerLogFrame } from './worker-log';
 // stdio slots 0-3 are stdin, stdout, stderr, and Node's IPC channel.
 // Slot 4 is reserved for the worker-to-worker barrier synchronization fd.
 const BARRIER_SYNCHRONIZATION_FD_INDEX = 4;
+let realChromeHeadlessWarningEmitted = false;
+
+export function lighthouseWorkerEnvironment(
+  options: Pick<LighthouseBenchmarkOptions, 'realChrome' | 'viewport'>,
+  samplingMode: SamplingMode,
+): NodeJS.ProcessEnv {
+  const forceRealChromeHeadless = options.realChrome?.headless === true;
+  return {
+    SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
+    SHAKA_PERF_SAMPLING_MODE: samplingMode,
+    SHAKAPERF_REAL_CHROME: options.realChrome ? '1' : '0',
+    SHAKAPERF_REAL_CHROME_HEADLESS: forceRealChromeHeadless ? '1' : '0',
+    SHAKA_PERF_VIEWPORT_FORM_FACTOR:
+      options.realChrome ? options.viewport.formFactor : '',
+  };
+}
+
+export function lighthouseWorkerSetupOptions(
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'playwrightOptions' | 'realChrome'>,
+): { headed: boolean; chromeArgs: string[]; ignoreHTTPSErrors: boolean } {
+  const playwrightOptions = options.playwrightOptions ?? {};
+  return {
+    headed: options.realChrome
+      ? options.realChrome.headless !== true
+      : (options.headed === true || playwrightOptions.headless === false),
+    chromeArgs: playwrightOptions.args ?? [],
+    ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
+  };
+}
+
+export function warnIfRealChromeHeadlessOverridesHeaded(
+  options: Pick<LighthouseBenchmarkOptions, 'headed' | 'realChrome'>,
+): void {
+  if (options.headed && options.realChrome?.headless && !realChromeHeadlessWarningEmitted) {
+    realChromeHeadlessWarningEmitted = true;
+    console.warn(
+      'SHAKAPERF_REAL_CHROME_HEADLESS=1 overrides --headed for the audit browsers',
+    );
+  }
+}
+
+export function resetRealChromeHeadlessWarning(): void {
+  realChromeHeadlessWarningEmitted = false;
+}
 
 interface ResultMessage {
   type: 'result';
@@ -270,15 +314,14 @@ export default function createLighthouseBenchmark(
   return {
     group,
     sampleState,
+    workerReuseKey: options.realChrome ? options.viewport.formFactor : undefined,
     async setup(raceCancellation, barrierSynchronizationFd: number, samplingMode: SamplingMode) {
       const workerPath = join(__dirname, 'lighthouse-worker-entry.js');
+      warnIfRealChromeHeadlessOverridesHeaded(options);
       // stdio: stdin/stdout/stderr inherit so IPC-dead fallback writes still
       // surface on the parent terminal. The worker entrypoint reroutes normal
       // console/stdout/stderr output to IPC log frames.
-      const barrierSynchronizationEnv = {
-        SHAKA_PERF_BARRIER_SYNCHRONIZATION_FD: String(BARRIER_SYNCHRONIZATION_FD_INDEX),
-        SHAKA_PERF_SAMPLING_MODE: samplingMode,
-      };
+      const workerEnvironment = lighthouseWorkerEnvironment(options, samplingMode);
       const playwrightOptions = options.playwrightOptions ?? {};
       if (playwrightOptions.browser && playwrightOptions.browser !== 'chromium') {
         console.warn(
@@ -292,7 +335,7 @@ export default function createLighthouseBenchmark(
           stdio: ['inherit', 'inherit', 'inherit', 'ipc', barrierSynchronizationFd],
           env: {
             ...process.env,
-            ...barrierSynchronizationEnv,
+            ...workerEnvironment,
           },
         });
       } finally {
@@ -311,13 +354,7 @@ export default function createLighthouseBenchmark(
         try {
           if (!safeSend(worker, {
             type: 'setup',
-            // setupBrowser drops --headless when headed. `--headed` wins;
-            // otherwise the resolved playwrightOptions.headless applies.
-            headed: options.headed === true || playwrightOptions.headless === false,
-            // Extra chrome flags from the resolved playwrightOptions.args.
-            chromeArgs: playwrightOptions.args ?? [],
-            // Lax certs unless explicitly false — same default as every engine.
-            ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
+            ...lighthouseWorkerSetupOptions(options),
           })) {
             throw new Error('lighthouse worker died before setup could be sent');
           }

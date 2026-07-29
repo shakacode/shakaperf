@@ -17,7 +17,7 @@ import type { TestContext } from '../../../stage/stage';
 import { captureFailureScreenshot } from '../../../stage/stage-failure';
 import { runWithLastAnnotation } from '../../../test-annotation';
 import { scanLandedOnBotWall } from '../../bot-wall';
-import { waitForBotWallToClear } from '../../real-chrome';
+import { realChromeContextOptions, waitForBotWallToClear } from '../../real-chrome';
 import { launchStageBrowser, stageContextOptions } from '../../stage-browser';
 import { resolvePlaywrightOptions, type PlaywrightOptions } from '../../../config';
 import { normalizeViolation } from './artifacts';
@@ -95,7 +95,14 @@ export async function scanAccessibilityPage(
     // that raises `shared.playwrightOptions.waitTimeout` or flips
     // `ignoreHTTPSErrors` therefore takes effect on its own a11y scan.
     const effectivePwOptions = resolvePlaywrightOptions(ctx.config, 'accessibility');
-    context = await browser.newContext(stageContextOptions(ctx.viewport, effectivePwOptions));
+    context = await browser.newContext({
+      ...stageContextOptions(ctx.viewport, effectivePwOptions),
+      ...realChromeContextOptions(
+        ctx.viewport.formFactor,
+        browser.version?.(),
+        config.playwrightOptions.browser === 'chromium',
+      ),
+    });
     // Clear state + run beforeNavigate on the context before the page is created.
     await setUpContextForNavigation({
       context,

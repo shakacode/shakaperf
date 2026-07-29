@@ -11,7 +11,7 @@ import { chromium, firefox, webkit } from 'playwright-core';
 import type { Browser, BrowserContextOptions, LaunchOptions } from 'playwright-core';
 import type { FormFactor } from 'shaka-shared';
 import type { PlaywrightOptions } from '../config';
-import { applyRealChrome, realChromeMobileEmulation } from './real-chrome';
+import { applyRealChrome } from './real-chrome';
 
 // The single browser launch shared by every audit stage that drives Playwright:
 // engine selection (chromium/firefox/webkit) with the real-Chrome overrides
@@ -59,8 +59,8 @@ export interface StageContextViewport {
 }
 
 // The shared `newContext` options for a stage's measured page: viewport, device
-// scale, the mobile flag, cert handling, and the real-Chrome mobile emulation.
-// Keeps the accessibility and agent-readiness rendered contexts identical.
+// scale, the mobile flag, and certificate handling. Real-Chrome identity is
+// added by the callers once they can read the launched browser version.
 export function stageContextOptions(
   viewport: StageContextViewport,
   playwrightOptions: PlaywrightOptions,
@@ -72,7 +72,5 @@ export function stageContextOptions(
     // Default true on every engine (visreg does the same); `false` opts into
     // strict certificate checking.
     ignoreHTTPSErrors: playwrightOptions.ignoreHTTPSErrors !== false,
-    // Real-Chrome only: serve the phone layout (no-op headless).
-    ...realChromeMobileEmulation(viewport.formFactor),
   };
 }
