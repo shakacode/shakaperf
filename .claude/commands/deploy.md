@@ -9,7 +9,8 @@ Git tags trigger npm publish via CI. Packages that depend on `shaka-shared` (sha
 3. **Wait for each publish workflow to succeed** before pushing tags for dependent packages. Use `gh run watch <id> --exit-status` to wait.
 4. **One version bump per package per deploy.** Don't re-bump a version that was already tagged — bump to a new version instead.
 5. **Stamp BREAKING_CHANGES.md.** If it has an **Unreleased** section with entries, this release ships breaking changes — record the released version there (see step 3).
-6. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with a summary of them so the change is visible at release time, not just in the file (see steps 5–6). Tag a release with no breaking changes as a lightweight tag as before.
+6. **Keep `shaka-perf` and `shaka-shared` on the same version only when they are published together** — a solo release bumps just that package and lets the versions diverge.
+7. **Surface breaking changes in the release.** When the Unreleased section had entries, annotate that package's tag with a summary of them so the change is visible at release time, not just in the file (see steps 5–6). Tag a release with no breaking changes as a lightweight tag as before.
 
 ## Steps
 
