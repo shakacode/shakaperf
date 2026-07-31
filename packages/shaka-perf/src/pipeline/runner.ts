@@ -1455,22 +1455,6 @@ function newestRunId(outcomes: readonly Outcome[]): string | null {
   return newest;
 }
 
-function viewportsForStages(
-  stages: readonly Stage[],
-  config: AbTestsConfig,
-): Viewport[] {
-  const labels = new Set<string>();
-  const viewports: Viewport[] = [];
-  for (const stage of stages) {
-    for (const viewport of viewportsForCategory(config, stage.category)) {
-      if (labels.has(viewport.label)) continue;
-      labels.add(viewport.label);
-      viewports.push(viewport);
-    }
-  }
-  return viewports;
-}
-
 function skippedOutcome(stage: StageName, reason: string): Outcome {
   return { kind: 'skipped', stage, reason };
 }
@@ -1519,7 +1503,7 @@ function freshestArtifactMtime(
     }
     consider(absPath);
   };
-  for (const vp of viewportsForStages(stages, config)) {
+  for (const vp of viewportsForTestAcrossStages(test, stages, config)) {
     const slug = unitIdForTest(test, vp.label);
     for (const stage of stages) {
       considerStageOutcome(path.join(resultsRoot, slug, `${stage.name}.json`));
