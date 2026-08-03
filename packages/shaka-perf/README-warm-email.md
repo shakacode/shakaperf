@@ -42,7 +42,9 @@ render, so a re-audit that adds a tab is reflected without stale copy. Delete
 this rename) to refresh the AI verdict copy. Existing `client-narrative-v2.json`
 caches are still read during the transition. The report pulls the Hanken Grotesk
 web font from Google Fonts (with a `system-ui` fallback if that CDN is
-unreachable); it is otherwise self-contained.
+unreachable); it is otherwise self-contained. The rewrite times out after 90s
+by default; set `SHAKAPERF_NARRATIVE_TIMEOUT_MS` (milliseconds) to raise it for
+a large report that keeps falling back.
 
 Renders one card per page (worst ~5 in full, the rest as a one-line list):
 
@@ -90,7 +92,9 @@ regenerate a page's summary, clear the `summary`/`fixes` keys from its
 audit-time `score`, which only a fresh audit re-writes). Best-effort like the captions: a
 missing/slow/failed `claude` leaves the cards on a plain-language issue list
 built from the same labels as the crop captions (never the raw axe text). Pass
-`--no-ai-a11y` for a `claude`-free run.
+`--no-ai-a11y` for a `claude`-free run. The rewrite times out after 150s by
+default; set `SHAKAPERF_A11Y_TIMEOUT_MS` (milliseconds) to raise it for a
+large report that keeps falling back.
 
 On a very tall page the inline screenshot cannot be encoded (AVIF caps each side
 at 16384px), so its card renders the score, counts, and summary but no cropped
@@ -121,7 +125,9 @@ A report-time `claude` pass (model `sonnet`, cached, `--no-ai-agent` to skip)
 rewrites the findings into a plain-language summary + "what to change" list to
 `<id>/agent-ready-client.json` and a site `agent-ready-site.json`; without it the
 cards fall back to the already-plain line items. The defensible-claims rules live
-in `src/audit/stages/agent_readiness/METHODOLOGY.md`.
+in `src/audit/stages/agent_readiness/METHODOLOGY.md`. The rewrite times out after
+150s by default; set `SHAKAPERF_AGENT_TIMEOUT_MS` (milliseconds) to raise it for
+a large report that keeps falling back.
 
 The output is a single self-contained HTML file (frames inlined as AVIF,
 video as base64), typically ~1-2 MB - deployed as a standalone page at

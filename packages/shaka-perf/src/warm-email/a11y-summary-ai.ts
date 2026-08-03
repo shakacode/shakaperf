@@ -16,7 +16,16 @@ const execFileAsync = promisify(execFile);
 // cap; 150s (not 180s) keeps a hung claude from stalling the report while
 // giving heavy sites room - one batched call covering many violation-dense
 // pages (e.g. a large WordPress site) can take well over 90s on sonnet.
-const CLAUDE_TIMEOUT_MS = 150_000;
+const DEFAULT_A11Y_TIMEOUT_MS = 150_000;
+export function resolveA11yTimeoutMs(): number {
+  const raw = process.env.SHAKAPERF_A11Y_TIMEOUT_MS;
+  const parsed = Number(raw);
+  const valid = Number.isFinite(parsed) && parsed > 0;
+  if (raw && !valid) {
+    console.warn(`shaka-perf: ignoring SHAKAPERF_A11Y_TIMEOUT_MS="${raw}" (expected a positive number of milliseconds)`);
+  }
+  return valid ? parsed : DEFAULT_A11Y_TIMEOUT_MS;
+}
 // Stay under Linux's ~128 KB argv limit (the prompt is one arg); fall back, don't throw.
 const MAX_PROMPT_BYTES = 100_000;
 // Cap model text so a chatty reply can't blow the card layout.
@@ -39,12 +48,13 @@ export function claudeA11ySummarizer(model = 'sonnet'): A11ySummarizer {
       console.warn(chalk.yellow('shaka-perf: accessibility summary prompt too large (too many pages / long issue text) - using a plain-language issue list.'));
       return null;
     }
+    const timeoutMs = resolveA11yTimeoutMs();
 
     console.log(`Writing plain-language accessibility summaries for ${reqs.length} page(s) via claude (${model})...`);
     let stdout: string;
     try {
       ({ stdout } = await execFileAsync('claude', ['-p', prompt, '--model', model], {
-        timeout: CLAUDE_TIMEOUT_MS,
+        timeout: timeoutMs,
         maxBuffer: 4 * 1024 * 1024,
       }));
     } catch (err) {
@@ -54,7 +64,7 @@ export function claudeA11ySummarizer(model = 'sonnet'): A11ySummarizer {
       if (e.code === 'ENOENT') {
         console.warn(chalk.yellow('shaka-perf: `claude` CLI not on PATH - the accessibility cards use a plain-language issue list (no AI rewrite).'));
       } else if (e.killed) {
-        console.warn(chalk.yellow(`shaka-perf: AI accessibility summary timed out after ${CLAUDE_TIMEOUT_MS / 1000}s - using a plain-language issue list.`));
+        console.warn(chalk.yellow(`shaka-perf: AI accessibility summary timed out after ${timeoutMs / 1000}s - using a plain-language issue list.`));
       } else {
         console.warn(chalk.yellow('shaka-perf: AI accessibility summary did not complete - using a plain-language issue list.'));
       }
