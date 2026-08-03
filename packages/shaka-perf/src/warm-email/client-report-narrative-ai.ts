@@ -19,12 +19,13 @@ import {
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_NARRATIVE_TIMEOUT_MS = 90_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 export function resolveNarrativeTimeoutMs(): number {
   const raw = process.env.SHAKAPERF_NARRATIVE_TIMEOUT_MS;
   const parsed = Number(raw);
-  const valid = Number.isFinite(parsed) && parsed > 0;
+  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS;
   if (raw && !valid) {
-    console.warn(`shaka-perf: ignoring SHAKAPERF_NARRATIVE_TIMEOUT_MS="${raw}" (expected a positive number of milliseconds)`);
+    console.warn(`shaka-perf: ignoring SHAKAPERF_NARRATIVE_TIMEOUT_MS="${raw}" (expected a positive whole number of milliseconds up to ${MAX_TIMEOUT_MS})`);
   }
   return valid ? parsed : DEFAULT_NARRATIVE_TIMEOUT_MS;
 }

@@ -44,9 +44,9 @@ describe.each(stages)('$env', ({ env, fallback, resolve }) => {
     expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it.each(['abc', '0', '-5', 'Infinity'])('warns and falls back for %s', (raw) => {
+  it.each(['abc', '0', '-5', '150.5', 'Infinity', '2147483648'])('warns and falls back for %s', (raw) => {
     process.env[env] = raw;
     expect(resolve()).toBe(fallback);
-    expect(console.warn).toHaveBeenCalledWith(`shaka-perf: ignoring ${env}="${raw}" (expected a positive number of milliseconds)`);
+    expect(console.warn).toHaveBeenCalledWith(`shaka-perf: ignoring ${env}="${raw}" (expected a positive whole number of milliseconds up to 2147483647)`);
   });
 });

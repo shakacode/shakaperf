@@ -19,12 +19,13 @@ import type {
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_AGENT_TIMEOUT_MS = 150_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 export function resolveAgentTimeoutMs(): number {
   const raw = process.env.SHAKAPERF_AGENT_TIMEOUT_MS;
   const parsed = Number(raw);
-  const valid = Number.isFinite(parsed) && parsed > 0;
+  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS;
   if (raw && !valid) {
-    console.warn(`shaka-perf: ignoring SHAKAPERF_AGENT_TIMEOUT_MS="${raw}" (expected a positive number of milliseconds)`);
+    console.warn(`shaka-perf: ignoring SHAKAPERF_AGENT_TIMEOUT_MS="${raw}" (expected a positive whole number of milliseconds up to ${MAX_TIMEOUT_MS})`);
   }
   return valid ? parsed : DEFAULT_AGENT_TIMEOUT_MS;
 }

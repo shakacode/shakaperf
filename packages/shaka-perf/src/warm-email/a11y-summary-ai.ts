@@ -13,16 +13,17 @@ import type { A11ySummarizer, A11ySummary, A11ySummaryRequest, A11ySummaryResult
 
 const execFileAsync = promisify(execFile);
 // 90s: sonnet on this batched prompt is slower than haiku and was hitting a 60s
-// cap; 150s (not 180s) keeps a hung claude from stalling the report while
+// cap; the 150s default (not 180s) keeps a hung claude from stalling the report while
 // giving heavy sites room - one batched call covering many violation-dense
 // pages (e.g. a large WordPress site) can take well over 90s on sonnet.
 const DEFAULT_A11Y_TIMEOUT_MS = 150_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 export function resolveA11yTimeoutMs(): number {
   const raw = process.env.SHAKAPERF_A11Y_TIMEOUT_MS;
   const parsed = Number(raw);
-  const valid = Number.isFinite(parsed) && parsed > 0;
+  const valid = Number.isInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS;
   if (raw && !valid) {
-    console.warn(`shaka-perf: ignoring SHAKAPERF_A11Y_TIMEOUT_MS="${raw}" (expected a positive number of milliseconds)`);
+    console.warn(`shaka-perf: ignoring SHAKAPERF_A11Y_TIMEOUT_MS="${raw}" (expected a positive whole number of milliseconds up to ${MAX_TIMEOUT_MS})`);
   }
   return valid ? parsed : DEFAULT_A11Y_TIMEOUT_MS;
 }
